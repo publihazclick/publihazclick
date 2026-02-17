@@ -1,0 +1,57 @@
+<header class="bg-black/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+    <!-- Logo -->
+    <div class="flex items-center space-x-2 group cursor-pointer">
+      <span class="text-2xl font-black tracking-tighter text-white">
+        Publihaz<span class="text-primary italic group-hover:text-cyan-300 transition-colors">Clik</span>
+      </span>
+      <span class="material-symbols-outlined text-primary text-glow-cyan">trending_up</span>
+    </div>
+
+    <!-- Desktop Navigation -->
+    <nav class="hidden md:flex items-center space-x-10">
+      @for (item of navItems; track item.label) {
+        <a 
+          [href]="item.href" 
+          class="nav-link"
+        >
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+
+    <!-- Register Button -->
+    <button class="btn-primary">
+      <span class="text-[10px] tracking-widest">REGÍSTRATE</span>
+      <span class="material-symbols-outlined text-lg">login</span>
+    </button>
+
+    <!-- Mobile Menu Button -->
+    <button 
+      class="md:hidden text-white p-2"
+      (click)="toggleMenu()"
+      aria-label="Toggle menu"
+    >
+      <span class="material-symbols-outlined">
+        {{ isMenuOpen() ? 'close' : 'menu' }}
+      </span>
+    </button>
+  </div>
+
+  <!-- Mobile Menu -->
+  @if (isMenuOpen()) {
+    <div class="md:hidden bg-black/95 backdrop-blur-md border-t border-white/5">
+      <nav class="flex flex-col p-6 space-y-4">
+        @for (item of navItems; track item.label) {
+          <a 
+            [href]="item.href" 
+            class="text-gray-400 hover:text-primary transition-colors text-sm font-bold uppercase tracking-wider"
+            (click)="toggleMenu()"
+          >
+            {{ item.label }}
+          </a>
+        }
+      </nav>
+    </div>
+  }
+</header>

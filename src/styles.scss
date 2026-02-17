@@ -1,1 +1,157 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #00E5FF;
+    --background-dark: #000000;
+    --glass-dark: rgba(10, 10, 10, 0.7);
+  }
+}
+
+@layer components {
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(0, 229, 255, 0.5), 0 0 20px rgba(0, 229, 255, 0.3);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+  }
+
+  .glass-effect {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(15, 15, 15, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .premium-card {
+    background: linear-gradient(145deg, #121212, #000000);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .video-placeholder-gradient {
+    background: linear-gradient(180deg, rgba(0,229,255,0.05) 0%, rgba(0,0,0,1) 100%);
+  }
+
+  .ticker-scroll {
+    display: flex;
+    width: 200%;
+    animation: scroll 30s linear infinite;
+  }
+
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .float-delayed {
+    animation: float 6s ease-in-out 3s infinite;
+  }
+
+  .btn-primary {
+    background-color: var(--primary);
+    color: black;
+    font-weight: 900;
+    padding: 0.75rem 2rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s;
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+  }
+
+  .btn-primary:hover {
+    background-color: #5eead4;
+    transform: scale(1.05);
+  }
+
+  .nav-link {
+    transition: color 0.3s;
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+  }
+
+  .nav-link:hover {
+    color: var(--primary);
+  }
+
+  .section-title {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 768px) {
+    .section-title {
+      font-size: 4.5rem;
+    }
+  }
+
+  .card-premium {
+    background: linear-gradient(145deg, #121212, #000000);
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+  }
+}
+
+@layer utilities {
+  .text-primary {
+    color: var(--primary);
+  }
+
+  .bg-primary {
+    background-color: var(--primary);
+  }
+
+  .border-primary {
+    border-color: var(--primary);
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: black;
+  color: white;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: var(--primary);
+  color: black;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
+  100% { box-shadow: 0 0 25px rgba(0, 229, 255, 0.6); }
+}

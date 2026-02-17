@@ -1,0 +1,91 @@
+<section class="py-24 bg-black">
+  <div class="max-w-7xl mx-auto px-6">
+    <!-- Section Header -->
+    <div class="text-center mb-16">
+      <h2 class="text-5xl md:text-7xl font-black mb-8 tracking-tighter uppercase">
+        Algo <span class="text-primary italic">nunca</span> antes <span class="text-primary italic">visto</span>
+      </h2>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto">
+        Tan sólo te registras con <span class="text-white font-bold">$ 30.000 Pesos Colombianos</span> y potencialmente <span class="text-primary font-bold">ganarás más de $ 1.000.000</span>
+      </p>
+    </div>
+
+    <!-- Video Placeholder -->
+    <div class="max-w-5xl mx-auto mb-32 relative group">
+      <div class="absolute -inset-1 bg-gradient-to-r from-primary/20 to-transparent rounded-[2rem] blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+      <div class="relative bg-zinc-900 aspect-video rounded-[2rem] border border-white/10 overflow-hidden flex items-center justify-center video-placeholder-gradient">
+        <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-300 shadow-2xl">
+          <span class="material-symbols-outlined text-black text-5xl translate-x-1">play_arrow</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Title -->
+    <div class="mb-12 flex items-center space-x-4">
+      <span class="material-symbols-outlined text-primary">grid_view</span>
+      <h3 class="text-2xl font-black uppercase tracking-tight">Publicaciones Recientes</h3>
+    </div>
+
+    <!-- Posts Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      @for (post of posts; track post.id) {
+        <div class="premium-card rounded-3xl border border-white/10 overflow-hidden flex flex-col group">
+          <!-- Post Header -->
+          <div class="p-4 flex items-center justify-between border-b border-white/5 bg-zinc-900/50">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-white/10">
+                <span class="material-symbols-outlined text-gray-400">person</span>
+              </div>
+              <span class="font-bold text-sm tracking-tight">{{ post.store }}</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <span class="material-symbols-outlined text-primary text-xl cursor-pointer">share</span>
+              <span class="material-symbols-outlined text-gray-500 text-xl">more_vert</span>
+            </div>
+          </div>
+
+          <!-- Post Image -->
+          <div class="relative aspect-square overflow-hidden bg-zinc-800">
+            <img 
+              [alt]="post.title" 
+              [src]="post.image" 
+              class="w-full h-full object-cover"
+            />
+            <div class="absolute inset-0 bg-black/20 flex items-center justify-center p-6 text-center">
+              <span class="text-white text-3xl font-black italic drop-shadow-lg leading-tight">{{ post.overlayText }}</span>
+            </div>
+          </div>
+
+          <!-- Post Content -->
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-black text-lg text-primary tracking-tight">{{ post.title }}</h4>
+              <span class="material-symbols-outlined text-primary fill-current">thumb_up</span>
+            </div>
+            <p class="text-xs text-gray-400 font-bold mb-4">{{ post.promo }}</p>
+            <p class="text-[11px] text-gray-500 leading-relaxed mb-6">
+              {{ post.description }}
+              <a class="text-primary" href="#">Ver Mas</a>
+            </p>
+
+            <!-- Message Input -->
+            <div class="flex items-center space-x-2">
+              <div class="flex-grow bg-zinc-900 rounded-lg px-4 py-3 border border-white/5 flex items-center justify-between">
+                <input 
+                  class="bg-transparent border-none focus:ring-0 text-[10px] text-gray-400 font-bold uppercase w-full" 
+                  placeholder="Enviar mensaje..."
+                  [ngModel]="message()"
+                  (ngModelChange)="message.set($event)"
+                />
+                <span class="material-symbols-outlined text-primary text-lg cursor-pointer" (click)="sendMessage(post.id)">send</span>
+              </div>
+              <button class="w-12 h-12 bg-green-500/20 text-green-500 rounded-lg flex items-center justify-center border border-green-500/30 hover:bg-green-500 transition-colors group-hover:text-white">
+                <span class="material-symbols-outlined">add_comment</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
