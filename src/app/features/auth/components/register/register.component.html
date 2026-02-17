@@ -1,0 +1,241 @@
+<div class="min-h-screen flex">
+  <!-- Lado izquierdo - Fondo Cyan con formulario -->
+  <div class="w-full lg:w-[60%] bg-[#00FFFF] flex items-center justify-center p-6 relative">
+    <!-- Patrón de grid -->
+    <div class="absolute inset-0 opacity-10 pointer-events-none">
+      <svg height="100%" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern height="40" id="grid" patternUnits="userSpaceOnUse" width="40">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="black" stroke-width="1"></path>
+          </pattern>
+        </defs>
+        <rect fill="url(#grid)" height="100%" width="100%"></rect>
+      </svg>
+    </div>
+    
+    <!-- Tarjeta del formulario -->
+    <div class="bg-card-dark w-full max-w-md p-10 rounded-2xl shadow-2xl z-10">
+      <!-- Logo y título -->
+      <div class="text-center mb-8">
+        <h1 class="text-white text-4xl font-extrabold tracking-tight flex items-center justify-center">
+          Publihaz<span class="text-primary flex items-center">Clik<lucide-icon name="user-plus" class="ml-1 text-3xl"></lucide-icon></span>
+        </h1>
+        <p class="text-gray-400 text-xs mt-2 uppercase tracking-widest font-semibold">
+          La Red Social Que Te Paga Por Ver Anuncios
+        </p>
+      </div>
+
+      <!-- Mensaje de error -->
+      @if (error()) {
+        <div class="mb-6 bg-red-500/20 border border-red-500/50 p-3 rounded-lg">
+          <p class="text-red-400 text-sm text-center">{{ error() }}</p>
+        </div>
+      }
+
+      <!-- Mensaje de éxito -->
+      @if (successMessage()) {
+        <div class="mb-6 bg-green-500/20 border border-green-500/50 p-3 rounded-lg">
+          <p class="text-green-400 text-sm text-center">{{ successMessage() }}</p>
+        </div>
+      }
+
+      <form class="space-y-5" [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+        <!-- Título del formulario -->
+        <div class="text-center mb-4">
+          <span class="text-primary text-xs font-bold tracking-[0.2em] uppercase">Crear Cuenta</span>
+        </div>
+
+        <!-- Full Name -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <lucide-icon name="user" class="text-primary w-5 h-5"></lucide-icon>
+          </div>
+          <input
+            formControlName="fullName"
+            type="text"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+            placeholder="Nombre Completo"
+          />
+        </div>
+        @if (isFieldInvalid('fullName')) {
+          <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('fullName') }}</p>
+        }
+
+        <!-- Email -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <lucide-icon name="mail" class="text-primary w-5 h-5"></lucide-icon>
+          </div>
+          <input
+            formControlName="email"
+            type="email"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+            placeholder="Correo Electrónico"
+          />
+        </div>
+        @if (isFieldInvalid('email')) {
+          <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('email') }}</p>
+        }
+
+        <!-- Password -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <lucide-icon name="lock" class="text-primary w-5 h-5"></lucide-icon>
+          </div>
+          <input
+            formControlName="password"
+            [type]="showPassword() ? 'text' : 'password'"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+            placeholder="Contraseña"
+          />
+          <button
+            type="button"
+            (click)="togglePasswordVisibility()"
+            class="px-4 py-3 flex items-center text-gray-400 hover:text-primary transition-colors"
+          >
+            @if (showPassword()) {
+              <lucide-icon name="eye-off" class="w-5 h-5"></lucide-icon>
+            } @else {
+              <lucide-icon name="eye" class="w-5 h-5"></lucide-icon>
+            }
+          </button>
+        </div>
+        @if (isFieldInvalid('password')) {
+          <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('password') }}</p>
+        }
+
+        <!-- Password requirements -->
+        <div class="space-y-1">
+          @for (req of getPasswordRequirements(); track req.text) {
+            <div class="flex items-center text-xs">
+              @if (req.met) {
+                <lucide-icon name="check" class="w-3 h-3 text-green-500 mr-2"></lucide-icon>
+                <span class="text-green-500">{{ req.text }}</span>
+              } @else {
+                <lucide-icon name="circle" class="w-3 h-3 text-gray-600 mr-2"></lucide-icon>
+                <span class="text-gray-500">{{ req.text }}</span>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <lucide-icon name="lock" class="text-primary w-5 h-5"></lucide-icon>
+          </div>
+          <input
+            formControlName="confirmPassword"
+            type="password"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+            placeholder="Confirmar Contraseña"
+          />
+        </div>
+        @if (isFieldInvalid('confirmPassword')) {
+          <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('confirmPassword') }}</p>
+        }
+
+        <!-- Términos y condiciones -->
+        <div class="flex items-start">
+          <div class="flex items-center h-5">
+            <input
+              id="accept-terms"
+              type="checkbox"
+              formControlName="acceptTerms"
+              class="h-4 w-4 text-primary bg-transparent border-gray-700 rounded focus:ring-primary"
+            />
+          </div>
+          <div class="ml-3 text-sm">
+            <label for="accept-terms" class="font-medium text-gray-400">
+              Acepto los
+              <a href="#" class="text-primary hover:underline">Términos de Servicio</a>
+              y la
+              <a href="#" class="text-primary hover:underline">Política de Privacidad</a>
+            </label>
+          </div>
+        </div>
+        @if (isFieldInvalid('acceptTerms')) {
+          <p class="text-red-400 text-xs">{{ getErrorMessage('acceptTerms') }}</p>
+        }
+
+        <!-- Botón de submit -->
+        <button
+          type="submit"
+          [disabled]="isLoading()"
+          class="w-full bg-primary hover:bg-[#00e6e6] text-black font-extrabold py-3.5 rounded transition-all duration-300 transform hover:scale-[1.02] uppercase text-sm tracking-wider disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        >
+          @if (isLoading()) {
+            <lucide-icon name="loader" class="animate-spin mr-2 w-5 h-5"></lucide-icon>
+          }
+          Crear Cuenta
+        </button>
+      </form>
+
+      <!-- Links -->
+      <div class="mt-6 text-center">
+        <p class="text-gray-400 text-sm">
+          ¿Ya tienes una cuenta? 
+          <a class="text-primary hover:underline font-semibold ml-1" routerLink="/login">Inicia sesión</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lado derecho - Anuncios/Tarjetas -->
+  <div class="hidden lg:flex lg:w-[40%] bg-black flex-col gap-4 p-4 overflow-y-auto">
+    <!-- Tarjeta 1 - Helado -->
+    <div class="bg-white rounded-lg p-6 relative overflow-hidden flex items-center min-h-[200px]">
+      <div class="relative z-10 w-2/3">
+        <h2 class="text-black font-black text-xl uppercase leading-tight mb-2">Discover Scoopfest - Your Ultimate Ice Cream Destination!</h2>
+        <p class="text-gray-600 text-xs mb-4">Treat yourself to a creamy paradise with ScoopFest's premium, handcrafted flavors.</p>
+        <button class="bg-gray-200 text-black text-[10px] font-bold py-1.5 px-3 rounded flex items-center">
+          Get Your Scoop of Bliss Now! <lucide-icon name="arrow-right" class="ml-1 w-3 h-3"></lucide-icon>
+        </button>
+      </div>
+      <img alt="Ice cream dessert" class="absolute right-0 bottom-0 w-32 h-32 object-contain opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0WeQTpkugOS7_CCczyM584jq58rcNj65NCluWytQotMBuLu6fx3RI-lidLTSWDCvl8CcblPJK1kh-9NonPuqS6CHJsHI8_Mt7aYrd9cx1akPZZhXZSZNGzbSDe1HeoJD3F6xqVhzZIsQlu-UGPK2fJ-2tvdwigbYS34x1w4Ldz1UaMYOP_aF-KLMC_9OmIK-8A724J60mde92ckW8oWjI68rb6PxObbAKeppxI933lccsGzxh5m0tfXr4SksP89bwCSJhzpPb3R_D"/>
+    </div>
+
+    <!-- Tarjeta 2 - Zapatos -->
+    <div class="bg-[#1a1a1a] rounded-lg p-6 relative overflow-hidden min-h-[220px] group cursor-pointer">
+      <img alt="New fall sneakers" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBG5uPNuqUGTVtSVxVf4WvNu0S0KQQkfQrRdNGHKOyj-FqXb3zJmUhXkL3eHkhDTDiyfuvN0dAXwCy16kYiJ36RHNx-FQt09s-aE4KL4q-ImYbEybLY_kErC-CrtUAF_uGqf0_-F_wxkhVTEDZkLLfU86dkNztXV77nl5xWy8h9tWDsCzvkQ6No0jKhmuv2_QPp5urMKa7BrNhTxQramsVa_bJjnj4DJ1TlSj6qOyw4IHAM_Y9aaxSdmFZ4tpmTVn1Smbr3aA0CiIIg"/>
+      <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+      <div class="relative z-10 mt-auto flex flex-col justify-end h-full">
+        <h2 class="text-white font-black text-3xl uppercase leading-none">New<br/>Fall<br/>Collection</h2>
+      </div>
+    </div>
+
+    <!-- Tarjeta 3 - Sushi -->
+    <div class="bg-[#0f0f0f] rounded-lg p-6 relative border border-gray-800 flex items-center min-h-[180px]">
+      <div class="z-10 w-3/4">
+        <div class="flex items-center gap-2 mb-4">
+          <lucide-icon name="map-pin" class="text-gray-500 w-4 h-4"></lucide-icon>
+          <span class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Sushi Express</span>
+        </div>
+        <h2 class="text-white font-bold text-lg mb-1 leading-tight">Hurry Up And Try Our Popular Sets</h2>
+        <p class="text-gray-500 text-xs mb-4">Order now and get a 15% discount!</p>
+        <button class="bg-gray-700 hover:bg-gray-600 text-white text-[10px] font-bold py-1.5 px-4 rounded-full transition-colors">
+          ORDER NOW
+        </button>
+      </div>
+      <img alt="Sushi rolls" class="absolute right-[-20px] top-1/2 -translate-y-1/2 w-40 h-40 object-cover rounded-full opacity-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9ZQjVrBcdrU4sey8gG0Y7fDzBIFPQjnknCvWFG1yJGWu9IfCZ1--OdJTjWt7ZFq4YAlA-jhNdsM11-KfvyRTDM-wLcrd2zR7fySWmkUy4u04SJvRF65_BNA5u08lnR7lstTtmw6ImhhCaHF7DLLgfT5j2qeDlKMRx4pGDrJmynIRjQNlP6krWrNU5YaUsdgk-hSz-pxJ-f1GAQ6R0vJaQ7tBVAigQiXYtUfB8sDu6X4LC1fSRlT5wX5S13YcJZxtJvTHqHrh2aRZw"/>
+    </div>
+
+    <!-- Tarjeta 4 - Interiores -->
+    <div class="bg-white rounded-lg p-8 relative min-h-[220px] flex flex-col justify-center">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="flex gap-1">
+          <span class="w-2 h-2 bg-black rounded-full"></span>
+          <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+        </div>
+        <span class="text-black font-bold text-xs">Elevate Interiors</span>
+      </div>
+      <h2 class="text-black font-extrabold text-xl leading-tight mb-3 uppercase">Transform your space with timeless elegance and creative vision</h2>
+      <p class="text-gray-500 text-[10px] leading-relaxed mb-6 max-w-xs">
+        At Elevate Interiors, we specialize in bringing beauty and functionality to your living spaces. We curate captivating interiors that reflect your unique style.
+      </p>
+      <button class="border border-black text-black font-bold text-[10px] py-2 px-6 w-fit hover:bg-black hover:text-white transition-colors">
+        DISCOVER THE ART OF LIVING
+      </button>
+    </div>
+  </div>
+</div>

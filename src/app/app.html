@@ -1,11 +1,23 @@
-<app-header />
+@if (!isAuthRoute()) {
+  <app-header />
+}
 
 <main>
-  <app-hero />
-  <app-features />
-  <app-recent-posts />
+  @if (isAuthRoute()) {
+    <!-- Mostrar solo el router-outlet para rutas de autenticación -->
+    <router-outlet />
+  } @else {
+    <!-- Mostrar contenido principal de la landing page -->
+    <app-hero />
+    <app-testimonials />
+    <app-business-models />
+    <app-how-it-works />
+    <app-pricing />
+    <app-features />
+    <app-recent-posts />
+  }
 </main>
 
-<app-footer />
-
-<router-outlet />
+@if (!isAuthRoute()) {
+  <app-footer />
+}

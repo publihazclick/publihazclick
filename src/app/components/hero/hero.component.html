@@ -1,29 +1,40 @@
-<section class="py-20 bg-black flex flex-col items-center">
-  <!-- Title -->
-  <h1 class="text-7xl md:text-8xl font-black text-white mb-16 tracking-tighter">
-    Publihaz<span class="text-primary italic drop-shadow-[0_0_15px_rgba(0,229,255,0.4)]">Clik</span>
+<!-- Stats Section -->
+<section class="py-24 bg-white flex flex-col items-center">
+  <h1 class="text-7xl md:text-8xl font-black text-black mb-16 tracking-tighter">
+    Publihaz<span class="text-cyan-500 italic">Clik</span>
   </h1>
-
-  <!-- Stats Cards -->
+  
   <div class="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-5xl px-6">
-    @for (card of statCards; track card.title) {
-      <div class="premium-card rounded-3xl overflow-hidden border border-white/5 group hover:border-primary/50 transition-all duration-500">
-        <div class="p-10 text-center relative overflow-hidden">
-          <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 blur-3xl rounded-full"></div>
-          <span class="material-symbols-outlined text-6xl mb-6 text-gray-500 group-hover:text-primary transition-colors duration-500">{{ card.icon }}</span>
-          <h3 class="text-3xl font-black mb-1 text-white tracking-tight">{{ card.title }}</h3>
-          <p class="text-gray-500 text-xs mt-2 uppercase tracking-widest font-bold">{{ card.subtitle }}</p>
-        </div>
-        <div class="bg-primary/90 p-4 text-center">
-          <p class="text-[11px] font-black text-black uppercase tracking-widest leading-tight">{{ card.value }}</p>
-        </div>
+    <!-- Balance Card -->
+    <div class="bg-white rounded-3xl overflow-hidden group hover:border-cyan-400 transition-all duration-500 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05),0_8px_10px_-6px_rgba(0,0,0,0.05)] border border-gray-100">
+      <div class="p-10 text-center relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-cyan-50 blur-3xl rounded-full"></div>
+        <span class="material-symbols-outlined text-6xl mb-6 text-gray-300 group-hover:text-cyan-500 transition-colors duration-500">account_balance_wallet</span>
+        <h3 class="text-4xl font-black mb-1 text-black tracking-tight">COP: $10.000</h3>
+        <p class="text-gray-400 text-xs mt-2 uppercase tracking-widest font-bold">Saldo Retirable</p>
       </div>
-    }
+      <div class="bg-cyan-500 p-4 text-center">
+        <p class="text-[11px] font-black text-white uppercase tracking-widest leading-tight">Conviértete en anunciante y activa tus retiros</p>
+      </div>
+    </div>
+
+    <!-- Donations Card -->
+    <div class="bg-white rounded-3xl overflow-hidden group hover:border-cyan-400 transition-all duration-500 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05),0_8px_10px_-6px_rgba(0,0,0,0.05)] border border-gray-100">
+      <div class="p-10 text-center relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-cyan-50 blur-3xl rounded-full"></div>
+        <span class="material-symbols-outlined text-6xl mb-6 text-gray-300 group-hover:text-cyan-500 transition-colors duration-500">volunteer_activism</span>
+        <h3 class="text-4xl font-black mb-1 text-black tracking-tight">COP: $5.000</h3>
+        <p class="text-gray-400 text-xs mt-2 uppercase tracking-widest font-bold">Total Donaciones</p>
+      </div>
+      <div class="bg-cyan-500 p-4 text-center">
+        <p class="text-[11px] font-black text-white uppercase tracking-widest leading-tight">Impacto social generado en la plataforma</p>
+      </div>
+    </div>
   </div>
 </section>
 
 <!-- Main Hero Section -->
-<section class="relative bg-black py-24 overflow-hidden">
+<section class="relative bg-black py-32 overflow-hidden text-white">
   <!-- Background Glow -->
   <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
   
@@ -55,13 +66,41 @@
 
     <!-- Floating Images -->
     <div class="relative py-20 min-h-[600px] flex items-center justify-center">
-      @for (img of floatingImages; track img.alt) {
+      <!-- Product Image 1 -->
+      <div class="absolute top-0 left-4 md:left-20 w-36 h-36 animate-float hidden lg:block">
         <img 
-          [src]="img.src" 
-          [alt]="img.alt" 
-          [class]="img.class + ' rounded-3xl glow-cyan w-full h-full object-cover border border-primary/30'"
+          alt="Product" 
+          class="rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] rotate-12 w-full h-full object-cover border border-primary/30" 
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2RWuxdN5hyuEP7KMGu55VJWKBi_9LXMmpdJPiCTvKE5h57afgm-EAs_NdT7nn-rxG6c-T5OOdkoJBv1KTYm0Zza-I1bz8qutiJeCeV0Xue93aP_IiPEoOnKH4VzKWvD1VGrlgXbE25kFP_yB8zNBFIkUCbJkjazLUMduxnwHh6aCnxKWrfF6tFjRCuMVIlvqdQBSHNKL5XOnOsYknRnjMiFlUDrKoqnbTXz3DFUOYIuKxSc78ZbZSjX_IpLDhA9XPv75XSdH7X5vk"
         />
-      }
+      </div>
+
+      <!-- Apparel Image -->
+      <div class="absolute bottom-10 left-10 md:left-40 w-44 h-44 animate-float-delayed hidden lg:block">
+        <img 
+          alt="Apparel" 
+          class="rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] -rotate-12 w-full h-full object-cover border border-primary/30" 
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBQ-EUBNbvxxuqMcq-HUfpaSBbmaT9zKyYzNZsrUyI8W7RNEjfeyAlOAlqt2hKJ9nkHbMMy2_H-H6D6541ImlrN0bP02MVbI4AGuUYy-woI4Ay6IXlYTBjAJXVpJtlgXmN1AGNMW08gxoFNUOLlrxvoeSycyhJm4to3etXrFCZJmD1XbJ5Du-HWAWneWg3E150e6q-D23Hbr-mISVnOzV3p4my4MWsSs3j-cQBi1tZzQIFm2iwSynatkSteSBCRBfmzE00pc26XY0A"
+        />
+      </div>
+
+      <!-- Tech Image -->
+      <div class="absolute top-20 right-4 md:right-20 w-48 h-48 animate-float-delayed hidden lg:block">
+        <img 
+          alt="Tech" 
+          class="rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] rotate-6 w-full h-full object-cover border border-primary/30" 
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkq_bmAVXZ2gGuaOOd_GLugkoAnEmWkclabP1a6Cp4EZkmUkqQwv14fohJPJbRbrcpzzEIngSaZ85qtAJpmiYt_amuZlQCCNOJNx94oOcNu_uA_Sbj-E6AkuVGkH_3A4meYzDCUj_VxOvSIVIStp8UDT3LhelzeHVOiF_8mxH7shfzlXPyrpUOiWArMvWk5-u2gIjDM5T5oVKHm7hxozGk494NAc3xJd9PcVYMwDxlP64hyCEEPr7Xcso7Eghmt2fHLAmce5ZhkFkn"
+        />
+      </div>
+
+      <!-- Package Image -->
+      <div class="absolute bottom-0 right-10 md:right-40 w-44 h-44 animate-float hidden lg:block">
+        <img 
+          alt="Package" 
+          class="rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] -rotate-6 w-full h-full object-cover border border-primary/30" 
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoNAZCWCjyBSJ2WBiR2Mcqe3sidstlACmycVRBJQhlhMnnWClyGrHKqvwhVr5IPyTlzwYWOiVTn6hb8BGBOoO5ajURDDPUl6ZSHBsqavZgAwrZ-jR59GwyIzN-yaI_5wM4rAKRubmUP8PJQWLpf4-lk93n664_qmN2lQoa-RrOh5Df8dPHXNvmDKQe5VctMuMUM7jG5Aj-nIf5o2gcNspl2jMDuevqJfVUf0mN6RR0P5Net3MgEVJ2m0uoo4jp7GY2p1uBKm_AbYe5"
+        />
+      </div>
       
       <!-- Main Text -->
       <div class="text-center z-10 px-4">
@@ -85,7 +124,7 @@
 
   <!-- Ticker -->
   <div class="mt-24 overflow-hidden border-y border-white/5 py-12 bg-zinc-950/50 backdrop-blur-sm">
-    <div class="ticker-scroll">
+    <div class="animate-scroll flex">
       @for (item of tickerItems; track item) {
         <div class="flex space-x-32 px-16 items-center shrink-0">
           <span class="text-3xl font-black text-white/20 tracking-widest italic">{{ item }}</span>

@@ -7,7 +7,10 @@ module.exports = {
     extend: {
       colors: {
         primary: '#00E5FF',
+        accent: '#FF007F',
         'background-dark': '#000000',
+        'background-light': '#F3F4F6',
+        'card-dark': '#000000',
         'glass-dark': 'rgba(10, 10, 10, 0.7)',
       },
       fontFamily: {

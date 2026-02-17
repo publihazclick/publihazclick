@@ -1,0 +1,40 @@
+// Estilos del componente de login
+// El diseño usa Tailwind CSS con algunas clases personalizadas
+
+:host {
+  display: block;
+}
+
+// Clase personalizada para inputs con focus
+.custom-input-group:focus-within {
+  border-color: #00FFFF;
+  box-shadow: 0 0 0 2px rgba(0, 255, 255, 0.1);
+}
+
+// Transiciones suaves
+input, button {
+  transition: all 0.3s ease;
+}
+
+// Estilos para inputs cuando hay error
+input.ng-invalid.ng-touched {
+  border-color: #ef4444;
+}
+
+// Scrollbar personalizado para el panel de anuncios
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}

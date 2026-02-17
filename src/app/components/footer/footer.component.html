@@ -1,4 +1,4 @@
-<footer class="bg-black border-t border-white/10 py-16">
+<footer class="bg-black border-t border-white/10 py-16 text-white">
   <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center space-y-10 md:space-y-0">
     <!-- Logo -->
     <div class="flex items-center space-x-2">
@@ -14,15 +14,10 @@
 
     <!-- Social Links -->
     <div class="flex space-x-8 text-xs font-extrabold uppercase tracking-widest text-gray-400">
-      @for (link of socialLinks; track link.name) {
-        <a 
-          [href]="link.href" 
-          class="hover:text-primary transition-colors"
-          [attr.aria-label]="link.name"
-        >
-          {{ link.name.charAt(0) }}{{ link.name.slice(1, 2).toUpperCase() }}
-        </a>
-      }
+      <a class="hover:text-primary transition-colors" href="#" aria-label="Facebook">FB</a>
+      <a class="hover:text-primary transition-colors" href="#" aria-label="Instagram">IG</a>
+      <a class="hover:text-primary transition-colors" href="#" aria-label="TikTok">TT</a>
+      <a class="hover:text-primary transition-colors" href="#" aria-label="YouTube">YT</a>
     </div>
   </div>
 </footer>

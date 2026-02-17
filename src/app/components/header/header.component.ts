@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 interface NavItem {
   label: string;
@@ -9,7 +10,7 @@ interface NavItem {
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss'
 })
@@ -17,11 +18,11 @@ export class HeaderComponent {
   protected readonly isMenuOpen = signal(false);
   
   protected readonly navItems: NavItem[] = [
-    { label: 'Inicio', href: '#' },
-    { label: 'Qué es Publihazclik', href: '#about' },
+    { label: 'Inicio', href: '/' },
+    { label: 'Qué es Publihazclik', href: '#features' },
     { label: 'Pagos y Testimonios', href: '#testimonials' },
     { label: 'Marcas', href: '#brands' },
-    { label: 'Youtube', href: '#youtube' },
+    { label: 'Youtube', href: '#youtube' }
   ];
 
   toggleMenu(): void {

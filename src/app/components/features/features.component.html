@@ -1,13 +1,26 @@
-<section class="py-32 bg-black border-t border-white/5">
+<section class="py-32 bg-black border-t border-white/5 text-white">
   <div class="max-w-6xl mx-auto px-6 text-center">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
-      @for (feature of features; track feature.title) {
-        <div class="p-12 premium-card rounded-[2.5rem] group hover:border-primary transition-all duration-500 cursor-pointer">
-          <span class="material-symbols-outlined text-primary text-5xl mb-6 block text-glow-cyan">{{ feature.icon }}</span>
-          <h4 class="font-black text-2xl mb-4 uppercase tracking-tighter">{{ feature.title }}</h4>
-          <p class="text-sm text-gray-500 font-medium leading-relaxed">{{ feature.description }}</p>
-        </div>
-      }
+      <!-- Escalabilidad -->
+      <div class="p-12 bg-zinc-900 rounded-[2.5rem] group hover:border-primary transition-all duration-500 cursor-pointer border border-white/5">
+        <span class="material-symbols-outlined text-primary text-5xl mb-6 block" style="text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);">rocket_launch</span>
+        <h4 class="font-black text-2xl mb-4 uppercase tracking-tighter">Escalabilidad</h4>
+        <p class="text-sm text-gray-500 font-medium leading-relaxed">Haz crecer tu negocio digital con herramientas de última generación diseñadas para el éxito.</p>
+      </div>
+
+      <!-- Ingresos Pasivos -->
+      <div class="p-12 bg-zinc-900 rounded-[2.5rem] group hover:border-primary transition-all duration-500 cursor-pointer border border-white/5">
+        <span class="material-symbols-outlined text-primary text-5xl mb-6 block" style="text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);">monetization_on</span>
+        <h4 class="font-black text-2xl mb-4 uppercase tracking-tighter">Ingresos Pasivos</h4>
+        <p class="text-sm text-gray-500 font-medium leading-relaxed">Genera ganancias constantes a través de nuestra red inteligente de afiliados premium.</p>
+      </div>
+
+      <!-- Seguridad -->
+      <div class="p-12 bg-zinc-900 rounded-[2.5rem] group hover:border-primary transition-all duration-500 cursor-pointer border border-white/5">
+        <span class="material-symbols-outlined text-primary text-5xl mb-6 block" style="text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);">verified_user</span>
+        <h4 class="font-black text-2xl mb-4 uppercase tracking-tighter">Seguridad</h4>
+        <p class="text-sm text-gray-500 font-medium leading-relaxed">Transacciones seguras y soporte especializado para proteger tu inversión digital.</p>
+      </div>
     </div>
   </div>
 </section>
