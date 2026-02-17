@@ -16,6 +16,7 @@ interface NavItem {
 })
 export class HeaderComponent {
   protected readonly isMenuOpen = signal(false);
+  protected readonly mobileMenuOpen = signal(false);
   
   protected readonly navItems: NavItem[] = [
     { label: 'Inicio', href: '/' },
@@ -27,5 +28,9 @@ export class HeaderComponent {
 
   toggleMenu(): void {
     this.isMenuOpen.update(v => !v);
+  }
+
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen.update(v => !v);
   }
 }
