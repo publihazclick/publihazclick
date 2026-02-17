@@ -29,7 +29,7 @@ export class LoginComponent implements OnInit {
 
   // Signals para estado reactivo
   readonly isLoading = this.authService.isLoading;
-  readonly error = this.authService.error;
+  readonly error = this.authService.error as any;
 
   // Formulario reactivo
   loginForm: FormGroup = this.fb.group({
@@ -42,7 +42,7 @@ export class LoginComponent implements OnInit {
   readonly showPassword = signal(false);
 
   // Mensaje de éxito
-  successMessage = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(null);
 
   // Return URL
   returnUrl: string = '/dashboard';

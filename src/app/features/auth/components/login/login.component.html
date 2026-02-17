@@ -26,7 +26,7 @@
       </div>
 
       <!-- Mensaje de error -->
-      @if (error()) {
+      @if (error && error()) {
         <div class="mb-6 bg-red-500/20 border border-red-500/50 p-3 rounded-lg">
           <p class="text-red-400 text-sm text-center">{{ error() }}</p>
         </div>
