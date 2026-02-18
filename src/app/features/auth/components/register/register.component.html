@@ -1,4 +1,4 @@
-<div class="min-h-screen flex">
+<div class="min-h-screen flex h-screen">
   <!-- Lado izquierdo - Fondo Cyan con formulario -->
   <div class="w-full lg:w-[60%] bg-[#00FFFF] flex items-center justify-center p-6 relative">
     <!-- Tarjeta del formulario -->
@@ -32,6 +32,42 @@
         <div class="text-center mb-4">
           <span class="text-primary text-xs font-bold tracking-[0.2em] uppercase">Crear Cuenta</span>
         </div>
+
+        <!-- Código de Referido (solo lectura si viene de URL) -->
+        @if (referralCode) {
+          <div class="mb-4">
+            <div class="bg-cyan-500/20 border border-cyan-500/50 rounded-lg p-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-cyan-400 text-xs font-bold uppercase tracking-wider">Código de Referido</p>
+                  @if (referralValid()) {
+                    <p class="text-green-400 text-sm mt-1">¡Código válido!</p>
+                  } @else {
+                    <p class="text-yellow-400 text-sm mt-1">Validando código...</p>
+                  }
+                </div>
+                <div class="text-right">
+                  <p class="text-white font-bold text-lg">{{ referralCode }}</p>
+                  @if (referrerName()) {
+                    <p class="text-gray-400 text-xs">Referido: @{{ referrerName() }}</p>
+                  }
+                </div>
+              </div>
+              @if (referralError()) {
+                <p class="text-red-400 text-xs mt-2">{{ referralError() }}</p>
+              }
+            </div>
+          </div>
+        } @else {
+          <!-- Si no hay código de referido, mostrar mensaje -->
+          <div class="mb-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3">
+            <p class="text-yellow-400 text-xs text-center">
+              El registro solo está disponible con un código de referido.
+              <br>
+              <span class="text-gray-400">Contacta a un miembro de la plataforma para obtener tu código.</span>
+            </p>
+          </div>
+        }
 
         <!-- Full Name -->
         <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
@@ -169,61 +205,6 @@
     </div>
   </div>
 
-  <!-- Lado derecho - Anuncios/Tarjetas -->
-  <div class="hidden lg:flex lg:w-[40%] bg-black flex-col gap-4 p-4 overflow-y-auto">
-    <!-- Tarjeta 1 - Helado -->
-    <div class="bg-white rounded-lg p-6 relative overflow-hidden flex items-center min-h-[200px]">
-      <div class="relative z-10 w-2/3">
-        <h2 class="text-black font-black text-xl uppercase leading-tight mb-2">Discover Scoopfest - Your Ultimate Ice Cream Destination!</h2>
-        <p class="text-gray-600 text-xs mb-4">Treat yourself to a creamy paradise with ScoopFest's premium, handcrafted flavors.</p>
-        <button class="bg-gray-200 text-black text-[10px] font-bold py-1.5 px-3 rounded flex items-center">
-          Get Your Scoop of Bliss Now! <lucide-icon name="arrow-right" class="ml-1 w-3 h-3"></lucide-icon>
-        </button>
-      </div>
-      <img alt="Ice cream dessert" class="absolute right-0 bottom-0 w-32 h-32 object-contain opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0WeQTpkugOS7_CCczyM584jq58rcNj65NCluWytQotMBuLu6fx3RI-lidLTSWDCvl8CcblPJK1kh-9NonPuqS6CHJsHI8_Mt7aYrd9cx1akPZZhXZSZNGzbSDe1HeoJD3F6xqVhzZIsQlu-UGPK2fJ-2tvdwigbYS34x1w4Ldz1UaMYOP_aF-KLMC_9OmIK-8A724J60mde92ckW8oWjI68rb6PxObbAKeppxI933lccsGzxh5m0tfXr4SksP89bwCSJhzpPb3R_D"/>
-    </div>
-
-    <!-- Tarjeta 2 - Zapatos -->
-    <div class="bg-[#1a1a1a] rounded-lg p-6 relative overflow-hidden min-h-[220px] group cursor-pointer">
-      <img alt="New fall sneakers" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBG5uPNuqUGTVtSVxVf4WvNu0S0KQQkfQrRdNGHKOyj-FqXb3zJmUhXkL3eHkhDTDiyfuvN0dAXwCy16kYiJ36RHNx-FQt09s-aE4KL4q-ImYbEybLY_kErC-CrtUAF_uGqf0_-F_wxkhVTEDZkLLfU86dkNztXV77nl5xWy8h9tWDsCzvkQ6No0jKhmuv2_QPp5urMKa7BrNhTxQramsVa_bJjnj4DJ1TlSj6qOyw4IHAM_Y9aaxSdmFZ4tpmTVn1Smbr3aA0CiIIg"/>
-      <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-      <div class="relative z-10 mt-auto flex flex-col justify-end h-full">
-        <h2 class="text-white font-black text-3xl uppercase leading-none">New<br/>Fall<br/>Collection</h2>
-      </div>
-    </div>
-
-    <!-- Tarjeta 3 - Sushi -->
-    <div class="bg-[#0f0f0f] rounded-lg p-6 relative border border-gray-800 flex items-center min-h-[180px]">
-      <div class="z-10 w-3/4">
-        <div class="flex items-center gap-2 mb-4">
-          <lucide-icon name="map-pin" class="text-gray-500 w-4 h-4"></lucide-icon>
-          <span class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Sushi Express</span>
-        </div>
-        <h2 class="text-white font-bold text-lg mb-1 leading-tight">Hurry Up And Try Our Popular Sets</h2>
-        <p class="text-gray-500 text-xs mb-4">Order now and get a 15% discount!</p>
-        <button class="bg-gray-700 hover:bg-gray-600 text-white text-[10px] font-bold py-1.5 px-4 rounded-full transition-colors">
-          ORDER NOW
-        </button>
-      </div>
-      <img alt="Sushi rolls" class="absolute right-[-20px] top-1/2 -translate-y-1/2 w-40 h-40 object-cover rounded-full opacity-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9ZQjVrBcdrU4sey8gG0Y7fDzBIFPQjnknCvWFG1yJGWu9IfCZ1--OdJTjWt7ZFq4YAlA-jhNdsM11-KfvyRTDM-wLcrd2zR7fySWmkUy4u04SJvRF65_BNA5u08lnR7lstTtmw6ImhhCaHF7DLLgfT5j2qeDlKMRx4pGDrJmynIRjQNlP6krWrNU5YaUsdgk-hSz-pxJ-f1GAQ6R0vJaQ7tBVAigQiXYtUfB8sDu6X4LC1fSRlT5wX5S13YcJZxtJvTHqHrh2aRZw"/>
-    </div>
-
-    <!-- Tarjeta 4 - Interiores -->
-    <div class="bg-white rounded-lg p-8 relative min-h-[220px] flex flex-col justify-center">
-      <div class="flex items-center gap-2 mb-3">
-        <div class="flex gap-1">
-          <span class="w-2 h-2 bg-black rounded-full"></span>
-          <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
-        </div>
-        <span class="text-black font-bold text-xs">Elevate Interiors</span>
-      </div>
-      <h2 class="text-black font-extrabold text-xl leading-tight mb-3 uppercase">Transform your space with timeless elegance and creative vision</h2>
-      <p class="text-gray-500 text-[10px] leading-relaxed mb-6 max-w-xs">
-        At Elevate Interiors, we specialize in bringing beauty and functionality to your living spaces. We curate captivating interiors that reflect your unique style.
-      </p>
-      <button class="border border-black text-black font-bold text-[10px] py-2 px-6 w-fit hover:bg-black hover:text-white transition-colors">
-        DISCOVER THE ART OF LIVING
-      </button>
-    </div>
-  </div>
+  <!-- Componente de Publicidad -->
+  <app-auth-ads></app-auth-ads>
 </div>

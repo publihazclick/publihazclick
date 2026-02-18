@@ -38,17 +38,25 @@ export class App {
   private readonly router = inject(Router);
   
   constructor() {
+    // Inicializar con la ruta actual
+    this.updateAuthRoute(this.router.url);
+    
     // Detectar cambios de ruta
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
       const url = event.urlAfterRedirects || event.url;
-      // Verificar si es una ruta de autenticación
-      this.isAuthRoute.set(
-        url.includes('/login') || 
-        url.includes('/register') || 
-        url.includes('/auth/')
-      );
+      this.updateAuthRoute(url);
     });
+  }
+  
+  private updateAuthRoute(url: string): void {
+    // Verificar si es una ruta de autenticación o admin
+    this.isAuthRoute.set(
+      url.includes('/login') || 
+      url.includes('/register') || 
+      url.includes('/auth/') ||
+      url.includes('/admin')
+    );
   }
 }

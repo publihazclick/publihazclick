@@ -1,0 +1,12 @@
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+.chart-bar {
+  transition: height 0.3s ease;
+}

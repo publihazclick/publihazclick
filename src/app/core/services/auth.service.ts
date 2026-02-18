@@ -1,11 +1,11 @@
 import { Injectable, inject, signal, computed, OnDestroy } from '@angular/core';
-import { 
-  createClient, 
-  SupabaseClient, 
-  User, 
+import {
+  createClient,
+  SupabaseClient,
+  User,
   Session,
   AuthChangeEvent,
-  AuthError 
+  AuthError
 } from '@supabase/supabase-js';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subject, from, of } from 'rxjs';
@@ -77,20 +77,20 @@ export class AuthService implements OnDestroy {
   private readonly supabase: SupabaseClient;
   private readonly router = inject(Router);
   private readonly destroy$ = new Subject<void>();
-  
+
   // Signals de Angular para estado reactivo
   private readonly _user = signal<User | null>(null);
   private readonly _session = signal<Session | null>(null);
   private readonly _isLoading = signal<boolean>(true);
   private readonly _error = signal<string | null>(null);
-  
+
   // Computed signals para acceso público
   readonly user = computed(() => this._user());
   readonly session = computed(() => this._session());
   readonly isLoading = computed(() => this._isLoading());
   readonly isAuthenticated = computed(() => !!this._session());
   readonly error = computed(() => this._error());
-  
+
   // BehaviorSubject para estado reactivo tradicional
   private readonly authState$ = new BehaviorSubject<AuthState>({
     isAuthenticated: false,
@@ -142,7 +142,6 @@ export class AuthService implements OnDestroy {
     // Escuchar cambios de autenticación
     this.supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, session: Session | null) => {
-        console.log('Evento de autenticación:', event);
         this.handleAuthEvent(event, session);
       }
     );
@@ -177,10 +176,12 @@ export class AuthService implements OnDestroy {
    * Maneja el cambio de sesión
    */
   private handleSessionChange(session: Session | null): void {
+    console.log('handleSessionChange called with:', session);
     this._session.set(session);
     this._user.set(session?.user ?? null);
     this._error.set(null);
     this.updateAuthState();
+    console.log('Session set, isAuthenticated:', this.isAuthenticated());
   }
 
   /**
@@ -245,42 +246,58 @@ export class AuthService implements OnDestroy {
     this._isLoading.set(true);
     this._error.set(null);
 
-    return from(
+    console.log('Login attempt with email:', options.email);
+
+    // Usar un Observable que siempre completa
+    return new Observable<AuthResult>(observer => {
       this.supabase.auth.signInWithPassword({
         email: options.email,
         password: options.password
-      })
-    ).pipe(
-      map(({ data, error }) => {
+      }).then(({ data, error }) => {
+        console.log('Supabase response:', { data, error });
+        
         if (error) {
           this.handleAuthError(error);
-          return {
+          this._isLoading.set(false);
+          observer.next({
             success: false,
             data: null,
             error,
             message: this.parseErrorMessage(error)
-          };
+          });
+        } else {
+          console.log('Login successful, session:', data.session, 'user:', data.user);
+          // Guardar sesión y usuario
+          if (data.session) {
+            this.handleSessionChange(data.session);
+          } else if (data.user) {
+            // Si no hay sesión pero hay usuario, guardar el usuario directamente
+            this._user.set(data.user);
+            this._session.set(null);
+            this._error.set(null);
+            this.updateAuthState();
+          }
+          this._isLoading.set(false);
+          observer.next({
+            success: true,
+            data: data.user,
+            message: 'Inicio de sesión exitoso'
+          });
         }
-
-        this.handleSessionChange(data.session);
-        return {
-          success: true,
-          data: data.user,
-          message: 'Inicio de sesión exitoso'
-        };
-      }),
-      catchError((error: AuthError) => {
+        observer.complete();
+      }).catch((error: AuthError) => {
+        console.error('Login error:', error);
         this.handleAuthError(error);
-        return of({
+        this._isLoading.set(false);
+        observer.next({
           success: false,
           data: null,
           error,
           message: this.parseErrorMessage(error)
         });
-      }),
-      tap(() => this._isLoading.set(false)),
-      takeUntil(this.destroy$)
-    );
+        observer.complete();
+      });
+    });
   }
 
   /**
@@ -348,6 +365,104 @@ export class AuthService implements OnDestroy {
   }
 
   /**
+   * Registra un nuevo usuario con código de referido
+   * @param options - Opciones de registro
+   * @param referralCode - Código de referido
+   * @returns Observable con el resultado
+   */
+  registerWithReferral(options: RegisterOptions, referralCode: string): Observable<AuthResult> {
+    this._isLoading.set(true);
+    this._error.set(null);
+
+    return from(
+      this.supabase.auth.signUp({
+        email: options.email,
+        password: options.password,
+        options: {
+          data: {
+            full_name: options.fullName,
+            referral_code: referralCode,
+            ...options.metadata
+          },
+          emailRedirectTo: window.location.origin + '/auth/callback'
+        }
+      })
+    ).pipe(
+      switchMap(async ({ data, error }) => {
+        if (error) {
+          this.handleAuthError(error);
+          return {
+            success: false,
+            data: null,
+            error,
+            message: this.parseErrorMessage(error)
+          } as AuthResult;
+        }
+
+        // Si el usuario se creó correctamente, actualizar el referido
+        if (data.user) {
+          try {
+            // Buscar el perfil del referidor
+            const { data: referrerData } = await this.supabase
+              .from('profiles')
+              .select('id, username')
+              .eq('referral_code', referralCode.toUpperCase())
+              .single();
+
+            if (referrerData) {
+              // Actualizar el perfil del nuevo usuario con el referidor
+              await this.supabase
+                .from('profiles')
+                .update({ referred_by: referrerData.id })
+                .eq('id', data.user.id);
+
+              // Crear registro en la tabla de referidos
+              await this.supabase
+                .from('referrals')
+                .insert({
+                  referrer_id: referrerData.id,
+                  referred_id: data.user.id,
+                  referred_username: '',
+                  referred_level: 1
+                });
+            }
+          } catch (referralError) {
+            console.error('Error al procesar referido:', referralError);
+          }
+        }
+
+        // Si el usuario se creó inmediatamente (sin confirmación de email)
+        if (data.user && data.session) {
+          this.handleSessionChange(data.session);
+          return {
+            success: true,
+            data: data.user,
+            message: 'Registro exitoso'
+          } as AuthResult;
+        }
+
+        // Si requiere confirmación de email
+        return {
+          success: true,
+          data: data.user,
+          message: 'Te hemos enviado un correo de confirmación. Por favor, verifica tu bandeja de entrada.'
+        } as AuthResult;
+      }),
+      catchError((error: AuthError) => {
+        this.handleAuthError(error);
+        return of({
+          success: false,
+          data: null,
+          error,
+          message: this.parseErrorMessage(error)
+        });
+      }),
+      tap(() => this._isLoading.set(false)),
+      takeUntil(this.destroy$)
+    );
+  }
+
+  /**
    * Cierra la sesión del usuario
    * @returns Observable con el resultado
    */
@@ -366,7 +481,7 @@ export class AuthService implements OnDestroy {
         }
 
         this.handleSignOut();
-        
+
         // Redirigir después del logout
         if (environment.redirect?.logoutSuccess) {
           this.router.navigate([environment.redirect.logoutSuccess]);

@@ -1,0 +1,11 @@
+{"sessionId":"4c82f8","location":"auth.guard.ts:createAuthGuard","message":"Guard invoked","data":{"path":"/","guestOnly":true,"isLoading":true,"returnType":"Observable"},"timestamp":1771450037537,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"auth.service.ts:getSessionDone","message":"getSession completed","data":{"hasSession":false},"timestamp":1771450037538,"hypothesisId":"E","runId":"post-fix"}
+{"sessionId":"4c82f8","location":"auth.service.ts:getSessionDone","message":"getSession completed","data":{"hasSession":false},"timestamp":1771450129614,"hypothesisId":"E","runId":"post-fix"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771450618789,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771450631702,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771450650401,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771450746917,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771450783560,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771450975019,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771451032063,"hypothesisId":"A"}
+{"sessionId":"4c82f8","location":"admin.guard.ts:navigateToDashboard","message":"router.navigate to /dashboard","data":{"path":"/admin"},"timestamp":1771451045766,"hypothesisId":"A"}

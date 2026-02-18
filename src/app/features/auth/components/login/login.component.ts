@@ -1,14 +1,13 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
-import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']
 })
@@ -16,47 +15,45 @@ export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
 
-  // Importar iconos de Lucide
-  readonly Mail = LucideAngularModule;
-  readonly Lock = LucideAngularModule;
-  readonly Eye = LucideAngularModule;
-  readonly EyeOff = LucideAngularModule;
-  readonly LogIn = LucideAngularModule;
-  readonly Github = LucideAngularModule;
-  readonly Loader = LucideAngularModule;
-
-  // Signals para estado reactivo
-  readonly isLoading = this.authService.isLoading;
-  readonly error = this.authService.error as any;
-
-  // Formulario reactivo
+  // Estado del login
+  isLoading = false;
+  
+  // Formulario reactivo con credenciales de prueba
   loginForm: FormGroup = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
-    rememberMe: [false]
+    email: ['publihazclick.com@gmail.com', [Validators.required, Validators.email]],
+    password: ['publihazclick', [Validators.required, Validators.minLength(6)]]
   });
 
   // Estado de la contraseña
-  readonly showPassword = signal(false);
+  showPassword = false;
+  
+  // Mensajes
+  errorMessage: string | null = null;
+  successMessage: string | null = null;
 
-  // Mensaje de éxito
-  readonly successMessage = signal<string | null>(null);
-
-  // Return URL
-  returnUrl: string = '/dashboard';
+  // Credenciales de prueba predefinidas
+  testAccounts = [
+    { email: 'publihazclick.com@gmail.com', password: 'publihazclick', label: 'Admin Principal' }
+  ];
 
   ngOnInit(): void {
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
-
+    // Verificar si ya está autenticado
     if (this.authService.isAuthenticated()) {
-      this.router.navigate([this.returnUrl]);
+      this.router.navigate(['/admin']);
     }
   }
 
   togglePasswordVisibility(): void {
-    this.showPassword.update(v => !v);
+    this.showPassword = !this.showPassword;
+  }
+
+  // Seleccionar credenciales de prueba
+  selectTestAccount(account: { email: string; password: string }): void {
+    this.loginForm.patchValue({
+      email: account.email,
+      password: account.password
+    });
   }
 
   onSubmit(): void {
@@ -65,20 +62,37 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    this.successMessage.set(null);
-    const { email, password } = this.loginForm.value;
+    // Limpiar estados
+    this.isLoading = true;
+    this.successMessage = null;
+    this.errorMessage = null;
 
+    const email = this.loginForm.get('email')?.value;
+    const password = this.loginForm.get('password')?.value;
+
+    // Llamar al servicio de autenticación
     this.authService.login({ email, password }).subscribe({
       next: (result) => {
+        console.log('Login result:', result);
+        this.isLoading = false;
+        
         if (result.success) {
-          this.successMessage.set(result.message || 'Inicio de sesión exitoso');
-          setTimeout(() => {
-            this.router.navigate([this.returnUrl]);
-          }, 500);
+          this.successMessage = 'Inicio de sesión exitoso';
+          // Redirigir al admin dashboard
+          console.log('Redirecting to /admin/...');
+          this.router.navigate(['/admin/']).then(success => {
+            console.log('Navigation success:', success);
+          }).catch(err => {
+            console.error('Navigation error:', err);
+          });
+        } else {
+          this.errorMessage = result.message || 'Error al iniciar sesión';
         }
       },
       error: (err) => {
-        console.error('Error inesperado:', err);
+        console.error('Login error:', err);
+        this.isLoading = false;
+        this.errorMessage = 'Error de conexión. Intenta de nuevo.';
       }
     });
   }

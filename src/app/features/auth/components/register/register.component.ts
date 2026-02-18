@@ -3,24 +3,33 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ProfileService } from '../../../../core/services/profile.service';
 import { LucideAngularModule } from 'lucide-angular';
+import { AuthAdsComponent } from '../auth-ads/auth-ads.component';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, LucideAngularModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, LucideAngularModule, AuthAdsComponent],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly profileService = inject(ProfileService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
   // Signals para estado reactivo
   readonly isLoading = this.authService.isLoading;
   readonly error = this.authService.error;
+
+  // Código de referido de la URL
+  referralCode = '';
+  referralValid = signal<boolean | null>(null);
+  referrerName = signal<string>('');
+  referralError = signal<string>('');
 
   // Formulario reactivo
   registerForm: FormGroup = this.fb.group({
@@ -47,10 +56,37 @@ export class RegisterComponent implements OnInit {
   returnUrl: string = '/dashboard';
 
   ngOnInit(): void {
+    // Obtener código de referido de la URL
+    this.referralCode = this.route.snapshot.params['code'] || '';
+    
+    // Si hay código de referido, validarlo
+    if (this.referralCode) {
+      this.validateReferralCode();
+    }
+
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
 
     if (this.authService.isAuthenticated()) {
       this.router.navigate([this.returnUrl]);
+    }
+  }
+
+  async validateReferralCode(): Promise<void> {
+    if (!this.referralCode) {
+      this.referralValid.set(false);
+      this.referralError.set('Se requiere código de referido');
+      return;
+    }
+
+    const result = await this.profileService.validateReferralCode(this.referralCode);
+    
+    if (result.valid) {
+      this.referralValid.set(true);
+      this.referrerName.set(result.referrer_username || '');
+      this.referralError.set('');
+    } else {
+      this.referralValid.set(false);
+      this.referralError.set(result.error || 'Código de referido inválido');
     }
   }
 
@@ -76,14 +112,21 @@ export class RegisterComponent implements OnInit {
       return;
     }
 
+    // Verificar que el código de referido sea válido si existe
+    if (this.referralCode && !this.referralValid()) {
+      this.validateReferralCode();
+      return;
+    }
+
     this.successMessage.set(null);
     const { fullName, email, password } = this.registerForm.value;
 
-    this.authService.register({ 
-      email, 
-      password, 
-      fullName 
-    }).subscribe({
+    // Usar el método de registro con referido si hay código
+    const registerMethod = this.referralCode 
+      ? this.authService.registerWithReferral({ email, password, fullName }, this.referralCode)
+      : this.authService.register({ email, password, fullName });
+
+    registerMethod.subscribe({
       next: (result) => {
         if (result.success) {
           this.successMessage.set(result.message || 'Registro exitoso');

@@ -96,9 +96,12 @@ export const provideLucideIcons = () => {
       Printer: icons.Printer,
       Save: icons.Save,
       Shield: icons.Shield,
+      ShieldCheck: icons.ShieldCheck,
       Target: icons.Target,
       Users: icons.Users,
       Wrench: icons.Wrench,
+      LayoutDashboard: icons.LayoutDashboard,
+      FileText: icons.FileText,
     })
   );
 };
