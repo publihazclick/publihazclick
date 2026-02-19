@@ -10,15 +10,34 @@
       </a>
 
       <!-- Mobile Quick Stats (visible only on mobile) -->
-      <div class="flex items-center space-x-1 md:hidden">
+      <div class="flex items-center justify-center space-x-1 md:hidden">
         <!-- Mobile Currency (compact) -->
-        <button 
-          (click)="toggleCurrencyMenu()"
-          class="flex items-center space-x-1 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-lg transition-colors"
-        >
-          <span class="material-symbols-outlined text-base">currency_exchange</span>
-          <span class="text-[10px] font-bold">{{ selectedCurrency().code }}</span>
-        </button>
+        <div class="relative">
+          <button 
+            (click)="toggleCurrencyMenu()"
+            class="flex items-center space-x-1 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-lg transition-colors"
+          >
+            <span class="material-symbols-outlined text-base">currency_exchange</span>
+            <span class="text-[10px] font-bold">{{ selectedCurrency().code }}</span>
+            <span class="material-symbols-outlined text-xs">expand_more</span>
+          </button>
+          
+          <!-- Currency Dropdown Mobile -->
+          @if (currencyMenuOpen()) {
+            <div class="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden z-50 min-w-[140px]">
+              @for (currency of currencies; track currency.code) {
+                <button 
+                  (click)="selectCurrency(currency)"
+                  class="w-full px-3 py-2 text-center text-white hover:bg-cyan-600 transition-colors flex items-center justify-between text-xs"
+                  [class.bg-cyan-600]="selectedCurrency().code === currency.code"
+                >
+                  <span class="font-bold">{{ currency.code }}</span>
+                  <span class="text-[10px] text-white/70">{{ currency.symbol }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
         
         <!-- Mobile Wallet (compact) -->
         <div class="flex items-center space-x-1 bg-gradient-to-r from-emerald-600 to-emerald-700 px-2 py-1.5 rounded-lg">
