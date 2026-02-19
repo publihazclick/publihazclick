@@ -1,43 +1,89 @@
 -- =============================================================================
 -- PublihazClick - Fase 3: Lógica de Negocio Completa
 -- Paquetes publicitarios, tipos de anuncios, sistema demo/real, niveles
--- IMPORTANTE: Ejecutar primero las migraciones 001, 002, 003, 004
+-- Esta migración puede ejecutarse INDEPENDIENTEMENTE - crea lo que falta
 -- =============================================================================
 
--- 1. CREAR ENUMS ADICIONALES (usando IF NOT EXISTS)
+-- 0. CREAR TABLA PACKAGES SI NO EXISTE (necesaria para esta migración)
 -- =============================================================================
 
--- Enum para tipo de anuncio PTC
-DO $$
+DO $
 BEGIN
-  CREATE TYPE ptc_ad_type AS ENUM ('mega', 'standard_400', 'standard_600', 'mini');
-EXCEPTION
-  WHEN duplicate_object THEN
-    NULL;
-END $$;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'packages') THEN
+    -- Crear enum si no existe
+    CREATE TYPE IF NOT EXISTS package_type AS ENUM ('basic', 'premium', 'enterprise', 'custom');
+    
+    CREATE TABLE packages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(100) NOT NULL,
+      description TEXT,
+      package_type package_type NOT NULL DEFAULT 'basic',
+      price DECIMAL(10,2) NOT NULL,
+      duration_days INTEGER NOT NULL,
+      features JSONB DEFAULT '[]',
+      max_ptc_ads INTEGER DEFAULT 5,
+      max_banner_ads INTEGER DEFAULT 2,
+      max_campaigns INTEGER DEFAULT 3,
+      ptc_reward_bonus DECIMAL(5,2) DEFAULT 0,
+      banner_reward_bonus DECIMAL(5,2) DEFAULT 0,
+      referral_bonus DECIMAL(5,2) DEFAULT 0,
+      is_active BOOLEAN DEFAULT TRUE,
+      display_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      min_ptc_visits INTEGER DEFAULT 0,
+      min_banner_views INTEGER DEFAULT 0,
+      included_ptc_ads INTEGER DEFAULT 0,
+      has_clickable_banner BOOLEAN DEFAULT FALSE,
+      banner_clicks_limit INTEGER DEFAULT 0,
+      banner_impressions_limit INTEGER DEFAULT 0,
+      daily_ptc_limit INTEGER DEFAULT 0,
+      currency VARCHAR(3) DEFAULT 'USD'
+    );
+    
+    ALTER TABLE packages ENABLE ROW LEVEL SECURITY;
+    
+    CREATE POLICY "Anyone can view active packages"
+      ON packages FOR SELECT
+      USING (is_active = TRUE);
+    
+    -- Insertar paquetes iniciales
+    INSERT INTO packages (name, description, package_type, price, duration_days, features, max_ptc_ads, max_banner_ads, max_campaigns, ptc_reward_bonus, banner_reward_bonus, referral_bonus, display_order, min_ptc_visits, min_banner_views, included_ptc_ads, has_clickable_banner, banner_clicks_limit, banner_impressions_limit, daily_ptc_limit, currency)
+    VALUES 
+    ('Basico', 'Perfecto para empezar a ganar', 'basic', 0, 30, '["Acceso a anuncios PTC", "Ganancias por clics", "Sistema de referidos"]', 3, 1, 2, 0, 0, 5, 1, 0, 0, 0, FALSE, 0, 0, 0, 'USD'),
+    ('Premium', 'Maximiza tus ganancias', 'premium', 29.99, 30, '["Todos los beneficios basico", "Mas anuncios PTC", "Bonos por clics aumentados", "Soporte prioritario"]', 10, 5, 10, 10, 10, 15, 2, 0, 0, 0, FALSE, 0, 0, 0, 'USD'),
+    ('Enterprise', 'Para profesionales del marketing', 'enterprise', 79.99, 30, '["Todos los beneficios premium", "Anuncios ilimitados", "Maxima bonificacion", "API de gestion", "Asesoria dedicada"]', 999999, 999999, 999999, 25, 25, 25, 3, 0, 0, 0, FALSE, 0, 0, 0, 'USD');
+  ELSE
+    -- Agregar columnas faltantes a packages existente
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS min_ptc_visits INTEGER DEFAULT 0;
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS min_banner_views INTEGER DEFAULT 0;
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS included_ptc_ads INTEGER DEFAULT 0;
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS has_clickable_banner BOOLEAN DEFAULT FALSE;
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS banner_clicks_limit INTEGER DEFAULT 0;
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS banner_impressions_limit INTEGER DEFAULT 0;
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS daily_ptc_limit INTEGER DEFAULT 0;
+    ALTER TABLE packages ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'USD';
+  END IF;
+END $;
 
--- Enum para estado del banner del paquete
-DO $$
-BEGIN
-  CREATE TYPE package_banner_status AS ENUM ('pending', 'active', 'completed', 'rejected');
-EXCEPTION
-  WHEN duplicate_object THEN
-    NULL;
-END $$;
-
--- 2. AGREGAR CAMPOS A TABLA PACKAGES
+-- 1. CREAR ENUMS ADICIONALES
 -- =============================================================================
 
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS min_ptc_visits INTEGER DEFAULT 0;
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS min_banner_views INTEGER DEFAULT 0;
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS included_ptc_ads INTEGER DEFAULT 0;
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS has_clickable_banner BOOLEAN DEFAULT FALSE;
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS banner_clicks_limit INTEGER DEFAULT 0;
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS banner_impressions_limit INTEGER DEFAULT 0;
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS daily_ptc_limit INTEGER DEFAULT 0;
-ALTER TABLE packages ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'USD';
+DO $
+BEGIN
+  CREATE TYPE IF NOT EXISTS ptc_ad_type AS ENUM ('mega', 'standard_400', 'standard_600', 'mini');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $;
 
--- 3. INSERTAR PAQUETES NUEVOS
+DO $
+BEGIN
+  CREATE TYPE IF NOT EXISTS package_banner_status AS ENUM ('pending', 'active', 'completed', 'rejected');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $;
+
+-- 2. INSERTAR PAQUETES NUEVOS
 -- =============================================================================
 
 INSERT INTO packages (
@@ -59,99 +105,43 @@ FROM (
   VALUES
   (
     'Starter',
-    'Paquete inicial para empezar a ganar. Incluye acceso a Mega Anuncios y banner clickeable.',
+    'Paquete inicial para empezar a ganar.',
     'basic',
     25.00,
     30,
     'USD',
-    '["Acceso a Mega Anuncios PTC", "1 Banner clickeable (500 clicks)", "500 impresiones de banner", "Sistema de referidos nivel 1", "Minimo 50 visitas PTC/mes", "Minimo 100 visualizaciones banner/mes"]',
-    50,
-    100,
-    5,
-    TRUE,
-    500,
-    1000,
-    5,
-    5,
-    1,
-    1,
-    5,
-    0,
-    5,
-    TRUE,
-    1
+    '["Acceso a Mega Anuncios PTC", "Banner clickeable"]',
+    50, 100, 5, TRUE, 500, 1000, 5, 5, 1, 1, 5, 0, 5, TRUE, 1
   ),
   (
     'Growth',
-    'Paquete de crecimiento con mas anuncios y mayor alcance de banner.',
+    'Paquete de crecimiento.',
     'premium',
     50.00,
     30,
     'USD',
-    '["Acceso a Mega Anuncios y Standard", "1 Banner clickeable (1500 clicks)", "2000 impresiones de banner", "Sistema de referidos hasta nivel 2", "Minimo 150 visitas PTC/mes", "Minimo 300 visualizaciones banner/mes", "Bonificacion de 10% en ganancias PTC"]',
-    150,
-    300,
-    15,
-    TRUE,
-    1500,
-    3000,
-    10,
-    15,
-    2,
-    3,
-    10,
-    5,
-    10,
-    TRUE,
-    2
+    '["Acceso a Mega Anuncios y Standard", "Mas beneficios"]',
+    150, 300, 15, TRUE, 1500, 3000, 10, 15, 2, 3, 10, 5, 10, TRUE, 2
   ),
   (
     'Business',
-    'Paquete empresarial para maxima exposicion y ganancias.',
+    'Paquete empresarial.',
     'enterprise',
     100.00,
     30,
     'USD',
-    '["Acceso a todos los tipos de anuncios", "1 Banner clickeable (4000 clicks)", "6000 impresiones de banner", "Sistema de referidos hasta nivel 4", "Minimo 400 visitas PTC/mes", "Minimo 800 visualizaciones banner/mes", "Bonificacion de 25% en ganancias PTC", "Soporte prioritario"]',
-    400,
-    800,
-    40,
-    TRUE,
-    4000,
-    8000,
-    25,
-    40,
-    5,
-    10,
-    25,
-    15,
-    20,
-    TRUE,
-    3
+    '["Acceso a todos los tipos", "Soporte prioritario"]',
+    400, 800, 40, TRUE, 4000, 8000, 25, 40, 5, 10, 25, 15, 20, TRUE, 3
   ),
   (
     'Enterprise Pro',
-    'Paquete maximo para profesionales del marketing. Alcance ilimitado.',
+    'Paquete maximo.',
     'custom',
     150.00,
     30,
     'USD',
-    '["Acceso ilimitado a todos los anuncios", "1 Banner clickeable (10000 clicks)", "15000 impresiones de banner", "Sistema de referidos multinivel completo", "Minimo 1000 visitas PTC/mes", "Minimo 2000 visualizaciones banner/mes", "Bonificacion de 50% en ganancias PTC", "API de gestion", "Asesoria dedicada"]',
-    1000,
-    2000,
-    100,
-    TRUE,
-    10000,
-    20000,
-    50,
-    999999,
-    10,
-    999999,
-    50,
-    25,
-    30,
-    TRUE,
-    4
+    '["Acceso ilimitado", "API", "Asesoria"]',
+    1000, 2000, 100, TRUE, 10000, 20000, 50, 999999, 10, 999999, 50, 25, 30, TRUE, 4
   )
 ) AS vals(
   name, description, package_type, price, duration_days, currency,

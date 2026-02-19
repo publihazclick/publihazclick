@@ -10,6 +10,7 @@ import {
   ReferralValidationResult,
   UserRole
 } from '../models/profile.model';
+import type { UserLevel } from '../models/admin.model';
 import { environment } from '../../../environments/environment';
 
 /**
@@ -335,6 +336,129 @@ export class ProfileService {
     const profile = this._profile();
     if (!profile) return '';
 
-    return `${window.location.origin}/register/${profile.referral_code}`;
+    return `${window.location.origin}/register?ref=${profile.referral_code}`;
+  }
+
+  /**
+   * Validar código de referido usando función de base de datos
+   */
+  async validateReferralCodeWithDB(code: string): Promise<ReferralValidationResult> {
+    try {
+      const { data, error } = await this.supabase
+        .rpc('validate_referral_code', { code: code.trim() });
+
+      if (error) throw error;
+
+      return data as ReferralValidationResult;
+    } catch (error: any) {
+      return { valid: false, error: error.message };
+    }
+  }
+
+  /**
+   * Obtener niveles de usuario
+   */
+  async getUserLevels(): Promise<UserLevel[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('user_levels')
+        .select('*')
+        .eq('is_active', true)
+        .order('level', { ascending: true });
+
+      if (error) throw error;
+
+      return data as UserLevel[];
+    } catch (error: any) {
+      this._error.set(error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener nivel actual del usuario
+   */
+  async getCurrentUserLevel(): Promise<UserLevel | null> {
+    try {
+      const profile = this._profile();
+      if (!profile) return null;
+
+      const { data, error } = await this.supabase
+        .from('user_levels')
+        .select('*')
+        .eq('level', profile.level)
+        .single();
+
+      if (error) throw error;
+
+      return data as UserLevel;
+    } catch (error: any) {
+      this._error.set(error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Obtener próximo nivel
+   */
+  async getNextUserLevel(): Promise<UserLevel | null> {
+    try {
+      const profile = this._profile();
+      if (!profile) return null;
+
+      const { data, error } = await this.supabase
+        .from('user_levels')
+        .select('*')
+        .eq('level', profile.level + 1)
+        .single();
+
+      if (error) return null;
+
+      return data as UserLevel;
+    } catch (error: any) {
+      return null;
+    }
+  }
+
+  /**
+   * Obtener donaciones del usuario
+   */
+  async getUserDonations(): Promise<any[]> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await this.supabase
+        .from('donations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error: any) {
+      this._error.set(error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener estadísticas del sistema
+   */
+  async getSystemStats(): Promise<any> {
+    try {
+      const { data, error } = await this.supabase
+        .from('system_stats')
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error: any) {
+      this._error.set(error.message);
+      return null;
+    }
   }
 }
