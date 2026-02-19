@@ -1,77 +1,222 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, Pipe, PipeTransform } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule } from 'lucide-angular';
+import { LucideAngularModule,
+  Users,
+  MousePointerClick,
+  DollarSign,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Check,
+  X,
+  Globe,
+  Loader2,
+  AlertCircle,
+  Shield
+} from 'lucide-angular';
+import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
+import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
+import type {
+  DashboardStats,
+  ChartData,
+  PendingItem,
+  ActivityLog
+} from '../../../../core/models/admin.model';
+
+// Pipe para obtener el máximo de un array de números
+@Pipe({
+  name: 'max',
+  standalone: true
+})
+class MaxPipe implements PipeTransform {
+  transform(values: number[]): number {
+    if (!values || values.length === 0) return 0;
+    return Math.max(...values);
+  }
+}
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, LucideAngularModule, MaxPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
-export class AdminDashboardComponent {
+export class AdminDashboardComponent implements OnInit {
   // Iconos
-  readonly Users = LucideAngularModule;
-  readonly MousePointerClick = LucideAngularModule;
-  readonly DollarSign = LucideAngularModule;
-  readonly Clock = LucideAngularModule;
-  readonly TrendingUp = LucideAngularModule;
-  readonly TrendingDown = LucideAngularModule;
-  readonly Check = LucideAngularModule;
-  readonly X = LucideAngularModule;
-  readonly Globe = LucideAngularModule;
+  readonly UsersIcon = Users;
+  readonly MousePointerClickIcon = MousePointerClick;
+  readonly DollarSignIcon = DollarSign;
+  readonly ClockIcon = Clock;
+  readonly TrendingUpIcon = TrendingUp;
+  readonly TrendingDownIcon = TrendingDown;
+  readonly CheckIcon = Check;
+  readonly XIcon = X;
+  readonly GlobeIcon = Globe;
+  readonly Loader2Icon = Loader2;
+  readonly AlertCircleIcon = AlertCircle;
+  readonly ShieldIcon = Shield;
 
-  // Stats
-  totalUsers = 24800;
-  activeAds = 1402;
-  totalRevenue = '$45.2M';
-  pendingWithdrawals = 48;
+  // Servicios
+  private readonly dashboardService = inject(AdminDashboardService);
+  private readonly ptcTaskService = inject(AdminPtcTaskService);
 
-  // Chart data (últimos 7 días)
-  chartData = [
-    { day: 'Mon', traffic: 32, engagement: 20 },
-    { day: 'Tue', traffic: 40, engagement: 28 },
-    { day: 'Wed', traffic: 36, engagement: 32 },
-    { day: 'Thu', traffic: 48, engagement: 44 },
-    { day: 'Fri', traffic: 56, engagement: 50 },
-    { day: 'Sat', traffic: 24, engagement: 16 },
-    { day: 'Sun', traffic: 20, engagement: 12 }
-  ];
+  // Signals para estado
+  readonly stats = signal<DashboardStats | null>(null);
+  readonly chartData = signal<ChartData | null>(null);
+  readonly pendingItems = signal<PendingItem[]>([]);
+  readonly recentActivity = signal<ActivityLog[]>([]);
+  readonly loading = signal<boolean>(true);
+  readonly error = signal<string | null>(null);
 
-  // Pending moderation items
-  pendingAds = [
-    {
-      id: '#AD-8842',
-      title: 'Pizza Weekend 2x1',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA6-vAbh3zEYdpIpEOlqowjqOxU0KECvCDqoVWr-RNfNab_mM3o53N_sGgrEmtU38FNsDRrlJ-i98piK2opbuE9g05q2wtpi6jtKLe3e_TH8cK8cPq1YczgAHIk1PUoXOpcNvmeSWtT89B2Ub1VU3w0TREhDQlX1MVgUF_cnlcmi1I9PUYwVCpAFrjx9luzZjDo4L0vYrBGiubVYJoGREeI0PwIgOdgXNAF8D6YjIl0ThbarUp1pyji-2mZbEnIcaFABDRrLKoAO7Bh',
-      submittedBy: 'MileniuStore',
-      tier: 'Basic Advertiser',
-      category: 'Food & Beverages',
-      status: 'pending'
-    },
-    {
-      id: '#AD-8845',
-      title: 'SmartWatch Series 5',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCqJWHgYzbfxqgSYCeY5BOiFUA1UGS-y0S-ucn_0njMo5iGlXVAaoWNZnifhnSwinZpwk3sOc4ENyIBSvUWIPqW9n4eFTWOZImwwBeybOoLnvA0w3AGMxpbif26khD-sYbgzbmVOVmAcS41eouxnl3j8SS2DKs1RcDcUZel0dQttpW_ZcBcBLGSbhjURAYmPP9AFi6D0xow7ZVP3JBpnHjYFVM-Mx6wLRlxh2z69fZl8rrtTPvwwAOJYqYWjivTQe-DGhv2Za15q-sM',
-      submittedBy: 'TechNova Pro',
-      tier: 'Pro Advertiser',
-      category: 'Electronics',
-      status: 'pending'
+  // Computed para valores derivados
+  readonly hasPendingAds = computed(() => this.pendingItems().length > 0);
+  readonly pendingCount = computed(() => this.pendingItems().length);
+
+  // Exponer Math para el template
+  readonly Math = Math;
+
+  // Formato de moneda
+  readonly currencyFormatter = new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+
+  // Formato de números
+  readonly numberFormatter = new Intl.NumberFormat('es-CO');
+
+  ngOnInit(): void {
+    this.loadDashboardData();
+  }
+
+  private async loadDashboardData(): Promise<void> {
+    this.loading.set(true);
+    this.error.set(null);
+
+    try {
+      const [stats, chartData, pendingItems, recentActivity] = await Promise.all([
+        this.dashboardService.getDashboardStats(),
+        this.dashboardService.getActivityChartData(),
+        this.dashboardService.getPendingItems(),
+        this.dashboardService.getRecentActivity(5)
+      ]);
+
+      this.stats.set(stats);
+      this.chartData.set(chartData);
+      this.pendingItems.set(pendingItems);
+      this.recentActivity.set(recentActivity);
+    } catch (err: any) {
+      console.error('Error loading dashboard data:', err);
+      this.error.set('Error al cargar los datos del dashboard');
+    } finally {
+      this.loading.set(false);
     }
-  ];
+  }
 
-  // Revenue breakdown
-  revenueBreakdown = [
-    { label: 'Ad Sales', percentage: 68, color: 'bg-primary' },
-    { label: 'Withdrawal Fees', percentage: 22, color: 'bg-blue-500' },
-    { label: 'Other', percentage: 10, color: 'bg-slate-300 dark:bg-slate-700' }
-  ];
+  /**
+   * Aprobar un anuncio pendiente
+   */
+  async approveAd(id: string): Promise<void> {
+    const success = await this.ptcTaskService.activatePtcTask(id);
+    if (success) {
+      // Registrar la acción
+      await this.dashboardService.logActivity(
+        'approve_ad',
+        'ptc_task',
+        id,
+        { action: 'approved' }
+      );
+      // Recargar datos
+      await this.loadDashboardData();
+    }
+  }
 
-  // Node clusters
-  nodeClusters = [
-    { name: 'USA-EAST-1', status: 'Active', statusClass: 'text-emerald-400' },
-    { name: 'LATAM-NORTH', status: 'Active', statusClass: 'text-emerald-400' },
-    { name: 'EU-CENTRAL', status: 'Active', statusClass: 'text-emerald-400' },
-    { name: 'ASIA-SOUTH', status: 'Latency', statusClass: 'text-amber-400' }
-  ];
+  /**
+   * Rechazar un anuncio pendiente
+   */
+  async rejectAd(id: string): Promise<void> {
+    const success = await this.ptcTaskService.setPtcTaskStatus(id, 'paused');
+    if (success) {
+      await this.dashboardService.logActivity(
+        'reject_ad',
+        'ptc_task',
+        id,
+        { action: 'rejected' }
+      );
+      await this.loadDashboardData();
+    }
+  }
+
+  /**
+   * Formatear número como moneda
+   */
+  formatCurrency(value: number | undefined): string {
+    if (value === undefined || value === null) return '$0';
+    return this.currencyFormatter.format(value);
+  }
+
+  /**
+   * Formatear número con separadores
+   */
+  formatNumber(value: number | undefined): string {
+    if (value === undefined || value === null) return '0';
+    return this.numberFormatter.format(value);
+  }
+
+  /**
+   * Obtener color para barra de gráfico
+   */
+  getBarColor(index: number): string {
+    const colors = ['bg-cyan-500', 'bg-pink-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500'];
+    return colors[index % colors.length];
+  }
+
+  /**
+   * Calcular altura de barra de gráfico
+   */
+  getBarHeight(value: number, maxValue: number): string {
+    if (maxValue === 0) return '0%';
+    const percentage = (value / maxValue) * 100;
+    return `${Math.max(percentage, 5)}%`; // Mínimo 5% para visibilidad
+  }
+
+  /**
+   * Formatear fecha
+   */
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  /**
+   * Obtener texto descriptivo de acción
+   */
+  getActionText(action: string): string {
+    const actionTexts: Record<string, string> = {
+      'approve_ad': 'Aprobó un anuncio',
+      'reject_ad': 'Rechazó un anuncio',
+      'create_user': 'Creó un usuario',
+      'update_user': 'Actualizó un usuario',
+      'delete_user': 'Eliminó un usuario',
+      'approve_withdrawal': 'Aprobó un retiro',
+      'reject_withdrawal': 'Rechazó un retiro',
+      'login': 'Inició sesión',
+      'logout': 'Cerró sesión'
+    };
+    return actionTexts[action] || action;
+  }
+
+  /**
+   * Recargar datos
+   */
+  reloadData(): void {
+    this.loadDashboardData();
+  }
 }

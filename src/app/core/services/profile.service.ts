@@ -297,14 +297,19 @@ export class ProfileService {
   /**
    * Actualizar balance de usuario (solo admin o sistema)
    */
-  async updateBalance(userId: string, amount: number, type: 'add' | 'subtract'): Promise<boolean> {
+  async updateBalance(userId: string, amount: number, type: 'add' | 'subtract' | 'set'): Promise<boolean> {
     try {
       const profile = await this.getProfileById(userId);
       if (!profile) return false;
 
-      const newBalance = type === 'add'
-        ? profile.balance + amount
-        : profile.balance - amount;
+      let newBalance: number;
+      if (type === 'set') {
+        newBalance = amount;
+      } else {
+        newBalance = type === 'add'
+          ? profile.balance + amount
+          : profile.balance - amount;
+      }
 
       if (newBalance < 0) return false;
 

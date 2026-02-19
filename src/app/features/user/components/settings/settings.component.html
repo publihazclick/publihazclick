@@ -1,0 +1,93 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-black">Configuración</h2>
+      <p class="text-xs text-slate-400">Gestiona tu perfil y preferencias de cuenta</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Profile Settings -->
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <h3 class="font-bold mb-4">Información Personal</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nombre Completo</label>
+              <input type="text" value="Usuario Ejemplo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nombre de Usuario</label>
+              <input type="text" value="usuario123" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Correo Electrónico</label>
+            <input type="email" value="usuario@email.com" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+          </div>
+          <div class="flex justify-end">
+            <button class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-lg transition-all text-sm">
+              Guardar Cambios
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <h3 class="font-bold mb-4">Método de Pago</h3>
+        <div class="space-y-4">
+          <div class="p-4 border border-primary/20 rounded-xl bg-primary/5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+              <lucide-icon name="credit-card" class="w-6 h-6 text-primary"></lucide-icon>
+            </div>
+            <div class="flex-1">
+              <p class="font-bold">Nequi</p>
+              <p class="text-xs text-slate-500">**** 1234</p>
+            </div>
+            <span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded">Principal</span>
+          </div>
+          <button class="w-full py-3 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-primary/50 rounded-xl text-slate-500 hover:text-primary font-bold text-xs uppercase transition-all flex items-center justify-center gap-2">
+            <lucide-icon name="plus" class="w-4 h-4"></lucide-icon>
+            Agregar Método de Pago
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Options -->
+    <div class="space-y-6">
+      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <h3 class="font-bold mb-4">Seguridad</h3>
+        <div class="space-y-3">
+          <button class="w-full p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-left">
+            <p class="font-bold text-sm">Cambiar Contraseña</p>
+            <p class="text-[10px] text-slate-500">Actualiza tu contraseña regularmente</p>
+          </button>
+          <button class="w-full p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-left">
+            <p class="font-bold text-sm">Verificación en Dos Pasos</p>
+            <p class="text-[10px] text-slate-500">Añade una capa extra de seguridad</p>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <h3 class="font-bold mb-4">Notificaciones</h3>
+        <div class="space-y-3">
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-sm">Nuevos anuncios</span>
+            <input type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-sm">Ganancias de referidos</span>
+            <input type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-sm">Retiros aprobados</span>
+            <input type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-black">Ver Anuncios</h2>
+      <p class="text-xs text-slate-400">Haz click en los anuncios disponibles para ganar dinero</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    @for (ad of ads; track ad.id) {
+      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <div class="aspect-video bg-slate-200 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center">
+          <lucide-icon name="image" class="w-12 h-12 text-slate-400"></lucide-icon>
+        </div>
+        <h3 class="font-bold mb-2">{{ ad.title }}</h3>
+        <p class="text-xs text-slate-500 mb-4">{{ ad.desc }}</p>
+        <div class="flex items-center justify-between">
+          <span class="text-primary font-black">+${{ ad.reward }} COP</span>
+          <button class="px-4 py-2 bg-primary hover:bg-primary/90 text-black text-xs font-bold rounded-lg transition-all">
+            Ver Anuncio
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -5,31 +5,37 @@ import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
-  selector: 'app-admin-layout',
+  selector: 'app-user-layout',
   standalone: true,
   imports: [CommonModule, RouterModule, LucideAngularModule],
-  templateUrl: './admin-layout.component.html',
-  styleUrl: './admin-layout.component.scss'
+  templateUrl: './user-layout.component.html',
+  styleUrl: './user-layout.component.scss'
 })
-export class AdminLayoutComponent {
+export class UserLayoutComponent {
   // Iconos de Lucide
-  readonly Dashboard = LucideAngularModule;
+  readonly LayoutDashboard = LucideAngularModule;
+  readonly MousePointerClick = LucideAngularModule;
+  readonly Wallet = LucideAngularModule;
   readonly Users = LucideAngularModule;
-  readonly Shield = LucideAngularModule;
-  readonly Analytics = LucideAngularModule;
+  readonly History = LucideAngularModule;
   readonly Settings = LucideAngularModule;
-  readonly Terminal = LucideAngularModule;
   readonly LogOut = LucideAngularModule;
   readonly Bell = LucideAngularModule;
-  readonly ShieldPerson = LucideAngularModule;
   readonly Menu = LucideAngularModule;
   readonly X = LucideAngularModule;
   readonly Sun = LucideAngularModule;
   readonly Moon = LucideAngularModule;
+  readonly TrendingUp = LucideAngularModule;
+  readonly Gift = LucideAngularModule;
 
   isDarkMode = true;
-  serverLoad = 42;
+  userLevel = 5;
   protected readonly sidebarOpen = signal(false);
+
+  // Stats para el sidebar
+  dailyProgress = 65; // Porcentaje de clicks del día
+  dailyGoal = 10;
+  dailyClicks = 7;
 
   constructor(private readonly authService: AuthService, private readonly router: Router) {}
 
