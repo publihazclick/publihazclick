@@ -39,6 +39,11 @@ export class AdminLayoutComponent {
 
   constructor(private readonly authService: AuthService, private readonly router: Router) {}
 
+  // Detectar si es dispositivo móvil
+  protected isMobile(): boolean {
+    return window.innerWidth < 768;
+  }
+
   toggleSidebar(): void {
     this.sidebarOpen.update(v => !v);
   }
