@@ -28,7 +28,10 @@ export const environment = {
     loginSuccess: '/dashboard',
     logoutSuccess: '/login',
     unauthorized: '/login'
-  }
+  },
+  // Número de WhatsApp para contacto directo (sin el +)
+  whatsappNumber: '573001234567',
+  whatsappDefaultMessage: 'Hola! Me interesa conocer más sobre los servicios de publicidad digital de Publihazclick'
 };
 
 /**

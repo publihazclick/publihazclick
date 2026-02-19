@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { environment } from '../../../environments/environment';
 
 interface FloatingImage {
   src: string;
@@ -11,12 +11,14 @@ interface FloatingImage {
 @Component({
   selector: 'app-hero',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   templateUrl: './hero.component.html',
   styleUrl: './hero.component.scss'
 })
 export class HeroComponent {
-  protected readonly whatsapp = signal('');
+  // Número de WhatsApp de la empresa (configurable desde environment)
+  protected readonly whatsappNumber = signal(environment.whatsappNumber);
+  protected readonly whatsappMessage = signal('Hola! Me interesa conocer más sobre los servicios de publicidad digital de Publihazclick');
 
   protected readonly floatingImages: FloatingImage[] = [
     {
@@ -46,10 +48,11 @@ export class HeroComponent {
   ];
 
   onSubmitWhatsapp(): void {
-    if (this.whatsapp()) {
-      console.log('WhatsApp submitted:', this.whatsapp());
-      alert('¡Gracias! Te contactaremos pronto por WhatsApp.');
-      this.whatsapp.set('');
-    }
+    const number = this.whatsappNumber();
+    const message = this.whatsappMessage();
+    // Codificar el mensaje para URL
+    const encodedMessage = encodeURIComponent(message);
+    // Redirigir a WhatsApp API
+    window.open(`https://wa.me/${number}?text=${encodedMessage}`, '_blank');
   }
 }
