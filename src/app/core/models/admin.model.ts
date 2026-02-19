@@ -490,6 +490,166 @@ export interface CreateBannerAdData {
 }
 
 // ============================================================================
+// Niveles de Usuario
+// ============================================================================
+
+export interface UserLevel {
+  id: string;
+  level: number;
+  name: string;
+  min_referrals: number;
+  max_referrals: number | null;
+  referral_bonus_percentage: number;
+  ptc_reward_multiplier: number;
+  daily_ptc_limit: number;
+  description: string | null;
+  icon_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserLevelData {
+  level: number;
+  name: string;
+  min_referrals: number;
+  max_referrals?: number;
+  referral_bonus_percentage?: number;
+  ptc_reward_multiplier?: number;
+  daily_ptc_limit?: number;
+  description?: string;
+  icon_url?: string;
+}
+
+// ============================================================================
+// Donaciones
+// ============================================================================
+
+export interface Donation {
+  id: string;
+  user_id: string | null;
+  username?: string;
+  amount: number;
+  source: 'ptc_click' | 'referral' | 'banner_click' | 'bonus';
+  source_id: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface DonationStats {
+  total_donations: number;
+  total_amount: number;
+  by_source: Record<string, number>;
+}
+
+// ============================================================================
+// Banners de Paquetes
+// ============================================================================
+
+export interface PackageBanner {
+  id: string;
+  user_id: string;
+  username?: string;
+  user_package_id: string;
+  package_name?: string;
+  name: string | null;
+  image_url: string;
+  target_url: string;
+  clicks_limit: number;
+  impressions_limit: number;
+  total_clicks: number;
+  total_impressions: number;
+  status: PackageBannerStatus;
+  submitted_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  approved_by_username?: string;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePackageBannerData {
+  user_id: string;
+  user_package_id: string;
+  name?: string;
+  image_url: string;
+  target_url: string;
+  clicks_limit: number;
+  impressions_limit: number;
+}
+
+export interface ApprovePackageBannerData {
+  action: 'approve' | 'reject';
+  reason?: string;
+}
+
+// ============================================================================
+// Anuncios PTC (actualizado con tipos)
+// ============================================================================
+
+export interface PtcTaskAdmin {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  image_url: string | null;
+  reward: number;
+  duration: number;
+  daily_limit: number;
+  total_clicks: number;
+  today_clicks?: number;
+  status: TaskStatus;
+  advertiser_id: string;
+  advertiser_username?: string;
+  ad_type: PtcAdType;
+  is_demo_only: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CreatePtcTaskData {
+  title: string;
+  description: string;
+  url: string;
+  image_url?: string;
+  reward: number;
+  duration: number;
+  daily_limit: number;
+  ad_type?: PtcAdType;
+  is_demo_only?: boolean;
+  advertiser_id?: string;
+}
+
+// ============================================================================
+// Estadísticas Extendidas
+// ============================================================================
+
+export interface SystemStats {
+  total_users: number;
+  active_advertisers: number;
+  free_users: number;
+  active_ptc_tasks: number;
+  active_banners: number;
+  total_real_balance: number;
+  total_demo_balance: number;
+  total_donations: number;
+  total_referral_relationships: number;
+}
+
+// ============================================================================
+// Respuesta de Validación de Referido
+// ============================================================================
+
+export interface ReferralCodeValidation {
+  valid: boolean;
+  referrer_id?: string;
+  referrer_username?: string;
+  referrer_level?: number;
+  error?: string;
+}
+
+// ============================================================================
 // Paquetes Actualizados (Precios $25, $50, $100, $150)
 // ============================================================================
 

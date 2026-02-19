@@ -10,6 +10,7 @@ export interface Profile {
   id: string;
   username: string;
   referral_code: string;
+  referral_link: string;
   referred_by: string | null;
   email: string;
   full_name: string | null;
@@ -17,11 +18,23 @@ export interface Profile {
   role: UserRole;
   level: number;
   is_active: boolean;
-  balance: number;
+  // Saldos
+  balance: number; // Legacy - mantener para compatibilidad
+  real_balance: number;
+  demo_balance: number;
   pending_balance: number;
   total_earned: number;
+  total_demo_earned: number;
   total_spent: number;
+  total_donated: number;
   referral_earnings: number;
+  // Referidos
+  total_referrals_count: number;
+  // Paquete
+  has_active_package: boolean;
+  current_package_id: string | null;
+  package_started_at: string | null;
+  package_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
