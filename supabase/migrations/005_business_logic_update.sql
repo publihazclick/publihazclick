@@ -1,54 +1,43 @@
 -- =============================================================================
 -- PublihazClick - Fase 3: Lógica de Negocio Completa
 -- Paquetes publicitarios, tipos de anuncios, sistema demo/real, niveles
+-- IMPORTANTE: Ejecutar primero las migraciones 001, 002, 003, 004
 -- =============================================================================
 
 -- 1. CREAR ENUMS ADICIONALES
 -- =============================================================================
 
 -- Enum para tipo de anuncio PTC
-CREATE TYPE ptc_ad_type AS ENUM ('mega', 'standard_400', 'standard_600', 'mini');
+DO $ BEGIN
+  CREATE TYPE ptc_ad_type AS ENUM ('mega', 'standard_400', 'standard_600', 'mini');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $;
 
 -- Enum para estado del banner del paquete
-CREATE TYPE package_banner_status AS ENUM ('pending', 'active', 'completed', 'rejected');
-
--- 2. ACTUALIZAR TABLA PACKAGES CON NUEVOS CAMPOS
--- =============================================================================
-
--- Primero verificamos si la tabla existe y tiene los campos necesarios
-DO $
-BEGIN
-  -- Verificar si los campos existen, si no, agregarlos
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'packages' AND column_name = 'min_ptc_visits') THEN
-    ALTER TABLE packages
-    ADD COLUMN min_ptc_visits INTEGER DEFAULT 0,
-    ADD COLUMN min_banner_views INTEGER DEFAULT 0,
-    ADD COLUMN included_ptc_ads INTEGER DEFAULT 0,
-    ADD COLUMN has_clickable_banner BOOLEAN DEFAULT FALSE,
-    ADD COLUMN banner_clicks_limit INTEGER DEFAULT 0,
-    ADD COLUMN banner_impressions_limit INTEGER DEFAULT 0,
-    ADD COLUMN daily_ptc_limit INTEGER DEFAULT 0,
-    ADD COLUMN currency VARCHAR(3) DEFAULT 'USD';
-  END IF;
+DO $ BEGIN
+  CREATE TYPE package_banner_status AS ENUM ('pending', 'active', 'completed', 'rejected');
+EXCEPTION
+  WHEN duplicate_object THEN null;
 END $;
 
--- 3. ACTUALIZAR PAQUETES EXISTENTES (solo si no hay paquetes o si queremos resetear)
+-- 2. AGREGAR CAMPOS A TABLA PACKAGES (si la tabla existe)
 -- =============================================================================
 
--- Verificar si ya hay paquetes y cuántos
-DO $
-DECLARE
-  pkg_count INTEGER;
-BEGIN
-  SELECT COUNT(*) INTO pkg_count FROM packages;
-  
-  -- Solo eliminar e insertar si hay más de 4 paquetes o si queremos forzar reset
-  IF pkg_count > 4 THEN
-    DELETE FROM packages;
-  END IF;
-END $;
+-- Agregar campos adicionales a packages - usando IF EXISTS para cada columna
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS min_ptc_visits INTEGER DEFAULT 0;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS min_banner_views INTEGER DEFAULT 0;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS included_ptc_ads INTEGER DEFAULT 0;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS has_clickable_banner BOOLEAN DEFAULT FALSE;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS banner_clicks_limit INTEGER DEFAULT 0;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS banner_impressions_limit INTEGER DEFAULT 0;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS daily_ptc_limit INTEGER DEFAULT 0;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'USD';
 
--- Insertar paquetes solo si no existen los 4 principales
+-- 3. INSERTAR PAQUETES NUEVOS (evitar duplicados)
+-- =============================================================================
+
+-- Solo insertar si no existen los paquetes principales
 INSERT INTO packages (
   name, description, package_type, price, duration_days, currency,
   features, min_ptc_visits, min_banner_views, included_ptc_ads,

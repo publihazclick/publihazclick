@@ -373,10 +373,21 @@ export interface Package {
   package_type: PackageType;
   price: number;
   duration_days: number;
+  currency: string;
   features: string[];
+  // Límites del paquete
+  min_ptc_visits: number;
+  min_banner_views: number;
+  included_ptc_ads: number;
+  has_clickable_banner: boolean;
+  banner_clicks_limit: number;
+  banner_impressions_limit: number;
+  daily_ptc_limit: number;
+  // Límites máximos
   max_ptc_ads: number;
   max_banner_ads: number;
   max_campaigns: number;
+  // Bonificaciones
   ptc_reward_bonus: number;
   banner_reward_bonus: number;
   referral_bonus: number;
@@ -476,4 +487,136 @@ export interface CreateBannerAdData {
   end_date?: string;
   advertiser_id?: string;
   campaign_id?: string;
+}
+
+// ============================================================================
+// Paquetes Actualizados (Precios $25, $50, $100, $150)
+// ============================================================================
+
+export interface PackageExtended extends Package {
+  min_ptc_visits: number;
+  min_banner_views: number;
+  included_ptc_ads: number;
+  has_clickable_banner: boolean;
+  banner_clicks_limit: number;
+  banner_impressions_limit: number;
+  daily_ptc_limit: number;
+  currency: string;
+}
+
+// ============================================================================
+// Sistema de Niveles
+// ============================================================================
+
+export interface UserLevel {
+  id: string;
+  level: number;
+  name: string;
+  min_referrals: number;
+  max_referrals: number | null;
+  referral_bonus_percentage: number;
+  ptc_reward_multiplier: number;
+  daily_ptc_limit: number;
+  description: string | null;
+  icon_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserLevelProgress {
+  current_level: UserLevel;
+  next_level: UserLevel | null;
+  current_referrals: number;
+  referrals_needed: number;
+  progress_percentage: number;
+}
+
+// ============================================================================
+// Donaciones
+// ============================================================================
+
+export interface Donation {
+  id: string;
+  user_id: string | null;
+  username?: string;
+  amount: number;
+  source: 'ptc_click' | 'referral' | 'banner_click' | 'bonus';
+  source_id: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface DonationStats {
+  total_donated: number;
+  total_by_source: Record<string, number>;
+  current_month_donations: number;
+}
+
+// ============================================================================
+// Banners de Paquetes (clickables incluidos en paquete)
+// ============================================================================
+
+export interface PackageBanner {
+  id: string;
+  user_id: string;
+  username?: string;
+  user_package_id: string;
+  package_name?: string;
+  name: string | null;
+  image_url: string;
+  target_url: string;
+  clicks_limit: number;
+  impressions_limit: number;
+  total_clicks: number;
+  total_impressions: number;
+  status: PackageBannerStatus;
+  submitted_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePackageBannerData {
+  name?: string;
+  image_url: string;
+  target_url: string;
+  user_package_id: string;
+}
+
+export interface ModeratePackageBannerData {
+  action: 'approve' | 'reject';
+  reason?: string;
+}
+
+// ============================================================================
+// PTC Tasks Actualizados
+// ============================================================================
+
+export interface PtcTaskExtended extends PtcTaskAdmin {
+  ad_type: PtcAdType;
+  is_demo_only: boolean;
+}
+
+export interface CreatePtcTaskExtendedData extends CreatePtcTaskData {
+  ad_type?: PtcAdType;
+  is_demo_only?: boolean;
+}
+
+// ============================================================================
+// Estadísticas del Sistema
+// ============================================================================
+
+export interface SystemStats {
+  total_users: number;
+  active_advertisers: number;
+  free_users: number;
+  active_ptc_tasks: number;
+  active_banners: number;
+  total_real_balance: number;
+  total_demo_balance: number;
+  total_donations: number;
+  total_referral_relationships: number;
 }
