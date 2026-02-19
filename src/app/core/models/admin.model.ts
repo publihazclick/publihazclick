@@ -15,6 +15,8 @@ export type PackageType = 'basic' | 'premium' | 'enterprise' | 'custom';
 export type UserPackageStatus = 'active' | 'expired' | 'cancelled';
 export type BannerPosition = 'header' | 'sidebar' | 'footer' | 'interstitial';
 export type BannerStatus = 'active' | 'paused' | 'completed' | 'rejected';
+export type PtcAdType = 'mega' | 'standard_400' | 'standard_600' | 'mini';
+export type PackageBannerStatus = 'pending' | 'active' | 'completed' | 'rejected';
 
 // ============================================================================
 // Estadísticas del Dashboard
