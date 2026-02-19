@@ -1,0 +1,512 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black">Gestión de Usuarios</h1>
+      <p class="text-slate-400 text-sm">Administrar usuarios, roles y balances</p>
+    </div>
+    <button
+      (click)="openCreateModal()"
+      class="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors"
+    >
+      <lucide-icon [name]="PlusIcon" class="w-4 h-4"></lucide-icon>
+      Nuevo Usuario
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-200 dark:border-white/5">
+    <div class="flex flex-col md:flex-row gap-4">
+      <!-- Search -->
+      <div class="flex-1 relative">
+        <lucide-icon [name]="SearchIcon" class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></lucide-icon>
+        <input
+          type="text"
+          placeholder="Buscar por nombre, usuario o email..."
+          [value]="searchQuery()"
+          (input)="onSearch($any($event).target.value)"
+          class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+        />
+      </div>
+
+      <!-- Role Filter -->
+      <div class="flex items-center gap-2">
+        <lucide-icon [name]="FilterIcon" class="w-5 h-5 text-slate-400"></lucide-icon>
+        <select
+          [value]="selectedRole()"
+          (change)="onRoleChange($any($event).target.value)"
+          class="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+        >
+          @for (role of roles; track role.value) {
+            <option [value]="role.value">{{ role.label }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Status Filter -->
+      <select
+        [value]="selectedStatus()"
+        (change)="onStatusChange($any($event).target.value)"
+        class="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+      >
+        @for (status of statuses; track status.value) {
+          <option [value]="status.value">{{ status.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-20">
+      <lucide-icon [name]="Loader2Icon" class="w-10 h-10 text-primary animate-spin mb-4"></lucide-icon>
+      <p class="text-slate-400 text-sm font-medium">Cargando usuarios...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !loading()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-6 text-center">
+      <lucide-icon [name]="AlertCircleIcon" class="w-10 h-10 text-rose-500 mx-auto mb-3"></lucide-icon>
+      <p class="text-rose-500 font-medium mb-3">{{ error() }}</p>
+      <button
+        (click)="loadUsers()"
+        class="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium transition-colors"
+      >
+        Reintentar
+      </button>
+    </div>
+  }
+
+  @if (!loading() && !error()) {
+    <!-- Desktop Table -->
+    <div class="hidden md:block bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-white/5 text-xs font-black uppercase text-slate-500 tracking-widest">
+              <th class="px-6 py-4">Usuario</th>
+              <th class="px-6 py-4">Rol</th>
+              <th class="px-6 py-4">Balance</th>
+              <th class="px-6 py-4">Estado</th>
+              <th class="px-6 py-4">Registro</th>
+              <th class="px-6 py-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+            @for (user of filteredUsers(); track user.id) {
+              <tr class="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                      @if (user.avatar_url) {
+                        <img [src]="user.avatar_url" [alt]="user.username" class="w-full h-full rounded-full object-cover">
+                      } @else {
+                        <lucide-icon [name]="UserIcon" class="w-5 h-5 text-primary"></lucide-icon>
+                      }
+                    </div>
+                    <div>
+                      <div class="font-bold">{{ user.username }}</div>
+                      <div class="text-xs text-slate-400">{{ user.email }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
+                    {{ getRoleLabel(user.role) }}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-bold">{{ formatCurrency(user.balance) }}</div>
+                </td>
+                <td class="px-6 py-4">
+                  @if (user.is_active) {
+                    <span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded text-xs font-bold uppercase">
+                      Activo
+                    </span>
+                  } @else {
+                    <span class="px-2 py-1 bg-rose-500/10 text-rose-500 rounded text-xs font-bold uppercase">
+                      Inactivo
+                    </span>
+                  }
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-400">
+                  {{ formatDate(user.created_at) }}
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex justify-end gap-2">
+                    <button
+                      (click)="openViewModal(user)"
+                      class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      title="Ver detalles"
+                    >
+                      <lucide-icon [name]="UsersIcon" class="w-4 h-4"></lucide-icon>
+                    </button>
+                    <button
+                      (click)="openEditModal(user)"
+                      class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      title="Editar"
+                    >
+                      <lucide-icon [name]="Edit3Icon" class="w-4 h-4"></lucide-icon>
+                    </button>
+                    <button
+                      (click)="toggleUserStatus(user)"
+                      class="p-2 rounded-lg transition-colors"
+                      [class]="user.is_active ? 'text-rose-500 hover:bg-rose-500/10' : 'text-emerald-500 hover:bg-emerald-500/10'"
+                      [title]="user.is_active ? 'Desactivar' : 'Activar'"
+                    >
+                      <lucide-icon [name]="user.is_active ? UserXIcon : UserCheckIcon" class="w-4 h-4"></lucide-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div class="md:hidden space-y-4">
+      @for (user of filteredUsers(); track user.id) {
+        <div class="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-200 dark:border-white/5">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                @if (user.avatar_url) {
+                  <img [src]="user.avatar_url" [alt]="user.username" class="w-full h-full rounded-full object-cover">
+                } @else {
+                  <lucide-icon [name]="UserIcon" class="w-5 h-5 text-primary"></lucide-icon>
+                }
+              </div>
+              <div>
+                <div class="font-bold">{{ user.username }}</div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
+                  {{ getRoleLabel(user.role) }}
+                </span>
+              </div>
+            </div>
+            @if (user.is_active) {
+              <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[10px] font-bold uppercase">Activo</span>
+            } @else {
+              <span class="px-2 py-0.5 bg-rose-500/10 text-rose-500 rounded text-[10px] font-bold uppercase">Inactivo</span>
+            }
+          </div>
+
+          <div class="space-y-2 text-sm mb-3">
+            <div class="flex justify-between">
+              <span class="text-slate-400">Email:</span>
+              <span class="truncate max-w-[200px]">{{ user.email }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Balance:</span>
+              <span class="font-bold">{{ formatCurrency(user.balance) }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Registro:</span>
+              <span>{{ formatDate(user.created_at) }}</span>
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-3 border-t border-slate-100 dark:border-white/5">
+            <button
+              (click)="openViewModal(user)"
+              class="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-white/5 hover:bg-primary/10 rounded-lg transition-colors"
+            >
+              Ver
+            </button>
+            <button
+              (click)="openEditModal(user)"
+              class="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-white/5 hover:bg-primary/10 rounded-lg transition-colors"
+            >
+              Editar
+            </button>
+            <button
+              (click)="toggleUserStatus(user)"
+              class="flex-1 py-2 text-xs font-bold uppercase"
+              [class]="user.is_active ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'"
+            >
+              {{ user.is_active ? 'Desactivar' : 'Activar' }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Empty State -->
+    @if (filteredUsers().length === 0) {
+      <div class="bg-white dark:bg-card-dark p-12 rounded-2xl border border-slate-200 dark:border-white/5 text-center">
+        <lucide-icon [name]="UsersIcon" class="w-12 h-12 text-slate-400 mx-auto mb-4"></lucide-icon>
+        <h3 class="font-bold text-lg mb-2">No se encontraron usuarios</h3>
+        <p class="text-slate-400 text-sm">Intenta ajustar los filtros de búsqueda</p>
+      </div>
+    }
+
+    <!-- Pagination -->
+    @if (totalPages() > 1) {
+      <div class="flex items-center justify-between pt-4">
+        <div class="text-sm text-slate-400">
+          Mostrando {{ ((currentPage() - 1) * pageSize()) + 1 }} - {{ Math.min(currentPage() * pageSize(), totalCount()) }} de {{ totalCount() }} usuarios
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            (click)="prevPage()"
+            [disabled]="currentPage() === 1"
+            class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <lucide-icon [name]="ChevronLeftIcon" class="w-5 h-5"></lucide-icon>
+          </button>
+
+          <span class="text-sm font-medium px-4">
+            Página {{ currentPage() }} de {{ totalPages() }}
+          </span>
+
+          <button
+            (click)="nextPage()"
+            [disabled]="currentPage() === totalPages()"
+            class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <lucide-icon [name]="ChevronRightIcon" class="w-5 h-5"></lucide-icon>
+          </button>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- Modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-card-dark rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
+        <!-- Modal Header -->
+        <div class="p-6 border-b border-slate-200 dark:border-white/5 flex items-center justify-between sticky top-0 bg-white dark:bg-card-dark">
+          <h2 class="text-xl font-bold">
+            @if (modalMode() === 'create') {
+              Crear Usuario
+            } @else if (modalMode() === 'edit') {
+              Editar Usuario
+            } @else {
+              Detalles del Usuario
+            }
+          </h2>
+          <button (click)="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors">
+            <lucide-icon [name]="XIcon" class="w-5 h-5"></lucide-icon>
+          </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-6 space-y-6">
+          @if (modalMode() !== 'view') {
+            <form (submit)="$event.preventDefault(); saveUser()" class="space-y-4">
+              <!-- Email (solo en create) -->
+              @if (modalMode() === 'create') {
+                <div>
+                  <label class="block text-sm font-medium mb-1">Email *</label>
+                  <input
+                    type="email"
+                    [(ngModel)]="formData().email"
+                    name="email"
+                    required
+                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="usuario@ejemplo.com"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-1">Contraseña *</label>
+                  <input
+                    type="password"
+                    [(ngModel)]="formData().password"
+                    name="password"
+                    required
+                    minlength="6"
+                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+              }
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Usuario</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formData().username"
+                    name="username"
+                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="nombre_usuario"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-1">Nombre completo</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formData().full_name"
+                    name="full_name"
+                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Nombre Apellido"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Rol</label>
+                  <select
+                    [(ngModel)]="formData().role"
+                    name="role"
+                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    @for (role of roles | slice:1; track role.value) {
+                      <option [value]="role.value">{{ role.label }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-1">Balance inicial</label>
+                  <input
+                    type="number"
+                    [(ngModel)]="formData().balance"
+                    name="balance"
+                    min="0"
+                    class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="formData().is_active"
+                  name="is_active"
+                  id="is_active"
+                  class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                <label for="is_active" class="text-sm">Usuario activo</label>
+              </div>
+
+              <!-- Balance update section (only in edit mode) -->
+              @if (modalMode() === 'edit') {
+                <div class="border-t border-slate-200 dark:border-white/5 pt-4 mt-4">
+                  <h4 class="font-bold mb-3">Actualizar Balance</h4>
+                  <div class="flex gap-2">
+                    <select
+                      [(ngModel)]="balanceOperation"
+                      name="balanceOperation"
+                      class="px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                    >
+                      <option value="add">Agregar</option>
+                      <option value="subtract">Restar</option>
+                      <option value="set">Establecer</option>
+                    </select>
+                    <input
+                      type="number"
+                      [(ngModel)]="balanceAmount"
+                      name="balanceAmount"
+                      min="0"
+                      class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                      placeholder="Monto"
+                    />
+                    <input
+                      type="text"
+                      [(ngModel)]="balanceReason"
+                      name="balanceReason"
+                      class="flex-2 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                      placeholder="Motivo (requerido)"
+                    />
+                    <button
+                      type="button"
+                      (click)="updateBalance()"
+                      [disabled]="!balanceAmount() || !balanceReason() || saving()"
+                      class="px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      Actualizar
+                    </button>
+                  </div>
+                </div>
+              }
+            </form>
+          } @else {
+            <!-- View Mode -->
+            @if (selectedUser(); as user) {
+              <div class="space-y-4">
+                <div class="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-white/5">
+                  <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                    @if (user.avatar_url) {
+                      <img [src]="user.avatar_url" [alt]="user.username" class="w-full h-full rounded-full object-cover">
+                    } @else {
+                      <lucide-icon [name]="UserIcon" class="w-8 h-8 text-primary"></lucide-icon>
+                    }
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-bold">{{ user.full_name || user.username }}</h3>
+                    <p class="text-slate-400">{{ user.email }}</p>
+                    <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
+                      {{ getRoleLabel(user.role) }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <span class="text-slate-400 text-sm">Usuario</span>
+                    <p class="font-bold">{{ user.username }}</p>
+                  </div>
+                  <div>
+                    <span class="text-slate-400 text-sm">Balance</span>
+                    <p class="font-bold text-primary">{{ formatCurrency(user.balance) }}</p>
+                  </div>
+                  <div>
+                    <span class="text-slate-400 text-sm">Estado</span>
+                    <p class="font-bold" [class]="user.is_active ? 'text-emerald-500' : 'text-rose-500'">
+                      {{ user.is_active ? 'Activo' : 'Inactivo' }}
+                    </p>
+                  </div>
+                  <div>
+                    <span class="text-slate-400 text-sm">Registro</span>
+                    <p class="font-bold">{{ formatDate(user.created_at) }}</p>
+                  </div>
+                  <div>
+                    <span class="text-slate-400 text-sm">Total Ganado</span>
+                    <p class="font-bold">{{ formatCurrency(user.total_earned) }}</p>
+                  </div>
+                  <div>
+                    <span class="text-slate-400 text-sm">Referidos</span>
+                    <p class="font-bold">{{ user.total_referrals || 0 }}</p>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Modal Footer -->
+        @if (modalMode() !== 'view') {
+          <div class="p-6 border-t border-slate-200 dark:border-white/5 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-card-dark">
+            <button
+              (click)="closeModal()"
+              class="px-4 py-2.5 border border-slate-200 dark:border-white/10 rounded-xl font-bold text-sm hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              (click)="saveUser()"
+              [disabled]="saving()"
+              class="px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+            >
+              @if (saving()) {
+                <lucide-icon [name]="Loader2Icon" class="w-4 h-4 animate-spin"></lucide-icon>
+                Guardando...
+              } @else {
+                {{ modalMode() === 'create' ? 'Crear Usuario' : 'Guardar Cambios' }}
+              }
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

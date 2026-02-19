@@ -1,27 +1,30 @@
-<aside class="w-64 bg-sidebar-dark text-white flex-shrink-0 flex flex-col fixed inset-y-0 left-0 z-50">
-  <div class="p-6 flex items-center gap-2 border-b border-white/10">
-    <span class="text-2xl font-bold italic text-white uppercase tracking-tighter">Publihaz<span class="text-primary">Clik</span></span>
+<aside 
+  class="w-64 bg-sidebar-dark text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300 lg:translate-x-0"
+  [class.-translate-x-full]="!sidebarOpen()"
+>
+  <div class="p-4 lg:p-6 flex items-center gap-2 border-b border-white/10">
+    <img src="/logo.webp" alt="PublihazClik" class="h-8 lg:h-10 w-auto">
   </div>
   <div class="sidebar-scroll overflow-y-auto flex-1 p-4">
-    <div class="flex flex-col items-center mb-8 py-6 border-b border-white/10">
-      <div class="w-16 h-16 bg-gradient-to-tr from-primary to-blue-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-primary/20 rotate-3">
-        <lucide-icon name="shield" class="text-black text-3xl font-bold -rotate-3" style="width: 36px; height: 36px;"></lucide-icon>
+    <div class="flex flex-col items-center mb-6 lg:mb-8 py-4 lg:py-6 border-b border-white/10">
+      <div class="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-tr from-primary to-blue-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2 lg:mb-3 shadow-lg shadow-primary/20 rotate-3">
+        <lucide-icon name="shield" class="text-black text-2xl lg:text-3xl font-bold -rotate-3" style="width: 28px; height: 28px;"></lucide-icon>
       </div>
       <h3 class="font-bold text-center text-sm">Admin Central</h3>
-      <p class="text-[10px] text-primary mt-1 font-bold uppercase tracking-widest">Master Administrator</p>
+      <p class="text-[10px] text-primary mt-1 font-bold uppercase tracking-widest">Master Admin</p>
     </div>
-    <nav class="space-y-6">
+    <nav class="space-y-4 lg:space-y-6">
       <div>
-        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-4 px-2 tracking-widest">Control Panel</h4>
+        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Control Panel</h4>
         <ul class="space-y-1">
           <li>
             <a routerLink="/admin" routerLinkActive="bg-primary/10 text-primary border border-primary/20" [routerLinkActiveOptions]="{exact: true}" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <lucide-icon name="layout-dashboard" class="w-5 h-5"></lucide-icon> Dashboard Overview
+              <lucide-icon name="layout-dashboard" class="w-5 h-5"></lucide-icon> <span class="hidden sm:inline">Dashboard</span> Overview
             </a>
           </li>
           <li>
             <a routerLink="/admin/users" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <lucide-icon name="users" class="w-5 h-5"></lucide-icon> User Management
+              <lucide-icon name="users" class="w-5 h-5"></lucide-icon> <span class="hidden sm:inline">User </span>Management
             </a>
           </li>
           <li>
@@ -30,14 +33,24 @@
             </a>
           </li>
           <li>
+            <a routerLink="/admin/ads" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
+              <lucide-icon name="megaphone" class="w-5 h-5"></lucide-icon> <span class="hidden sm:inline">Ad </span>Management
+            </a>
+          </li>
+          <li>
+            <a routerLink="/admin/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
+              <lucide-icon name="package" class="w-5 h-5"></lucide-icon> <span class="hidden sm:inline">Packages</span>
+            </a>
+          </li>
+          <li>
             <a routerLink="/admin/reports" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <lucide-icon name="bar-chart-3" class="w-5 h-5"></lucide-icon> Financial Reports
+              <lucide-icon name="chart-bar" class="w-5 h-5"></lucide-icon> <span class="hidden sm:inline">Financial </span>Reports
             </a>
           </li>
         </ul>
       </div>
       <div>
-        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-4 px-2 tracking-widest">System</h4>
+        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">System</h4>
         <ul class="space-y-1">
           <li>
             <a routerLink="/admin/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
@@ -64,59 +77,79 @@
       </div>
     </div>
     <button (click)="logout()" class="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold py-2.5 px-4 rounded-lg transition-all text-xs border border-rose-500/20 flex items-center justify-center gap-2 uppercase tracking-wider">
-      <lucide-icon name="log-out" class="w-4 h-4"></lucide-icon> Sign Out
+      <lucide-icon name="log-out" class="w-4 h-4"></lucide-icon> <span class="hidden sm:inline">Sign </span>Out
     </button>
   </div>
 </aside>
 
-<main class="ml-64 flex-1 flex flex-col">
-  <header class="h-20 bg-white/80 dark:bg-card-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center px-10 sticky top-0 z-40">
+<!-- Mobile overlay -->
+@if (sidebarOpen()) {
+  <div 
+    class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+    (click)="toggleSidebar()"
+  ></div>
+}
+
+<main class="lg:ml-64 flex-1 flex flex-col min-h-screen">
+  <!-- Header -->
+  <header class="h-16 lg:h-20 bg-white/80 dark:bg-card-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center px-4 lg:px-10 sticky top-0 z-40">
+    <!-- Mobile menu button -->
+    <button 
+      (click)="toggleSidebar()"
+      class="lg:hidden p-2 mr-3 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
+    >
+      <lucide-icon name="menu" class="w-6 h-6"></lucide-icon>
+    </button>
+
     <div class="flex-1">
-      <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">ADMINISTRATOR DASHBOARD</h1>
-      <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Platform oversight & financial control</p>
+      <h1 class="text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tight">ADMIN DASHBOARD</h1>
+      <p class="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Platform oversight & financial control</p>
     </div>
-    <div class="flex items-center gap-6">
-      <div class="relative">
+    <div class="flex items-center gap-3 lg:gap-6">
+      <div class="relative hidden sm:block">
         <button class="p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all relative">
           <lucide-icon name="bell" class="w-5 h-5"></lucide-icon>
           <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-primary border-2 border-white dark:border-card-dark rounded-full"></span>
         </button>
       </div>
-      <div class="h-8 w-px bg-slate-200 dark:bg-white/10"></div>
-      <div class="flex items-center gap-3">
-        <div class="text-right hidden sm:block">
+      <div class="h-6 lg:h-8 w-px bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
+      <div class="flex items-center gap-2 lg:gap-3">
+        <div class="text-right hidden md:block">
           <p class="text-xs font-bold">System Status</p>
           <p class="text-[10px] text-emerald-500 flex items-center justify-end gap-1 font-bold uppercase">
             <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Operational
           </p>
         </div>
-        <div class="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center border-2 border-primary/20">
-          <lucide-icon name="shield" class="text-slate-600 dark:text-slate-400 w-5 h-5"></lucide-icon>
+        <div class="w-8 lg:w-10 h-8 lg:h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center border-2 border-primary/20">
+          <lucide-icon name="shield" class="text-slate-600 dark:text-slate-400 w-4 lg:w-5 h-4 lg:h-5"></lucide-icon>
         </div>
       </div>
     </div>
   </header>
 
-  <div class="p-10 max-w-7xl mx-auto w-full">
+  <!-- Content -->
+  <div class="p-4 lg:p-10 max-w-7xl mx-auto w-full">
     <router-outlet></router-outlet>
   </div>
 
-  <footer class="mt-auto p-10 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-200 dark:border-white/5">
-    <p>© 2024 PUBLIHAZCLIK ADMIN CONSOLE v2.4.0. All systems operational.</p>
+  <!-- Footer -->
+  <footer class="mt-auto p-4 lg:p-10 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 border-t border-slate-200 dark:border-white/5 gap-2">
+    <p>© 2024 PUBLIHAZCLIK ADMIN v2.4.0</p>
     <div class="flex gap-4">
-      <a class="hover:text-primary transition-colors" href="#">Security Protocol</a>
-      <a class="hover:text-primary transition-colors" href="#">Terms of Governance</a>
+      <a class="hover:text-primary transition-colors" href="#">Security</a>
+      <a class="hover:text-primary transition-colors" href="#">Terms</a>
     </div>
   </footer>
 </main>
 
-<div class="fixed bottom-8 right-8 z-50">
-  <button (click)="toggleDarkMode()" class="group relative w-14 h-14 rounded-2xl bg-white dark:bg-card-dark shadow-2xl border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-800 dark:text-primary transition-all hover:scale-110 active:scale-95">
+<!-- Dark mode toggle -->
+<div class="fixed bottom-6 right-6 z-50">
+  <button (click)="toggleDarkMode()" class="group relative w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-white dark:bg-card-dark shadow-xl border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-800 dark:text-primary transition-all hover:scale-110 active:scale-95">
     @if (isDarkMode) {
-      <lucide-icon name="sun" class="w-6 h-6"></lucide-icon>
+      <lucide-icon name="sun" class="w-5 lg:w-6 h-5 lg:h-6"></lucide-icon>
     } @else {
-      <lucide-icon name="moon" class="w-6 h-6"></lucide-icon>
+      <lucide-icon name="moon" class="w-5 lg:w-6 h-5 lg:h-6"></lucide-icon>
     }
-    <span class="absolute right-full mr-4 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Toggle Visual Mode</span>
+    <span class="absolute right-full mr-3 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Toggle Mode</span>
   </button>
 </div>

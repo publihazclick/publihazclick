@@ -1,0 +1,352 @@
+<div class="space-y-6 lg:space-y-8">
+  <!-- Welcome Banner -->
+  <div class="bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 p-6 lg:p-8 rounded-2xl border border-primary/20 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+    <div class="relative z-10">
+      <div class="flex items-center gap-2 mb-2">
+        <lucide-icon name="sparkles" class="w-5 h-5 text-primary"></lucide-icon>
+        <span class="text-xs font-bold text-primary uppercase tracking-wider">¡Bienvenido de vuelta!</span>
+      </div>
+      <h2 class="text-2xl lg:text-3xl font-black text-slate-800 dark:text-white mb-2">Sigue ganando hoy</h2>
+      <p class="text-sm text-slate-600 dark:text-slate-400 max-w-xl">
+        Has completado <span class="text-primary font-bold">{{ todayClicks }}</span> de <span class="text-primary font-bold">{{ dailyGoal }}</span> clicks para tu meta diaria.
+        ¡Solo <span class="text-accent font-bold">{{ dailyGoal - todayClicks }}</span> más para obtener el bonus!
+      </p>
+      <div class="mt-4 flex items-center gap-4">
+        <div class="flex-1 max-w-xs">
+          <div class="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1">
+            <span class="text-slate-500">Progreso Diario</span>
+            <span class="text-primary">{{ progressPercentage | number:'1.0-0' }}%</span>
+          </div>
+          <div class="h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500" [style.width.%]="progressPercentage"></div>
+          </div>
+        </div>
+        <a routerLink="/dashboard/ads" class="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary/90 text-black font-bold py-2.5 px-5 rounded-xl transition-all text-sm">
+          <lucide-icon name="mouse-pointer-click" class="w-4 h-4"></lucide-icon>
+          Ver Anuncios
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+    <!-- Balance Disponible -->
+    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/20 transition-colors">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-2 bg-primary/10 text-primary rounded-lg">
+          <lucide-icon name="wallet" class="w-5 h-5"></lucide-icon>
+        </div>
+        <a routerLink="/dashboard/wallet" class="text-[10px] text-primary font-bold uppercase tracking-wider hover:underline">Ver Detalles →</a>
+      </div>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Balance Disponible</h3>
+      <div class="flex items-baseline gap-2">
+        <span class="text-2xl font-black">${{ balance | number }}</span>
+        <span class="text-xs text-slate-400">COP</span>
+      </div>
+      <p class="text-[10px] text-slate-500 mt-1">Pendiente: ${{ pendingBalance | number }} COP</p>
+    </div>
+
+    <!-- Total Ganado -->
+    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-emerald-500/20 transition-colors">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+          <lucide-icon name="dollar-sign" class="w-5 h-5"></lucide-icon>
+        </div>
+        <div class="flex items-center gap-1 text-emerald-500 text-xs font-bold">
+          <lucide-icon name="trending-up" class="w-3 h-3"></lucide-icon> +15%
+        </div>
+      </div>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Ganado</h3>
+      <div class="flex items-baseline gap-2">
+        <span class="text-2xl font-black">${{ totalEarned | number }}</span>
+        <span class="text-xs text-slate-400">COP</span>
+      </div>
+      <div class="flex items-end gap-0.5 h-6 mt-2">
+        <div class="w-1 bg-emerald-500/20 h-3 rounded-full"></div>
+        <div class="w-1 bg-emerald-500/20 h-4 rounded-full"></div>
+        <div class="w-1 bg-emerald-500 h-6 rounded-full"></div>
+        <div class="w-1 bg-emerald-500 h-5 rounded-full"></div>
+        <div class="w-1 bg-emerald-500/20 h-2 rounded-full"></div>
+      </div>
+    </div>
+
+    <!-- Ganancias por Referidos -->
+    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-accent/20 transition-colors">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-2 bg-accent/10 text-accent rounded-lg">
+          <lucide-icon name="users" class="w-5 h-5"></lucide-icon>
+        </div>
+        <a routerLink="/dashboard/referrals" class="text-[10px] text-accent font-bold uppercase tracking-wider hover:underline">Mis Referidos →</a>
+      </div>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Ganancias Referidos</h3>
+      <div class="flex items-baseline gap-2">
+        <span class="text-2xl font-black">${{ referralEarnings | number }}</span>
+        <span class="text-xs text-slate-400">COP</span>
+      </div>
+      <div class="mt-2 flex items-center gap-1">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent/10 text-accent">
+          Nivel 5
+        </span>
+        <span class="text-[10px] text-slate-500">12 referidos activos</span>
+      </div>
+    </div>
+
+    <!-- Clicks de Hoy -->
+    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm hover:border-blue-500/20 transition-colors">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+          <lucide-icon name="mouse-pointer-click" class="w-5 h-5"></lucide-icon>
+        </div>
+        <div class="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 text-[10px] rounded-full font-bold">HOY</div>
+      </div>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Clicks Realizados</h3>
+      <div class="flex items-baseline gap-2">
+        <span class="text-2xl font-black">{{ todayClicks }}</span>
+        <span class="text-xs text-slate-400">/ {{ dailyGoal }} meta</span>
+      </div>
+      <p class="text-[10px] text-blue-500 mt-1">Cada click vale $300 - $500 COP</p>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+
+    <!-- Left Column (2/3) -->
+    <div class="xl:col-span-2 space-y-6 lg:space-y-8">
+
+      <!-- Available Ads Section -->
+      <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
+        <div class="p-4 lg:p-6 border-b border-slate-100 dark:border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <lucide-icon name="mouse-pointer-click" class="w-5 h-5 text-primary"></lucide-icon>
+              <h3 class="font-bold text-lg">Anuncios Disponibles</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Haz click y gana dinero instantáneamente</p>
+          </div>
+          <a routerLink="/dashboard/ads" class="inline-flex items-center gap-1 text-primary text-xs font-bold uppercase hover:underline">
+            Ver Todos <lucide-icon name="chevron-right" class="w-4 h-4"></lucide-icon>
+          </a>
+        </div>
+
+        <div class="divide-y divide-slate-100 dark:divide-white/5">
+          @for (ad of availableAds; track ad.id) {
+            <div class="p-4 lg:p-6 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 border border-primary/10">
+                  @if (ad.type === 'video') {
+                    <lucide-icon name="play" class="w-5 h-5 lg:w-6 lg:h-6 text-primary"></lucide-icon>
+                  } @else if (ad.type === 'microsite') {
+                    <lucide-icon name="external-link" class="w-5 h-5 lg:w-6 lg:h-6 text-primary"></lucide-icon>
+                  } @else {
+                    <lucide-icon name="image" class="w-5 h-5 lg:w-6 lg:h-6 text-primary"></lucide-icon>
+                  }
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 class="font-bold text-sm lg:text-base truncate">{{ ad.title }}</h4>
+                      <p class="text-xs text-slate-500">{{ ad.description }}</p>
+                      <div class="flex items-center gap-3 mt-1">
+                        <span class="text-[10px] text-slate-400 flex items-center gap-1">
+                          <lucide-icon name="clock" class="w-3 h-3"></lucide-icon>
+                          {{ ad.duration }}s
+                        </span>
+                        <span class="text-[10px] text-slate-400">Por {{ ad.advertiser }}</span>
+                      </div>
+                    </div>
+
+                    <div class="text-right">
+                      <span class="text-lg lg:text-xl font-black text-primary">+${{ ad.reward }}</span>
+                      <span class="text-[10px] text-slate-400 block">COP</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button class="ml-2 p-3 bg-primary/10 hover:bg-primary text-primary hover:text-black rounded-xl transition-all flex-shrink-0">
+                  <lucide-icon name="arrow-right" class="w-5 h-5"></lucide-icon>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-500"><span class="font-bold text-slate-800 dark:text-white">{{ availableAds.length }}</span> anuncios disponibles</span>
+            <button class="text-primary font-bold text-xs uppercase tracking-wider hover:underline">
+              Cargar Más
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Earnings Chart -->
+      <div class="bg-white dark:bg-card-dark p-4 lg:p-8 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="font-bold text-lg">Historial de Ganancias</h3>
+            <p class="text-xs text-slate-400">Últimos 7 días de actividad</p>
+          </div>
+          <select class="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-white/10 rounded-lg text-xs font-bold focus:ring-primary focus:border-primary px-3 py-2">
+            <option>Últimos 7 días</option>
+            <option>Últimos 30 días</option>
+            <option>Este mes</option>
+          </select>
+        </div>
+
+        <div class="h-48 lg:h-56 flex items-end justify-between gap-2 lg:gap-4 px-2">
+          @for (day of clicksHistory; track day.day) {
+            <div class="flex-1 flex flex-col items-center gap-2 group">
+              <!-- Tooltip -->
+              <div class="opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                <div class="bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap">
+                  ${{ day.earnings | number }} COP
+                </div>
+              </div>
+
+              <div class="w-full flex justify-center items-end h-32 lg:h-40">
+                <div class="w-8 lg:w-12 bg-gradient-to-t from-primary/80 to-primary rounded-t-lg transition-all duration-300 group-hover:from-accent/80 group-hover:to-accent"
+                     [style.height.%]="(day.earnings / 5000) * 100"></div>
+              </div>
+              <span class="text-[10px] font-bold text-slate-400">{{ day.day }}</span>
+              <span class="text-[10px] text-slate-500">{{ day.clicks }} clicks</span>
+            </div>
+          }
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-slate-100 dark:border-white/5 flex items-center gap-6">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-primary"></span>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tus Clicks</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-accent"></span>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Referidos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column (1/3) -->
+    <div class="space-y-6 lg:space-y-8">
+      <!-- Quick Actions -->
+      <div class="bg-white dark:bg-card-dark p-4 lg:p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <h3 class="font-bold text-base mb-4">Acciones Rápidas</h3>
+
+        <div class="space-y-3">
+          <a routerLink="/dashboard/ads" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all group">
+            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary">
+              <lucide-icon name="mouse-pointer-click" class="w-5 h-5 text-primary group-hover:text-black"></lucide-icon>
+            </div>
+            <div class="flex-1">
+              <p class="font-bold text-sm">Ver Anuncios</p>
+              <p class="text-[10px] text-slate-500">Gana por cada click</p>
+            </div>
+            <lucide-icon name="chevron-right" class="w-4 h-4 text-slate-400"></lucide-icon>
+          </a>
+
+          <a routerLink="/dashboard/wallet/withdraw" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-accent/10 border border-transparent hover:border-accent/20 transition-all group">
+            <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent">
+              <lucide-icon name="download" class="w-5 h-5 text-accent group-hover:text-white"></lucide-icon>
+            </div>
+            <div class="flex-1">
+              <p class="font-bold text-sm">Solicitar Retiro</p>
+              <p class="text-[10px] text-slate-500">Mínimo $20,000 COP</p>
+            </div>
+            <lucide-icon name="chevron-right" class="w-4 h-4 text-slate-400"></lucide-icon>
+          </a>
+
+          <a routerLink="/dashboard/referrals" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 transition-all group">
+            <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500">
+              <lucide-icon name="users" class="w-5 h-5 text-emerald-500 group-hover:text-white"></lucide-icon>
+            </div>
+            <div class="flex-1">
+              <p class="font-bold text-sm">Invitar Amigos</p>
+              <p class="text-[10px] text-slate-500">Gana hasta 10% por referido</p>
+            </div>
+            <lucide-icon name="chevron-right" class="w-4 h-4 text-slate-400"></lucide-icon>
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="bg-white dark:bg-card-dark p-4 lg:p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-base">Actividad Reciente</h3>
+          <a routerLink="/dashboard/history" class="text-[10px] text-primary font-bold uppercase hover:underline">Ver Todo</a>
+        </div>
+
+        <div class="space-y-3">
+          @for (activity of recentActivity; track activity.description) {
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  [class]="activity.type === 'click' ? 'bg-primary/10' :
+                           activity.type === 'referral' ? 'bg-accent/10' :
+                           activity.type === 'bonus' ? 'bg-amber-500/10' : 'bg-rose-500/10'">
+                <lucide-icon
+                  [name]="activity.type === 'click' ? 'mouse-pointer-click' :
+                          activity.type === 'referral' ? 'users' :
+                          activity.type === 'bonus' ? 'gift' : 'arrow-up-right'"
+                  class="w-4 h-4"
+                  [class]="activity.type === 'click' ? 'text-primary' :
+                          activity.type === 'referral' ? 'text-accent' :
+                          activity.type === 'bonus' ? 'text-amber-500' : 'text-rose-500'">
+                </lucide-icon>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">{{ activity.description }}</p>
+                <p class="text-[10px] text-slate-500">{{ activity.time }}</p>
+              </div>
+
+              <span class="font-bold text-sm flex-shrink-0"
+                    [class]="activity.reward > 0 ? 'text-emerald-500' : 'text-rose-500'">
+                {{ activity.reward > 0 ? '+' : '' }}{{ activity.reward | number }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Referral Tiers -->
+      <div class="bg-gradient-to-br from-sidebar-dark to-slate-900 p-4 lg:p-6 rounded-2xl text-white shadow-xl">
+        <div class="flex items-center gap-2 mb-4">
+          <lucide-icon name="target" class="text-primary w-5 h-5"></lucide-icon>
+          <h3 class="font-bold text-base">Niveles de Referidos</h3>
+        </div>
+
+        <p class="text-xs text-slate-400 mb-4">Gana un porcentaje de las ganancias de tus referidos hasta 5 niveles</p>
+
+        <div class="space-y-2">
+          @for (tier of referralTiers; track tier.level) {
+            <div class="flex items-center justify-between p-2 rounded-lg"
+                  [class.bg-white/10]="tier.active"
+                  [class.opacity-50]="!tier.active">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">
+                  {{ tier.level }}
+                </span>
+                <span class="text-xs font-medium">Nivel {{ tier.level }}</span>
+              </div>
+
+              <span class="text-sm font-bold"
+                    [class.text-primary]="tier.active"
+                    [class.text-slate-500]="!tier.active">
+                {{ tier.percentage }}%
+              </span>
+            </div>
+          }
+        </div>
+
+        <a routerLink="/dashboard/referrals" class="mt-4 w-full py-3 bg-primary/20 hover:bg-primary hover:text-black rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+          <lucide-icon name="users" class="w-4 h-4"></lucide-icon>
+          Ver Mis Referidos
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

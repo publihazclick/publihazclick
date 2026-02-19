@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -29,8 +29,13 @@ export class AdminLayoutComponent {
 
   isDarkMode = true;
   serverLoad = 42;
+  protected readonly sidebarOpen = signal(false);
 
   constructor(private readonly authService: AuthService, private readonly router: Router) {}
+
+  toggleSidebar(): void {
+    this.sidebarOpen.update(v => !v);
+  }
 
   toggleDarkMode(): void {
     this.isDarkMode = !this.isDarkMode;

@@ -1,12 +1,54 @@
 <header class="bg-black border-b border-white/10 sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between">
-    <!-- Logo -->
-    <a routerLink="/" class="flex items-center space-x-2 group cursor-pointer">
-      <span class="text-xl md:text-2xl font-black tracking-tighter text-white">
-        Publihaz<span class="text-cyan-500 italic group-hover:text-cyan-400 transition-colors">Clik</span>
-      </span>
-      <span class="material-symbols-outlined text-cyan-500 hidden md:block">trending_up</span>
-    </a>
+  <div class="max-w-7xl mx-auto px-2 md:px-6 h-16 md:h-20 flex items-center justify-between">
+    <!-- Logo + Mobile Quick Actions -->
+    <div class="flex items-center space-x-2 md:space-x-4">
+      <a routerLink="/" class="flex items-center space-x-2 group cursor-pointer">
+        <img src="/logo.webp" alt="PublihazClik" class="h-8 md:h-10 w-auto">
+      </a>
+
+      <!-- Mobile Quick Stats (visible only on mobile) -->
+      <div class="flex items-center justify-center space-x-1 md:hidden">
+        <!-- Mobile Currency (compact) -->
+        <div class="relative">
+          <button 
+            (click)="toggleCurrencyMenu()"
+            class="flex items-center space-x-1 bg-white/10 hover:bg-white/20 text-white px-2 py-1.5 rounded-lg transition-colors"
+          >
+            <span class="material-symbols-outlined text-base">currency_exchange</span>
+            <span class="text-[10px] font-bold">{{ selectedCurrency().code }}</span>
+            <span class="material-symbols-outlined text-xs">expand_more</span>
+          </button>
+          
+          <!-- Currency Dropdown Mobile -->
+          @if (currencyMenuOpen()) {
+            <div class="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden z-50 min-w-[140px]">
+              @for (currency of currencies; track currency.code) {
+                <button 
+                  (click)="selectCurrency(currency)"
+                  class="w-full px-3 py-2 text-center text-white hover:bg-cyan-600 transition-colors flex items-center justify-between text-xs"
+                  [class.bg-cyan-600]="selectedCurrency().code === currency.code"
+                >
+                  <span class="font-bold">{{ currency.code }}</span>
+                  <span class="text-[10px] text-white/70">{{ currency.symbol }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+        
+        <!-- Mobile Wallet (compact) -->
+        <div class="flex items-center space-x-1 bg-gradient-to-r from-emerald-600 to-emerald-700 px-2 py-1.5 rounded-lg">
+          <span class="material-symbols-outlined text-base">account_balance_wallet</span>
+          <span class="text-[10px] font-black text-white">{{ formatCurrency(walletBalance()) }}</span>
+        </div>
+
+        <!-- Mobile Donation (compact) -->
+        <div class="flex items-center space-x-1 bg-gradient-to-r from-rose-600 to-rose-700 px-2 py-1.5 rounded-lg">
+          <span class="material-symbols-outlined text-base">volunteer_activism</span>
+          <span class="text-[10px] font-black text-white">{{ formatCurrency(donatedAmount()) }}</span>
+        </div>
+      </div>
+    </div>
 
     <!-- Mobile Menu Button -->
     <button 
@@ -25,7 +67,7 @@
       
     </nav>
 
-    <!-- Right Side: Currency, Wallet, Donation & Login -->
+    <!-- Right Side: Currency, Wallet, Donation & Login (Desktop only) -->
     <div class="hidden md:flex items-center space-x-3 lg:space-x-4">
       
       <!-- Currency Selector -->
@@ -88,58 +130,6 @@
   <!-- Mobile Menu -->
   @if (mobileMenuOpen()) {
     <div class="md:hidden bg-black border-t border-white/10 py-4 px-4">
-      
-      <!-- Mobile Currency, Wallet & Donation -->
-      <div class="flex flex-col space-y-3 mb-4">
-        <!-- Currency Selector Mobile -->
-        <div class="relative">
-          <button 
-            (click)="toggleCurrencyMenu()"
-            class="w-full flex items-center justify-between bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-lg transition-colors"
-          >
-            <div class="flex items-center space-x-3">
-              <span class="material-symbols-outlined text-xl">currency_exchange</span>
-              <span class="font-bold">Divisa: {{ selectedCurrency().code }}</span>
-            </div>
-            <span class="material-symbols-outlined">expand_more</span>
-          </button>
-          
-          <!-- Currency Dropdown Mobile -->
-          @if (currencyMenuOpen()) {
-            <div class="mt-2 bg-gray-900 border border-white/20 rounded-lg overflow-hidden z-50">
-              @for (currency of currencies; track currency.code) {
-                <button 
-                  (click)="selectCurrency(currency)"
-                  class="w-full px-4 py-3 text-left text-white hover:bg-cyan-600 transition-colors flex items-center justify-between"
-                  [class.bg-cyan-600]="selectedCurrency().code === currency.code"
-                >
-                  <span class="font-bold">{{ currency.code }}</span>
-                  <span class="text-xs text-white/70">{{ currency.name }}</span>
-                </button>
-              }
-            </div>
-          }
-        </div>
-
-        <!-- Wallet Mobile -->
-        <div class="flex items-center justify-between bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-3 rounded-lg">
-          <div class="flex items-center space-x-3">
-            <span class="material-symbols-outlined text-xl">account_balance_wallet</span>
-            <span class="font-bold text-white">Saldo</span>
-          </div>
-          <span class="text-lg font-black text-white">{{ formatCurrency(walletBalance()) }}</span>
-        </div>
-
-        <!-- Donated Amount Mobile -->
-        <div class="flex items-center justify-between bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-3 rounded-lg">
-          <div class="flex items-center space-x-3">
-            <span class="material-symbols-outlined text-xl">volunteer_activism</span>
-            <span class="font-bold text-white">Donado</span>
-          </div>
-          <span class="text-lg font-black text-white">{{ formatCurrency(donatedAmount()) }}</span>
-        </div>
-      </div>
-
       <nav class="flex flex-col space-y-4 text-sm font-extrabold uppercase tracking-[0.2em] text-white/70">
         <a class="hover:text-cyan-500 transition-colors cursor-pointer py-2" routerLink="/" (click)="toggleMobileMenu()">Inicio</a>
         <a class="hover:text-cyan-500 transition-colors cursor-pointer py-2" (click)="toggleMobileMenu()">Qué es Publihazclik</a>

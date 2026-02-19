@@ -1,0 +1,51 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-black">Historial de Actividad</h2>
+      <p class="text-xs text-slate-400">Registro completo de tus clicks y ganancias</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+    <div class="flex flex-wrap gap-3">
+      <button class="px-4 py-2 bg-primary/10 text-primary rounded-lg text-xs font-bold">Todos</button>
+      <button class="px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-xs font-bold text-slate-500 transition-all">Clicks</button>
+      <button class="px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-xs font-bold text-slate-500 transition-all">Referidos</button>
+      <button class="px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-xs font-bold text-slate-500 transition-all">Retiros</button>
+    </div>
+  </div>
+
+  <!-- Activity List -->
+  <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
+    <div class="divide-y divide-slate-100 dark:divide-white/5">
+      @for (activity of activities; track activity.id) {
+        <div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <lucide-icon name="mouse-pointer-click" class="w-5 h-5 text-primary"></lucide-icon>
+            </div>
+            <div>
+              <p class="font-bold text-sm">{{ activity.title }}</p>
+              <p class="text-[10px] text-slate-500">{{ activity.time }}</p>
+            </div>
+          </div>
+          <span class="text-emerald-500 font-bold">+${{ activity.amount }} COP</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="flex items-center justify-center gap-2">
+    <button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-all">
+      <lucide-icon name="chevron-left" class="w-5 h-5"></lucide-icon>
+    </button>
+    <button class="w-8 h-8 rounded-lg bg-primary text-black font-bold text-xs">1</button>
+    <button class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 font-bold text-xs transition-all">2</button>
+    <button class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 font-bold text-xs transition-all">3</button>
+    <button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-all">
+      <lucide-icon name="chevron-right" class="w-5 h-5"></lucide-icon>
+    </button>
+  </div>
+</div>

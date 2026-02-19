@@ -19,18 +19,18 @@ export const provideLucideIcons = () => {
       UserPlus: icons.UserPlus,
       LogIn: icons.LogIn,
       LogOut: icons.LogOut,
-      
+
       // Iconos de navegación
       Menu: icons.Menu,
       X: icons.X,
       Search: icons.Search,
       TrendingUp: icons.TrendingUp,
-      
+
       // Iconos de acciones
       Check: icons.Check,
       Circle: icons.Circle,
       Info: icons.Info,
-      
+
       // Iconos de UI
       ArrowRight: icons.ArrowRight,
       ArrowLeft: icons.ArrowLeft,
@@ -50,7 +50,7 @@ export const provideLucideIcons = () => {
       Share: icons.Share,
       Link: icons.Link,
       ExternalLink: icons.ExternalLink,
-      
+
       // Iconos varios
       Clock: icons.Clock,
       Calendar: icons.Calendar,
@@ -66,7 +66,7 @@ export const provideLucideIcons = () => {
       Zap: icons.Zap,
       Layers: icons.Layers,
       List: icons.List,
-      
+
       // Iconos de edición
       Plus: icons.Plus,
       Minus: icons.Minus,
@@ -79,11 +79,11 @@ export const provideLucideIcons = () => {
       Camera: icons.Camera,
       Video: icons.Video,
       Music: icons.Music,
-      
+
       // Iconos de marcas
       Github: icons.Github,
       Apple: icons.Apple,
-      
+
       // Iconos adicionales
       Loader: icons.Loader,
       Activity: icons.Activity,
@@ -102,6 +102,18 @@ export const provideLucideIcons = () => {
       Wrench: icons.Wrench,
       LayoutDashboard: icons.LayoutDashboard,
       FileText: icons.FileText,
+      ChartBar: icons.ChartBar,
+      Terminal: icons.Terminal,
+
+      // Iconos para el dashboard de usuario
+      Wallet: icons.Wallet,
+      MousePointerClick: icons.MousePointerClick,
+      History: icons.History,
+      TrendingDown: icons.TrendingDown,
+      Gift: icons.Gift,
+      Sparkles: icons.Sparkles,
+      Play: icons.Play,
+      ArrowUpRight: icons.ArrowUpRight,
     })
   );
 };

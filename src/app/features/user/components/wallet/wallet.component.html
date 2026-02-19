@@ -1,0 +1,72 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-black">Mi Billetera</h2>
+      <p class="text-xs text-slate-400">Gestiona tus fondos y solicita retiros</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Balance Card -->
+    <div class="bg-gradient-to-br from-primary/20 to-accent/20 p-6 rounded-2xl border border-primary/20">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="p-3 bg-primary/20 rounded-xl">
+          <lucide-icon name="wallet" class="w-6 h-6 text-primary"></lucide-icon>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 uppercase font-bold">Balance Total</p>
+          <p class="text-3xl font-black">$25,450 COP</p>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="text-slate-500">Disponible</span>
+          <span class="font-bold">$25,450</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-slate-500">Pendiente</span>
+          <span class="font-bold">$5,000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Withdraw Card -->
+    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="p-3 bg-accent/10 rounded-xl">
+          <lucide-icon name="download" class="w-6 h-6 text-accent"></lucide-icon>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 uppercase font-bold">Solicitar Retiro</p>
+          <p class="text-sm text-slate-400">Mínimo $20,000 COP</p>
+        </div>
+      </div>
+      <button class="w-full py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-xl transition-all">
+        Solicitar Retiro
+      </button>
+    </div>
+  </div>
+
+  <!-- Transaction History -->
+  <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-slate-100 dark:border-white/5">
+      <h3 class="font-bold">Historial de Transacciones</h3>
+    </div>
+    <div class="divide-y divide-slate-100 dark:divide-white/5">
+      @for (tx of transactions; track tx.id) {
+        <div class="p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <lucide-icon name="dollar-sign" class="w-5 h-5 text-emerald-500"></lucide-icon>
+            </div>
+            <div>
+              <p class="font-bold text-sm">{{ tx.type }}</p>
+              <p class="text-[10px] text-slate-500">{{ tx.time }}</p>
+            </div>
+          </div>
+          <span class="text-emerald-500 font-bold">+${{ tx.amount }}</span>
+        </div>
+      }
+    </div>
+  </div>
+</div>

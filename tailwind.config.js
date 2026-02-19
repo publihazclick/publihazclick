@@ -12,6 +12,7 @@ module.exports = {
         'background-light': '#F3F4F6',
         'card-dark': '#000000',
         'glass-dark': 'rgba(10, 10, 10, 0.7)',
+        'sidebar-dark': '#0a0a0a',
       },
       fontFamily: {
         display: ['Montserrat', 'sans-serif'],
