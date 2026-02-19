@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -26,11 +26,38 @@ export class AdminLayoutComponent {
   readonly X = LucideAngularModule;
   readonly Sun = LucideAngularModule;
   readonly Moon = LucideAngularModule;
+  readonly ChevronLeft = LucideAngularModule;
+  readonly ChevronRight = LucideAngularModule;
 
   isDarkMode = true;
   serverLoad = 42;
+  
+  // Sidebar state - collapsed by default on mobile
+  sidebarCollapsed = signal(false);
+  mobileMenuOpen = signal(false);
 
-  constructor(private readonly authService: AuthService, private readonly router: Router) {}
+  constructor(private readonly authService: AuthService, private readonly router: Router) {
+    // Check if mobile to set initial state
+    if (typeof window !== 'undefined') {
+      this.checkMobile();
+      window.addEventListener('resize', () => this.checkMobile());
+    }
+  }
+
+  private checkMobile(): void {
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      this.sidebarCollapsed.set(true);
+    }
+  }
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed.update(v => !v);
+  }
+
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen.update(v => !v);
+  }
 
   toggleDarkMode(): void {
     this.isDarkMode = !this.isDarkMode;
