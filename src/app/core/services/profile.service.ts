@@ -137,10 +137,14 @@ export class ProfileService {
    */
   async validateReferralCode(code: string): Promise<ReferralValidationResult> {
     try {
+      // El nuevo formato es: username + 5 digitos + - + año (ej: juan12345-2025)
+      // No convertimos a mayúsculas porque el código ya está en minúsculas
+      const normalizedCode = code.trim();
+      
       const { data, error } = await this.supabase
         .from('profiles')
         .select('id, username, is_active')
-        .eq('referral_code', code.toUpperCase())
+        .eq('referral_code', normalizedCode)
         .single();
 
       if (error || !data) {

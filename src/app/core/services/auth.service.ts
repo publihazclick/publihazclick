@@ -402,11 +402,12 @@ export class AuthService implements OnDestroy {
         // Si el usuario se creó correctamente, actualizar el referido
         if (data.user) {
           try {
-            // Buscar el perfil del referidor
+            // Buscar el perfil del referidor (el nuevo formato no usa mayúsculas)
+            const normalizedCode = referralCode.trim();
             const { data: referrerData } = await this.supabase
               .from('profiles')
               .select('id, username')
-              .eq('referral_code', referralCode.toUpperCase())
+              .eq('referral_code', normalizedCode)
               .single();
 
             if (referrerData) {
