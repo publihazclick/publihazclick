@@ -25,19 +25,121 @@
       
     </nav>
 
-    <!-- Login Button -->
-    <button 
-      routerLink="/login"
-      class="hidden md:flex bg-white hover:bg-cyan-500 hover:text-white text-black font-black px-6 lg:px-8 py-2 lg:py-3 rounded-full items-center space-x-2 transition-all transform hover:scale-105"
-    >
-      <span class="text-[10px] tracking-widest uppercase">Iniciar / Registrar</span>
-      <span class="material-symbols-outlined text-lg">login</span>
-    </button>
+    <!-- Right Side: Currency, Wallet, Donation & Login -->
+    <div class="hidden md:flex items-center space-x-3 lg:space-x-4">
+      
+      <!-- Currency Selector -->
+      <div class="relative">
+        <button 
+          (click)="toggleCurrencyMenu()"
+          class="flex items-center space-x-1 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg transition-colors"
+        >
+          <span class="material-symbols-outlined text-lg">currency_exchange</span>
+          <span class="text-xs font-bold">{{ selectedCurrency().code }}</span>
+          <span class="material-symbols-outlined text-sm">expand_more</span>
+        </button>
+        
+        <!-- Currency Dropdown -->
+        @if (currencyMenuOpen()) {
+          <div class="absolute top-full right-0 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden z-50">
+            @for (currency of currencies; track currency.code) {
+              <button 
+                (click)="selectCurrency(currency)"
+                class="w-full px-4 py-2 text-left text-white hover:bg-cyan-600 transition-colors flex items-center justify-between"
+                [class.bg-cyan-600]="selectedCurrency().code === currency.code"
+              >
+                <span class="font-bold">{{ currency.code }}</span>
+                <span class="text-xs text-white/70">{{ currency.name }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Wallet with Balance -->
+      <div class="flex items-center space-x-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 px-3 py-2 rounded-lg transition-all cursor-pointer">
+        <span class="material-symbols-outlined text-lg">account_balance_wallet</span>
+        <div class="flex flex-col">
+          <span class="text-[10px] uppercase tracking-wider text-emerald-100">Saldo</span>
+          <span class="text-sm font-black text-white">{{ formatCurrency(walletBalance()) }}</span>
+        </div>
+      </div>
+
+      <!-- Donated Amount -->
+      <div class="flex items-center space-x-2 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 px-3 py-2 rounded-lg transition-all cursor-pointer">
+        <span class="material-symbols-outlined text-lg">volunteer_activism</span>
+        <div class="flex flex-col">
+          <span class="text-[10px] uppercase tracking-wider text-rose-100">Donado</span>
+          <span class="text-sm font-black text-white">{{ formatCurrency(donatedAmount()) }}</span>
+        </div>
+      </div>
+
+      <!-- Login Button -->
+      <button 
+        routerLink="/login"
+        class="bg-white hover:bg-cyan-500 hover:text-white text-black font-black px-6 lg:px-8 py-2 lg:py-3 rounded-full flex items-center space-x-2 transition-all transform hover:scale-105"
+      >
+        <span class="text-[10px] tracking-widest uppercase">Iniciar / Registrar</span>
+        <span class="material-symbols-outlined text-lg">login</span>
+      </button>
+    </div>
   </div>
 
   <!-- Mobile Menu -->
   @if (mobileMenuOpen()) {
     <div class="md:hidden bg-black border-t border-white/10 py-4 px-4">
+      
+      <!-- Mobile Currency, Wallet & Donation -->
+      <div class="flex flex-col space-y-3 mb-4">
+        <!-- Currency Selector Mobile -->
+        <div class="relative">
+          <button 
+            (click)="toggleCurrencyMenu()"
+            class="w-full flex items-center justify-between bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-lg transition-colors"
+          >
+            <div class="flex items-center space-x-3">
+              <span class="material-symbols-outlined text-xl">currency_exchange</span>
+              <span class="font-bold">Divisa: {{ selectedCurrency().code }}</span>
+            </div>
+            <span class="material-symbols-outlined">expand_more</span>
+          </button>
+          
+          <!-- Currency Dropdown Mobile -->
+          @if (currencyMenuOpen()) {
+            <div class="mt-2 bg-gray-900 border border-white/20 rounded-lg overflow-hidden z-50">
+              @for (currency of currencies; track currency.code) {
+                <button 
+                  (click)="selectCurrency(currency)"
+                  class="w-full px-4 py-3 text-left text-white hover:bg-cyan-600 transition-colors flex items-center justify-between"
+                  [class.bg-cyan-600]="selectedCurrency().code === currency.code"
+                >
+                  <span class="font-bold">{{ currency.code }}</span>
+                  <span class="text-xs text-white/70">{{ currency.name }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Wallet Mobile -->
+        <div class="flex items-center justify-between bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-3 rounded-lg">
+          <div class="flex items-center space-x-3">
+            <span class="material-symbols-outlined text-xl">account_balance_wallet</span>
+            <span class="font-bold text-white">Saldo</span>
+          </div>
+          <span class="text-lg font-black text-white">{{ formatCurrency(walletBalance()) }}</span>
+        </div>
+
+        <!-- Donated Amount Mobile -->
+        <div class="flex items-center justify-between bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-3 rounded-lg">
+          <div class="flex items-center space-x-3">
+            <span class="material-symbols-outlined text-xl">volunteer_activism</span>
+            <span class="font-bold text-white">Donado</span>
+          </div>
+          <span class="text-lg font-black text-white">{{ formatCurrency(donatedAmount()) }}</span>
+        </div>
+      </div>
+
       <nav class="flex flex-col space-y-4 text-sm font-extrabold uppercase tracking-[0.2em] text-white/70">
         <a class="hover:text-cyan-500 transition-colors cursor-pointer py-2" routerLink="/" (click)="toggleMobileMenu()">Inicio</a>
         <a class="hover:text-cyan-500 transition-colors cursor-pointer py-2" (click)="toggleMobileMenu()">Qué es Publihazclik</a>

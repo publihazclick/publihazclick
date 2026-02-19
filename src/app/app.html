@@ -8,13 +8,15 @@
     <router-outlet />
   } @else {
     <!-- Mostrar contenido principal de la landing page -->
+    
+    <app-banner-slider [slides]="bannerSlides" />
+    <app-recent-posts />
     <app-hero />
     <app-testimonials />
     <app-business-models />
     <app-how-it-works />
     <app-pricing />
     <app-features />
-    <app-recent-posts />
   }
 </main>
 
