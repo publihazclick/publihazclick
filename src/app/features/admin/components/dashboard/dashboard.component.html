@@ -1,109 +1,75 @@
-<div class="space-y-8">
+<div class="space-y-6 md:space-y-8 pb-20 md:pb-0">
   <!-- Stats Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
     <!-- Total Users -->
-    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-          <lucide-icon name="users" class="w-5 h-5"></lucide-icon>
-        </div>
-        <div class="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-          <lucide-icon name="trending-up" class="w-3 h-3"></lucide-icon> +12%
+    <div class="bg-white dark:bg-card-dark p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+      <div class="flex items-start justify-between mb-3 md:mb-4">
+        <div class="p-1.5 md:p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+          <lucide-icon name="users" class="w-4 h-4 md:w-5 md:h-5"></lucide-icon>
         </div>
       </div>
-      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Users</h3>
+      <h3 class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Users</h3>
       <div class="flex items-baseline gap-2">
-        <span class="text-3xl font-black">{{ totalUsers | number }}</span>
-        <div class="flex items-end gap-0.5 h-8">
-          <div class="w-1 bg-blue-500/20 h-3 rounded-full"></div>
-          <div class="w-1 bg-blue-500/20 h-5 rounded-full"></div>
-          <div class="w-1 bg-blue-500 h-8 rounded-full"></div>
-          <div class="w-1 bg-blue-500 h-6 rounded-full"></div>
-        </div>
+        <span class="text-xl md:text-3xl font-black">{{ totalUsers | number }}</span>
       </div>
     </div>
 
     <!-- Active Ads -->
-    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-2 bg-primary/10 text-primary rounded-lg">
-          <lucide-icon name="mouse-pointer-click" class="w-5 h-5"></lucide-icon>
-        </div>
-        <div class="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-          <lucide-icon name="trending-up" class="w-3 h-3"></lucide-icon> +5.2%
+    <div class="bg-white dark:bg-card-dark p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+      <div class="flex items-start justify-between mb-3 md:mb-4">
+        <div class="p-1.5 md:p-2 bg-primary/10 text-primary rounded-lg">
+          <lucide-icon name="mouse-pointer-click" class="w-4 h-4 md:w-5 md:h-5"></lucide-icon>
         </div>
       </div>
-      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Active Ads</h3>
+      <h3 class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Active Ads</h3>
       <div class="flex items-baseline gap-2">
-        <span class="text-3xl font-black">{{ activeAds | number }}</span>
-        <div class="flex items-end gap-0.5 h-8">
-          <div class="w-1 bg-primary/20 h-4 rounded-full"></div>
-          <div class="w-1 bg-primary/20 h-8 rounded-full"></div>
-          <div class="w-1 bg-primary h-6 rounded-full"></div>
-          <div class="w-1 bg-primary h-7 rounded-full"></div>
-        </div>
+        <span class="text-xl md:text-3xl font-black">{{ activeAds | number }}</span>
       </div>
     </div>
 
     <!-- Total Revenue -->
-    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
-          <lucide-icon name="dollar-sign" class="w-5 h-5"></lucide-icon>
-        </div>
-        <div class="flex items-center gap-1 text-rose-500 text-xs font-bold">
-          <lucide-icon name="trending-down" class="w-3 h-3"></lucide-icon> -2%
+    <div class="bg-white dark:bg-card-dark p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+      <div class="flex items-start justify-between mb-3 md:mb-4">
+        <div class="p-1.5 md:p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+          <lucide-icon name="dollar-sign" class="w-4 h-4 md:w-5 md:h-5"></lucide-icon>
         </div>
       </div>
-      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Revenue (COP)</h3>
+      <h3 class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Revenue (COP)</h3>
       <div class="flex items-baseline gap-2">
-        <span class="text-2xl font-black">{{ totalRevenue }}</span>
-        <div class="flex items-end gap-0.5 h-8">
-          <div class="w-1 bg-emerald-500/20 h-7 rounded-full"></div>
-          <div class="w-1 bg-emerald-500 h-5 rounded-full"></div>
-          <div class="w-1 bg-emerald-500/20 h-3 rounded-full"></div>
-          <div class="w-1 bg-emerald-500 h-6 rounded-full"></div>
-        </div>
+        <span class="text-lg md:text-2xl font-black">{{ totalRevenue }}</span>
       </div>
     </div>
 
     <!-- Pending Withdrawals -->
-    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
-          <lucide-icon name="clock" class="w-5 h-5"></lucide-icon>
+    <div class="bg-white dark:bg-card-dark p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+      <div class="flex items-start justify-between mb-3 md:mb-4">
+        <div class="p-1.5 md:p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+          <lucide-icon name="clock" class="w-4 h-4 md:w-5 md:h-5"></lucide-icon>
         </div>
-        <div class="bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[10px] px-2 py-0.5 rounded-full font-bold">HIGH</div>
       </div>
-      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Pending Withdrawals</h3>
+      <h3 class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Pending</h3>
       <div class="flex items-baseline gap-2">
-        <span class="text-3xl font-black">{{ pendingWithdrawals }}</span>
-        <div class="flex items-end gap-0.5 h-8">
-          <div class="w-1 bg-amber-500/20 h-3 rounded-full"></div>
-          <div class="w-1 bg-amber-500 h-6 rounded-full"></div>
-          <div class="w-1 bg-amber-500 h-8 rounded-full"></div>
-          <div class="w-1 bg-amber-500/20 h-5 rounded-full"></div>
-        </div>
+        <span class="text-xl md:text-3xl font-black">{{ pendingWithdrawals }}</span>
       </div>
     </div>
   </div>
 
   <!-- Charts and Tables -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
     <!-- System Activity Chart -->
-    <div class="lg:col-span-2 space-y-8">
-      <div class="bg-white dark:bg-card-dark p-8 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <div class="flex items-center justify-between mb-8">
+    <div class="lg:col-span-2 space-y-6 md:space-y-8">
+      <div class="bg-white dark:bg-card-dark p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <div class="flex flex-col md:flex-row items-start md:justify-between mb-4 md:mb-8 gap-3">
           <div>
-            <h3 class="font-bold text-lg">System Activity</h3>
-            <p class="text-xs text-slate-400 font-medium">Daily traffic vs Ad engagement (Last 7 days)</p>
+            <h3 class="font-bold text-base md:text-lg">System Activity</h3>
+            <p class="text-xs text-slate-400 font-medium">Last 7 days</p>
           </div>
           <select class="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-white/10 rounded-lg text-xs font-bold focus:ring-primary focus:border-primary px-3 py-2">
             <option>Last 7 Days</option>
             <option>Last 30 Days</option>
           </select>
         </div>
-        <div class="h-64 flex items-end justify-between gap-4 px-2">
+        <div class="h-40 md:h-64 flex items-end justify-between gap-2 md:gap-4 px-1 md:px-2">
           @for (item of chartData; track item.day) {
             <div class="flex-1 flex flex-col items-center gap-2 group">
               <div class="w-full flex gap-1 items-end justify-center h-full">
@@ -128,15 +94,15 @@
 
       <!-- Pending Moderation Table -->
       <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
-        <div class="p-6 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+        <div class="p-4 md:p-6 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-3">
           <div>
-            <h3 class="font-bold text-lg">Pending Moderation</h3>
-            <p class="text-xs text-slate-400">Review newly submitted ad campaigns</p>
+            <h3 class="font-bold text-base md:text-lg">Pending Moderation</h3>
+            <p class="text-xs text-slate-400 hidden md:block">Review newly submitted ad campaigns</p>
           </div>
-          <button class="text-primary text-xs font-bold uppercase hover:underline">View All</button>
+          <button class="text-primary text-xs font-bold uppercase hover:underline whitespace-nowrap">View All</button>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left">
+        <div class="overflow-x-auto -mx-4 md:mx-0">
+          <table class="w-full text-left min-w-[600px] md:min-w-full">
             <thead>
               <tr class="bg-slate-50 dark:bg-white/5 text-[10px] font-black uppercase text-slate-500 tracking-widest">
                 <th class="px-6 py-4">Ad Campaign</th>
@@ -187,53 +153,53 @@
     </div>
 
     <!-- Sidebar widgets -->
-    <div class="space-y-8">
+    <div class="space-y-6 md:space-y-8">
       <!-- Revenue Breakdown -->
-      <div class="bg-white dark:bg-card-dark p-8 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <h3 class="font-bold text-lg mb-6">Revenue Breakdown</h3>
-        <div class="relative w-48 h-48 mx-auto mb-8">
-          <div class="absolute inset-0 rounded-full border-[16px] border-primary/20"></div>
-          <div class="absolute inset-0 rounded-full border-[16px] border-primary border-r-transparent border-b-transparent -rotate-45"></div>
+      <div class="bg-white dark:bg-card-dark p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+        <h3 class="font-bold text-base md:text-lg mb-4 md:mb-6">Revenue Breakdown</h3>
+        <div class="relative w-32 h-32 md:w-48 md:h-48 mx-auto mb-4 md:mb-8">
+          <div class="absolute inset-0 rounded-full border-4 md:border-[16px] border-primary/20"></div>
+          <div class="absolute inset-0 rounded-full border-4 md:border-[16px] border-primary border-r-transparent border-b-transparent -rotate-45"></div>
           <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span class="text-2xl font-black">68%</span>
-            <span class="text-[10px] text-slate-400 uppercase font-bold">Subscriptions</span>
+            <span class="text-xl md:text-2xl font-black">68%</span>
+            <span class="text-[8px] md:text-[10px] text-slate-400 uppercase font-bold">Subscriptions</span>
           </div>
         </div>
-        <div class="space-y-4">
+        <div class="space-y-2 md:space-y-4">
           @for (item of revenueBreakdown; track item.label) {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full" [class]="item.color"></span>
+                <span class="w-2 h-2 md:w-3 md:h-3 rounded-full" [class]="item.color"></span>
                 <span class="text-xs font-medium">{{ item.label }}</span>
               </div>
               <span class="text-xs font-bold">{{ item.percentage }}%</span>
             </div>
           }
         </div>
-        <button class="w-full mt-8 py-3 bg-slate-50 dark:bg-white/5 hover:bg-primary hover:text-black rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-slate-200 dark:border-white/10">
+        <button class="w-full mt-4 md:mt-8 py-2 md:py-3 bg-slate-50 dark:bg-white/5 hover:bg-primary hover:text-black rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-slate-200 dark:border-white/10">
           Full Audit Log
         </button>
       </div>
 
       <!-- Node Clusters -->
-      <div class="bg-gradient-to-br from-sidebar-dark to-slate-900 p-8 rounded-2xl text-white shadow-xl">
-        <div class="flex items-center gap-3 mb-6">
-          <lucide-icon name="globe" class="text-primary w-5 h-5"></lucide-icon>
-          <h3 class="font-bold">Node Clusters</h3>
+      <div class="bg-gradient-to-br from-sidebar-dark to-slate-900 p-4 md:p-8 rounded-2xl text-white shadow-xl">
+        <div class="flex items-center gap-3 mb-4 md:mb-6">
+          <lucide-icon name="globe" class="text-primary w-4 h-4 md:w-5 md:h-5"></lucide-icon>
+          <h3 class="font-bold text-sm md:text-base">Node Clusters</h3>
         </div>
-        <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
           @for (node of nodeClusters; track node.name) {
-            <div class="bg-white/5 p-3 rounded-xl border border-white/10">
-              <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">{{ node.name }}</p>
-              <p class="text-xs font-bold" [class]="node.statusClass">{{ node.status }}</p>
+            <div class="bg-white/5 p-2 md:p-3 rounded-lg md:rounded-xl border border-white/10">
+              <p class="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase mb-1">{{ node.name }}</p>
+              <p class="text-[10px] md:text-xs font-bold" [class]="node.statusClass">{{ node.status }}</p>
             </div>
           }
         </div>
-        <div class="bg-primary/20 p-4 rounded-xl flex items-center gap-4">
-          <lucide-icon name="shield" class="text-primary w-5 h-5"></lucide-icon>
+        <div class="bg-primary/20 p-3 md:p-4 rounded-lg md:rounded-xl flex items-center gap-3 md:gap-4">
+          <lucide-icon name="shield" class="text-primary w-4 h-4 md:w-5 md:h-5"></lucide-icon>
           <div class="flex-1">
             <p class="text-xs font-bold">Security Shield</p>
-            <p class="text-[10px] text-slate-400 leading-tight">Last deep scan completed 14m ago. No threats detected.</p>
+            <p class="text-[8px] md:text-[10px] text-slate-400 leading-tight">Last scan: 14m ago</p>
           </div>
         </div>
       </div>
