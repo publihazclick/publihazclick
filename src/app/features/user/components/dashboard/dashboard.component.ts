@@ -1,28 +1,15 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { LucideAngularModule } from 'lucide-angular';
 
 @Component({
   selector: 'app-user-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class UserDashboardComponent {
-  // Iconos
-  readonly DollarSign = LucideAngularModule;
-  readonly Wallet = LucideAngularModule;
-  readonly TrendingUp = LucideAngularModule;
-  readonly Users = LucideAngularModule;
-  readonly Clock = LucideAngularModule;
-  readonly MousePointerClick = LucideAngularModule;
-  readonly ChevronRight = LucideAngularModule;
-  readonly Gift = LucideAngularModule;
-  readonly Star = LucideAngularModule;
-  readonly Target = LucideAngularModule;
-
   // Stats del usuario
   balance = 25450;
   pendingBalance = 5000;

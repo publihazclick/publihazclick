@@ -5,7 +5,6 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
-import { provideLucideIcons } from './core/providers/lucide-icons.provider';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,7 +16,6 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([
         authInterceptor
       ])
-    ),
-    provideLucideIcons()
+    )
   ]
 };

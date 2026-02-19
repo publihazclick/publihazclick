@@ -4,13 +4,12 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
-import { LucideAngularModule } from 'lucide-angular';
 import { AuthAdsComponent } from '../auth-ads/auth-ads.component';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, LucideAngularModule, AuthAdsComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, AuthAdsComponent],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss']
 })
@@ -56,11 +55,16 @@ export class RegisterComponent implements OnInit {
   returnUrl: string = '/dashboard';
 
   ngOnInit(): void {
-    // Obtener código de referido de la URL
-    this.referralCode = this.route.snapshot.params['code'] || '';
-    
-    // Si hay código de referido, validarlo
-    if (this.referralCode) {
+    // Obtener código de referido de la URL (puede venir como parámetro de ruta o query param)
+    this.referralCode = this.route.snapshot.params['code'] ||
+                       this.route.snapshot.queryParams['ref'] || '';
+
+    // El código de referido es OBLIGATORIO - sin él no se puede registrar
+    if (!this.referralCode) {
+      this.referralValid.set(false);
+      this.referralError.set('Se requiere un código de referido válido para registrarse. Solicita un enlace de referido a un usuario existente.');
+    } else {
+      // Validar el código de referido
       this.validateReferralCode();
     }
 
@@ -112,8 +116,15 @@ export class RegisterComponent implements OnInit {
       return;
     }
 
-    // Verificar que el código de referido sea válido si existe
-    if (this.referralCode && !this.referralValid()) {
+    // El código de referido es OBLIGATORIO
+    if (!this.referralCode) {
+      this.referralValid.set(false);
+      this.referralError.set('Se requiere un código de referido válido para registrarse');
+      return;
+    }
+
+    // Verificar que el código de referido sea válido
+    if (!this.referralValid()) {
       this.validateReferralCode();
       return;
     }
@@ -121,16 +132,15 @@ export class RegisterComponent implements OnInit {
     this.successMessage.set(null);
     const { fullName, email, password } = this.registerForm.value;
 
-    // Usar el método de registro con referido si hay código
-    const registerMethod = this.referralCode 
-      ? this.authService.registerWithReferral({ email, password, fullName }, this.referralCode)
-      : this.authService.register({ email, password, fullName });
-
-    registerMethod.subscribe({
+    // Usar el método de registro con referido obligatorio
+    this.authService.registerWithReferral(
+      { email, password, fullName },
+      this.referralCode
+    ).subscribe({
       next: (result) => {
         if (result.success) {
           this.successMessage.set(result.message || 'Registro exitoso');
-          
+
           if (result.data) {
             setTimeout(() => {
               this.router.navigate([this.returnUrl]);

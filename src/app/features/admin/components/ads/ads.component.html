@@ -9,7 +9,7 @@
       (click)="activeTab() === 'ptc' ? openCreatePtcModal() : openCreateBannerModal()"
       class="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors"
     >
-      <lucide-icon [name]="PlusIcon" class="w-4 h-4"></lucide-icon>
+      <span class="material-icons text-black w-4 h-4">add</span>
       {{ activeTab() === 'ptc' ? 'Nuevo Anuncio PTC' : 'Nuevo Banner' }}
     </button>
   </div>
@@ -21,7 +21,7 @@
       class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
       [class]="activeTab() === 'ptc' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
     >
-      <lucide-icon [name]="MegaphoneIcon" class="w-4 h-4 inline mr-2"></lucide-icon>
+      <span class="material-icons text-primary w-4 h-4 mr-2">campaign</span>
       Anuncios PTC
     </button>
     <button
@@ -29,7 +29,7 @@
       class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
       [class]="activeTab() === 'banner' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
     >
-      <lucide-icon [name]="ImageIcon" class="w-4 h-4 inline mr-2"></lucide-icon>
+      <span class="material-icons text-primary w-4 h-4 mr-2">image</span>
       Banners
     </button>
   </div>
@@ -38,7 +38,7 @@
   <div class="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-200 dark:border-white/5">
     <div class="flex flex-col md:flex-row gap-4">
       <div class="flex-1 relative">
-        <lucide-icon [name]="SearchIcon" class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></lucide-icon>
+        <span class="material-icons text-slate-400 w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2">search</span>
         <input
           type="text"
           placeholder="Buscar por nombre..."
@@ -76,7 +76,7 @@
   <!-- Loading -->
   @if (loading()) {
     <div class="flex flex-col items-center justify-center py-20">
-      <lucide-icon [name]="Loader2Icon" class="w-10 h-10 text-primary animate-spin mb-4"></lucide-icon>
+      <span class="material-icons text-primary w-10 h-10 animate-spin">sync</span>
       <p class="text-slate-400 text-sm font-medium">Cargando anuncios...</p>
     </div>
   }
@@ -108,7 +108,7 @@
                         <img [src]="ptc.image_url" [alt]="ptc.title" class="w-10 h-10 rounded-lg object-cover">
                       } @else {
                         <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                          <lucide-icon [name]="MegaphoneIcon" class="w-5 h-5 text-slate-400"></lucide-icon>
+                          <span class="material-icons text-slate-400 w-5 h-5">campaign</span>
                         </div>
                       }
                       <div>
@@ -137,14 +137,14 @@
                         class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="Ver"
                       >
-                        <lucide-icon [name]="ExternalLinkIcon" class="w-4 h-4"></lucide-icon>
+                        <span class="material-icons text-primary w-4 h-4">open_in_new</span>
                       </a>
                       <button
                         (click)="openEditPtcModal(ptc)"
                         class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="Editar"
                       >
-                        <lucide-icon [name]="Edit3Icon" class="w-4 h-4"></lucide-icon>
+                        <span class="material-icons text-primary w-4 h-4">edit</span>
                       </button>
                       <button
                         (click)="togglePtcStatus(ptc)"
@@ -152,14 +152,14 @@
                         [class]="ptc.status === 'active' ? 'text-amber-500 hover:bg-amber-500/10' : 'text-emerald-500 hover:bg-emerald-500/10'"
                         [title]="ptc.status === 'active' ? 'Pausar' : 'Activar'"
                       >
-                        <lucide-icon [name]="ptc.status === 'active' ? PauseIcon : PlayIcon" class="w-4 h-4"></lucide-icon>
+                        <span class="material-icons text-primary w-4 h-4">{{ ptc.status === 'active' ? 'pause' : 'play_arrow' }}</span>
                       </button>
                       <button
                         (click)="deletePtc(ptc)"
                         class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                         title="Eliminar"
                       >
-                        <lucide-icon [name]="Trash2Icon" class="w-4 h-4"></lucide-icon>
+                        <span class="material-icons text-rose-500 w-4 h-4">delete</span>
                       </button>
                     </div>
                   </td>
@@ -171,7 +171,7 @@
 
         @if (ptcAds().length === 0) {
           <div class="p-12 text-center">
-            <lucide-icon [name]="MegaphoneIcon" class="w-12 h-12 text-slate-400 mx-auto mb-4"></lucide-icon>
+            <span class="material-icons text-slate-400 w-12 h-12 mx-auto mb-4">campaign</span>
             <h3 class="font-bold text-lg mb-2">No hay anuncios PTC</h3>
             <p class="text-slate-400 text-sm">Crea el primer anuncio PTC</p>
           </div>
@@ -199,21 +199,21 @@
               <div class="grid grid-cols-3 gap-2 text-center text-sm mb-3">
                 <div>
                   <div class="flex items-center justify-center gap-1 text-slate-400">
-                    <lucide-icon [name]="EyeIcon" class="w-3 h-3"></lucide-icon>
+                    <span class="material-icons text-slate-400 w-3 h-3">visibility</span>
                   </div>
                   <div class="font-bold">{{ banner.total_impressions }}</div>
                   <div class="text-xs text-slate-400">Impresiones</div>
                 </div>
                 <div>
                   <div class="flex items-center justify-center gap-1 text-slate-400">
-                    <lucide-icon [name]="MousePointerIcon" class="w-3 h-3"></lucide-icon>
+                    <span class="material-icons text-slate-400 w-3 h-3">ads_click</span>
                   </div>
                   <div class="font-bold">{{ banner.total_clicks }}</div>
                   <div class="text-xs text-slate-400">Clics</div>
                 </div>
                 <div>
                   <div class="flex items-center justify-center gap-1 text-slate-400">
-                    <lucide-icon [name]="TrendingUpIcon" class="w-3 h-3"></lucide-icon>
+                    <span class="material-icons text-slate-400 w-3 h-3">trending_up</span>
                   </div>
                   <div class="font-bold">{{ banner.ctr.toFixed(1) }}%</div>
                   <div class="text-xs text-slate-400">CTR</div>
@@ -225,7 +225,7 @@
                   (click)="openEditBannerModal(banner)"
                   class="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-white/5 hover:bg-primary/10 rounded-lg transition-colors"
                 >
-                  <lucide-icon [name]="Edit3Icon" class="w-3 h-3 inline mr-1"></lucide-icon>
+                  <span class="material-icons text-primary w-3 h-3 inline mr-1">edit</span>
                   Editar
                 </button>
                 <button
@@ -233,13 +233,13 @@
                   class="py-2 px-3 rounded-lg transition-colors"
                   [class]="banner.status === 'active' ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'"
                 >
-                  <lucide-icon [name]="banner.status === 'active' ? PauseIcon : PlayIcon" class="w-4 h-4"></lucide-icon>
+                  <span class="material-icons text-primary w-4 h-4">{{ banner.status === 'active' ? 'pause' : 'play_arrow' }}</span>
                 </button>
                 <button
                   (click)="deleteBanner(banner)"
                   class="py-2 px-3 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                 >
-                  <lucide-icon [name]="Trash2Icon" class="w-4 h-4"></lucide-icon>
+                  <span class="material-icons text-rose-500 w-4 h-4">delete</span>
                 </button>
               </div>
             </div>
@@ -248,7 +248,7 @@
 
         @if (bannerAds().length === 0) {
           <div class="col-span-full bg-white dark:bg-card-dark p-12 rounded-2xl border border-slate-200 dark:border-white/5 text-center">
-            <lucide-icon [name]="ImageIcon" class="w-12 h-12 text-slate-400 mx-auto mb-4"></lucide-icon>
+            <span class="material-icons text-slate-400 w-12 h-12 mx-auto mb-4">image</span>
             <h3 class="font-bold text-lg mb-2">No hay banners</h3>
             <p class="text-slate-400 text-sm">Crea el primer banner</p>
           </div>
@@ -268,14 +268,14 @@
             [disabled]="currentPage() === 1"
             class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-50"
           >
-            <lucide-icon [name]="ChevronLeftIcon" class="w-5 h-5"></lucide-icon>
+            <span class="material-icons text-primary w-5 h-5">chevron_left</span>
           </button>
           <button
             (click)="goToPage(currentPage() + 1)"
             [disabled]="currentPage() === totalPages()"
             class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-50"
           >
-            <lucide-icon [name]="ChevronRightIcon" class="w-5 h-5"></lucide-icon>
+            <span class="material-icons text-primary w-5 h-5">chevron_right</span>
           </button>
         </div>
       </div>
@@ -296,7 +296,7 @@
             }
           </h2>
           <button (click)="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg">
-            <lucide-icon [name]="XIcon" class="w-5 h-5"></lucide-icon>
+            <span class="material-icons text-primary w-5 h-5">close</span>
           </button>
         </div>
 
@@ -472,7 +472,7 @@
             class="px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
           >
             @if (saving()) {
-              <lucide-icon [name]="Loader2Icon" class="w-4 h-4 animate-spin"></lucide-icon>
+              <span class="material-icons text-primary w-4 h-4 animate-spin">sync</span>
             }
             Guardar
           </button>

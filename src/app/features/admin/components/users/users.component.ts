@@ -1,28 +1,6 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  LucideAngularModule,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  UserCheck,
-  UserX,
-  Edit3,
-  Trash2,
-  Plus,
-  X,
-  Loader2,
-  AlertCircle,
-  Users,
-  DollarSign,
-  Shield,
-  ShieldCheck,
-  User,
-  Briefcase
-} from 'lucide-angular';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
@@ -38,32 +16,11 @@ import type { Profile, UserRole } from '../../../../core/models/profile.model';
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss'
 })
 export class AdminUsersComponent implements OnInit {
-  // Iconos
-  readonly SearchIcon = Search;
-  readonly FilterIcon = Filter;
-  readonly ChevronLeftIcon = ChevronLeft;
-  readonly ChevronRightIcon = ChevronRight;
-  readonly MoreHorizontalIcon = MoreHorizontal;
-  readonly UserCheckIcon = UserCheck;
-  readonly UserXIcon = UserX;
-  readonly Edit3Icon = Edit3;
-  readonly Trash2Icon = Trash2;
-  readonly PlusIcon = Plus;
-  readonly XIcon = X;
-  readonly Loader2Icon = Loader2;
-  readonly AlertCircleIcon = AlertCircle;
-  readonly UsersIcon = Users;
-  readonly DollarSignIcon = DollarSign;
-  readonly ShieldIcon = Shield;
-  readonly ShieldCheckIcon = ShieldCheck;
-  readonly UserIcon = User;
-  readonly BriefcaseIcon = Briefcase;
-
   // Servicios
   private readonly profileService = inject(ProfileService);
   private readonly dashboardService = inject(AdminDashboardService);

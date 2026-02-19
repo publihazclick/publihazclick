@@ -38,6 +38,7 @@ export class AdminPackageService {
       const { data, error } = await this.supabase
         .from('packages')
         .select('*')
+        .eq('is_active', true)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -49,7 +50,15 @@ export class AdminPackageService {
         package_type: p.package_type,
         price: p.price || 0,
         duration_days: p.duration_days,
+        currency: p.currency || 'USD',
         features: p.features || [],
+        min_ptc_visits: p.min_ptc_visits || 0,
+        min_banner_views: p.min_banner_views || 0,
+        included_ptc_ads: p.included_ptc_ads || 0,
+        has_clickable_banner: p.has_clickable_banner || false,
+        banner_clicks_limit: p.banner_clicks_limit || 0,
+        banner_impressions_limit: p.banner_impressions_limit || 0,
+        daily_ptc_limit: p.daily_ptc_limit || 0,
         max_ptc_ads: p.max_ptc_ads || 0,
         max_banner_ads: p.max_banner_ads || 0,
         max_campaigns: p.max_campaigns || 0,
@@ -88,7 +97,15 @@ export class AdminPackageService {
         package_type: data.package_type,
         price: data.price || 0,
         duration_days: data.duration_days,
+        currency: data.currency || 'USD',
         features: data.features || [],
+        min_ptc_visits: data.min_ptc_visits || 0,
+        min_banner_views: data.min_banner_views || 0,
+        included_ptc_ads: data.included_ptc_ads || 0,
+        has_clickable_banner: data.has_clickable_banner || false,
+        banner_clicks_limit: data.banner_clicks_limit || 0,
+        banner_impressions_limit: data.banner_impressions_limit || 0,
+        daily_ptc_limit: data.daily_ptc_limit || 0,
         max_ptc_ads: data.max_ptc_ads || 0,
         max_banner_ads: data.max_banner_ads || 0,
         max_campaigns: data.max_campaigns || 0,

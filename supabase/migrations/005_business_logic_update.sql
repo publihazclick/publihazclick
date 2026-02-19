@@ -86,84 +86,90 @@ END $$;
 -- 2. INSERTAR PAQUETES NUEVOS
 -- =============================================================================
 
-INSERT INTO packages (
-  name, description, package_type, price, duration_days, currency,
-  features, min_ptc_visits, min_banner_views, included_ptc_ads,
-  has_clickable_banner, banner_clicks_limit, banner_impressions_limit,
-  daily_ptc_limit, max_ptc_ads, max_banner_ads, max_campaigns,
-  ptc_reward_bonus, banner_reward_bonus, referral_bonus,
-  is_active, display_order
-)
-SELECT 
-  name, description, package_type, price, duration_days, COALESCE(currency, 'USD'),
-  features, min_ptc_visits, min_banner_views, included_ptc_ads,
-  has_clickable_banner, banner_clicks_limit, banner_impressions_limit,
-  daily_ptc_limit, max_ptc_ads, max_banner_ads, max_campaigns,
-  ptc_reward_bonus, banner_reward_bonus, referral_bonus,
-  is_active, display_order
-FROM (
-  VALUES
-  (
-    'Starter',
-    'Paquete inicial para empezar a ganar.',
-    'basic',
-    25.00,
-    30,
-    'USD',
-    '["Acceso a Mega Anuncios PTC", "Banner clickeable"]',
-    50, 100, 5, TRUE, 500, 1000, 5, 5, 1, 1, 5, 0, 5, TRUE, 1
-  ),
-  (
-    'Growth',
-    'Paquete de crecimiento.',
-    'premium',
-    50.00,
-    30,
-    'USD',
-    '["Acceso a Mega Anuncios y Standard", "Mas beneficios"]',
-    150, 300, 15, TRUE, 1500, 3000, 10, 15, 2, 3, 10, 5, 10, TRUE, 2
-  ),
-  (
-    'Business',
-    'Paquete empresarial.',
-    'enterprise',
-    100.00,
-    30,
-    'USD',
-    '["Acceso a todos los tipos", "Soporte prioritario"]',
-    400, 800, 40, TRUE, 4000, 8000, 25, 40, 5, 10, 25, 15, 20, TRUE, 3
-  ),
-  (
-    'Enterprise Pro',
-    'Paquete maximo.',
-    'custom',
-    150.00,
-    30,
-    'USD',
-    '["Acceso ilimitado", "API", "Asesoria"]',
-    1000, 2000, 100, TRUE, 10000, 20000, 50, 999999, 10, 999999, 50, 25, 30, TRUE, 4
-  )
-) AS vals(
-  name, description, package_type, price, duration_days, currency,
-  features, min_ptc_visits, min_banner_views, included_ptc_ads,
-  has_clickable_banner, banner_clicks_limit, banner_impressions_limit,
-  daily_ptc_limit, max_ptc_ads, max_banner_ads, max_campaigns,
-  ptc_reward_bonus, banner_reward_bonus, referral_bonus,
-  is_active, display_order
-)
-WHERE NOT EXISTS (SELECT 1 FROM packages WHERE name = vals.name);
+-- Primero verificar si la tabla packages existe
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'packages') THEN
+    RAISE NOTICE 'Tabla packages no existe. La migracion 003 debe ejecutarse primero.';
+  ELSE
+    -- Insertar solo los 4 paquetes específicos
+    INSERT INTO packages (
+      name, description, package_type, price, duration_days, currency,
+      features, min_ptc_visits, min_banner_views, included_ptc_ads,
+      has_clickable_banner, banner_clicks_limit, banner_impressions_limit,
+      daily_ptc_limit, max_ptc_ads, max_banner_ads, max_campaigns,
+      ptc_reward_bonus, banner_reward_bonus, referral_bonus,
+      is_active, display_order
+    )
+    VALUES
+    (
+      'Starter',
+      'Perfecto para empezar a ganar dinero con anuncios PTC.',
+      'basic',
+      25.00,
+      30,
+      'USD',
+      '["Acceso a Mega Anuncios PTC", "Banner clickeable", "Sistema de referidos"]',
+      50, 100, 5, TRUE, 500, 1000, 5, 5, 1, 1, 5, 0, 5, TRUE, 1
+    ),
+    (
+      'Growth',
+      'Maximiza tus ganancias con más beneficios y límites.',
+      'premium',
+      50.00,
+      30,
+      'USD',
+      '["Acceso a Mega Anuncios y Standard", "Más beneficios", "Bonos aumentados"]',
+      150, 300, 15, TRUE, 1500, 3000, 10, 15, 2, 3, 10, 5, 10, TRUE, 2
+    ),
+    (
+      'Business',
+      'Para profesionales del marketing digital.',
+      'enterprise',
+      100.00,
+      30,
+      'USD',
+      '["Acceso a todos los tipos de anuncios", "Soporte prioritario", "API de gestión"]',
+      400, 800, 40, TRUE, 4000, 8000, 25, 40, 5, 10, 25, 15, 20, TRUE, 3
+    ),
+    (
+      'Enterprise Pro',
+      'El paquete máximo con acceso ilimitado.',
+      'custom',
+      150.00,
+      30,
+      'USD',
+      '["Acceso ilimitado", "API", "Asesoría dedicada", "Soporte VIP"]',
+      1000, 2000, 100, TRUE, 10000, 20000, 50, 999999, 10, 999999, 50, 25, 30, TRUE, 4
+    )
+    ON CONFLICT (name) DO NOTHING;
+    
+    -- Asegurar que los paquetes estén activos
+    UPDATE packages SET is_active = TRUE WHERE name IN ('Starter', 'Growth', 'Business', 'Enterprise Pro');
+    
+    RAISE NOTICE 'Paquetes insertados: Starter, Growth, Business, Enterprise Pro';
+  END IF;
+END $;
 
 -- 4. ACTUALIZAR TABLA PTC_TASKS CON TIPO DE ANUNCIO
 -- =============================================================================
 
-ALTER TABLE ptc_tasks ADD COLUMN IF NOT EXISTS ad_type ptc_ad_type DEFAULT 'standard_400';
-ALTER TABLE ptc_tasks ADD COLUMN IF NOT EXISTS is_demo_only BOOLEAN DEFAULT FALSE;
-
--- Actualizar anuncios existentes segun recompensa
-UPDATE ptc_tasks SET ad_type = 'mega' WHERE reward >= 1000;
-UPDATE ptc_tasks SET ad_type = 'standard_600' WHERE reward >= 600 AND reward < 1000;
-UPDATE ptc_tasks SET ad_type = 'standard_400' WHERE reward >= 400 AND reward < 600;
-UPDATE ptc_tasks SET ad_type = 'mini' WHERE reward < 400;
+-- Verificar que ptc_tasks existe antes de modificar
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ptc_tasks') THEN
+    ALTER TABLE ptc_tasks ADD COLUMN IF NOT EXISTS ad_type ptc_ad_type DEFAULT 'standard_400';
+    ALTER TABLE ptc_tasks ADD COLUMN IF NOT EXISTS is_demo_only BOOLEAN DEFAULT FALSE;
+    
+    -- Actualizar anuncios existentes segun recompensa
+    UPDATE ptc_tasks SET ad_type = 'mega' WHERE reward >= 1000;
+    UPDATE ptc_tasks SET ad_type = 'standard_600' WHERE reward >= 600 AND reward < 1000;
+    UPDATE ptc_tasks SET ad_type = 'standard_400' WHERE reward >= 400 AND reward < 600;
+    UPDATE ptc_tasks SET ad_type = 'mini' WHERE reward < 400;
+  ELSE
+    RAISE NOTICE 'Tabla ptc_tasks no existe. Omitiendo actualizacion de PTC tasks.';
+  END IF;
+END $;
 
 -- 5. AGREGAR CAMPOS DEMO/REAL A PROFILES
 -- =============================================================================
@@ -176,6 +182,22 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_referrals_count INTEGER DEFA
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS has_active_package BOOLEAN DEFAULT FALSE;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS package_started_at TIMESTAMPTZ;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS referral_link VARCHAR(255);
+
+-- AGREGAR COLUMNAS DE PAQUETE SI NO EXISTEN (necesarias para activate_user_package)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS current_package_id UUID;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS package_expires_at TIMESTAMPTZ;
+
+-- Agregar foreign key si no existe (usando DO para evitar errores)
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'profiles_current_package_id_fkey'
+  ) THEN
+    ALTER TABLE profiles ADD CONSTRAINT profiles_current_package_id_fkey
+    FOREIGN KEY (current_package_id) REFERENCES packages(id) ON DELETE SET NULL;
+  END IF;
+END $;
 
 -- Actualizar referral_link basado en referral_code
 UPDATE profiles SET referral_link = '/register?ref=' || referral_code WHERE referral_link IS NULL;
@@ -217,16 +239,44 @@ CREATE POLICY "Admins can manage user levels"
     )
   );
 
--- Insertar niveles iniciales
+-- Insertar niveles iniciales (solo si no existen)
 INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
 VALUES
-(1, 'Novato', 0, 4, 5, 1.00, 5, 'Empieza tu camino. Gana el 5% de tus referidos directos.'),
-(2, 'Afiliado', 5, 14, 10, 1.10, 10, 'Has referido 5 personas. Gana el 10% y 10% mas en cada PTC.'),
-(3, 'Promotor', 15, 29, 15, 1.20, 15, '15 referidos alcanzados. Gana el 15% y 20% mas en cada PTC.'),
-(4, 'Influencer', 30, 49, 20, 1.30, 25, '30 referidos. Gana el 20% y 30% mas en cada PTC.'),
-(5, 'Embajador', 50, 99, 25, 1.50, 50, '50 referidos. Gana el 25% y 50% mas en cada PTC.'),
-(6, 'Lider', 100, 199, 30, 2.00, 75, '100 referidos. Gana el 30% y el doble en cada PTC.'),
-(7, 'Maestro', 200, 499, 35, 2.50, 100, '200 referidos. Gana el 35% y 2.5x en cada PTC.'),
+(1, 'Novato', 0, 4, 5, 1.00, 5, 'Empieza tu camino. Gana el 5% de tus referidos directos.')
+ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
+VALUES
+(2, 'Afiliado', 5, 14, 10, 1.10, 10, 'Has referido 5 personas. Gana el 10% y 10% mas en cada PTC.')
+ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
+VALUES
+(3, 'Promotor', 15, 29, 15, 1.20, 15, '15 referidos alcanzados. Gana el 15% y 20% mas en cada PTC.')
+ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
+VALUES
+(4, 'Influencer', 30, 49, 20, 1.30, 25, '30 referidos. Gana el 20% y 30% mas en cada PTC.')
+ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
+VALUES
+(5, 'Embajador', 50, 99, 25, 1.50, 50, '50 referidos. Gana el 25% y 50% mas en cada PTC.')
+ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
+VALUES
+(6, 'Lider', 100, 199, 30, 2.00, 75, '100 referidos. Gana el 30% y el doble en cada PTC.')
+ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
+VALUES
+(7, 'Maestro', 200, 499, 35, 2.50, 100, '200 referidos. Gana el 35% y 2.5x en cada PTC.')
+ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO user_levels (level, name, min_referrals, max_referrals, referral_bonus_percentage, ptc_reward_multiplier, daily_ptc_limit, description)
+VALUES
 (8, 'VIP', 500, NULL, 50, 3.00, 200, '500+ referidos. Gana el 50% y 3x en cada PTC. Acceso VIP.')
 ON CONFLICT (level) DO NOTHING;
 
@@ -264,13 +314,13 @@ CREATE POLICY "Admins can view all donations"
 -- 8. CREAR TABLA DE BANNERS DE PAQUETES
 -- =============================================================================
 
-DO $$
+DO $
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'package_banners') THEN
     CREATE TABLE package_banners (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-      user_package_id UUID REFERENCES user_packages(id) ON DELETE CASCADE,
+      user_package_id UUID,
       name VARCHAR(255),
       image_url TEXT NOT NULL,
       target_url TEXT NOT NULL,
@@ -286,6 +336,10 @@ BEGIN
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    
+    -- Agregar foreign key despues de crear la tabla
+    ALTER TABLE package_banners ADD CONSTRAINT package_banners_user_package_fkey
+    FOREIGN KEY (user_package_id) REFERENCES user_packages(id) ON DELETE SET NULL;
     
     ALTER TABLE package_banners ENABLE ROW LEVEL SECURITY;
 
@@ -398,6 +452,47 @@ $$ LANGUAGE plpgsql;
 -- 11. CREAR FUNCION PARA ACTIVAR PAQUETE DE USUARIO
 -- =============================================================================
 
+-- Primero verificar que la tabla user_packages existe
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_packages') THEN
+    CREATE TABLE user_packages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+      package_id UUID REFERENCES packages(id) ON DELETE SET NULL,
+      package_name VARCHAR(100),
+      start_date TIMESTAMPTZ NOT NULL,
+      end_date TIMESTAMPTZ NOT NULL,
+      status VARCHAR(20) DEFAULT 'active',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    
+    ALTER TABLE user_packages ENABLE ROW LEVEL SECURITY;
+    
+    CREATE POLICY "Users can view their own user_packages"
+      ON user_packages FOR SELECT
+      USING (user_id = auth.uid());
+    
+    CREATE POLICY "Users can create their own user_packages"
+      ON user_packages FOR INSERT
+      WITH CHECK (user_id = auth.uid());
+    
+    CREATE POLICY "Users can update their own user_packages"
+      ON user_packages FOR UPDATE
+      USING (user_id = auth.uid());
+    
+    CREATE POLICY "Admins can manage all user_packages"
+      ON user_packages FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE id = auth.uid() AND role IN ('admin', 'dev')
+        )
+      );
+  END IF;
+END $;
+
 DROP FUNCTION IF EXISTS activate_user_package(UUID, UUID);
 
 CREATE OR REPLACE FUNCTION activate_user_package(
@@ -448,10 +543,32 @@ CREATE INDEX IF NOT EXISTS idx_ptc_tasks_ad_type ON ptc_tasks(ad_type);
 CREATE INDEX IF NOT EXISTS idx_ptc_tasks_is_demo_only ON ptc_tasks(is_demo_only);
 CREATE INDEX IF NOT EXISTS idx_profiles_referral_link ON profiles(referral_link);
 CREATE INDEX IF NOT EXISTS idx_profiles_has_active_package ON profiles(has_active_package);
-CREATE INDEX IF NOT EXISTS idx_donations_user_id ON donations(user_id);
-CREATE INDEX IF NOT EXISTS idx_package_banners_user_id ON package_banners(user_id);
-CREATE INDEX IF NOT EXISTS idx_package_banners_status ON package_banners(status);
+
+-- Indices para tablas nuevas (solo si existen)
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'donations') THEN
+    CREATE INDEX IF NOT EXISTS idx_donations_user_id ON donations(user_id);
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'package_banners') THEN
+    CREATE INDEX IF NOT EXISTS idx_package_banners_user_id ON package_banners(user_id);
+    CREATE INDEX IF NOT EXISTS idx_package_banners_status ON package_banners(status);
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_packages') THEN
+    CREATE INDEX IF NOT EXISTS idx_user_packages_user_id ON user_packages(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_packages_status ON user_packages(status);
+  END IF;
+END $;
 
 -- =============================================================================
--- FIN DEL SCRIPT
+-- VERIFICACION FINAL
 -- =============================================================================
+
+DO $
+BEGIN
+  RAISE NOTICE 'Migracion 005 completada exitosamente!';
+  RAISE NOTICE 'Tablas creadas/verificadas: packages, user_levels, donations, package_banners, user_packages';
+  RAISE NOTICE 'Funciones creadas: calculate_donation, record_earning_with_donation, validate_referral_code, activate_user_package';
+END $;

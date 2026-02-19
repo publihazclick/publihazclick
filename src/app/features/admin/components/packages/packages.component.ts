@@ -1,25 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  LucideAngularModule,
-  Search,
-  Plus,
-  X,
-  Loader2,
-  AlertCircle,
-  Package,
-  Edit3,
-  Trash2,
-  Check,
-  DollarSign,
-  Clock,
-  Zap,
-  Users,
-  TrendingUp,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-angular';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import type {
   Package as PackageModel,
@@ -31,29 +12,11 @@ import type {
 @Component({
   selector: 'app-admin-packages',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './packages.component.html',
   styleUrl: './packages.component.scss'
 })
 export class AdminPackagesComponent implements OnInit {
-  // Iconos
-  readonly SearchIcon = Search;
-  readonly PlusIcon = Plus;
-  readonly XIcon = X;
-  readonly Loader2Icon = Loader2;
-  readonly AlertCircleIcon = AlertCircle;
-  readonly PackageIcon = Package;
-  readonly Edit3Icon = Edit3;
-  readonly Trash2Icon = Trash2;
-  readonly CheckIcon = Check;
-  readonly DollarSignIcon = DollarSign;
-  readonly ClockIcon = Clock;
-  readonly ZapIcon = Zap;
-  readonly UsersIcon = Users;
-  readonly TrendingUpIcon = TrendingUp;
-  readonly ChevronLeftIcon = ChevronLeft;
-  readonly ChevronRightIcon = ChevronRight;
-
   // Servicios
   private readonly packageService = inject(AdminPackageService);
 
@@ -79,15 +42,26 @@ export class AdminPackagesComponent implements OnInit {
     name: '',
     description: '',
     package_type: 'basic',
-    price: 0,
+    price: 25,
+    currency: 'USD',
     duration_days: 30,
     features: [],
+    // Límites mínimos
+    min_ptc_visits: 50,
+    min_banner_views: 100,
+    included_ptc_ads: 5,
+    has_clickable_banner: true,
+    banner_clicks_limit: 500,
+    banner_impressions_limit: 1000,
+    daily_ptc_limit: 5,
+    // Límites máximos
     max_ptc_ads: 5,
-    max_banner_ads: 2,
-    max_campaigns: 3,
-    ptc_reward_bonus: 0,
+    max_banner_ads: 1,
+    max_campaigns: 1,
+    // Bonificaciones
+    ptc_reward_bonus: 5,
     banner_reward_bonus: 0,
-    referral_bonus: 0
+    referral_bonus: 5
   });
 
   readonly saving = signal<boolean>(false);
@@ -102,11 +76,11 @@ export class AdminPackagesComponent implements OnInit {
     { value: 'custom', label: 'Personalizado' }
   ];
 
-  readonly currencyFormatter = new Intl.NumberFormat('es-CO', {
+  readonly currencyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   });
 
   readonly totalPages = () => Math.ceil(this.totalCount() / this.pageSize());
@@ -157,15 +131,26 @@ export class AdminPackagesComponent implements OnInit {
       name: '',
       description: '',
       package_type: 'basic',
-      price: 0,
+      price: 25,
+      currency: 'USD',
       duration_days: 30,
       features: [],
+      // Límites mínimos
+      min_ptc_visits: 50,
+      min_banner_views: 100,
+      included_ptc_ads: 5,
+      has_clickable_banner: true,
+      banner_clicks_limit: 500,
+      banner_impressions_limit: 1000,
+      daily_ptc_limit: 5,
+      // Límites máximos
       max_ptc_ads: 5,
-      max_banner_ads: 2,
-      max_campaigns: 3,
-      ptc_reward_bonus: 0,
+      max_banner_ads: 1,
+      max_campaigns: 1,
+      // Bonificaciones
+      ptc_reward_bonus: 5,
       banner_reward_bonus: 0,
-      referral_bonus: 0
+      referral_bonus: 5
     });
     this.showModal.set(true);
   }
@@ -178,11 +163,22 @@ export class AdminPackagesComponent implements OnInit {
       description: pkg.description || '',
       package_type: pkg.package_type,
       price: pkg.price,
+      currency: (pkg as any).currency || 'USD',
       duration_days: pkg.duration_days,
       features: [...pkg.features],
+      // Límites mínimos
+      min_ptc_visits: (pkg as any).min_ptc_visits || 0,
+      min_banner_views: (pkg as any).min_banner_views || 0,
+      included_ptc_ads: (pkg as any).included_ptc_ads || 0,
+      has_clickable_banner: (pkg as any).has_clickable_banner ?? true,
+      banner_clicks_limit: (pkg as any).banner_clicks_limit || 0,
+      banner_impressions_limit: (pkg as any).banner_impressions_limit || 0,
+      daily_ptc_limit: (pkg as any).daily_ptc_limit || 5,
+      // Límites máximos
       max_ptc_ads: pkg.max_ptc_ads,
       max_banner_ads: pkg.max_banner_ads,
       max_campaigns: pkg.max_campaigns,
+      // Bonificaciones
       ptc_reward_bonus: pkg.ptc_reward_bonus,
       banner_reward_bonus: pkg.banner_reward_bonus,
       referral_bonus: pkg.referral_bonus

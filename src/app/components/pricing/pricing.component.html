@@ -3,100 +3,148 @@
     <h2 class="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-4 tracking-tighter uppercase leading-none">
       <span class="text-cyan-500">Paquetes</span> & Precios
     </h2>
-    <p class="text-gray-500 uppercase tracking-widest text-xs font-bold mb-12 md:mb-20">estos son los paquetes y los precios</p>
+    <p class="text-gray-500 uppercase tracking-widest text-xs font-bold mb-12 md:mb-20">Elige el plan perfecto para ti</p>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 max-w-5xl mx-auto items-start">
-      <!-- Individual Plan -->
-      <div class="bg-white rounded-2xl md:rounded-[2rem] p-6 md:p-12 text-left relative overflow-hidden group">
-        <div class="flex items-center space-x-3 mb-6 md:mb-10">
-          <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center">
-            <span class="material-symbols-outlined text-black text-lg">person</span>
-          </div>
-          <span class="text-gray-400 font-bold text-xs uppercase tracking-widest">Individual Plan</span>
-        </div>
-
-        <div class="mb-6 md:mb-10">
-          <div class="flex items-baseline space-x-2">
-            <span class="text-4xl md:text-6xl font-black text-black tracking-tighter">$30.000</span>
-            <span class="text-gray-400 font-bold text-sm">/ mes</span>
-          </div>
-        </div>
-
-        <ul class="space-y-3 md:space-y-4 mb-8 md:mb-12">
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-600">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Real-time collaboration</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-600">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>AI-powered organization</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-600">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Customizable templates</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-600">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>5GB cloud storage</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-600">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Basic integrations</span>
-          </li>
-        </ul>
-
-        <button class="w-full bg-gray-100 hover:bg-black hover:text-white text-black font-black py-3 md:py-4 rounded-xl transition-all flex items-center justify-center space-x-2">
-          <span class="uppercase tracking-widest text-xs">Start Free Trial</span>
-          <span class="material-symbols-outlined text-lg">north_east</span>
+    @if (loading()) {
+      <div class="flex justify-center items-center py-20">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+      </div>
+    } @else if (error()) {
+      <div class="bg-red-500/10 border border-red-500 rounded-lg p-6 max-w-md mx-auto">
+        <p class="text-red-500">{{ error() }}</p>
+        <button 
+          (click)="loadPackages()"
+          class="mt-4 px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold"
+        >
+          Reintentar
         </button>
-        <p class="text-center text-[10px] text-gray-400 font-bold uppercase mt-4 tracking-widest">No credit card required</p>
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 max-w-7xl mx-auto items-start">
+        @for (pkg of packages(); track pkg.id; let i = $index) {
+          <div 
+            class="rounded-2xl md:rounded-[2rem] p-6 md:p-8 text-left relative overflow-hidden group transition-all duration-300 hover:transform hover:scale-105"
+            [class.bg-white]="!isPopularPackage(pkg.package_type)"
+            [class.text-black]="!isPopularPackage(pkg.package_type)"
+            [class.bg-black]="isPopularPackage(pkg.package_type)"
+            [class.text-white]="isPopularPackage(pkg.package_type)"
+            [class.border-2]="isPopularPackage(pkg.package_type)"
+            [class.border-cyan-500]="isPopularPackage(pkg.package_type)"
+            [class.shadow-[0_0_40px_rgba(0,229,255,0.15)]]="isPopularPackage(pkg.package_type)"
+          >
+            @if (isPopularPackage(pkg.package_type)) {
+              <div class="absolute top-0 left-0 right-0 bg-cyan-500 text-black text-xs font-bold uppercase py-1 tracking-widest">
+                Más Popular
+              </div>
+            }
+
+            <div class="flex items-center space-x-3 mb-6 mt-2">
+              <div 
+                class="w-10 h-10 rounded-lg flex items-center justify-center"
+                [class.bg-gray-100]="!isPopularPackage(pkg.package_type)"
+                [class.bg-cyan-500/10]="isPopularPackage(pkg.package_type)"
+              >
+                <span 
+                  class="material-symbols-outlined text-xl"
+                  [class.text-black]="!isPopularPackage(pkg.package_type)"
+                  [class.text-cyan-500]="isPopularPackage(pkg.package_type)"
+                >
+                  @switch (pkg.package_type) {
+                    @case ('basic') { star }
+                    @case ('premium') { diamond }
+                    @case ('enterprise') { business }
+                    @case ('custom') { handshake }
+                    @default { card_membership }
+                  }
+                </span>
+              </div>
+              <span 
+                class="font-bold text-xs uppercase tracking-widest"
+                [class.text-gray-400]="!isPopularPackage(pkg.package_type)"
+                [class.text-cyan-500]="isPopularPackage(pkg.package_type)"
+              >
+                {{ getPackageTypeLabel(pkg.package_type) }}
+              </span>
+            </div>
+
+            <div class="mb-6">
+              <h3 class="text-2xl md:text-3xl font-black tracking-tight mb-2">{{ pkg.name }}</h3>
+              <p class="text-sm opacity-70 mb-4">{{ pkg.description }}</p>
+              <div class="flex items-baseline space-x-1">
+                <span 
+                  class="text-3xl md:text-5xl font-black tracking-tighter"
+                  [class.text-black]="!isPopularPackage(pkg.package_type)"
+                  [class.text-white]="isPopularPackage(pkg.package_type)"
+                >
+                  {{ getPriceDisplay(pkg.price, pkg.currency) }}
+                </span>
+                @if (pkg.price > 0) {
+                  <span class="text-sm font-bold opacity-60">/ {{ pkg.duration_days }} días</span>
+                }
+              </div>
+            </div>
+
+            <ul class="space-y-3 mb-8">
+              @for (feature of getFeaturesList(pkg.features); track feature) {
+                <li 
+                  class="flex items-start space-x-3 text-sm font-semibold"
+                  [class.text-gray-600]="!isPopularPackage(pkg.package_type)"
+                  [class.text-gray-300]="isPopularPackage(pkg.package_type)"
+                >
+                  <span class="material-symbols-outlined text-cyan-500 text-lg flex-shrink-0">check_circle</span>
+                  <span>{{ feature }}</span>
+                </li>
+              }
+            </ul>
+
+            <!-- Límites del paquete -->
+            <div class="mb-6 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+              <p class="text-xs font-bold uppercase tracking-wider opacity-60 mb-2">Incluye:</p>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">ads_click</span>
+                  <span>{{ pkg.max_ptc_ads }} PTC</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">image</span>
+                  <span>{{ pkg.max_banner_ads }} Banners</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">campaign</span>
+                  <span>{{ pkg.max_campaigns }} Campañas</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">groups</span>
+                  <span>{{ pkg.referral_bonus }}% Referidos</span>
+                </div>
+              </div>
+            </div>
+
+            <a 
+              routerLink="/register"
+              class="block w-full text-center py-3 md:py-4 rounded-xl transition-all flex items-center justify-center space-x-2 font-black uppercase text-xs tracking-wider"
+              [class.bg-gray-100]="!isPopularPackage(pkg.package_type)"
+              [class.hover:bg-black]="!isPopularPackage(pkg.package_type)"
+              [class.hover:text-white]="!isPopularPackage(pkg.package_type)"
+              [class.text-black]="!isPopularPackage(pkg.package_type)"
+              [class.bg-cyan-500]="isPopularPackage(pkg.package_type)"
+              [class.hover:bg-cyan-400]="isPopularPackage(pkg.package_type)"
+              [class.text-black]="isPopularPackage(pkg.package_type)"
+              [class.shadow-[0_0_20px_rgba(0,229,255,0.3)]]="isPopularPackage(pkg.package_type)"
+            >
+              <span>Comenzar Ahora</span>
+              <span class="material-symbols-outlined text-lg">north_east</span>
+            </a>
+          </div>
+        }
       </div>
 
-      <!-- Team Plan -->
-      <div class="bg-black border-2 border-cyan-500 rounded-2xl md:rounded-[2rem] p-6 md:p-12 text-left relative overflow-hidden group shadow-[0_0_40px_rgba(0,229,255,0.1)]">
-        <div class="flex items-center space-x-3 mb-6 md:mb-10">
-          <div class="w-8 h-8 rounded bg-cyan-500/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">group</span>
-          </div>
-          <span class="text-cyan-500 font-bold text-xs uppercase tracking-widest">Team Plan</span>
+      @if (packages().length === 0) {
+        <div class="text-center py-12">
+          <span class="material-symbols-outlined text-6xl text-gray-600 mb-4">inventory_2</span>
+          <p class="text-gray-500 text-lg">No hay paquetes disponibles en este momento</p>
         </div>
-
-        <div class="mb-6 md:mb-10">
-          <div class="flex items-baseline space-x-2">
-            <span class="text-4xl md:text-6xl font-black text-white tracking-tighter">$60.000</span>
-            <span class="text-gray-500 font-bold text-sm">/ mes</span>
-          </div>
-        </div>
-
-        <ul class="space-y-3 md:space-y-4 mb-8 md:mb-12">
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-300">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Everything in the Individual Plan</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-300">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Unlimited cloud storage</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-300">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Advanced integrations</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-300">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Team management and permissions</span>
-          </li>
-          <li class="flex items-center space-x-3 text-sm font-semibold text-gray-300">
-            <span class="material-symbols-outlined text-cyan-500 text-lg">check_circle</span>
-            <span>Shared templates and note libraries</span>
-          </li>
-        </ul>
-
-        <button class="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black py-3 md:py-4 rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(0,229,255,0.3)]">
-          <span class="uppercase tracking-widest text-xs">Start Free Trial</span>
-          <span class="material-symbols-outlined text-lg">north_east</span>
-        </button>
-        <p class="text-center text-[10px] text-gray-600 font-bold uppercase mt-4 tracking-widest">No credit card required</p>
-      </div>
-    </div>
+      }
+    }
   </div>
 </section>

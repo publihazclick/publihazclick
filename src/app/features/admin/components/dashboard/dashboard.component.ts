@@ -1,19 +1,5 @@
 import { Component, inject, signal, OnInit, computed, Pipe, PipeTransform } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule,
-  Users,
-  MousePointerClick,
-  DollarSign,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  Check,
-  X,
-  Globe,
-  Loader2,
-  AlertCircle,
-  Shield
-} from 'lucide-angular';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import type {
@@ -38,25 +24,11 @@ class MaxPipe implements PipeTransform {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, MaxPipe],
+  imports: [CommonModule, MaxPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class AdminDashboardComponent implements OnInit {
-  // Iconos
-  readonly UsersIcon = Users;
-  readonly MousePointerClickIcon = MousePointerClick;
-  readonly DollarSignIcon = DollarSign;
-  readonly ClockIcon = Clock;
-  readonly TrendingUpIcon = TrendingUp;
-  readonly TrendingDownIcon = TrendingDown;
-  readonly CheckIcon = Check;
-  readonly XIcon = X;
-  readonly GlobeIcon = Globe;
-  readonly Loader2Icon = Loader2;
-  readonly AlertCircleIcon = AlertCircle;
-  readonly ShieldIcon = Shield;
-
   // Servicios
   private readonly dashboardService = inject(AdminDashboardService);
   private readonly ptcTaskService = inject(AdminPtcTaskService);

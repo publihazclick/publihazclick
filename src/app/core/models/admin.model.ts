@@ -92,6 +92,8 @@ export interface PtcTaskAdmin {
   total_clicks: number;
   today_clicks?: number;
   status: TaskStatus;
+  ad_type?: PtcAdType;
+  is_demo_only?: boolean;
   advertiser_id: string;
   advertiser_username?: string;
   created_at: string;
@@ -402,11 +404,22 @@ export interface CreatePackageData {
   description?: string;
   package_type: PackageType;
   price: number;
+  currency?: string;
   duration_days: number;
   features?: string[];
+  // Límites mínimos del paquete
+  min_ptc_visits?: number;
+  min_banner_views?: number;
+  included_ptc_ads?: number;
+  has_clickable_banner?: boolean;
+  banner_clicks_limit?: number;
+  banner_impressions_limit?: number;
+  daily_ptc_limit?: number;
+  // Límites máximos
   max_ptc_ads?: number;
   max_banner_ads?: number;
   max_campaigns?: number;
+  // Bonificaciones
   ptc_reward_bonus?: number;
   banner_reward_bonus?: number;
   referral_bonus?: number;
@@ -600,10 +613,10 @@ export interface PtcTaskAdmin {
   total_clicks: number;
   today_clicks?: number;
   status: TaskStatus;
+  ad_type?: PtcAdType;
+  is_demo_only?: boolean;
   advertiser_id: string;
   advertiser_username?: string;
-  ad_type: PtcAdType;
-  is_demo_only: boolean;
   created_at: string;
   updated_at?: string;
 }

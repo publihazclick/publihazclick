@@ -1,29 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  LucideAngularModule,
-  Search,
-  Filter,
-  Plus,
-  X,
-  Loader2,
-  AlertCircle,
-  Megaphone,
-  Image,
-  MousePointer,
-  Eye,
-  Edit3,
-  Trash2,
-  Pause,
-  Play,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  Clock,
-  DollarSign,
-  TrendingUp
-} from 'lucide-angular';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import { AdminBannerService } from '../../../../core/services/admin-banner.service';
 import type {
@@ -41,33 +18,11 @@ import type {
 @Component({
   selector: 'app-admin-ads',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './ads.component.html',
   styleUrl: './ads.component.scss'
 })
 export class AdminAdsComponent implements OnInit {
-  // Iconos
-  readonly SearchIcon = Search;
-  readonly FilterIcon = Filter;
-  readonly PlusIcon = Plus;
-  readonly XIcon = X;
-  readonly Loader2Icon = Loader2;
-  readonly AlertCircleIcon = AlertCircle;
-  readonly MegaphoneIcon = Megaphone;
-  readonly ImageIcon = Image;
-  readonly MousePointerIcon = MousePointer;
-  readonly EyeIcon = Eye;
-  readonly Edit3Icon = Edit3;
-  readonly Trash2Icon = Trash2;
-  readonly PauseIcon = Pause;
-  readonly PlayIcon = Play;
-  readonly ChevronLeftIcon = ChevronLeft;
-  readonly ChevronRightIcon = ChevronRight;
-  readonly ExternalLinkIcon = ExternalLink;
-  readonly ClockIcon = Clock;
-  readonly DollarSignIcon = DollarSign;
-  readonly TrendingUpIcon = TrendingUp;
-
   // Servicios
   private readonly ptcService = inject(AdminPtcTaskService);
   private readonly bannerService = inject(AdminBannerService);
