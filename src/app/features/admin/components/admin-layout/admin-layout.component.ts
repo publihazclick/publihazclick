@@ -26,15 +26,25 @@ export class AdminLayoutComponent {
   readonly X = LucideAngularModule;
   readonly Sun = LucideAngularModule;
   readonly Moon = LucideAngularModule;
+  readonly ChevronLeft = LucideAngularModule;
+  readonly ChevronRight = LucideAngularModule;
 
   isDarkMode = true;
   serverLoad = 42;
+  
+  // Estado del sidebar (mobile)
   protected readonly sidebarOpen = signal(false);
+  // Estado colapsado del sidebar (tablet/desktop)
+  protected readonly sidebarCollapsed = signal(false);
 
   constructor(private readonly authService: AuthService, private readonly router: Router) {}
 
   toggleSidebar(): void {
     this.sidebarOpen.update(v => !v);
+  }
+
+  toggleSidebarCollapse(): void {
+    this.sidebarCollapsed.update(v => !v);
   }
 
   toggleDarkMode(): void {
