@@ -19,9 +19,9 @@
         [title]="sidebarCollapsed() ? 'Expandir menú' : 'Colapsar menú'"
       >
         @if (sidebarCollapsed()) {
-          <lucide-icon name="chevron-right" class="w-4 h-4"></lucide-icon>
+          <span class="material-symbols-outlined text-2xl">chevron_right</span>
         } @else {
-          <lucide-icon name="chevron-left" class="w-4 h-4"></lucide-icon>
+          <span class="material-symbols-outlined text-2xl">chevron_left</span>
         }
       </button>
     }
@@ -30,7 +30,7 @@
     @if (!sidebarCollapsed() || isMobile()) {
       <div class="flex flex-col items-center mb-6 lg:mb-8 py-4 lg:py-6 border-b border-white/10">
         <div class="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-tr from-primary to-blue-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2 lg:mb-3 shadow-lg shadow-primary/20 rotate-3">
-          <lucide-icon name="shield" class="text-black text-2xl lg:text-3xl font-bold -rotate-3" style="width: 28px; height: 28px;"></lucide-icon>
+          <span class="material-symbols-outlined text-2xl lg:text-3xl text-black font-bold -rotate-3">shield</span>
         </div>
         <h3 class="font-bold text-center text-sm">Admin Central</h3>
         <p class="text-[10px] text-primary mt-1 font-bold uppercase tracking-widest">Master Admin</p>
@@ -38,7 +38,7 @@
     } @else {
       <div class="flex flex-col items-center mb-4 py-4 border-b border-white/10">
         <div class="w-10 h-10 bg-gradient-to-tr from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 rotate-3">
-          <lucide-icon name="shield" class="text-black text-xl font-bold -rotate-3" style="width: 22px; height: 22px;"></lucide-icon>
+          <span class="material-symbols-outlined text-xl text-black font-bold -rotate-3">shield</span>
         </div>
       </div>
     }
@@ -50,7 +50,7 @@
         <ul class="space-y-1">
           <li>
             <a routerLink="/admin" routerLinkActive="bg-primary/10 text-primary border border-primary/20" [routerLinkActiveOptions]="{exact: true}" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="layout-dashboard" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">dashboard</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>Dashboard Overview</span>
               }
@@ -58,7 +58,7 @@
           </li>
           <li>
             <a routerLink="/admin/users" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="users" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">group</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>User Management</span>
               }
@@ -66,7 +66,7 @@
           </li>
           <li>
             <a routerLink="/admin/moderation" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="shield-check" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">verified_user</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>Ad Moderation</span>
                 <span class="ml-auto bg-primary text-black text-[10px] px-1.5 py-0.5 rounded font-bold">12</span>
@@ -75,7 +75,7 @@
           </li>
           <li>
             <a routerLink="/admin/ads" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="megaphone" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">campaign</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>Ad Management</span>
               }
@@ -83,7 +83,7 @@
           </li>
           <li>
             <a routerLink="/admin/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="package" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">inventory_2</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>Packages</span>
               }
@@ -91,7 +91,7 @@
           </li>
           <li>
             <a routerLink="/admin/reports" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="chart-bar" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">bar_chart</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>Financial Reports</span>
               }
@@ -106,7 +106,7 @@
         <ul class="space-y-1">
           <li>
             <a routerLink="/admin/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="settings" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">settings</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>Settings</span>
               }
@@ -114,7 +114,7 @@
           </li>
           <li>
             <a routerLink="/admin/logs" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-              <lucide-icon name="terminal" class="w-5 h-5"></lucide-icon> 
+              <span class="material-symbols-outlined">terminal</span> 
               @if (!sidebarCollapsed() || isMobile()) {
                 <span>System Logs</span>
               }
@@ -137,7 +137,7 @@
       </div>
     }
     <button (click)="logout()" class="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold py-2.5 px-2 lg:px-4 rounded-lg transition-all text-xs border border-rose-500/20 flex items-center justify-center gap-2 uppercase tracking-wider" [class.justify-center]="sidebarCollapsed() && !isMobile()">
-      <lucide-icon name="log-out" class="w-4 h-4"></lucide-icon> 
+      <span class="material-symbols-outlined">logout</span> 
       @if (!sidebarCollapsed() || isMobile()) {
         <span class="hidden sm:inline">Sign Out</span>
       }
@@ -165,7 +165,7 @@
       (click)="toggleSidebar()"
       class="md:hidden p-2 mr-3 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
     >
-      <lucide-icon name="menu" class="w-6 h-6"></lucide-icon>
+      <span class="material-symbols-outlined text-2xl">menu</span>
     </button>
 
     <div class="flex-1">
@@ -175,7 +175,7 @@
     <div class="flex items-center gap-3 lg:gap-6">
       <div class="relative hidden sm:block">
         <button class="p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all relative">
-          <lucide-icon name="bell" class="w-5 h-5"></lucide-icon>
+          <span class="material-symbols-outlined">notifications</span>
           <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-primary border-2 border-white dark:border-card-dark rounded-full"></span>
         </button>
       </div>
@@ -188,7 +188,7 @@
           </p>
         </div>
         <div class="w-8 lg:w-10 h-8 lg:h-10 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center border-2 border-primary/20">
-          <lucide-icon name="shield" class="text-slate-600 dark:text-slate-400 w-4 lg:w-5 h-4 lg:h-5"></lucide-icon>
+          <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">shield</span>
         </div>
       </div>
     </div>
@@ -213,9 +213,9 @@
 <div class="fixed bottom-6 right-6 z-50">
   <button (click)="toggleDarkMode()" class="group relative w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-white dark:bg-card-dark shadow-xl border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-800 dark:text-primary transition-all hover:scale-110 active:scale-95">
     @if (isDarkMode) {
-      <lucide-icon name="sun" class="w-5 lg:w-6 h-5 lg:h-6"></lucide-icon>
+      <span class="material-symbols-outlined text-2xl lg:text-3xl">light_mode</span>
     } @else {
-      <lucide-icon name="moon" class="w-5 lg:w-6 h-5 lg:h-6"></lucide-icon>
+      <span class="material-symbols-outlined text-2xl lg:text-3xl">dark_mode</span>
     }
     <span class="absolute right-full mr-3 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Toggle Mode</span>
   </button>
