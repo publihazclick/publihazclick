@@ -1,13 +1,13 @@
 -- =============================================================================
--- PublihazClick - Fase 3: Lógica de Negocio Completa
+-- PublihazClick - Fase 3: Logica de Negocio Completa
 -- Paquetes publicitarios, tipos de anuncios, sistema demo/real, niveles
--- Esta migración puede ejecutarse INDEPENDIENTEMENTE - crea lo que falta
+-- Esta migracion puede ejecutarse INDEPENDIENTEMENTE - crea lo que falta
 -- =============================================================================
 
--- 0. CREAR TABLA PACKAGES SI NO EXISTE (necesaria para esta migración)
+-- 0. CREAR TABLA PACKAGES SI NO EXISTE (necesaria para esta migracion)
 -- =============================================================================
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'packages') THEN
     -- Crear enum si no existe
@@ -64,24 +64,24 @@ BEGIN
     ALTER TABLE packages ADD COLUMN IF NOT EXISTS daily_ptc_limit INTEGER DEFAULT 0;
     ALTER TABLE packages ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'USD';
   END IF;
-END $;
+END $$;
 
 -- 1. CREAR ENUMS ADICIONALES
 -- =============================================================================
 
-DO $
+DO $$
 BEGIN
   CREATE TYPE IF NOT EXISTS ptc_ad_type AS ENUM ('mega', 'standard_400', 'standard_600', 'mini');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $;
+END $$;
 
-DO $
+DO $$
 BEGIN
   CREATE TYPE IF NOT EXISTS package_banner_status AS ENUM ('pending', 'active', 'completed', 'rejected');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $;
+END $$;
 
 -- 2. INSERTAR PAQUETES NUEVOS
 -- =============================================================================
