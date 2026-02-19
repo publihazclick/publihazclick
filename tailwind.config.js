@@ -10,7 +10,7 @@ module.exports = {
         accent: '#FF007F',
         'background-dark': '#000000',
         'background-light': '#F3F4F6',
-        'card-dark': '#000000',
+        'card-dark': '#121212',
         'glass-dark': 'rgba(10, 10, 10, 0.7)',
         'sidebar-dark': '#0a0a0a',
       },
