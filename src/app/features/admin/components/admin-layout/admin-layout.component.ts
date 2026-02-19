@@ -1,5 +1,5 @@
-import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -36,11 +36,22 @@ export class AdminLayoutComponent {
   protected readonly sidebarOpen = signal(false);
   // Estado colapsado del sidebar (tablet/desktop)
   protected readonly sidebarCollapsed = signal(false);
+  // Estado de si es navegador (para SSR)
+  protected readonly isBrowser = signal(false);
 
-  constructor(private readonly authService: AuthService, private readonly router: Router) {}
+  constructor(
+    private readonly authService: AuthService, 
+    private readonly router: Router,
+    @Inject(PLATFORM_ID) private readonly platformId: Object
+  ) {
+    this.isBrowser.set(isPlatformBrowser(this.platformId));
+  }
 
   // Detectar si es dispositivo móvil
   protected isMobile(): boolean {
+    if (!this.isBrowser()) {
+      return false; // En SSR, asumir no móvil
+    }
     return window.innerWidth < 768;
   }
 
