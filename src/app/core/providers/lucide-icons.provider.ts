@@ -104,6 +104,7 @@ export const provideLucideIcons = () => {
       FileText: icons.FileText,
       ChartBar: icons.ChartBar,
       Terminal: icons.Terminal,
+      Megaphone: icons.Megaphone,
 
       // Iconos para el dashboard de usuario
       Wallet: icons.Wallet,
