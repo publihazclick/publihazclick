@@ -1,7 +1,6 @@
-import { Component, signal, computed, effect } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { BannerSliderComponent, BannerSlide } from '../banner-slider/banner-slider.component';
 
 interface FloatingImage {
   src: string;
@@ -12,43 +11,12 @@ interface FloatingImage {
 @Component({
   selector: 'app-hero',
   standalone: true,
-  imports: [CommonModule, FormsModule, BannerSliderComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './hero.component.html',
   styleUrl: './hero.component.scss'
 })
 export class HeroComponent {
   protected readonly whatsapp = signal('');
-  
-  protected readonly bannerSlides: BannerSlide[] = [
-    {
-      icon: 'account_balance_wallet',
-      title: 'COP: $10.000',
-      subtitle: 'Saldo Retirable',
-      description: 'Conviértete en anunciante y activa tus retiros',
-      gradient: 'from-cyan-500 to-blue-600'
-    },
-    {
-      icon: 'volunteer_activism',
-      title: 'COP: $5.000',
-      subtitle: 'Total Donaciones',
-      description: 'Impacto social generado en la plataforma',
-      gradient: 'from-purple-500 to-pink-600'
-    },
-    {
-      icon: 'groups',
-      title: '1,234+',
-      subtitle: 'Creadores Activos',
-      description: 'Únete a nuestra comunidad de influencers',
-      gradient: 'from-green-500 to-emerald-600'
-    },
-    {
-      icon: 'trending_up',
-      title: '500K+',
-      subtitle: 'Visitas Mensuales',
-      description: 'Alcance masivo para tu marca',
-      gradient: 'from-orange-500 to-red-600'
-    }
-  ];
 
   protected readonly floatingImages: FloatingImage[] = [
     {

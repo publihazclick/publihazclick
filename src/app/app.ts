@@ -10,6 +10,7 @@ import { PricingComponent } from './components/pricing/pricing.component';
 import { FeaturesComponent } from './components/features/features.component';
 import { RecentPostsComponent } from './components/recent-posts/recent-posts.component';
 import { FooterComponent } from './components/footer/footer.component';
+import { BannerSliderComponent, BannerSlide } from './components/banner-slider/banner-slider.component';
 
 @Component({
   selector: 'app-root',
@@ -18,6 +19,7 @@ import { FooterComponent } from './components/footer/footer.component';
     RouterOutlet,
     HeaderComponent,
     HeroComponent,
+    BannerSliderComponent,
     TestimonialsComponent,
     BusinessModelsComponent,
     HowItWorksComponent,
@@ -34,6 +36,38 @@ export class App {
   
   // Signal para saber si estamos en una ruta de autenticación
   readonly isAuthRoute = signal(false);
+  
+  // Banner slides data
+  protected readonly bannerSlides: BannerSlide[] = [
+    {
+      icon: 'account_balance_wallet',
+      title: 'COP: $10.000',
+      subtitle: 'Saldo Retirable',
+      description: 'Conviértete en anunciante y activa tus retiros',
+      gradient: 'from-cyan-500 to-blue-600'
+    },
+    {
+      icon: 'volunteer_activism',
+      title: 'COP: $5.000',
+      subtitle: 'Total Donaciones',
+      description: 'Impacto social generado en la plataforma',
+      gradient: 'from-purple-500 to-pink-600'
+    },
+    {
+      icon: 'groups',
+      title: '1,234+',
+      subtitle: 'Creadores Activos',
+      description: 'Únete a nuestra comunidad de influencers',
+      gradient: 'from-green-500 to-emerald-600'
+    },
+    {
+      icon: 'trending_up',
+      title: '500K+',
+      subtitle: 'Visitas Mensuales',
+      description: 'Alcance masivo para tu marca',
+      gradient: 'from-orange-500 to-red-600'
+    }
+  ];
   
   private readonly router = inject(Router);
   
