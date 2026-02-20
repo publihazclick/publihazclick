@@ -67,6 +67,7 @@ export class PricingComponent implements OnInit {
           '120 vistas PTC',
           'Reporte básico de métricas',
           'Segmentación por país',
+          'Posicionamiento SEO/SEM',
           'Duración: 30 días'
         ],
         min_ptc_visits: 120,
@@ -102,6 +103,7 @@ export class PricingComponent implements OnInit {
           'Reporte detallado de conversiones',
           'Segmentación avanzada',
           'Banner en rotación principal',
+          'Posicionamiento SEO/SEM',
           'Duración: 30 días'
         ],
         min_ptc_visits: 250,
@@ -139,6 +141,7 @@ export class PricingComponent implements OnInit {
           'Prioridad en ubicaciones',
           'A/B Testing de anuncios',
           'Soporte prioritario 24/7',
+          'Posicionamiento SEO/SEM',
           'Duración: 30 días'
         ],
         min_ptc_visits: 500,
@@ -177,6 +180,7 @@ export class PricingComponent implements OnInit {
           'Campañas personalizadas multicanal',
           'API de integración avanzada',
           'Gerente de cuenta dedicado',
+          'Posicionamiento SEO/SEM',
           'Duración: 30 días'
         ],
         min_ptc_visits: 750,

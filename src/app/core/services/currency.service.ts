@@ -127,10 +127,40 @@ export class CurrencyService {
     return amountInUSD * rate;
   }
 
-  // Format amount in selected currency
-  format(amountInUSD: number, decimals: number = 0): string {
+  // Convert COP amount to selected currency
+  convertFromCOP(amountInCOP: number): number {
     const currency = this._selectedCurrency();
+    
+    // If selected currency is COP, return as is
+    if (currency.code === 'COP') {
+      return amountInCOP;
+    }
+    
+    // Otherwise convert from COP to the selected currency
+    const rate = this.currentRate();
+    // currentRate is USD to selected currency
+    // So we need: amountInCOP / rateFromCOPtoUSD * rateToSelectedCurrency
+    // Since base is USD: amountInUSD = amountInCOP / 3850 (approx)
+    const copToUsdRate = this._rates()['COP'] || 3850;
+    const amountInUSD = amountInCOP / copToUsdRate;
+    return amountInUSD * rate;
+  }
+
+  // Format amount in COP to selected currency
+  formatFromCOP(amountInCOP: number, decimals: number = 0): string {
+    const converted = this.convertFromCOP(amountInCOP);
+    return this.formatValue(converted, decimals);
+  }
+
+  // Format amount in USD to selected currency
+  formatFromUSD(amountInUSD: number, decimals: number = 0): string {
     const converted = this.convert(amountInUSD);
+    return this.formatValue(converted, decimals);
+  }
+
+  // Internal helper to format the converted value
+  private formatValue(converted: number, decimals: number = 0): string {
+    const currency = this._selectedCurrency();
 
     switch (currency.code) {
       case 'COP':
@@ -148,6 +178,37 @@ export class CurrencyService {
         return `${currency.symbol}${converted.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       default:
         return `${currency.symbol}${converted.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+    }
+  }
+
+  // Format amount in selected currency (converts from USD)
+  format(amountInUSD: number, decimals: number = 0): string {
+    const converted = this.convert(amountInUSD);
+    return this.formatValue(converted, decimals);
+  }
+
+  // Format amount that is already in local currency (no conversion)
+  formatLocalValue(amountInLocalCurrency: number): string {
+    const currency = this._selectedCurrency();
+    const value = amountInLocalCurrency;
+
+    switch (currency.code) {
+      case 'COP':
+      case 'CLP':
+      case 'ARS':
+        // Para valores con decimales como 88.33 COP
+        return `${currency.symbol}${value.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      case 'MXN':
+      case 'PEN':
+        return `${currency.symbol}${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      case 'EUR':
+      case 'GBP':
+      case 'BRL':
+        return `${currency.symbol}${value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      case 'VES':
+        return `${currency.symbol}${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      default:
+        return `${currency.symbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
   }
 

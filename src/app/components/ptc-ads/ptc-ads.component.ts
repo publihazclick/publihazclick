@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AdminPtcTaskService } from '../../core/services/admin-ptc-task.service';
 import { CurrencyService } from '../../core/services/currency.service';
+import { PtcModalComponent, PtcAd } from '../ptc-modal/ptc-modal.component';
 import { PtcAdType } from '../../core/models/admin.model';
 
 interface PtcAdCard {
@@ -11,8 +12,9 @@ interface PtcAdCard {
   advertiserName: string;
   advertiserType: 'company' | 'person';
   imageUrl: string;
+  youtubeVideoId: string;
   adType: PtcAdType;
-  rewardUSD: number;
+  rewardCOP: number;
   dailyLimit: number;
   totalClicks: number;
   status: string;
@@ -21,7 +23,7 @@ interface PtcAdCard {
 @Component({
   selector: 'app-ptc-ads',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, PtcModalComponent],
   templateUrl: './ptc-ads.component.html',
   styleUrl: './ptc-ads.component.scss'
 })
@@ -32,6 +34,25 @@ export class PtcAdsComponent implements OnInit {
   ads = signal<PtcAdCard[]>([]);
   loading = signal<boolean>(true);
   error = signal<string | null>(null);
+  
+  // Modal state
+  isModalOpen = signal(false);
+  selectedAd = signal<PtcAd | null>(null);
+  
+  // Demo wallet for rewards - persist in localStorage
+  demoWallet = signal(this.loadFromStorage('ptc_wallet', 0));
+  demoDonations = signal(this.loadFromStorage('ptc_donations', 0));
+
+  private loadFromStorage(key: string, defaultValue: number): number {
+    if (typeof window === 'undefined') return defaultValue;
+    const stored = localStorage.getItem(key);
+    return stored ? parseFloat(stored) : defaultValue;
+  }
+
+  private saveToStorage(key: string, value: number): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(key, value.toString());
+  }
 
   ngOnInit(): void {
     this.loadPtcAds();
@@ -54,8 +75,9 @@ export class PtcAdsComponent implements OnInit {
           advertiserName: 'Anunciante',
           advertiserType: 'company',
           imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
+          youtubeVideoId: 'dQw4w9WgXcQ', // Default video
           adType: task.ad_type || 'mini',
-          rewardUSD: task.reward || 0,
+          rewardCOP: (task.reward || 0) * 3850, // Convert USD to COP (approx rate)
           dailyLimit: task.daily_limit || 0,
           totalClicks: task.total_clicks || 0,
           status: task.status
@@ -74,15 +96,16 @@ export class PtcAdsComponent implements OnInit {
 
   getSampleAds(): PtcAdCard[] {
     return [
-      // Mega Anuncios - $2 USD
+      // Mega Anuncios (2000 USD = ~7,700,000 COP)
       {
         id: '1',
         title: 'Promo Fin de Semana - Tienda Online',
         advertiserName: 'Mileniustore',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
+        youtubeVideoId: 'dQw4w9WgXcQ',
         adType: 'mega',
-        rewardUSD: 2,
+        rewardCOP: 2000,
         dailyLimit: 100,
         totalClicks: 450,
         status: 'active'
@@ -93,8 +116,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Restaurante Los Parados',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+        youtubeVideoId: 'jfKfPfyJRdk',
         adType: 'mega',
-        rewardUSD: 2,
+        rewardCOP: 2000,
         dailyLimit: 120,
         totalClicks: 580,
         status: 'active'
@@ -105,8 +129,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'TecnoWorld',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
+        youtubeVideoId: '5qap5aO4i9A',
         adType: 'mega',
-        rewardUSD: 2,
+        rewardCOP: 2000,
         dailyLimit: 80,
         totalClicks: 320,
         status: 'active'
@@ -117,21 +142,23 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Relax & Vida',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
+        youtubeVideoId: 'DWcJFNfaw9c',
         adType: 'mega',
-        rewardUSD: 2,
+        rewardCOP: 2000,
         dailyLimit: 60,
         totalClicks: 210,
         status: 'active'
       },
-      // Mega 400 - $1.50 USD
+      // Standard 400 (400 USD = ~1,540,000 COP)
       {
         id: '2',
         title: 'Nueva Colección de Ropa',
         advertiserName: 'Fashion Colombia',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+        youtubeVideoId: 'KG4otu6nO1I',
         adType: 'standard_400',
-        rewardUSD: 1.50,
+        rewardCOP: 400,
         dailyLimit: 80,
         totalClicks: 320,
         status: 'active'
@@ -142,8 +169,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'ShoeStore',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
+        youtubeVideoId: 'VGg46O4GgiM',
         adType: 'standard_400',
-        rewardUSD: 1.50,
+        rewardCOP: 400,
         dailyLimit: 70,
         totalClicks: 280,
         status: 'active'
@@ -154,8 +182,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'CelularAccesories',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=300&fit=crop',
+        youtubeVideoId: '9bZkp7q19f0',
         adType: 'standard_400',
-        rewardUSD: 1.50,
+        rewardCOP: 400,
         dailyLimit: 90,
         totalClicks: 410,
         status: 'active'
@@ -166,21 +195,23 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'HogarExpress',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
+        youtubeVideoId: 'jNQXAC9IVRw',
         adType: 'standard_400',
-        rewardUSD: 1.50,
+        rewardCOP: 400,
         dailyLimit: 50,
         totalClicks: 190,
         status: 'active'
       },
-      // Mega 600 - $1.80 USD
+      // Standard 600 (600 USD = ~2,310,000 COP)
       {
         id: '3',
         title: 'Servicio de Delivery Express',
         advertiserName: 'Juan Pérez',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
+        youtubeVideoId: 'fJ9rUzIMcZQ',
         adType: 'standard_600',
-        rewardUSD: 1.80,
+        rewardCOP: 600,
         dailyLimit: 60,
         totalClicks: 180,
         status: 'active'
@@ -191,8 +222,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Carlos Música',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop',
+        youtubeVideoId: 'hT_nvWreIhg',
         adType: 'standard_600',
-        rewardUSD: 1.80,
+        rewardCOP: 600,
         dailyLimit: 40,
         totalClicks: 150,
         status: 'active'
@@ -203,8 +235,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'LimpioMax',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695b97835?w=400&h=300&fit=crop',
+        youtubeVideoId: 'kXYiU_JCYtU',
         adType: 'standard_600',
-        rewardUSD: 1.80,
+        rewardCOP: 600,
         dailyLimit: 55,
         totalClicks: 220,
         status: 'active'
@@ -215,21 +248,23 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'MascotasFelices',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=300&fit=crop',
+        youtubeVideoId: 'RgKAFKcjG3w',
         adType: 'standard_600',
-        rewardUSD: 1.80,
+        rewardCOP: 600,
         dailyLimit: 35,
         totalClicks: 95,
         status: 'active'
       },
-      // Mini Anuncios - $0.60-$0.80 USD
+      // Mini Anuncios (88.33 USD = ~340,000 COP)
       {
         id: '4',
         title: 'Cupón Descuento 20%',
         advertiserName: 'TechnoShop',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop',
+        youtubeVideoId: 'OPf0YbXqDm0',
         adType: 'mini',
-        rewardUSD: 0.80,
+        rewardCOP: 83.33,
         dailyLimit: 50,
         totalClicks: 120,
         status: 'active'
@@ -240,8 +275,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'María García',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=300&fit=crop',
+        youtubeVideoId: 'jofNRWkoRGY',
         adType: 'mini',
-        rewardUSD: 0.60,
+        rewardCOP: 83.33,
         dailyLimit: 30,
         totalClicks: 85,
         status: 'active'
@@ -252,8 +288,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'SweetDelivery',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
+        youtubeVideoId: '9bZkp7q19f0',
         adType: 'mini',
-        rewardUSD: 0.70,
+        rewardCOP: 83.33,
         dailyLimit: 45,
         totalClicks: 180,
         status: 'active'
@@ -264,8 +301,9 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'TechFix',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=400&h=300&fit=crop',
+        youtubeVideoId: 'kJQP7kiw5Fk',
         adType: 'mini',
-        rewardUSD: 0.80,
+        rewardCOP: 83.33,
         dailyLimit: 25,
         totalClicks: 65,
         status: 'active'
@@ -298,11 +336,51 @@ export class PtcAdsComponent implements OnInit {
     }
   }
 
-  getRewardDisplay(rewardUSD: number): string {
-    return this.currencyService.format(rewardUSD);
+  getRewardDisplay(rewardCOP: number): string {
+    return this.currencyService.formatFromCOP(rewardCOP, 2);
   }
 
   getAdsByType(type: PtcAdType): PtcAdCard[] {
     return this.ads().filter(ad => ad.adType === type);
+  }
+
+  // Modal methods
+  openAdModal(ad: PtcAdCard): void {
+    // Pass the full COP reward to the modal
+    const ptcAd: PtcAd = {
+      id: ad.id,
+      title: ad.title,
+      advertiserName: ad.advertiserName,
+      advertiserType: ad.advertiserType,
+      imageUrl: ad.imageUrl,
+      youtubeVideoId: ad.youtubeVideoId,
+      adType: ad.adType,
+      rewardCOP: ad.rewardCOP,
+      duration: 60
+    };
+    this.selectedAd.set(ptcAd);
+    this.isModalOpen.set(true);
+  }
+
+  closeModal(): void {
+    this.isModalOpen.set(false);
+    this.selectedAd.set(null);
+  }
+
+  onRewardClaimed(event: { walletAmount: number; donationAmount: number }): void {
+    // Add to demo wallet and persist
+    this.demoWallet.update(w => {
+      const newValue = w + event.walletAmount;
+      this.saveToStorage('ptc_wallet', newValue);
+      return newValue;
+    });
+    this.demoDonations.update(d => {
+      const newValue = d + event.donationAmount;
+      this.saveToStorage('ptc_donations', newValue);
+      return newValue;
+    });
+    
+    // Show success message (could add a toast here)
+    console.log('Recompensa reclamada:', event);
   }
 }

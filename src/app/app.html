@@ -9,15 +9,15 @@
   } @else {
     <!-- Mostrar contenido principal de la landing page -->
     
-    <app-banner-slider [slides]="bannerSlides" />
+    <app-banner-slider [slides]="bannerSlides()" />
     <app-ptc-ads />
     <app-video-section />
     <app-hero />
     <app-testimonials />
-    <app-business-models />
+    
     <app-how-it-works />
     <app-pricing />
-    <app-features />
+    <app-tiers />
   }
 </main>
 
