@@ -8,7 +8,8 @@ import { BusinessModelsComponent } from './components/business-models/business-m
 import { HowItWorksComponent } from './components/how-it-works/how-it-works.component';
 import { PricingComponent } from './components/pricing/pricing.component';
 import { FeaturesComponent } from './components/features/features.component';
-import { RecentPostsComponent } from './components/recent-posts/recent-posts.component';
+import { PtcAdsComponent } from './components/ptc-ads/ptc-ads.component';
+import { VideoSectionComponent } from './components/video-section/video-section.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { BannerSliderComponent, BannerSlide } from './components/banner-slider/banner-slider.component';
 
@@ -25,7 +26,8 @@ import { BannerSliderComponent, BannerSlide } from './components/banner-slider/b
     HowItWorksComponent,
     PricingComponent,
     FeaturesComponent,
-    RecentPostsComponent,
+    PtcAdsComponent,
+    VideoSectionComponent,
     FooterComponent
   ],
   templateUrl: './app.html',

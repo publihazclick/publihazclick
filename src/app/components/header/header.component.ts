@@ -1,16 +1,11 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { CurrencyService, Currency } from '../../core/services/currency.service';
 
 interface NavItem {
   label: string;
   href: string;
-}
-
-interface Currency {
-  code: string;
-  symbol: string;
-  name: string;
 }
 
 @Component({
@@ -25,17 +20,12 @@ export class HeaderComponent {
   protected readonly mobileMenuOpen = signal(false);
   protected readonly currencyMenuOpen = signal(false);
   
-  protected readonly selectedCurrency = signal<Currency>({
-    code: 'USD',
-    symbol: '$',
-    name: 'Dólar'
-  });
+  protected readonly currencyService = inject(CurrencyService);
   
-  protected readonly currencies: Currency[] = [
-    { code: 'USD', symbol: '$', name: 'Dólar' },
-    { code: 'COP', symbol: '$', name: 'Peso Colombiano' },
-    { code: 'MXN', symbol: '$', name: 'Peso Mexicano' }
-  ];
+  // Expose signals for template
+  readonly selectedCurrency = this.currencyService.selectedCurrency;
+  readonly currencies = this.currencyService.currencies;
+  readonly loading = this.currencyService.loading;
   
   // Wallet and donation placeholders (will be functional later)
   protected readonly walletBalance = signal(0.00);
@@ -62,17 +52,11 @@ export class HeaderComponent {
   }
 
   selectCurrency(currency: Currency): void {
-    this.selectedCurrency.set(currency);
+    this.currencyService.selectCurrency(currency);
     this.currencyMenuOpen.set(false);
   }
 
   formatCurrency(amount: number): string {
-    const currency = this.selectedCurrency();
-    if (currency.code === 'COP') {
-      return '$' + Math.floor(amount).toLocaleString('es-CO');
-    } else if (currency.code === 'MXN') {
-      return '$' + amount.toLocaleString('es-MX', { minimumFractionDigits: 2 });
-    }
-    return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    return this.currencyService.format(amount);
   }
 }

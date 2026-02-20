@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AdminPackageService } from '../../core/services/admin-package.service';
+import { CurrencyService } from '../../core/services/currency.service';
 import { Package } from '../../core/models/admin.model';
 
 @Component({
@@ -13,6 +14,7 @@ import { Package } from '../../core/models/admin.model';
 })
 export class PricingComponent implements OnInit {
   private packageService = inject(AdminPackageService);
+  protected currencyService = inject(CurrencyService);
   
   packages = signal<Package[]>([]);
   loading = signal<boolean>(true);
@@ -52,21 +54,28 @@ export class PricingComponent implements OnInit {
   getDefaultPackages(): Package[] {
     return [
       {
-        id: 'starter',
-        name: 'Starter',
-        description: 'Perfecto para empezar a ganar dinero con anuncios PTC.',
+        id: 'basic',
+        name: 'Básico',
+        description: 'Perfecto para comenzar tu estrategia de publicidad online.',
         package_type: 'basic',
         price: 25,
         duration_days: 30,
         currency: 'USD',
-        features: ['Acceso a Mega Anuncios PTC', 'Banner clickeable', 'Sistema de referidos'],
-        min_ptc_visits: 50,
-        min_banner_views: 100,
+        features: [
+          '20.000 vistas banner mensuales',
+          '9.000 vistas post',
+          '120 vistas PTC',
+          'Reporte básico de métricas',
+          'Segmentación por país',
+          'Duración: 30 días'
+        ],
+        min_ptc_visits: 120,
+        min_banner_views: 20000,
         included_ptc_ads: 5,
         has_clickable_banner: true,
-        banner_clicks_limit: 500,
-        banner_impressions_limit: 1000,
-        daily_ptc_limit: 5,
+        banner_clicks_limit: 9000,
+        banner_impressions_limit: 20000,
+        daily_ptc_limit: 10,
         max_ptc_ads: 5,
         max_banner_ads: 1,
         max_campaigns: 1,
@@ -79,21 +88,29 @@ export class PricingComponent implements OnInit {
         updated_at: new Date().toISOString()
       },
       {
-        id: 'growth',
-        name: 'Growth',
-        description: 'Maximiza tus ganancias con más beneficios y límites.',
+        id: 'basic_plus',
+        name: 'Básico Plus',
+        description: 'Plan recomendado para maximizar tu alcance publicitario.',
         package_type: 'premium',
         price: 50,
         duration_days: 30,
         currency: 'USD',
-        features: ['Acceso a Mega Anuncios y Standard', 'Más beneficios', 'Bonos aumentados'],
-        min_ptc_visits: 150,
-        min_banner_views: 300,
+        features: [
+          '40.000 vistas banner mensuales',
+          '20.000 vistas post',
+          '250 vistas PTC',
+          'Reporte detallado de conversiones',
+          'Segmentación avanzada',
+          'Banner en rotación principal',
+          'Duración: 30 días'
+        ],
+        min_ptc_visits: 250,
+        min_banner_views: 40000,
         included_ptc_ads: 15,
         has_clickable_banner: true,
-        banner_clicks_limit: 1500,
-        banner_impressions_limit: 3000,
-        daily_ptc_limit: 10,
+        banner_clicks_limit: 20000,
+        banner_impressions_limit: 40000,
+        daily_ptc_limit: 20,
         max_ptc_ads: 15,
         max_banner_ads: 3,
         max_campaigns: 3,
@@ -106,21 +123,31 @@ export class PricingComponent implements OnInit {
         updated_at: new Date().toISOString()
       },
       {
-        id: 'business',
-        name: 'Business',
-        description: 'Para profesionales del marketing digital.',
+        id: 'advanced',
+        name: 'Avanzado',
+        description: 'Para profesionales que buscan resultados avanzados.',
         package_type: 'enterprise',
         price: 100,
         duration_days: 30,
         currency: 'USD',
-        features: ['Acceso a todos los tipos de anuncios', 'Soporte prioritario', 'API de gestión'],
-        min_ptc_visits: 400,
-        min_banner_views: 800,
+        features: [
+          '80.000 vistas banner mensuales',
+          '40.000 vistas post',
+          '500 vistas PTC',
+          'Analytics en tiempo real',
+          'Segmentación premium por intereses',
+          'Prioridad en ubicaciones',
+          'A/B Testing de anuncios',
+          'Soporte prioritario 24/7',
+          'Duración: 30 días'
+        ],
+        min_ptc_visits: 500,
+        min_banner_views: 80000,
         included_ptc_ads: 40,
         has_clickable_banner: true,
-        banner_clicks_limit: 4000,
-        banner_impressions_limit: 8000,
-        daily_ptc_limit: 25,
+        banner_clicks_limit: 40000,
+        banner_impressions_limit: 80000,
+        daily_ptc_limit: 40,
         max_ptc_ads: 40,
         max_banner_ads: 10,
         max_campaigns: 10,
@@ -133,21 +160,32 @@ export class PricingComponent implements OnInit {
         updated_at: new Date().toISOString()
       },
       {
-        id: 'enterprise-pro',
-        name: 'Enterprise Pro',
-        description: 'El paquete máximo con acceso ilimitado.',
+        id: 'advanced_pro',
+        name: 'Avanzado Pro',
+        description: 'El paquete máximo con beneficios empresariales exclusivos.',
         package_type: 'custom',
         price: 150,
         duration_days: 30,
         currency: 'USD',
-        features: ['Acceso ilimitado', 'API', 'Asesoría dedicada', 'Soporte VIP'],
-        min_ptc_visits: 1000,
-        min_banner_views: 2000,
+        features: [
+          '120.000 vistas banner mensuales',
+          '60.000 vistas post',
+          '750 vistas PTC',
+          'Dashboard empresarial completo',
+          'Consultoría de marketing incluida',
+          'Videos promocionales destacados',
+          'Campañas personalizadas multicanal',
+          'API de integración avanzada',
+          'Gerente de cuenta dedicado',
+          'Duración: 30 días'
+        ],
+        min_ptc_visits: 750,
+        min_banner_views: 120000,
         included_ptc_ads: 100,
         has_clickable_banner: true,
-        banner_clicks_limit: 10000,
-        banner_impressions_limit: 20000,
-        daily_ptc_limit: 50,
+        banner_clicks_limit: 60000,
+        banner_impressions_limit: 120000,
+        daily_ptc_limit: 60,
         max_ptc_ads: 999999,
         max_banner_ads: 999999,
         max_campaigns: 999999,
@@ -174,20 +212,16 @@ export class PricingComponent implements OnInit {
 
   getPriceDisplay(price: number, currency: string): string {
     if (price === 0) return 'GRATIS';
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price);
+    // Usar el servicio de moneda para convertir y formatear
+    return this.currencyService.format(price);
   }
 
   getPackageTypeLabel(type: string): string {
     const labels: Record<string, string> = {
       'basic': 'Plan Básico',
-      'premium': 'Plan Premium',
-      'enterprise': 'Plan Enterprise',
-      'custom': 'Plan Personalizado'
+      'premium': 'Plan Básico Plus',
+      'enterprise': 'Plan Avanzado',
+      'custom': 'Plan Avanzado Pro'
     };
     return labels[type] || type;
   }

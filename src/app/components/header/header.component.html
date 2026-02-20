@@ -83,14 +83,22 @@
         
         <!-- Currency Dropdown -->
         @if (currencyMenuOpen()) {
-          <div class="absolute top-full right-0 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden z-50">
+          <div class="absolute top-full right-0 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden z-50 min-w-[200px]">
+            @if (loading()) {
+              <div class="px-4 py-3 text-white text-center text-xs">
+                <span class="animate-pulse">Cargando tasas...</span>
+              </div>
+            }
             @for (currency of currencies; track currency.code) {
               <button 
                 (click)="selectCurrency(currency)"
                 class="w-full px-4 py-2 text-left text-white hover:bg-cyan-600 transition-colors flex items-center justify-between"
                 [class.bg-cyan-600]="selectedCurrency().code === currency.code"
               >
-                <span class="font-bold">{{ currency.code }}</span>
+                <span class="flex items-center space-x-2">
+                  <span class="text-lg">{{ currency.flag || '💱' }}</span>
+                  <span class="font-bold">{{ currency.code }}</span>
+                </span>
                 <span class="text-xs text-white/70">{{ currency.name }}</span>
               </button>
             }

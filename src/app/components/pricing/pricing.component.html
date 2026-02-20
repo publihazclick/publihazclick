@@ -20,87 +20,51 @@
         </button>
       </div>
     } @else {
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 max-w-7xl mx-auto items-start">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 max-w-7xl mx-auto items-stretch">
         @for (pkg of packages(); track pkg.id; let i = $index) {
+          <!-- Paquete oscuro (Recomendado - Basic Plus) -->
           <div 
-            class="rounded-2xl md:rounded-[2rem] p-6 md:p-8 text-left relative overflow-hidden group transition-all duration-300 hover:transform hover:scale-105"
-            [class.bg-white]="!isPopularPackage(pkg.package_type)"
-            [class.text-black]="!isPopularPackage(pkg.package_type)"
-            [class.bg-black]="isPopularPackage(pkg.package_type)"
-            [class.text-white]="isPopularPackage(pkg.package_type)"
-            [class.border-2]="isPopularPackage(pkg.package_type)"
-            [class.border-cyan-500]="isPopularPackage(pkg.package_type)"
-            [class.shadow-[0_0_40px_rgba(0,229,255,0.15)]]="isPopularPackage(pkg.package_type)"
+            *ngIf="isPopularPackage(pkg.package_type)"
+            class="rounded-2xl md:rounded-[2rem] p-6 md:p-8 text-left relative overflow-hidden group transition-all duration-300 hover:transform hover:scale-105 flex flex-col h-full min-h-[650px] bg-gradient-to-b from-slate-900 to-slate-800 border-2 border-cyan-500 shadow-[0_0_40px_rgba(0,229,255,0.15)]"
           >
-            @if (isPopularPackage(pkg.package_type)) {
-              <div class="absolute top-0 left-0 right-0 bg-cyan-500 text-black text-xs font-bold uppercase py-1 tracking-widest">
-                Más Popular
-              </div>
-            }
+            <div class="absolute top-0 left-0 right-0 bg-cyan-500 text-black text-xs font-bold uppercase py-1 tracking-widest">
+              ⭐ Recomendado
+            </div>
 
             <div class="flex items-center space-x-3 mb-6 mt-2">
-              <div 
-                class="w-10 h-10 rounded-lg flex items-center justify-center"
-                [class.bg-gray-100]="!isPopularPackage(pkg.package_type)"
-                [class.bg-cyan-500/10]="isPopularPackage(pkg.package_type)"
-              >
-                <span 
-                  class="material-symbols-outlined text-xl"
-                  [class.text-black]="!isPopularPackage(pkg.package_type)"
-                  [class.text-cyan-500]="isPopularPackage(pkg.package_type)"
-                >
-                  @switch (pkg.package_type) {
-                    @case ('basic') { star }
-                    @case ('premium') { diamond }
-                    @case ('enterprise') { business }
-                    @case ('custom') { handshake }
-                    @default { card_membership }
-                  }
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-cyan-500/20">
+                <span class="material-symbols-outlined text-xl text-cyan-400">
+                  auto_awesome
                 </span>
               </div>
-              <span 
-                class="font-bold text-xs uppercase tracking-widest"
-                [class.text-gray-400]="!isPopularPackage(pkg.package_type)"
-                [class.text-cyan-500]="isPopularPackage(pkg.package_type)"
-              >
+              <span class="font-bold text-xs uppercase tracking-widest text-cyan-400">
                 {{ getPackageTypeLabel(pkg.package_type) }}
               </span>
             </div>
 
             <div class="mb-6">
-              <h3 class="text-2xl md:text-3xl font-black tracking-tight mb-2">{{ pkg.name }}</h3>
-              <p class="text-sm opacity-70 mb-4">{{ pkg.description }}</p>
+              <h3 class="text-2xl md:text-3xl font-black tracking-tight mb-2 text-white">{{ pkg.name }}</h3>
+              <p class="text-sm mb-4 text-gray-400">{{ pkg.description }}</p>
               <div class="flex items-baseline space-x-1">
-                <span 
-                  class="text-3xl md:text-5xl font-black tracking-tighter"
-                  [class.text-black]="!isPopularPackage(pkg.package_type)"
-                  [class.text-white]="isPopularPackage(pkg.package_type)"
-                >
+                <span class="text-3xl md:text-5xl font-black tracking-tighter text-white">
                   {{ getPriceDisplay(pkg.price, pkg.currency) }}
                 </span>
-                @if (pkg.price > 0) {
-                  <span class="text-sm font-bold opacity-60">/ {{ pkg.duration_days }} días</span>
-                }
+                <span class="text-sm font-bold text-gray-400">/ {{ pkg.duration_days }} días</span>
               </div>
             </div>
 
-            <ul class="space-y-3 mb-8">
+            <ul class="space-y-3 mb-6 flex-grow">
               @for (feature of getFeaturesList(pkg.features); track feature) {
-                <li 
-                  class="flex items-start space-x-3 text-sm font-semibold"
-                  [class.text-gray-600]="!isPopularPackage(pkg.package_type)"
-                  [class.text-gray-300]="isPopularPackage(pkg.package_type)"
-                >
+                <li class="flex items-start space-x-3 text-sm font-semibold text-gray-300">
                   <span class="material-symbols-outlined text-cyan-500 text-lg flex-shrink-0">check_circle</span>
                   <span>{{ feature }}</span>
                 </li>
               }
             </ul>
 
-            <!-- Límites del paquete -->
-            <div class="mb-6 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-              <p class="text-xs font-bold uppercase tracking-wider opacity-60 mb-2">Incluye:</p>
-              <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="mb-6 p-3 rounded-lg bg-slate-800 border border-slate-600">
+              <p class="text-xs font-bold uppercase tracking-wider mb-2 text-gray-400">Incluye:</p>
+              <div class="grid grid-cols-2 gap-2 text-xs text-gray-300">
                 <div class="flex items-center space-x-1">
                   <span class="material-symbols-outlined text-cyan-500 text-sm">ads_click</span>
                   <span>{{ pkg.max_ptc_ads }} PTC</span>
@@ -122,15 +86,79 @@
 
             <a 
               routerLink="/register"
-              class="block w-full text-center py-3 md:py-4 rounded-xl transition-all flex items-center justify-center space-x-2 font-black uppercase text-xs tracking-wider"
-              [class.bg-gray-100]="!isPopularPackage(pkg.package_type)"
-              [class.hover:bg-black]="!isPopularPackage(pkg.package_type)"
-              [class.hover:text-white]="!isPopularPackage(pkg.package_type)"
-              [class.text-black]="!isPopularPackage(pkg.package_type)"
-              [class.bg-cyan-500]="isPopularPackage(pkg.package_type)"
-              [class.hover:bg-cyan-400]="isPopularPackage(pkg.package_type)"
-              [class.text-black]="isPopularPackage(pkg.package_type)"
-              [class.shadow-[0_0_20px_rgba(0,229,255,0.3)]]="isPopularPackage(pkg.package_type)"
+              class="block w-full text-center py-3 md:py-4 rounded-xl transition-all flex items-center justify-center space-x-2 font-black uppercase text-xs tracking-wider mt-auto bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/30"
+            >
+              <span>Comenzar Ahora</span>
+              <span class="material-symbols-outlined text-lg">north_east</span>
+            </a>
+          </div>
+
+          <!-- Paquetes claros (Básico, Avanzado, Avanzado Pro) -->
+          <div 
+            *ngIf="!isPopularPackage(pkg.package_type)"
+            class="rounded-2xl md:rounded-[2rem] p-6 md:p-8 text-left relative overflow-hidden group transition-all duration-300 hover:transform hover:scale-105 flex flex-col h-full min-h-[650px] bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)]"
+          >
+            <div class="flex items-center space-x-3 mb-6">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100">
+                <span class="material-symbols-outlined text-xl text-gray-700">
+                  @switch (pkg.package_type) {
+                    @case ('basic') { star }
+                    @case ('enterprise') { speed }
+                    @case ('custom') { workspace_premium }
+                    @default { card_membership }
+                  }
+                </span>
+              </div>
+              <span class="font-bold text-xs uppercase tracking-widest text-gray-500">
+                {{ getPackageTypeLabel(pkg.package_type) }}
+              </span>
+            </div>
+
+            <div class="mb-6">
+              <h3 class="text-2xl md:text-3xl font-black tracking-tight mb-2 text-gray-900">{{ pkg.name }}</h3>
+              <p class="text-sm mb-4 text-gray-600">{{ pkg.description }}</p>
+              <div class="flex items-baseline space-x-1">
+                <span class="text-3xl md:text-5xl font-black tracking-tighter text-gray-900">
+                  {{ getPriceDisplay(pkg.price, pkg.currency) }}
+                </span>
+                <span class="text-sm font-bold text-gray-500">/ {{ pkg.duration_days }} días</span>
+              </div>
+            </div>
+
+            <ul class="space-y-3 mb-6 flex-grow">
+              @for (feature of getFeaturesList(pkg.features); track feature) {
+                <li class="flex items-start space-x-3 text-sm font-semibold text-gray-700">
+                  <span class="material-symbols-outlined text-cyan-500 text-lg flex-shrink-0">check_circle</span>
+                  <span>{{ feature }}</span>
+                </li>
+              }
+            </ul>
+
+            <div class="mb-6 p-3 rounded-lg bg-gray-50 border border-gray-200">
+              <p class="text-xs font-bold uppercase tracking-wider mb-2 text-gray-500">Incluye:</p>
+              <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">ads_click</span>
+                  <span>{{ pkg.max_ptc_ads }} PTC</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">image</span>
+                  <span>{{ pkg.max_banner_ads }} Banners</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">campaign</span>
+                  <span>{{ pkg.max_campaigns }} Campañas</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <span class="material-symbols-outlined text-cyan-500 text-sm">groups</span>
+                  <span>{{ pkg.referral_bonus }}% Referidos</span>
+                </div>
+              </div>
+            </div>
+
+            <a 
+              routerLink="/register"
+              class="block w-full text-center py-3 md:py-4 rounded-xl transition-all flex items-center justify-center space-x-2 font-black uppercase text-xs tracking-wider mt-auto bg-gray-100 hover:bg-gray-800 hover:text-white text-gray-900"
             >
               <span>Comenzar Ahora</span>
               <span class="material-symbols-outlined text-lg">north_east</span>

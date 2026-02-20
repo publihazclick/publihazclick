@@ -1,1 +1,115 @@
 // Pricing component styles
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.pricing-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 600px;
+  
+  // Card base styles
+  &.card-light {
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid #e5e7eb;
+    
+    .card-content {
+      color: #1f2937;
+    }
+    
+    .card-title {
+      color: #111827;
+    }
+    
+    .card-description {
+      color: #6b7280;
+    }
+    
+    .feature-text {
+      color: #4b5563;
+    }
+    
+    .price-text {
+      color: #111827;
+    }
+    
+    .label-text {
+      color: #9ca3af;
+    }
+    
+    .limits-box {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .btn-card {
+      background: #f3f4f6;
+      color: #111827;
+      
+      &:hover {
+        background: #111827;
+        color: #ffffff;
+      }
+    }
+  }
+  
+  &.card-dark {
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+    border: 2px solid #334155;
+    
+    .card-content {
+      color: #f1f5f9;
+    }
+    
+    .card-title {
+      color: #ffffff;
+    }
+    
+    .card-description {
+      color: #94a3b8;
+    }
+    
+    .feature-text {
+      color: #cbd5e1;
+    }
+    
+    .price-text {
+      color: #ffffff;
+    }
+    
+    .label-text {
+      color: #64748b;
+    }
+    
+    .limits-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+    }
+    
+    .btn-card {
+      background: #06b6d4;
+      color: #0f172a;
+      
+      &:hover {
+        background: #22d3ee;
+      }
+    }
+  }
+}
+
+// Ensure all cards in the same row have equal height
+:host {
+  display: block;
+}
