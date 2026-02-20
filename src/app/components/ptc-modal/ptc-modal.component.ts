@@ -173,7 +173,8 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   // Computed that reacts to currency changes
   protected rewardDisplay = computed(() => {
     const rewardCOP = this.ad().rewardCOP || 1;
-    return this.currencyService.formatFromCOP(rewardCOP, 2);
+    // Show the raw COP value directly without conversion
+    return `${rewardCOP.toLocaleString('es-CO')} COP`;
   });
   
   protected countdown = signal(60);
@@ -278,8 +279,8 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   }
 
   getRewardDisplay(): string {
-    const rewardUSD = this.ad().rewardUSD || 1;
-    return this.currencyService.format(rewardUSD);
+    const rewardCOP = this.ad().rewardCOP || 1;
+    return `${rewardCOP.toLocaleString('es-CO')} COP`;
   }
 
   getAdTypeLabel(): string {
