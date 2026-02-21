@@ -1,4 +1,4 @@
-@if (!isAuthRoute()) {
+@if (!isAuthRoute() && !isAdminOrDashboardRoute()) {
   <app-header />
 }
 
@@ -20,6 +20,6 @@
   }
 </main>
 
-@if (!isAuthRoute()) {
+@if (!isAuthRoute() && !isAdminOrDashboardRoute()) {
   <app-footer />
 }
