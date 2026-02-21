@@ -3,7 +3,6 @@ import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { HeaderComponent } from './components/header/header.component';
 import { HeroComponent } from './components/hero/hero.component';
-import { TestimonialsComponent } from './components/testimonials/testimonials.component';
 import { HowItWorksComponent } from './components/how-it-works/how-it-works.component';
 import { PricingComponent } from './components/pricing/pricing.component';
 import { PtcAdsComponent } from './components/ptc-ads/ptc-ads.component';
@@ -21,7 +20,6 @@ import { CurrencyService } from './core/services/currency.service';
     HeaderComponent,
     HeroComponent,
     BannerSliderComponent,
-    TestimonialsComponent,
     TiersComponent,
     HowItWorksComponent,
     PricingComponent,
