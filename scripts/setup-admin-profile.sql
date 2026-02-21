@@ -9,11 +9,12 @@ WHERE email = 'publihazclick.com@gmail.com';
 
 -- Si existe, crear o actualizar el perfil
 -- Este script hace un INSERT ignorando si ya existe (usando ON CONFLICT)
+-- Nota: referral_code tiene máximo 8 caracteres
 INSERT INTO profiles (id, username, referral_code, email, role, is_active, level, balance, pending_balance, total_earned, total_spent, referral_earnings)
 SELECT 
   id,
   COALESCE(raw_user_meta_data->>'username', 'publihazclick'),
-  'admin00001-2025',
+  'adm00001',  -- Código de referido de 8 caracteres máximo
   email,
   'admin',
   TRUE,
