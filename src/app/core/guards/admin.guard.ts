@@ -3,14 +3,20 @@ import { Router, CanActivateFn } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 /**
- * Guard temporal que permite acceso al admin para pruebas
- * TODO: Implementar verificación de rol cuando la tabla profiles esté lista
+ * Guard del admin que verifica autenticación y rol
  */
 export const adminGuard: CanActivateFn = async (route, state) => {
   const router = inject(Router);
+  const authService = inject(AuthService);
   
-  // Por ahora, permitir siempre el acceso al admin para pruebas
-  // Esto permite que el login funcione correctamente
-  console.log('AdminGuard: Allowing access for testing');
+  // Verificar si está autenticado
+  if (!authService.isAuthenticated()) {
+    console.log('AdminGuard: Not authenticated, redirecting to login');
+    router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
+    return false;
+  }
+  
+  // Por ahora, permitir siempre el acceso si está autenticado
+  console.log('AdminGuard: Allowing access for authenticated user');
   return true;
 };
