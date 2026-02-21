@@ -6,7 +6,7 @@ export interface Currency {
   code: string;
   symbol: string;
   name: string;
-  flag?: string;
+  icon?: string;
 }
 
 export interface ExchangeRates {
@@ -25,7 +25,7 @@ export class CurrencyService {
     code: 'COP',
     symbol: '$',
     name: 'Peso Colombiano',
-    flag: '🇨🇴'
+    icon: 'attach_money'
   });
 
   // Signal for exchange rates
@@ -47,16 +47,16 @@ export class CurrencyService {
   });
 
   readonly currencies: Currency[] = [
-    { code: 'USD', symbol: '$', name: 'Dólar Americano', flag: '🇺🇸' },
-    { code: 'COP', symbol: '$', name: 'Peso Colombiano', flag: '🇨🇴' },
-    { code: 'MXN', symbol: '$', name: 'Peso Mexicano', flag: '🇲🇽' },
-    { code: 'EUR', symbol: '€', name: 'Euro', flag: '🇪🇺' },
-    { code: 'GBP', symbol: '£', name: 'Libra Esterlina', flag: '🇬🇧' },
-    { code: 'ARS', symbol: '$', name: 'Peso Argentino', flag: '🇦🇷' },
-    { code: 'CLP', symbol: '$', name: 'Peso Chileno', flag: '🇨🇱' },
-    { code: 'PEN', symbol: 'S/', name: 'Sol Peruano', flag: '🇵🇪' },
-    { code: 'BRL', symbol: 'R$', name: 'Real Brasileño', flag: '🇧🇷' },
-    { code: 'VES', symbol: 'Bs', name: 'Bolívar Soberano', flag: '🇻🇪' }
+    { code: 'USD', symbol: '$', name: 'Dólar Americano', icon: 'attach_money' },
+    { code: 'COP', symbol: '$', name: 'Peso Colombiano', icon: 'attach_money' },
+    { code: 'MXN', symbol: '$', name: 'Peso Mexicano', icon: 'attach_money' },
+    { code: 'EUR', symbol: '€', name: 'Euro', icon: 'euro_symbol' },
+    { code: 'GBP', symbol: '£', name: 'Libra Esterlina', icon: 'currency_exchange' },
+    { code: 'ARS', symbol: '$', name: 'Peso Argentino', icon: 'attach_money' },
+    { code: 'CLP', symbol: '$', name: 'Peso Chileno', icon: 'attach_money' },
+    { code: 'PEN', symbol: 'S/', name: 'Sol Peruano', icon: 'attach_money' },
+    { code: 'BRL', symbol: 'R$', name: 'Real Brasileño', icon: 'attach_money' },
+    { code: 'VES', symbol: 'Bs', name: 'Bolívar Soberano', icon: 'attach_money' }
   ];
 
   constructor(private http: HttpClient) {

@@ -337,8 +337,8 @@ export class PtcAdsComponent implements OnInit {
   }
 
   getRewardDisplay(rewardCOP: number): string {
-    // Show the raw COP value directly without conversion
-    return `${rewardCOP.toLocaleString('es-CO')} COP`;
+    // Convert COP to selected currency using the currency service
+    return this.currencyService.formatFromCOP(rewardCOP);
   }
 
   getAdsByType(type: PtcAdType): PtcAdCard[] {

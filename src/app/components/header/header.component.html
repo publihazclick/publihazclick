@@ -96,7 +96,7 @@
                 [class.bg-cyan-600]="selectedCurrency().code === currency.code"
               >
                 <span class="flex items-center space-x-2">
-                  <span class="text-lg">{{ currency.flag || '💱' }}</span>
+                  <span class="text-lg material-symbols-outlined">{{ currency.icon || 'attach_money' }}</span>
                   <span class="font-bold">{{ currency.code }}</span>
                 </span>
                 <span class="text-xs text-white/70">{{ currency.name }}</span>
