@@ -70,20 +70,27 @@ export class ReferralLinkComponent implements OnInit {
   private async loadDefaultReferral(): Promise<void> {
     // Cargar el código del admin desde la base de datos
     try {
+      // Usar una consulta más simple
       const { data, error } = await this.profileService['supabase']
         .from('profiles')
         .select('id, username, referral_code')
-        .eq('role', 'admin')
-        .limit(1)
-        .single();
+        .order('created_at', { ascending: true })
+        .limit(1);
       
-      if (data && data.referral_code) {
-        this.referralCode.set(data.referral_code);
-        const origin = window.location.origin;
-        this.referralLink.set(origin + '/register?ref=' + data.referral_code);
-        console.log('Loaded admin referral code:', data.referral_code);
+      console.log('Admin profiles query result:', data, error);
+      
+      if (data && data.length > 0) {
+        const adminProfile = data[0];
+        if (adminProfile.referral_code) {
+          this.referralCode.set(adminProfile.referral_code);
+          const origin = window.location.origin;
+          this.referralLink.set(origin + '/register?ref=' + adminProfile.referral_code);
+          console.log('Loaded admin referral code:', adminProfile.referral_code);
+        } else {
+          this.error.set('El admin no tiene un código de referido configurado.');
+        }
       } else {
-        this.error.set('No hay un código de referido disponible.');
+        this.error.set('No hay perfiles disponibles.');
       }
     } catch (err) {
       console.error('Error loading default referral:', err);
