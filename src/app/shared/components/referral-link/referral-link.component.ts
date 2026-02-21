@@ -25,7 +25,10 @@ export class ReferralLinkComponent implements OnInit {
 
   private async loadProfile(): Promise<void> {
     try {
+      console.log('Loading profile...');
       const profile = await this.profileService.getCurrentProfile();
+      console.log('Profile loaded:', profile);
+      
       if (profile) {
         this.profile.set(profile);
         this.referralCode.set(profile.referral_code || '');
@@ -37,7 +40,10 @@ export class ReferralLinkComponent implements OnInit {
           this.error.set('No tienes un código de referido. Contacta al administrador.');
         }
       } else {
-        this.error.set('No se pudo cargar tu perfil. Asegúrate de estar logueado.');
+        // Intentar obtener más información del error
+        const { data: { user } } = await this.profileService['supabase'].auth.getUser();
+        console.log('Current user:', user);
+        this.error.set('No se pudo cargar tu perfil. Asegúrate de estar logueado. User ID: ' + (user?.id || 'none'));
       }
     } catch (err: any) {
       console.error('Error loading profile:', err);
