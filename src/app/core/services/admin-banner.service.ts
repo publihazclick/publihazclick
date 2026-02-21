@@ -7,7 +7,8 @@ import type {
   CreateBannerAdData,
   PaginatedResponse,
   PaginationParams,
-  BannerStatus
+  BannerStatus,
+  AdLocation
 } from '../models/admin.model';
 
 /**
@@ -61,6 +62,10 @@ export class AdminBannerService {
 
       if (filters.search) {
         query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+      }
+
+      if (filters.location) {
+        query = query.eq('location', filters.location);
       }
 
       const { data, error, count } = await query;
@@ -147,6 +152,7 @@ export class AdminBannerService {
         reward: data.reward || 0,
         ctr: data.ctr || 0,
         status: data.status,
+        location: data.location,
         start_date: data.start_date,
         end_date: data.end_date,
         created_at: data.created_at,
@@ -178,6 +184,7 @@ export class AdminBannerService {
           end_date: data.end_date,
           advertiser_id: data.advertiser_id,
           campaign_id: data.campaign_id,
+          location: data.location,
           status: 'active'
         })
         .select('id')
@@ -312,6 +319,7 @@ export class AdminBannerService {
         reward: b.reward || 0,
         ctr: b.ctr || 0,
         status: b.status,
+        location: b.location,
         start_date: b.start_date,
         end_date: b.end_date,
         created_at: b.created_at,
@@ -319,6 +327,59 @@ export class AdminBannerService {
       }));
     } catch (error: any) {
       console.error('Error getting active banners:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener banners activos para mostrar por ubicación
+   */
+  async getActiveBannersByLocation(position?: string, location?: AdLocation): Promise<BannerAd[]> {
+    try {
+      let query = this.supabase
+        .from('banner_ads')
+        .select('*')
+        .eq('status', 'active')
+        .gt('clicks_limit', 0);
+
+      if (position) {
+        query = query.eq('position', position);
+      }
+
+      if (location) {
+        query = query.eq('location', location);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return (data || []).map(b => ({
+        id: b.id,
+        advertiser_id: b.advertiser_id,
+        campaign_id: b.campaign_id,
+        name: b.name,
+        description: b.description,
+        image_url: b.image_url,
+        url: b.url,
+        position: b.position,
+        impressions_limit: b.impressions_limit || 0,
+        clicks_limit: b.clicks_limit || 0,
+        daily_impressions: b.daily_impressions || 0,
+        daily_clicks: b.daily_clicks || 0,
+        total_impressions: b.total_impressions || 0,
+        total_clicks: b.total_clicks || 0,
+        reward: b.reward || 0,
+        ctr: b.ctr || 0,
+        status: b.status,
+        location: b.location,
+        start_date: b.start_date,
+        end_date: b.end_date,
+        created_at: b.created_at,
+        updated_at: b.updated_at
+      }));
+    } catch (error: any) {
+      console.error('Error getting active banners by location:', error);
       return [];
     }
   }

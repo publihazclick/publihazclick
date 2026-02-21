@@ -6,7 +6,8 @@ import type {
   PtcTaskFilters,
   CreatePtcTaskData,
   PaginatedResponse,
-  PaginationParams
+  PaginationParams,
+  AdLocation
 } from '../models/admin.model';
 
 /**
@@ -56,6 +57,10 @@ export class AdminPtcTaskService {
         query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
       }
 
+      if (filters.location) {
+        query = query.eq('location', filters.location);
+      }
+
       const { data, error, count } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
@@ -73,6 +78,7 @@ export class AdminPtcTaskService {
         daily_limit: t.daily_limit || 0,
         total_clicks: t.total_clicks || 0,
         status: t.status,
+        location: t.location,
         ad_type: t.ad_type,
         is_demo_only: t.is_demo_only,
         advertiser_id: t.advertiser_id,
@@ -128,6 +134,7 @@ export class AdminPtcTaskService {
         daily_limit: data.daily_limit || 0,
         total_clicks: data.total_clicks || 0,
         status: data.status,
+        location: data.location,
         ad_type: data.ad_type,
         is_demo_only: data.is_demo_only,
         advertiser_id: data.advertiser_id,
@@ -158,6 +165,7 @@ export class AdminPtcTaskService {
           daily_limit: data.daily_limit,
           advertiser_id: data.advertiser_id,
           status: 'active',
+          location: data.location,
           total_clicks: 0
         })
         .select('id')

@@ -14,7 +14,7 @@
     </button>
   </div>
 
-  <!-- Tabs -->
+  <!-- Tabs de tipo de anuncio -->
   <div class="flex gap-2 border-b border-slate-200 dark:border-white/10">
     <button
       (click)="setTab('ptc')"
@@ -32,6 +32,21 @@
       <span class="material-icons text-primary w-4 h-4 mr-2">image</span>
       Banners
     </button>
+  </div>
+
+  <!-- Tabs de ubicación -->
+  <div class="flex gap-2 bg-slate-50 dark:bg-white/5 p-2 rounded-xl">
+    @for (loc of locations; track loc.value) {
+      <button
+        (click)="setLocation(loc.value)"
+        class="px-4 py-2 text-sm font-bold rounded-lg transition-colors"
+        [class]="activeLocation() === loc.value 
+          ? 'bg-primary text-black' 
+          : 'text-slate-500 hover:bg-white dark:hover:bg-slate-800'"
+      >
+        {{ loc.label }}
+      </button>
+    }
   </div>
 
   <!-- Filters -->
@@ -371,6 +386,18 @@
                 />
               </div>
             </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Ubicación</label>
+              <select
+                [(ngModel)]="ptcFormData().location"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+              >
+                @for (loc of locations; track loc.value) {
+                  <option [value]="loc.value">{{ loc.label }}</option>
+                }
+              </select>
+            </div>
           }
 
           @if (modalMode() === 'create-banner' || modalMode() === 'edit-banner') {
@@ -455,6 +482,18 @@
                   min="0"
                 />
               </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Ubicación</label>
+              <select
+                [(ngModel)]="bannerFormData().location"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+              >
+                @for (loc of locations; track loc.value) {
+                  <option [value]="loc.value">{{ loc.label }}</option>
+                }
+              </select>
             </div>
           }
         </div>

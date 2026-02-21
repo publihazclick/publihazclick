@@ -12,7 +12,8 @@ import type {
   BannerStatus,
   BannerPosition,
   PtcTaskFilters,
-  BannerAdFilters
+  BannerAdFilters,
+  AdLocation
 } from '../../../../core/models/admin.model';
 
 @Component({
@@ -29,6 +30,7 @@ export class AdminAdsComponent implements OnInit {
 
   // Estado
   readonly activeTab = signal<'ptc' | 'banner'>('ptc');
+  readonly activeLocation = signal<AdLocation>('app');
   readonly ptcAds = signal<PtcTaskAdmin[]>([]);
   readonly bannerAds = signal<BannerAd[]>([]);
   readonly loading = signal<boolean>(true);
@@ -58,7 +60,8 @@ export class AdminAdsComponent implements OnInit {
     image_url: '',
     reward: 50,
     duration: 15,
-    daily_limit: 1000
+    daily_limit: 1000,
+    location: 'app'
   });
 
   readonly bannerFormData = signal<Partial<CreateBannerAdData>>({
@@ -69,7 +72,8 @@ export class AdminAdsComponent implements OnInit {
     position: 'sidebar',
     impressions_limit: 10000,
     clicks_limit: 1000,
-    reward: 0
+    reward: 0,
+    location: 'app'
   });
 
   readonly saving = signal<boolean>(false);
@@ -95,6 +99,11 @@ export class AdminAdsComponent implements OnInit {
     { value: 'sidebar', label: 'Barra lateral' },
     { value: 'footer', label: 'Pie de página' },
     { value: 'interstitial', label: 'Intersticial' }
+  ];
+
+  readonly locations: { value: AdLocation; label: string }[] = [
+    { value: 'landing', label: 'Landing (Demo)' },
+    { value: 'app', label: 'App (Después del login)' }
   ];
 
   readonly currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -123,6 +132,9 @@ export class AdminAdsComponent implements OnInit {
         if (this.searchQuery()) {
           filters.search = this.searchQuery();
         }
+        if (this.activeLocation()) {
+          filters.location = this.activeLocation();
+        }
 
         const result = await this.ptcService.getPtcTasks(filters, {
           page: this.currentPage(),
@@ -140,6 +152,9 @@ export class AdminAdsComponent implements OnInit {
         }
         if (this.searchQuery()) {
           filters.search = this.searchQuery();
+        }
+        if (this.activeLocation()) {
+          filters.location = this.activeLocation();
         }
 
         const result = await this.bannerService.getBannerAds(filters, {
@@ -162,6 +177,12 @@ export class AdminAdsComponent implements OnInit {
     this.currentPage.set(1);
     this.searchQuery.set('');
     this.selectedStatus.set('all');
+    this.loadData();
+  }
+
+  setLocation(location: AdLocation): void {
+    this.activeLocation.set(location);
+    this.currentPage.set(1);
     this.loadData();
   }
 
@@ -194,7 +215,8 @@ export class AdminAdsComponent implements OnInit {
       image_url: '',
       reward: 50,
       duration: 15,
-      daily_limit: 1000
+      daily_limit: 1000,
+      location: this.activeLocation()
     });
     this.showModal.set(true);
   }
@@ -209,7 +231,8 @@ export class AdminAdsComponent implements OnInit {
       image_url: ptc.image_url || '',
       reward: ptc.reward,
       duration: ptc.duration,
-      daily_limit: ptc.daily_limit
+      daily_limit: ptc.daily_limit,
+      location: ptc.location || 'app'
     });
     this.showModal.set(true);
   }
@@ -225,7 +248,8 @@ export class AdminAdsComponent implements OnInit {
       position: 'sidebar',
       impressions_limit: 10000,
       clicks_limit: 1000,
-      reward: 0
+      reward: 0,
+      location: this.activeLocation()
     });
     this.showModal.set(true);
   }
@@ -241,7 +265,8 @@ export class AdminAdsComponent implements OnInit {
       position: banner.position,
       impressions_limit: banner.impressions_limit,
       clicks_limit: banner.clicks_limit,
-      reward: banner.reward
+      reward: banner.reward,
+      location: banner.location || 'app'
     });
     this.showModal.set(true);
   }

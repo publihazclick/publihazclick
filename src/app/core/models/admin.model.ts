@@ -17,6 +17,7 @@ export type BannerPosition = 'header' | 'sidebar' | 'footer' | 'interstitial';
 export type BannerStatus = 'active' | 'paused' | 'completed' | 'rejected';
 export type PtcAdType = 'mega' | 'standard_400' | 'standard_600' | 'mini';
 export type PackageBannerStatus = 'pending' | 'active' | 'completed' | 'rejected';
+export type AdLocation = 'landing' | 'app';
 
 // ============================================================================
 // Estadísticas del Dashboard
@@ -94,6 +95,7 @@ export interface PtcTaskAdmin {
   status: TaskStatus;
   ad_type?: PtcAdType;
   is_demo_only?: boolean;
+  location?: AdLocation;
   advertiser_id: string;
   advertiser_username?: string;
   created_at: string;
@@ -104,6 +106,7 @@ export interface PtcTaskFilters {
   status?: TaskStatus;
   advertiserId?: string;
   search?: string;
+  location?: AdLocation;
 }
 
 export interface CreatePtcTaskData {
@@ -115,6 +118,7 @@ export interface CreatePtcTaskData {
   duration: number;
   daily_limit: number;
   advertiser_id?: string;
+  location?: AdLocation;
 }
 
 // ============================================================================
@@ -474,6 +478,7 @@ export interface BannerAd {
   reward: number;
   ctr: number;
   status: BannerStatus;
+  location?: AdLocation;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
@@ -485,6 +490,7 @@ export interface BannerAdFilters {
   position?: BannerPosition;
   advertiserId?: string;
   search?: string;
+  location?: AdLocation;
 }
 
 export interface CreateBannerAdData {
@@ -500,6 +506,7 @@ export interface CreateBannerAdData {
   end_date?: string;
   advertiser_id?: string;
   campaign_id?: string;
+  location?: AdLocation;
 }
 
 // ============================================================================
