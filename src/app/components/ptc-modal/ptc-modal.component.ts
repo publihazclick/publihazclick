@@ -28,12 +28,7 @@ export interface PtcAd {
         <div class="relative bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700">
           <div class="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-              @if (ad().imageUrl) {
-                <img [src]="ad().imageUrl" alt="Logo" class="w-8 h-8 rounded-lg object-cover">
-              } @else {
-                <span class="material-symbols-outlined text-white">ads_click</span>
-              }
-              <h3 class="text-white font-bold text-lg">Ver Anuncio</h3>
+              <img src="/logo.webp" alt="PublihazClik" class="h-8 w-auto">
             </div>
             <button (click)="onClose()" class="text-white/80 hover:text-white transition-colors">
               <span class="material-symbols-outlined">close</span>
@@ -67,18 +62,6 @@ export interface PtcAd {
                 allowfullscreen
                 class="w-full h-full"
               ></iframe>
-            }
-            
-            @if (countdown() > 0) {
-              <div class="absolute top-2 right-2 bg-black/80 rounded-lg p-3 flex flex-col items-center min-w-[80px]">
-                <div class="text-2xl font-black text-white">{{ countdown() }}s</div>
-                <div class="w-16 h-1.5 bg-gray-700 rounded-full mt-1 overflow-hidden">
-                  <div 
-                    class="h-full bg-cyan-500 transition-all duration-1000"
-                    [style.width.%]="((60 - countdown()) / 60) * 100"
-                  ></div>
-                </div>
-              </div>
             }
             
             @if (countdown() > 0) {
