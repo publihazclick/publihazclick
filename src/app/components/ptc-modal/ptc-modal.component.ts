@@ -28,7 +28,11 @@ export interface PtcAd {
         <div class="relative bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700">
           <div class="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-              <span class="material-symbols-outlined text-white">ads_click</span>
+              @if (ad().imageUrl) {
+                <img [src]="ad().imageUrl" alt="Logo" class="w-8 h-8 rounded-lg object-cover">
+              } @else {
+                <span class="material-symbols-outlined text-white">ads_click</span>
+              }
               <h3 class="text-white font-bold text-lg">Ver Anuncio</h3>
             </div>
             <button (click)="onClose()" class="text-white/80 hover:text-white transition-colors">
@@ -37,13 +41,20 @@ export interface PtcAd {
           </div>
 
           <div class="p-4 border-b border-gray-700">
-            <div class="flex items-center space-x-2 mb-2">
-              <span class="text-sm text-gray-400">{{ ad().advertiserName }}</span>
-              <span class="px-2 py-0.5 rounded-full text-xs font-bold" [ngClass]="getAdTypeClass()">
-                {{ getAdTypeLabel() }}
-              </span>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center space-x-2">
+                <span class="text-sm text-gray-400">{{ ad().advertiserName }}</span>
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold" [ngClass]="getAdTypeClass()">
+                  {{ getAdTypeLabel() }}
+                </span>
+              </div>
+              @if (countdown() > 0) {
+                <div class="bg-black/80 rounded-lg px-3 py-1 flex items-center gap-2">
+                  <span class="text-cyan-400 text-sm font-bold">{{ countdown() }}s</span>
+                </div>
+              }
             </div>
-            <h4 class="text-white font-bold">{{ ad().title }}</h4>
+            <h4 class="text-white font-bold text-xl">{{ ad().title }}</h4>
           </div>
 
           <div class="relative aspect-video bg-black">
@@ -95,7 +106,7 @@ export interface PtcAd {
                 </a>
               </div>
               <div class="text-2xl font-black text-green-400">
-                +{{ rewardDisplay() }}
+                <span>$</span>{{ rewardDisplay() }}
               </div>
             </div>
 
