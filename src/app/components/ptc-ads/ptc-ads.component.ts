@@ -337,8 +337,8 @@ export class PtcAdsComponent implements OnInit {
   }
 
   getRewardDisplay(rewardCOP: number): string {
-    // Convert COP to selected currency using the currency service
-    return this.currencyService.formatFromCOP(rewardCOP);
+    // Convert COP to selected currency with decimals using the currency service
+    return this.currencyService.formatFromCOP(rewardCOP, 2);
   }
 
   getAdsByType(type: PtcAdType): PtcAdCard[] {

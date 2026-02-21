@@ -159,23 +159,23 @@ export class CurrencyService {
   }
 
   // Internal helper to format the converted value
-  private formatValue(converted: number, decimals: number = 0): string {
+  private formatValue(converted: number, decimals: number = 2): string {
     const currency = this._selectedCurrency();
 
     switch (currency.code) {
       case 'COP':
       case 'CLP':
       case 'ARS':
-        return `${currency.symbol}${Math.floor(converted).toLocaleString('es-CO')}`;
+        return `${currency.symbol}${converted.toLocaleString('es-CO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
       case 'MXN':
       case 'PEN':
-        return `${currency.symbol}${converted.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${currency.symbol}${converted.toLocaleString('es-MX', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
       case 'EUR':
       case 'GBP':
       case 'BRL':
-        return `${currency.symbol}${converted.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${currency.symbol}${converted.toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
       case 'VES':
-        return `${currency.symbol}${converted.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${currency.symbol}${converted.toLocaleString('es-VE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
       default:
         return `${currency.symbol}${converted.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
     }
