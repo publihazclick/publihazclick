@@ -55,6 +55,10 @@ export class AdminBannerService {
         query = query.eq('position', filters.position);
       }
 
+      if (filters.location) {
+        query = query.eq('location', filters.location);
+      }
+
       if (filters.advertiserId) {
         query = query.eq('advertiser_id', filters.advertiserId);
       }
@@ -86,6 +90,7 @@ export class AdminBannerService {
         reward: b.reward || 0,
         ctr: b.ctr || 0,
         status: b.status,
+        location: b.location || 'app',
         start_date: b.start_date,
         end_date: b.end_date,
         created_at: b.created_at,
@@ -147,6 +152,7 @@ export class AdminBannerService {
         reward: data.reward || 0,
         ctr: data.ctr || 0,
         status: data.status,
+        location: data.location || 'app',
         start_date: data.start_date,
         end_date: data.end_date,
         created_at: data.created_at,
@@ -174,6 +180,7 @@ export class AdminBannerService {
           impressions_limit: data.impressions_limit || 10000,
           clicks_limit: data.clicks_limit || 1000,
           reward: data.reward || 0,
+          location: data.location || 'app',
           start_date: data.start_date,
           end_date: data.end_date,
           advertiser_id: data.advertiser_id,
@@ -257,6 +264,13 @@ export class AdminBannerService {
   }
 
   /**
+   * Rechazar banner
+   */
+  async rejectBanner(id: string): Promise<boolean> {
+    return this.setBannerStatus(id, 'rejected');
+  }
+
+  /**
    * Eliminar banner
    */
   async deleteBanner(id: string): Promise<boolean> {
@@ -312,6 +326,7 @@ export class AdminBannerService {
         reward: b.reward || 0,
         ctr: b.ctr || 0,
         status: b.status,
+        location: b.location || 'app',
         start_date: b.start_date,
         end_date: b.end_date,
         created_at: b.created_at,

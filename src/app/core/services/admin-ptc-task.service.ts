@@ -48,6 +48,10 @@ export class AdminPtcTaskService {
         query = query.eq('status', filters.status);
       }
 
+      if (filters.location) {
+        query = query.eq('location', filters.location);
+      }
+
       if (filters.advertiserId) {
         query = query.eq('advertiser_id', filters.advertiserId);
       }
@@ -202,7 +206,7 @@ export class AdminPtcTaskService {
    */
   async setPtcTaskStatus(
     id: string,
-    status: 'active' | 'paused' | 'completed'
+    status: 'pending' | 'active' | 'paused' | 'completed' | 'rejected'
   ): Promise<boolean> {
     try {
       const { error } = await this.supabase
@@ -220,6 +224,20 @@ export class AdminPtcTaskService {
       console.error('Error updating PTC task status:', error);
       return false;
     }
+  }
+
+  /**
+   * Aprobar/Anular para revisión (pendiente)
+   */
+  async pendingPtcTask(id: string): Promise<boolean> {
+    return this.setPtcTaskStatus(id, 'pending');
+  }
+
+  /**
+   * Rechazar anuncio
+   */
+  async rejectPtcTask(id: string): Promise<boolean> {
+    return this.setPtcTaskStatus(id, 'rejected');
   }
 
   /**

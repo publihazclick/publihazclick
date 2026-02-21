@@ -48,10 +48,18 @@ export class AdminUsersComponent implements OnInit {
     password: '',
     username: '',
     full_name: '',
-    role: 'guest',
+    role: 'advertiser',
     is_active: true,
-    balance: 0
+    phone: '',
+    country: '',
+    country_code: '+57',
+    department: '',
+    city: ''
   });
+
+  // Admin referrer code
+  readonly adminReferralCode = signal<string>('');
+  readonly adminProfile = signal<Profile | null>(null);
 
   readonly balanceOperation = signal<'add' | 'subtract' | 'set'>('add');
   readonly balanceAmount = signal<number>(0);
@@ -98,7 +106,21 @@ export class AdminUsersComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loadAdminProfile();
     this.loadUsers();
+  }
+
+  // Cargar perfil del admin actual para obtener su código de referido
+  private async loadAdminProfile(): Promise<void> {
+    try {
+      const profile = await this.profileService.getCurrentProfile();
+      if (profile) {
+        this.adminProfile.set(profile);
+        this.adminReferralCode.set(profile.referral_code);
+      }
+    } catch (err) {
+      console.error('Error loading admin profile:', err);
+    }
   }
 
   // Exponer Math para template
@@ -203,9 +225,13 @@ export class AdminUsersComponent implements OnInit {
       password: '',
       username: '',
       full_name: '',
-      role: 'guest',
+      role: 'advertiser',
       is_active: true,
-      balance: 0
+      phone: '',
+      country: '',
+      country_code: '+57',
+      department: '',
+      city: ''
     });
     this.showModal.set(true);
   }
@@ -218,7 +244,11 @@ export class AdminUsersComponent implements OnInit {
       full_name: user.full_name || '',
       role: user.role,
       is_active: user.is_active,
-      balance: user.balance
+      phone: user.phone || '',
+      country: user.country || '',
+      country_code: user.country_code || '+57',
+      department: user.department || '',
+      city: user.city || ''
     });
     this.balanceAmount.set(0);
     this.balanceReason.set('');
@@ -278,6 +308,22 @@ export class AdminUsersComponent implements OnInit {
 
     // Actualizar perfil con datos adicionales
     if (authData.user) {
+      // Obtener el ID del referidor basado en el código de referido del admin
+      let referredById: string | null = null;
+      const adminReferralCode = this.adminReferralCode();
+      
+      if (adminReferralCode) {
+        const { data: referrerData } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('referral_code', adminReferralCode)
+          .single();
+        
+        if (referrerData) {
+          referredById = referrerData.id;
+        }
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -285,7 +331,12 @@ export class AdminUsersComponent implements OnInit {
           full_name: data.full_name,
           role: data.role,
           is_active: data.is_active,
-          balance: data.balance || 0
+          phone: data.phone || null,
+          country: data.country || null,
+          country_code: data.country_code || null,
+          city: data.city || null,
+          department: data.department || null,
+          referred_by: referredById
         })
         .eq('id', authData.user.id);
 
@@ -315,13 +366,6 @@ export class AdminUsersComponent implements OnInit {
 
     // Actualizar perfil
     await this.profileService.updateProfile(updateData as any);
-
-    // Actualizar balance si cambió
-    if (data.balance !== undefined && data.balance !== user.balance) {
-      const diff = data.balance - user.balance;
-      const operation = diff > 0 ? 'add' : 'subtract';
-      await this.profileService.updateBalance(user.id, Math.abs(diff), operation);
-    }
 
     // Log activity
     await this.dashboardService.logActivity(

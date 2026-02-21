@@ -8,15 +8,16 @@ import type { UserRole } from './profile.model';
 // Enums y tipos
 // ============================================================================
 
-export type TaskStatus = 'active' | 'paused' | 'completed';
+export type TaskStatus = 'pending' | 'active' | 'paused' | 'completed' | 'rejected';
 export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
 export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 export type PackageType = 'basic' | 'premium' | 'enterprise' | 'custom';
 export type UserPackageStatus = 'active' | 'expired' | 'cancelled';
 export type BannerPosition = 'header' | 'sidebar' | 'footer' | 'interstitial';
-export type BannerStatus = 'active' | 'paused' | 'completed' | 'rejected';
+export type BannerStatus = 'pending' | 'active' | 'paused' | 'completed' | 'rejected';
 export type PtcAdType = 'mega' | 'standard_400' | 'standard_600' | 'mini';
 export type PackageBannerStatus = 'pending' | 'active' | 'completed' | 'rejected';
+export type AdLocation = 'landing' | 'app'; // Ubicación del anuncio: landing (demo) o app (después del login)
 
 // ============================================================================
 // Estadísticas del Dashboard
@@ -94,6 +95,7 @@ export interface PtcTaskAdmin {
   status: TaskStatus;
   ad_type?: PtcAdType;
   is_demo_only?: boolean;
+  location?: AdLocation;
   advertiser_id: string;
   advertiser_username?: string;
   created_at: string;
@@ -104,6 +106,7 @@ export interface PtcTaskFilters {
   status?: TaskStatus;
   advertiserId?: string;
   search?: string;
+  location?: AdLocation;
 }
 
 export interface CreatePtcTaskData {
@@ -115,6 +118,7 @@ export interface CreatePtcTaskData {
   duration: number;
   daily_limit: number;
   advertiser_id?: string;
+  location?: AdLocation;
 }
 
 // ============================================================================
@@ -294,6 +298,12 @@ export interface UserAdmin {
   referral_code: string;
   referred_by: string | null;
   referrer_username?: string;
+  // Campos adicionales del perfil
+  phone?: string;
+  country?: string;
+  country_code?: string;
+  department?: string;
+  city?: string;
   created_at: string;
   updated_at: string;
   last_sign_in_at?: string;
@@ -308,7 +318,13 @@ export interface CreateUserAdminData {
   full_name?: string;
   role?: UserRole;
   is_active?: boolean;
-  balance?: number;
+  // Campos adicionales para usuario anunciante
+  phone?: string;
+  country?: string;
+  country_code?: string;
+  department?: string;
+  city?: string;
+  referred_by?: string; // Código de referido del admin creador
 }
 
 export interface UpdateUserAdminData {
@@ -474,6 +490,7 @@ export interface BannerAd {
   reward: number;
   ctr: number;
   status: BannerStatus;
+  location: AdLocation;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
@@ -485,6 +502,7 @@ export interface BannerAdFilters {
   position?: BannerPosition;
   advertiserId?: string;
   search?: string;
+  location?: AdLocation;
 }
 
 export interface CreateBannerAdData {
@@ -496,6 +514,7 @@ export interface CreateBannerAdData {
   impressions_limit?: number;
   clicks_limit?: number;
   reward?: number;
+  location?: AdLocation;
   start_date?: string;
   end_date?: string;
   advertiser_id?: string;

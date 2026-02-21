@@ -14,7 +14,27 @@
     </button>
   </div>
 
-  <!-- Tabs -->
+  <!-- Location Tabs -->
+  <div class="flex gap-2 border-b border-slate-200 dark:border-white/10">
+    <button
+      (click)="setLocation('landing')"
+      class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
+      [class]="activeLocation() === 'landing' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
+    >
+      <span class="material-icons text-primary w-4 h-4 mr-2">web</span>
+      Landing (Demo)
+    </button>
+    <button
+      (click)="setLocation('app')"
+      class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
+      [class]="activeLocation() === 'app' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
+    >
+      <span class="material-icons text-primary w-4 h-4 mr-2">apps</span>
+      App (Después del login)
+    </button>
+  </div>
+
+  <!-- Type Tabs -->
   <div class="flex gap-2 border-b border-slate-200 dark:border-white/10">
     <button
       (click)="setTab('ptc')"
@@ -41,7 +61,7 @@
         <span class="material-icons text-slate-400 w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2">search</span>
         <input
           type="text"
-          placeholder="Buscar por nombre..."
+          [placeholder]="activeLocation() === 'landing' ? 'Buscar anuncios de landing...' : 'Buscar anuncios de la app...'"
           [value]="searchQuery()"
           (input)="onSearch($any($event).target.value)"
           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
@@ -425,6 +445,19 @@
                   }
                 </select>
               </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">Ubicación</label>
+                <select
+                  [(ngModel)]="bannerFormData().location"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                >
+                  <option value="landing">Landing (Demo)</option>
+                  <option value="app">App (Después del login)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium mb-1">Recompensa por clic</label>
                 <input

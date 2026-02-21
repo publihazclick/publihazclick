@@ -1,0 +1,258 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Moderación de Anuncios</h1>
+      <p class="text-slate-500 dark:text-slate-400 mt-1">Revisa y aprueba los anuncios enviados por los anunciantes</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700">
+    <button 
+      (click)="setActiveTab('pending')"
+      class="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+      [class.border-primary]="activeTab() === 'pending'"
+      [class.text-primary]="activeTab() === 'pending'"
+      [class.border-transparent]="activeTab() !== 'pending'"
+      [class.text-slate-500]="activeTab() !== 'pending'"
+      [class.dark:text-slate-400]="activeTab() !== 'pending'"
+    >
+      Pendientes
+      @if (pendingCount() > 0) {
+        <span class="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">{{ pendingCount() }}</span>
+      }
+    </button>
+    <button 
+      (click)="setActiveTab('rejected')"
+      class="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+      [class.border-red-500]="activeTab() === 'rejected'"
+      [class.text-red-600]="activeTab() === 'rejected'"
+      [class.border-transparent]="activeTab() !== 'rejected'"
+      [class.text-slate-500]="activeTab() !== 'rejected'"
+      [class.dark:text-slate-400]="activeTab() !== 'rejected'"
+    >
+      Rechazados
+      @if (rejectedCount() > 0) {
+        <span class="ml-2 bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">{{ rejectedCount() }}</span>
+      }
+    </button>
+    <button 
+      (click)="setActiveTab('all')"
+      class="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+      [class.border-slate-600]="activeTab() === 'all'"
+      [class.text-slate-700]="activeTab() === 'all'"
+      [class.dark:text-slate-300]="activeTab() === 'all'"
+      [class.border-transparent]="activeTab() !== 'all'"
+      [class.text-slate-500]="activeTab() !== 'all'"
+      [class.dark:text-slate-400]="activeTab() !== 'all'"
+    >
+      Todos
+    </button>
+  </div>
+
+  <!-- Search -->
+  <div class="relative">
+    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+    <input 
+      type="text"
+      [ngModel]="searchQuery()"
+      (ngModelChange)="searchQuery.set($event); loadPendingItems()"
+      placeholder="Buscar por título o anunciante..."
+      class="w-full pl-10 pr-4 py-3 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+    >
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex items-center justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error()) {
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+      <p class="text-red-600 dark:text-red-400">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!loading() && !error() && items().length === 0) {
+    <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+      <span class="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600">inbox</span>
+      <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mt-4">No hay anuncios</h3>
+      <p class="text-slate-500 dark:text-slate-400 mt-2">No se encontraron anuncios para moderar</p>
+    </div>
+  }
+
+  <!-- Items List -->
+  @if (!loading() && items().length > 0) {
+    <div class="grid gap-4">
+      @for (item of items(); track item.id) {
+        <div 
+          class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:border-primary/50 transition-colors cursor-pointer"
+          (click)="selectItem(item)"
+        >
+          <div class="flex gap-4">
+            <!-- Image -->
+            <div class="w-24 h-24 rounded-lg bg-slate-100 dark:bg-slate-800 flex-shrink-0 overflow-hidden">
+              @if (item.imageUrl) {
+                <img [src]="item.imageUrl" [alt]="item.title" class="w-full h-full object-cover">
+              } @else {
+                <div class="w-full h-full flex items-center justify-center">
+                  <span class="material-symbols-outlined text-3xl text-slate-400">image</span>
+                </div>
+              }
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h3 class="font-semibold text-slate-800 dark:text-white truncate">{{ item.title }}</h3>
+                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ item.advertiserUsername }}</p>
+                </div>
+                <span 
+                  class="px-2 py-1 text-xs font-medium rounded-full border flex-shrink-0"
+                  [class]="getStatusClass(item.status)"
+                >
+                  {{ getStatusLabel(item.status) }}
+                </span>
+              </div>
+
+              <p class="text-sm text-slate-600 dark:text-slate-300 mt-2 line-clamp-2">{{ item.description }}</p>
+
+              <div class="flex items-center gap-4 mt-3 text-sm text-slate-500 dark:text-slate-400">
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-base">category</span>
+                  {{ getAdTypeLabel(item.adType) }}
+                </span>
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-base">attach_money</span>
+                  {{ currencyFormatter.format(item.reward) }}
+                </span>
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-base">schedule</span>
+                  {{ formatDate(item.createdAt) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Modal de Detalle -->
+@if (selectedItem()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeModal()">
+    <div 
+      class="bg-white dark:bg-card-dark rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      (click)="$event.stopPropagation()"
+    >
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <h2 class="text-xl font-bold text-slate-800 dark:text-white">Detalles del Anuncio</h2>
+        <button 
+          (click)="closeModal()"
+          class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Content -->
+      <div class="p-6 space-y-6">
+        <!-- Preview -->
+        <div class="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+          @if (selectedItem()!.imageUrl) {
+            <img [src]="selectedItem()!.imageUrl" [alt]="selectedItem()!.title" class="w-full max-h-64 object-contain">
+          } @else {
+            <div class="w-full h-48 flex items-center justify-center">
+              <span class="material-symbols-outlined text-6xl text-slate-400">image</span>
+            </div>
+          }
+        </div>
+
+        <!-- Info -->
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm text-slate-500 dark:text-slate-400">Título</label>
+            <p class="font-semibold text-slate-800 dark:text-white">{{ selectedItem()!.title }}</p>
+          </div>
+
+          <div>
+            <label class="text-sm text-slate-500 dark:text-slate-400">Descripción</label>
+            <p class="text-slate-700 dark:text-slate-300">{{ selectedItem()!.description }}</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-slate-500 dark:text-slate-400">Anunciante</label>
+              <p class="font-medium text-slate-800 dark:text-white">{{ selectedItem()!.advertiserUsername }}</p>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500 dark:text-slate-400">Tipo</label>
+              <p class="font-medium text-slate-800 dark:text-white">{{ getAdTypeLabel(selectedItem()!.adType) }}</p>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500 dark:text-slate-400">Recompensa</label>
+              <p class="font-medium text-slate-800 dark:text-white">{{ currencyFormatter.format(selectedItem()!.reward) }}</p>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500 dark:text-slate-400">Fecha de Creación</label>
+              <p class="font-medium text-slate-800 dark:text-white">{{ formatDate(selectedItem()!.createdAt) }}</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm text-slate-500 dark:text-slate-400">URL de Destino</label>
+            <a 
+              [href]="selectedItem()!.url" 
+              target="_blank" 
+              class="text-primary hover:underline break-all"
+            >
+              {{ selectedItem()!.url }}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Actions -->
+      <div class="flex items-center justify-end gap-3 p-6 border-t border-slate-200 dark:border-slate-700">
+        <button 
+          (click)="deleteItem(selectedItem()!)"
+          [disabled]="processingAction()"
+          class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+        >
+          <span class="material-symbols-outlined text-lg">delete</span>
+          Eliminar
+        </button>
+        
+        @if (selectedItem()!.status !== 'active') {
+          <button 
+            (click)="approveItem(selectedItem()!)"
+            [disabled]="processingAction()"
+            class="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            <span class="material-symbols-outlined text-lg">check_circle</span>
+            Aprobar
+          </button>
+        }
+
+        @if (selectedItem()!.status !== 'rejected') {
+          <button 
+            (click)="rejectItem(selectedItem()!)"
+            [disabled]="processingAction()"
+            class="px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            <span class="material-symbols-outlined text-lg">cancel</span>
+            Rechazar
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

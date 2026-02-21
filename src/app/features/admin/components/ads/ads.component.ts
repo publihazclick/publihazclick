@@ -12,7 +12,8 @@ import type {
   BannerStatus,
   BannerPosition,
   PtcTaskFilters,
-  BannerAdFilters
+  BannerAdFilters,
+  AdLocation
 } from '../../../../core/models/admin.model';
 
 @Component({
@@ -28,6 +29,7 @@ export class AdminAdsComponent implements OnInit {
   private readonly bannerService = inject(AdminBannerService);
 
   // Estado
+  readonly activeLocation = signal<'landing' | 'app'>('landing');
   readonly activeTab = signal<'ptc' | 'banner'>('ptc');
   readonly ptcAds = signal<PtcTaskAdmin[]>([]);
   readonly bannerAds = signal<BannerAd[]>([]);
@@ -69,7 +71,8 @@ export class AdminAdsComponent implements OnInit {
     position: 'sidebar',
     impressions_limit: 10000,
     clicks_limit: 1000,
-    reward: 0
+    reward: 0,
+    location: 'landing'
   });
 
   readonly saving = signal<boolean>(false);
@@ -115,8 +118,10 @@ export class AdminAdsComponent implements OnInit {
     this.error.set(null);
 
     try {
+      const locationFilter = this.activeLocation();
+      
       if (this.activeTab() === 'ptc') {
-        const filters: PtcTaskFilters = {};
+        const filters: PtcTaskFilters = { location: locationFilter };
         if (this.selectedStatus() !== 'all') {
           filters.status = this.selectedStatus() as TaskStatus;
         }
@@ -131,7 +136,7 @@ export class AdminAdsComponent implements OnInit {
         this.ptcAds.set(result.data);
         this.totalCount.set(result.total);
       } else {
-        const filters: BannerAdFilters = {};
+        const filters: BannerAdFilters = { location: locationFilter };
         if (this.selectedStatus() !== 'all') {
           filters.status = this.selectedStatus() as BannerStatus;
         }
@@ -155,6 +160,15 @@ export class AdminAdsComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  setLocation(location: 'landing' | 'app'): void {
+    this.activeLocation.set(location);
+    this.activeTab.set('ptc');
+    this.currentPage.set(1);
+    this.searchQuery.set('');
+    this.selectedStatus.set('all');
+    this.loadData();
   }
 
   setTab(tab: 'ptc' | 'banner'): void {
@@ -225,7 +239,8 @@ export class AdminAdsComponent implements OnInit {
       position: 'sidebar',
       impressions_limit: 10000,
       clicks_limit: 1000,
-      reward: 0
+      reward: 0,
+      location: this.activeLocation()
     });
     this.showModal.set(true);
   }
@@ -241,7 +256,8 @@ export class AdminAdsComponent implements OnInit {
       position: banner.position,
       impressions_limit: banner.impressions_limit,
       clicks_limit: banner.clicks_limit,
-      reward: banner.reward
+      reward: banner.reward,
+      location: banner.location || 'app'
     });
     this.showModal.set(true);
   }
