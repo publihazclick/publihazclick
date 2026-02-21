@@ -1,6 +1,6 @@
 import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReferralLinkComponent } from '../../../shared/components/referral-link';
+import { ReferralLinkComponent } from '../../../../shared/components/referral-link';
 
 @Component({
   selector: 'app-admin-referral-modal',

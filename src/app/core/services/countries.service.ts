@@ -163,6 +163,105 @@ export class CountriesService {
   }
 
   /**
+   * Obtiene los departamentos/estados para un país específico (basado en código telefónico)
+   * Retorna un array sincronico usando el cache
+   */
+  getDepartments(phoneCode: string): string[] {
+    // Mapeo de códigos telefónicos a nombres de países
+    const phoneToCountry: Record<string, string> = {
+      '+57': 'Colombia',
+      '+54': 'Argentina',
+      '+55': 'Brasil',
+      '+56': 'Chile',
+      '+51': 'Peru',
+      '+58': 'Venezuela',
+      '+52': 'Mexico',
+      '+34': 'Spain',
+      '+1': 'United States',
+      '+44': 'United Kingdom',
+      '+33': 'France',
+      '+49': 'Germany',
+      '+39': 'Italy',
+      '+351': 'Portugal',
+      '+31': 'Netherlands',
+      '+32': 'Belgium',
+      '+41': 'Switzerland',
+      '+43': 'Austria',
+      '+46': 'Sweden',
+      '+47': 'Norway',
+      '+45': 'Denmark',
+      '+48': 'Poland',
+      '+7': 'Russia',
+      '+86': 'China',
+      '+81': 'Japan',
+      '+82': 'South Korea',
+      '+91': 'India',
+      '+61': 'Australia',
+      '+64': 'New Zealand',
+      '+65': 'Singapore',
+      '+852': 'Hong Kong',
+      '+886': 'Taiwan',
+      '+66': 'Thailand',
+      '+84': 'Vietnam',
+      '+62': 'Indonesia',
+      '+63': 'Philippines',
+      '+60': 'Malaysia',
+      '+90': 'Turkey',
+      '+20': 'Egypt',
+      '+27': 'South Africa',
+      '+234': 'Nigeria',
+      '+254': 'Kenya',
+      '+212': 'Morocco',
+      '+972': 'Israel',
+      '+971': 'United Arab Emirates',
+      '+966': 'Saudi Arabia',
+      '+502': 'Guatemala',
+      '+503': 'El Salvador',
+      '+504': 'Honduras',
+      '+505': 'Nicaragua',
+      '+506': 'Costa Rica',
+      '+507': 'Panama',
+      '+53': 'Cuba',
+      '+593': 'Ecuador',
+      '+595': 'Paraguay',
+      '+598': 'Uruguay',
+      '+591': 'Bolivia',
+      '+509': 'Haiti'
+    };
+
+    const countryName = phoneToCountry[phoneCode] || 'Colombia';
+    const states = this._statesByCountry()[countryName];
+    
+    if (states) {
+      return states.map(s => s.name);
+    }
+    
+    // Si no hay cache, retornar departamentos de Colombia por defecto
+    const defaultStates = this._statesByCountry()['Colombia'];
+    return defaultStates ? defaultStates.map(s => s.name) : [];
+  }
+
+  /**
+   * Obtiene las ciudades para un departamento específico
+   * Busca en todos los países cacheados
+   */
+  getCities(departmentName: string): string[] {
+    // Buscar en todos los países cacheados
+    for (const country of Object.keys(this._statesByCountry())) {
+      const states = this._statesByCountry()[country];
+      const state = states?.find(s => s.name === departmentName);
+      if (state) {
+        return state.cities;
+      }
+    }
+    
+    // Si no encuentra, buscar en Colombia por defecto
+    const defaultStates = this._statesByCountry()['Colombia'];
+    const defaultState = defaultStates?.find(s => s.name === departmentName);
+    return defaultState ? defaultState.cities : [];
+  }
+
+  /**
    * Obtiene la lista de países con códigos telefónicos comunes
    * Combinamos la API con códigos conocidos
    */

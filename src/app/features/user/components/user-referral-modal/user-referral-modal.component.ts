@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReferralLinkComponent } from '../../../../shared/components/referral-link/referral-link.component';
+import { ReferralLinkComponent } from '../../../../shared/components/referral-link';
 
 @Component({
   selector: 'app-user-referral-modal',

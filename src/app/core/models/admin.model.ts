@@ -298,6 +298,11 @@ export interface UserAdmin {
   referral_code: string;
   referred_by: string | null;
   referrer_username?: string;
+  phone?: string;
+  country?: string;
+  country_code?: string;
+  department?: string;
+  city?: string;
   created_at: string;
   updated_at: string;
   last_sign_in_at?: string;
@@ -313,6 +318,11 @@ export interface CreateUserAdminData {
   role?: UserRole;
   is_active?: boolean;
   balance?: number;
+  phone?: string;
+  country?: string;
+  country_code?: string;
+  department?: string;
+  city?: string;
 }
 
 export interface UpdateUserAdminData {

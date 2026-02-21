@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
+import { CountriesService } from '../../../../core/services/countries.service';
 import type {
   UserAdmin,
   CreateUserAdminData,
@@ -24,6 +25,7 @@ export class AdminUsersComponent implements OnInit {
   // Servicios
   private readonly profileService = inject(ProfileService);
   private readonly dashboardService = inject(AdminDashboardService);
+  private readonly countriesService = inject(CountriesService);
 
   // Signals para estado
   readonly users = signal<UserAdmin[]>([]);
@@ -35,6 +37,18 @@ export class AdminUsersComponent implements OnInit {
   readonly currentPage = signal<number>(1);
   readonly pageSize = signal<number>(20);
   readonly totalCount = signal<number>(0);
+
+  // Country/Location signals
+  readonly selectedCountryCode = signal<string>('+57');
+  readonly countries = this.countriesService.getCountriesWithPhoneCodes();
+  readonly departmentsList = computed(() => this.countriesService.getDepartments(this.selectedCountryCode()));
+  readonly availableCities = computed(() => this.countriesService.getCities(this.formData().department || ''));
+
+  // Roles for creation
+  readonly rolesForCreation = [
+    { value: 'advertiser', label: 'Anunciante' },
+    { value: 'guest', label: 'Usuario' }
+  ];
 
   // Modal state
   readonly showModal = signal<boolean>(false);
@@ -198,6 +212,10 @@ export class AdminUsersComponent implements OnInit {
     this.selectedStatus.set(status);
     this.currentPage.set(1);
     this.loadUsers();
+  }
+
+  onDepartmentChange(value: string): void {
+    this.formData.update(data => ({ ...data, department: value, city: '' }));
   }
 
   // Pagination

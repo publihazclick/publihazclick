@@ -2,7 +2,7 @@ import { Component, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
-import { UserReferralModalComponent } from './user-referral-modal/user-referral-modal.component';
+import { UserReferralModalComponent } from '../user-referral-modal/user-referral-modal.component';
 
 @Component({
   selector: 'app-user-layout',

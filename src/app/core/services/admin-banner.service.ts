@@ -264,6 +264,13 @@ export class AdminBannerService {
   }
 
   /**
+   * Rechazar banner
+   */
+  async rejectBanner(id: string): Promise<boolean> {
+    return this.setBannerStatus(id, 'rejected');
+  }
+
+  /**
    * Eliminar banner
    */
   async deleteBanner(id: string): Promise<boolean> {
