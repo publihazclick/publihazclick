@@ -20,7 +20,7 @@
         </button>
       </div>
     } @else {
-      <div class="grid grid-cols-2 gap-4 md:gap-6 max-w-7xl mx-auto items-stretch">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-7xl mx-auto items-stretch">
         @for (pkg of packages(); track pkg.id; let i = $index) {
           <!-- Paquete oscuro (Recomendado - Basic Plus) -->
           <div 
