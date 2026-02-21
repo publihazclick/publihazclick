@@ -28,7 +28,7 @@ export interface PtcAd {
         <div class="relative bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700">
           <div class="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-              <img src="/logo.webp" alt="PublihazClik" class="h-8 w-auto">
+              <img src="/logo.webp" alt="PublihazClik" class="h-14 w-auto">
             </div>
             <button (click)="onClose()" class="text-white/80 hover:text-white transition-colors">
               <span class="material-symbols-outlined">close</span>
