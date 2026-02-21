@@ -26,8 +26,25 @@ export class ReferralLinkComponent implements OnInit {
   private async loadProfile(): Promise<void> {
     try {
       console.log('Loading profile...');
-      const profile = await this.profileService.getCurrentProfile();
-      console.log('Profile loaded:', profile);
+      
+      // Intentar obtener el perfil directamente de la tabla profiles
+      const { data: { user } } = await this.profileService['supabase'].auth.getUser();
+      console.log('Current user from auth:', user);
+      
+      if (!user) {
+        // Si no hay usuario en auth, intentar usar el admin por defecto
+        this.loadDefaultReferral();
+        return;
+      }
+      
+      // Buscar el perfil en la tabla profiles
+      const { data: profile, error } = await this.profileService['supabase']
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      console.log('Profile from DB:', profile, 'Error:', error);
       
       if (profile) {
         this.profile.set(profile);
@@ -40,14 +57,37 @@ export class ReferralLinkComponent implements OnInit {
           this.error.set('No tienes un código de referido. Contacta al administrador.');
         }
       } else {
-        // Intentar obtener más información del error
-        const { data: { user } } = await this.profileService['supabase'].auth.getUser();
-        console.log('Current user:', user);
-        this.error.set('No se pudo cargar tu perfil. Asegúrate de estar logueado. User ID: ' + (user?.id || 'none'));
+        // Si no hay perfil, intentar con el admin por defecto
+        this.loadDefaultReferral();
       }
     } catch (err: any) {
       console.error('Error loading profile:', err);
-      this.error.set('Error al cargar el perfil: ' + err.message);
+      // En caso de error, cargar el admin por defecto
+      this.loadDefaultReferral();
+    }
+  }
+
+  private async loadDefaultReferral(): Promise<void> {
+    // Cargar el código del admin desde la base de datos
+    try {
+      const { data, error } = await this.profileService['supabase']
+        .from('profiles')
+        .select('id, username, referral_code')
+        .eq('role', 'admin')
+        .limit(1)
+        .single();
+      
+      if (data && data.referral_code) {
+        this.referralCode.set(data.referral_code);
+        const origin = window.location.origin;
+        this.referralLink.set(origin + '/register?ref=' + data.referral_code);
+        console.log('Loaded admin referral code:', data.referral_code);
+      } else {
+        this.error.set('No hay un código de referido disponible.');
+      }
+    } catch (err) {
+      console.error('Error loading default referral:', err);
+      this.error.set('Error al cargar el código de referido.');
     }
   }
 
