@@ -138,9 +138,8 @@ export class ProfileService {
    */
   async validateReferralCode(code: string): Promise<ReferralValidationResult> {
     try {
-      // El nuevo formato es: username + 5 digitos + - + año (ej: juan12345-2025)
-      // No convertimos a mayúsculas porque el código ya está en minúsculas
-      const normalizedCode = code.trim();
+      // El código puede estar en cualquier formato - hacer búsqueda case-insensitive
+      const normalizedCode = code.trim().toLowerCase();
       
       const { data, error } = await this.supabase
         .from('profiles')
@@ -149,7 +148,27 @@ export class ProfileService {
         .single();
 
       if (error || !data) {
-        return { valid: false, error: 'Código de referido inválido' };
+        // Intentar con mayúsculas también
+        const upperCode = code.trim().toUpperCase();
+        const { data: upperData, error: upperError } = await this.supabase
+          .from('profiles')
+          .select('id, username, is_active')
+          .eq('referral_code', upperCode)
+          .single();
+        
+        if (upperError || !upperData) {
+          return { valid: false, error: 'Código de referido inválido' };
+        }
+        
+        if (!upperData.is_active) {
+          return { valid: false, error: 'El usuario referidor no está activo' };
+        }
+        
+        return {
+          valid: true,
+          referrer_id: upperData.id,
+          referrer_username: upperData.username
+        };
       }
 
       if (!data.is_active) {
