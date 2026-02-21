@@ -3,8 +3,8 @@
 }
 
 <main>
-  @if (isAuthRoute()) {
-    <!-- Mostrar solo el router-outlet para rutas de autenticación -->
+  @if (isAuthRoute() || isAdminOrDashboardRoute()) {
+    <!-- Mostrar solo el router-outlet para rutas de autenticación, admin y dashboard -->
     <router-outlet />
   } @else {
     <!-- Mostrar contenido principal de la landing page -->

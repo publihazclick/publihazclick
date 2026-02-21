@@ -37,6 +37,9 @@ export class App {
   // Signal para saber si estamos en una ruta de autenticación
   readonly isAuthRoute = signal(false);
   
+  // Signal para saber si estamos en una ruta de admin o dashboard
+  readonly isAdminOrDashboardRoute = signal(false);
+  
   // Computed banner slides that react to currency changes
   protected readonly bannerSlides = computed((): BannerSlide[] => {
     const walletBalance = this.currencyService.formatFromCOP(10000);
@@ -90,5 +93,6 @@ export class App {
   
   private updateAuthRoute(url: string): void {
     this.isAuthRoute.set(url.includes('/login') || url.includes('/register') || url.includes('/callback'));
+    this.isAdminOrDashboardRoute.set(url.includes('/admin') || url.includes('/dashboard'));
   }
 }
