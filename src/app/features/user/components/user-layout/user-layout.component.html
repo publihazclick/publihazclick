@@ -38,6 +38,16 @@
               <span class="material-icons w-5 h-5">group</span> Referidos
             </a>
           </li>
+          <li>
+            <button
+              (click)="openReferralModal()"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+            >
+              <span class="material-icons w-5 h-5 text-accent">card_giftcard</span>
+              <span>Recomienda y Gana</span>
+              <span class="ml-auto bg-accent/20 text-accent text-[10px] px-1.5 py-0.5 rounded font-bold">NEW</span>
+            </button>
+          </li>
         </ul>
       </div>
       <div>
@@ -135,6 +145,12 @@
     </div>
   </footer>
 </main>
+
+<!-- Referral Modal -->
+<app-user-referral-modal #referralModal></app-user-referral-modal>
+
+<!-- Referral Modal -->
+<app-user-referral-modal #referralModal></app-user-referral-modal>
 
 <!-- Dark mode toggle -->
 <div class="fixed bottom-6 right-6 z-50">

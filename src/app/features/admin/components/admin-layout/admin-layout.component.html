@@ -65,7 +65,9 @@
               <span class="material-symbols-outlined">verified_user</span> 
               @if (!sidebarCollapsed()) {
                 <span>Ad Moderation</span>
-                <span class="ml-auto bg-primary text-black text-[10px] px-1.5 py-0.5 rounded font-bold">12</span>
+                @if (pendingModerationCount() > 0) {
+                  <span class="ml-auto bg-primary text-black text-[10px] px-1.5 py-0.5 rounded font-bold">{{ pendingModerationCount() }}</span>
+                }
               }
             </a>
           </li>
@@ -87,11 +89,24 @@
           </li>
           <li>
             <a routerLink="/admin/reports" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">bar_chart</span> 
+              <span class="material-symbols-outlined">bar_chart</span>
               @if (!sidebarCollapsed()) {
                 <span>Financial Reports</span>
               }
             </a>
+          </li>
+          <li>
+            <button
+              (click)="openReferralModal()"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+              [class.justify-center]="sidebarCollapsed()"
+            >
+              <span class="material-symbols-outlined text-accent">card_giftcard</span>
+              @if (!sidebarCollapsed()) {
+                <span>Recomienda y Gana</span>
+                <span class="ml-auto bg-accent/20 text-accent text-[10px] px-1.5 py-0.5 rounded font-bold">NEW</span>
+              }
+            </button>
           </li>
         </ul>
       </div>
@@ -188,6 +203,9 @@
     </div>
   </footer>
 </main>
+
+<!-- Referral Modal -->
+<app-admin-referral-modal #referralModal></app-admin-referral-modal>
 
 <!-- Dark mode toggle -->
 <div class="fixed bottom-6 right-6 z-50">

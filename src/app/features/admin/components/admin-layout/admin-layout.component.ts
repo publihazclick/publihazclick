@@ -1,18 +1,23 @@
-import { Component, signal, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, signal, Inject, PLATFORM_ID, OnInit, inject, ViewChild } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
+import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
+import { AdminReferralModalComponent } from '../admin-referral-modal/admin-referral-modal.component';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, AdminReferralModalComponent],
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss'
 })
-export class AdminLayoutComponent {
+export class AdminLayoutComponent implements OnInit {
   isDarkMode = true;
   serverLoad = 42;
+  private readonly dashboardService = inject(AdminDashboardService);
+
+  @ViewChild('referralModal') referralModal!: AdminReferralModalComponent;
   
   // Estado del sidebar (mobile)
   protected readonly sidebarOpen = signal(false);
@@ -20,6 +25,8 @@ export class AdminLayoutComponent {
   protected readonly sidebarCollapsed = signal(false);
   // Estado de si es navegador (para SSR)
   protected readonly isBrowser = signal(false);
+  // Conteo de moderación
+  protected readonly pendingModerationCount = signal(0);
 
   constructor(
     private readonly authService: AuthService, 
@@ -27,6 +34,19 @@ export class AdminLayoutComponent {
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) {
     this.isBrowser.set(isPlatformBrowser(this.platformId));
+  }
+
+  ngOnInit(): void {
+    this.loadPendingCount();
+  }
+
+  private async loadPendingCount(): Promise<void> {
+    try {
+      const pending = await this.dashboardService.getPendingItems();
+      this.pendingModerationCount.set(pending.length);
+    } catch (error) {
+      console.error('Error loading pending count:', error);
+    }
   }
 
   // Detectar si es dispositivo móvil
@@ -52,5 +72,9 @@ export class AdminLayoutComponent {
 
   logout(): void {
     this.authService.logout().subscribe();
+  }
+
+  openReferralModal(): void {
+    this.referralModal?.open();
   }
 }
