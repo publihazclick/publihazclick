@@ -10,84 +10,92 @@
     </div>
   </div>
 
-  <!-- Link de Referido -->
-  <div class="mb-4">
-    <label class="block text-[10px] lg:text-xs text-slate-400 mb-2 font-bold uppercase tracking-wider">Tu Link de Registro</label>
-    <div class="relative">
-      <input
-        type="text"
-        [value]="referralLink()"
-        readonly
-        class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2.5 pr-24 text-xs text-slate-300 font-mono focus:outline-none focus:border-primary/50"
-      />
-      <button
-        (click)="copyLink()"
-        class="absolute right-1.5 top-1/2 -translate-y-1/2 bg-primary hover:bg-primary/80 text-black text-[10px] font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1"
-      >
-        @if (copied()) {
-          <span class="material-symbols-outlined text-sm">check</span>
-          <span>Copiado</span>
-        } @else {
-          <span class="material-symbols-outlined text-sm">content_copy</span>
-          <span>Copiar</span>
-        }
-      </button>
+  @if (error()) {
+    <!-- Mensaje de error -->
+    <div class="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-center mb-4">
+      <span class="material-symbols-outlined text-red-400 text-2xl mb-2">error</span>
+      <p class="text-red-400 text-sm">{{ error() }}</p>
     </div>
-  </div>
-
-  <!-- Código de Referido -->
-  <div class="mb-4 lg:mb-6">
-    <label class="block text-[10px] lg:text-xs text-slate-400 mb-2 font-bold uppercase tracking-wider">Tu Código</label>
-    <div class="flex items-center gap-2">
-      <div class="flex-1 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-lg px-3 py-2">
-        <span class="text-sm lg:text-base font-bold text-primary tracking-wider">{{ referralCode() }}</span>
-      </div>
-      <button
-        (click)="copyCode()"
-        class="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg flex items-center justify-center transition-all"
-        [class.text-emerald-400]="copiedCode()"
-        [class.text-slate-400]="!copiedCode()"
-        title="Copiar código"
-      >
-        @if (copiedCode()) {
-          <span class="material-symbols-outlined">check</span>
-        } @else {
-          <span class="material-symbols-outlined">content_copy</span>
-        }
-      </button>
-    </div>
-  </div>
-
-  <!-- Estadísticas -->
-  @if (profile(); as p) {
-    <div class="grid grid-cols-2 gap-2 lg:gap-3">
-      <div class="bg-white/5 rounded-lg p-2 lg:p-3 text-center">
-        <div class="text-lg lg:text-xl font-black text-primary">{{ p.total_referrals_count || 0 }}</div>
-        <div class="text-[10px] text-slate-400 uppercase tracking-wider">Referidos</div>
-      </div>
-      <div class="bg-white/5 rounded-lg p-2 lg:p-3 text-center">
-        <div class="text-lg lg:text-xl font-black text-accent">{{ formatMoney(p.referral_earnings || 0) }}</div>
-        <div class="text-[10px] text-slate-400 uppercase tracking-wider">Ganancias</div>
+  } @else {
+    <!-- Link de Referido -->
+    <div class="mb-4">
+      <label class="block text-[10px] lg:text-xs text-slate-400 mb-2 font-bold uppercase tracking-wider">Tu Link de Registro</label>
+      <div class="relative">
+        <input
+          type="text"
+          [value]="referralLink()"
+          readonly
+          class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2.5 pr-24 text-xs text-slate-300 font-mono focus:outline-none focus:border-primary/50"
+        />
+        <button
+          (click)="copyLink()"
+          class="absolute right-1.5 top-1/2 -translate-y-1/2 bg-primary hover:bg-primary/80 text-black text-[10px] font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1"
+        >
+          @if (copied()) {
+            <span class="material-symbols-outlined text-sm">check</span>
+            <span>Copiado</span>
+          } @else {
+            <span class="material-symbols-outlined text-sm">content_copy</span>
+            <span>Copiar</span>
+          }
+        </button>
       </div>
     </div>
-  }
 
-  <!-- Botón Ver Mis Referidos -->
-  <button
-    (click)="goToReferrals()"
-    class="w-full mt-4 bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 border border-primary/20 text-primary font-bold py-2.5 rounded-lg transition-all text-xs flex items-center justify-center gap-2"
-  >
-    <span class="material-symbols-outlined text-sm">group</span>
-    Ver Mis Referidos
-  </button>
-
-  <!-- Mensaje de éxito -->
-  @if (copied()) {
-    <div class="mt-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 text-center">
-      <p class="text-[10px] text-emerald-400 font-bold">
-        <span class="material-symbols-outlined text-sm align-middle mr-1">check_circle</span>
-        Link copiado al portapapeles
-      </p>
+    <!-- Código de Referido -->
+    <div class="mb-4 lg:mb-6">
+      <label class="block text-[10px] lg:text-xs text-slate-400 mb-2 font-bold uppercase tracking-wider">Tu Código</label>
+      <div class="flex items-center gap-2">
+        <div class="flex-1 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-lg px-3 py-2">
+          <span class="text-sm lg:text-base font-bold text-primary tracking-wider">{{ referralCode() }}</span>
+        </div>
+        <button
+          (click)="copyCode()"
+          class="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg flex items-center justify-center transition-all"
+          [class.text-emerald-400]="copiedCode()"
+          [class.text-slate-400]="!copiedCode()"
+          title="Copiar código"
+        >
+          @if (copiedCode()) {
+            <span class="material-symbols-outlined">check</span>
+          } @else {
+            <span class="material-symbols-outlined">content_copy</span>
+          }
+        </button>
+      </div>
     </div>
+
+    <!-- Estadísticas -->
+    @if (profile(); as p) {
+      <div class="grid grid-cols-2 gap-2 lg:gap-3">
+        <div class="bg-white/5 rounded-lg p-2 lg:p-3 text-center">
+          <div class="text-lg lg:text-xl font-black text-primary">{{ p.total_referrals_count || 0 }}</div>
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider">Referidos</div>
+        </div>
+        <div class="bg-white/5 rounded-lg p-2 lg:p-3 text-center">
+          <div class="text-lg lg:text-xl font-black text-accent">{{ formatMoney(p.referral_earnings || 0) }}</div>
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider">Ganancias</div>
+        </div>
+      </div>
+    }
+
+    <!-- Botón Ver Mis Referidos -->
+    <button
+      (click)="goToReferrals()"
+      class="w-full mt-4 bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 border border-primary/20 text-primary font-bold py-2.5 rounded-lg transition-all text-xs flex items-center justify-center gap-2"
+    >
+      <span class="material-symbols-outlined text-sm">group</span>
+      Ver Mis Referidos
+    </button>
+
+    <!-- Mensaje de éxito -->
+    @if (copied()) {
+      <div class="mt-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 text-center">
+        <p class="text-[10px] text-emerald-400 font-bold">
+          <span class="material-symbols-outlined text-sm align-middle mr-1">check_circle</span>
+          Link copiado al portapapeles
+        </p>
+      </div>
+    }
   }
 </div>
