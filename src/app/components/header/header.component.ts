@@ -62,7 +62,8 @@ export class HeaderComponent implements OnInit {
     this.currencyMenuOpen.set(false);
   }
 
-  formatCurrency(amount: number): string {
-    return this.currencyService.format(amount);
+  formatCurrency(amountInCOP: number): string {
+    // Los valores del wallet están en COP, convertir a la divisa seleccionada
+    return this.currencyService.formatFromCOP(amountInCOP, 2);
   }
 }
