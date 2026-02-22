@@ -348,13 +348,20 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">URL de Imagen</label>
-              <input
-                type="url"
-                [(ngModel)]="ptcFormData().image_url"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
-                placeholder="https://..."
+              <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                Imagen del anuncio
+              </label>
+              <input 
+                type="file" 
+                accept="image/*"
+                (change)="onPtcImageSelected($event)"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
               />
+              @if (ptcFormData().image_url) {
+                <div class="mt-2">
+                  <img [src]="ptcFormData().image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
+                </div>
+              }
             </div>
 
             <div class="grid grid-cols-3 gap-4">
@@ -421,13 +428,20 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">URL de Imagen *</label>
-              <input
-                type="url"
-                [(ngModel)]="bannerFormData().image_url"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
-                placeholder="https://..."
+              <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                Imagen del banner
+              </label>
+              <input 
+                type="file" 
+                accept="image/*"
+                (change)="onBannerImageSelected($event)"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
               />
+              @if (bannerFormData().image_url) {
+                <div class="mt-2">
+                  <img [src]="bannerFormData().image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
+                </div>
+              }
             </div>
 
             <div>

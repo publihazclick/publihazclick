@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import { AdminBannerService } from '../../../../core/services/admin-banner.service';
+import { StorageService } from '../../../../core/services/storage.service';
 import type {
   PtcTaskAdmin,
   CreatePtcTaskData,
@@ -27,7 +28,8 @@ export class AdminAdsComponent implements OnInit {
   // Servicios
   private readonly ptcService = inject(AdminPtcTaskService);
   private readonly bannerService = inject(AdminBannerService);
-
+  private readonly storageService = inject(StorageService);
+  
   // Estado
   readonly activeTab = signal<'ptc' | 'banner'>('ptc');
   readonly activeLocation = signal<AdLocation>('app');
@@ -330,6 +332,60 @@ export class AdminAdsComponent implements OnInit {
       this.error.set(err.message || 'Error al guardar el banner');
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  // Manejo de imagen para PTC
+  async onPtcImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    
+    const file = input.files[0];
+    
+    if (!this.storageService.isValidImage(file)) {
+      this.error.set('Tipo de archivo no válido. Solo se permiten imágenes JPEG, PNG, GIF, WebP o SVG.');
+      return;
+    }
+    
+    if (!this.storageService.isValidSize(file, 5)) {
+      this.error.set('El archivo es muy grande. Máximo 5MB permitidos.');
+      return;
+    }
+    
+    const result = await this.storageService.uploadPtcAdImage(file);
+    
+    if (result.success && result.url) {
+      this.ptcFormData.update(data => ({ ...data, image_url: result.url }));
+      this.error.set(null);
+    } else {
+      this.error.set(result.error || 'Error al subir la imagen');
+    }
+  }
+
+  // Manejo de imagen para Banner
+  async onBannerImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    
+    const file = input.files[0];
+    
+    if (!this.storageService.isValidImage(file)) {
+      this.error.set('Tipo de archivo no válido. Solo se permiten imágenes JPEG, PNG, GIF, WebP o SVG.');
+      return;
+    }
+    
+    if (!this.storageService.isValidSize(file, 5)) {
+      this.error.set('El archivo es muy grande. Máximo 5MB permitidos.');
+      return;
+    }
+    
+    const result = await this.storageService.uploadBannerImage(file);
+    
+    if (result.success && result.url) {
+      this.bannerFormData.update(data => ({ ...data, image_url: result.url }));
+      this.error.set(null);
+    } else {
+      this.error.set(result.error || 'Error al subir la imagen');
     }
   }
 
