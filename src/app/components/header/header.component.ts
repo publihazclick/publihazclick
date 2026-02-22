@@ -1,7 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CurrencyService, Currency } from '../../core/services/currency.service';
+import { WalletStateService } from '../../core/services/wallet-state.service';
 
 interface NavItem {
   label: string;
@@ -15,21 +16,26 @@ interface NavItem {
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss'
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit {
   protected readonly isMenuOpen = signal(false);
   protected readonly mobileMenuOpen = signal(false);
   protected readonly currencyMenuOpen = signal(false);
   
   protected readonly currencyService = inject(CurrencyService);
+  protected readonly walletService = inject(WalletStateService);
   
   // Expose signals for template
   readonly selectedCurrency = this.currencyService.selectedCurrency;
   readonly currencies = this.currencyService.currencies;
   readonly loading = this.currencyService.loading;
   
-  // Wallet and donation placeholders (will be functional later)
-  protected readonly walletBalance = signal(0.00);
-  protected readonly donatedAmount = signal(0.00);
+  // Wallet y donations del servicio compartido
+  readonly walletBalance = this.walletService.walletBalance;
+  readonly donatedAmount = this.walletService.donatedAmount;
+  
+  ngOnInit(): void {
+    // Los datos ya se cargan en el constructor del servicio
+  }
   
   protected readonly navItems: NavItem[] = [
     { label: 'Inicio', href: '/' },

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CurrencyService } from '../../core/services/currency.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { UserTrackingService } from '../../core/services/user-tracking.service';
 
 export interface PtcAd {
   id: string;
@@ -25,21 +26,21 @@ export interface PtcAd {
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" (click)="onClose()"></div>
         
-        <div class="relative bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700">
-          <div class="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 flex items-center justify-between">
+        <div class="relative bg-gray-900 rounded-2xl w-full max-w-lg sm:max-w-2xl lg:max-w-3xl h-[90vh] sm:h-[85vh] lg:h-[80vh] shadow-2xl border border-gray-700 flex flex-col">
+          <div class="bg-gradient-to-r from-cyan-600 to-blue-600 p-3 sm:p-4 lg:p-5 flex items-center justify-between shrink-0">
             <div class="flex items-center space-x-3">
-              <img src="/logo.webp" alt="PublihazClik" class="h-14 w-auto">
+              <img src="/logo.webp" alt="PublihazClik" class="h-12 sm:h-14 lg:h-16 w-auto">
             </div>
             <button (click)="onClose()" class="text-white/80 hover:text-white transition-colors">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
 
-          <div class="p-4 border-b border-gray-700">
+          <div class="p-3 sm:p-4 border-b border-gray-700 shrink-0">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center space-x-2">
-                <span class="text-sm text-gray-400">{{ ad().advertiserName }}</span>
-                <span class="px-2 py-0.5 rounded-full text-xs font-bold" [ngClass]="getAdTypeClass()">
+                <span class="text-sm sm:text-base text-gray-400">{{ ad().advertiserName }}</span>
+                <span class="px-2 py-0.5 rounded-full text-xs sm:text-sm font-bold" [ngClass]="getAdTypeClass()">
                   {{ getAdTypeLabel() }}
                 </span>
               </div>
@@ -49,10 +50,10 @@ export interface PtcAd {
                 </div>
               }
             </div>
-            <h4 class="text-white font-bold text-xl">{{ ad().title }}</h4>
+            <h4 class="text-white font-bold text-lg sm:text-xl lg:text-2xl">{{ ad().title }}</h4>
           </div>
 
-          <div class="relative aspect-video bg-black">
+          <div class="relative aspect-video bg-black w-full h-40 sm:h-48 lg:h-56 shrink-0">
             @if (ad().youtubeVideoId) {
               <iframe 
                 [src]="getVideoUrl()"
@@ -65,53 +66,66 @@ export interface PtcAd {
             }
             
             @if (countdown() > 0) {
-              <div class="absolute bottom-4 left-4 bg-black/70 px-3 py-1 rounded-full">
-                <span class="text-white text-sm">Debes ver el anuncio completo</span>
+              <div class="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 bg-black/70 px-3 py-1 rounded-full">
+                <span class="text-white text-xs sm:text-sm">Ver completo</span>
               </div>
             }
           </div>
 
-          <div class="p-4 bg-gray-800">
-            <div class="flex items-center justify-between mb-4">
+          <div class="p-3 sm:p-4 bg-gray-800 mt-auto overflow-y-auto">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
               <div class="flex items-center space-x-2">
-                <span class="text-gray-400 text-sm">
+                <span class="text-gray-400 text-sm sm:text-base">
                   <span class="material-symbols-outlined text-cyan-500 align-middle">info</span>
                   Recompensa por ver:
                 </span>
-                <a 
-                  [href]="getYoutubeLink()" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  class="text-cyan-400 hover:text-cyan-300 text-sm flex items-center space-x-1 transition-colors"
-                >
-                  <span>Ver más</span>
-                  <span class="material-symbols-outlined text-sm">open_in_new</span>
-                </a>
+                <span class="text-xl sm:text-2xl lg:text-3xl font-black text-green-400">
+                  <span>$</span>{{ rewardDisplay() }}
+                </span>
               </div>
-              <div class="text-2xl font-black text-green-400">
-                <span>$</span>{{ rewardDisplay() }}
-              </div>
+              <a 
+                [href]="getYoutubeLink()" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                class="text-cyan-400 hover:text-cyan-300 text-sm flex items-center space-x-1 transition-colors"
+              >
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">open_in_new</span>
+              </a>
             </div>
 
-            @if (countdown() === 0 && !captchaCompleted()) {
-              <div class="space-y-4">
-                <div class="bg-gray-700 rounded-lg p-4">
-                  <p class="text-white text-sm mb-2">Verificación de humano</p>
-                  <div class="flex items-center space-x-4 mb-4">
-                    <div class="bg-gray-600 px-4 py-2 rounded-lg">
-                      <span class="text-white text-xl font-bold">{{ num1 }} + {{ num2 }} = ?</span>
+            @if (alreadyViewed()) {
+              <div class="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 text-center">
+                <span class="material-symbols-outlined text-yellow-400 text-3xl sm:text-4xl mb-2">warning</span>
+                <p class="text-yellow-400 font-bold text-lg sm:text-xl">¡Anuncio ya visto!</p>
+                <p class="text-gray-400 text-sm mt-2">Ya has visto este anuncio anteriormente.</p>
+                <p class="text-gray-500 text-xs mt-1">IP: {{ ipAddress() }}</p>
+                <button 
+                  (click)="onClose()"
+                  class="w-full mt-4 py-2 sm:py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition-colors text-sm sm:text-base"
+                >
+                  Cerrar
+                </button>
+              </div>
+            } @else if (countdown() === 0 && !captchaCompleted()) {
+              <div class="space-y-3">
+                <div class="bg-gray-700 rounded-lg p-3 sm:p-4">
+                  <p class="text-white text-sm sm:text-base mb-2">Verificación de humano</p>
+                  <div class="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
+                    <div class="bg-gray-600 px-3 sm:px-4 py-2 rounded-lg">
+                      <span class="text-white text-base sm:text-xl font-bold">{{ num1 }} + {{ num2 }} = ?</span>
                     </div>
                     <input 
                       type="number" 
                       [(ngModel)]="captchaAnswer"
                       placeholder="?"
-                      class="w-20 px-3 py-2 bg-gray-800 text-white text-center text-xl font-bold rounded-lg border border-gray-600 focus:border-cyan-500 outline-none"
+                      class="w-16 sm:w-20 px-3 py-2 bg-gray-800 text-white text-center text-lg sm:text-xl font-bold rounded-lg border border-gray-600 focus:border-cyan-500 outline-none"
                     />
                   </div>
                   <button 
                     (click)="verifyCaptcha()"
                     [disabled]="!captchaAnswer || isVerifying()"
-                    class="w-full py-3 rounded-lg font-bold transition-colors"
+                    class="w-full py-2 sm:py-3 rounded-lg font-bold text-sm sm:text-base transition-colors"
                     [ngClass]="captchaAnswer ? 'bg-cyan-500 hover:bg-cyan-400 text-black' : 'bg-gray-600 text-gray-400 cursor-not-allowed'"
                   >
                     {{ isVerifying() ? 'Verificando...' : 'Confirmar' }}
@@ -126,15 +140,15 @@ export interface PtcAd {
             }
 
             @if (captchaCompleted()) {
-              <div class="space-y-4">
-                <div class="bg-green-500/20 border border-green-500 rounded-lg p-4 text-center">
-                  <span class="material-symbols-outlined text-green-400 text-4xl mb-2">check_circle</span>
-                  <p class="text-green-400 font-bold text-lg">¡Recompensa enviada!</p>
-                  <p class="text-gray-400 text-sm">100% a tu wallet • $10 COP a donaciones</p>
+              <div class="space-y-3">
+                <div class="bg-green-500/20 border border-green-500 rounded-lg p-3 sm:p-4 text-center">
+                  <span class="material-symbols-outlined text-green-400 text-3xl sm:text-4xl mb-2">check_circle</span>
+                  <p class="text-green-400 font-bold text-lg sm:text-xl">¡Recompensa enviada!</p>
+                  <p class="text-gray-400 text-sm">100% wallet • $10 COP a donaciones</p>
                 </div>
                 <button 
                   (click)="onClose()"
-                  class="w-full py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-lg transition-colors"
+                  class="w-full py-2 sm:py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-lg transition-colors text-sm sm:text-base"
                 >
                   Continuar
                 </button>
@@ -144,7 +158,7 @@ export interface PtcAd {
             @if (countdown() > 0) {
               <button 
                 disabled
-                class="w-full py-3 bg-gray-600 text-gray-400 font-bold rounded-lg cursor-not-allowed"
+                class="w-full py-2 sm:py-3 bg-gray-600 text-gray-400 font-bold rounded-lg cursor-not-allowed text-sm sm:text-base"
               >
                 Esperando... ({{ countdown() }}s)
               </button>
@@ -163,6 +177,11 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   protected currencyService = inject(CurrencyService);
   private sanitizer = inject(DomSanitizer);
+  private userTracking = inject(UserTrackingService);
+  
+  // Signal para verificar si el usuario ya vio este anuncio
+  protected alreadyViewed = signal(false);
+  protected ipAddress = signal('');
   
   // Computed that reacts to currency changes
   protected rewardDisplay = computed(() => {
@@ -184,6 +203,12 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   private videoUrl: SafeResourceUrl | null = null;
 
   ngOnInit(): void {
+    // Obtener IP del usuario
+    this.ipAddress.set(this.userTracking.getIp());
+    
+    // Verificar si ya vio este anuncio
+    this.alreadyViewed.set(!this.userTracking.canClaimReward(this.ad().id));
+    
     this.generateCaptcha();
     // Start countdown when modal opens
     this.startCountdown();
@@ -224,6 +249,12 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   }
 
   verifyCaptcha(): void {
+    // Verificar si el usuario ya vio este anuncio
+    if (this.alreadyViewed()) {
+      this.captchaError.set('Ya has visto este anuncio anteriormente. Intenta con otro.');
+      return;
+    }
+    
     if (this.captchaAnswer === null) return;
     
     this.isVerifying.set(true);
@@ -231,6 +262,10 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     
     setTimeout(() => {
       if (this.captchaAnswer === this.num1 + this.num2) {
+        // Registrar la vista del anuncio antes de dar la recompensa
+        this.userTracking.recordAdView(this.ad().id);
+        this.alreadyViewed.set(true);
+        
         this.captchaCompleted.set(true);
         
         const rewardCOP = this.ad().rewardCOP || 1;

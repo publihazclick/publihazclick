@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AdminPtcTaskService } from '../../core/services/admin-ptc-task.service';
 import { CurrencyService } from '../../core/services/currency.service';
+import { UserTrackingService } from '../../core/services/user-tracking.service';
+import { WalletStateService } from '../../core/services/wallet-state.service';
 import { PtcModalComponent, PtcAd } from '../ptc-modal/ptc-modal.component';
 import { PtcAdType } from '../../core/models/admin.model';
 
@@ -30,6 +32,8 @@ interface PtcAdCard {
 export class PtcAdsComponent implements OnInit {
   private ptcService = inject(AdminPtcTaskService);
   protected currencyService = inject(CurrencyService);
+  protected userTracking = inject(UserTrackingService);
+  protected walletService = inject(WalletStateService);
   
   ads = signal<PtcAdCard[]>([]);
   loading = signal<boolean>(true);
@@ -39,20 +43,8 @@ export class PtcAdsComponent implements OnInit {
   isModalOpen = signal(false);
   selectedAd = signal<PtcAd | null>(null);
   
-  // Demo wallet for rewards - persist in localStorage
-  demoWallet = signal(this.loadFromStorage('ptc_wallet', 0));
-  demoDonations = signal(this.loadFromStorage('ptc_donations', 0));
-
-  private loadFromStorage(key: string, defaultValue: number): number {
-    if (typeof window === 'undefined') return defaultValue;
-    const stored = localStorage.getItem(key);
-    return stored ? parseFloat(stored) : defaultValue;
-  }
-
-  private saveToStorage(key: string, value: number): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(key, value.toString());
-  }
+  // Estado de anuncios vistos
+  viewedAds = signal<Set<string>>(new Set());
 
   ngOnInit(): void {
     this.loadPtcAds();
@@ -347,6 +339,12 @@ export class PtcAdsComponent implements OnInit {
 
   // Modal methods
   openAdModal(ad: PtcAdCard): void {
+    // Verificar si ya fue visto
+    if (this.userTracking.hasViewedAd(ad.id)) {
+      // No abrir el modal si ya fue visto
+      return;
+    }
+    
     // Pass the full COP reward to the modal
     const ptcAd: PtcAd = {
       id: ad.id,
@@ -368,18 +366,30 @@ export class PtcAdsComponent implements OnInit {
     this.selectedAd.set(null);
   }
 
+  // Verificar si un anuncio ya fue visto
+  isAdViewed(adId: string): boolean {
+    return this.userTracking.hasViewedAd(adId);
+  }
+
+  // Obtener todos los IDs de anuncios vistos
+  getViewedAds(): Set<string> {
+    const ads = this.ads();
+    const viewed = new Set<string>();
+    ads.forEach(ad => {
+      if (this.userTracking.hasViewedAd(ad.id)) {
+        viewed.add(ad.id);
+      }
+    });
+    return viewed;
+  }
+
   onRewardClaimed(event: { walletAmount: number; donationAmount: number }): void {
-    // Add to demo wallet and persist
-    this.demoWallet.update(w => {
-      const newValue = w + event.walletAmount;
-      this.saveToStorage('ptc_wallet', newValue);
-      return newValue;
-    });
-    this.demoDonations.update(d => {
-      const newValue = d + event.donationAmount;
-      this.saveToStorage('ptc_donations', newValue);
-      return newValue;
-    });
+    // Usar el servicio de wallet para actualizar
+    this.walletService.updateWallet(event.walletAmount);
+    this.walletService.updateDonations(event.donationAmount);
+    
+    // Recargar los datos de sesión de anuncios
+    this.userTracking.recordAdView(this.selectedAd()?.id || '');
     
     // Show success message (could add a toast here)
     console.log('Recompensa reclamada:', event);
