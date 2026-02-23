@@ -73,7 +73,7 @@ export class CurrencyService {
   constructor(private http: HttpClient) {
     // Load saved currency from localStorage (only in browser)
     this.loadSavedCurrency();
-    // Check and fetch rates if needed
+    // Always try to fetch fresh rates on initialization
     this.initializeRates();
   }
 
@@ -93,8 +93,8 @@ export class CurrencyService {
 
   /**
    * Inicializa las tasas de cambio.
-   * Si hay cache válido, lo usa.
-   * Si no hay cache o está desactualizado, intenta obtener tasas nuevas.
+   * Siempre intenta obtener tasas frescas al inicio.
+   * Usa cache o fallback si la API falla.
    */
   private initializeRates(): void {
     if (!isPlatformBrowser(this.platformId)) {
@@ -103,39 +103,13 @@ export class CurrencyService {
       return;
     }
 
-    const currentHour = new Date().getHours();
-    const cachedRatesStr = localStorage.getItem(this.CACHE_KEY);
+    // Primero establecer fallback para tener valores inmediatos
+    this._rates.set(this.getFallbackRates());
 
-    // Verificar si hay cache válido
-    if (cachedRatesStr) {
-      try {
-        const cached: CachedRates = JSON.parse(cachedRatesStr);
-        const lastDate = new Date(cached.lastFetched);
-        const today = new Date();
-        const isSameDay = lastDate.toDateString() === today.toDateString();
-
-        // Si hay cache de hoy, usarlo
-        if (isSameDay) {
-          this._rates.set(cached.rates);
-          console.log('Usando tasas cacheadas del día:', cached.lastFetched);
-          
-          // También intentar actualizar si estamos en hora válida (6am o 6pm)
-          const validHours = [6, 18];
-          if (validHours.includes(currentHour) && cached.lastFetchedHour !== currentHour) {
-            // Hay nueva actualización disponible, fetch en background
-            this.fetchRates().catch(() => {});
-          }
-          return;
-        }
-      } catch (e) {
-        console.error('Error parsing cached rates:', e);
-      }
-    }
-
-    // No hay cache válido, intentar obtener tasas
+    // Luego intentar obtener tasas reales de la API
     this.fetchRates().catch(() => {
-      // Si falla, usar fallback
-      this._rates.set(this.getFallbackRates());
+      // Si falla, ya tenemos el fallback establecido
+      console.log('Usando tasas fallback');
     });
   }
 
