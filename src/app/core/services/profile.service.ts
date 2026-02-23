@@ -1,8 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import {
-  SupabaseClient,
-  createClient
-} from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import {
   Profile,
   Referral,
@@ -11,7 +8,7 @@ import {
   UserRole
 } from '../models/profile.model';
 import type { UserLevel } from '../models/admin.model';
-import { environment } from '../../../environments/environment';
+import { getSupabaseClient } from '../supabase.client';
 
 /**
  * Servicio para gestionar perfiles de usuario
@@ -23,10 +20,8 @@ export class ProfileService {
   private readonly supabase: SupabaseClient;
 
   constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+    // Usar cliente compartido de Supabase para evitar múltiples instancias
+    this.supabase = getSupabaseClient();
   }
 
   private readonly _profile = signal<Profile | null>(null);

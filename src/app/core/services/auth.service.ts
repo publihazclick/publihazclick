@@ -1,16 +1,16 @@
 import { Injectable, inject, signal, computed, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import {
-  createClient,
   SupabaseClient,
   User,
   Session,
   AuthChangeEvent,
   AuthError
 } from '@supabase/supabase-js';
-import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subject, from, of } from 'rxjs';
 import { map, catchError, takeUntil, tap, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { getSupabaseClient } from '../supabase.client';
 
 /**
  * Interfaz para las opciones de login
@@ -110,19 +110,8 @@ export class AuthService implements OnDestroy {
   readonly authStateObservable$: Observable<AuthState> = this.authState$.asObservable();
 
   constructor() {
-    // Inicializar cliente de Supabase
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey,
-      {
-        auth: {
-          persistSession: environment.supabase.options?.persistSession ?? true,
-          storageKey: environment.supabase.options?.storageKey ?? 'publihazclick-auth',
-          autoRefreshToken: environment.supabase.options?.autoRefreshToken ?? true,
-          detectSessionInUrl: environment.supabase.options?.detectSessionInUrl ?? true
-        }
-      }
-    );
+    // Usar cliente compartido de Supabase para evitar múltiples instancias
+    this.supabase = getSupabaseClient();
 
     // Inicializar侦听 de autenticación
     this.initializeAuthListener();
