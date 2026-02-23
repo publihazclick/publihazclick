@@ -1,6 +1,7 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
 
 export interface Currency {
   code: string;
@@ -13,12 +14,22 @@ export interface ExchangeRates {
   [key: string]: number;
 }
 
+export interface CachedRates {
+  rates: ExchangeRates;
+  lastFetched: string; // ISO date string
+  lastFetchedHour: number; // Hour of the day (0-23)
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class CurrencyService {
-  private readonly API_KEY = 'e4d78312d37df5524ba2b005';
-  private readonly BASE_URL = 'https://v6.exchangerate-api.com/v6';
+  private readonly API_KEY = 'fca_live_9TcBlO4cZge82CUYl7cta0M7dkkcX7aiexyXwSPJ';
+  private readonly BASE_URL = 'https://api.freecurrencyapi.com/v1/latest';
+  private readonly CACHE_KEY = 'cachedExchangeRates';
+  private readonly CACHE_HOURS_KEY = 'cachedExchangeRatesHour';
+  
+  private platformId = inject(PLATFORM_ID);
 
   // Signal for the selected currency - Default to COP
   private _selectedCurrency = signal<Currency>({
@@ -62,12 +73,12 @@ export class CurrencyService {
   constructor(private http: HttpClient) {
     // Load saved currency from localStorage (only in browser)
     this.loadSavedCurrency();
-    // Fetch initial rates
-    this.fetchRates();
+    // Check and fetch rates if needed
+    this.checkAndFetchRates();
   }
 
   private loadSavedCurrency(): void {
-    if (typeof window === 'undefined' || !localStorage) return;
+    if (!isPlatformBrowser(this.platformId) || !localStorage) return;
     
     const saved = localStorage.getItem('selectedCurrency');
     if (saved) {
@@ -80,14 +91,80 @@ export class CurrencyService {
     }
   }
 
+  /**
+   * Verifica si necesita actualizar las tasas de cambio.
+   * Solo consulta a las 6:00 AM y 6:00 PM.
+   */
+  private checkAndFetchRates(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const currentHour = new Date().getHours();
+    const cachedHourStr = localStorage.getItem(this.CACHE_HOURS_KEY);
+    const cachedRatesStr = localStorage.getItem(this.CACHE_KEY);
+
+    // Horas válidas para actualizar: 6 AM (6) y 6 PM (18)
+    const validHours = [6, 18];
+
+    // Si tenemos tasas cached y estamos en hora válida, verificamos si necesitamos actualizar
+    if (cachedRatesStr && validHours.includes(currentHour)) {
+      try {
+        const cached: CachedRates = JSON.parse(cachedRatesStr);
+        
+        // Si el último fetch fue en la misma hora válida, usar cache
+        if (cached.lastFetchedHour === currentHour) {
+          this._rates.set(cached.rates);
+          console.log('Usando tasas cached para hora:', currentHour);
+          return;
+        }
+      } catch (e) {
+        console.error('Error parsing cached rates:', e);
+      }
+    }
+
+    // Si no hay cache o no estamos en hora válida, intentar fetch
+    // Solo fetch si estamos en hora válida (6 AM o 6 PM)
+    if (validHours.includes(currentHour)) {
+      this.fetchRates();
+    } else {
+      // Cargar desde cache si existe, si no usar fallback
+      if (cachedRatesStr) {
+        try {
+          const cached: CachedRates = JSON.parse(cachedRatesStr);
+          this._rates.set(cached.rates);
+          console.log('Usando tasas cached (fuera de horario de actualización)');
+        } catch (e) {
+          console.error('Error parsing cached rates:', e);
+          this._rates.set(this.getFallbackRates());
+        }
+      } else {
+        // No hay cache y no es hora válida - usar fallback pero intentar fetch de todos modos
+        this._rates.set(this.getFallbackRates());
+        this.fetchRates().catch(() => {});
+      }
+    }
+  }
+
   async fetchRates(): Promise<void> {
     this._loading.set(true);
     try {
-      const url = `${this.BASE_URL}/${this.API_KEY}/latest/USD`;
+      const url = `${this.BASE_URL}?apikey=${this.API_KEY}&base_currency=USD`;
       const response: any = await firstValueFrom(this.http.get(url));
       
-      if (response && response.conversion_rates) {
-        this._rates.set(response.conversion_rates);
+      if (response && response.data) {
+        this._rates.set(response.data);
+        
+        // Guardar en cache
+        if (isPlatformBrowser(this.platformId)) {
+          const currentHour = new Date().getHours();
+          const cachedRates: CachedRates = {
+            rates: response.data,
+            lastFetched: new Date().toISOString(),
+            lastFetchedHour: currentHour
+          };
+          localStorage.setItem(this.CACHE_KEY, JSON.stringify(cachedRates));
+          localStorage.setItem(this.CACHE_HOURS_KEY, currentHour.toString());
+          console.log('Tasas actualizadas y guardadas en cache a las:', currentHour);
+        }
       }
     } catch (error) {
       console.error('Error fetching exchange rates:', error);
@@ -116,7 +193,7 @@ export class CurrencyService {
   selectCurrency(currency: Currency): void {
     this._selectedCurrency.set(currency);
     
-    if (typeof window !== 'undefined' && localStorage) {
+    if (isPlatformBrowser(this.platformId) && localStorage) {
       localStorage.setItem('selectedCurrency', JSON.stringify(currency));
     }
   }
@@ -215,5 +292,10 @@ export class CurrencyService {
   // Get currency by code
   getCurrencyByCode(code: string): Currency | undefined {
     return this.currencies.find(c => c.code === code);
+  }
+
+  // Force refresh rates (for manual refresh)
+  async refreshRates(): Promise<void> {
+    await this.fetchRates();
   }
 }
