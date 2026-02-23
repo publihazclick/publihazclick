@@ -69,6 +69,22 @@
                     </div>
         }
 
+        <!-- Username -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-3 py-2 flex items-center border-r border-gray-700">
+            <span class="material-icons text-primary w-4 h-4">alternate_email</span>
+          </div>
+          <input
+            formControlName="username"
+            type="text"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+            placeholder="Username (para referrals)"
+          />
+        </div>
+        @if (isFieldInvalid('username')) {
+          <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('username') }}</p>
+        }
+
         <!-- Full Name -->
         <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
           <div class="bg-black/50 px-3 py-2 flex items-center border-r border-gray-700">
@@ -254,7 +270,15 @@
       </form>
 
       <!-- Links -->
-      <div class="mt-6 text-center">
+      <div class="mt-6 text-center space-y-3">
+        <!-- Botón Volver a Home -->
+        <a 
+          routerLink="/" 
+          class="inline-flex items-center text-gray-400 hover:text-primary transition-colors text-sm"
+        >
+          <span class="material-icons text-sm mr-1">arrow_back</span>
+          Volver a la página principal
+        </a>
         <p class="text-gray-400 text-sm">
           ¿Ya tienes una cuenta? 
           <a class="text-primary hover:underline font-semibold ml-1" routerLink="/login">Inicia sesión</a>

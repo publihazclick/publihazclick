@@ -40,6 +40,7 @@ export class RegisterComponent implements OnInit {
 
   // Formulario reactivo
   registerForm: FormGroup = this.fb.group({
+    username: ['', [Validators.required, Validators.minLength(3), Validators.pattern(/^[a-zA-Z0-9_]+$/)]],
     fullName: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
     phone: [''],
@@ -153,7 +154,7 @@ export class RegisterComponent implements OnInit {
     }
 
     this.successMessage.set(null);
-    const { fullName, email, phone, password, countryCode, department, city } = this.registerForm.value;
+    const { username, fullName, email, phone, password, countryCode, department, city } = this.registerForm.value;
 
     // Get country name from code
     const countryObj = this.countries.find(c => c.code === countryCode);
@@ -168,6 +169,7 @@ export class RegisterComponent implements OnInit {
         email, 
         password, 
         fullName,
+        username: username,
         phone: fullPhone,
         country: countryName,
         country_code: countryCode,
@@ -208,6 +210,9 @@ export class RegisterComponent implements OnInit {
     if (control.errors['required']) {
       return 'Este campo es requerido';
     }
+    if (field === 'username' && control.errors['pattern']) {
+      return 'Solo letras, números y guiones bajos';
+    }
     if (control.errors['email']) {
       return 'Ingrese un correo electrónico válido';
     }
@@ -215,7 +220,7 @@ export class RegisterComponent implements OnInit {
       const minLength = control.errors['minlength'].requiredLength;
       return `Este campo debe tener al menos ${minLength} caracteres`;
     }
-    if (control.errors['pattern']) {
+    if (field === 'password' && control.errors['pattern']) {
       return 'La contraseña debe contener al menos una mayúscula, una minúscula y un número';
     }
     if (control.errors['passwordMismatch']) {

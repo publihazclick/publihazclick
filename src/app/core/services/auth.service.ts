@@ -28,6 +28,7 @@ export interface RegisterOptions {
   email: string;
   password: string;
   fullName?: string;
+  username?: string;
   phone?: string | null;
   country?: string;
   country_code?: string;
@@ -426,11 +427,10 @@ export class AuthService implements OnDestroy {
             if (options.country_code) profileData['country_code'] = options.country_code;
             if (options.department) profileData['department'] = options.department;
             if (options.city) profileData['city'] = options.city;
+            if (options.username) profileData['username'] = options.username;
 
-            // Generar código de referido igual al username (primera parte del email)
-            const emailParts = options.email.split('@');
-            const usernameFromEmail = emailParts[0]?.toLowerCase() || 'user';
-            const newReferralCode = usernameFromEmail;
+            // Generar código de referido igual al username del formulario
+            const newReferralCode = options.username?.toLowerCase() || 'user';
             const newReferralLink = `/ref/${newReferralCode}`;
             
             profileData['referral_code'] = newReferralCode;
