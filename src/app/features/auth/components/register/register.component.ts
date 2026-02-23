@@ -1,9 +1,10 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { CountriesService } from '../../../../core/services/countries.service';
 import { AuthAdsComponent } from '../auth-ads/auth-ads.component';
 
 @Component({
@@ -17,12 +18,19 @@ export class RegisterComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
+  private readonly countriesService = inject(CountriesService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
   // Signals para estado reactivo
   readonly isLoading = this.authService.isLoading;
   readonly error = this.authService.error;
+
+  // Countries and locations
+  readonly countries = this.countriesService.getCountriesWithPhoneCodes();
+  readonly selectedCountryCode = signal<string>('+57');
+  readonly departmentsList = computed(() => this.countriesService.getDepartments(this.selectedCountryCode()));
+  readonly availableCities = computed(() => this.countriesService.getCities(this.registerForm.get('department')?.value || ''));
 
   // Código de referido de la URL
   referralCode = '';
@@ -40,7 +48,10 @@ export class RegisterComponent implements OnInit {
       Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     ]],
     confirmPassword: ['', [Validators.required]],
-    acceptTerms: [false, [Validators.requiredTrue]]
+    acceptTerms: [false, [Validators.requiredTrue]],
+    countryCode: ['+57'],
+    department: [''],
+    city: ['']
   }, {
     validators: this.passwordMatchValidator
   });
@@ -73,6 +84,14 @@ export class RegisterComponent implements OnInit {
     if (this.authService.isAuthenticated()) {
       this.router.navigate([this.returnUrl]);
     }
+
+    // Cargar departamentos de Colombia por defecto
+    this.loadDepartments();
+  }
+
+  // Cargar departamentos del país seleccionado
+  private loadDepartments(): void {
+    this.countriesService.getStatesAndCitiesByCountry('Colombia').subscribe();
   }
 
   async validateReferralCode(): Promise<void> {
@@ -110,6 +129,17 @@ export class RegisterComponent implements OnInit {
     this.showPassword.update(v => !v);
   }
 
+  // Handle country code change
+  onCountryCodeChange(code: string): void {
+    this.selectedCountryCode.set(code);
+    this.registerForm.patchValue({ department: '', city: '' });
+  }
+
+  // Handle department change - clear city
+  onDepartmentChange(): void {
+    this.registerForm.patchValue({ city: '' });
+  }
+
   onSubmit(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
@@ -130,11 +160,23 @@ export class RegisterComponent implements OnInit {
     }
 
     this.successMessage.set(null);
-    const { fullName, email, password } = this.registerForm.value;
+    const { fullName, email, password, countryCode, department, city } = this.registerForm.value;
 
-    // Usar el método de registro con referido obligatorio
+    // Get country name from code
+    const countryObj = this.countries.find(c => c.code === countryCode);
+    const countryName = countryObj ? countryObj.name : '';
+
+    // Usar el método de registro con referido obligatorio y datos de ubicación
     this.authService.registerWithReferral(
-      { email, password, fullName },
+      { 
+        email, 
+        password, 
+        fullName,
+        country: countryName,
+        country_code: countryCode,
+        department: department || null,
+        city: city || null
+      },
       this.referralCode
     ).subscribe({
       next: (result) => {

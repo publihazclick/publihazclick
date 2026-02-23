@@ -28,6 +28,10 @@ export interface RegisterOptions {
   email: string;
   password: string;
   fullName?: string;
+  country?: string;
+  country_code?: string;
+  department?: string | null;
+  city?: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -382,6 +386,10 @@ export class AuthService implements OnDestroy {
           data: {
             full_name: options.fullName,
             referral_code: referralCode,
+            country: options.country || null,
+            country_code: options.country_code || null,
+            department: options.department || null,
+            city: options.city || null,
             ...options.metadata
           },
           emailRedirectTo: window.location.origin + '/auth/callback'
@@ -399,7 +407,7 @@ export class AuthService implements OnDestroy {
           } as AuthResult;
         }
 
-        // Si el usuario se creó correctamente, actualizar el referido
+        // Si el usuario se creó correctamente, actualizar el referido y la ubicación
         if (data.user) {
           try {
             // Buscar el perfil del referidor (el nuevo formato no usa mayúsculas)
@@ -410,14 +418,29 @@ export class AuthService implements OnDestroy {
               .eq('referral_code', normalizedCode)
               .single();
 
+            // Preparar datos del perfil a actualizar
+            const profileData: Record<string, any> = {};
+            
             if (referrerData) {
-              // Actualizar el perfil del nuevo usuario con el referidor
+              profileData['referred_by'] = referrerData.id;
+            }
+
+            // Agregar datos de ubicación si existen
+            if (options.country) profileData['country'] = options.country;
+            if (options.country_code) profileData['country_code'] = options.country_code;
+            if (options.department) profileData['department'] = options.department;
+            if (options.city) profileData['city'] = options.city;
+
+            // Actualizar el perfil con los datos del referidor y ubicación
+            if (Object.keys(profileData).length > 0) {
               await this.supabase
                 .from('profiles')
-                .update({ referred_by: referrerData.id })
+                .update(profileData)
                 .eq('id', data.user.id);
+            }
 
-              // Crear registro en la tabla de referidos
+            // Crear registro en la tabla de referidos
+            if (referrerData) {
               await this.supabase
                 .from('referrals')
                 .insert({

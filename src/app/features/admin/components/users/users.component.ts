@@ -44,10 +44,10 @@ export class AdminUsersComponent implements OnInit {
   readonly departmentsList = computed(() => this.countriesService.getDepartments(this.selectedCountryCode()));
   readonly availableCities = computed(() => this.countriesService.getCities(this.formData().department || ''));
 
-  // Roles for creation
+  // Roles for creation - only usuario and administrador
   readonly rolesForCreation = [
-    { value: 'advertiser', label: 'Anunciante' },
-    { value: 'guest', label: 'Usuario' }
+    { value: 'guest', label: 'Usuario' },
+    { value: 'admin', label: 'Administrador' }
   ];
 
   // Modal state
@@ -62,7 +62,7 @@ export class AdminUsersComponent implements OnInit {
     password: '',
     username: '',
     full_name: '',
-    role: 'advertiser',
+    role: 'guest',
     is_active: true,
     phone: '',
     country: '',
@@ -243,7 +243,7 @@ export class AdminUsersComponent implements OnInit {
       password: '',
       username: '',
       full_name: '',
-      role: 'advertiser',
+      role: 'guest',
       is_active: true,
       phone: '',
       country: '',

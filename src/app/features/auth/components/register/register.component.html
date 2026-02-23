@@ -159,6 +159,55 @@
           <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('confirmPassword') }}</p>
         }
 
+        <!-- País -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <span class="material-icons text-primary w-5 h-5">public</span>
+          </div>
+          <select
+            formControlName="countryCode"
+            (change)="onCountryCodeChange($any($event.target).value)"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+          >
+            @for (country of countries; track country.code) {
+              <option [value]="country.code" class="bg-gray-900">{{ country.flag }} {{ country.name }} ({{ country.code }})</option>
+            }
+          </select>
+        </div>
+
+        <!-- Departamento/Estado -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <span class="material-icons text-primary w-5 h-5">location_on</span>
+          </div>
+          <select
+            formControlName="department"
+            (change)="onDepartmentChange()"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+          >
+            <option value="" class="bg-gray-900">Selecciona un departamento</option>
+            @for (dept of departmentsList(); track dept) {
+              <option [value]="dept" class="bg-gray-900">{{ dept }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Ciudad -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <span class="material-icons text-primary w-5 h-5">place</span>
+          </div>
+          <select
+            formControlName="city"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+          >
+            <option value="" class="bg-gray-900">Selecciona una ciudad</option>
+            @for (city of availableCities(); track city) {
+              <option [value]="city" class="bg-gray-900">{{ city }}</option>
+            }
+          </select>
+        </div>
+
         <!-- Términos y condiciones -->
         <div class="flex items-start">
           <div class="flex items-center h-5">
