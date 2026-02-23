@@ -147,7 +147,12 @@ export class App implements OnInit {
   }
   
   private updateAuthRoute(url: string): void {
-    this.isAuthRoute.set(url.includes('/login') || url.includes('/register') || url.includes('/callback'));
+    this.isAuthRoute.set(
+      url.includes('/login') || 
+      url.includes('/register') || 
+      url.includes('/ref/') ||
+      url.includes('/callback')
+    );
     this.isAdminOrDashboardRoute.set(url.includes('/admin') || url.includes('/dashboard'));
   }
 }
