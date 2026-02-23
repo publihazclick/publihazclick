@@ -93,7 +93,7 @@ export const routes: Routes = [
       }
     ]
   },
-  // Ruta principal - cargar el componente App (Landing page)
+  // Ruta raíz - Landing page
   {
     path: '',
     loadComponent: () => import('./app').then(m => m.App)
