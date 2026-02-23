@@ -73,7 +73,7 @@ export class CurrencyService {
   constructor(private http: HttpClient) {
     // Load saved currency from localStorage (only in browser)
     this.loadSavedCurrency();
-    // Always try to fetch fresh rates on initialization
+    // Initialize rates - try to fetch but use fallback immediately
     this.initializeRates();
   }
 
@@ -93,8 +93,8 @@ export class CurrencyService {
 
   /**
    * Inicializa las tasas de cambio.
-   * Siempre intenta obtener tasas frescas al inicio.
-   * Usa cache o fallback si la API falla.
+   * Siempre intenta obtener tasas frescas si no hay cache válido del día.
+   * Usa el cache existente si está disponible y es del día actual.
    */
   private initializeRates(): void {
     if (!isPlatformBrowser(this.platformId)) {
@@ -103,12 +103,40 @@ export class CurrencyService {
       return;
     }
 
-    // Primero establecer fallback para tener valores inmediatos
-    this._rates.set(this.getFallbackRates());
+    const currentHour = new Date().getHours();
+    const cachedRatesStr = localStorage.getItem(this.CACHE_KEY);
 
-    // Luego intentar obtener tasas reales de la API
+    // Verificar si hay cache válido del día actual
+    if (cachedRatesStr) {
+      try {
+        const cached: CachedRates = JSON.parse(cachedRatesStr);
+        const lastDate = new Date(cached.lastFetched);
+        const today = new Date();
+        const isSameDay = lastDate.toDateString() === today.toDateString();
+
+        // Si hay cache de hoy, usarlo inmediatamente
+        if (isSameDay) {
+          this._rates.set(cached.rates);
+          console.log('Usando tasas cacheadas del día:', cached.lastFetched);
+          
+          // También intentar actualizar si estamos en hora válida (6am o 6pm) y es una hora diferente
+          const validHours = [6, 18];
+          if (validHours.includes(currentHour) && cached.lastFetchedHour !== currentHour) {
+            // Hay nueva actualización disponible, fetch en background
+            this.fetchRates().catch(() => {});
+          }
+          return;
+        }
+      } catch (e) {
+        console.error('Error parsing cached rates:', e);
+      }
+    }
+
+    // No hay cache válido del día, establecer fallback y luego intentar fetch
+    this._rates.set(this.getFallbackRates());
+    
+    // Intentar obtener tasas reales
     this.fetchRates().catch(() => {
-      // Si falla, ya tenemos el fallback establecido
       console.log('Usando tasas fallback');
     });
   }
@@ -117,10 +145,13 @@ export class CurrencyService {
     this._loading.set(true);
     try {
       const url = `${this.BASE_URL}?apikey=${this.API_KEY}&base_currency=USD`;
+      console.log('Fetching rates from:', url);
       const response: any = await firstValueFrom(this.http.get(url));
+      console.log('API Response:', response);
       
       if (response && response.data) {
         this._rates.set(response.data);
+        console.log('Rates set:', response.data);
         
         // Guardar en cache
         if (isPlatformBrowser(this.platformId)) {
