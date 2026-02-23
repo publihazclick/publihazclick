@@ -76,9 +76,9 @@ export class PtcAdsComponent implements OnInit {
           advertiserName: 'Anunciante',
           advertiserType: 'company',
           imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
-          youtubeVideoId: 'dQw4w9WgXcQ', // Default video
+          youtubeVideoId: 'dQw4w9WgXcQ',
           adType: task.ad_type || 'mini',
-          rewardCOP: task.reward || 0, // El valor ya está en COP
+          rewardCOP: task.reward || 0, // Usar el valor directamente
           dailyLimit: task.daily_limit || 0,
           totalClicks: task.total_clicks || 0,
           status: task.status
