@@ -342,13 +342,11 @@ export class AdminUsersComponent implements OnInit {
         }
       }
 
-      // Generar código de referido para el nuevo usuario
+      // Generar código de referido igual al username
       const usernameLower = (data.username || '').toLowerCase();
-      const randomDigits = Math.floor(10000 + Math.random() * 90000); // 5 dígitos
-      const currentYear = new Date().getFullYear();
-      const referralCode = `${usernameLower}${randomDigits}-${currentYear}`;
-      // Generar el link de referido
-      const referralLink = `/register/${referralCode}`;
+      const referralCode = usernameLower;
+      // Generar el link de referido (formato corto)
+      const referralLink = `/ref/${referralCode}`;
 
       const { error } = await supabase
         .from('profiles')

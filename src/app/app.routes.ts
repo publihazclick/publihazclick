@@ -16,6 +16,11 @@ export const routes: Routes = [
     path: 'register',
     loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent)
   },
+  // Ruta corta de referido /ref/:code
+  {
+    path: 'ref/:code',
+    loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent)
+  },
   // Rutas de admin
   {
     path: 'admin',

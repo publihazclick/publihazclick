@@ -52,7 +52,7 @@ export class ReferralLinkComponent implements OnInit {
         const origin = window.location.origin;
         const refCode = profile.referral_code || '';
         if (refCode) {
-          this.referralLink.set(origin + '/register?ref=' + refCode);
+          this.referralLink.set(origin + '/ref/' + refCode);
         } else {
           this.error.set('No tienes un código de referido. Contacta al administrador.');
         }
@@ -108,14 +108,14 @@ export class ReferralLinkComponent implements OnInit {
         if (profileWithCode) {
           this.referralCode.set(profileWithCode.referral_code);
           const origin = window.location.origin;
-          this.referralLink.set(origin + '/register?ref=' + profileWithCode.referral_code);
+          this.referralLink.set(origin + '/ref/' + profileWithCode.referral_code);
           console.log('Loaded referral code:', profileWithCode.referral_code, 'from profile:', profileWithCode.username);
         } else {
           // Si ningún perfil tiene código, generar uno por defecto
           const defaultCode = 'adm00001';
           this.referralCode.set(defaultCode);
           const origin = window.location.origin;
-          this.referralLink.set(origin + '/register?ref=' + defaultCode);
+          this.referralLink.set(origin + '/ref/' + defaultCode);
           console.log('Using default referral code:', defaultCode);
         }
       } else {

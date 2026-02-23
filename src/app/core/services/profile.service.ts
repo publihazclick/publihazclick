@@ -395,7 +395,7 @@ export class ProfileService {
     const profile = this._profile();
     if (!profile) return '';
 
-    return `${window.location.origin}/register?ref=${profile.referral_code}`;
+    return `${window.location.origin}/ref/${profile.referral_code}`;
   }
 
   /**

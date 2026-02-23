@@ -427,13 +427,11 @@ export class AuthService implements OnDestroy {
             if (options.department) profileData['department'] = options.department;
             if (options.city) profileData['city'] = options.city;
 
-            // Generar código de referido y link para el nuevo usuario
+            // Generar código de referido igual al username (primera parte del email)
             const emailParts = options.email.split('@');
             const usernameFromEmail = emailParts[0]?.toLowerCase() || 'user';
-            const randomDigits = Math.floor(10000 + Math.random() * 90000);
-            const currentYear = new Date().getFullYear();
-            const newReferralCode = `${usernameFromEmail}${randomDigits}-${currentYear}`;
-            const newReferralLink = `/register/${newReferralCode}`;
+            const newReferralCode = usernameFromEmail;
+            const newReferralLink = `/ref/${newReferralCode}`;
             
             profileData['referral_code'] = newReferralCode;
             profileData['referral_link'] = newReferralLink;
