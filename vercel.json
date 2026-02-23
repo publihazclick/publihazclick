@@ -1,13 +1,5 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist/publihazclick/browser",
-  "framework": "angular",
-  "installCommand": "npm install",
-  "devCommand": "npm start",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/server"
-    }
-  ]
+  "installCommand": "npm install"
 }
