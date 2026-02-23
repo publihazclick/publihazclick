@@ -143,11 +143,11 @@ export class ProfileService {
       
       // Primero verificar si es el código por defecto del admin
       if (normalizedCode === 'adm00001') {
-        // Buscar el admin por email
+        // Buscar el admin por email - usar ilike para mayor compatibilidad
         const { data: adminData, error: adminError } = await this.supabase
           .from('profiles')
           .select('id, username, is_active, email')
-          .eq('email', 'publihazclick.com@gmail.com')
+          .ilike('email', '%publihazclick.com@gmail.com%')
           .maybeSingle();
         
         if (!adminError && adminData) {
@@ -160,6 +160,23 @@ export class ProfileService {
             referrer_username: adminData.username
           };
         }
+        
+        // Si no se encuentra por email, intentar buscar por username 'admin'
+        if (!adminData) {
+          const { data: adminByUser } = await this.supabase
+            .from('profiles')
+            .select('id, username, is_active, email')
+            .eq('username', 'admin')
+            .maybeSingle();
+            
+          if (adminByUser && adminByUser.is_active) {
+            return {
+              valid: true,
+              referrer_id: adminByUser.id,
+              referrer_username: adminByUser.username
+            };
+          }
+        }
       }
       
       // Verificar si es un URL completo y extraer el código
@@ -169,72 +186,33 @@ export class ProfileService {
         normalizedCode = urlMatch[1];
       }
       
-      // Buscar primero en referral_code
-      let { data, error } = await this.supabase
+      // Buscar en referral_code usando ilike para búsqueda case-insensitive
+      const { data, error } = await this.supabase
         .from('profiles')
         .select('id, username, is_active')
-        .eq('referral_code', normalizedCode)
-        .single();
+        .ilike('referral_code', normalizedCode)
+        .maybeSingle();
 
       if (error || !data) {
-        // Intentar con mayúsculas también
-        const upperCode = normalizedCode.toUpperCase();
-        const { data: upperData, error: upperError } = await this.supabase
+        // Si no se encuentra en referral_code, buscar en referral_link
+        const { data: linkData, error: linkError } = await this.supabase
           .from('profiles')
           .select('id, username, is_active')
-          .eq('referral_code', upperCode)
-          .single();
+          .ilike('referral_link', `%${normalizedCode}%`)
+          .maybeSingle();
         
-        if (upperError || !upperData) {
-          // Si no se encuentra en referral_code, buscar en referral_link
-          const { data: linkData, error: linkError } = await this.supabase
-            .from('profiles')
-            .select('id, username, is_active')
-            .ilike('referral_link', `%${normalizedCode}%`)
-            .maybeSingle();
-          
-          if (linkError || !linkData) {
-            // Intentar con mayúsculas en el link también
-            const { data: linkUpperData, error: linkUpperError } = await this.supabase
-              .from('profiles')
-              .select('id, username, is_active')
-              .ilike('referral_link', `%${upperCode}%`)
-              .maybeSingle();
-            
-            if (linkUpperError || !linkUpperData) {
-              return { valid: false, error: 'Código de referido inválido' };
-            }
-            
-            if (!linkUpperData.is_active) {
-              return { valid: false, error: 'El usuario referidor no está activo' };
-            }
-            
-            return {
-              valid: true,
-              referrer_id: linkUpperData.id,
-              referrer_username: linkUpperData.username
-            };
-          }
-          
-          if (!linkData.is_active) {
-            return { valid: false, error: 'El usuario referidor no está activo' };
-          }
-          
-          return {
-            valid: true,
-            referrer_id: linkData.id,
-            referrer_username: linkData.username
-          };
+        if (linkError || !linkData) {
+          return { valid: false, error: 'Código de referido inválido' };
         }
         
-        if (!upperData.is_active) {
+        if (!linkData.is_active) {
           return { valid: false, error: 'El usuario referidor no está activo' };
         }
         
         return {
           valid: true,
-          referrer_id: upperData.id,
-          referrer_username: upperData.username
+          referrer_id: linkData.id,
+          referrer_username: linkData.username
         };
       }
 
