@@ -1,4 +1,4 @@
-import { Component, signal, ViewChild } from '@angular/core';
+import { Component, signal, ViewChild, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -11,10 +11,11 @@ import { UserReferralModalComponent } from '../user-referral-modal/user-referral
   templateUrl: './user-layout.component.html',
   styleUrl: './user-layout.component.scss'
 })
-export class UserLayoutComponent {
+export class UserLayoutComponent implements OnInit {
   isDarkMode = true;
   userLevel = 5;
   protected readonly sidebarOpen = signal(false);
+  protected readonly isMobile = signal(false);
 
   @ViewChild('referralModal') referralModal!: UserReferralModalComponent;
 
@@ -24,6 +25,19 @@ export class UserLayoutComponent {
   dailyClicks = 7;
 
   constructor(private readonly authService: AuthService, private readonly router: Router) {}
+
+  ngOnInit(): void {
+    this.checkMobile();
+  }
+
+  @HostListener('window:resize', [])
+  onResize(): void {
+    this.checkMobile();
+  }
+
+  private checkMobile(): void {
+    this.isMobile.set(window.innerWidth < 1024);
+  }
 
   toggleSidebar(): void {
     this.sidebarOpen.update(v => !v);
