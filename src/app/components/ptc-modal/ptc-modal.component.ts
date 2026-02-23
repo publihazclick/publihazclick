@@ -80,7 +80,7 @@ export interface PtcAd {
                   Recompensa por ver:
                 </span>
                 <span class="text-xl sm:text-2xl lg:text-3xl font-black text-green-400">
-                  <span>$</span>{{ rewardDisplay() }}
+                  {{ rewardDisplay() }}
                 </span>
               </div>
               <a 
@@ -183,11 +183,11 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   protected alreadyViewed = signal(false);
   protected ipAddress = signal('');
   
-  // Computed that reacts to currency changes
+  // Computed that reacts to currency changes - converts from COP to selected currency
   protected rewardDisplay = computed(() => {
-    const rewardCOP = this.ad().rewardCOP || 1;
-    // Show the raw COP value directly without conversion
-    return `${rewardCOP.toLocaleString('es-CO')} COP`;
+    const rewardCOP = this.ad().rewardCOP || 0;
+    // Use currency service to convert from COP to selected currency
+    return this.currencyService.formatFromCOP(rewardCOP, 2);
   });
   
   protected countdown = signal(60);

@@ -321,7 +321,7 @@
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Título *</label>
               <input
                 type="text"
-                [(ngModel)]="ptcFormData().title"
+                [(ngModel)]="ptcFormData.title"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="Título del anuncio"
               />
@@ -330,7 +330,7 @@
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Descripción</label>
               <textarea
-                [(ngModel)]="ptcFormData().description"
+                [(ngModel)]="ptcFormData.description"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 rows="2"
                 placeholder="Descripción del anuncio"
@@ -341,7 +341,7 @@
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">URL *</label>
               <input
                 type="url"
-                [(ngModel)]="ptcFormData().url"
+                [(ngModel)]="ptcFormData.url"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="https://..."
               />
@@ -357,9 +357,9 @@
                 (change)="onPtcImageSelected($event)"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
               />
-              @if (ptcFormData().image_url) {
+              @if (ptcFormData.image_url) {
                 <div class="mt-2">
-                  <img [src]="ptcFormData().image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
+                  <img [src]="ptcFormData.image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
                 </div>
               }
             </div>
@@ -368,7 +368,7 @@
               <div class="col-span-2">
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Tipo de Anuncio</label>
                 <select
-                  [ngModel]="ptcFormData().ad_type"
+                  [ngModel]="ptcFormData.ad_type"
                   (ngModelChange)="onAdTypeChange($event)"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                 >
@@ -381,7 +381,7 @@
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Recompensa (COP)</label>
                 <input
                   type="number"
-                  [(ngModel)]="ptcFormData().reward"
+                  [(ngModel)]="ptcFormData.reward"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                   step="0.01"
@@ -394,7 +394,7 @@
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Duración (segundos)</label>
                 <input
                   type="number"
-                  [(ngModel)]="ptcFormData().duration"
+                  [(ngModel)]="ptcFormData.duration"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="5"
                   value="60"
@@ -404,7 +404,7 @@
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite diario (0 = sin límite)</label>
                 <input
                   type="number"
-                  [(ngModel)]="ptcFormData().daily_limit"
+                  [(ngModel)]="ptcFormData.daily_limit"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                   placeholder="0 = sin límite"
@@ -415,7 +415,7 @@
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ubicación</label>
               <select
-                [(ngModel)]="ptcFormData().location"
+                [(ngModel)]="ptcFormData.location"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
               >
                 @for (loc of locations; track loc.value) {
@@ -430,7 +430,7 @@
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Nombre *</label>
               <input
                 type="text"
-                [(ngModel)]="bannerFormData().name"
+                [(ngModel)]="bannerFormData.name"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="Nombre del banner"
               />
@@ -439,7 +439,7 @@
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Descripción</label>
               <textarea
-                [(ngModel)]="bannerFormData().description"
+                [(ngModel)]="bannerFormData.description"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 rows="2"
               ></textarea>
@@ -455,9 +455,9 @@
                 (change)="onBannerImageSelected($event)"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
               />
-              @if (bannerFormData().image_url) {
+              @if (bannerFormData.image_url) {
                 <div class="mt-2">
-                  <img [src]="bannerFormData().image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
+                  <img [src]="bannerFormData.image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
                 </div>
               }
             </div>
@@ -466,7 +466,7 @@
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">URL de Destino *</label>
               <input
                 type="url"
-                [(ngModel)]="bannerFormData().url"
+                [(ngModel)]="bannerFormData.url"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="https://..."
               />
@@ -476,7 +476,7 @@
               <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Posición</label>
                 <select
-                  [(ngModel)]="bannerFormData().position"
+                  [(ngModel)]="bannerFormData.position"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                 >
                   @for (pos of bannerPositions; track pos.value) {
@@ -488,7 +488,7 @@
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Recompensa por clic</label>
                 <input
                   type="number"
-                  [(ngModel)]="bannerFormData().reward"
+                  [(ngModel)]="bannerFormData.reward"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
@@ -500,7 +500,7 @@
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite de impresiones</label>
                 <input
                   type="number"
-                  [(ngModel)]="bannerFormData().impressions_limit"
+                  [(ngModel)]="bannerFormData.impressions_limit"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
@@ -509,7 +509,7 @@
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite de clics</label>
                 <input
                   type="number"
-                  [(ngModel)]="bannerFormData().clicks_limit"
+                  [(ngModel)]="bannerFormData.clicks_limit"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
@@ -519,7 +519,7 @@
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ubicación</label>
               <select
-                [(ngModel)]="bannerFormData().location"
+                [(ngModel)]="bannerFormData.location"
                 class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
               >
                 @for (loc of locations; track loc.value) {

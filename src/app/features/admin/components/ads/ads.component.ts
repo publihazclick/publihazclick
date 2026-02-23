@@ -55,8 +55,8 @@ export class AdminAdsComponent implements OnInit {
   readonly selectedPtc = signal<PtcTaskAdmin | null>(null);
   readonly selectedBanner = signal<BannerAd | null>(null);
 
-  // Form data
-  readonly ptcFormData = signal<Partial<CreatePtcTaskData>>({
+  // Form data - usando variable auxiliar para binding con ngModel
+  ptcFormDataValue: Partial<CreatePtcTaskData> = {
     title: '',
     description: '',
     url: '',
@@ -66,17 +66,17 @@ export class AdminAdsComponent implements OnInit {
     daily_limit: 0,
     location: 'app',
     ad_type: 'mega'
-  });
+  };
 
-  // Opciones de tipo de anuncio con recompensas predefinidas (en COP)
-  readonly adTypeOptions: { value: PtcAdType; label: string; reward: number; duration: number }[] = [
-    { value: 'mega', label: 'Mega Anuncio', reward: 2000, duration: 60 },
-    { value: 'standard_600', label: 'Standard 600', reward: 600, duration: 60 },
-    { value: 'standard_400', label: 'Standard 400', reward: 400, duration: 60 },
-    { value: 'mini', label: 'Mini Anuncio', reward: 83.33, duration: 60 }
-  ];
+  get ptcFormData() {
+    return this.ptcFormDataValue;
+  }
 
-  readonly bannerFormData = signal<Partial<CreateBannerAdData>>({
+  set ptcFormData(value: Partial<CreatePtcTaskData>) {
+    this.ptcFormDataValue = value;
+  }
+
+  bannerFormDataValue: Partial<CreateBannerAdData> = {
     name: '',
     description: '',
     image_url: '',
@@ -86,7 +86,23 @@ export class AdminAdsComponent implements OnInit {
     clicks_limit: 1000,
     reward: 0,
     location: 'app'
-  });
+  };
+
+  get bannerFormData() {
+    return this.bannerFormDataValue;
+  }
+
+  set bannerFormData(value: Partial<CreateBannerAdData>) {
+    this.bannerFormDataValue = value;
+  }
+
+  // Opciones de tipo de anuncio con recompensas predefinidas (en COP)
+  readonly adTypeOptions: { value: PtcAdType; label: string; reward: number; duration: number }[] = [
+    { value: 'mega', label: 'Mega Anuncio', reward: 2000, duration: 60 },
+    { value: 'standard_600', label: 'Standard 600', reward: 600, duration: 60 },
+    { value: 'standard_400', label: 'Standard 400', reward: 400, duration: 60 },
+    { value: 'mini', label: 'Mini Anuncio', reward: 83.33, duration: 60 }
+  ];
 
   readonly saving = signal<boolean>(false);
 
@@ -220,12 +236,12 @@ export class AdminAdsComponent implements OnInit {
   onAdTypeChange(adType: PtcAdType): void {
     const option = this.adTypeOptions.find(o => o.value === adType);
     if (option) {
-      this.ptcFormData.update(data => ({
-        ...data,
+      this.ptcFormData = {
+        ...this.ptcFormData,
         ad_type: adType,
         reward: option.reward,
         duration: option.duration
-      }));
+      };
     }
   }
 
@@ -233,7 +249,7 @@ export class AdminAdsComponent implements OnInit {
   openCreatePtcModal(): void {
     this.modalMode.set('create-ptc');
     this.selectedPtc.set(null);
-    this.ptcFormData.set({
+    this.ptcFormData = {
       title: '',
       description: '',
       url: '',
@@ -243,14 +259,14 @@ export class AdminAdsComponent implements OnInit {
       daily_limit: 0,
       location: this.activeLocation(),
       ad_type: 'mega'
-    });
+    };
     this.showModal.set(true);
   }
 
   openEditPtcModal(ptc: PtcTaskAdmin): void {
     this.modalMode.set('edit-ptc');
     this.selectedPtc.set(ptc);
-    this.ptcFormData.set({
+    this.ptcFormData = {
       title: ptc.title,
       description: ptc.description,
       url: ptc.url,
@@ -260,14 +276,14 @@ export class AdminAdsComponent implements OnInit {
       daily_limit: ptc.daily_limit,
       location: ptc.location || 'app',
       ad_type: ptc.ad_type || 'mini'
-    });
+    };
     this.showModal.set(true);
   }
 
   openCreateBannerModal(): void {
     this.modalMode.set('create-banner');
     this.selectedBanner.set(null);
-    this.bannerFormData.set({
+    this.bannerFormData = {
       name: '',
       description: '',
       image_url: '',
@@ -277,14 +293,14 @@ export class AdminAdsComponent implements OnInit {
       clicks_limit: 1000,
       reward: 0,
       location: this.activeLocation()
-    });
+    };
     this.showModal.set(true);
   }
 
   openEditBannerModal(banner: BannerAd): void {
     this.modalMode.set('edit-banner');
     this.selectedBanner.set(banner);
-    this.bannerFormData.set({
+    this.bannerFormData = {
       name: banner.name,
       description: banner.description || '',
       image_url: banner.image_url,
@@ -294,7 +310,7 @@ export class AdminAdsComponent implements OnInit {
       clicks_limit: banner.clicks_limit,
       reward: banner.reward,
       location: banner.location || 'app'
-    });
+    };
     this.showModal.set(true);
   }
 
@@ -309,11 +325,11 @@ export class AdminAdsComponent implements OnInit {
     this.saving.set(true);
     try {
       if (this.modalMode() === 'create-ptc') {
-        await this.ptcService.createPtcTask(this.ptcFormData() as CreatePtcTaskData);
+        await this.ptcService.createPtcTask(this.ptcFormData as CreatePtcTaskData);
       } else {
         const ptc = this.selectedPtc();
         if (ptc) {
-          await this.ptcService.updatePtcTask(ptc.id, this.ptcFormData() as Partial<CreatePtcTaskData>);
+          await this.ptcService.updatePtcTask(ptc.id, this.ptcFormData as Partial<CreatePtcTaskData>);
         }
       }
       await this.loadData();
@@ -343,11 +359,11 @@ export class AdminAdsComponent implements OnInit {
     this.saving.set(true);
     try {
       if (this.modalMode() === 'create-banner') {
-        await this.bannerService.createBannerAd(this.bannerFormData() as CreateBannerAdData);
+        await this.bannerService.createBannerAd(this.bannerFormData as CreateBannerAdData);
       } else {
         const banner = this.selectedBanner();
         if (banner) {
-          await this.bannerService.updateBannerAd(banner.id, this.bannerFormData() as Partial<CreateBannerAdData>);
+          await this.bannerService.updateBannerAd(banner.id, this.bannerFormData as Partial<CreateBannerAdData>);
         }
       }
       await this.loadData();
@@ -380,7 +396,7 @@ export class AdminAdsComponent implements OnInit {
     const result = await this.storageService.uploadPtcAdImage(file);
     
     if (result.success && result.url) {
-      this.ptcFormData.update(data => ({ ...data, image_url: result.url }));
+      this.ptcFormData = { ...this.ptcFormData, image_url: result.url };
       this.error.set(null);
     } else {
       this.error.set(result.error || 'Error al subir la imagen');
@@ -407,7 +423,7 @@ export class AdminAdsComponent implements OnInit {
     const result = await this.storageService.uploadBannerImage(file);
     
     if (result.success && result.url) {
-      this.bannerFormData.update(data => ({ ...data, image_url: result.url }));
+      this.bannerFormData = { ...this.bannerFormData, image_url: result.url };
       this.error.set(null);
     } else {
       this.error.set(result.error || 'Error al subir la imagen');
