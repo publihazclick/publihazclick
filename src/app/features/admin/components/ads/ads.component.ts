@@ -14,7 +14,8 @@ import type {
   BannerPosition,
   PtcTaskFilters,
   BannerAdFilters,
-  AdLocation
+  AdLocation,
+  PtcAdType
 } from '../../../../core/models/admin.model';
 
 @Component({
@@ -60,11 +61,20 @@ export class AdminAdsComponent implements OnInit {
     description: '',
     url: '',
     image_url: '',
-    reward: 50,
+    reward: 83.33,
     duration: 15,
     daily_limit: 1000,
-    location: 'app'
+    location: 'app',
+    ad_type: 'mini'
   });
+
+  // Opciones de tipo de anuncio con recompensas predefinidas (en COP)
+  readonly adTypeOptions: { value: PtcAdType; label: string; reward: number }[] = [
+    { value: 'mega', label: 'Mega Anuncio', reward: 2000 },
+    { value: 'standard_400', label: 'Standard 400', reward: 400 },
+    { value: 'standard_600', label: 'Standard 600', reward: 600 },
+    { value: 'mini', label: 'Mini Anuncio', reward: 83.33 }
+  ];
 
   readonly bannerFormData = signal<Partial<CreateBannerAdData>>({
     name: '',
@@ -206,6 +216,18 @@ export class AdminAdsComponent implements OnInit {
     this.loadData();
   }
 
+  // Método para actualizar la recompensa cuando cambia el tipo de anuncio
+  onAdTypeChange(adType: PtcAdType): void {
+    const option = this.adTypeOptions.find(o => o.value === adType);
+    if (option) {
+      this.ptcFormData.update(data => ({
+        ...data,
+        ad_type: adType,
+        reward: option.reward
+      }));
+    }
+  }
+
   // Modal actions
   openCreatePtcModal(): void {
     this.modalMode.set('create-ptc');
@@ -215,10 +237,11 @@ export class AdminAdsComponent implements OnInit {
       description: '',
       url: '',
       image_url: '',
-      reward: 50,
+      reward: 83.33,
       duration: 15,
       daily_limit: 1000,
-      location: this.activeLocation()
+      location: this.activeLocation(),
+      ad_type: 'mini'
     });
     this.showModal.set(true);
   }
@@ -234,7 +257,8 @@ export class AdminAdsComponent implements OnInit {
       reward: ptc.reward,
       duration: ptc.duration,
       daily_limit: ptc.daily_limit,
-      location: ptc.location || 'app'
+      location: ptc.location || 'app',
+      ad_type: ptc.ad_type || 'mini'
     });
     this.showModal.set(true);
   }
