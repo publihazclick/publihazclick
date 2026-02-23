@@ -180,16 +180,12 @@
           <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
             <span class="material-icons text-primary w-5 h-5">location_on</span>
           </div>
-          <select
+          <input
             formControlName="department"
-            (change)="onDepartmentChange()"
+            type="text"
             class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
-          >
-            <option value="" class="bg-gray-900">Selecciona un departamento</option>
-            @for (dept of departmentsList(); track dept) {
-              <option [value]="dept" class="bg-gray-900">{{ dept }}</option>
-            }
-          </select>
+            placeholder="Departamento/Estado"
+          />
         </div>
 
         <!-- Ciudad -->
@@ -197,15 +193,12 @@
           <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
             <span class="material-icons text-primary w-5 h-5">place</span>
           </div>
-          <select
+          <input
             formControlName="city"
+            type="text"
             class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
-          >
-            <option value="" class="bg-gray-900">Selecciona una ciudad</option>
-            @for (city of availableCities(); track city) {
-              <option [value]="city" class="bg-gray-900">{{ city }}</option>
-            }
-          </select>
+            placeholder="Ciudad"
+          />
         </div>
 
         <!-- Términos y condiciones -->
