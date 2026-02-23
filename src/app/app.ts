@@ -127,8 +127,15 @@ export class App implements OnInit {
   private async loadDynamicBanners(): Promise<void> {
     try {
       this.loadingBanners.set(true);
-      // Cargar banners activos para la landing page
-      const banners = await this.bannerService.getActiveBannersByLocation(undefined, 'landing' as AdLocation);
+      
+      // Primero intentar cargar banners para landing
+      let banners = await this.bannerService.getActiveBannersByLocation(undefined, 'landing' as AdLocation);
+      
+      // Si no hay resultados para landing, cargar todos los activos
+      if (!banners || banners.length === 0) {
+        banners = await this.bannerService.getActiveBanners();
+      }
+      
       this.dynamicBanners.set(banners);
     } catch (error) {
       console.error('Error loading dynamic banners:', error);

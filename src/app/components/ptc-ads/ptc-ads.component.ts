@@ -55,11 +55,19 @@ export class PtcAdsComponent implements OnInit {
       this.loading.set(true);
       this.error.set(null);
       
-      // Cargar anuncios activos para la landing page filtrados por location='landing'
-      const result = await this.ptcService.getPtcTasks(
+      // Primero intentar cargar anuncios para landing
+      let result = await this.ptcService.getPtcTasks(
         { status: 'active', location: 'landing' },
         { page: 1, pageSize: 12 }
       );
+      
+      // Si no hay resultados para landing, cargar todos los activos
+      if (!result.data || result.data.length === 0) {
+        result = await this.ptcService.getPtcTasks(
+          { status: 'active' },
+          { page: 1, pageSize: 12 }
+        );
+      }
       
       if (result.data && result.data.length > 0) {
         const mappedAds: PtcAdCard[] = result.data.map(task => ({
