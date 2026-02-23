@@ -6,7 +6,7 @@ import { CurrencyService } from '../../core/services/currency.service';
 import { UserTrackingService } from '../../core/services/user-tracking.service';
 import { WalletStateService } from '../../core/services/wallet-state.service';
 import { PtcModalComponent, PtcAd } from '../ptc-modal/ptc-modal.component';
-import { PtcAdType } from '../../core/models/admin.model';
+import { PtcAdType, AdLocation } from '../../core/models/admin.model';
 
 interface PtcAdCard {
   id: string;
@@ -55,8 +55,9 @@ export class PtcAdsComponent implements OnInit {
       this.loading.set(true);
       this.error.set(null);
       
+      // Cargar anuncios activos para la landing page filtrados por location='landing'
       const result = await this.ptcService.getPtcTasks(
-        { status: 'active' },
+        { status: 'active', location: 'landing' },
         { page: 1, pageSize: 12 }
       );
       

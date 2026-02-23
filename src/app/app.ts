@@ -1,4 +1,4 @@
-import { Component, signal, inject, computed } from '@angular/core';
+import { Component, signal, inject, computed, OnInit } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { HeaderComponent } from './components/header/header.component';
@@ -10,6 +10,8 @@ import { FooterComponent } from './components/footer/footer.component';
 import { BannerSliderComponent, BannerSlide } from './components/banner-slider/banner-slider.component';
 import { TiersComponent } from './components/tiers/tiers.component';
 import { CurrencyService } from './core/services/currency.service';
+import { AdminBannerService } from './core/services/admin-banner.service';
+import type { BannerAd, AdLocation } from './core/models/admin.model';
 
 @Component({
   selector: 'app-root',
@@ -28,9 +30,14 @@ import { CurrencyService } from './core/services/currency.service';
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App {
+export class App implements OnInit {
   protected readonly title = signal('publihazclick');
   protected currencyService = inject(CurrencyService);
+  private readonly bannerService = inject(AdminBannerService);
+  
+  // Signal para los banners dinámicos desde la BD
+  readonly dynamicBanners = signal<BannerAd[]>([]);
+  readonly loadingBanners = signal<boolean>(true);
   
   // Signal para saber si estamos en una ruta de autenticación
   readonly isAuthRoute = signal(false);
@@ -38,8 +45,22 @@ export class App {
   // Signal para saber si estamos en una ruta de admin o dashboard
   readonly isAdminOrDashboardRoute = signal(false);
   
-  // Computed banner slides that react to currency changes
+  // Computed banner slides que combina datos dinámicos de la BD con datos estáticos
   protected readonly bannerSlides = computed((): BannerSlide[] => {
+    const dynamicBanners = this.dynamicBanners();
+    
+    // Si hay banners dinámicos en la BD, usarlos
+    if (dynamicBanners && dynamicBanners.length > 0) {
+      return dynamicBanners.map(banner => ({
+        icon: 'campaign',
+        title: banner.name,
+        subtitle: banner.description || 'Banner promocional',
+        description: banner.url || 'Haz clic para ver más',
+        gradient: this.getGradientForBanner(banner.position)
+      }));
+    }
+    
+    // Datos estáticos por defecto (fallback)
     const walletBalance = this.currencyService.formatFromCOP(10000);
     const donations = this.currencyService.formatFromCOP(5000);
     
@@ -75,6 +96,16 @@ export class App {
     ];
   });
   
+  private getGradientForBanner(position?: string): string {
+    const gradients: Record<string, string> = {
+      header: 'from-blue-500 to-indigo-600',
+      sidebar: 'from-purple-500 to-pink-600',
+      footer: 'from-green-500 to-teal-600',
+      interstitial: 'from-orange-500 to-red-600'
+    };
+    return gradients[position || 'sidebar'] || 'from-cyan-500 to-blue-600';
+  }
+  
   private readonly router = inject(Router);
   
   constructor() {
@@ -87,6 +118,25 @@ export class App {
     ).subscribe(event => {
       this.updateAuthRoute((event as NavigationEnd).url);
     });
+  }
+  
+  ngOnInit(): void {
+    this.loadDynamicBanners();
+  }
+  
+  private async loadDynamicBanners(): Promise<void> {
+    try {
+      this.loadingBanners.set(true);
+      // Cargar banners activos para la landing page
+      const banners = await this.bannerService.getActiveBannersByLocation(undefined, 'landing' as AdLocation);
+      this.dynamicBanners.set(banners);
+    } catch (error) {
+      console.error('Error loading dynamic banners:', error);
+      // En caso de error, se usarán los datos estáticos
+      this.dynamicBanners.set([]);
+    } finally {
+      this.loadingBanners.set(false);
+    }
   }
   
   private updateAuthRoute(url: string): void {
