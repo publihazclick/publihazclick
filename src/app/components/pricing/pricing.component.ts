@@ -216,7 +216,21 @@ export class PricingComponent implements OnInit {
 
   getPriceDisplay(price: number, currency: string): string {
     if (price === 0) return 'GRATIS';
-    // Usar el servicio de moneda para convertir y formatear
+    
+    // Si la moneda seleccionada es COP, mostrar directamente en COP
+    const selectedCurrency = this.currencyService.selectedCurrency();
+    if (selectedCurrency.code === 'COP') {
+      // Los precios en la base de datos están en USD, convertir a COP
+      const priceInCOP = price * 3850; // Tasa fija de USD a COP
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(priceInCOP);
+    }
+    
+    // Para otras monedas, usar el servicio de conversión
     return this.currencyService.format(price);
   }
 
