@@ -186,7 +186,19 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   // Computed that reacts to currency changes - converts from COP to selected currency
   protected rewardDisplay = computed(() => {
     const rewardCOP = this.ad().rewardCOP || 0;
-    // Use currency service to convert from COP to selected currency
+    
+    // Si la moneda seleccionada es COP, mostrar directamente
+    const selectedCurrency = this.currencyService.selectedCurrency();
+    if (selectedCurrency.code === 'COP') {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }).format(rewardCOP);
+    }
+    
+    // Para otras monedas, usar el servicio de conversión
     return this.currencyService.formatFromCOP(rewardCOP, 2);
   });
   
@@ -309,7 +321,19 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   getRewardDisplay(): string {
     const rewardCOP = this.ad().rewardCOP || 0;
-    // Use currency service to convert from COP to selected currency
+    
+    // Si la moneda seleccionada es COP, mostrar directamente
+    const selectedCurrency = this.currencyService.selectedCurrency();
+    if (selectedCurrency.code === 'COP') {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }).format(rewardCOP);
+    }
+    
+    // Para otras monedas, usar el servicio de conversión
     return this.currencyService.formatFromCOP(rewardCOP, 2);
   }
 
