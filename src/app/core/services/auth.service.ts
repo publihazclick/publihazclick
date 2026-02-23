@@ -28,6 +28,7 @@ export interface RegisterOptions {
   email: string;
   password: string;
   fullName?: string;
+  phone?: string | null;
   country?: string;
   country_code?: string;
   department?: string | null;
@@ -420,6 +421,7 @@ export class AuthService implements OnDestroy {
             }
 
             // Agregar datos de ubicación si existen
+            if (options.phone) profileData['phone'] = options.phone;
             if (options.country) profileData['country'] = options.country;
             if (options.country_code) profileData['country_code'] = options.country_code;
             if (options.department) profileData['department'] = options.department;

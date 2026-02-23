@@ -101,6 +101,19 @@
           <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('email') }}</p>
         }
 
+        <!-- WhatsApp -->
+        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
+          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
+            <span class="material-icons text-primary w-5 h-5">phone</span>
+          </div>
+          <input
+            formControlName="phone"
+            type="tel"
+            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
+            placeholder="Número WhatsApp"
+          />
+        </div>
+
         <!-- Password -->
         <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
           <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">

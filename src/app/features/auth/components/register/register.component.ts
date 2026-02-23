@@ -42,6 +42,7 @@ export class RegisterComponent implements OnInit {
   registerForm: FormGroup = this.fb.group({
     fullName: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
+    phone: [''],
     password: ['', [
       Validators.required, 
       Validators.minLength(8),
@@ -152,11 +153,14 @@ export class RegisterComponent implements OnInit {
     }
 
     this.successMessage.set(null);
-    const { fullName, email, password, countryCode, department, city } = this.registerForm.value;
+    const { fullName, email, phone, password, countryCode, department, city } = this.registerForm.value;
 
     // Get country name from code
     const countryObj = this.countries.find(c => c.code === countryCode);
     const countryName = countryObj ? countryObj.name : '';
+
+    // Combinar código de país con número de teléfono
+    const fullPhone = phone ? `${countryCode}${phone}` : null;
 
     // Usar el método de registro con referido obligatorio y datos de ubicación
     this.authService.registerWithReferral(
@@ -164,6 +168,7 @@ export class RegisterComponent implements OnInit {
         email, 
         password, 
         fullName,
+        phone: fullPhone,
         country: countryName,
         country_code: countryCode,
         department: department || null,
