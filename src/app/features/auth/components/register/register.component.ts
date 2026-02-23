@@ -84,14 +84,6 @@ export class RegisterComponent implements OnInit {
     if (this.authService.isAuthenticated()) {
       this.router.navigate([this.returnUrl]);
     }
-
-    // Cargar departamentos de Colombia por defecto
-    this.loadDepartments();
-  }
-
-  // Cargar departamentos del país seleccionado
-  private loadDepartments(): void {
-    this.countriesService.getStatesAndCitiesByCountry('Colombia').subscribe();
   }
 
   async validateReferralCode(): Promise<void> {

@@ -169,7 +169,7 @@
             (change)="onCountryCodeChange($any($event.target).value)"
             class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
           >
-            @for (country of countries; track country.code) {
+            @for (country of countries; track country.code + country.name) {
               <option [value]="country.code" class="bg-gray-900">{{ country.flag }} {{ country.name }} ({{ country.code }})</option>
             }
           </select>
