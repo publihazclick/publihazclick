@@ -299,10 +299,10 @@
 
   <!-- Modal -->
   @if (showModal()) {
-    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white dark:bg-card-dark rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
-        <div class="p-6 border-b border-slate-200 dark:border-white/5 flex items-center justify-between sticky top-0 bg-white dark:bg-card-dark">
-          <h2 class="text-xl font-bold">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-slate-200 dark:border-slate-700 shadow-2xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
+          <h2 class="text-xl font-bold text-slate-800 dark:text-white">
             @switch (modalMode()) {
               @case ('create-ptc') { Crear Anuncio PTC }
               @case ('edit-ptc') { Editar Anuncio PTC }
@@ -310,52 +310,52 @@
               @case ('edit-banner') { Editar Banner }
             }
           </h2>
-          <button (click)="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg">
-            <span class="material-icons text-primary w-5 h-5">close</span>
+          <button (click)="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+            <span class="material-icons text-slate-600 dark:text-slate-300">close</span>
           </button>
         </div>
 
         <div class="p-6 space-y-4">
           @if (modalMode() === 'create-ptc' || modalMode() === 'edit-ptc') {
             <div>
-              <label class="block text-sm font-medium mb-1">Título *</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Título *</label>
               <input
                 type="text"
                 [(ngModel)]="ptcFormData().title"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="Título del anuncio"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">Descripción</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Descripción</label>
               <textarea
                 [(ngModel)]="ptcFormData().description"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 rows="2"
                 placeholder="Descripción del anuncio"
               ></textarea>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">URL *</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">URL *</label>
               <input
                 type="url"
                 [(ngModel)]="ptcFormData().url"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="https://..."
               />
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
                 Imagen del anuncio
               </label>
               <input 
                 type="file" 
                 accept="image/*"
                 (change)="onPtcImageSelected($event)"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
               />
               @if (ptcFormData().image_url) {
                 <div class="mt-2">
@@ -366,39 +366,39 @@
 
             <div class="grid grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium mb-1">Recompensa (COP)</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Recompensa (COP)</label>
                 <input
                   type="number"
                   [(ngModel)]="ptcFormData().reward"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium mb-1">Duración (seg)</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Duración (seg)</label>
                 <input
                   type="number"
                   [(ngModel)]="ptcFormData().duration"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="5"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium mb-1">Límite diario</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite diario</label>
                 <input
                   type="number"
                   [(ngModel)]="ptcFormData().daily_limit"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">Ubicación</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ubicación</label>
               <select
                 [(ngModel)]="ptcFormData().location"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
               >
                 @for (loc of locations; track loc.value) {
                   <option [value]="loc.value">{{ loc.label }}</option>
@@ -409,33 +409,33 @@
 
           @if (modalMode() === 'create-banner' || modalMode() === 'edit-banner') {
             <div>
-              <label class="block text-sm font-medium mb-1">Nombre *</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Nombre *</label>
               <input
                 type="text"
                 [(ngModel)]="bannerFormData().name"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="Nombre del banner"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">Descripción</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Descripción</label>
               <textarea
                 [(ngModel)]="bannerFormData().description"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 rows="2"
               ></textarea>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
                 Imagen del banner
               </label>
               <input 
                 type="file" 
                 accept="image/*"
                 (change)="onBannerImageSelected($event)"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
               />
               @if (bannerFormData().image_url) {
                 <div class="mt-2">
@@ -445,21 +445,21 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">URL de Destino *</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">URL de Destino *</label>
               <input
                 type="url"
                 [(ngModel)]="bannerFormData().url"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder="https://..."
               />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium mb-1">Posición</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Posición</label>
                 <select
                   [(ngModel)]="bannerFormData().position"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                 >
                   @for (pos of bannerPositions; track pos.value) {
                     <option [value]="pos.value">{{ pos.label }}</option>
@@ -467,11 +467,11 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium mb-1">Recompensa por clic</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Recompensa por clic</label>
                 <input
                   type="number"
                   [(ngModel)]="bannerFormData().reward"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
               </div>
@@ -479,30 +479,30 @@
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium mb-1">Límite de impresiones</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite de impresiones</label>
                 <input
                   type="number"
                   [(ngModel)]="bannerFormData().impressions_limit"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium mb-1">Límite de clics</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite de clics</label>
                 <input
                   type="number"
                   [(ngModel)]="bannerFormData().clicks_limit"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
                 />
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1">Ubicación</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ubicación</label>
               <select
                 [(ngModel)]="bannerFormData().location"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
               >
                 @for (loc of locations; track loc.value) {
                   <option [value]="loc.value">{{ loc.label }}</option>
@@ -512,10 +512,10 @@
           }
         </div>
 
-        <div class="p-6 border-t border-slate-200 dark:border-white/5 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-card-dark">
+        <div class="p-6 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-slate-900 z-10">
           <button
             (click)="closeModal()"
-            class="px-4 py-2.5 border border-slate-200 dark:border-white/10 rounded-xl font-bold text-sm"
+            class="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl font-bold text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             Cancelar
           </button>
