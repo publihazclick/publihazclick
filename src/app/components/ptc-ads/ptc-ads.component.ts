@@ -78,7 +78,7 @@ export class PtcAdsComponent implements OnInit {
           imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
           youtubeVideoId: 'dQw4w9WgXcQ', // Default video
           adType: task.ad_type || 'mini',
-          rewardCOP: (task.reward || 0) * 3850, // Convert USD to COP (approx rate)
+          rewardCOP: task.reward || 0, // El valor ya está en COP
           dailyLimit: task.daily_limit || 0,
           totalClicks: task.total_clicks || 0,
           status: task.status
@@ -97,7 +97,7 @@ export class PtcAdsComponent implements OnInit {
 
   getSampleAds(): PtcAdCard[] {
     return [
-      // Mega Anuncios (2000 USD = ~7,700,000 COP)
+      // Mega Anuncios (2000 COP)
       {
         id: '1',
         title: 'Promo Fin de Semana - Tienda Online',
