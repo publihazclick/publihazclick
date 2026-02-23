@@ -347,6 +347,8 @@ export class AdminUsersComponent implements OnInit {
       const randomDigits = Math.floor(10000 + Math.random() * 90000); // 5 dígitos
       const currentYear = new Date().getFullYear();
       const referralCode = `${usernameLower}${randomDigits}-${currentYear}`;
+      // Generar el link de referido
+      const referralLink = `/register/${referralCode}`;
 
       const { error } = await supabase
         .from('profiles')
@@ -361,7 +363,8 @@ export class AdminUsersComponent implements OnInit {
           city: data.city || null,
           department: data.department || null,
           referred_by: referredById,
-          referral_code: referralCode
+          referral_code: referralCode,
+          referral_link: referralLink
         })
         .eq('id', authData.user.id);
 

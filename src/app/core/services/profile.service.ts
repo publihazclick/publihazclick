@@ -139,7 +139,7 @@ export class ProfileService {
   async validateReferralCode(code: string): Promise<ReferralValidationResult> {
     try {
       // El código puede estar en cualquier formato - hacer búsqueda case-insensitive
-      const normalizedCode = code.trim().toLowerCase();
+      let normalizedCode = code.trim().toLowerCase();
       
       // Primero verificar si es el código por defecto del admin
       if (normalizedCode === 'adm00001') {
@@ -162,7 +162,15 @@ export class ProfileService {
         }
       }
       
-      const { data, error } = await this.supabase
+      // Verificar si es un URL completo y extraer el código
+      // El formato puede ser: https://publihazclick.com/register/CODIGO o /register/CODIGO
+      const urlMatch = normalizedCode.match(/register[\/:]([a-zA-Z0-9\-]+)/);
+      if (urlMatch && urlMatch[1]) {
+        normalizedCode = urlMatch[1];
+      }
+      
+      // Buscar primero en referral_code
+      let { data, error } = await this.supabase
         .from('profiles')
         .select('id, username, is_active')
         .eq('referral_code', normalizedCode)
@@ -170,7 +178,7 @@ export class ProfileService {
 
       if (error || !data) {
         // Intentar con mayúsculas también
-        const upperCode = code.trim().toUpperCase();
+        const upperCode = normalizedCode.toUpperCase();
         const { data: upperData, error: upperError } = await this.supabase
           .from('profiles')
           .select('id, username, is_active')
@@ -178,7 +186,45 @@ export class ProfileService {
           .single();
         
         if (upperError || !upperData) {
-          return { valid: false, error: 'Código de referido inválido' };
+          // Si no se encuentra en referral_code, buscar en referral_link
+          const { data: linkData, error: linkError } = await this.supabase
+            .from('profiles')
+            .select('id, username, is_active')
+            .ilike('referral_link', `%${normalizedCode}%`)
+            .maybeSingle();
+          
+          if (linkError || !linkData) {
+            // Intentar con mayúsculas en el link también
+            const { data: linkUpperData, error: linkUpperError } = await this.supabase
+              .from('profiles')
+              .select('id, username, is_active')
+              .ilike('referral_link', `%${upperCode}%`)
+              .maybeSingle();
+            
+            if (linkUpperError || !linkUpperData) {
+              return { valid: false, error: 'Código de referido inválido' };
+            }
+            
+            if (!linkUpperData.is_active) {
+              return { valid: false, error: 'El usuario referidor no está activo' };
+            }
+            
+            return {
+              valid: true,
+              referrer_id: linkUpperData.id,
+              referrer_username: linkUpperData.username
+            };
+          }
+          
+          if (!linkData.is_active) {
+            return { valid: false, error: 'El usuario referidor no está activo' };
+          }
+          
+          return {
+            valid: true,
+            referrer_id: linkData.id,
+            referrer_username: linkData.username
+          };
         }
         
         if (!upperData.is_active) {

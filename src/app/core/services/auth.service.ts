@@ -412,10 +412,15 @@ export class AuthService implements OnDestroy {
           try {
             // Buscar el perfil del referidor (el nuevo formato no usa mayúsculas)
             const normalizedCode = referralCode.trim();
+            
+            // Limpiar el código de cualquier URL
+            const urlMatch = normalizedCode.match(/register[\/:]([a-zA-Z0-9\-]+)/);
+            const cleanReferralCode = urlMatch ? urlMatch[1] : normalizedCode;
+            
             const { data: referrerData } = await this.supabase
               .from('profiles')
               .select('id, username')
-              .eq('referral_code', normalizedCode)
+              .eq('referral_code', cleanReferralCode)
               .single();
 
             // Preparar datos del perfil a actualizar
@@ -431,7 +436,18 @@ export class AuthService implements OnDestroy {
             if (options.department) profileData['department'] = options.department;
             if (options.city) profileData['city'] = options.city;
 
-            // Actualizar el perfil con los datos del referidor y ubicación
+            // Generar código de referido y link para el nuevo usuario
+            const emailParts = options.email.split('@');
+            const usernameFromEmail = emailParts[0]?.toLowerCase() || 'user';
+            const randomDigits = Math.floor(10000 + Math.random() * 90000);
+            const currentYear = new Date().getFullYear();
+            const newReferralCode = `${usernameFromEmail}${randomDigits}-${currentYear}`;
+            const newReferralLink = `/register/${newReferralCode}`;
+            
+            profileData['referral_code'] = newReferralCode;
+            profileData['referral_link'] = newReferralLink;
+
+            // Actualizar el perfil con los datos del referidor, ubicación y código de referido
             if (Object.keys(profileData).length > 0) {
               await this.supabase
                 .from('profiles')
