@@ -61,19 +61,19 @@ export class AdminAdsComponent implements OnInit {
     description: '',
     url: '',
     image_url: '',
-    reward: 83.33,
-    duration: 15,
-    daily_limit: 1000,
+    reward: 2000,
+    duration: 60,
+    daily_limit: 0,
     location: 'app',
-    ad_type: 'mini'
+    ad_type: 'mega'
   });
 
   // Opciones de tipo de anuncio con recompensas predefinidas (en COP)
-  readonly adTypeOptions: { value: PtcAdType; label: string; reward: number }[] = [
-    { value: 'mega', label: 'Mega Anuncio', reward: 2000 },
-    { value: 'standard_400', label: 'Standard 400', reward: 400 },
-    { value: 'standard_600', label: 'Standard 600', reward: 600 },
-    { value: 'mini', label: 'Mini Anuncio', reward: 83.33 }
+  readonly adTypeOptions: { value: PtcAdType; label: string; reward: number; duration: number }[] = [
+    { value: 'mega', label: 'Mega Anuncio', reward: 2000, duration: 60 },
+    { value: 'standard_400', label: 'Standard 400', reward: 400, duration: 60 },
+    { value: 'standard_600', label: 'Standard 600', reward: 600, duration: 60 },
+    { value: 'mini', label: 'Mini Anuncio', reward: 83.33, duration: 60 }
   ];
 
   readonly bannerFormData = signal<Partial<CreateBannerAdData>>({
@@ -216,14 +216,15 @@ export class AdminAdsComponent implements OnInit {
     this.loadData();
   }
 
-  // Método para actualizar la recompensa cuando cambia el tipo de anuncio
+  // Método para actualizar la recompensa y duración cuando cambia el tipo de anuncio
   onAdTypeChange(adType: PtcAdType): void {
     const option = this.adTypeOptions.find(o => o.value === adType);
     if (option) {
       this.ptcFormData.update(data => ({
         ...data,
         ad_type: adType,
-        reward: option.reward
+        reward: option.reward,
+        duration: option.duration
       }));
     }
   }
@@ -237,11 +238,11 @@ export class AdminAdsComponent implements OnInit {
       description: '',
       url: '',
       image_url: '',
-      reward: 83.33,
-      duration: 15,
-      daily_limit: 1000,
+      reward: 2000,
+      duration: 60,
+      daily_limit: 0,
       location: this.activeLocation(),
-      ad_type: 'mini'
+      ad_type: 'mega'
     });
     this.showModal.set(true);
   }

@@ -373,7 +373,7 @@
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                 >
                   @for (type of adTypeOptions; track type.value) {
-                    <option [value]="type.value">{{ type.label }} ({{ type.reward | number:'1.2-2' }} COP)</option>
+                    <option [value]="type.value">{{ type.label }} ({{ type.reward | number:'1.2-2' }} COP - {{ type.duration }}s)</option>
                   }
                 </select>
               </div>
@@ -391,21 +391,23 @@
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Duración (seg)</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Duración (segundos)</label>
                 <input
                   type="number"
                   [(ngModel)]="ptcFormData().duration"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="5"
+                  value="60"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite diario</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite diario (0 = sin límite)</label>
                 <input
                   type="number"
                   [(ngModel)]="ptcFormData().daily_limit"
                   class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
                   min="0"
+                  placeholder="0 = sin límite"
                 />
               </div>
             </div>
