@@ -1,8 +1,8 @@
-<div class="min-h-screen flex h-screen">
+<div class="min-h-screen flex h-screen overflow-y-auto">
   <!-- Lado izquierdo - Fondo Cyan con formulario -->
   <div class="w-full lg:w-[60%] bg-[#00FFFF] flex items-center justify-center p-6 relative">
     <!-- Tarjeta del formulario -->
-    <div class="bg-card-dark w-full max-w-md p-10 rounded-2xl shadow-2xl z-10">
+    <div class="bg-card-dark w-full max-w-md p-6 md:p-8 rounded-2xl shadow-2xl z-10">
       <!-- Logo y título -->
       <div class="text-center mb-8">
         <img src="/logo.webp" alt="PublihazClik" class="h-20 w-auto mx-auto mb-4">
@@ -25,7 +25,7 @@
         </div>
       }
 
-      <form class="space-y-5" [formGroup]="registerForm" (ngSubmit)="onSubmit()" [class.opacity-50]="!referralValid()" [class.pointer-events-none]="!referralValid()">
+      <form class="space-y-3" [formGroup]="registerForm" (ngSubmit)="onSubmit()" [class.opacity-50]="!referralValid()" [class.pointer-events-none]="!referralValid()">
         <!-- Título del formulario -->
         <div class="text-center mb-4">
           <span class="text-primary text-xs font-bold tracking-[0.2em] uppercase">Crear Cuenta</span>
@@ -71,8 +71,8 @@
 
         <!-- Full Name -->
         <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
-          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
-            <span class="material-icons text-primary w-5 h-5">person</span>
+          <div class="bg-black/50 px-3 py-2 flex items-center border-r border-gray-700">
+            <span class="material-icons text-primary w-4 h-4">person</span>
           </div>
           <input
             formControlName="fullName"
@@ -101,17 +101,36 @@
           <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('email') }}</p>
         }
 
-        <!-- WhatsApp -->
-        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
-          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
-            <span class="material-icons text-primary w-5 h-5">phone</span>
+        <!-- País y WhatsApp en la misma fila -->
+        <div class="flex gap-2">
+          <!-- País -->
+          <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300 w-1/3">
+            <div class="bg-black/50 px-2 py-3 flex items-center border-r border-gray-700">
+              <span class="material-icons text-primary w-4 h-4">public</span>
+            </div>
+            <select
+              formControlName="countryCode"
+              (change)="onCountryCodeChange($any($event.target).value)"
+              class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600 text-xs"
+            >
+              @for (country of countries; track country.code + country.name) {
+                <option [value]="country.code" class="bg-gray-900">{{ country.flag }} {{ country.code }}</option>
+              }
+            </select>
           </div>
-          <input
-            formControlName="phone"
-            type="tel"
-            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
-            placeholder="Número WhatsApp"
-          />
+
+          <!-- WhatsApp -->
+          <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300 w-2/3">
+            <div class="bg-black/50 px-2 py-3 flex items-center border-r border-gray-700">
+              <span class="material-icons text-primary w-4 h-4">phone</span>
+            </div>
+            <input
+              formControlName="phone"
+              type="tel"
+              class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600 text-sm"
+              placeholder="WhatsApp"
+            />
+          </div>
         </div>
 
         <!-- Password -->
@@ -171,22 +190,6 @@
         @if (isFieldInvalid('confirmPassword')) {
           <p class="text-red-400 text-xs mt-1">{{ getErrorMessage('confirmPassword') }}</p>
         }
-
-        <!-- País -->
-        <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
-          <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
-            <span class="material-icons text-primary w-5 h-5">public</span>
-          </div>
-          <select
-            formControlName="countryCode"
-            (change)="onCountryCodeChange($any($event.target).value)"
-            class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
-          >
-            @for (country of countries; track country.code + country.name) {
-              <option [value]="country.code" class="bg-gray-900">{{ country.flag }} {{ country.code }}</option>
-            }
-          </select>
-        </div>
 
         <!-- Departamento/Estado -->
         <div class="flex border border-gray-700 rounded overflow-hidden custom-input-group transition-all duration-300">
