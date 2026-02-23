@@ -141,6 +141,27 @@ export class ProfileService {
       // El código puede estar en cualquier formato - hacer búsqueda case-insensitive
       const normalizedCode = code.trim().toLowerCase();
       
+      // Primero verificar si es el código por defecto del admin
+      if (normalizedCode === 'adm00001') {
+        // Buscar el admin por email
+        const { data: adminData, error: adminError } = await this.supabase
+          .from('profiles')
+          .select('id, username, is_active, email')
+          .eq('email', 'publihazclick.com@gmail.com')
+          .maybeSingle();
+        
+        if (!adminError && adminData) {
+          if (!adminData.is_active) {
+            return { valid: false, error: 'El usuario referidor no está activo' };
+          }
+          return {
+            valid: true,
+            referrer_id: adminData.id,
+            referrer_username: adminData.username
+          };
+        }
+      }
+      
       const { data, error } = await this.supabase
         .from('profiles')
         .select('id, username, is_active')
