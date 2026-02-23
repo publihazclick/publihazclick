@@ -308,8 +308,9 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   }
 
   getRewardDisplay(): string {
-    const rewardCOP = this.ad().rewardCOP || 1;
-    return `${rewardCOP.toLocaleString('es-CO')} COP`;
+    const rewardCOP = this.ad().rewardCOP || 0;
+    // Use currency service to convert from COP to selected currency
+    return this.currencyService.formatFromCOP(rewardCOP, 2);
   }
 
   getAdTypeLabel(): string {

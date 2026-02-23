@@ -150,7 +150,7 @@ export class PtcAdsComponent implements OnInit {
         totalClicks: 210,
         status: 'active'
       },
-      // Standard 400 (400 USD = ~1,540,000 COP)
+      // Standard 400 (400 COP)
       {
         id: '2',
         title: 'Nueva Colección de Ropa',
@@ -203,7 +203,7 @@ export class PtcAdsComponent implements OnInit {
         totalClicks: 190,
         status: 'active'
       },
-      // Standard 600 (600 USD = ~2,310,000 COP)
+      // Standard 600 (600 COP)
       {
         id: '3',
         title: 'Servicio de Delivery Express',
@@ -256,7 +256,7 @@ export class PtcAdsComponent implements OnInit {
         totalClicks: 95,
         status: 'active'
       },
-      // Mini Anuncios (88.33 USD = ~340,000 COP)
+      // Mini Anuncios (83.33 COP)
       {
         id: '4',
         title: 'Cupón Descuento 20%',
@@ -315,8 +315,8 @@ export class PtcAdsComponent implements OnInit {
   getAdTypeLabel(type: PtcAdType): string {
     const labels: Record<PtcAdType, string> = {
       'mega': 'Mega Anuncio',
-      'standard_400': 'Mega 400',
-      'standard_600': 'Mega 600',
+      'standard_400': 'Anuncio 400',
+      'standard_600': 'Anuncio 600',
       'mini': 'Mini Anuncio'
     };
     return labels[type] || type;
