@@ -74,7 +74,7 @@ export class CurrencyService {
     // Load saved currency from localStorage (only in browser)
     this.loadSavedCurrency();
     // Check and fetch rates if needed
-    this.checkAndFetchRates();
+    this.initializeRates();
   }
 
   private loadSavedCurrency(): void {
@@ -92,28 +92,39 @@ export class CurrencyService {
   }
 
   /**
-   * Verifica si necesita actualizar las tasas de cambio.
-   * Solo consulta a las 6:00 AM y 6:00 PM.
+   * Inicializa las tasas de cambio.
+   * Si hay cache válido, lo usa.
+   * Si no hay cache o está desactualizado, intenta obtener tasas nuevas.
    */
-  private checkAndFetchRates(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
+  private initializeRates(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      // En SSR, usar fallback
+      this._rates.set(this.getFallbackRates());
+      return;
+    }
 
     const currentHour = new Date().getHours();
-    const cachedHourStr = localStorage.getItem(this.CACHE_HOURS_KEY);
     const cachedRatesStr = localStorage.getItem(this.CACHE_KEY);
 
-    // Horas válidas para actualizar: 6 AM (6) y 6 PM (18)
-    const validHours = [6, 18];
-
-    // Si tenemos tasas cached y estamos en hora válida, verificamos si necesitamos actualizar
-    if (cachedRatesStr && validHours.includes(currentHour)) {
+    // Verificar si hay cache válido
+    if (cachedRatesStr) {
       try {
         const cached: CachedRates = JSON.parse(cachedRatesStr);
-        
-        // Si el último fetch fue en la misma hora válida, usar cache
-        if (cached.lastFetchedHour === currentHour) {
+        const lastDate = new Date(cached.lastFetched);
+        const today = new Date();
+        const isSameDay = lastDate.toDateString() === today.toDateString();
+
+        // Si hay cache de hoy, usarlo
+        if (isSameDay) {
           this._rates.set(cached.rates);
-          console.log('Usando tasas cached para hora:', currentHour);
+          console.log('Usando tasas cacheadas del día:', cached.lastFetched);
+          
+          // También intentar actualizar si estamos en hora válida (6am o 6pm)
+          const validHours = [6, 18];
+          if (validHours.includes(currentHour) && cached.lastFetchedHour !== currentHour) {
+            // Hay nueva actualización disponible, fetch en background
+            this.fetchRates().catch(() => {});
+          }
           return;
         }
       } catch (e) {
@@ -121,27 +132,11 @@ export class CurrencyService {
       }
     }
 
-    // Si no hay cache o no estamos en hora válida, intentar fetch
-    // Solo fetch si estamos en hora válida (6 AM o 6 PM)
-    if (validHours.includes(currentHour)) {
-      this.fetchRates();
-    } else {
-      // Cargar desde cache si existe, si no usar fallback
-      if (cachedRatesStr) {
-        try {
-          const cached: CachedRates = JSON.parse(cachedRatesStr);
-          this._rates.set(cached.rates);
-          console.log('Usando tasas cached (fuera de horario de actualización)');
-        } catch (e) {
-          console.error('Error parsing cached rates:', e);
-          this._rates.set(this.getFallbackRates());
-        }
-      } else {
-        // No hay cache y no es hora válida - usar fallback pero intentar fetch de todos modos
-        this._rates.set(this.getFallbackRates());
-        this.fetchRates().catch(() => {});
-      }
-    }
+    // No hay cache válido, intentar obtener tasas
+    this.fetchRates().catch(() => {
+      // Si falla, usar fallback
+      this._rates.set(this.getFallbackRates());
+    });
   }
 
   async fetchRates(): Promise<void> {

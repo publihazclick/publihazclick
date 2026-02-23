@@ -71,8 +71,8 @@ export class AdminAdsComponent implements OnInit {
   // Opciones de tipo de anuncio con recompensas predefinidas (en COP)
   readonly adTypeOptions: { value: PtcAdType; label: string; reward: number; duration: number }[] = [
     { value: 'mega', label: 'Mega Anuncio', reward: 2000, duration: 60 },
-    { value: 'standard_400', label: 'Standard 400', reward: 400, duration: 60 },
     { value: 'standard_600', label: 'Standard 600', reward: 600, duration: 60 },
+    { value: 'standard_400', label: 'Standard 400', reward: 400, duration: 60 },
     { value: 'mini', label: 'Mini Anuncio', reward: 83.33, duration: 60 }
   ];
 
