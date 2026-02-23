@@ -70,19 +70,24 @@ export class PtcAdsComponent implements OnInit {
       }
       
       if (result.data && result.data.length > 0) {
-        const mappedAds: PtcAdCard[] = result.data.map(task => ({
-          id: task.id,
-          title: task.title,
-          advertiserName: 'Anunciante',
-          advertiserType: 'company',
-          imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
-          youtubeVideoId: 'dQw4w9WgXcQ',
-          adType: task.ad_type || 'mini',
-          rewardCOP: task.reward || 0, // Usar el valor directamente
-          dailyLimit: task.daily_limit || 0,
-          totalClicks: task.total_clicks || 0,
-          status: task.status
-        }));
+        const mappedAds: PtcAdCard[] = result.data.map(task => {
+          // Usar el tipo de anuncio para obtener la recompensa correcta
+          const adType = task.ad_type || 'mini';
+          const rewardCOP = this.adTypeRewards[adType] || task.reward || 0;
+          return {
+            id: task.id,
+            title: task.title,
+            advertiserName: 'Anunciante',
+            advertiserType: 'company',
+            imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
+            youtubeVideoId: 'dQw4w9WgXcQ',
+            adType: adType,
+            rewardCOP: rewardCOP,
+            dailyLimit: task.daily_limit || 0,
+            totalClicks: task.total_clicks || 0,
+            status: task.status
+          };
+        });
         this.ads.set(mappedAds);
       } else {
         this.ads.set(this.getSampleAds());
@@ -336,6 +341,14 @@ export class PtcAdsComponent implements OnInit {
         return 'bg-gray-500';
     }
   }
+
+  // Valores de recompensa por tipo de anuncio
+  private readonly adTypeRewards: Record<string, number> = {
+    'mega': 2000,
+    'standard_600': 600,
+    'standard_400': 400,
+    'mini': 83.33
+  };
 
   getRewardDisplay(rewardCOP: number): string {
     // Convert COP to selected currency with decimals using the currency service
