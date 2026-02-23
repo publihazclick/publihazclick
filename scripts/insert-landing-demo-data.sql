@@ -31,8 +31,7 @@ BEGIN
         reward,
         status,
         location,
-        created_at,
-        updated_at
+        created_at
     ) VALUES 
     (
         admin_id,
@@ -46,7 +45,6 @@ BEGIN
         0,
         'active',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -61,7 +59,6 @@ BEGIN
         0,
         'active',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -76,7 +73,6 @@ BEGIN
         0,
         'active',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -91,7 +87,6 @@ BEGIN
         0,
         'active',
         'landing',
-        NOW(),
         NOW()
     );
 
@@ -114,8 +109,7 @@ BEGIN
         status,
         ad_type,
         location,
-        created_at,
-        updated_at
+        created_at
     ) VALUES 
     -- Mega Anuncios
     (
@@ -131,7 +125,6 @@ BEGIN
         'active',
         'mega',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -147,7 +140,6 @@ BEGIN
         'active',
         'mega',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -163,7 +155,6 @@ BEGIN
         'active',
         'mega',
         'landing',
-        NOW(),
         NOW()
     ),
     -- Standard 400
@@ -180,7 +171,6 @@ BEGIN
         'active',
         'standard_400',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -196,7 +186,6 @@ BEGIN
         'active',
         'standard_400',
         'landing',
-        NOW(),
         NOW()
     ),
     -- Standard 600
@@ -213,7 +202,6 @@ BEGIN
         'active',
         'standard_600',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -229,7 +217,6 @@ BEGIN
         'active',
         'standard_600',
         'landing',
-        NOW(),
         NOW()
     ),
     -- Mini Anuncios
@@ -246,7 +233,6 @@ BEGIN
         'active',
         'mini',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -262,7 +248,6 @@ BEGIN
         'active',
         'mini',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -278,7 +263,6 @@ BEGIN
         'active',
         'mini',
         'landing',
-        NOW(),
         NOW()
     ),
     (
@@ -294,7 +278,6 @@ BEGIN
         'active',
         'mini',
         'landing',
-        NOW(),
         NOW()
     );
 
