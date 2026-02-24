@@ -1,0 +1,390 @@
+<aside
+  class="bg-sidebar-dark text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-all duration-300"
+  [class.w-16]="sidebarCollapsed()"
+  [class.w-64]="!sidebarCollapsed()"
+>
+  <!-- Logo + collapse -->
+  <div class="p-3 lg:p-4 flex items-center justify-between border-b border-white/10">
+    @if (!sidebarCollapsed()) {
+      <img src="/logo.webp" alt="PublihazClik" class="h-12 lg:h-14 w-auto" width="200" height="56">
+    }
+    <button
+      (click)="toggleSidebarCollapse()"
+      class="flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
+      [title]="sidebarCollapsed() ? 'Expandir menú' : 'Colapsar menú'"
+    >
+      @if (sidebarCollapsed()) {
+        <span class="material-symbols-outlined text-2xl">chevron_right</span>
+      } @else {
+        <span class="material-symbols-outlined text-2xl">chevron_left</span>
+      }
+    </button>
+  </div>
+
+  <div class="sidebar-scroll overflow-y-auto flex-1 p-2 lg:p-4">
+    <!-- Advertiser badge -->
+    @if (!sidebarCollapsed()) {
+      <div class="flex flex-col items-center mb-6 lg:mb-8 py-4 lg:py-6 border-b border-white/10">
+        <div class="w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl overflow-hidden mb-2 lg:mb-3 shadow-lg shadow-accent/20 rotate-3 border-2 border-white/10 flex-shrink-0">
+          @if (profile()?.avatar_url) {
+            <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+              <span class="material-symbols-outlined text-2xl lg:text-3xl text-white font-bold -rotate-3">storefront</span>
+            </div>
+          }
+        </div>
+        @if (profile()) {
+          <h3 class="font-bold text-center text-sm">{{ profile()!.full_name || profile()!.username }}</h3>
+          <p class="text-[10px] text-accent mt-1 font-bold uppercase tracking-widest">Anunciante</p>
+        } @else {
+          <h3 class="font-bold text-center text-sm">Mi Cuenta</h3>
+        }
+      </div>
+    } @else {
+      <div class="flex flex-col items-center mb-4 py-4 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-accent/20 rotate-3 border-2 border-white/10 flex-shrink-0">
+          @if (profile()?.avatar_url) {
+            <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+              <span class="material-symbols-outlined text-xl text-white font-bold">storefront</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <nav class="space-y-2 lg:space-y-4">
+      <!-- Panel principal -->
+      <div>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Mi Panel</h4>
+        }
+        <ul class="space-y-1">
+          <li>
+            <a routerLink="/advertiser" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               [routerLinkActiveOptions]="{exact: true}"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">dashboard</span>
+              @if (!sidebarCollapsed()) { <span>Dashboard</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/wallet" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">account_balance_wallet</span>
+              @if (!sidebarCollapsed()) { <span>Mi Billetera</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/referrals" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">group</span>
+              @if (!sidebarCollapsed()) { <span>Referidos</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/packages" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              @if (!sidebarCollapsed()) { <span>Paquetes</span> }
+            </a>
+          </li>
+          <li>
+            <button
+              (click)="openReferralModal()"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+              [class.justify-center]="sidebarCollapsed()"
+            >
+              <span class="material-symbols-outlined text-accent">card_giftcard</span>
+              @if (!sidebarCollapsed()) {
+                <span>Recomienda y Gana</span>
+                <span class="ml-auto bg-accent/20 text-accent text-[10px] px-1.5 py-0.5 rounded font-bold">NEW</span>
+              }
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Publicidad -->
+      <div>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Publicidad</h4>
+        }
+        <ul class="space-y-1">
+          <li>
+            <a routerLink="/advertiser/campaigns" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">campaign</span>
+              @if (!sidebarCollapsed()) {
+                <span>Mis Campañas</span>
+                <span class="ml-auto bg-white/5 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold">Pronto</span>
+              }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/ads" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">ad_units</span>
+              @if (!sidebarCollapsed()) {
+                <span>Mis Anuncios</span>
+                <span class="ml-auto bg-white/5 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold">Pronto</span>
+              }
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Actividad -->
+      <div>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Actividad</h4>
+        }
+        <ul class="space-y-1">
+          <li>
+            <a routerLink="/advertiser/history" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">history</span>
+              @if (!sidebarCollapsed()) { <span>Historial</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/settings" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">manage_accounts</span>
+              @if (!sidebarCollapsed()) { <span>Mi Perfil</span> }
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Bottom -->
+  <div class="p-2 lg:p-4 border-t border-white/10 space-y-2">
+    <button (click)="logout()"
+            class="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold py-2.5 px-2 lg:px-4 rounded-lg transition-all text-xs border border-rose-500/20 flex items-center justify-center gap-2 uppercase tracking-wider"
+            [class.justify-center]="sidebarCollapsed()">
+      <span class="material-symbols-outlined">logout</span>
+      @if (!sidebarCollapsed()) { <span>Cerrar Sesión</span> }
+    </button>
+  </div>
+</aside>
+
+<main
+  class="flex-1 flex flex-col min-h-screen transition-all duration-300"
+  [class.ml-16]="sidebarCollapsed()"
+  [class.ml-64]="!sidebarCollapsed()"
+>
+  <!-- Header -->
+  <header class="bg-card-dark/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
+    <div class="flex items-center gap-3 px-4 lg:px-8 h-16">
+
+      <!-- Title -->
+      <div class="flex-1 min-w-0">
+        <h1 class="text-base lg:text-lg font-black text-white tracking-tight truncate">PANEL ANUNCIANTE</h1>
+        <p class="text-[10px] text-slate-500 font-medium hidden sm:block uppercase tracking-widest">
+          @if (profile()) { Hola, {{ profile()!.full_name || profile()!.username }} } @else { Bienvenido }
+        </p>
+      </div>
+
+      <!-- Divisa -->
+      <div class="relative">
+        <button
+          (click)="toggleCurrencyMenuAndClose()"
+          class="hidden sm:flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl px-3 py-2 transition-all"
+        >
+          <div class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-slate-300" style="font-size:15px">currency_exchange</span>
+          </div>
+          <div class="leading-tight">
+            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Divisa</p>
+            <p class="text-xs text-white font-black">{{ selectedCurrency().code }}</p>
+          </div>
+          <span class="material-symbols-outlined text-slate-500" style="font-size:14px">expand_more</span>
+        </button>
+
+        @if (currencyMenuOpen()) {
+          <div class="absolute top-full right-0 mt-2 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 min-w-[190px]">
+            @for (currency of currencies; track currency.code) {
+              <button
+                (click)="selectCurrency(currency)"
+                class="w-full px-4 py-2.5 text-left hover:bg-accent/10 transition-colors flex items-center justify-between"
+                [class.bg-accent/15]="selectedCurrency().code === currency.code"
+              >
+                <span class="text-xs font-black" [class.text-accent]="selectedCurrency().code === currency.code" [class.text-white]="selectedCurrency().code !== currency.code">{{ currency.code }}</span>
+                <span class="text-[10px] text-slate-500">{{ currency.name }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Billetera -->
+      <a routerLink="/advertiser/wallet"
+         class="hidden sm:flex items-center gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 hover:border-accent/40 rounded-xl px-3 py-2 transition-all">
+        <div class="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-accent" style="font-size:15px">account_balance_wallet</span>
+        </div>
+        <div class="leading-tight">
+          <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Billetera</p>
+          <p class="text-xs text-accent font-black">
+            {{ formatCOP(profile()?.real_balance ?? walletState.walletBalance()) }}
+          </p>
+        </div>
+      </a>
+
+      <!-- Divider -->
+      <div class="h-8 w-px bg-white/10 hidden sm:block flex-shrink-0"></div>
+
+      <!-- Notifications -->
+      <button class="relative p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all flex-shrink-0">
+        <span class="material-symbols-outlined" style="font-size:20px">notifications</span>
+      </button>
+
+      <!-- Avatar + dropdown -->
+      <div class="relative flex-shrink-0">
+        <button
+          (click)="toggleProfileMenu()"
+          class="flex items-center gap-2 p-1 rounded-xl hover:bg-white/5 transition-all group"
+          title="Mi perfil"
+        >
+          <div class="w-8 h-8 lg:w-9 lg:h-9 rounded-full overflow-hidden border-2 transition-colors flex-shrink-0"
+            [class]="profileMenuOpen() ? 'border-accent/60' : 'border-white/10 group-hover:border-white/30'">
+            @if (profile()?.avatar_url) {
+              <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+            } @else {
+              <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-white" style="font-size:18px">storefront</span>
+              </div>
+            }
+          </div>
+          <span class="material-symbols-outlined text-slate-500 group-hover:text-slate-300 transition-colors hidden sm:block"
+            style="font-size:14px">{{ profileMenuOpen() ? 'expand_less' : 'expand_more' }}</span>
+        </button>
+
+        @if (profileMenuOpen()) {
+          <div class="fixed inset-0 z-40" (click)="closeProfileMenu()"></div>
+          <div class="absolute top-full right-0 mt-2 w-72 bg-[#0d0d0d] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+
+            <!-- Profile header -->
+            <div class="px-4 py-4 flex items-center gap-3 border-b border-white/5">
+              <div class="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/10 flex-shrink-0">
+                @if (profile()?.avatar_url) {
+                  <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center rotate-3">
+                    <span class="material-symbols-outlined text-white text-2xl -rotate-3">storefront</span>
+                  </div>
+                }
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-black text-white text-sm truncate">
+                  {{ profile()?.full_name || profile()?.username || 'Anunciante' }}
+                </p>
+                <p class="text-xs text-slate-500 truncate">@{{ profile()?.username }}</p>
+                <p class="text-[10px] text-slate-600 truncate mt-0.5">{{ profile()?.email }}</p>
+              </div>
+              <span class="px-2 py-0.5 bg-accent/10 text-accent text-[10px] font-black rounded uppercase tracking-wider flex-shrink-0">
+                Anunciante
+              </span>
+            </div>
+
+            <!-- Stats -->
+            <div class="px-4 py-3 border-b border-white/5 space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-accent" style="font-size:14px">account_balance_wallet</span>
+                  <span class="text-xs text-slate-400">Billetera</span>
+                </div>
+                <span class="text-xs font-black text-accent">
+                  {{ formatCOP(profile()?.real_balance ?? walletState.walletBalance()) }}
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-violet-400" style="font-size:14px">group</span>
+                  <span class="text-xs text-slate-400">Referidos</span>
+                </div>
+                <span class="text-xs font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-amber-400" style="font-size:14px">workspace_premium</span>
+                  <span class="text-xs text-slate-400">Paquete</span>
+                </div>
+                <span class="text-[10px] font-black text-amber-400 uppercase">Activo</span>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="p-2">
+              <a
+                routerLink="/advertiser/settings"
+                (click)="closeProfileMenu()"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group"
+              >
+                <span class="material-symbols-outlined text-slate-400 group-hover:text-white transition-colors" style="font-size:18px">manage_accounts</span>
+                <span class="text-sm text-slate-300 group-hover:text-white transition-colors font-medium">Editar perfil</span>
+              </a>
+              <a
+                routerLink="/advertiser/packages"
+                (click)="closeProfileMenu()"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group"
+              >
+                <span class="material-symbols-outlined text-slate-400 group-hover:text-accent transition-colors" style="font-size:18px">workspace_premium</span>
+                <span class="text-sm text-slate-300 group-hover:text-white transition-colors font-medium">Mis paquetes</span>
+              </a>
+              <div class="my-1 border-t border-white/5"></div>
+              <button
+                (click)="logout(); closeProfileMenu()"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-rose-500/10 transition-all group"
+              >
+                <span class="material-symbols-outlined text-slate-500 group-hover:text-rose-400 transition-colors" style="font-size:18px">logout</span>
+                <span class="text-sm text-slate-400 group-hover:text-rose-400 transition-colors font-medium">Cerrar sesión</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="p-4 lg:p-8 max-w-7xl mx-auto w-full">
+    <router-outlet></router-outlet>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-600 border-t border-white/5 gap-2">
+    <p>© 2024 PUBLIHAZCLIK — Todos los derechos reservados</p>
+    <div class="flex gap-4">
+      <a class="hover:text-accent transition-colors" href="#">Soporte</a>
+      <a class="hover:text-accent transition-colors" href="#">Términos</a>
+    </div>
+  </footer>
+</main>
+
+<!-- Referral Modal -->
+<app-user-referral-modal #referralModal></app-user-referral-modal>
+
+<!-- Dark mode toggle -->
+<div class="fixed bottom-6 right-6 z-50">
+  <button (click)="toggleDarkMode()"
+          class="group relative w-11 h-11 rounded-xl bg-card-dark shadow-xl border border-white/10 flex items-center justify-center text-accent transition-all hover:scale-110 active:scale-95 hover:border-accent/30">
+    @if (isDarkMode) {
+      <span class="material-symbols-outlined" style="font-size:20px">light_mode</span>
+    } @else {
+      <span class="material-symbols-outlined" style="font-size:20px">dark_mode</span>
+    }
+  </button>
+</div>

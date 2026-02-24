@@ -101,9 +101,9 @@
         <ul class="space-y-1">
           <li>
             <a routerLink="/admin/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">settings</span> 
+              <span class="material-symbols-outlined">manage_accounts</span>
               @if (!sidebarCollapsed()) {
-                <span>Configuración</span>
+                <span>Mi Perfil</span>
               }
             </a>
           </li>
@@ -167,9 +167,15 @@
         }
       </button>
       <!-- Avatar -->
-      <div class="w-8 h-8 bg-gradient-to-tr from-primary to-blue-600 rounded-full flex items-center justify-center border-2 border-white/10 flex-shrink-0">
-        <span class="material-symbols-outlined text-black" style="font-size:16px">shield</span>
-      </div>
+      <a routerLink="/admin/settings" class="w-8 h-8 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0 hover:border-primary/50 transition-colors">
+        @if (profile()?.avatar_url) {
+          <img [src]="profile()!.avatar_url" alt="Admin" class="w-full h-full object-cover">
+        } @else {
+          <div class="w-full h-full bg-gradient-to-tr from-primary to-blue-600 flex items-center justify-center">
+            <span class="text-black font-black text-[10px]">{{ (profile()?.full_name || profile()?.username || 'A').slice(0,2).toUpperCase() }}</span>
+          </div>
+        }
+      </a>
     </div>
   </header>
 

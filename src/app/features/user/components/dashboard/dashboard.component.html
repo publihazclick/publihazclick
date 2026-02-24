@@ -1,213 +1,215 @@
 <div class="space-y-6 lg:space-y-8">
 
-  <!-- ═══ BANNER SLIDER ═══ -->
-  @if (!bannersLoading()) {
-    <app-banner-slider [slides]="bannerSlides()" [autoPlayInterval]="4000" />
-  }
+  <!-- ═══ STATS ROW ═══ -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-  <!-- ═══ ANUNCIOS PTC ═══ -->
-  @if (ptcLoading()) {
-    <div class="flex flex-col items-center justify-center py-20">
-      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-3">sync</span>
-      <p class="text-slate-400 text-sm">Cargando anuncios...</p>
-    </div>
-  } @else {
-    <div class="space-y-8">
-
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-primary text-2xl">ads_click</span>
-        <h3 class="text-xl font-black text-white uppercase tracking-tight">Anuncios PTC Disponibles</h3>
+    <!-- Referidos activos -->
+    <div class="bg-card-dark rounded-2xl p-5 border border-white/5 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-primary text-2xl">group</span>
       </div>
-
-      <!-- Mega -->
-      @if (getAdsByType('mega').length > 0) {
-        <div>
-          <div class="flex items-center gap-3 mb-4">
-            <span class="material-symbols-outlined text-purple-400">star</span>
-            <h4 class="text-base font-black uppercase tracking-tight text-purple-400">Mega Anuncios</h4>
-            <span class="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-xs font-bold rounded-full border border-purple-500/20">+{{ getRewardDisplay(2000) }}</span>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            @for (ad of getAdsByType('mega'); track ad.id) {
-              <div class="bg-card-dark rounded-xl overflow-hidden flex flex-col group border border-white/5 hover:border-purple-500/30 transition-all duration-300 hover:-translate-y-0.5"
-                [class.opacity-50]="isAdViewed(ad.id)" [class.cursor-not-allowed]="isAdViewed(ad.id)">
-                <div class="relative aspect-[4/3] overflow-hidden bg-slate-900">
-                  <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  @if (isAdViewed(ad.id)) {
-                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span class="material-symbols-outlined text-white text-3xl">check_circle</span>
-                    </div>
-                  }
-                  <div class="absolute top-2 right-2 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">+{{ getRewardDisplay(ad.rewardCOP) }}</div>
-                </div>
-                <div class="p-3 flex flex-col flex-grow">
-                  <div class="flex items-center gap-1.5 mb-1.5">
-                    <div class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span class="material-symbols-outlined text-slate-400 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
-                    </div>
-                    <span class="text-[10px] font-bold text-slate-400 truncate">{{ ad.advertiserName }}</span>
-                  </div>
-                  <h5 class="font-bold text-xs text-white mb-2 line-clamp-2 leading-tight flex-1">{{ ad.title }}</h5>
-                  <div class="text-[10px] text-slate-600 mb-2">
-                    <span class="material-symbols-outlined text-xs align-middle">visibility</span> {{ ad.totalClicks }} vistas
-                  </div>
-                  <button (click)="openAdModal(ad)" [disabled]="isAdViewed(ad.id)"
-                    class="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
-                    [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-400 text-white'">
-                    <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
-                    @if (!isAdViewed(ad.id)) { <span class="material-symbols-outlined text-xs">north_east</span> }
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      <!-- 600 -->
-      @if (getAdsByType('standard_600').length > 0) {
-        <div>
-          <div class="flex items-center gap-3 mb-4">
-            <span class="material-symbols-outlined text-primary">looks_6</span>
-            <h4 class="text-base font-black uppercase tracking-tight text-primary">Anuncios 600</h4>
-            <span class="px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded-full border border-primary/20">+{{ getRewardDisplay(600) }}</span>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            @for (ad of getAdsByType('standard_600'); track ad.id) {
-              <div class="bg-card-dark rounded-xl overflow-hidden flex flex-col group border border-white/5 hover:border-primary/30 transition-all duration-300 hover:-translate-y-0.5"
-                [class.opacity-50]="isAdViewed(ad.id)" [class.cursor-not-allowed]="isAdViewed(ad.id)">
-                <div class="relative aspect-[4/3] overflow-hidden bg-slate-900">
-                  <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  @if (isAdViewed(ad.id)) {
-                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span class="material-symbols-outlined text-white text-3xl">check_circle</span>
-                    </div>
-                  }
-                  <div class="absolute top-2 right-2 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">+{{ getRewardDisplay(ad.rewardCOP) }}</div>
-                </div>
-                <div class="p-3 flex flex-col flex-grow">
-                  <div class="flex items-center gap-1.5 mb-1.5">
-                    <div class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span class="material-symbols-outlined text-slate-400 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
-                    </div>
-                    <span class="text-[10px] font-bold text-slate-400 truncate">{{ ad.advertiserName }}</span>
-                  </div>
-                  <h5 class="font-bold text-xs text-white mb-2 line-clamp-2 leading-tight flex-1">{{ ad.title }}</h5>
-                  <div class="text-[10px] text-slate-600 mb-2">
-                    <span class="material-symbols-outlined text-xs align-middle">visibility</span> {{ ad.totalClicks }} vistas
-                  </div>
-                  <button (click)="openAdModal(ad)" [disabled]="isAdViewed(ad.id)"
-                    class="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
-                    [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-primary hover:bg-primary/80 text-black'">
-                    <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
-                    @if (!isAdViewed(ad.id)) { <span class="material-symbols-outlined text-xs">north_east</span> }
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      <!-- 400 -->
-      @if (getAdsByType('standard_400').length > 0) {
-        <div>
-          <div class="flex items-center gap-3 mb-4">
-            <span class="material-symbols-outlined text-blue-400">looks_4</span>
-            <h4 class="text-base font-black uppercase tracking-tight text-blue-400">Anuncios 400</h4>
-            <span class="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs font-bold rounded-full border border-blue-500/20">+{{ getRewardDisplay(400) }}</span>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            @for (ad of getAdsByType('standard_400'); track ad.id) {
-              <div class="bg-card-dark rounded-xl overflow-hidden flex flex-col group border border-white/5 hover:border-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
-                [class.opacity-50]="isAdViewed(ad.id)" [class.cursor-not-allowed]="isAdViewed(ad.id)">
-                <div class="relative aspect-[4/3] overflow-hidden bg-slate-900">
-                  <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  @if (isAdViewed(ad.id)) {
-                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span class="material-symbols-outlined text-white text-3xl">check_circle</span>
-                    </div>
-                  }
-                  <div class="absolute top-2 right-2 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">+{{ getRewardDisplay(ad.rewardCOP) }}</div>
-                </div>
-                <div class="p-3 flex flex-col flex-grow">
-                  <div class="flex items-center gap-1.5 mb-1.5">
-                    <div class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span class="material-symbols-outlined text-slate-400 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
-                    </div>
-                    <span class="text-[10px] font-bold text-slate-400 truncate">{{ ad.advertiserName }}</span>
-                  </div>
-                  <h5 class="font-bold text-xs text-white mb-2 line-clamp-2 leading-tight flex-1">{{ ad.title }}</h5>
-                  <div class="text-[10px] text-slate-600 mb-2">
-                    <span class="material-symbols-outlined text-xs align-middle">visibility</span> {{ ad.totalClicks }} vistas
-                  </div>
-                  <button (click)="openAdModal(ad)" [disabled]="isAdViewed(ad.id)"
-                    class="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
-                    [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-400 text-white'">
-                    <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
-                    @if (!isAdViewed(ad.id)) { <span class="material-symbols-outlined text-xs">north_east</span> }
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      <!-- Mini -->
-      @if (getAdsByType('mini').length > 0) {
-        <div>
-          <div class="flex items-center gap-3 mb-4">
-            <span class="material-symbols-outlined text-emerald-400">remove_circle</span>
-            <h4 class="text-base font-black uppercase tracking-tight text-emerald-400">Mini Anuncios</h4>
-            <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">+{{ getRewardDisplay(83.33) }}</span>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            @for (ad of getAdsByType('mini'); track ad.id) {
-              <div class="bg-card-dark rounded-xl overflow-hidden flex flex-col group border border-white/5 hover:border-emerald-500/30 transition-all duration-300 hover:-translate-y-0.5"
-                [class.opacity-50]="isAdViewed(ad.id)" [class.cursor-not-allowed]="isAdViewed(ad.id)">
-                <div class="relative aspect-[4/3] overflow-hidden bg-slate-900">
-                  <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  @if (isAdViewed(ad.id)) {
-                    <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span class="material-symbols-outlined text-white text-3xl">check_circle</span>
-                    </div>
-                  }
-                  <div class="absolute top-2 right-2 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">+{{ getRewardDisplay(ad.rewardCOP) }}</div>
-                </div>
-                <div class="p-3 flex flex-col flex-grow">
-                  <div class="flex items-center gap-1.5 mb-1.5">
-                    <div class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <span class="material-symbols-outlined text-slate-400 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
-                    </div>
-                    <span class="text-[10px] font-bold text-slate-400 truncate">{{ ad.advertiserName }}</span>
-                  </div>
-                  <h5 class="font-bold text-xs text-white mb-2 line-clamp-2 leading-tight flex-1">{{ ad.title }}</h5>
-                  <div class="text-[10px] text-slate-600 mb-2">
-                    <span class="material-symbols-outlined text-xs align-middle">visibility</span> {{ ad.totalClicks }} vistas
-                  </div>
-                  <button (click)="openAdModal(ad)" [disabled]="isAdViewed(ad.id)"
-                    class="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
-                    [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-white'">
-                    <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
-                    @if (!isAdViewed(ad.id)) { <span class="material-symbols-outlined text-xs">north_east</span> }
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      <div class="text-center pt-2">
-        <a routerLink="/dashboard/ads"
-          class="inline-flex items-center gap-2 text-primary font-bold text-sm hover:text-primary/80 transition-colors">
-          <span>Ver todos los anuncios</span>
-          <span class="material-symbols-outlined text-lg">arrow_forward</span>
-        </a>
+      <div>
+        <p class="text-2xl font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</p>
+        <p class="text-xs text-slate-500 font-medium">Referidos activos</p>
       </div>
     </div>
-  }
+
+    <!-- Ganancia estimada mensual -->
+    <div class="bg-card-dark rounded-2xl p-5 border border-primary/20 flex items-center gap-4 relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none"></div>
+      <div class="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-primary text-2xl">trending_up</span>
+      </div>
+      <div class="relative">
+        <p class="text-2xl font-black text-primary">{{ formatCOP(actualMonthly()) }}</p>
+        <p class="text-xs text-slate-500 font-medium">Ingreso mensual est.</p>
+      </div>
+    </div>
+
+    <!-- Nivel -->
+    <div class="bg-card-dark rounded-2xl p-5 border border-white/5 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-accent text-2xl">military_tech</span>
+      </div>
+      <div>
+        <p class="text-2xl font-black text-white">Nivel {{ (profile()?.total_referrals_count ?? 0) < 5 ? 1 : (profile()?.total_referrals_count ?? 0) < 20 ? 2 : (profile()?.total_referrals_count ?? 0) < 50 ? 3 : (profile()?.total_referrals_count ?? 0) < 100 ? 4 : 5 }}</p>
+        <p class="text-xs text-slate-500 font-medium">Tu nivel actual</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ CALCULADORA DE GANANCIAS ═══ -->
+  <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+
+    <!-- Header -->
+    <div class="px-6 pt-6 pb-5 bg-gradient-to-r from-primary/10 via-transparent to-transparent border-b border-white/5">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="material-symbols-outlined text-primary text-2xl">calculate</span>
+        <h3 class="text-lg font-black text-white uppercase tracking-tight">Calculadora de Ganancias</h3>
+        <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20 uppercase tracking-wider">Potencial</span>
+      </div>
+      <p class="text-xs text-slate-400">Simula cuánto puedes ganar con tu red de referidos a 5 niveles de profundidad</p>
+    </div>
+
+    <div class="p-6 space-y-6">
+
+      <!-- Slider de simulación -->
+      <div class="bg-black/30 rounded-xl p-5 border border-white/5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-lg">tune</span>
+            <span class="text-sm font-bold text-white">Referidos directos</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-black text-primary tabular-nums">{{ simulatedRefs() }}</span>
+            <span class="text-xs text-slate-500">personas</span>
+          </div>
+        </div>
+
+        <!-- Range slider -->
+        <input
+          type="range"
+          min="1" max="100" step="1"
+          [value]="simulatedRefs()"
+          (input)="setSimulatedRefs($event)"
+          class="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#00E5FF]"
+          style="background: linear-gradient(to right, #00E5FF {{ simulatedRefs() }}%, rgba(255,255,255,0.1) {{ simulatedRefs() }}%)"
+        />
+
+        <!-- Presets -->
+        <div class="flex gap-2 mt-3">
+          @for (preset of [5, 10, 25, 50, 100]; track preset) {
+            <button (click)="simulatedRefs.set(preset)"
+              class="flex-1 py-1 rounded-lg text-[10px] font-bold uppercase transition-all"
+              [class]="simulatedRefs() === preset
+                ? 'bg-primary text-black'
+                : 'bg-white/5 text-slate-500 hover:bg-white/10 hover:text-white'">
+              {{ preset }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Gráfico de barras por nivel -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Ganancia por nivel</h4>
+          <div class="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">
+            <span class="material-symbols-outlined text-primary text-sm">account_balance_wallet</span>
+            <span class="text-xs font-black text-primary">{{ formatCOP(totalMonthly()) }}/mes</span>
+          </div>
+        </div>
+
+        @for (tier of earningsTiers(); track tier.level) {
+          <div class="group">
+            <div class="flex items-center gap-3 mb-1">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" [class]="tier.bgClass + '/15'">
+                <span class="material-symbols-outlined text-sm" [class]="tier.colorClass">{{ tier.icon }}</span>
+              </div>
+              <div class="flex-1 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-white">{{ tier.label }}</span>
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full border" [class]="tier.colorClass + ' ' + tier.borderClass + ' bg-' + tier.bgClass + '/10'">{{ tier.pct }}%</span>
+                  <span class="text-[10px] text-slate-600">{{ tier.count | number }} personas</span>
+                </div>
+                <span class="text-xs font-black" [class]="tier.colorClass">{{ formatCOP(tier.earning) }}</span>
+              </div>
+            </div>
+            <!-- Barra de progreso -->
+            <div class="ml-10 h-2 bg-white/5 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500" [class]="tier.bgClass" [style.width.%]="barWidth(tier.earning)"></div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Nota explicativa -->
+      <div class="flex items-start gap-3 bg-primary/5 border border-primary/10 rounded-xl p-4">
+        <span class="material-symbols-outlined text-primary text-lg flex-shrink-0 mt-0.5">info</span>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          Cálculo basado en <strong class="text-white">$10.000 COP/mes</strong> por persona en tu red y un factor de expansión de ×3 por nivel.
+          Tus referidos también invitan personas, multiplicando tus ganancias automáticamente.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ RED DE REFERIDOS VISUAL ═══ -->
+  <div class="bg-card-dark rounded-2xl border border-white/5 p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
+      <h3 class="text-sm font-black text-white uppercase tracking-widest">Así crece tu red</h3>
+    </div>
+
+    <div class="flex items-start justify-center gap-0 overflow-x-auto pb-2">
+
+      <!-- Tú -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mb-1">
+          <span class="material-symbols-outlined text-primary text-lg">person</span>
+        </div>
+        <span class="text-[9px] font-bold text-primary uppercase">Tú</span>
+        <span class="text-[9px] text-slate-600">10%</span>
+      </div>
+
+      <!-- Flecha -->
+      <div class="flex items-center self-center px-1 flex-shrink-0">
+        <span class="material-symbols-outlined text-slate-700 text-base">arrow_forward</span>
+      </div>
+
+      <!-- Nivel 1 -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="flex gap-1 mb-1">
+          @for (n of [1,2,3]; track n) {
+            <div class="w-7 h-7 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary text-xs">person</span>
+            </div>
+          }
+        </div>
+        <span class="text-[9px] font-bold text-primary uppercase">Nivel 1</span>
+        <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} ref.</span>
+      </div>
+
+      <!-- Flecha -->
+      <div class="flex items-center self-center px-1 flex-shrink-0">
+        <span class="material-symbols-outlined text-slate-700 text-base">arrow_forward</span>
+      </div>
+
+      <!-- Nivel 2 -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="flex gap-1 mb-1">
+          @for (n of [1,2,3,4,5]; track n) {
+            <div class="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-blue-400 text-[10px]">person</span>
+            </div>
+          }
+        </div>
+        <span class="text-[9px] font-bold text-blue-400 uppercase">Nivel 2</span>
+        <span class="text-[9px] text-slate-600">{{ earningsTiers()[1].count | number }} ref.</span>
+      </div>
+
+      <!-- Flecha -->
+      <div class="flex items-center self-center px-1 flex-shrink-0">
+        <span class="material-symbols-outlined text-slate-700 text-base">arrow_forward</span>
+      </div>
+
+      <!-- Nivel 3+ -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="flex gap-0.5 mb-1">
+          @for (n of [1,2,3,4,5,6,7]; track n) {
+            <div class="w-5 h-5 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-violet-400 text-[9px]">person</span>
+            </div>
+          }
+        </div>
+        <span class="text-[9px] font-bold text-violet-400 uppercase">Nivel 3+</span>
+        <span class="text-[9px] text-slate-600">{{ earningsTiers()[2].count | number }}+ ref.</span>
+      </div>
+
+    </div>
+  </div>
 
   <!-- ═══ PANELES INFERIORES ═══ -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -216,14 +218,15 @@
     <div class="bg-card-dark p-5 rounded-2xl border border-white/5">
       <h3 class="font-bold text-sm text-white mb-4 uppercase tracking-widest">Acciones Rápidas</h3>
       <div class="space-y-2">
-        <a routerLink="/dashboard/ads"
+
+        <a routerLink="/dashboard/referrals"
           class="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all group">
           <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors flex-shrink-0">
-            <span class="material-symbols-outlined text-primary group-hover:text-black text-lg">ads_click</span>
+            <span class="material-symbols-outlined text-primary group-hover:text-black text-lg">share</span>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="font-bold text-sm text-white">Ver Anuncios</p>
-            <p class="text-[10px] text-slate-500">Gana por cada click</p>
+            <p class="font-bold text-sm text-white">Compartir Enlace</p>
+            <p class="text-[10px] text-slate-500">Invita y gana hasta 10%</p>
           </div>
           <span class="material-symbols-outlined text-slate-600 text-lg flex-shrink-0">chevron_right</span>
         </a>
@@ -240,17 +243,18 @@
           <span class="material-symbols-outlined text-slate-600 text-lg flex-shrink-0">chevron_right</span>
         </a>
 
-        <a routerLink="/dashboard/referrals"
+        <a routerLink="/dashboard/packages"
           class="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 transition-all group">
           <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500 transition-colors flex-shrink-0">
-            <span class="material-symbols-outlined text-emerald-400 group-hover:text-white text-lg">group</span>
+            <span class="material-symbols-outlined text-emerald-400 group-hover:text-white text-lg">upgrade</span>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="font-bold text-sm text-white">Invitar Amigos</p>
-            <p class="text-[10px] text-slate-500">Gana hasta 10% por referido</p>
+            <p class="font-bold text-sm text-white">Subir de Paquete</p>
+            <p class="text-[10px] text-slate-500">Desbloquea más ganancias</p>
           </div>
           <span class="material-symbols-outlined text-slate-600 text-lg flex-shrink-0">chevron_right</span>
         </a>
+
       </div>
     </div>
 
@@ -264,12 +268,10 @@
         @for (activity of recentActivity; track activity.description) {
           <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/5">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              [class]="activity.type === 'click' ? 'bg-primary/10' :
-                       activity.type === 'referral' ? 'bg-accent/10' : 'bg-amber-500/10'">
+              [class]="activity.type === 'referral' ? 'bg-primary/10' : 'bg-amber-500/10'">
               <span class="material-symbols-outlined text-base"
-                [class]="activity.type === 'click' ? 'text-primary' :
-                         activity.type === 'referral' ? 'text-accent' : 'text-amber-400'">
-                {{ activity.type === 'click' ? 'ads_click' : activity.type === 'referral' ? 'group' : 'star' }}
+                [class]="activity.type === 'referral' ? 'text-primary' : 'text-amber-400'">
+                {{ activity.type === 'referral' ? 'group' : 'star' }}
               </span>
             </div>
             <div class="flex-1 min-w-0">
@@ -282,27 +284,23 @@
       </div>
     </div>
 
-    <!-- Niveles de Referidos -->
-    <div class="bg-gradient-to-br from-[#0a0a0a] to-slate-900 p-5 rounded-2xl border border-white/5">
+    <!-- Comisiones por nivel -->
+    <div class="bg-card-dark p-5 rounded-2xl border border-white/5">
       <div class="flex items-center gap-2 mb-1">
         <span class="material-symbols-outlined text-primary text-lg">track_changes</span>
-        <h3 class="font-bold text-sm text-white uppercase tracking-widest">Niveles de Referidos</h3>
+        <h3 class="font-bold text-sm text-white uppercase tracking-widest">Comisiones</h3>
       </div>
-      <p class="text-[10px] text-slate-500 mb-4">Gana hasta 5 niveles de profundidad</p>
+      <p class="text-[10px] text-slate-500 mb-4">Ganas de hasta 5 niveles de profundidad</p>
       <div class="space-y-1.5">
         @for (tier of referralTiers; track tier.level) {
-          <div class="flex items-center justify-between p-2 rounded-lg"
-            [class.bg-white/10]="tier.active"
-            [class.opacity-40]="!tier.active">
+          <div class="flex items-center justify-between p-2 rounded-lg bg-white/5">
             <div class="flex items-center gap-2">
-              <span class="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{{ tier.level }}</span>
-              <span class="text-xs text-white font-medium">Nivel {{ tier.level }}</span>
+              <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" [class]="tier.bgClass + '/20'">
+                <span class="text-[10px] font-black" [class]="tier.colorClass">{{ tier.level }}</span>
+              </div>
+              <span class="text-xs text-white font-medium">{{ tier.label }}</span>
             </div>
-            <span class="text-sm font-bold"
-              [class.text-primary]="tier.active"
-              [class.text-slate-600]="!tier.active">
-              {{ tier.percentage }}%
-            </span>
+            <span class="text-sm font-black" [class]="tier.colorClass">{{ tier.pct }}%</span>
           </div>
         }
       </div>
@@ -316,13 +314,3 @@
   </div>
 
 </div>
-
-<!-- PTC Modal -->
-@if (isModalOpen()) {
-  <app-ptc-modal
-    [ad]="selectedAd()!"
-    [isOpen]="true"
-    (close)="closeModal()"
-    (rewardClaimed)="onRewardClaimed($event)"
-  />
-}

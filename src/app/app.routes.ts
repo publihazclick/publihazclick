@@ -65,6 +65,38 @@ export const routes: Routes = [
       }
     ]
   },
+  // Rutas de anunciante
+  {
+    path: 'advertiser',
+    loadComponent: () => import('./features/advertiser/components/advertiser-layout/advertiser-layout.component').then(m => m.AdvertiserLayoutComponent),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/user/components/dashboard/dashboard.component').then(m => m.UserDashboardComponent)
+      },
+      {
+        path: 'wallet',
+        loadComponent: () => import('./features/user/components/wallet/wallet.component').then(m => m.UserWalletComponent)
+      },
+      {
+        path: 'referrals',
+        loadComponent: () => import('./features/user/components/referrals/referrals.component').then(m => m.UserReferralsComponent)
+      },
+      {
+        path: 'history',
+        loadComponent: () => import('./features/user/components/history/history.component').then(m => m.UserHistoryComponent)
+      },
+      {
+        path: 'packages',
+        loadComponent: () => import('./features/user/components/packages/packages.component').then(m => m.UserPackagesComponent)
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./features/user/components/settings/settings.component').then(m => m.UserSettingsComponent)
+      }
+    ]
+  },
   // Rutas de usuario (dashboard)
   {
     path: 'dashboard',

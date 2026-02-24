@@ -1,71 +1,79 @@
-import { Component, Input, signal, computed, effect } from '@angular/core';
+import { Component, Input, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-export interface BannerSlide {
-  icon: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  gradient: string;
-}
+import { AdminBannerService } from '../../core/services/admin-banner.service';
+import type { BannerAd, AdLocation } from '../../core/models/admin.model';
 
 @Component({
   selector: 'app-banner-slider',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './banner-slider.component.html',
-  styleUrl: './banner-slider.component.scss'
+  styleUrl: './banner-slider.component.scss',
 })
-export class BannerSliderComponent {
-  @Input() slides: BannerSlide[] = [];
-  @Input() autoPlayInterval = 4000;
+export class BannerSliderComponent implements OnInit, OnDestroy {
+  @Input() location: AdLocation = 'landing';
+  @Input() autoPlayInterval = 5000;
 
-  protected readonly currentSlide = signal(0);
-  protected readonly autoPlayTimer = signal<any>(null);
+  private readonly bannerService = inject(AdminBannerService);
 
-  protected readonly sliderTransform = computed(() => {
-    return `translateX(-${this.currentSlide() * 100}%)`;
-  });
+  readonly banners = signal<BannerAd[]>([]);
+  readonly loading = signal(true);
+  readonly currentIndex = signal(0);
 
-  constructor() {
-    effect(() => {
-      if (this.slides.length > 0) {
-        this.startAutoPlay();
-      }
-    });
+  private timer: ReturnType<typeof setInterval> | null = null;
+
+  readonly sliderTransform = computed(() => `translateX(-${this.currentIndex() * 100}%)`);
+
+  ngOnInit(): void {
+    this.loadBanners();
   }
 
-  protected nextSlide(): void {
-    if (this.slides.length === 0) return;
-    this.currentSlide.update(v => (v + 1) % this.slides.length);
+  ngOnDestroy(): void {
+    this.clearTimer();
   }
 
-  protected prevSlide(): void {
-    if (this.slides.length === 0) return;
-    this.currentSlide.update(v => (v - 1 + this.slides.length) % this.slides.length);
+  private async loadBanners(): Promise<void> {
+    try {
+      const result = await this.bannerService.getActiveBannersByLocation(undefined, this.location);
+      this.banners.set(result);
+      if (result.length > 1) this.startAutoPlay();
+    } catch {
+      this.banners.set([]);
+    } finally {
+      this.loading.set(false);
+    }
   }
 
-  protected goToSlide(index: number): void {
-    this.currentSlide.set(index);
+  next(): void {
+    const len = this.banners().length;
+    if (!len) return;
+    this.currentIndex.update((v) => (v + 1) % len);
+  }
+
+  prev(): void {
+    const len = this.banners().length;
+    if (!len) return;
+    this.currentIndex.update((v) => (v - 1 + len) % len);
+  }
+
+  goTo(index: number): void {
+    this.currentIndex.set(index);
     this.resetAutoPlay();
   }
 
   private startAutoPlay(): void {
-    const timer = this.autoPlayTimer();
-    if (timer || this.slides.length === 0) return;
-    
-    const interval = setInterval(() => {
-      this.nextSlide();
-    }, this.autoPlayInterval);
-    
-    this.autoPlayTimer.set(interval);
+    this.timer = setInterval(() => this.next(), this.autoPlayInterval);
+  }
+
+  private clearTimer(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
   }
 
   private resetAutoPlay(): void {
-    const timer = this.autoPlayTimer();
-    if (timer) {
-      clearInterval(timer);
-    }
-    this.startAutoPlay();
+    this.clearTimer();
+    if (this.banners().length > 1) this.startAutoPlay();
   }
 }

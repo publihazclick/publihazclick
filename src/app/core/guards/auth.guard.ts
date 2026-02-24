@@ -172,6 +172,7 @@ export const guestGuard: CanActivateFn = async (route, state) => {
       case 'dev':
         return router.createUrlTree(['/admin']);
       case 'advertiser':
+        return router.createUrlTree(['/advertiser']);
       case 'guest':
       default:
         return router.createUrlTree(['/dashboard']);
@@ -298,7 +299,7 @@ export const roleRedirectGuard: CanActivateFn = async (route, state) => {
       case 'dev':
         return router.createUrlTree(['/admin']);
       case 'advertiser':
-        return router.createUrlTree(['/dashboard']);
+        return router.createUrlTree(['/advertiser']);
       case 'guest':
       default:
         return router.createUrlTree(['/dashboard']);

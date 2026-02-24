@@ -3,6 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
+import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminReferralModalComponent } from '../admin-referral-modal/admin-referral-modal.component';
 
 @Component({
@@ -16,6 +17,8 @@ export class AdminLayoutComponent implements OnInit {
   isDarkMode = true;
   serverLoad = 42;
   private readonly dashboardService = inject(AdminDashboardService);
+  readonly profileService = inject(ProfileService);
+  readonly profile = this.profileService.profile;
 
   @ViewChild('referralModal') referralModal!: AdminReferralModalComponent;
   
@@ -38,6 +41,7 @@ export class AdminLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadPendingCount();
+    this.profileService.getCurrentProfile();
   }
 
   private async loadPendingCount(): Promise<void> {
