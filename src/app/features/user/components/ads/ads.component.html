@@ -6,21 +6,247 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    @for (ad of ads; track ad.id) {
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <div class="aspect-video bg-slate-200 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center">
-          <span class="material-icons w-12 h-12 text-slate-400">image</span>
+  @if (loading()) {
+    <div class="flex justify-center items-center py-16">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  } @else if (error()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-6 text-center">
+      <span class="material-symbols-outlined text-rose-400 text-4xl mb-2 block">error</span>
+      <p class="text-rose-400 font-bold">{{ error() }}</p>
+      <button (click)="loadAds()" class="mt-4 px-4 py-2 bg-primary text-black text-xs font-bold rounded-lg">Reintentar</button>
+    </div>
+  } @else if (ads().length === 0) {
+    <div class="bg-card-dark border border-white/5 rounded-xl p-12 text-center">
+      <span class="material-symbols-outlined text-slate-600 text-5xl mb-3 block">campaign</span>
+      <p class="text-slate-400 font-bold">No hay anuncios disponibles en este momento</p>
+      <p class="text-slate-600 text-xs mt-1">Vuelve más tarde para encontrar nuevos anuncios</p>
+    </div>
+  } @else {
+
+    <!-- Mega Anuncios -->
+    @if (getAdsByType('mega').length > 0) {
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="material-symbols-outlined text-purple-400">star</span>
+          <h3 class="text-lg font-black uppercase tracking-tight text-purple-400">Mega Anuncios</h3>
+          <span class="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(2000) }}</span>
         </div>
-        <h3 class="font-bold mb-2">{{ ad.title }}</h3>
-        <p class="text-xs text-slate-500 mb-4">{{ ad.desc }}</p>
-        <div class="flex items-center justify-between">
-          <span class="text-primary font-black">+${{ ad.reward }} COP</span>
-          <button class="px-4 py-2 bg-primary hover:bg-primary/90 text-black text-xs font-bold rounded-lg transition-all">
-            Ver Anuncio
-          </button>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          @for (ad of getAdsByType('mega'); track ad.id) {
+            <div
+              class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-purple-500/30 hover:shadow-[0_8px_25px_-5px_rgba(168,85,247,0.15)] transition-all duration-300 hover:-translate-y-1"
+              [class.opacity-50]="isAdViewed(ad.id)"
+              [class.cursor-not-allowed]="isAdViewed(ad.id)"
+            >
+              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                @if (isAdViewed(ad.id)) {
+                  <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
+                  </div>
+                }
+                <div class="absolute top-2 right-2 bg-emerald-500 text-black px-2 py-0.5 rounded-full text-[10px] font-bold">
+                  +{{ getRewardDisplay(ad.rewardCOP) }}
+                </div>
+              </div>
+              <div class="p-3 flex flex-col flex-grow">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-slate-500 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.advertiserName }}</span>
+                </div>
+                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ ad.title }}</h4>
+                <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">visibility</span>
+                  <span>{{ ad.totalClicks }} vistas</span>
+                </div>
+                <button
+                  (click)="openAdModal(ad)"
+                  [disabled]="isAdViewed(ad.id)"
+                  class="w-full py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                  [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-400 text-white'"
+                >
+                  <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
+                  <span class="material-symbols-outlined text-sm">north_east</span>
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </div>
     }
-  </div>
+
+    <!-- Anuncios 600 -->
+    @if (getAdsByType('standard_600').length > 0) {
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="material-symbols-outlined text-cyan-400">looks_6</span>
+          <h3 class="text-lg font-black uppercase tracking-tight text-cyan-400">Anuncios 600</h3>
+          <span class="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(600) }}</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          @for (ad of getAdsByType('standard_600'); track ad.id) {
+            <div
+              class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-cyan-500/30 hover:shadow-[0_8px_25px_-5px_rgba(6,182,212,0.15)] transition-all duration-300 hover:-translate-y-1"
+              [class.opacity-50]="isAdViewed(ad.id)"
+              [class.cursor-not-allowed]="isAdViewed(ad.id)"
+            >
+              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                @if (isAdViewed(ad.id)) {
+                  <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
+                  </div>
+                }
+                <div class="absolute top-2 right-2 bg-emerald-500 text-black px-2 py-0.5 rounded-full text-[10px] font-bold">
+                  +{{ getRewardDisplay(ad.rewardCOP) }}
+                </div>
+              </div>
+              <div class="p-3 flex flex-col flex-grow">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-slate-500 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.advertiserName }}</span>
+                </div>
+                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ ad.title }}</h4>
+                <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">visibility</span>
+                  <span>{{ ad.totalClicks }} vistas</span>
+                </div>
+                <button
+                  (click)="openAdModal(ad)"
+                  [disabled]="isAdViewed(ad.id)"
+                  class="w-full py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                  [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-cyan-500 hover:bg-cyan-400 text-black'"
+                >
+                  <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
+                  <span class="material-symbols-outlined text-sm">north_east</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Anuncios 400 -->
+    @if (getAdsByType('standard_400').length > 0) {
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="material-symbols-outlined text-blue-400">looks_4</span>
+          <h3 class="text-lg font-black uppercase tracking-tight text-blue-400">Anuncios 400</h3>
+          <span class="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(400) }}</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          @for (ad of getAdsByType('standard_400'); track ad.id) {
+            <div
+              class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-blue-500/30 hover:shadow-[0_8px_25px_-5px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1"
+              [class.opacity-50]="isAdViewed(ad.id)"
+              [class.cursor-not-allowed]="isAdViewed(ad.id)"
+            >
+              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                @if (isAdViewed(ad.id)) {
+                  <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
+                  </div>
+                }
+                <div class="absolute top-2 right-2 bg-emerald-500 text-black px-2 py-0.5 rounded-full text-[10px] font-bold">
+                  +{{ getRewardDisplay(ad.rewardCOP) }}
+                </div>
+              </div>
+              <div class="p-3 flex flex-col flex-grow">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-slate-500 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.advertiserName }}</span>
+                </div>
+                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ ad.title }}</h4>
+                <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">visibility</span>
+                  <span>{{ ad.totalClicks }} vistas</span>
+                </div>
+                <button
+                  (click)="openAdModal(ad)"
+                  [disabled]="isAdViewed(ad.id)"
+                  class="w-full py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                  [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-400 text-white'"
+                >
+                  <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
+                  <span class="material-symbols-outlined text-sm">north_east</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Mini Anuncios -->
+    @if (getAdsByType('mini').length > 0) {
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <span class="material-symbols-outlined text-emerald-400">remove_circle</span>
+          <h3 class="text-lg font-black uppercase tracking-tight text-emerald-400">Mini Anuncios</h3>
+          <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(83.33) }}</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          @for (ad of getAdsByType('mini'); track ad.id) {
+            <div
+              class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-emerald-500/30 hover:shadow-[0_8px_25px_-5px_rgba(16,185,129,0.15)] transition-all duration-300 hover:-translate-y-1"
+              [class.opacity-50]="isAdViewed(ad.id)"
+              [class.cursor-not-allowed]="isAdViewed(ad.id)"
+            >
+              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                @if (isAdViewed(ad.id)) {
+                  <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
+                  </div>
+                }
+                <div class="absolute top-2 right-2 bg-emerald-500 text-black px-2 py-0.5 rounded-full text-[10px] font-bold">
+                  +{{ getRewardDisplay(ad.rewardCOP) }}
+                </div>
+              </div>
+              <div class="p-3 flex flex-col flex-grow">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-slate-500 text-xs">{{ ad.advertiserType === 'company' ? 'business' : 'person' }}</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.advertiserName }}</span>
+                </div>
+                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ ad.title }}</h4>
+                <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">visibility</span>
+                  <span>{{ ad.totalClicks }} vistas</span>
+                </div>
+                <button
+                  (click)="openAdModal(ad)"
+                  [disabled]="isAdViewed(ad.id)"
+                  class="w-full py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                  [class]="isAdViewed(ad.id) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-black'"
+                >
+                  <span>{{ isAdViewed(ad.id) ? 'Visto' : 'Ver Anuncio' }}</span>
+                  <span class="material-symbols-outlined text-sm">north_east</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
 </div>
+
+@if (isModalOpen()) {
+  <app-ptc-modal
+    [ad]="selectedAd()!"
+    [isOpen]="true"
+    (close)="closeModal()"
+    (rewardClaimed)="onRewardClaimed($event)"
+  />
+}

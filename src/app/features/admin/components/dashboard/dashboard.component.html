@@ -1,316 +1,411 @@
-<div class="space-y-6 lg:space-y-8">
-  <!-- Loading State -->
+<div class="space-y-6">
+
+  <!-- ── Loading ── -->
   @if (loading()) {
-    <div class="flex flex-col items-center justify-center py-20">
-      <span class="material-icons text-primary w-10 h-10 animate-spin mb-4">sync</span>
-      <p class="text-slate-400 text-sm font-medium">Cargando datos...</p>
+    <div class="flex flex-col items-center justify-center py-24">
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-4">sync</span>
+      <p class="text-slate-400 text-sm">Cargando datos...</p>
     </div>
   }
 
-  <!-- Error State -->
+  <!-- ── Error ── -->
   @if (error() && !loading()) {
-    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-6 text-center">
-      <span class="material-icons text-rose-500 w-10 h-10 mx-auto mb-3">error</span>
-      <p class="text-rose-500 font-medium mb-3">{{ error() }}</p>
-      <button
-        (click)="reloadData()"
-        class="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium transition-colors"
-      >
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
+      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
+      <button (click)="reloadData()"
+        class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors">
         Reintentar
       </button>
     </div>
   }
 
   @if (!loading() && !error()) {
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-      <!-- Total Users -->
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <div class="flex items-start justify-between mb-4">
-          <div class="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-            <span class="material-icons text-blue-500 w-5 h-5">group</span>
+
+    <!-- ── Page header ── -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-black text-white">Vista General</h1>
+        <p class="text-slate-400 text-sm">Métricas y actividad del sistema en tiempo real</p>
+      </div>
+      <button (click)="reloadData()"
+        class="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 rounded-xl font-bold text-sm transition-colors self-start sm:self-auto">
+        <span class="material-symbols-outlined text-xl">refresh</span>
+        Actualizar
+      </button>
+    </div>
+
+    <!-- ══ FILA 1: KPIs ══ -->
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+
+      <!-- Usuarios -->
+      <div class="bg-card-dark rounded-2xl p-4 border border-white/5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-blue-400" style="font-size:18px">group</span>
           </div>
-          <div class="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-            <span class="material-icons text-emerald-500 w-3 h-3">trending_up</span> +{{ stats()?.newUsersToday || 0 }}
-          </div>
+          @if ((stats()?.newUsersToday ?? 0) > 0) {
+            <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold uppercase">
+              +{{ stats()?.newUsersToday }} hoy
+            </span>
+          }
         </div>
-        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Usuarios</h3>
-        <div class="flex items-baseline gap-2">
-          <span class="text-3xl font-black">{{ formatNumber(stats()?.totalUsers) }}</span>
-          <div class="flex items-end gap-0.5 h-8">
-            <div class="w-1 bg-blue-500/20 h-3 rounded-full"></div>
-            <div class="w-1 bg-blue-500/20 h-5 rounded-full"></div>
-            <div class="w-1 bg-blue-500 h-8 rounded-full"></div>
-            <div class="w-1 bg-blue-500 h-6 rounded-full"></div>
-          </div>
-        </div>
+        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Usuarios</p>
+        <p class="text-2xl font-black text-white">{{ formatNumber(stats()?.totalUsers) }}</p>
+        <p class="text-xs text-slate-500 mt-1">{{ formatNumber(stats()?.activeUsers) }} activos</p>
       </div>
 
-      <!-- Active Ads -->
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <div class="flex items-start justify-between mb-4">
-          <div class="p-2 bg-primary/10 text-primary rounded-lg">
-            <span class="material-icons text-primary w-5 h-5">ads_click</span>
+      <!-- Anuncios -->
+      <div class="bg-card-dark rounded-2xl p-4 border border-white/5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary" style="font-size:18px">ads_click</span>
           </div>
-          <div class="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-            <span class="material-icons text-emerald-500 w-3 h-3">trending_up</span> Activo
-          </div>
+          @if ((stats()?.pendingAds ?? 0) > 0) {
+            <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded text-[10px] font-bold uppercase">
+              {{ stats()?.pendingAds }} pend.
+            </span>
+          }
         </div>
-        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Anuncios Activos</h3>
-        <div class="flex items-baseline gap-2">
-          <span class="text-3xl font-black">{{ formatNumber(stats()?.activeAds) }}</span>
-          <span class="text-xs text-slate-400">/ {{ formatNumber(stats()?.totalAds) }}</span>
-          <div class="flex items-end gap-0.5 h-8">
-            <div class="w-1 bg-primary/20 h-4 rounded-full"></div>
-            <div class="w-1 bg-primary/20 h-8 rounded-full"></div>
-            <div class="w-1 bg-primary h-6 rounded-full"></div>
-            <div class="w-1 bg-primary h-7 rounded-full"></div>
-          </div>
-        </div>
+        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Anuncios</p>
+        <p class="text-2xl font-black text-white">{{ formatNumber(stats()?.activeAds) }}</p>
+        <p class="text-xs text-slate-500 mt-1">de {{ formatNumber(stats()?.totalAds) }} totales</p>
       </div>
 
-      <!-- Total Revenue -->
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <div class="flex items-start justify-between mb-4">
-          <div class="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
-            <span class="material-icons text-emerald-500 w-5 h-5">attach_money</span>
+      <!-- Clicks hoy -->
+      <div class="bg-card-dark rounded-2xl p-4 border border-white/5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-accent" style="font-size:18px">touch_app</span>
           </div>
-          <div class="flex items-center gap-1 text-emerald-500 text-xs font-bold">
-            <span class="material-icons text-emerald-500 w-3 h-3">trending_up</span> Hoy
-          </div>
+          <span class="px-2 py-0.5 bg-white/5 text-slate-500 rounded text-[10px] font-bold uppercase">hoy</span>
         </div>
-        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Ingresos Totales (COP)</h3>
-        <div class="flex items-baseline gap-2">
-          <span class="text-2xl font-black">{{ formatCurrency(stats()?.totalRevenue) }}</span>
-          <div class="flex items-end gap-0.5 h-8">
-            <div class="w-1 bg-emerald-500/20 h-7 rounded-full"></div>
-            <div class="w-1 bg-emerald-500 h-5 rounded-full"></div>
-            <div class="w-1 bg-emerald-500/20 h-3 rounded-full"></div>
-            <div class="w-1 bg-emerald-500 h-6 rounded-full"></div>
-          </div>
-        </div>
+        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Clicks</p>
+        <p class="text-2xl font-black text-white">{{ formatNumber(stats()?.todayClicks) }}</p>
+        <p class="text-xs text-slate-500 mt-1">{{ formatNumber(stats()?.totalClicks) }} total</p>
       </div>
 
-      <!-- Pending Withdrawals -->
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <div class="flex items-start justify-between mb-4">
-          <div class="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
-            <span class="material-icons text-amber-500 w-5 h-5">schedule</span>
+      <!-- Pagado hoy -->
+      <div class="bg-card-dark rounded-2xl p-4 border border-white/5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">payments</span>
           </div>
-          <div class="bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[10px] px-2 py-0.5 rounded-full font-bold">
-            {{ stats()?.pendingWithdrawals || 0 }}
+          <span class="px-2 py-0.5 bg-white/5 text-slate-500 rounded text-[10px] font-bold uppercase">hoy</span>
+        </div>
+        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Pagado</p>
+        <p class="text-lg font-black text-white leading-tight">{{ formatCurrency(stats()?.todayRevenue) }}</p>
+        <p class="text-xs text-slate-500 mt-1">{{ formatCurrency(stats()?.totalPaidOut) }} acum.</p>
+      </div>
+
+      <!-- Donaciones -->
+      <div class="bg-card-dark rounded-2xl p-4 border border-white/5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-9 h-9 rounded-xl bg-pink-500/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-pink-400" style="font-size:18px">volunteer_activism</span>
           </div>
         </div>
-        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Retiros Pendientes</h3>
-        <div class="flex items-baseline gap-2">
-          <span class="text-3xl font-black">{{ formatNumber(stats()?.pendingWithdrawals) }}</span>
-          <div class="flex items-end gap-0.5 h-8">
-            <div class="w-1 bg-amber-500/20 h-3 rounded-full"></div>
-            <div class="w-1 bg-amber-500 h-6 rounded-full"></div>
-            <div class="w-1 bg-amber-500 h-8 rounded-full"></div>
-            <div class="w-1 bg-amber-500/20 h-5 rounded-full"></div>
+        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Donaciones</p>
+        <p class="text-lg font-black text-white leading-tight">{{ formatCurrency(stats()?.totalDonated) }}</p>
+        <p class="text-xs text-slate-500 mt-1">acumulado</p>
+      </div>
+
+      <!-- Retiros pendientes -->
+      <div class="bg-card-dark rounded-2xl p-4 border border-white/5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+            [class.bg-amber-500/10]="(stats()?.pendingWithdrawals ?? 0) > 0"
+            [class.bg-white/5]="(stats()?.pendingWithdrawals ?? 0) === 0">
+            <span class="material-symbols-outlined" style="font-size:18px"
+              [class.text-amber-400]="(stats()?.pendingWithdrawals ?? 0) > 0"
+              [class.text-slate-500]="(stats()?.pendingWithdrawals ?? 0) === 0">
+              schedule_send
+            </span>
           </div>
+          @if ((stats()?.pendingWithdrawals ?? 0) > 0) {
+            <span class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+          }
         </div>
+        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Retiros</p>
+        <p class="text-2xl font-black"
+          [class.text-amber-400]="(stats()?.pendingWithdrawals ?? 0) > 0"
+          [class.text-white]="(stats()?.pendingWithdrawals ?? 0) === 0">
+          {{ formatNumber(stats()?.pendingWithdrawals) }}
+        </p>
+        <p class="text-xs text-slate-500 mt-1">{{ formatNumber(stats()?.totalWithdrawals) }} completados</p>
       </div>
     </div>
 
-    <!-- Charts and Tables -->
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
-      <!-- System Activity Chart -->
-      <div class="xl:col-span-2 space-y-6 lg:space-y-8">
-        <div class="bg-white dark:bg-card-dark p-4 lg:p-8 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-          <div class="flex items-center justify-between mb-8">
-            <div>
-              <h3 class="font-bold text-lg">Actividad del Sistema</h3>
-              <p class="text-xs text-slate-400 font-medium">Usuarios nuevos vs Clicks en anuncios (Últimos 7 días)</p>
+    <!-- ══ FILA 2: Gráfico + Actividad ══ -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+      <!-- Gráfico 7 días -->
+      <div class="xl:col-span-2 bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h2 class="font-black text-white text-base">Actividad — últimos 7 días</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Usuarios registrados vs Clicks en anuncios</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-sm bg-primary/60"></span>
+              <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">Usuarios</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-sm bg-accent/60"></span>
+              <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">Clicks</span>
             </div>
           </div>
-
-          @if (chartData(); as chart) {
-            <div class="h-48 lg:h-64 flex items-end justify-between gap-2 lg:gap-4 px-2">
-              @for (label of chart.labels; track $index; let i = $index) {
-                <div class="flex-1 flex flex-col items-center gap-2 group">
-                  <div class="w-full flex gap-1 items-end justify-center h-full">
-                    @if (chart.datasets[0]; as dataset) {
-                      @let maxVal = (dataset.data | max);
-                      @let height1 = getBarHeight(dataset.data[i] || 0, maxVal || 1);
-                      <div class="w-3 bg-cyan-500/40 rounded-t" [style.height]="height1"></div>
-                    }
-                    @if (chart.datasets[1]; as dataset) {
-                      @let maxVal = (dataset.data | max);
-                      @let height2 = getBarHeight(dataset.data[i] || 0, maxVal || 1);
-                      <div class="w-3 bg-pink-500 rounded-t" [style.height]="height2"></div>
-                    }
-                  </div>
-                  <span class="text-[10px] font-bold text-slate-400">{{ label }}</span>
-                </div>
-              }
-            </div>
-            <div class="mt-8 flex gap-6 pt-6 border-t border-slate-100 dark:border-white/5">
-              <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full bg-cyan-500/40"></span>
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuarios</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full bg-pink-500"></span>
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Clicks</span>
-              </div>
-            </div>
-          } @else {
-            <div class="h-48 lg:h-64 flex items-center justify-center">
-              <p class="text-slate-400 text-sm">No hay datos disponibles</p>
-            </div>
-          }
         </div>
 
-        <!-- Pending Moderation Table -->
-        <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
-          <div class="p-4 lg:p-6 border-b border-slate-100 dark:border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h3 class="font-bold text-lg">Moderación Pendiente</h3>
-              <p class="text-xs text-slate-400">Revisar campañas pendientes de aprobación</p>
-            </div>
-            <a routerLink="/admin/moderation" class="text-primary text-xs font-bold uppercase hover:underline">Ver Todo</a>
-          </div>
-
-          @if (hasPendingAds()) {
-            <div class="overflow-x-auto">
-              <table class="w-full text-left">
-                <thead>
-                  <tr class="bg-slate-50 dark:bg-white/5 text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                    <th class="px-3 lg:px-6 py-3 lg:py-4">Campaña</th>
-                    <th class="px-3 lg:px-6 py-3 lg:py-4 hidden sm:table-cell">Anunciante</th>
-                    <th class="px-3 lg:px-6 py-3 lg:py-4 hidden md:table-cell">Tipo</th>
-                    <th class="px-3 lg:px-6 py-3 lg:py-4">Estado</th>
-                    <th class="px-3 lg:px-6 py-3 lg:py-4 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-white/5">
-                  @for (item of pendingItems(); track item.id) {
-                    <tr class="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                      <td class="px-3 lg:px-6 py-3 lg:py-4">
-                        <div class="flex items-center gap-2 lg:gap-3">
-                          <div class="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
-                            <span class="material-icons text-primary w-4 h-4">language</span>
-                          </div>
-                          <div class="min-w-0">
-                            <div class="text-sm font-bold truncate">{{ item.title }}</div>
-                            <div class="text-[10px] text-slate-400 hidden sm:block">ID: {{ item.id | slice:0:8 }}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="px-3 lg:px-6 py-3 lg:py-4 hidden sm:table-cell">
-                        <div class="text-sm font-medium">{{ item.advertiser_username }}</div>
-                        <div class="text-[10px] text-slate-400">{{ formatDate(item.submitted_at) }}</div>
-                      </td>
-                      <td class="px-3 lg:px-6 py-3 lg:py-4 text-xs font-medium text-slate-500 hidden md:table-cell capitalize">
-                        {{ item.type }}
-                      </td>
-                      <td class="px-3 lg:px-6 py-3 lg:py-4">
-                        <span class="px-2 py-1 bg-amber-500/10 text-amber-500 rounded text-[10px] font-bold uppercase tracking-tight">Pendiente</span>
-                      </td>
-                      <td class="px-3 lg:px-6 py-3 lg:py-4 text-right">
-                        <div class="flex justify-end gap-1 lg:gap-2">
-                          <button
-                            (click)="rejectAd(item.id)"
-                            class="p-1.5 lg:p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                            title="Rechazar"
-                          >
-                            <span class="material-icons text-rose-500 w-3.5 lg:w-4 h-3.5 lg:h-4">close</span>
-                          </button>
-                          <button
-                            (click)="approveAd(item.id)"
-                            class="p-1.5 lg:p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                            title="Aprobar"
-                          >
-                            <span class="material-icons text-emerald-500 w-3.5 lg:w-4 h-3.5 lg:h-4">check</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <div class="p-8 text-center">
-              <div class="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span class="material-icons text-emerald-500 w-8 h-8">check</span>
+        <div class="p-6">
+          @if (chartData(); as chart) {
+            @if (chart.labels.length > 0) {
+              <div class="h-48 flex items-end justify-between gap-2">
+                @for (label of chart.labels; track $index; let i = $index) {
+                  <div class="flex-1 flex flex-col items-center gap-1.5 group cursor-default relative">
+                    <!-- Tooltip -->
+                    <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center gap-0.5 bg-zinc-900 border border-white/10 rounded-lg px-2.5 py-2 text-[10px] whitespace-nowrap z-10 shadow-xl">
+                      <span class="text-white font-bold text-xs">{{ label }}</span>
+                      @if (chart.datasets[0]) {
+                        <span class="text-primary font-bold">{{ chart.datasets[0].data[i] }} usuarios</span>
+                      }
+                      @if (chart.datasets[1]) {
+                        <span class="text-accent font-bold">{{ chart.datasets[1].data[i] }} clicks</span>
+                      }
+                    </div>
+                    <!-- Barras -->
+                    <div class="w-full flex gap-0.5 items-end justify-center h-44">
+                      @if (chart.datasets[0]; as ds) {
+                        @let max0 = (ds.data | max) || 1;
+                        <div class="flex-1 rounded-t-md bg-primary/40 hover:bg-primary/70 transition-colors min-h-[4px]"
+                          [style.height]="getBarHeight(ds.data[i] || 0, max0)"></div>
+                      }
+                      @if (chart.datasets[1]; as ds) {
+                        @let max1 = (ds.data | max) || 1;
+                        <div class="flex-1 rounded-t-md bg-accent/50 hover:bg-accent/80 transition-colors min-h-[4px]"
+                          [style.height]="getBarHeight(ds.data[i] || 0, max1)"></div>
+                      }
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500">{{ label }}</span>
+                  </div>
+                }
               </div>
-              <h4 class="font-bold text-lg mb-2">¡Todo al día!</h4>
-              <p class="text-slate-400 text-sm">No hay campañas pendientes de moderación</p>
-            </div>
+            } @else {
+              <div class="h-48 flex flex-col items-center justify-center gap-3">
+                <span class="material-symbols-outlined text-slate-700 text-5xl">bar_chart</span>
+                <p class="text-slate-500 text-sm">Sin actividad en los últimos 7 días</p>
+              </div>
+            }
           }
         </div>
       </div>
 
-      <!-- Sidebar widgets -->
-      <div class="space-y-4 lg:space-y-8">
-        <!-- Recent Activity -->
-        <div class="bg-white dark:bg-card-dark p-4 lg:p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-          <h3 class="font-bold text-base lg:text-lg mb-4">Actividad Reciente</h3>
-
-          @if (recentActivity().length > 0) {
-            <div class="space-y-4">
-              @for (activity of recentActivity(); track activity.id) {
-                <div class="flex gap-3">
-                  <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span class="material-icons text-primary w-4 h-4">language</span>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium truncate">
-                      {{ activity.username }}
-                    </p>
-                    <p class="text-xs text-slate-400">
-                      {{ getActionText(activity.action) }}
-                    </p>
-                    <p class="text-[10px] text-slate-500 mt-1">
-                      {{ formatDate(activity.created_at) }}
-                    </p>
-                  </div>
-                </div>
-              }
-            </div>
-          } @else {
-            <p class="text-slate-400 text-sm text-center py-4">No hay actividad reciente</p>
-          }
-
-          <a routerLink="/admin/logs" class="w-full mt-6 py-3 bg-slate-50 dark:bg-white/5 hover:bg-primary hover:text-black rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-slate-200 dark:border-white/10 text-center block">
-            Ver todos los logs
+      <!-- Actividad reciente -->
+      <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden flex flex-col">
+        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h2 class="font-black text-white text-base">Actividad Reciente</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Últimas acciones del sistema</p>
+          </div>
+          <a routerLink="/admin/logs" class="text-xs text-primary font-bold hover:underline uppercase tracking-wide">
+            Ver logs
           </a>
         </div>
 
-        <!-- Revenue Summary -->
-        <div class="bg-gradient-to-br from-sidebar-dark to-slate-900 p-4 lg:p-8 rounded-2xl text-white shadow-xl">
-          <div class="flex items-center gap-2 lg:gap-3 mb-4 lg:mb-6">
-            <span class="material-icons text-primary w-4 lg:w-5 h-4 lg:h-5">language</span>
-            <h3 class="font-bold text-sm lg:text-base">Resumen del Sistema</h3>
-          </div>
-          <div class="space-y-4 mb-4 lg:mb-6">
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-slate-400">Usuarios activos</span>
-              <span class="text-sm font-bold text-emerald-400">{{ formatNumber(stats()?.activeUsers) }}</span>
+        <div class="flex-1 divide-y divide-white/5">
+          @if (recentActivity().length > 0) {
+            @for (activity of recentActivity(); track activity.id) {
+              <div class="px-5 py-3.5 flex items-start gap-3 hover:bg-white/[0.03] transition-colors">
+                <div class="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span class="material-symbols-outlined text-primary" style="font-size:14px">
+                    {{ activity.action.includes('user') ? 'person' :
+                       activity.action.includes('withdrawal') ? 'payments' :
+                       activity.action.includes('ad') || activity.action.includes('approve') ? 'ads_click' : 'history' }}
+                  </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-bold text-white truncate">{{ activity.username }}</p>
+                  <p class="text-xs text-slate-400 mt-0.5">{{ getActionText(activity.action) }}</p>
+                  <p class="text-xs text-slate-600 mt-0.5">{{ formatDate(activity.created_at) }}</p>
+                </div>
+              </div>
+            }
+          } @else {
+            <div class="flex flex-col items-center justify-center py-10 gap-3">
+              <span class="material-symbols-outlined text-slate-700 text-4xl">history</span>
+              <p class="text-slate-500 text-sm">Sin actividad reciente</p>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-slate-400">Anuncios pendientes</span>
-              <span class="text-sm font-bold text-amber-400">{{ formatNumber(stats()?.pendingAds) }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-slate-400">Retiros completados</span>
-              <span class="text-sm font-bold text-blue-400">{{ formatNumber(stats()?.totalWithdrawals) }}</span>
-            </div>
-          </div>
-          <div class="bg-white/5 p-4 rounded-xl">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold">Ingresos hoy</span>
-              <span class="text-sm font-bold text-primary">{{ formatCurrency(stats()?.todayRevenue) }}</span>
-            </div>
-            <div class="w-full bg-white/10 rounded-full h-2">
-              <div class="bg-primary rounded-full h-2" [style.width.%]="Math.min((stats()?.todayRevenue || 0) / 100000 * 100, 100)"></div>
-            </div>
-          </div>
+          }
         </div>
       </div>
     </div>
+
+    <!-- ══ FILA 3: Moderación + Resumen ══ -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+      <!-- Moderación pendiente -->
+      <div class="xl:col-span-2 bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h2 class="font-black text-white text-base">Moderación Pendiente</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Campañas en espera de aprobación</p>
+          </div>
+          <a routerLink="/admin/ads" class="text-xs text-primary font-bold hover:underline uppercase tracking-wide">
+            Ver todo
+          </a>
+        </div>
+
+        @if (hasPendingAds()) {
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="bg-white/5 text-xs font-black uppercase text-slate-400 tracking-widest">
+                  <th class="px-6 py-4">Campaña</th>
+                  <th class="px-6 py-4 hidden sm:table-cell">Anunciante</th>
+                  <th class="px-6 py-4 hidden md:table-cell">Fecha</th>
+                  <th class="px-6 py-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                @for (item of pendingItems(); track item.id) {
+                  <tr class="hover:bg-white/[0.03] transition-colors">
+                    <td class="px-6 py-4">
+                      <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                          <span class="material-symbols-outlined text-primary" style="font-size:16px">campaign</span>
+                        </div>
+                        <div class="min-w-0">
+                          <p class="font-bold text-white text-sm truncate">{{ item.title }}</p>
+                          <p class="text-xs text-slate-500 font-mono">{{ item.id | slice:0:8 }}…</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 hidden sm:table-cell">
+                      <span class="text-sm text-white font-medium">{{ item.advertiser_username }}</span>
+                    </td>
+                    <td class="px-6 py-4 hidden md:table-cell">
+                      <span class="text-sm text-slate-400">{{ formatDate(item.submitted_at) }}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                      <div class="flex justify-end gap-1.5">
+                        <button (click)="rejectAd(item.id)"
+                          class="px-3 py-1.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg text-xs font-bold transition-colors uppercase">
+                          Rechazar
+                        </button>
+                        <button (click)="approveAd(item.id)"
+                          class="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-bold transition-colors uppercase">
+                          Aprobar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="p-12 flex flex-col items-center gap-3">
+            <div class="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
+              <span class="material-symbols-outlined text-emerald-400 text-3xl">check_circle</span>
+            </div>
+            <p class="font-bold text-white">¡Todo al día!</p>
+            <p class="text-sm text-slate-500">No hay campañas pendientes de moderación</p>
+          </div>
+        }
+      </div>
+
+      <!-- Resumen del sistema -->
+      <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+        <div class="px-6 py-4 border-b border-white/5">
+          <h2 class="font-black text-white text-base">Resumen del Sistema</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Indicadores clave de la plataforma</p>
+        </div>
+
+        <!-- Métricas -->
+        <div class="divide-y divide-white/5">
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+              <span class="text-sm text-slate-400">Usuarios activos</span>
+            </div>
+            <span class="font-bold text-emerald-400 text-sm">{{ formatNumber(stats()?.activeUsers) }}</span>
+          </div>
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-2 h-2 rounded-full bg-primary flex-shrink-0"></span>
+              <span class="text-sm text-slate-400">Anuncios activos</span>
+            </div>
+            <span class="font-bold text-primary text-sm">{{ formatNumber(stats()?.activeAds) }}</span>
+          </div>
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-2 h-2 rounded-full bg-accent flex-shrink-0"></span>
+              <span class="text-sm text-slate-400">Total clicks</span>
+            </div>
+            <span class="font-bold text-accent text-sm">{{ formatNumber(stats()?.totalClicks) }}</span>
+          </div>
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
+              <span class="text-sm text-slate-400">Retiros pendientes</span>
+            </div>
+            <span class="font-bold text-sm"
+              [class.text-amber-400]="(stats()?.pendingWithdrawals ?? 0) > 0"
+              [class.text-slate-500]="(stats()?.pendingWithdrawals ?? 0) === 0">
+              {{ formatNumber(stats()?.pendingWithdrawals) }}
+            </span>
+          </div>
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-2 h-2 rounded-full bg-pink-400 flex-shrink-0"></span>
+              <span class="text-sm text-slate-400">Total donado</span>
+            </div>
+            <span class="font-bold text-pink-400 text-sm">{{ formatCurrency(stats()?.totalDonated) }}</span>
+          </div>
+        </div>
+
+        <!-- Ingresos hoy -->
+        <div class="p-5 border-t border-white/5">
+          <div class="bg-slate-900 rounded-xl p-4 border border-white/5">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Pagado hoy</span>
+              <span class="text-sm font-black text-primary">{{ formatCurrency(stats()?.todayRevenue) }}</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-1.5">
+              <div class="bg-primary rounded-full h-1.5 transition-all duration-700"
+                [style.width.%]="Math.min(((stats()?.todayRevenue ?? 0) / Math.max((stats()?.totalPaidOut ?? 1), 1)) * 100, 100)">
+              </div>
+            </div>
+            <p class="text-xs text-slate-600 mt-2">Total acumulado: {{ formatCurrency(stats()?.totalPaidOut) }}</p>
+          </div>
+        </div>
+
+        <!-- Acciones rápidas -->
+        <div class="px-5 pb-5 grid grid-cols-2 gap-2">
+          <a routerLink="/admin/users"
+            class="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-primary/10 border border-white/5 hover:border-primary/20 rounded-xl transition-colors">
+            <span class="material-symbols-outlined text-primary" style="font-size:18px">manage_accounts</span>
+            <span class="text-xs font-bold text-slate-300">Usuarios</span>
+          </a>
+          <a routerLink="/admin/ads"
+            class="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-accent/10 border border-white/5 hover:border-accent/20 rounded-xl transition-colors">
+            <span class="material-symbols-outlined text-accent" style="font-size:18px">campaign</span>
+            <span class="text-xs font-bold text-slate-300">Anuncios</span>
+          </a>
+          <a routerLink="/admin/ads"
+            class="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-amber-500/10 border border-white/5 hover:border-amber-500/20 rounded-xl transition-colors">
+            <span class="material-symbols-outlined text-amber-400" style="font-size:18px">campaign</span>
+            <span class="text-xs font-bold text-slate-300">Gestión Ads</span>
+          </a>
+          <a routerLink="/admin/reports"
+            class="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/20 rounded-xl transition-colors">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">bar_chart</span>
+            <span class="text-xs font-bold text-slate-300">Reportes</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
   }
 </div>

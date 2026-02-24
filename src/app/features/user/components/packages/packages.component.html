@@ -1,0 +1,229 @@
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-white">Paquetes</h1>
+      <p class="text-slate-400 text-sm">Elige un plan y potencia tus ganancias en la plataforma</p>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-24">
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-4">sync</span>
+      <p class="text-slate-400 text-sm">Cargando paquetes...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error() && !loading()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
+      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
+      <button (click)="ngOnInit()"
+        class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  @if (!loading() && !error()) {
+
+    <!-- Paquete activo del usuario -->
+    @if (hasActivePackage() && currentPackage()) {
+      <div class="bg-card-dark rounded-2xl border border-primary/20 overflow-hidden">
+        <div class="px-6 py-4 border-b border-white/5 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary" style="font-size:18px">verified</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h2 class="font-black text-white text-sm">Tu Paquete Activo</h2>
+            <p class="text-xs text-slate-500">Vigente hasta el {{ formatExpiry(profile()?.package_expires_at ?? null) }}</p>
+          </div>
+          <span class="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-bold uppercase">
+            {{ getDaysRemaining() }} días restantes
+          </span>
+        </div>
+        <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex items-center gap-4 flex-1">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+              [class]="getTypeColorClass(currentPackage()!.package_type).replace('text-', 'bg-').replace('/10', '/10')">
+              <span class="material-symbols-outlined" [class]="getTypeIconColor(currentPackage()!.package_type)" style="font-size:22px">workspace_premium</span>
+            </div>
+            <div>
+              <p class="font-black text-white text-lg">{{ currentPackage()!.name }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">{{ currentPackage()!.description }}</p>
+            </div>
+          </div>
+          <div class="flex gap-6 text-center">
+            <div>
+              <p class="text-lg font-black text-primary">+{{ currentPackage()!.ptc_reward_bonus }}%</p>
+              <p class="text-[10px] text-slate-500 uppercase font-bold">Bonus PTC</p>
+            </div>
+            <div>
+              <p class="text-lg font-black text-accent">+{{ currentPackage()!.referral_bonus }}%</p>
+              <p class="text-[10px] text-slate-500 uppercase font-bold">Bonus Ref.</p>
+            </div>
+            <div>
+              <p class="text-lg font-black text-white">{{ currentPackage()!.daily_ptc_limit || '∞' }}</p>
+              <p class="text-[10px] text-slate-500 uppercase font-bold">Clicks/día</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Sin paquete activo -->
+    @if (!hasActivePackage()) {
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex items-center gap-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-amber-400" style="font-size:20px">info</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-white text-sm">Sin paquete activo</p>
+          <p class="text-xs text-slate-400 mt-0.5">Adquiere un paquete para desbloquear límites más altos y mejores bonificaciones.</p>
+        </div>
+      </div>
+    }
+
+    <!-- Grid de paquetes -->
+    @if (packages().length > 0) {
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        @for (pkg of packages(); track pkg.id) {
+          <div class="bg-card-dark rounded-2xl border overflow-hidden flex flex-col transition-all"
+            [class]="isCurrentPackage(pkg) ? 'border-primary/30' : 'border-white/5 hover:border-white/10'">
+
+            <!-- Card header -->
+            <div class="px-6 pt-6 pb-4 border-b border-white/5">
+              <div class="flex items-start justify-between gap-3 mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined" [class]="getTypeIconColor(pkg.package_type)" style="font-size:20px">
+                      {{ pkg.package_type === 'basic' ? 'star' :
+                         pkg.package_type === 'premium' ? 'workspace_premium' :
+                         pkg.package_type === 'enterprise' ? 'diamond' : 'tune' }}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 class="font-black text-white text-base leading-tight">{{ pkg.name }}</h3>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getTypeColorClass(pkg.package_type)">
+                      {{ getTypeLabel(pkg.package_type) }}
+                    </span>
+                  </div>
+                </div>
+                @if (isCurrentPackage(pkg)) {
+                  <span class="px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase flex-shrink-0">
+                    Activo
+                  </span>
+                }
+              </div>
+
+              <!-- Precio -->
+              <div class="flex items-baseline gap-1.5">
+                <span class="text-3xl font-black text-white">{{ formatPrice(pkg.price, pkg.currency) }}</span>
+                @if (pkg.duration_days) {
+                  <span class="text-sm text-slate-500">/ {{ pkg.duration_days }} días</span>
+                }
+              </div>
+              @if (pkg.description) {
+                <p class="text-xs text-slate-400 mt-2 leading-relaxed">{{ pkg.description }}</p>
+              }
+            </div>
+
+            <!-- Beneficios clave -->
+            <div class="px-6 py-4 flex-1 space-y-4">
+
+              <!-- Bonificaciones -->
+              @if (pkg.ptc_reward_bonus > 0 || pkg.referral_bonus > 0 || pkg.banner_reward_bonus > 0) {
+                <div>
+                  <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Bonificaciones</p>
+                  <div class="space-y-1.5">
+                    @if (pkg.ptc_reward_bonus > 0) {
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <span class="material-symbols-outlined text-primary" style="font-size:14px">ads_click</span>
+                          <span class="text-sm text-slate-300">Bonus por click</span>
+                        </div>
+                        <span class="text-sm font-bold text-primary">+{{ pkg.ptc_reward_bonus }}%</span>
+                      </div>
+                    }
+                    @if (pkg.referral_bonus > 0) {
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <span class="material-symbols-outlined text-accent" style="font-size:14px">group_add</span>
+                          <span class="text-sm text-slate-300">Bonus por referido</span>
+                        </div>
+                        <span class="text-sm font-bold text-accent">+{{ pkg.referral_bonus }}%</span>
+                      </div>
+                    }
+                    @if (pkg.banner_reward_bonus > 0) {
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <span class="material-symbols-outlined text-emerald-400" style="font-size:14px">image</span>
+                          <span class="text-sm text-slate-300">Bonus banner</span>
+                        </div>
+                        <span class="text-sm font-bold text-emerald-400">+{{ pkg.banner_reward_bonus }}%</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Features extra -->
+              @if (pkg.features.length > 0) {
+                <div>
+                  <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Incluye</p>
+                  <ul class="space-y-1.5">
+                    @for (feature of pkg.features; track $index) {
+                      <li class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-emerald-400 flex-shrink-0 mt-0.5" style="font-size:14px">check_circle</span>
+                        <span class="text-sm text-slate-300">{{ feature }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+
+            <!-- CTA -->
+            <div class="px-6 pb-6 pt-4 border-t border-white/5">
+              @if (isCurrentPackage(pkg)) {
+                <div class="flex items-center justify-center gap-2 py-2.5 bg-primary/5 border border-primary/20 rounded-xl text-primary text-sm font-bold">
+                  <span class="material-symbols-outlined" style="font-size:18px">verified</span>
+                  Plan actual activo
+                </div>
+              } @else {
+                <a [href]="getWhatsAppUrl(pkg)" target="_blank" rel="noopener noreferrer"
+                  class="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold transition-colors">
+                  <span class="material-symbols-outlined" style="font-size:18px">chat</span>
+                  Solicitar por WhatsApp
+                </a>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+        <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">inventory_2</span>
+        <h3 class="font-bold text-lg mb-2 text-white">No hay paquetes disponibles</h3>
+        <p class="text-slate-500 text-sm">Los paquetes serán publicados próximamente.</p>
+      </div>
+    }
+
+    <!-- Nota informativa -->
+    <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex items-start gap-4">
+      <span class="material-symbols-outlined text-primary flex-shrink-0 mt-0.5" style="font-size:20px">help_outline</span>
+      <div>
+        <p class="font-bold text-white text-sm mb-1">¿Cómo adquirir un paquete?</p>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Por ahora los paquetes se gestionan vía WhatsApp con nuestro equipo de soporte. Haz clic en
+          <span class="text-emerald-400 font-bold">Solicitar por WhatsApp</span> en el plan que desees y un
+          asesor te contactará para coordinar el pago y la activación.
+        </p>
+      </div>
+    </div>
+
+  }
+</div>

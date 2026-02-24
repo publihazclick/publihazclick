@@ -1,7 +1,8 @@
 import { Component, inject, signal, OnInit, computed, Pipe, PipeTransform } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
-import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
+import { AdminCampaignService } from '../../../../core/services/admin-campaign.service';
 import type {
   DashboardStats,
   ChartData,
@@ -24,14 +25,14 @@ class MaxPipe implements PipeTransform {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, MaxPipe],
+  imports: [CommonModule, RouterLink, MaxPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class AdminDashboardComponent implements OnInit {
   // Servicios
   private readonly dashboardService = inject(AdminDashboardService);
-  private readonly ptcTaskService = inject(AdminPtcTaskService);
+  private readonly campaignService = inject(AdminCampaignService);
 
   // Signals para estado
   readonly stats = signal<DashboardStats | null>(null);
@@ -91,32 +92,20 @@ export class AdminDashboardComponent implements OnInit {
    * Aprobar un anuncio pendiente
    */
   async approveAd(id: string): Promise<void> {
-    const success = await this.ptcTaskService.activatePtcTask(id);
+    const success = await this.campaignService.approveCampaign(id);
     if (success) {
-      // Registrar la acción
-      await this.dashboardService.logActivity(
-        'approve_ad',
-        'ptc_task',
-        id,
-        { action: 'approved' }
-      );
-      // Recargar datos
+      await this.dashboardService.logActivity('approve_ad', 'campaign', id, { action: 'approved' });
       await this.loadDashboardData();
     }
   }
 
   /**
-   * Rechazar un anuncio pendiente
+   * Rechazar una campaña pendiente
    */
   async rejectAd(id: string): Promise<void> {
-    const success = await this.ptcTaskService.setPtcTaskStatus(id, 'paused');
+    const success = await this.campaignService.rejectCampaign(id);
     if (success) {
-      await this.dashboardService.logActivity(
-        'reject_ad',
-        'ptc_task',
-        id,
-        { action: 'rejected' }
-      );
+      await this.dashboardService.logActivity('reject_ad', 'campaign', id, { action: 'rejected' });
       await this.loadDashboardData();
     }
   }

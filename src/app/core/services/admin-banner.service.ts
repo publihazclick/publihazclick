@@ -88,6 +88,7 @@ export class AdminBannerService {
         reward: b.reward || 0,
         ctr: b.ctr || 0,
         status: b.status,
+        location: b.location,
         start_date: b.start_date,
         end_date: b.end_date,
         created_at: b.created_at,
@@ -203,22 +204,27 @@ export class AdminBannerService {
     id: string,
     data: Partial<CreateBannerAdData>
   ): Promise<boolean> {
-    try {
-      const { error } = await this.supabase
-        .from('banner_ads')
-        .update({
-          ...data,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.name !== undefined) payload['name'] = data.name;
+    if (data.description !== undefined) payload['description'] = data.description;
+    if (data.image_url !== undefined) payload['image_url'] = data.image_url;
+    if (data.url !== undefined) payload['url'] = data.url;
+    if (data.position !== undefined) payload['position'] = data.position;
+    if (data.impressions_limit !== undefined) payload['impressions_limit'] = data.impressions_limit;
+    if (data.clicks_limit !== undefined) payload['clicks_limit'] = data.clicks_limit;
+    if (data.reward !== undefined) payload['reward'] = data.reward;
+    if (data.location !== undefined) payload['location'] = data.location;
+    if (data.start_date !== undefined) payload['start_date'] = data.start_date;
+    if (data.end_date !== undefined) payload['end_date'] = data.end_date;
 
-      if (error) throw error;
+    const { error } = await this.supabase
+      .from('banner_ads')
+      .update(payload)
+      .eq('id', id);
 
-      return true;
-    } catch (error: any) {
-      console.error('Error updating banner ad:', error);
-      return false;
-    }
+    if (error) throw error;
+
+    return true;
   }
 
   /**

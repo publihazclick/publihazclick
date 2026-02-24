@@ -29,67 +29,39 @@ export class AdminDashboardService {
   async getDashboardStats(): Promise<DashboardStats> {
     try {
       const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
-      // Total de usuarios
-      const { count: totalUsers } = await this.supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      // Usuarios activos
-      const { count: activeUsers } = await this.supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
-      // Nuevos usuarios hoy
-      const { count: newUsersToday } = await this.supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today);
-
-      // Total de anuncios PTC
-      const { count: totalAds } = await this.supabase
-        .from('ptc_tasks')
-        .select('*', { count: 'exact', head: true });
-
-      // Anuncios activos
-      const { count: activeAds } = await this.supabase
-        .from('ptc_tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-
-      // Anuncios pendientes (campanas en draft)
-      const { count: pendingAds } = await this.supabase
-        .from('campaigns')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'draft');
-
-      // Total de ingresos (suma de total_spent de todos los usuarios)
-      const { data: revenueData } = await this.supabase
-        .from('profiles')
-        .select('total_spent');
-
-      const totalRevenue = revenueData?.reduce((sum, p) => sum + (p.total_spent || 0), 0) || 0;
-
-      // Ingresos de hoy (campanas creadas hoy)
-      const { data: todayRevenueData } = await this.supabase
-        .from('campaigns')
-        .select('spent')
-        .gte('created_at', today);
-
-      const todayRevenue = todayRevenueData?.reduce((sum, c) => sum + (c.spent || 0), 0) || 0;
-
-      // Retiros pendientes
-      const { count: pendingWithdrawals } = await this.supabase
-        .from('withdrawal_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      // Total de retiros completados
-      const { count: totalWithdrawals } = await this.supabase
-        .from('withdrawal_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'completed');
+      const [
+        { count: totalUsers },
+        { count: activeUsers },
+        { count: newUsersToday },
+        { count: totalAds },
+        { count: activeAds },
+        { count: pendingAds },
+        { count: totalClicks },
+        { count: todayClicks },
+        { count: pendingWithdrawals },
+        { count: totalWithdrawals },
+        { data: revenueData },
+        { data: todayRevenueData },
+        { data: paidOutData },
+        { data: donatedData },
+      ] = await Promise.all([
+        this.supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        this.supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        this.supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', today).lt('created_at', tomorrow),
+        this.supabase.from('ptc_tasks').select('*', { count: 'exact', head: true }),
+        this.supabase.from('ptc_tasks').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        this.supabase.from('campaigns').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
+        this.supabase.from('ptc_clicks').select('*', { count: 'exact', head: true }),
+        this.supabase.from('ptc_clicks').select('*', { count: 'exact', head: true }).gte('completed_at', today).lt('completed_at', tomorrow),
+        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        this.supabase.from('profiles').select('total_earned'),
+        this.supabase.from('ptc_clicks').select('reward_earned').gte('completed_at', today).lt('completed_at', tomorrow),
+        this.supabase.from('ptc_clicks').select('reward_earned'),
+        this.supabase.from('profiles').select('total_donated'),
+      ]);
 
       return {
         totalUsers: totalUsers || 0,
@@ -98,24 +70,23 @@ export class AdminDashboardService {
         totalAds: totalAds || 0,
         activeAds: activeAds || 0,
         pendingAds: pendingAds || 0,
-        totalRevenue: totalRevenue || 0,
-        todayRevenue: todayRevenue || 0,
+        totalRevenue: revenueData?.reduce((s, p) => s + (p.total_earned || 0), 0) || 0,
+        todayRevenue: todayRevenueData?.reduce((s, c) => s + (c.reward_earned || 0), 0) || 0,
+        totalPaidOut: paidOutData?.reduce((s, c) => s + (c.reward_earned || 0), 0) || 0,
+        totalClicks: totalClicks || 0,
+        todayClicks: todayClicks || 0,
         pendingWithdrawals: pendingWithdrawals || 0,
-        totalWithdrawals: totalWithdrawals || 0
+        totalWithdrawals: totalWithdrawals || 0,
+        totalDonated: donatedData?.reduce((s, p) => s + (p.total_donated || 0), 0) || 0,
       };
     } catch (error: any) {
       console.error('Error getting dashboard stats:', error);
       return {
-        totalUsers: 0,
-        activeUsers: 0,
-        newUsersToday: 0,
-        totalAds: 0,
-        activeAds: 0,
-        pendingAds: 0,
-        totalRevenue: 0,
-        todayRevenue: 0,
-        pendingWithdrawals: 0,
-        totalWithdrawals: 0
+        totalUsers: 0, activeUsers: 0, newUsersToday: 0,
+        totalAds: 0, activeAds: 0, pendingAds: 0,
+        totalRevenue: 0, todayRevenue: 0, totalPaidOut: 0,
+        totalClicks: 0, todayClicks: 0,
+        pendingWithdrawals: 0, totalWithdrawals: 0, totalDonated: 0,
       };
     }
   }
@@ -140,11 +111,12 @@ export class AdminDashboardService {
         labels.push(dayNames[date.getDay()]);
 
         // Usuarios registrados ese día
+        const nextDateStr = new Date(date.getTime() + 86400000).toISOString().split('T')[0];
         const { count: users } = await this.supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
           .gte('created_at', dateStr)
-          .lt('created_at', dateStr + 'T23:59:59');
+          .lt('created_at', nextDateStr);
 
         userData.push(users || 0);
 
@@ -152,19 +124,19 @@ export class AdminDashboardService {
         const { count: clicks } = await this.supabase
           .from('ptc_clicks')
           .select('*', { count: 'exact', head: true })
-          .gte('created_at', dateStr)
-          .lt('created_at', dateStr + 'T23:59:59');
+          .gte('completed_at', dateStr)
+          .lt('completed_at', nextDateStr);
 
         clickData.push(clicks || 0);
 
-        // Ingresos ese día
+        // Ingresos ese día (suma de rewards pagados)
         const { data: dayRevenue } = await this.supabase
-          .from('campaigns')
-          .select('spent')
-          .gte('created_at', dateStr)
-          .lt('created_at', dateStr + 'T23:59:59');
+          .from('ptc_clicks')
+          .select('reward_earned')
+          .gte('completed_at', dateStr)
+          .lt('completed_at', nextDateStr);
 
-        revenueData.push(dayRevenue?.reduce((sum, c) => sum + (c.spent || 0), 0) || 0);
+        revenueData.push(dayRevenue?.reduce((sum, c) => sum + (c.reward_earned || 0), 0) || 0);
       }
 
       return {

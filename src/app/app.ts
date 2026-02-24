@@ -1,4 +1,4 @@
-import { Component, signal, inject, computed, OnInit } from '@angular/core';
+import { Component, signal, inject, computed, OnInit, PendingTasks } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { HeaderComponent } from './components/header/header.component';
@@ -34,6 +34,7 @@ export class App implements OnInit {
   protected readonly title = signal('publihazclick');
   protected currencyService = inject(CurrencyService);
   private readonly bannerService = inject(AdminBannerService);
+  private readonly pendingTasks = inject(PendingTasks);
   
   // Signal para los banners dinámicos desde la BD
   readonly dynamicBanners = signal<BannerAd[]>([]);
@@ -125,24 +126,18 @@ export class App implements OnInit {
   }
   
   private async loadDynamicBanners(): Promise<void> {
+    const cleanup = this.pendingTasks.add();
     try {
       this.loadingBanners.set(true);
-      
-      // Primero intentar cargar banners para landing
-      let banners = await this.bannerService.getActiveBannersByLocation(undefined, 'landing' as AdLocation);
-      
-      // Si no hay resultados para landing, cargar todos los activos
-      if (!banners || banners.length === 0) {
-        banners = await this.bannerService.getActiveBanners();
-      }
-      
+      // Solo banners configurados para la landing
+      const banners = await this.bannerService.getActiveBannersByLocation(undefined, 'landing' as AdLocation);
       this.dynamicBanners.set(banners);
     } catch (error) {
       console.error('Error loading dynamic banners:', error);
-      // En caso de error, se usarán los datos estáticos
       this.dynamicBanners.set([]);
     } finally {
       this.loadingBanners.set(false);
+      cleanup();
     }
   }
   

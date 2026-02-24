@@ -15,6 +15,7 @@ interface PtcAdCard {
   advertiserType: 'company' | 'person';
   imageUrl: string;
   youtubeVideoId: string;
+  destinationUrl?: string;
   adType: PtcAdType;
   rewardCOP: number;
   dailyLimit: number;
@@ -54,21 +55,13 @@ export class PtcAdsComponent implements OnInit {
     try {
       this.loading.set(true);
       this.error.set(null);
-      
-      // Primero intentar cargar anuncios para landing
-      let result = await this.ptcService.getPtcTasks(
+
+      // Solo cargar anuncios configurados para la landing
+      const result = await this.ptcService.getPtcTasks(
         { status: 'active', location: 'landing' },
-        { page: 1, pageSize: 12 }
+        { page: 1, pageSize: 16 }
       );
-      
-      // Si no hay resultados para landing, cargar todos los activos
-      if (!result.data || result.data.length === 0) {
-        result = await this.ptcService.getPtcTasks(
-          { status: 'active' },
-          { page: 1, pageSize: 12 }
-        );
-      }
-      
+
       if (result.data && result.data.length > 0) {
         const mappedAds: PtcAdCard[] = result.data.map(task => {
           // Usar el tipo de anuncio para obtener la recompensa correcta
@@ -375,6 +368,7 @@ export class PtcAdsComponent implements OnInit {
       advertiserType: ad.advertiserType,
       imageUrl: ad.imageUrl,
       youtubeVideoId: ad.youtubeVideoId,
+      destinationUrl: ad.destinationUrl || '',
       adType: ad.adType,
       rewardCOP: ad.rewardCOP,
       duration: 60

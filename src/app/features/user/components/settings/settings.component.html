@@ -1,93 +1,213 @@
 <div class="space-y-6">
-  <div class="flex items-center justify-between">
-    <div>
-      <h2 class="text-xl font-black">Configuración</h2>
-      <p class="text-xs text-slate-400">Gestiona tu perfil y preferencias de cuenta</p>
-    </div>
+
+  <!-- Header -->
+  <div>
+    <h1 class="text-2xl font-black text-white">Mi Perfil</h1>
+    <p class="text-slate-400 text-sm">Gestiona tu información personal y foto de perfil</p>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Profile Settings -->
-    <div class="lg:col-span-2 space-y-6">
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <h3 class="font-bold mb-4">Información Personal</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nombre Completo</label>
-              <input type="text" value="Usuario Ejemplo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-20">
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-4">sync</span>
+      <p class="text-slate-400 text-sm">Cargando perfil...</p>
+    </div>
+  }
+
+  @if (!loading()) {
+
+    <!-- Alerts -->
+    @if (successMsg()) {
+      <div class="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+        <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:18px">check_circle</span>
+        <p class="text-emerald-400 text-sm font-medium">{{ successMsg() }}</p>
+      </div>
+    }
+    @if (errorMsg()) {
+      <div class="flex items-center gap-3 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+        <span class="material-symbols-outlined text-rose-400 flex-shrink-0" style="font-size:18px">error</span>
+        <p class="text-rose-400 text-sm font-medium">{{ errorMsg() }}</p>
+      </div>
+    }
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: Avatar card -->
+      <div class="lg:col-span-1">
+        <div class="bg-card-dark rounded-2xl border border-white/5 p-6 flex flex-col items-center gap-4">
+
+          <!-- Avatar -->
+          <div class="relative group">
+            <div class="w-24 h-24 rounded-2xl border-2 border-white/10 overflow-hidden shadow-lg shadow-primary/10 rotate-3 transition-transform group-hover:rotate-0">
+              @if (currentAvatar) {
+                <img [src]="currentAvatar" alt="Avatar" class="w-full h-full object-cover -rotate-3 group-hover:rotate-0 transition-transform">
+              } @else {
+                <div class="w-full h-full bg-gradient-to-tr from-primary to-blue-600 flex items-center justify-center">
+                  <span class="text-2xl font-black text-black -rotate-3 group-hover:rotate-0 transition-transform">{{ initials }}</span>
+                </div>
+              }
             </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nombre de Usuario</label>
-              <input type="text" value="usuario123" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+            <!-- Upload overlay -->
+            @if (uploadingAvatar()) {
+              <div class="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center">
+                <span class="material-symbols-outlined text-white animate-spin" style="font-size:22px">sync</span>
+              </div>
+            }
+          </div>
+
+          <!-- Name + level -->
+          <div class="text-center">
+            <p class="font-black text-white text-base">{{ profile()?.full_name || profile()?.username || '—' }}</p>
+            <p class="text-xs text-primary font-bold uppercase tracking-widest mt-0.5">Nivel {{ profile()?.level }}</p>
+          </div>
+
+          <!-- Upload button -->
+          <label class="cursor-pointer">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="hidden"
+              (change)="onAvatarChange($event)"
+              [disabled]="uploadingAvatar()"
+            >
+            <span class="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/30 rounded-xl text-sm font-bold text-slate-300 hover:text-white transition-all">
+              <span class="material-symbols-outlined" style="font-size:16px">photo_camera</span>
+              {{ uploadingAvatar() ? 'Subiendo...' : 'Cambiar foto' }}
+            </span>
+          </label>
+          <p class="text-[10px] text-slate-500 text-center">JPG, PNG o WebP · máx 2MB</p>
+
+          <!-- Stats -->
+          <div class="w-full pt-4 border-t border-white/5 grid grid-cols-2 gap-3">
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <p class="text-lg font-black text-primary">{{ profile()?.total_referrals_count ?? 0 }}</p>
+              <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Referidos</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <p class="text-lg font-black text-accent">{{ profile()?.level ?? 1 }}</p>
+              <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Nivel</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Right: Form -->
+      <div class="lg:col-span-2 space-y-5">
+
+        <!-- Personal info -->
+        <div class="bg-card-dark rounded-2xl border border-white/5 p-6 space-y-5">
+          <h3 class="font-black text-white text-sm uppercase tracking-widest">Información Personal</h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Nombre completo</label>
+              <input
+                type="text"
+                [ngModel]="fullName()"
+                (ngModelChange)="fullName.set($event)"
+                placeholder="Tu nombre completo"
+                class="w-full bg-white/5 border border-white/10 focus:border-primary/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+              >
+            </div>
+            <div>
+              <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Nombre de usuario</label>
+              <div class="relative">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold">@</span>
+                <input
+                  type="text"
+                  [ngModel]="username()"
+                  (ngModelChange)="username.set($event)"
+                  placeholder="tu_usuario"
+                  class="w-full bg-white/5 border border-white/10 focus:border-primary/50 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Read-only fields -->
           <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Correo Electrónico</label>
-            <input type="email" value="usuario@email.com" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Correo electrónico</label>
+            <div class="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5">
+              <span class="material-symbols-outlined text-slate-600 flex-shrink-0" style="font-size:16px">mail</span>
+              <span class="text-sm text-slate-400">{{ profile()?.email || '—' }}</span>
+              <span class="ml-auto px-2 py-0.5 bg-white/5 text-slate-500 text-[10px] font-bold rounded uppercase">No editable</span>
+            </div>
           </div>
-          <div class="flex justify-end">
-            <button class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-lg transition-all text-sm">
-              Guardar Cambios
+
+          <div>
+            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Código de referido</label>
+            <div class="flex items-center gap-2">
+              <div class="flex-1 flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5">
+                <span class="material-symbols-outlined text-primary flex-shrink-0" style="font-size:16px">link</span>
+                <span class="text-sm text-slate-300 font-mono tracking-widest">{{ profile()?.referral_code || '—' }}</span>
+              </div>
+              <button
+                (click)="copyReferralCode()"
+                class="flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all text-sm font-bold flex-shrink-0"
+                [class]="copied() ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:border-white/20'"
+              >
+                <span class="material-symbols-outlined" style="font-size:16px">{{ copied() ? 'check' : 'content_copy' }}</span>
+                {{ copied() ? 'Copiado' : 'Copiar' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Save button -->
+          <div class="flex justify-end pt-2">
+            <button
+              (click)="saveProfile()"
+              [disabled]="saving()"
+              class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-black font-black rounded-xl text-sm transition-colors"
+            >
+              @if (saving()) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span>
+              }
+              {{ saving() ? 'Guardando...' : 'Guardar cambios' }}
             </button>
           </div>
         </div>
-      </div>
 
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <h3 class="font-bold mb-4">Método de Pago</h3>
-        <div class="space-y-4">
-          <div class="p-4 border border-primary/20 rounded-xl bg-primary/5 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-              <span class="material-icons w-6 h-6 text-primary">credit_card</span>
+        <!-- Account info (read-only) -->
+        <div class="bg-card-dark rounded-2xl border border-white/5 p-6 space-y-3">
+          <h3 class="font-black text-white text-sm uppercase tracking-widest">Cuenta</h3>
+          <div class="divide-y divide-white/5">
+            <div class="flex items-center justify-between py-3">
+              <span class="text-sm text-slate-400">Rol</span>
+              <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold uppercase rounded">{{ profile()?.role || '—' }}</span>
             </div>
-            <div class="flex-1">
-              <p class="font-bold">Nequi</p>
-              <p class="text-xs text-slate-500">**** 1234</p>
+            <div class="flex items-center justify-between py-3">
+              <span class="text-sm text-slate-400">Estado</span>
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full"
+                  [class]="profile()?.is_active ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wider"
+                  [class]="profile()?.is_active ? 'text-emerald-400' : 'text-rose-400'">
+                  {{ profile()?.is_active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </div>
             </div>
-            <span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded">Principal</span>
+            <div class="flex items-center justify-between py-3">
+              <span class="text-sm text-slate-400">Miembro desde</span>
+              <span class="text-sm text-slate-300 font-bold">
+                {{ profile()?.created_at ? (profile()!.created_at | date:'dd/MM/yyyy') : '—' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-3">
+              <span class="text-sm text-slate-400">Paquete activo</span>
+              @if (profile()?.has_active_package) {
+                <span class="flex items-center gap-1.5 text-primary text-[10px] font-bold uppercase">
+                  <span class="material-symbols-outlined" style="font-size:14px">workspace_premium</span>
+                  Activo
+                </span>
+              } @else {
+                <span class="text-slate-500 text-[10px] font-bold uppercase">Sin paquete</span>
+              }
+            </div>
           </div>
-          <button class="w-full py-3 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-primary/50 rounded-xl text-slate-500 hover:text-primary font-bold text-xs uppercase transition-all flex items-center justify-center gap-2">
-            <span class="material-icons w-4 h-4">add</span>
-            Agregar Método de Pago
-          </button>
         </div>
+
       </div>
     </div>
+  }
 
-    <!-- Sidebar Options -->
-    <div class="space-y-6">
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <h3 class="font-bold mb-4">Seguridad</h3>
-        <div class="space-y-3">
-          <button class="w-full p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-left">
-            <p class="font-bold text-sm">Cambiar Contraseña</p>
-            <p class="text-[10px] text-slate-500">Actualiza tu contraseña regularmente</p>
-          </button>
-          <button class="w-full p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all text-left">
-            <p class="font-bold text-sm">Verificación en Dos Pasos</p>
-            <p class="text-[10px] text-slate-500">Añade una capa extra de seguridad</p>
-          </button>
-        </div>
-      </div>
-
-      <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-        <h3 class="font-bold mb-4">Notificaciones</h3>
-        <div class="space-y-3">
-          <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-sm">Nuevos anuncios</span>
-            <input type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
-          </label>
-          <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-sm">Ganancias de referidos</span>
-            <input type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
-          </label>
-          <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-sm">Retiros aprobados</span>
-            <input type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
-          </label>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>

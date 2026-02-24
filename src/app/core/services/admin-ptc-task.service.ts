@@ -73,6 +73,7 @@ export class AdminPtcTaskService {
         title: t.title,
         description: t.description || '',
         url: t.url,
+        youtube_url: t.youtube_url || null,
         image_url: t.image_url,
         reward: t.reward || 0,
         duration: t.duration || 30,
@@ -129,6 +130,7 @@ export class AdminPtcTaskService {
         title: data.title,
         description: data.description || '',
         url: data.url,
+        youtube_url: data.youtube_url || null,
         image_url: data.image_url,
         reward: data.reward || 0,
         duration: data.duration || 30,
@@ -160,11 +162,14 @@ export class AdminPtcTaskService {
           title: data.title,
           description: data.description,
           url: data.url,
+          youtube_url: data.youtube_url || null,
           image_url: data.image_url,
           reward: data.reward,
           duration: data.duration,
           daily_limit: data.daily_limit,
           advertiser_id: data.advertiser_id,
+          ad_type: data.ad_type,
+          is_demo_only: data.is_demo_only,
           status: 'active',
           location: data.location,
           total_clicks: 0
@@ -188,22 +193,28 @@ export class AdminPtcTaskService {
     id: string,
     data: Partial<CreatePtcTaskData>
   ): Promise<boolean> {
-    try {
-      const { error } = await this.supabase
-        .from('ptc_tasks')
-        .update({
-          ...data,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
+    // ptc_tasks no tiene columna updated_at — no incluirla en el update
+    const payload: Record<string, unknown> = {};
+    if (data.title !== undefined) payload['title'] = data.title;
+    if (data.description !== undefined) payload['description'] = data.description;
+    if (data.url !== undefined) payload['url'] = data.url;
+    if (data.image_url !== undefined) payload['image_url'] = data.image_url;
+    if (data.reward !== undefined) payload['reward'] = data.reward;
+    if (data.duration !== undefined) payload['duration'] = data.duration;
+    if (data.daily_limit !== undefined) payload['daily_limit'] = data.daily_limit;
+    if (data.location !== undefined) payload['location'] = data.location;
+    if (data.ad_type !== undefined) payload['ad_type'] = data.ad_type;
+    if (data.is_demo_only !== undefined) payload['is_demo_only'] = data.is_demo_only;
+    if (data.youtube_url !== undefined) payload['youtube_url'] = data.youtube_url || null;
 
-      if (error) throw error;
+    const { error } = await this.supabase
+      .from('ptc_tasks')
+      .update(payload)
+      .eq('id', id);
 
-      return true;
-    } catch (error: any) {
-      console.error('Error updating PTC task:', error);
-      return false;
-    }
+    if (error) throw error;
+
+    return true;
   }
 
   /**

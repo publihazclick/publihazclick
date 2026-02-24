@@ -40,7 +40,8 @@ export const routes: Routes = [
       },
       {
         path: 'moderation',
-        loadComponent: () => import('./features/admin/components/moderation/moderation.component').then(m => m.AdminModerationComponent)
+        redirectTo: '/admin/ads',
+        pathMatch: 'full'
       },
       {
         path: 'reports',
@@ -89,6 +90,10 @@ export const routes: Routes = [
       {
         path: 'history',
         loadComponent: () => import('./features/user/components/history/history.component').then(m => m.UserHistoryComponent)
+      },
+      {
+        path: 'packages',
+        loadComponent: () => import('./features/user/components/packages/packages.component').then(m => m.UserPackagesComponent)
       },
       {
         path: 'settings',

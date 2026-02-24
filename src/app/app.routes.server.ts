@@ -6,6 +6,11 @@ export const serverRoutes: ServerRoute[] = [
     path: 'ref/:code',
     renderMode: RenderMode.Client
   },
+  // Landing page - SSR dinámico para que los banners se carguen en tiempo real
+  {
+    path: '',
+    renderMode: RenderMode.Server
+  },
   // Resto de rutas usan prerendering
   {
     path: '**',

@@ -1,83 +1,97 @@
 <div class="space-y-6">
+
+  <!-- Toast -->
+  @if (successMessage()) {
+    <div class="fixed top-6 right-6 z-[100] flex items-center gap-3 bg-emerald-500 text-white px-5 py-3.5 rounded-2xl shadow-2xl shadow-emerald-500/30 max-w-sm">
+      <span class="material-symbols-outlined text-xl flex-shrink-0">check_circle</span>
+      <p class="text-sm font-semibold">{{ successMessage() }}</p>
+    </div>
+  }
+
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-black">Gestión de Anuncios</h1>
-      <p class="text-slate-400 text-sm">Administrar anuncios PTC y Banners</p>
+      <h1 class="text-2xl font-black text-white">Gestión de Anuncios</h1>
+      <p class="text-slate-400 text-sm">Administrar, moderar y publicar anuncios PTC y Banners</p>
     </div>
     <button
       (click)="activeTab() === 'ptc' ? openCreatePtcModal() : openCreateBannerModal()"
       class="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors"
     >
-      <span class="material-icons text-black w-4 h-4">add</span>
+      <span class="material-symbols-outlined text-xl">add</span>
       {{ activeTab() === 'ptc' ? 'Nuevo Anuncio PTC' : 'Nuevo Banner' }}
     </button>
   </div>
 
-  <!-- Tabs de tipo de anuncio -->
-  <div class="flex gap-2 border-b border-slate-200 dark:border-white/10">
+  <!-- Tabs tipo de anuncio -->
+  <div class="flex gap-1 bg-card-dark p-1.5 rounded-xl border border-white/5 w-fit">
     <button
       (click)="setTab('ptc')"
-      class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
-      [class]="activeTab() === 'ptc' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
+      class="flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-lg transition-all"
+      [class]="activeTab() === 'ptc' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'"
     >
-      <span class="material-icons text-primary w-4 h-4 mr-2">campaign</span>
+      <span class="material-symbols-outlined text-base">campaign</span>
       Anuncios PTC
+      @if (activeTab() === 'ptc' && pendingCount() > 0) {
+        <span class="bg-yellow-400 text-black text-[10px] px-1.5 py-0.5 rounded font-black leading-none">{{ pendingCount() }}</span>
+      }
     </button>
     <button
       (click)="setTab('banner')"
-      class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
-      [class]="activeTab() === 'banner' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
+      class="flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-lg transition-all"
+      [class]="activeTab() === 'banner' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'"
     >
-      <span class="material-icons text-primary w-4 h-4 mr-2">image</span>
+      <span class="material-symbols-outlined text-base">image</span>
       Banners
+      @if (activeTab() === 'banner' && pendingCount() > 0) {
+        <span class="bg-yellow-400 text-black text-[10px] px-1.5 py-0.5 rounded font-black leading-none">{{ pendingCount() }}</span>
+      }
     </button>
   </div>
 
-  <!-- Tabs de ubicación -->
-  <div class="flex gap-2 bg-slate-50 dark:bg-white/5 p-2 rounded-xl">
+  <!-- Ubicación -->
+  <div class="flex flex-wrap gap-3">
     @for (loc of locations; track loc.value) {
       <button
         (click)="setLocation(loc.value)"
-        class="px-4 py-2 text-sm font-bold rounded-lg transition-colors"
-        [class]="activeLocation() === loc.value 
-          ? 'bg-primary text-black' 
-          : 'text-slate-500 hover:bg-white dark:hover:bg-slate-800'"
+        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border"
+        [class]="activeLocation() === loc.value
+          ? 'bg-primary/10 text-primary border-primary/30'
+          : 'text-slate-400 border-white/10 hover:bg-white/5 hover:text-white'"
       >
+        <span class="material-symbols-outlined text-base">{{ loc.icon }}</span>
         {{ loc.label }}
       </button>
     }
   </div>
 
-  <!-- Filters -->
-  <div class="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-200 dark:border-white/5">
-    <div class="flex flex-col md:flex-row gap-4">
+  <!-- Filtros -->
+  <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+    <div class="flex flex-col md:flex-row gap-3">
       <div class="flex-1 relative">
-        <span class="material-icons text-slate-400 w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
         <input
           type="text"
           placeholder="Buscar por nombre..."
           [value]="searchQuery()"
           (input)="onSearch($any($event).target.value)"
-          class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+          class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-primary focus:border-transparent"
         />
       </div>
-
       <select
         [value]="selectedStatus()"
         (change)="onStatusChange($any($event).target.value)"
-        class="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+        class="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
       >
         @for (status of (activeTab() === 'ptc' ? ptcStatuses : bannerStatuses); track status.value) {
           <option [value]="status.value">{{ status.label }}</option>
         }
       </select>
-
       @if (activeTab() === 'banner') {
         <select
           [value]="selectedPosition()"
           (change)="onPositionChange($any($event).target.value)"
-          class="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+          class="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
         >
           <option value="all">Todas las posiciones</option>
           @for (pos of bannerPositions; track pos.value) {
@@ -88,24 +102,41 @@
     </div>
   </div>
 
+  <!-- Error -->
+  @if (error() && !loading()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
+      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
+      <button
+        (click)="loadData()"
+        class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors"
+      >
+        Reintentar
+      </button>
+    </div>
+  }
+
   <!-- Loading -->
   @if (loading()) {
     <div class="flex flex-col items-center justify-center py-20">
-      <span class="material-icons text-primary w-10 h-10 animate-spin">sync</span>
-      <p class="text-slate-400 text-sm font-medium">Cargando anuncios...</p>
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-3">sync</span>
+      <p class="text-slate-400 text-sm">Cargando anuncios...</p>
     </div>
   }
 
   @if (!loading() && !error()) {
-    <!-- PTC Ads -->
+
+    <!-- ══ PTC ADS ══════════════════════════════════════════════════════════ -->
     @if (activeTab() === 'ptc') {
-      <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
+
+      <!-- Desktop table -->
+      <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left">
             <thead>
-              <tr class="bg-slate-50 dark:bg-white/5 text-xs font-black uppercase text-slate-500 tracking-widest">
-                <th class="px-6 py-4">Título</th>
-                <th class="px-6 py-4">Anunciante</th>
+              <tr class="bg-white/5 text-xs font-black uppercase text-slate-400 tracking-widest">
+                <th class="px-6 py-4">Anuncio</th>
+                <th class="px-6 py-4">Tipo</th>
                 <th class="px-6 py-4">Recompensa</th>
                 <th class="px-6 py-4">Duración</th>
                 <th class="px-6 py-4">Clics</th>
@@ -114,67 +145,94 @@
                 <th class="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+            <tbody class="divide-y divide-white/5">
               @for (ptc of ptcAds(); track ptc.id) {
-                <tr class="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                <tr class="hover:bg-white/[0.03] transition-colors">
                   <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                      @if (ptc.image_url) {
-                        <img [src]="ptc.image_url" [alt]="ptc.title" class="w-10 h-10 rounded-lg object-cover">
-                      } @else {
-                        <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                          <span class="material-icons text-slate-400 w-5 h-5">campaign</span>
-                        </div>
-                      }
+                      <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
+                        @if (ptc.image_url) {
+                          <img [src]="ptc.image_url" [alt]="ptc.title" class="w-full h-full object-cover">
+                        } @else {
+                          <div class="w-full h-full flex items-center justify-center">
+                            <span class="material-symbols-outlined text-slate-500">campaign</span>
+                          </div>
+                        }
+                      </div>
                       <div>
-                        <div class="font-bold">{{ ptc.title }}</div>
-                        <div class="text-xs text-slate-400 truncate max-w-[200px]">{{ ptc.url }}</div>
+                        <div class="font-bold text-white text-sm">{{ ptc.title }}</div>
+                        <div class="text-xs text-slate-500 truncate max-w-[180px]">{{ ptc.advertiser_username }}</div>
                       </div>
                     </div>
                   </td>
-                  <td class="px-6 py-4 text-sm">{{ ptc.advertiser_username }}</td>
-                  <td class="px-6 py-4 font-bold">{{ formatCurrency(ptc.reward) }}</td>
-                  <td class="px-6 py-4 text-sm">{{ ptc.duration }}s</td>
-                  <td class="px-6 py-4 text-sm">{{ ptc.total_clicks }}</td>
                   <td class="px-6 py-4">
-                    <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getStatusClass(ptc.status)">
-                      {{ ptc.status }}
+                    <span class="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-bold uppercase">
+                      {{ getAdTypeLabel(ptc.ad_type || 'mini') }}
                     </span>
                   </td>
-                  <td class="px-6 py-4 text-sm text-slate-400">
-                    {{ formatDate(ptc.created_at) }}
+                  <td class="px-6 py-4 font-bold text-white text-sm">{{ formatCurrency(ptc.reward) }}</td>
+                  <td class="px-6 py-4 text-sm text-slate-300">{{ ptc.duration }}s</td>
+                  <td class="px-6 py-4 text-sm text-slate-300">{{ ptc.total_clicks }}</td>
+                  <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getStatusClass(ptc.status)">
+                      {{ getStatusLabel(ptc.status) }}
+                    </span>
                   </td>
-                  <td class="px-6 py-4 text-right">
-                    <div class="flex justify-end gap-2">
+                  <td class="px-6 py-4 text-sm text-slate-400">{{ formatDate(ptc.created_at) }}</td>
+                  <td class="px-6 py-4">
+                    <div class="flex justify-end items-center gap-1">
+                      <!-- Aprobar (si está pendiente o rechazado) -->
+                      @if (ptc.status === 'pending' || ptc.status === 'rejected') {
+                        <button
+                          (click)="approvePtc(ptc)"
+                          class="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                          title="Aprobar y activar"
+                        >
+                          <span class="material-symbols-outlined text-xl">check_circle</span>
+                        </button>
+                      }
+                      <!-- Rechazar (si está activo o pendiente) -->
+                      @if (ptc.status === 'active' || ptc.status === 'pending') {
+                        <button
+                          (click)="rejectPtc(ptc)"
+                          class="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                          title="Rechazar"
+                        >
+                          <span class="material-symbols-outlined text-xl">cancel</span>
+                        </button>
+                      }
                       <a
                         [href]="ptc.url"
                         target="_blank"
-                        class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                        title="Ver"
+                        class="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        title="Ver URL"
                       >
-                        <span class="material-icons text-primary w-4 h-4">open_in_new</span>
+                        <span class="material-symbols-outlined text-xl">open_in_new</span>
                       </a>
                       <button
                         (click)="openEditPtcModal(ptc)"
-                        class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        class="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         title="Editar"
                       >
-                        <span class="material-icons text-primary w-4 h-4">edit</span>
+                        <span class="material-symbols-outlined text-xl">edit</span>
                       </button>
+                      <!-- Pausar / Activar -->
+                      @if (ptc.status === 'active' || ptc.status === 'paused') {
+                        <button
+                          (click)="togglePtcStatus(ptc)"
+                          class="p-1.5 rounded-lg transition-colors"
+                          [class]="ptc.status === 'active' ? 'text-amber-500 hover:bg-amber-500/10' : 'text-emerald-500 hover:bg-emerald-500/10'"
+                          [title]="ptc.status === 'active' ? 'Pausar' : 'Activar'"
+                        >
+                          <span class="material-symbols-outlined text-xl">{{ ptc.status === 'active' ? 'pause' : 'play_arrow' }}</span>
+                        </button>
+                      }
                       <button
-                        (click)="togglePtcStatus(ptc)"
-                        class="p-2 rounded-lg transition-colors"
-                        [class]="ptc.status === 'active' ? 'text-amber-500 hover:bg-amber-500/10' : 'text-emerald-500 hover:bg-emerald-500/10'"
-                        [title]="ptc.status === 'active' ? 'Pausar' : 'Activar'"
-                      >
-                        <span class="material-icons text-primary w-4 h-4">{{ ptc.status === 'active' ? 'pause' : 'play_arrow' }}</span>
-                      </button>
-                      <button
-                        (click)="deletePtc(ptc)"
-                        class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                        (click)="openDeletePtcConfirm(ptc)"
+                        class="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                         title="Eliminar"
                       >
-                        <span class="material-icons text-rose-500 w-4 h-4">delete</span>
+                        <span class="material-symbols-outlined text-xl">delete</span>
                       </button>
                     </div>
                   </td>
@@ -183,126 +241,325 @@
             </tbody>
           </table>
         </div>
-
         @if (ptcAds().length === 0) {
           <div class="p-12 text-center">
-            <span class="material-icons text-slate-400 w-12 h-12 mx-auto mb-4">campaign</span>
-            <h3 class="font-bold text-lg mb-2">No hay anuncios PTC</h3>
-            <p class="text-slate-400 text-sm">Crea el primer anuncio PTC</p>
+            <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">campaign</span>
+            <h3 class="font-bold text-lg text-white mb-2">No hay anuncios PTC</h3>
+            <p class="text-slate-500 text-sm">Crea el primer anuncio PTC para esta ubicación</p>
           </div>
         }
       </div>
-    }
 
-    <!-- Banner Ads -->
-    @if (activeTab() === 'banner') {
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @for (banner of bannerAds(); track banner.id) {
-          <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
-            <div class="aspect-video bg-slate-100 dark:bg-slate-800 relative">
-              <img [src]="banner.image_url" [alt]="banner.name" class="w-full h-full object-cover">
-              <div class="absolute top-2 right-2">
-                <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getStatusClass(banner.status)">
-                  {{ banner.status }}
+      <!-- Mobile cards PTC -->
+      <div class="md:hidden space-y-3">
+        @for (ptc of ptcAds(); track ptc.id) {
+          <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+            <div class="flex items-start gap-3 mb-3">
+              <div class="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
+                @if (ptc.image_url) {
+                  <img [src]="ptc.image_url" [alt]="ptc.title" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-slate-500">campaign</span>
+                  </div>
+                }
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-white text-sm truncate">{{ ptc.title }}</div>
+                <div class="text-xs text-slate-500 mb-1">{{ ptc.advertiser_username }}</div>
+                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getStatusClass(ptc.status)">
+                  {{ getStatusLabel(ptc.status) }}
                 </span>
               </div>
             </div>
-            <div class="p-4">
-              <h3 class="font-bold mb-1">{{ banner.name }}</h3>
-              <p class="text-xs text-slate-400 mb-3">{{ getPositionLabel(banner.position) }}</p>
-              
-              <div class="grid grid-cols-3 gap-2 text-center text-sm mb-3">
-                <div>
-                  <div class="flex items-center justify-center gap-1 text-slate-400">
-                    <span class="material-icons text-slate-400 w-3 h-3">visibility</span>
-                  </div>
-                  <div class="font-bold">{{ banner.total_impressions }}</div>
-                  <div class="text-xs text-slate-400">Impresiones</div>
-                </div>
-                <div>
-                  <div class="flex items-center justify-center gap-1 text-slate-400">
-                    <span class="material-icons text-slate-400 w-3 h-3">ads_click</span>
-                  </div>
-                  <div class="font-bold">{{ banner.total_clicks }}</div>
-                  <div class="text-xs text-slate-400">Clics</div>
-                </div>
-                <div>
-                  <div class="flex items-center justify-center gap-1 text-slate-400">
-                    <span class="material-icons text-slate-400 w-3 h-3">trending_up</span>
-                  </div>
-                  <div class="font-bold">{{ banner.ctr.toFixed(1) }}%</div>
-                  <div class="text-xs text-slate-400">CTR</div>
-                </div>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+              <div class="bg-white/5 rounded-lg p-2">
+                <div class="font-bold text-primary">{{ formatCurrency(ptc.reward) }}</div>
+                <div class="text-slate-500">Recompensa</div>
               </div>
-
-              <div class="flex gap-2">
-                <button
-                  (click)="openEditBannerModal(banner)"
-                  class="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-white/5 hover:bg-primary/10 rounded-lg transition-colors"
-                >
-                  <span class="material-icons text-primary w-3 h-3 inline mr-1">edit</span>
-                  Editar
-                </button>
-                <button
-                  (click)="toggleBannerStatus(banner)"
-                  class="py-2 px-3 rounded-lg transition-colors"
-                  [class]="banner.status === 'active' ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'"
-                >
-                  <span class="material-icons text-primary w-4 h-4">{{ banner.status === 'active' ? 'pause' : 'play_arrow' }}</span>
-                </button>
-                <button
-                  (click)="deleteBanner(banner)"
-                  class="py-2 px-3 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                >
-                  <span class="material-icons text-rose-500 w-4 h-4">delete</span>
-                </button>
+              <div class="bg-white/5 rounded-lg p-2">
+                <div class="font-bold text-white">{{ ptc.duration }}s</div>
+                <div class="text-slate-500">Duración</div>
               </div>
+              <div class="bg-white/5 rounded-lg p-2">
+                <div class="font-bold text-white">{{ ptc.total_clicks }}</div>
+                <div class="text-slate-500">Clics</div>
+              </div>
+            </div>
+            <div class="flex gap-2 pt-3 border-t border-white/5">
+              @if (ptc.status === 'pending' || ptc.status === 'rejected') {
+                <button
+                  (click)="approvePtc(ptc)"
+                  class="flex-1 py-2 text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors"
+                >Aprobar</button>
+              }
+              @if (ptc.status === 'active' || ptc.status === 'pending') {
+                <button
+                  (click)="rejectPtc(ptc)"
+                  class="flex-1 py-2 text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition-colors"
+                >Rechazar</button>
+              }
+              <button
+                (click)="openEditPtcModal(ptc)"
+                class="flex-1 py-2 text-xs font-bold bg-white/5 text-slate-300 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
+              >Editar</button>
+              <button
+                (click)="openDeletePtcConfirm(ptc)"
+                class="px-3 py-2 text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition-colors"
+              >
+                <span class="material-symbols-outlined text-base leading-none">delete</span>
+              </button>
             </div>
           </div>
         }
-
-        @if (bannerAds().length === 0) {
-          <div class="col-span-full bg-white dark:bg-card-dark p-12 rounded-2xl border border-slate-200 dark:border-white/5 text-center">
-            <span class="material-icons text-slate-400 w-12 h-12 mx-auto mb-4">image</span>
-            <h3 class="font-bold text-lg mb-2">No hay banners</h3>
-            <p class="text-slate-400 text-sm">Crea el primer banner</p>
+        @if (ptcAds().length === 0) {
+          <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+            <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">campaign</span>
+            <h3 class="font-bold text-lg text-white mb-2">No hay anuncios PTC</h3>
+            <p class="text-slate-500 text-sm">Crea el primer anuncio PTC</p>
           </div>
         }
       </div>
     }
 
-    <!-- Pagination -->
-    @if (totalPages() > 1) {
-      <div class="flex items-center justify-between pt-4">
-        <div class="text-sm text-slate-400">
-          Página {{ currentPage() }} de {{ totalPages() }}
+    <!-- ══ BANNER ADS ════════════════════════════════════════════════════════ -->
+    @if (activeTab() === 'banner') {
+
+      <!-- Desktop table -->
+      <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="bg-white/5 text-xs font-black uppercase text-slate-400 tracking-widest">
+                <th class="px-6 py-4">Banner</th>
+                <th class="px-6 py-4">Posición</th>
+                <th class="px-6 py-4">Impresiones</th>
+                <th class="px-6 py-4">Clics / CTR</th>
+                <th class="px-6 py-4">Estado</th>
+                <th class="px-6 py-4">Fecha</th>
+                <th class="px-6 py-4 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              @for (banner of bannerAds(); track banner.id) {
+                <tr class="hover:bg-white/[0.03] transition-colors">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-14 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
+                        @if (banner.image_url) {
+                          <img [src]="banner.image_url" [alt]="banner.name" class="w-full h-full object-cover">
+                        } @else {
+                          <div class="w-full h-full flex items-center justify-center">
+                            <span class="material-symbols-outlined text-slate-500">image</span>
+                          </div>
+                        }
+                      </div>
+                      <div>
+                        <div class="font-bold text-white text-sm">{{ banner.name }}</div>
+                        <div class="text-xs text-slate-500">{{ banner.advertiser_username }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4">
+                    <span class="px-2 py-1 bg-white/5 text-slate-300 rounded text-xs font-bold">
+                      {{ getPositionLabel(banner.position) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-slate-300">{{ banner.total_impressions }}</td>
+                  <td class="px-6 py-4 text-sm">
+                    <span class="text-white">{{ banner.total_clicks }}</span>
+                    <span class="text-slate-500 ml-1">({{ banner.ctr.toFixed(1) }}%)</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getStatusClass(banner.status)">
+                      {{ getStatusLabel(banner.status) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-slate-400">{{ formatDate(banner.created_at) }}</td>
+                  <td class="px-6 py-4">
+                    <div class="flex justify-end items-center gap-1">
+                      @if (banner.status === 'pending' || banner.status === 'rejected') {
+                        <button
+                          (click)="approveBanner(banner)"
+                          class="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                          title="Aprobar y activar"
+                        >
+                          <span class="material-symbols-outlined text-xl">check_circle</span>
+                        </button>
+                      }
+                      @if (banner.status === 'active' || banner.status === 'pending') {
+                        <button
+                          (click)="rejectBanner(banner)"
+                          class="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                          title="Rechazar"
+                        >
+                          <span class="material-symbols-outlined text-xl">cancel</span>
+                        </button>
+                      }
+                      <a
+                        [href]="banner.url"
+                        target="_blank"
+                        class="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        title="Ver URL"
+                      >
+                        <span class="material-symbols-outlined text-xl">open_in_new</span>
+                      </a>
+                      <button
+                        (click)="openEditBannerModal(banner)"
+                        class="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <span class="material-symbols-outlined text-xl">edit</span>
+                      </button>
+                      @if (banner.status === 'active' || banner.status === 'paused') {
+                        <button
+                          (click)="toggleBannerStatus(banner)"
+                          class="p-1.5 rounded-lg transition-colors"
+                          [class]="banner.status === 'active' ? 'text-amber-500 hover:bg-amber-500/10' : 'text-emerald-500 hover:bg-emerald-500/10'"
+                          [title]="banner.status === 'active' ? 'Pausar' : 'Activar'"
+                        >
+                          <span class="material-symbols-outlined text-xl">{{ banner.status === 'active' ? 'pause' : 'play_arrow' }}</span>
+                        </button>
+                      }
+                      <button
+                        (click)="openDeleteBannerConfirm(banner)"
+                        class="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                        title="Eliminar"
+                      >
+                        <span class="material-symbols-outlined text-xl">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
+        @if (bannerAds().length === 0) {
+          <div class="p-12 text-center">
+            <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">image</span>
+            <h3 class="font-bold text-lg text-white mb-2">No hay banners</h3>
+            <p class="text-slate-500 text-sm">Crea el primer banner para esta ubicación</p>
+          </div>
+        }
+      </div>
+
+      <!-- Mobile cards Banner -->
+      <div class="md:hidden space-y-3">
+        @for (banner of bannerAds(); track banner.id) {
+          <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+            @if (banner.image_url) {
+              <div class="aspect-video bg-white/5 relative">
+                <img [src]="banner.image_url" [alt]="banner.name" class="w-full h-full object-cover">
+                <div class="absolute top-2 right-2">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getStatusClass(banner.status)">
+                    {{ getStatusLabel(banner.status) }}
+                  </span>
+                </div>
+              </div>
+            }
+            <div class="p-4">
+              <div class="flex items-start justify-between mb-3">
+                <div>
+                  <h3 class="font-bold text-white text-sm">{{ banner.name }}</h3>
+                  <p class="text-xs text-slate-500">{{ getPositionLabel(banner.position) }}</p>
+                </div>
+                @if (!banner.image_url) {
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getStatusClass(banner.status)">
+                    {{ getStatusLabel(banner.status) }}
+                  </span>
+                }
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+                <div class="bg-white/5 rounded-lg p-2">
+                  <div class="font-bold text-white">{{ banner.total_impressions }}</div>
+                  <div class="text-slate-500">Impres.</div>
+                </div>
+                <div class="bg-white/5 rounded-lg p-2">
+                  <div class="font-bold text-white">{{ banner.total_clicks }}</div>
+                  <div class="text-slate-500">Clics</div>
+                </div>
+                <div class="bg-white/5 rounded-lg p-2">
+                  <div class="font-bold text-primary">{{ banner.ctr.toFixed(1) }}%</div>
+                  <div class="text-slate-500">CTR</div>
+                </div>
+              </div>
+              <div class="flex gap-2 pt-3 border-t border-white/5">
+                @if (banner.status === 'pending' || banner.status === 'rejected') {
+                  <button
+                    (click)="approveBanner(banner)"
+                    class="flex-1 py-2 text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors"
+                  >Aprobar</button>
+                }
+                @if (banner.status === 'active' || banner.status === 'pending') {
+                  <button
+                    (click)="rejectBanner(banner)"
+                    class="flex-1 py-2 text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition-colors"
+                  >Rechazar</button>
+                }
+                <button
+                  (click)="openEditBannerModal(banner)"
+                  class="flex-1 py-2 text-xs font-bold bg-white/5 text-slate-300 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
+                >Editar</button>
+                <button
+                  (click)="openDeleteBannerConfirm(banner)"
+                  class="px-3 py-2 bg-rose-500/10 text-rose-400 rounded-lg transition-colors"
+                >
+                  <span class="material-symbols-outlined text-base leading-none">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+        @if (bannerAds().length === 0) {
+          <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+            <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">image</span>
+            <h3 class="font-bold text-lg text-white mb-2">No hay banners</h3>
+            <p class="text-slate-500 text-sm">Crea el primer banner</p>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Paginación -->
+    @if (totalPages() > 1) {
+      <div class="flex items-center justify-between pt-2">
+        <p class="text-sm text-slate-500">
+          Mostrando {{ ((currentPage() - 1) * pageSize()) + 1 }}–{{ Math.min(currentPage() * pageSize(), totalCount()) }}
+          de {{ totalCount() }} anuncios
+        </p>
         <div class="flex items-center gap-2">
           <button
-            (click)="goToPage(currentPage() - 1)"
+            (click)="prevPage()"
             [disabled]="currentPage() === 1"
-            class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-50"
+            class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white"
           >
-            <span class="material-icons text-primary w-5 h-5">chevron_left</span>
+            <span class="material-symbols-outlined text-xl">chevron_left</span>
           </button>
+          <span class="text-sm font-medium px-3 text-slate-300">{{ currentPage() }} / {{ totalPages() }}</span>
           <button
-            (click)="goToPage(currentPage() + 1)"
+            (click)="nextPage()"
             [disabled]="currentPage() === totalPages()"
-            class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-50"
+            class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white"
           >
-            <span class="material-icons text-primary w-5 h-5">chevron_right</span>
+            <span class="material-symbols-outlined text-xl">chevron_right</span>
           </button>
         </div>
       </div>
     }
   }
 
-  <!-- Modal -->
+  <!-- ══ MODAL CREAR / EDITAR ═════════════════════════════════════════════════ -->
   @if (showModal()) {
-    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-slate-200 dark:border-slate-700 shadow-2xl">
-        <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
-          <h2 class="text-xl font-bold text-slate-800 dark:text-white">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+
+        <!-- Header modal -->
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-xl">
+              {{ modalMode().startsWith('create') ? 'add_circle' : 'edit' }}
+            </span>
             @switch (modalMode()) {
               @case ('create-ptc') { Crear Anuncio PTC }
               @case ('edit-ptc') { Editar Anuncio PTC }
@@ -310,245 +567,387 @@
               @case ('edit-banner') { Editar Banner }
             }
           </h2>
-          <button (click)="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-            <span class="material-icons text-slate-600 dark:text-slate-300">close</span>
+          <button (click)="closeModal()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400">
+            <span class="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <div class="p-6 space-y-4">
+        <!-- Error modal -->
+        @if (modalError()) {
+          <div class="mx-6 mt-5 flex items-start gap-3 bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+            <span class="material-symbols-outlined text-rose-400 flex-shrink-0 mt-0.5">error</span>
+            <p class="text-rose-400 text-sm">{{ modalError() }}</p>
+          </div>
+        }
+
+        <div class="p-6 space-y-5">
+
+          <!-- ── Formulario PTC ─────────────────────────────────────────── -->
           @if (modalMode() === 'create-ptc' || modalMode() === 'edit-ptc') {
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Título *</label>
-              <input
-                type="text"
-                [(ngModel)]="ptcFormData.title"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                placeholder="Título del anuncio"
-              />
-            </div>
 
+            <!-- Imagen PTC -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Descripción</label>
-              <textarea
-                [(ngModel)]="ptcFormData.description"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                rows="2"
-                placeholder="Descripción del anuncio"
-              ></textarea>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">URL *</label>
-              <input
-                type="url"
-                [(ngModel)]="ptcFormData.url"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                placeholder="https://..."
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                Imagen del anuncio
+              <label class="block text-xs font-semibold mb-2 text-slate-400 uppercase tracking-wide">
+                Imagen del Anuncio
+                @if (uploadingPtc()) {
+                  <span class="ml-2 text-primary normal-case font-normal">Subiendo...</span>
+                }
               </label>
-              <input 
-                type="file" 
-                accept="image/*"
-                (change)="onPtcImageSelected($event)"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
-              />
-              @if (ptcFormData.image_url) {
-                <div class="mt-2">
-                  <img [src]="ptcFormData.image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
-                </div>
-              }
+              <div class="relative group">
+                @if (ptcFormData.image_url) {
+                  <div class="relative w-full h-48 rounded-xl overflow-hidden bg-white/5">
+                    <img [src]="ptcFormData.image_url" alt="Vista previa" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                      <label class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors">
+                        @if (uploadingPtc()) {
+                          <span class="material-symbols-outlined text-xl animate-spin">sync</span>
+                          Subiendo...
+                        } @else {
+                          <span class="material-symbols-outlined text-xl">photo_camera</span>
+                          Cambiar imagen
+                        }
+                        <input
+                          type="file"
+                          accept="image/*"
+                          class="hidden"
+                          (change)="onPtcImageSelected($event)"
+                          [disabled]="uploadingPtc()"
+                        >
+                      </label>
+                      <button
+                        type="button"
+                        (click)="ptcFormData = { ...ptcFormData, image_url: '' }"
+                        class="text-xs text-rose-400 hover:text-rose-300"
+                      >Quitar imagen</button>
+                    </div>
+                  </div>
+                  <p class="text-xs text-slate-600 mt-1.5">Pasa el cursor sobre la imagen para cambiarla</p>
+                } @else {
+                  <label class="flex flex-col items-center justify-center w-full h-36 rounded-xl border-2 border-dashed border-white/20 bg-white/5 hover:bg-white/[0.07] hover:border-primary/50 transition-all cursor-pointer">
+                    @if (uploadingPtc()) {
+                      <span class="material-symbols-outlined text-primary text-4xl animate-spin mb-2">sync</span>
+                      <span class="text-sm text-slate-400">Subiendo imagen...</span>
+                    } @else {
+                      <span class="material-symbols-outlined text-slate-500 text-4xl mb-2">cloud_upload</span>
+                      <span class="text-sm text-slate-400 font-medium">Haz clic para subir imagen</span>
+                      <span class="text-xs text-slate-600 mt-1">JPEG, PNG, WebP — máx. 5MB</span>
+                    }
+                    <input
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                      (change)="onPtcImageSelected($event)"
+                      [disabled]="uploadingPtc()"
+                    >
+                  </label>
+                }
+              </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4">
-              <div class="col-span-2">
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Tipo de Anuncio</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Título *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="ptcFormData.title"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Título del anuncio"
+                />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Descripción</label>
+                <textarea
+                  [(ngModel)]="ptcFormData.description"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary resize-none"
+                  rows="2"
+                  placeholder="Descripción breve del anuncio"
+                ></textarea>
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">URL de Destino *</label>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">link</span>
+                  <input
+                    type="url"
+                    [(ngModel)]="ptcFormData.url"
+                    class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                    placeholder="https://sitio-del-anunciante.com"
+                  />
+                </div>
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">
+                  Video de YouTube
+                  <span class="ml-1 font-normal normal-case text-slate-600">(opcional — se mostrará en el modal del anuncio)</span>
+                </label>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 text-base">play_circle</span>
+                  <input
+                    type="url"
+                    [(ngModel)]="ptcFormData.youtube_url"
+                    class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Tipo de Anuncio</label>
                 <select
                   [ngModel]="ptcFormData.ad_type"
                   (ngModelChange)="onAdTypeChange($event)"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                 >
                   @for (type of adTypeOptions; track type.value) {
-                    <option [value]="type.value">{{ type.label }} ({{ type.reward | number:'1.2-2' }} COP - {{ type.duration }}s)</option>
+                    <option [value]="type.value">{{ type.label }} — {{ type.reward | number:'1.0-0' }} COP / {{ type.duration }}s</option>
                   }
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Recompensa (COP)</label>
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Recompensa (COP)</label>
                 <input
                   type="number"
                   [(ngModel)]="ptcFormData.reward"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                   min="0"
                   step="0.01"
                 />
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Duración (segundos)</label>
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Duración (seg)</label>
                 <input
                   type="number"
                   [(ngModel)]="ptcFormData.duration"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                   min="5"
-                  value="60"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite diario (0 = sin límite)</label>
-                <input
-                  type="number"
-                  [(ngModel)]="ptcFormData.daily_limit"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
-                  min="0"
-                  placeholder="0 = sin límite"
-                />
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Ubicación</label>
+                <select
+                  [(ngModel)]="ptcFormData.location"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
+                >
+                  @for (loc of locations; track loc.value) {
+                    <option [value]="loc.value">{{ loc.label }}</option>
+                  }
+                </select>
               </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ubicación</label>
-              <select
-                [(ngModel)]="ptcFormData.location"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
-              >
-                @for (loc of locations; track loc.value) {
-                  <option [value]="loc.value">{{ loc.label }}</option>
-                }
-              </select>
             </div>
           }
 
+          <!-- ── Formulario Banner ──────────────────────────────────────── -->
           @if (modalMode() === 'create-banner' || modalMode() === 'edit-banner') {
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Nombre *</label>
-              <input
-                type="text"
-                [(ngModel)]="bannerFormData.name"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                placeholder="Nombre del banner"
-              />
-            </div>
 
+            <!-- Imagen Banner -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Descripción</label>
-              <textarea
-                [(ngModel)]="bannerFormData.description"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                rows="2"
-              ></textarea>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-                Imagen del banner
+              <label class="block text-xs font-semibold mb-2 text-slate-400 uppercase tracking-wide">
+                Imagen del Banner
+                @if (uploadingBanner()) {
+                  <span class="ml-2 text-primary normal-case font-normal">Subiendo...</span>
+                }
               </label>
-              <input 
-                type="file" 
-                accept="image/*"
-                (change)="onBannerImageSelected($event)"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-700 dark:text-slate-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
-              />
-              @if (bannerFormData.image_url) {
-                <div class="mt-2">
-                  <img [src]="bannerFormData.image_url" alt="Preview" class="h-20 w-auto rounded-lg object-cover">
-                </div>
-              }
+              <div class="relative group">
+                @if (bannerFormData.image_url) {
+                  <div class="relative w-full h-48 rounded-xl overflow-hidden bg-white/5">
+                    <img [src]="bannerFormData.image_url" alt="Vista previa" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                      <label class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors">
+                        @if (uploadingBanner()) {
+                          <span class="material-symbols-outlined text-xl animate-spin">sync</span>
+                          Subiendo...
+                        } @else {
+                          <span class="material-symbols-outlined text-xl">photo_camera</span>
+                          Cambiar imagen
+                        }
+                        <input
+                          type="file"
+                          accept="image/*"
+                          class="hidden"
+                          (change)="onBannerImageSelected($event)"
+                          [disabled]="uploadingBanner()"
+                        >
+                      </label>
+                      <button
+                        type="button"
+                        (click)="bannerFormData = { ...bannerFormData, image_url: '' }"
+                        class="text-xs text-rose-400 hover:text-rose-300"
+                      >Quitar imagen</button>
+                    </div>
+                  </div>
+                  <p class="text-xs text-slate-600 mt-1.5">Pasa el cursor sobre la imagen para cambiarla</p>
+                } @else {
+                  <label class="flex flex-col items-center justify-center w-full h-36 rounded-xl border-2 border-dashed border-white/20 bg-white/5 hover:bg-white/[0.07] hover:border-primary/50 transition-all cursor-pointer">
+                    @if (uploadingBanner()) {
+                      <span class="material-symbols-outlined text-primary text-4xl animate-spin mb-2">sync</span>
+                      <span class="text-sm text-slate-400">Subiendo imagen...</span>
+                    } @else {
+                      <span class="material-symbols-outlined text-slate-500 text-4xl mb-2">cloud_upload</span>
+                      <span class="text-sm text-slate-400 font-medium">Haz clic para subir imagen</span>
+                      <span class="text-xs text-slate-600 mt-1">JPEG, PNG, WebP — máx. 5MB</span>
+                    }
+                    <input
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                      (change)="onBannerImageSelected($event)"
+                      [disabled]="uploadingBanner()"
+                    >
+                  </label>
+                }
+              </div>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">URL de Destino *</label>
-              <input
-                type="url"
-                [(ngModel)]="bannerFormData.url"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                placeholder="https://..."
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Posición</label>
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Nombre *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="bannerFormData.name"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                  placeholder="Nombre del banner"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Posición</label>
                 <select
                   [(ngModel)]="bannerFormData.position"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                 >
                   @for (pos of bannerPositions; track pos.value) {
                     <option [value]="pos.value">{{ pos.label }}</option>
                   }
                 </select>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Recompensa por clic</label>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Descripción</label>
+                <textarea
+                  [(ngModel)]="bannerFormData.description"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary resize-none"
+                  rows="2"
+                  placeholder="Descripción opcional"
+                ></textarea>
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">URL de Destino *</label>
                 <input
-                  type="number"
-                  [(ngModel)]="bannerFormData.reward"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
-                  min="0"
+                  type="url"
+                  [(ngModel)]="bannerFormData.url"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                  placeholder="https://..."
                 />
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-1 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite de impresiones</label>
+                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Recompensa / clic</label>
                 <input
                   type="number"
-                  [(ngModel)]="bannerFormData.impressions_limit"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
+                  [(ngModel)]="bannerFormData.reward"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                   min="0"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Límite de clics</label>
-                <input
-                  type="number"
-                  [(ngModel)]="bannerFormData.clicks_limit"
-                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
-                  min="0"
+                  placeholder="0"
                 />
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ubicación</label>
-              <select
-                [(ngModel)]="bannerFormData.location"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white"
-              >
+              <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Ubicación</label>
+              <div class="grid grid-cols-2 gap-3">
                 @for (loc of locations; track loc.value) {
-                  <option [value]="loc.value">{{ loc.label }}</option>
+                  <label
+                    class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
+                    [class]="bannerFormData.location === loc.value
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-zinc-800 border-white/10 text-slate-400 hover:border-white/20'"
+                  >
+                    <input
+                      type="radio"
+                      [value]="loc.value"
+                      [(ngModel)]="bannerFormData.location"
+                      name="bannerLocation"
+                      class="hidden"
+                    >
+                    <span class="material-symbols-outlined text-xl">{{ loc.icon }}</span>
+                    <span class="text-sm font-semibold">{{ loc.label }}</span>
+                  </label>
                 }
-              </select>
+              </div>
             </div>
           }
         </div>
 
-        <div class="p-6 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-slate-900 z-10">
+        <!-- Footer modal -->
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3 sticky bottom-0 bg-zinc-900">
           <button
             (click)="closeModal()"
-            class="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl font-bold text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            class="px-4 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors"
           >
             Cancelar
           </button>
           <button
             (click)="modalMode() === 'create-ptc' || modalMode() === 'edit-ptc' ? savePtc() : saveBanner()"
-            [disabled]="saving()"
-            class="px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+            [disabled]="saving() || uploadingPtc() || uploadingBanner()"
+            class="px-5 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 transition-colors"
           >
             @if (saving()) {
-              <span class="material-icons text-primary w-4 h-4 animate-spin">sync</span>
+              <span class="material-symbols-outlined text-lg animate-spin">sync</span>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined text-lg">save</span>
+              {{ modalMode().startsWith('create') ? 'Crear' : 'Guardar cambios' }}
             }
-            Guardar
           </button>
         </div>
       </div>
     </div>
   }
+
+  <!-- ══ MODAL ELIMINAR ═══════════════════════════════════════════════════════ -->
+  @if (showDeleteConfirm()) {
+    <div class="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-sm border border-rose-500/20 shadow-2xl shadow-rose-500/10">
+        <div class="p-6 text-center">
+          <div class="w-14 h-14 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined text-rose-500 text-3xl">delete_forever</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">¿Eliminar anuncio?</h3>
+          <p class="text-slate-400 text-sm mb-1">
+            Estás a punto de eliminar
+            <span class="font-bold text-white">{{ itemToDelete()?.title }}</span>.
+          </p>
+          <p class="text-slate-500 text-xs mb-5">Esta acción no se puede deshacer.</p>
+          <div class="flex gap-3">
+            <button
+              (click)="closeDeleteConfirm()"
+              [disabled]="saving()"
+              class="flex-1 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              (click)="confirmDelete()"
+              [disabled]="saving()"
+              class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            >
+              @if (saving()) {
+                <span class="material-symbols-outlined text-lg animate-spin">sync</span>
+                Eliminando...
+              } @else {
+                <span class="material-symbols-outlined text-lg">delete</span>
+                Sí, eliminar
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>

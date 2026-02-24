@@ -7,7 +7,10 @@
       "mcp__supabase__deploy_edge_function",
       "mcp__supabase__get_logs",
       "mcp__supabase__get_edge_function",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(tail:*)",
+      "Bash(head:*)",
+      "Bash(cd /c/Users/Victor/Documents/publihazclick && npx tsc --noEmit 2>&1)"
     ]
   },
   "enableAllProjectMcpServers": true,

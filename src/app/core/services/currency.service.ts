@@ -116,13 +116,13 @@ export class CurrencyService {
 
         // Si hay cache de hoy, usarlo inmediatamente
         if (isSameDay) {
-          this._rates.set(cached.rates);
-          console.log('Usando tasas cacheadas del día:', cached.lastFetched);
-          
+          // Mezclar cache con fallback por si el cache antiguo carece de alguna divisa
+          const mergedCached = { ...this.getFallbackRates(), ...cached.rates };
+          this._rates.set(mergedCached);
+
           // También intentar actualizar si estamos en hora válida (6am o 6pm) y es una hora diferente
           const validHours = [6, 18];
           if (validHours.includes(currentHour) && cached.lastFetchedHour !== currentHour) {
-            // Hay nueva actualización disponible, fetch en background
             this.fetchRates().catch(() => {});
           }
           return;
@@ -150,20 +150,20 @@ export class CurrencyService {
       console.log('API Response:', response);
       
       if (response && response.data) {
-        this._rates.set(response.data);
-        console.log('Rates set:', response.data);
-        
-        // Guardar en cache
+        // Mezclar con tasas de respaldo para preservar divisas que el plan de API no incluya (ej. COP, ARS, CLP)
+        const mergedRates = { ...this.getFallbackRates(), ...response.data };
+        this._rates.set(mergedRates);
+
+        // Guardar en cache (guardar las tasas mezcladas para que el cache también las tenga)
         if (isPlatformBrowser(this.platformId)) {
           const currentHour = new Date().getHours();
           const cachedRates: CachedRates = {
-            rates: response.data,
+            rates: mergedRates,
             lastFetched: new Date().toISOString(),
             lastFetchedHour: currentHour
           };
           localStorage.setItem(this.CACHE_KEY, JSON.stringify(cachedRates));
           localStorage.setItem(this.CACHE_HOURS_KEY, currentHour.toString());
-          console.log('Tasas actualizadas y guardadas en cache a las:', currentHour);
         }
       }
     } catch (error) {

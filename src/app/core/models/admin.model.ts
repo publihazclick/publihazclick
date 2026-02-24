@@ -8,13 +8,13 @@ import type { UserRole } from './profile.model';
 // Enums y tipos
 // ============================================================================
 
-export type TaskStatus = 'active' | 'paused' | 'completed';
+export type TaskStatus = 'active' | 'paused' | 'completed' | 'pending' | 'rejected';
 export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
 export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 export type PackageType = 'basic' | 'premium' | 'enterprise' | 'custom';
 export type UserPackageStatus = 'active' | 'expired' | 'cancelled';
 export type BannerPosition = 'header' | 'sidebar' | 'footer' | 'interstitial';
-export type BannerStatus = 'active' | 'paused' | 'completed' | 'rejected';
+export type BannerStatus = 'active' | 'paused' | 'completed' | 'rejected' | 'pending';
 export type PtcAdType = 'mega' | 'standard_400' | 'standard_600' | 'mini';
 export type PackageBannerStatus = 'pending' | 'active' | 'completed' | 'rejected';
 export type AdLocation = 'landing' | 'app';
@@ -24,16 +24,26 @@ export type AdLocation = 'landing' | 'app';
 // ============================================================================
 
 export interface DashboardStats {
+  // Usuarios
   totalUsers: number;
   activeUsers: number;
   newUsersToday: number;
+  // Anuncios
   totalAds: number;
   activeAds: number;
   pendingAds: number;
+  // Ingresos / pagos
   totalRevenue: number;
   todayRevenue: number;
+  totalPaidOut: number;
+  // Clicks
+  totalClicks: number;
+  todayClicks: number;
+  // Retiros
   pendingWithdrawals: number;
   totalWithdrawals: number;
+  // Donaciones
+  totalDonated: number;
 }
 
 export interface DailyActivity {
@@ -86,6 +96,7 @@ export interface PtcTaskAdmin {
   title: string;
   description: string;
   url: string;
+  youtube_url?: string | null;
   image_url: string | null;
   reward: number;
   duration: number;
@@ -113,12 +124,15 @@ export interface CreatePtcTaskData {
   title: string;
   description: string;
   url: string;
+  youtube_url?: string;
   image_url?: string;
   reward: number;
   duration: number;
   daily_limit: number;
   advertiser_id?: string;
   location?: AdLocation;
+  ad_type?: PtcAdType;
+  is_demo_only?: boolean;
 }
 
 // ============================================================================
