@@ -1,92 +1,325 @@
-import { Component, signal } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  OnInit,
+  OnDestroy,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { AdminBannerService } from '../../../../core/services/admin-banner.service';
+import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
+import { ProfileService } from '../../../../core/services/profile.service';
+import { CurrencyService } from '../../../../core/services/currency.service';
+import { UserTrackingService } from '../../../../core/services/user-tracking.service';
+import { WalletStateService } from '../../../../core/services/wallet-state.service';
+import {
+  PtcModalComponent,
+  PtcAd,
+} from '../../../../components/ptc-modal/ptc-modal.component';
+import type { BannerAd, PtcAdType } from '../../../../core/models/admin.model';
+import type { Profile } from '../../../../core/models/profile.model';
+
+interface PtcAdCard {
+  id: string;
+  title: string;
+  advertiserName: string;
+  advertiserType: 'company' | 'person';
+  imageUrl: string;
+  youtubeVideoId: string;
+  adType: PtcAdType;
+  rewardCOP: number;
+  dailyLimit: number;
+  totalClicks: number;
+  status: string;
+}
 
 @Component({
   selector: 'app-user-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, RouterModule, PtcModalComponent],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
 })
-export class UserDashboardComponent {
-  // Stats del usuario
-  balance = 25450;
-  pendingBalance = 5000;
-  totalEarned = 125000;
-  referralEarnings = 15000;
-  todayClicks = 7;
-  dailyGoal = 10;
+export class UserDashboardComponent implements OnInit, OnDestroy {
+  private readonly bannerService = inject(AdminBannerService);
+  private readonly ptcService = inject(AdminPtcTaskService);
+  private readonly profileService = inject(ProfileService);
+  readonly currencyService = inject(CurrencyService);
+  readonly userTracking = inject(UserTrackingService);
+  readonly walletState = inject(WalletStateService);
 
-  // Datos de clicks de los últimos 7 días
-  clicksHistory = [
-    { day: 'Lun', clicks: 8, earnings: 2400 },
-    { day: 'Mar', clicks: 12, earnings: 3600 },
-    { day: 'Mie', clicks: 10, earnings: 3000 },
-    { day: 'Jue', clicks: 15, earnings: 4500 },
-    { day: 'Vie', clicks: 9, earnings: 2700 },
-    { day: 'Sab', clicks: 6, earnings: 1800 },
-    { day: 'Dom', clicks: 7, earnings: 2100 }
-  ];
+  // Profile
+  readonly profile = signal<Profile | null>(null);
 
-  // Anuncios disponibles para clickear
-  availableAds = [
-    {
-      id: 1,
-      title: 'Promoción Especial - Tienda Online',
-      description: 'Ver catálogo de productos',
-      reward: 300,
-      duration: 30,
-      type: 'banner',
-      advertiser: 'MegaStore'
-    },
-    {
-      id: 2,
-      title: 'Nueva App de Delivery',
-      description: 'Descubre la app y gana',
-      reward: 500,
-      duration: 45,
-      type: 'video',
-      advertiser: 'FastDelivery'
-    },
-    {
-      id: 3,
-      title: 'Oferta de Viajes',
-      description: 'Explora destinos increíbles',
-      reward: 400,
-      duration: 30,
-      type: 'banner',
-      advertiser: 'Viajes Plus'
-    },
-    {
-      id: 4,
-      title: 'Seguro de Vida',
-      description: 'Cotiza tu seguro ideal',
-      reward: 600,
-      duration: 60,
-      type: 'microsite',
-      advertiser: 'Seguros Seguros'
-    }
-  ];
+  // Banners
+  readonly banners = signal<BannerAd[]>([]);
+  readonly currentBanner = signal(0);
+  readonly bannersLoading = signal(true);
+  private bannerTimer: ReturnType<typeof setInterval> | null = null;
 
-  // Actividad reciente
-  recentActivity = [
-    { type: 'click', description: 'Clickeaste "Promoción Especial"', reward: 300, time: 'Hace 5 minutos' },
-    { type: 'referral', description: 'Tu referido Juan hizo un click', reward: 30, time: 'Hace 1 hora' },
+  // PTC Ads
+  readonly ptcAds = signal<PtcAdCard[]>([]);
+  readonly ptcLoading = signal(true);
+
+  // PTC Modal
+  readonly isModalOpen = signal(false);
+  readonly selectedAd = signal<PtcAd | null>(null);
+
+  // Actividad reciente (static, se puede conectar a DB después)
+  readonly recentActivity = [
+    { type: 'click', description: 'Clickeaste un anuncio Mega', reward: 2000, time: 'Hace 5 min' },
+    { type: 'referral', description: 'Tu referido hizo un click', reward: 200, time: 'Hace 1 hora' },
     { type: 'bonus', description: 'Bonus por meta diaria', reward: 1000, time: 'Hace 3 horas' },
-    { type: 'withdrawal', description: 'Retiro aprobado', reward: -20000, time: 'Ayer' }
   ];
 
-  // Niveles del sistema de referidos
-  referralTiers = [
+  readonly referralTiers = [
     { level: 1, percentage: 10, active: true },
     { level: 2, percentage: 5, active: true },
     { level: 3, percentage: 3, active: false },
     { level: 4, percentage: 2, active: false },
-    { level: 5, percentage: 1, active: false }
+    { level: 5, percentage: 1, active: false },
   ];
 
-  get progressPercentage(): number {
-    return (this.todayClicks / this.dailyGoal) * 100;
+  private readonly adTypeRewards: Record<string, number> = {
+    mega: 2000,
+    standard_600: 600,
+    standard_400: 400,
+    mini: 83.33,
+  };
+
+  readonly Math = Math;
+
+  // ─── Lifecycle ─────────────────────────────────────────────────────────────
+
+  ngOnInit(): void {
+    this.loadProfile();
+    this.loadBanners();
+    this.loadPtcAds();
+  }
+
+  ngOnDestroy(): void {
+    if (this.bannerTimer) clearInterval(this.bannerTimer);
+  }
+
+  // ─── Profile ───────────────────────────────────────────────────────────────
+
+  private async loadProfile(): Promise<void> {
+    try {
+      const profile = await this.profileService.getCurrentProfile();
+      this.profile.set(profile);
+    } catch (err) {
+      console.error('Error loading profile:', err);
+    }
+  }
+
+  // ─── Banners ───────────────────────────────────────────────────────────────
+
+  private async loadBanners(): Promise<void> {
+    this.bannersLoading.set(true);
+    try {
+      // Intentar banners para ubicación 'app' (dashboard)
+      let banners = await this.bannerService.getActiveBannersByLocation(undefined, 'app');
+      // Si no hay, intentar cualquier banner activo
+      if (banners.length === 0) {
+        banners = await this.bannerService.getActiveBanners();
+      }
+      this.banners.set(banners);
+      if (banners.length > 1) {
+        this.startBannerAutoPlay();
+      }
+    } catch (err) {
+      console.error('Error loading banners:', err);
+    } finally {
+      this.bannersLoading.set(false);
+    }
+  }
+
+  private startBannerAutoPlay(): void {
+    this.bannerTimer = setInterval(() => this.nextBanner(), 5000);
+  }
+
+  nextBanner(): void {
+    const len = this.banners().length;
+    if (len === 0) return;
+    this.currentBanner.update((v) => (v + 1) % len);
+  }
+
+  prevBanner(): void {
+    const len = this.banners().length;
+    if (len === 0) return;
+    this.currentBanner.update((v) => (v - 1 + len) % len);
+  }
+
+  goToBanner(i: number): void {
+    this.currentBanner.set(i);
+    if (this.bannerTimer) {
+      clearInterval(this.bannerTimer);
+      this.startBannerAutoPlay();
+    }
+  }
+
+  // ─── PTC Ads ───────────────────────────────────────────────────────────────
+
+  private async loadPtcAds(): Promise<void> {
+    this.ptcLoading.set(true);
+    try {
+      const result = await this.ptcService.getPtcTasks(
+        { status: 'active' },
+        { page: 1, pageSize: 16 }
+      );
+      const ads: PtcAdCard[] =
+        result.data && result.data.length > 0
+          ? result.data.map((task) => ({
+              id: task.id,
+              title: task.title,
+              advertiserName: 'Anunciante',
+              advertiserType: 'company' as const,
+              imageUrl:
+                task.image_url ||
+                'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
+              youtubeVideoId: 'dQw4w9WgXcQ',
+              adType: (task.ad_type || 'mini') as PtcAdType,
+              rewardCOP: this.adTypeRewards[task.ad_type || 'mini'] || task.reward || 0,
+              dailyLimit: task.daily_limit || 0,
+              totalClicks: task.total_clicks || 0,
+              status: task.status,
+            }))
+          : this.getSampleAds();
+      this.ptcAds.set(ads);
+    } catch {
+      this.ptcAds.set(this.getSampleAds());
+    } finally {
+      this.ptcLoading.set(false);
+    }
+  }
+
+  getAdsByType(type: PtcAdType): PtcAdCard[] {
+    return this.ptcAds().filter((a) => a.adType === type);
+  }
+
+  getRewardDisplay(rewardCOP: number): string {
+    return this.currencyService.formatFromCOP(rewardCOP, 2);
+  }
+
+  isAdViewed(adId: string): boolean {
+    return this.userTracking.hasViewedAd(adId);
+  }
+
+  openAdModal(ad: PtcAdCard): void {
+    if (this.userTracking.hasViewedAd(ad.id)) return;
+    this.selectedAd.set({
+      id: ad.id,
+      title: ad.title,
+      advertiserName: ad.advertiserName,
+      advertiserType: ad.advertiserType,
+      imageUrl: ad.imageUrl,
+      youtubeVideoId: ad.youtubeVideoId,
+      adType: ad.adType,
+      rewardCOP: ad.rewardCOP,
+      duration: 60,
+    });
+    this.isModalOpen.set(true);
+  }
+
+  closeModal(): void {
+    this.isModalOpen.set(false);
+    this.selectedAd.set(null);
+  }
+
+  onRewardClaimed(event: { walletAmount: number; donationAmount: number }): void {
+    this.walletState.updateWallet(event.walletAmount);
+    this.walletState.updateDonations(event.donationAmount);
+    this.userTracking.recordAdView(this.selectedAd()?.id || '');
+  }
+
+  // ─── Formato ───────────────────────────────────────────────────────────────
+
+  formatCurrency(value: number): string {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value ?? 0);
+  }
+
+  // ─── Sample ads (fallback) ─────────────────────────────────────────────────
+
+  private getSampleAds(): PtcAdCard[] {
+    return [
+      {
+        id: '1', title: 'Promo Fin de Semana', advertiserName: 'Mileniustore',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
+        youtubeVideoId: 'dQw4w9WgXcQ', adType: 'mega', rewardCOP: 2000, dailyLimit: 100, totalClicks: 450, status: 'active',
+      },
+      {
+        id: '2', title: 'Restaurante Los Parados', advertiserName: 'Los Parados',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+        youtubeVideoId: 'jfKfPfyJRdk', adType: 'mega', rewardCOP: 2000, dailyLimit: 120, totalClicks: 580, status: 'active',
+      },
+      {
+        id: '3', title: 'Gran Venta de Electrónicos', advertiserName: 'TecnoWorld',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
+        youtubeVideoId: '5qap5aO4i9A', adType: 'mega', rewardCOP: 2000, dailyLimit: 80, totalClicks: 320, status: 'active',
+      },
+      {
+        id: '4', title: 'Spa & Wellness Centro', advertiserName: 'Relax & Vida',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
+        youtubeVideoId: 'DWcJFNfaw9c', adType: 'mega', rewardCOP: 2000, dailyLimit: 60, totalClicks: 210, status: 'active',
+      },
+      {
+        id: '5', title: 'Servicio de Delivery Express', advertiserName: 'Juan Pérez',
+        advertiserType: 'person', imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
+        youtubeVideoId: 'fJ9rUzIMcZQ', adType: 'standard_600', rewardCOP: 600, dailyLimit: 60, totalClicks: 180, status: 'active',
+      },
+      {
+        id: '6', title: 'Clases de Guitarra Online', advertiserName: 'Carlos Música',
+        advertiserType: 'person', imageUrl: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop',
+        youtubeVideoId: 'hT_nvWreIhg', adType: 'standard_600', rewardCOP: 600, dailyLimit: 40, totalClicks: 150, status: 'active',
+      },
+      {
+        id: '7', title: 'Servicios de Limpieza', advertiserName: 'LimpioMax',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695b97835?w=400&h=300&fit=crop',
+        youtubeVideoId: 'kXYiU_JCYtU', adType: 'standard_600', rewardCOP: 600, dailyLimit: 55, totalClicks: 220, status: 'active',
+      },
+      {
+        id: '8', title: 'Nueva Colección de Ropa', advertiserName: 'Fashion Colombia',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+        youtubeVideoId: 'KG4otu6nO1I', adType: 'standard_400', rewardCOP: 400, dailyLimit: 80, totalClicks: 320, status: 'active',
+      },
+      {
+        id: '9', title: 'Zapatillas Importadas', advertiserName: 'ShoeStore',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
+        youtubeVideoId: 'VGg46O4GgiM', adType: 'standard_400', rewardCOP: 400, dailyLimit: 70, totalClicks: 280, status: 'active',
+      },
+      {
+        id: '10', title: 'Accesorios para Celulares', advertiserName: 'CelularAccesorios',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=300&fit=crop',
+        youtubeVideoId: '9bZkp7q19f0', adType: 'standard_400', rewardCOP: 400, dailyLimit: 90, totalClicks: 410, status: 'active',
+      },
+      {
+        id: '11', title: 'Cupón Descuento 20%', advertiserName: 'TechnoShop',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop',
+        youtubeVideoId: 'OPf0YbXqDm0', adType: 'mini', rewardCOP: 83.33, dailyLimit: 50, totalClicks: 120, status: 'active',
+      },
+      {
+        id: '12', title: 'Clases de Inglés Online', advertiserName: 'María García',
+        advertiserType: 'person', imageUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=300&fit=crop',
+        youtubeVideoId: 'jofNRWkoRGY', adType: 'mini', rewardCOP: 83.33, dailyLimit: 30, totalClicks: 85, status: 'active',
+      },
+      {
+        id: '13', title: 'Desayunos Sorpresa', advertiserName: 'SweetDelivery',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
+        youtubeVideoId: '9bZkp7q19f0', adType: 'mini', rewardCOP: 83.33, dailyLimit: 45, totalClicks: 180, status: 'active',
+      },
+      {
+        id: '14', title: 'Reparación de Computadores', advertiserName: 'TechFix',
+        advertiserType: 'company', imageUrl: 'https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=400&h=300&fit=crop',
+        youtubeVideoId: 'kJQP7kiw5Fk', adType: 'mini', rewardCOP: 83.33, dailyLimit: 25, totalClicks: 65, status: 'active',
+      },
+    ];
   }
 }

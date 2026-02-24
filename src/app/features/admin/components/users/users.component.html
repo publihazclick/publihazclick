@@ -1,53 +1,54 @@
 <div class="space-y-6">
+
+  <!-- Toast de éxito -->
+  @if (successMessage()) {
+    <div class="fixed top-6 right-6 z-[100] flex items-center gap-3 bg-emerald-500 text-white px-5 py-3.5 rounded-2xl shadow-2xl shadow-emerald-500/30 animate-fade-in max-w-sm">
+      <span class="material-symbols-outlined text-xl flex-shrink-0">check_circle</span>
+      <p class="text-sm font-semibold">{{ successMessage() }}</p>
+    </div>
+  }
+
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-black text-white dark:text-white">Gestión de Usuarios</h1>
-      <p class="text-slate-400 dark:text-slate-400 text-sm">Administrar usuarios, roles y balances</p>
+      <h1 class="text-2xl font-black text-white">Gestión de Usuarios</h1>
+      <p class="text-slate-400 text-sm">Administrar usuarios, roles y balances</p>
     </div>
     <button
       (click)="openCreateModal()"
       class="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors"
     >
-      <span class="material-icons w-4 h-4">add</span>
+      <span class="material-symbols-outlined text-xl">person_add</span>
       Nuevo Usuario
     </button>
   </div>
 
-  <!-- Filters -->
-  <div class="bg-white dark:bg-card-dark p-4 rounded-2xl border border-slate-200 dark:border-white/5">
-    <div class="flex flex-col md:flex-row gap-4">
-      <!-- Search -->
+  <!-- Filtros -->
+  <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+    <div class="flex flex-col md:flex-row gap-3">
       <div class="flex-1 relative">
-        <span class="material-icons w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
         <input
           type="text"
           placeholder="Buscar por nombre, usuario o email..."
           [value]="searchQuery()"
           (input)="onSearch($any($event).target.value)"
-          class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+          class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-primary focus:border-transparent"
         />
       </div>
-
-      <!-- Role Filter -->
-      <div class="flex items-center gap-2">
-        <span class="material-icons w-5 h-5 text-slate-400">filter_list</span>
-        <select
-          [value]="selectedRole()"
-          (change)="onRoleChange($any($event).target.value)"
-          class="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-        >
-          @for (role of roles; track role.value) {
-            <option [value]="role.value">{{ role.label }}</option>
-          }
-        </select>
-      </div>
-
-      <!-- Status Filter -->
+      <select
+        [value]="selectedRole()"
+        (change)="onRoleChange($any($event).target.value)"
+        class="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
+      >
+        @for (role of roles; track role.value) {
+          <option [value]="role.value">{{ role.label }}</option>
+        }
+      </select>
       <select
         [value]="selectedStatus()"
         (change)="onStatusChange($any($event).target.value)"
-        class="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+        class="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
       >
         @for (status of statuses; track status.value) {
           <option [value]="status.value">{{ status.label }}</option>
@@ -56,35 +57,32 @@
     </div>
   </div>
 
-  <!-- Loading State -->
-  @if (loading()) {
-    <div class="flex flex-col items-center justify-center py-20">
-      <span class="material-icons w-10 h-10 text-primary animate-spin mb-4">sync</span>
-      <p class="text-slate-400 text-sm font-medium">Cargando usuarios...</p>
-    </div>
-  }
-
-  <!-- Error State -->
+  <!-- Error de carga -->
   @if (error() && !loading()) {
-    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-6 text-center">
-      <span class="material-icons w-10 h-10 text-rose-500 mx-auto mb-3">error</span>
-      <p class="text-rose-500 font-medium mb-3">{{ error() }}</p>
-      <button
-        (click)="loadUsers()"
-        class="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium transition-colors"
-      >
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
+      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
+      <button (click)="loadUsers()" class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors">
         Reintentar
       </button>
     </div>
   }
 
-  @if (!loading() && !error()) {
-    <!-- Desktop Table -->
-    <div class="hidden md:block bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-20">
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-3">sync</span>
+      <p class="text-slate-400 text-sm">Cargando usuarios...</p>
+    </div>
+  }
+
+  @if (!loading()) {
+    <!-- Tabla desktop -->
+    <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead>
-            <tr class="bg-slate-50 dark:bg-white/10 text-xs font-black uppercase text-slate-600 dark:text-slate-200 tracking-widest">
+            <tr class="bg-white/5 text-xs font-black uppercase text-slate-400 tracking-widest">
               <th class="px-6 py-4">Usuario</th>
               <th class="px-6 py-4">Rol</th>
               <th class="px-6 py-4">Balance</th>
@@ -93,21 +91,21 @@
               <th class="px-6 py-4 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+          <tbody class="divide-y divide-white/5">
             @for (user of filteredUsers(); track user.id) {
-              <tr class="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+              <tr class="hover:bg-white/[0.03] transition-colors">
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
                       @if (user.avatar_url) {
                         <img [src]="user.avatar_url" [alt]="user.username" class="w-full h-full rounded-full object-cover">
                       } @else {
-                        <span class="material-symbols-outlined text-primary">person</span>
+                        <span class="material-symbols-outlined text-primary text-lg">person</span>
                       }
                     </div>
                     <div>
-                      <div class="font-bold text-white dark:text-white">{{ user.username }}</div>
-                      <div class="text-xs text-zinc-400 dark:text-zinc-400">{{ user.email }}</div>
+                      <div class="font-bold text-white text-sm">{{ user.username }}</div>
+                      <div class="text-xs text-slate-500">{{ user.email }}</div>
                     </div>
                   </div>
                 </td>
@@ -116,46 +114,45 @@
                     {{ getRoleLabel(user.role) }}
                   </span>
                 </td>
-                <td class="px-6 py-4">
-                  <div class="font-bold text-white dark:text-white">{{ formatCurrency(user.balance) }}</div>
-                </td>
+                <td class="px-6 py-4 font-bold text-white text-sm">{{ formatCurrency(user.balance) }}</td>
                 <td class="px-6 py-4">
                   @if (user.is_active) {
-                    <span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded text-xs font-bold uppercase">
-                      Activo
-                    </span>
+                    <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-xs font-bold uppercase">Activo</span>
                   } @else {
-                    <span class="px-2 py-1 bg-rose-500/10 text-rose-500 rounded text-xs font-bold uppercase">
-                      Inactivo
-                    </span>
+                    <span class="px-2 py-1 bg-rose-500/10 text-rose-400 rounded text-xs font-bold uppercase">Inactivo</span>
                   }
                 </td>
-                <td class="px-6 py-4 text-sm text-slate-300 dark:text-slate-300">
-                  {{ formatDate(user.created_at) }}
-                </td>
-                <td class="px-6 py-4 text-right">
-                  <div class="flex justify-end gap-2">
+                <td class="px-6 py-4 text-sm text-slate-400">{{ formatDate(user.created_at) }}</td>
+                <td class="px-6 py-4">
+                  <div class="flex justify-end items-center gap-1">
                     <button
                       (click)="openViewModal(user)"
-                      class="p-2 text-zinc-400 dark:text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      class="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                       title="Ver detalles"
                     >
-                      <span class="material-symbols-outlined">visibility</span>
+                      <span class="material-symbols-outlined text-xl">visibility</span>
                     </button>
                     <button
                       (click)="openEditModal(user)"
-                      class="p-2 text-zinc-400 dark:text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      class="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                       title="Editar"
                     >
-                      <span class="material-symbols-outlined">edit</span>
+                      <span class="material-symbols-outlined text-xl">edit</span>
                     </button>
                     <button
                       (click)="toggleUserStatus(user)"
-                      class="p-2 rounded-lg transition-colors"
-                      [class]="user.is_active ? 'text-rose-500 hover:bg-rose-500/10' : 'text-emerald-500 hover:bg-emerald-500/10'"
+                      class="p-1.5 rounded-lg transition-colors"
+                      [class]="user.is_active ? 'text-amber-500 hover:bg-amber-500/10' : 'text-emerald-500 hover:bg-emerald-500/10'"
                       [title]="user.is_active ? 'Desactivar' : 'Activar'"
                     >
-                      <span class="material-symbols-outlined">{{ user.is_active ? 'person_off' : 'person_check' }}</span>
+                      <span class="material-symbols-outlined text-xl">{{ user.is_active ? 'person_off' : 'person_check' }}</span>
+                    </button>
+                    <button
+                      (click)="openDeleteConfirm(user)"
+                      class="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                      title="Eliminar usuario"
+                    >
+                      <span class="material-symbols-outlined text-xl">delete</span>
                     </button>
                   </div>
                 </td>
@@ -166,10 +163,10 @@
       </div>
     </div>
 
-    <!-- Mobile Cards -->
-    <div class="md:hidden space-y-4">
+    <!-- Cards mobile -->
+    <div class="md:hidden space-y-3">
       @for (user of filteredUsers(); track user.id) {
-        <div class="bg-zinc-100 dark:bg-zinc-800 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+        <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
           <div class="flex items-start justify-between mb-3">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
@@ -180,280 +177,264 @@
                 }
               </div>
               <div>
-                <div class="font-bold text-zinc-900 dark:text-white">{{ user.username }}</div>
+                <div class="font-bold text-white text-sm">{{ user.username }}</div>
                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
                   {{ getRoleLabel(user.role) }}
                 </span>
               </div>
             </div>
             @if (user.is_active) {
-              <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[10px] font-bold uppercase">Activo</span>
+              <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold uppercase">Activo</span>
             } @else {
-              <span class="px-2 py-0.5 bg-rose-500/10 text-rose-500 rounded text-[10px] font-bold uppercase">Inactivo</span>
+              <span class="px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded text-[10px] font-bold uppercase">Inactivo</span>
             }
           </div>
 
-          <div class="space-y-2 text-sm mb-3">
+          <div class="space-y-1.5 text-sm mb-3">
             <div class="flex justify-between">
-              <span class="text-zinc-500 dark:text-zinc-400">Email:</span>
-              <span class="truncate max-w-[200px] text-zinc-900 dark:text-white">{{ user.email }}</span>
+              <span class="text-slate-500">Email:</span>
+              <span class="truncate max-w-[200px] text-white">{{ user.email }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-zinc-500 dark:text-zinc-400">Balance:</span>
+              <span class="text-slate-500">Balance:</span>
               <span class="font-bold text-primary">{{ formatCurrency(user.balance) }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-zinc-500 dark:text-zinc-400">Registro:</span>
-              <span class="text-zinc-900 dark:text-white">{{ formatDate(user.created_at) }}</span>
+              <span class="text-slate-500">Registro:</span>
+              <span class="text-white">{{ formatDate(user.created_at) }}</span>
             </div>
           </div>
 
-          <div class="flex gap-2 pt-3 border-t border-zinc-200 dark:border-zinc-700">
-            <button
-              (click)="openViewModal(user)"
-              class="flex-1 py-2 text-xs font-bold uppercase bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-primary/10 rounded-lg transition-colors"
-            >
+          <div class="flex gap-2 pt-3 border-t border-white/5">
+            <button (click)="openViewModal(user)" class="flex-1 py-2 text-xs font-bold bg-white/5 text-slate-300 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors">
               Ver
             </button>
-            <button
-              (click)="openEditModal(user)"
-              class="flex-1 py-2 text-xs font-bold uppercase bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-primary/10 rounded-lg transition-colors"
-            >
+            <button (click)="openEditModal(user)" class="flex-1 py-2 text-xs font-bold bg-white/5 text-slate-300 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors">
               Editar
             </button>
             <button
               (click)="toggleUserStatus(user)"
-              class="flex-1 py-2 text-xs font-bold uppercase"
-              [class]="user.is_active ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'"
+              class="flex-1 py-2 text-xs font-bold rounded-lg transition-colors"
+              [class]="user.is_active ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'"
             >
               {{ user.is_active ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button (click)="openDeleteConfirm(user)" class="px-3 py-2 text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition-colors">
+              <span class="material-symbols-outlined text-base leading-none">delete</span>
             </button>
           </div>
         </div>
       }
     </div>
 
-    <!-- Empty State -->
-    @if (filteredUsers().length === 0) {
-      <div class="bg-zinc-100 dark:bg-zinc-800 p-12 rounded-2xl border border-zinc-200 dark:border-zinc-700 text-center">
-        <span class="material-symbols-outlined text-zinc-400 dark:text-zinc-500 text-5xl mx-auto mb-4">group_remove</span>
-        <h3 class="font-bold text-lg mb-2 text-zinc-900 dark:text-white">No se encontraron usuarios</h3>
-        <p class="text-zinc-500 dark:text-zinc-400 text-sm">Intenta ajustar los filtros de búsqueda</p>
+    <!-- Empty state -->
+    @if (filteredUsers().length === 0 && !loading()) {
+      <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+        <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">group_remove</span>
+        <h3 class="font-bold text-lg mb-2 text-white">No se encontraron usuarios</h3>
+        <p class="text-slate-500 text-sm">Intenta ajustar los filtros de búsqueda</p>
       </div>
     }
 
-    <!-- Pagination -->
+    <!-- Paginación -->
     @if (totalPages() > 1) {
-      <div class="flex items-center justify-between pt-4">
-        <div class="text-sm text-zinc-600 dark:text-zinc-400">
-          Mostrando {{ ((currentPage() - 1) * pageSize()) + 1 }} - {{ Math.min(currentPage() * pageSize(), totalCount()) }} de {{ totalCount() }} usuarios
-        </div>
-
+      <div class="flex items-center justify-between pt-2">
+        <p class="text-sm text-slate-500">
+          Mostrando {{ ((currentPage() - 1) * pageSize()) + 1 }}–{{ Math.min(currentPage() * pageSize(), totalCount()) }}
+          de {{ totalCount() }} usuarios
+        </p>
         <div class="flex items-center gap-2">
           <button
             (click)="prevPage()"
             [disabled]="currentPage() === 1"
-            class="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-zinc-700 dark:text-zinc-300"
+            class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white"
           >
-            <span class="material-symbols-outlined">chevron_left</span>
+            <span class="material-symbols-outlined text-xl">chevron_left</span>
           </button>
-
-          <span class="text-sm font-medium px-4 text-zinc-700 dark:text-zinc-300">
-            Página {{ currentPage() }} de {{ totalPages() }}
-          </span>
-
+          <span class="text-sm font-medium px-3 text-slate-300">{{ currentPage() }} / {{ totalPages() }}</span>
           <button
             (click)="nextPage()"
             [disabled]="currentPage() === totalPages()"
-            class="p-2 rounded-lg border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-zinc-700 dark:text-zinc-300"
+            class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white"
           >
-            <span class="material-symbols-outlined">chevron_right</span>
+            <span class="material-symbols-outlined text-xl">chevron_right</span>
           </button>
         </div>
       </div>
     }
   }
 
-  <!-- Modal with improved accessibility -->
+  <!-- ═══ MODAL CREAR / EDITAR ═══ -->
   @if (showModal()) {
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-zinc-300 dark:border-zinc-700 shadow-2xl">
-        <!-- Modal Header -->
-        <div class="p-6 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between sticky top-0 bg-white dark:bg-zinc-900">
-          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">
-            @if (modalMode() === 'create') {
-              Crear Usuario
-            } @else if (modalMode() === 'edit') {
-              Editar Usuario
-            } @else {
-              Detalles del Usuario
-            }
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+
+        <!-- Header modal -->
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+          <h2 class="text-lg font-bold text-white">
+            @if (modalMode() === 'create') { Crear Usuario }
+            @else if (modalMode() === 'edit') { Editar — {{ selectedUser()?.username }} }
+            @else { Detalles del Usuario }
           </h2>
-          <button (click)="closeModal()" class="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-500 dark:text-zinc-400">
+          <button (click)="closeModal()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <!-- Modal Content -->
-        <div class="p-6 space-y-6 bg-white dark:bg-zinc-900">
+        <!-- Error de modal -->
+        @if (modalError()) {
+          <div class="mx-6 mt-5 flex items-start gap-3 bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+            <span class="material-symbols-outlined text-rose-400 flex-shrink-0 mt-0.5">error</span>
+            <p class="text-rose-400 text-sm">{{ modalError() }}</p>
+          </div>
+        }
+
+        <!-- Contenido -->
+        <div class="p-6">
           @if (modalMode() !== 'view') {
             <form (submit)="$event.preventDefault(); saveUser()" class="space-y-4">
-              <!-- Email (solo en create) -->
-              @if (modalMode() === 'create') {
-                <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Email *</label>
-                  <input
-                    type="email"
-                    [(ngModel)]="formData().email"
-                    name="email"
-                    required
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="usuario@ejemplo.com"
-                  />
-                </div>
 
-                <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Contraseña *</label>
-                  <input
-                    type="password"
-                    [(ngModel)]="formData().password"
-                    name="password"
-                    required
-                    minlength="6"
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="Mínimo 6 caracteres"
-                  />
+              @if (modalMode() === 'create') {
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Email *</label>
+                    <input
+                      type="email"
+                      [(ngModel)]="formData().email"
+                      name="email"
+                      required
+                      class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="usuario@ejemplo.com"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Contraseña *</label>
+                    <input
+                      type="password"
+                      [(ngModel)]="formData().password"
+                      name="password"
+                      required
+                      minlength="6"
+                      class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                  </div>
                 </div>
               }
 
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Usuario</label>
+                  <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Usuario *</label>
                   <input
                     type="text"
                     [(ngModel)]="formData().username"
                     name="username"
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                    class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="nombre_usuario"
                   />
                 </div>
-
                 <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Nombre completo</label>
+                  <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Nombre completo</label>
                   <input
                     type="text"
                     [(ngModel)]="formData().full_name"
                     name="full_name"
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                    class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="Nombre Apellido"
                   />
                 </div>
               </div>
 
-              <!-- Campos adicionales para anunciante -->
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">País</label>
-                  <select
-                    [(ngModel)]="formData().country_code"
-                    name="country_code"
-                    (change)="selectedCountryCode.set($any($event).target.value)"
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    @for (country of countries; track country.code + country.name) {
-                      <option [value]="country.code">{{ country.flag }} {{ country.name }} ({{ country.code }})</option>
-                    }
-                  </select>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Número de celular</label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 text-sm">{{ formData().country_code || '+57' }}</span>
-                    <input
-                      type="tel"
-                      [(ngModel)]="formData().phone"
-                      name="phone"
-                      class="w-full pl-14 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                      placeholder="3001234567"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Campos de ubicación -->
-              <!-- Siempre mostrar campos de texto para mayor flexibilidad -->
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Departamento/Estado/Provincia</label>
-                  <input
-                    type="text"
-                    [(ngModel)]="formData().department"
-                    name="department"
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="Ej: Cundinamarca"
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Ciudad</label>
-                  <input
-                    type="text"
-                    [(ngModel)]="formData().city"
-                    name="city"
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="Ej: Bogotá"
-                  />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Rol</label>
+                  <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Rol</label>
                   <select
                     [(ngModel)]="formData().role"
                     name="role"
-                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                    class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                   >
                     @for (role of rolesForCreation; track role.value) {
                       <option [value]="role.value">{{ role.label }}</option>
                     }
                   </select>
                 </div>
-
-                <!-- Referido del admin (solo lectura) -->
                 <div>
-                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Referido por</label>
+                  <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Celular</label>
+                  <div class="flex gap-2">
+                    <select
+                      [(ngModel)]="formData().country_code"
+                      name="country_code"
+                      class="w-24 px-2 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
+                    >
+                      @for (c of countries; track c.code) {
+                        <option [value]="c.code">{{ c.flag }} {{ c.code }}</option>
+                      }
+                    </select>
+                    <input
+                      type="tel"
+                      [(ngModel)]="formData().phone"
+                      name="phone"
+                      class="flex-1 px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                      placeholder="3001234567"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Departamento / Estado</label>
                   <input
                     type="text"
-                    [value]="adminReferralCode()"
-                    readonly
-                    class="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-500 dark:text-slate-400"
-                    placeholder="Código de referido del admin"
+                    [(ngModel)]="formData().department"
+                    name="department"
+                    class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                    placeholder="Ej: Cundinamarca"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Ciudad</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formData().city"
+                    name="city"
+                    class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                    placeholder="Ej: Bogotá"
                   />
                 </div>
               </div>
 
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   [(ngModel)]="formData().is_active"
                   name="is_active"
                   id="is_active"
-                  class="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary"
+                  class="w-4 h-4 rounded border-white/20 bg-zinc-800 text-primary focus:ring-primary"
                 />
-                <label for="is_active" class="text-sm text-zinc-700 dark:text-zinc-300">Usuario activo</label>
+                <label for="is_active" class="text-sm text-slate-300 cursor-pointer">Usuario activo</label>
               </div>
 
-              <!-- Balance update section (only in edit mode) -->
+              @if (modalMode() === 'create') {
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+                  <span class="material-symbols-outlined text-slate-500 text-xl">link</span>
+                  <div>
+                    <p class="text-xs text-slate-500">Referido por</p>
+                    <p class="text-sm font-semibold text-slate-300">{{ adminReferralCode() || '—' }}</p>
+                  </div>
+                </div>
+              }
+
+              <!-- Balance (solo edit) -->
               @if (modalMode() === 'edit') {
-                <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-4">
-                  <h4 class="font-bold mb-3 text-zinc-900 dark:text-white">Actualizar Balance</h4>
+                <div class="border-t border-white/10 pt-5 mt-1">
+                  <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Ajustar Balance</h4>
                   <div class="flex flex-wrap gap-2">
                     <select
                       [(ngModel)]="balanceOperation"
                       name="balanceOperation"
-                      class="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white"
+                      class="px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
                     >
                       <option value="add">Agregar</option>
                       <option value="subtract">Restar</option>
@@ -464,101 +445,120 @@
                       [(ngModel)]="balanceAmount"
                       name="balanceAmount"
                       min="0"
-                      class="flex-1 min-w-[100px] px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white"
+                      class="flex-1 min-w-[100px] px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
                       placeholder="Monto"
                     />
                     <input
                       type="text"
                       [(ngModel)]="balanceReason"
                       name="balanceReason"
-                      class="flex-1 min-w-[120px] px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white"
+                      class="flex-1 min-w-[120px] px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
                       placeholder="Motivo (requerido)"
                     />
                     <button
                       type="button"
                       (click)="updateBalance()"
                       [disabled]="!balanceAmount() || !balanceReason() || saving()"
-                      class="px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50"
+                      class="px-4 py-2 bg-primary/20 text-primary border border-primary/30 rounded-xl font-bold text-sm hover:bg-primary hover:text-black disabled:opacity-40 transition-colors"
                     >
-                      Actualizar
+                      Aplicar
                     </button>
                   </div>
                 </div>
               }
+
             </form>
           } @else {
-            <!-- View Mode -->
+            <!-- Vista detalle -->
             @if (selectedUser(); as user) {
-              <div class="space-y-4">
-                <div class="flex items-center gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-700">
-                  <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <div class="space-y-5">
+                <div class="flex items-center gap-4 pb-5 border-b border-white/10">
+                  <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
                     @if (user.avatar_url) {
                       <img [src]="user.avatar_url" [alt]="user.username" class="w-full h-full rounded-full object-cover">
                     } @else {
-                      <span class="material-symbols-outlined text-primary">person</span>
+                      <span class="material-symbols-outlined text-primary text-3xl">person</span>
                     }
                   </div>
                   <div>
-                    <h3 class="text-lg font-bold text-zinc-900 dark:text-white">{{ user.full_name || user.username }}</h3>
-                    <p class="text-zinc-500 dark:text-zinc-400">{{ user.email }}</p>
-                    <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
+                    <h3 class="text-lg font-bold text-white">{{ user.full_name || user.username }}</h3>
+                    <p class="text-slate-400 text-sm">{{ user.email }}</p>
+                    <span class="mt-1 inline-block px-2 py-0.5 rounded text-xs font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
                       {{ getRoleLabel(user.role) }}
                     </span>
                   </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <span class="text-zinc-500 dark:text-zinc-400 text-sm">Usuario</span>
-                    <p class="font-bold text-zinc-900 dark:text-white">{{ user.username }}</p>
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <p class="text-xs text-slate-500 mb-1">Balance</p>
+                    <p class="text-xl font-black text-primary">{{ formatCurrency(user.balance) }}</p>
                   </div>
-                  <div>
-                    <span class="text-zinc-500 dark:text-zinc-400 text-sm">Balance</span>
-                    <p class="font-bold text-primary">{{ formatCurrency(user.balance) }}</p>
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <p class="text-xs text-slate-500 mb-1">Total Ganado</p>
+                    <p class="text-xl font-black text-white">{{ formatCurrency(user.total_earned) }}</p>
                   </div>
-                  <div>
-                    <span class="text-zinc-500 dark:text-zinc-400 text-sm">Estado</span>
-                    <p class="font-bold" [class]="user.is_active ? 'text-emerald-500' : 'text-rose-500'">
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <p class="text-xs text-slate-500 mb-1">Estado</p>
+                    <p class="font-bold" [class]="user.is_active ? 'text-emerald-400' : 'text-rose-400'">
                       {{ user.is_active ? 'Activo' : 'Inactivo' }}
                     </p>
                   </div>
-                  <div>
-                    <span class="text-zinc-500 dark:text-zinc-400 text-sm">Registro</span>
-                    <p class="font-bold text-zinc-900 dark:text-white">{{ formatDate(user.created_at) }}</p>
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <p class="text-xs text-slate-500 mb-1">Referidos</p>
+                    <p class="font-bold text-white">{{ user.total_referrals || 0 }}</p>
                   </div>
-                  <div>
-                    <span class="text-zinc-500 dark:text-zinc-400 text-sm">Total Ganado</span>
-                    <p class="font-bold text-zinc-900 dark:text-white">{{ formatCurrency(user.total_earned) }}</p>
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <p class="text-xs text-slate-500 mb-1">Registro</p>
+                    <p class="font-bold text-white">{{ formatDate(user.created_at) }}</p>
                   </div>
-                  <div>
-                    <span class="text-zinc-500 dark:text-zinc-400 text-sm">Referidos</span>
-                    <p class="font-bold text-zinc-900 dark:text-white">{{ user.total_referrals || 0 }}</p>
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <p class="text-xs text-slate-500 mb-1">Código referido</p>
+                    <p class="font-bold text-white">{{ user.referral_code || '—' }}</p>
                   </div>
                 </div>
+
+                @if (user.phone || user.country || user.city) {
+                  <div class="pt-4 border-t border-white/10 grid grid-cols-2 gap-3 text-sm">
+                    @if (user.phone) {
+                      <div><span class="text-slate-500">Teléfono: </span><span class="text-white">{{ user.phone }}</span></div>
+                    }
+                    @if (user.country) {
+                      <div><span class="text-slate-500">País: </span><span class="text-white">{{ user.country }}</span></div>
+                    }
+                    @if (user.city) {
+                      <div><span class="text-slate-500">Ciudad: </span><span class="text-white">{{ user.city }}</span></div>
+                    }
+                  </div>
+                }
               </div>
             }
           }
         </div>
 
-        <!-- Modal Footer -->
+        <!-- Footer modal -->
         @if (modalMode() !== 'view') {
-          <div class="p-6 border-t border-zinc-200 dark:border-zinc-700 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-zinc-900">
+          <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3 sticky bottom-0 bg-zinc-900">
             <button
               (click)="closeModal()"
-              class="px-4 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-xl font-bold text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              class="px-4 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors"
             >
               Cancelar
             </button>
             <button
               (click)="saveUser()"
               [disabled]="saving()"
-              class="px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+              class="px-5 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 transition-colors"
             >
               @if (saving()) {
-                <span class="material-icons w-4 h-4 animate-spin">sync</span>
+                <span class="material-symbols-outlined text-lg animate-spin">sync</span>
                 Guardando...
+              } @else if (modalMode() === 'create') {
+                <span class="material-symbols-outlined text-lg">person_add</span>
+                Crear Usuario
               } @else {
-                {{ modalMode() === 'create' ? 'Crear Usuario' : 'Guardar Cambios' }}
+                <span class="material-symbols-outlined text-lg">save</span>
+                Guardar Cambios
               }
             </button>
           </div>
@@ -566,4 +566,54 @@
       </div>
     </div>
   }
+
+  <!-- ═══ MODAL CONFIRMAR ELIMINACIÓN ═══ -->
+  @if (showDeleteConfirm()) {
+    <div class="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-sm border border-rose-500/20 shadow-2xl shadow-rose-500/10">
+        <div class="p-6 text-center">
+          <div class="w-14 h-14 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined text-rose-500 text-3xl">delete_forever</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">¿Eliminar usuario?</h3>
+          <p class="text-slate-400 text-sm mb-1">
+            Estás a punto de eliminar a
+            <span class="font-bold text-white">{{ userToDelete()?.username }}</span>
+          </p>
+          <p class="text-slate-500 text-xs mb-4">
+            {{ userToDelete()?.email }} · Esta acción no se puede deshacer.
+          </p>
+          @if (deleteError()) {
+            <div class="flex items-start gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 mb-4 text-left">
+              <span class="material-symbols-outlined text-rose-400 text-lg flex-shrink-0 mt-0.5">error</span>
+              <p class="text-rose-400 text-xs">{{ deleteError() }}</p>
+            </div>
+          }
+          <div class="flex gap-3">
+            <button
+              (click)="closeDeleteConfirm()"
+              [disabled]="saving()"
+              class="flex-1 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              (click)="confirmDelete()"
+              [disabled]="saving()"
+              class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            >
+              @if (saving()) {
+                <span class="material-symbols-outlined text-lg animate-spin">sync</span>
+                Eliminando...
+              } @else {
+                <span class="material-symbols-outlined text-lg">delete</span>
+                Sí, eliminar
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>

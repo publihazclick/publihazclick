@@ -222,13 +222,17 @@ export class AuthService implements OnDestroy {
     const errorMessages: Record<string, string> = {
       'Invalid login credentials': 'Credenciales de inicio de sesión inválidas',
       'Email not confirmed': 'Correo electrónico no confirmado',
-      'User already registered': 'El usuario ya está registrado',
-      'Password does not meet requirements': 'La contraseña no cumple los requisitos',
+      'User already registered': 'Ya existe una cuenta con este correo electrónico',
+      'already registered': 'Ya existe una cuenta con este correo electrónico',
+      'already exists': 'Ya existe una cuenta con este correo electrónico',
+      'Password does not meet requirements': 'La contraseña no cumple los requisitos mínimos',
       'Invalid email': 'Correo electrónico inválido',
       'Network error': 'Error de conexión. Verifica tu conexión a internet',
       'Too many requests': 'Demasiados intentos. Por favor, espera unos minutos',
+      'email rate limit exceeded': 'Límite de registros excedido. Intenta de nuevo en unos minutos',
       'Invalid password': 'Contraseña incorrecta',
-      'User not found': 'Usuario no encontrado'
+      'User not found': 'Usuario no encontrado',
+      'Código de referido inválido': 'Código de referido inválido o no encontrado',
     };
 
     return errorMessages[error.message] || error.message;
@@ -367,71 +371,65 @@ export class AuthService implements OnDestroy {
 
   /**
    * Registra un nuevo usuario con código de referido.
-   * El trigger handle_new_user (SECURITY DEFINER) se encarga de crear
-   * el perfil completo con todos los datos del metadata en la BD.
+   * Usa una Edge Function con Admin API para evitar rate limits del endpoint /signup.
+   * El trigger handle_new_user crea el perfil automáticamente.
+   * Tras la creación, hace signInWithPassword para obtener la sesión.
    */
   registerWithReferral(options: RegisterOptions, referralCode: string): Observable<AuthResult> {
     this._isLoading.set(true);
     this._error.set(null);
 
-    const redirectBase = typeof window !== 'undefined' ? window.location.origin : '';
-
     return from(
-      this.supabase.auth.signUp({
-        email: options.email,
-        password: options.password,
-        options: {
-          data: {
-            full_name: options.fullName,
+      this.supabase.functions
+        .invoke('register-with-referral', {
+          body: {
+            email: options.email,
+            password: options.password,
             username: options.username,
+            full_name: options.fullName,
             referral_code: referralCode,
             phone: options.phone || null,
             country: options.country || null,
             country_code: options.country_code || null,
             department: options.department || null,
             city: options.city || null,
-            ...options.metadata
           },
-          emailRedirectTo: redirectBase + '/auth/callback'
-        }
-      })
+        })
+        .then(async ({ data, error }) => {
+          // Error de red / función
+          if (error) throw error;
+          // Error devuelto por la función
+          if (data?.error) throw new Error(data.error);
+
+          // Usuario creado → iniciar sesión para obtener sesión activa
+          const { data: signInData, error: signInError } = await this.supabase.auth.signInWithPassword({
+            email: options.email,
+            password: options.password,
+          });
+
+          if (signInError) throw signInError;
+
+          if (signInData.session) {
+            this.handleSessionChange(signInData.session);
+          }
+
+          return { data: signInData, error: null };
+        })
     ).pipe(
-      map(({ data, error }) => {
-        if (error) {
-          this.handleAuthError(error);
-          return {
-            success: false,
-            data: null,
-            error,
-            message: this.parseErrorMessage(error)
-          } as AuthResult;
-        }
-
-        // Sin confirmación de email: se recibe sesión inmediata
-        if (data.user && data.session) {
-          this.handleSessionChange(data.session);
-          return {
-            success: true,
-            data: data.user,
-            message: 'Registro exitoso'
-          } as AuthResult;
-        }
-
-        // Con confirmación de email: sin sesión hasta que el usuario confirme
-        return {
-          success: true,
-          data: data.user,
-          message: 'Te hemos enviado un correo de confirmación. Por favor, verifica tu bandeja de entrada.'
-        } as AuthResult;
-      }),
-      catchError((error: AuthError) => {
-        this.handleAuthError(error);
+      map(({ data }) => ({
+        success: true,
+        data: data?.user ?? null,
+        message: '¡Registro exitoso! Bienvenido a Publihazclick',
+      } as AuthResult)),
+      catchError((err: unknown) => {
+        const authErr = err as AuthError;
+        this.handleAuthError(authErr);
         return of({
           success: false,
           data: null,
-          error,
-          message: this.parseErrorMessage(error)
-        });
+          error: authErr,
+          message: this.parseErrorMessage(authErr),
+        } as AuthResult);
       }),
       tap(() => this._isLoading.set(false)),
       takeUntil(this.destroy$)

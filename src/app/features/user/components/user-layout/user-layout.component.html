@@ -1,110 +1,169 @@
 <aside
-  class="w-64 bg-sidebar-dark text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-300"
-  [class.-translate-x-full]="!sidebarOpen() && isMobile()"
-  [class.translate-x-0]="sidebarOpen() || !isMobile()"
+  class="bg-sidebar-dark text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-all duration-300"
+  [class.w-16]="sidebarCollapsed()"
+  [class.w-64]="!sidebarCollapsed()"
 >
-  <div class="p-4 lg:p-6 flex items-center gap-2 border-b border-white/10">
-    <img src="/logo.webp" alt="PublihazClik" class="h-8 lg:h-10 w-auto" width="200" height="40">
+  <!-- Header: logo + collapse button -->
+  <div class="p-3 lg:p-4 flex items-center justify-between border-b border-white/10">
+    @if (!sidebarCollapsed()) {
+      <img src="/logo.webp" alt="PublihazClik" class="h-12 lg:h-14 w-auto" width="200" height="56">
+    }
+    <button
+      (click)="toggleSidebarCollapse()"
+      class="flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
+      [title]="sidebarCollapsed() ? 'Expandir menú' : 'Colapsar menú'"
+    >
+      @if (sidebarCollapsed()) {
+        <span class="material-icons">chevron_right</span>
+      } @else {
+        <span class="material-icons">chevron_left</span>
+      }
+    </button>
   </div>
-  <div class="sidebar-scroll overflow-y-auto flex-1 p-4">
-    <div class="flex flex-col items-center mb-6 lg:mb-8 py-4 lg:py-6 border-b border-white/10">
-      <div class="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-tr from-primary to-blue-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2 lg:mb-3 shadow-lg shadow-primary/20 rotate-3">
-        <span class="material-icons text-2xl lg:text-3xl font-bold -rotate-3">person</span>
+
+  <div class="sidebar-scroll overflow-y-auto flex-1 p-2 lg:p-4">
+    <!-- User profile badge -->
+    @if (!sidebarCollapsed()) {
+      <div class="flex flex-col items-center mb-6 lg:mb-8 py-4 lg:py-6 border-b border-white/10">
+        <div class="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-tr from-primary to-blue-600 rounded-xl lg:rounded-2xl flex items-center justify-center mb-2 lg:mb-3 shadow-lg shadow-primary/20 rotate-3">
+          <span class="material-icons text-2xl lg:text-3xl font-bold -rotate-3">person</span>
+        </div>
+        <h3 class="font-bold text-center text-sm">Mi Cuenta</h3>
+        <p class="text-[10px] text-primary mt-1 font-bold uppercase tracking-widest">Nivel {{ userLevel }}</p>
       </div>
-      <h3 class="font-bold text-center text-sm">Mi Cuenta</h3>
-      <p class="text-[10px] text-primary mt-1 font-bold uppercase tracking-widest">Nivel {{ userLevel }}</p>
-    </div>
-    <nav class="space-y-4 lg:space-y-6">
+    } @else {
+      <div class="flex flex-col items-center mb-4 py-4 border-b border-white/10">
+        <div class="w-10 h-10 bg-gradient-to-tr from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 rotate-3">
+          <span class="material-icons text-xl font-bold -rotate-3">person</span>
+        </div>
+      </div>
+    }
+
+    <nav class="space-y-2 lg:space-y-4">
       <div>
-        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Panel Principal</h4>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Panel Principal</h4>
+        }
         <ul class="space-y-1">
           <li>
-            <a routerLink="/dashboard" routerLinkActive="bg-primary/10 text-primary border border-primary/20" [routerLinkActiveOptions]="{exact: true}" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <span class="material-icons w-5 h-5">dashboard</span> Dashboard
+            <a routerLink="/dashboard" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               [routerLinkActiveOptions]="{exact: true}"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">dashboard</span>
+              @if (!sidebarCollapsed()) {
+                <span>Dashboard</span>
+              }
             </a>
           </li>
           <li>
-            <a routerLink="/dashboard/ads" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <span class="material-icons w-5 h-5">ads_click</span> Ver Anuncios
-              <span class="ml-auto bg-accent text-white text-[10px] px-1.5 py-0.5 rounded font-bold">12</span>
+            <a routerLink="/dashboard/ads" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">ads_click</span>
+              @if (!sidebarCollapsed()) {
+                <span>Ver Anuncios</span>
+                <span class="ml-auto bg-accent text-white text-[10px] px-1.5 py-0.5 rounded font-bold">12</span>
+              }
             </a>
           </li>
           <li>
-            <a routerLink="/dashboard/wallet" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <span class="material-icons w-5 h-5">account_balance_wallet</span> Mi Billetera
+            <a routerLink="/dashboard/wallet" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">account_balance_wallet</span>
+              @if (!sidebarCollapsed()) {
+                <span>Mi Billetera</span>
+              }
             </a>
           </li>
           <li>
-            <a routerLink="/dashboard/referrals" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <span class="material-icons w-5 h-5">group</span> Referidos
+            <a routerLink="/dashboard/referrals" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">group</span>
+              @if (!sidebarCollapsed()) {
+                <span>Referidos</span>
+              }
             </a>
           </li>
           <li>
             <button
               (click)="openReferralModal()"
               class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+              [class.justify-center]="sidebarCollapsed()"
             >
-              <span class="material-icons w-5 h-5 text-accent">card_giftcard</span>
-              <span>Recomienda y Gana</span>
-              <span class="ml-auto bg-accent/20 text-accent text-[10px] px-1.5 py-0.5 rounded font-bold">NEW</span>
+              <span class="material-icons text-accent">card_giftcard</span>
+              @if (!sidebarCollapsed()) {
+                <span>Recomienda y Gana</span>
+                <span class="ml-auto bg-accent/20 text-accent text-[10px] px-1.5 py-0.5 rounded font-bold">NEW</span>
+              }
             </button>
           </li>
         </ul>
       </div>
       <div>
-        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Actividad</h4>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Actividad</h4>
+        }
         <ul class="space-y-1">
           <li>
-            <a routerLink="/dashboard/history" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <span class="material-icons w-5 h-5">history</span> Historial
+            <a routerLink="/dashboard/history" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">history</span>
+              @if (!sidebarCollapsed()) {
+                <span>Historial</span>
+              }
             </a>
           </li>
           <li>
-            <a routerLink="/dashboard/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all">
-              <span class="material-icons w-5 h-5">settings</span> Configuración
+            <a routerLink="/dashboard/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">settings</span>
+              @if (!sidebarCollapsed()) {
+                <span>Configuración</span>
+              }
             </a>
           </li>
         </ul>
       </div>
     </nav>
   </div>
-  <div class="p-4 border-t border-white/10 space-y-3">
-    <!-- Daily Progress -->
-    <div class="bg-white/5 rounded-lg p-3">
-      <div class="flex justify-between text-[10px] mb-1 font-bold">
-        <span class="text-slate-400 uppercase">Meta Diaria</span>
-        <span class="text-primary">{{ dailyClicks }}/{{ dailyGoal }}</span>
+
+  <!-- Bottom: daily progress + logout -->
+  <div class="p-2 lg:p-4 border-t border-white/10 space-y-2">
+    @if (!sidebarCollapsed()) {
+      <div class="bg-white/5 rounded-lg p-3">
+        <div class="flex justify-between text-[10px] mb-1 font-bold">
+          <span class="text-slate-400 uppercase">Meta Diaria</span>
+          <span class="text-primary">{{ dailyClicks }}/{{ dailyGoal }}</span>
+        </div>
+        <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-primary h-full transition-all duration-500" [style.width.%]="dailyProgress"></div>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-1">{{ dailyGoal - dailyClicks }} clicks para bonus</p>
       </div>
-      <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-        <div class="bg-primary h-full transition-all duration-500" [style.width.%]="dailyProgress"></div>
-      </div>
-      <p class="text-[10px] text-slate-500 mt-1">{{ dailyGoal - dailyClicks }} clicks para bonus</p>
-    </div>
-    <button (click)="logout()" class="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold py-2.5 px-4 rounded-lg transition-all text-xs border border-rose-500/20 flex items-center justify-center gap-2 uppercase tracking-wider">
-      <span class="material-icons w-4 h-4">logout</span> Cerrar Sesión
+    }
+    <button (click)="logout()"
+            class="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold py-2.5 px-2 lg:px-4 rounded-lg transition-all text-xs border border-rose-500/20 flex items-center justify-center gap-2 uppercase tracking-wider"
+            [class.justify-center]="sidebarCollapsed()">
+      <span class="material-icons">logout</span>
+      @if (!sidebarCollapsed()) {
+        <span>Cerrar Sesión</span>
+      }
     </button>
   </div>
 </aside>
 
-<!-- Mobile overlay -->
-@if (sidebarOpen() && isMobile()) {
-  <div
-    class="fixed inset-0 bg-black/50 z-40"
-    (click)="toggleSidebar()"
-  ></div>
-}
-
-<main class="flex-1 flex flex-col min-h-screen" [class.lg:ml-64]="!isMobile()">
+<main
+  class="flex-1 flex flex-col min-h-screen transition-all duration-300"
+  [class.ml-16]="sidebarCollapsed()"
+  [class.ml-64]="!sidebarCollapsed()"
+>
   <!-- Header -->
   <header class="h-16 lg:h-20 bg-white/80 dark:bg-card-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center px-4 lg:px-10 sticky top-0 z-40">
-    <!-- Mobile menu button -->
-    <button
-      (click)="toggleSidebar()"
-      class="lg:hidden p-2 mr-3 text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
-    >
-      <span class="material-icons w-6 h-6">menu</span>
-    </button>
-
     <div class="flex-1">
       <h1 class="text-lg lg:text-xl font-black text-slate-800 dark:text-white tracking-tight">MI DASHBOARD</h1>
       <p class="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Gana dinero viendo anuncios</p>
@@ -112,7 +171,7 @@
     <div class="flex items-center gap-3 lg:gap-6">
       <div class="relative hidden sm:block">
         <button class="p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all relative">
-          <span class="material-icons w-5 h-5">notifications</span>
+          <span class="material-icons">notifications</span>
           <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-accent border-2 border-white dark:border-card-dark rounded-full"></span>
         </button>
       </div>
@@ -121,12 +180,12 @@
         <div class="text-right hidden md:block">
           <p class="text-xs font-bold text-slate-800 dark:text-white">Balance Disponible</p>
           <p class="text-[10px] text-primary flex items-center justify-end gap-1 font-bold uppercase">
-            <span class="material-icons w-3 h-3">attach_money</span>
+            <span class="material-icons text-xs">attach_money</span>
             $25,450 COP
           </p>
         </div>
         <div class="w-8 lg:w-10 h-8 lg:h-10 bg-gradient-to-tr from-primary to-blue-600 rounded-full flex items-center justify-center border-2 border-white/20 shadow-lg shadow-primary/20">
-          <span class="material-icons w-4 lg:w-5 h-4 lg:h-5">person</span>
+          <span class="material-icons text-base lg:text-xl">person</span>
         </div>
       </div>
     </div>
@@ -150,16 +209,13 @@
 <!-- Referral Modal -->
 <app-user-referral-modal #referralModal></app-user-referral-modal>
 
-<!-- Referral Modal -->
-<app-user-referral-modal #referralModal></app-user-referral-modal>
-
 <!-- Dark mode toggle -->
 <div class="fixed bottom-6 right-6 z-50">
   <button (click)="toggleDarkMode()" class="group relative w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-white dark:bg-card-dark shadow-xl border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-800 dark:text-primary transition-all hover:scale-110 active:scale-95">
     @if (isDarkMode) {
-      <span class="material-icons w-5 lg:w-6 h-5 lg:h-6">light_mode</span>
+      <span class="material-icons text-xl lg:text-2xl">light_mode</span>
     } @else {
-      <span class="material-icons w-5 lg:w-6 h-5 lg:h-6">dark_mode</span>
+      <span class="material-icons text-xl lg:text-2xl">dark_mode</span>
     }
     <span class="absolute right-full mr-3 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Cambiar Tema</span>
   </button>

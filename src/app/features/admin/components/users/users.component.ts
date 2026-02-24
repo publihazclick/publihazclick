@@ -1,17 +1,15 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
-import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { CountriesService } from '../../../../core/services/countries.service';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import type {
   UserAdmin,
   CreateUserAdminData,
-  UpdateUserAdminData,
   UserFilters,
-  PaginationParams
 } from '../../../../core/models/admin.model';
 import type { Profile, UserRole } from '../../../../core/models/profile.model';
 
@@ -20,15 +18,14 @@ import type { Profile, UserRole } from '../../../../core/models/profile.model';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './users.component.html',
-  styleUrl: './users.component.scss'
+  styleUrl: './users.component.scss',
 })
-export class AdminUsersComponent implements OnInit {
-  // Servicios
+export class AdminUsersComponent implements OnInit, OnDestroy {
   private readonly profileService = inject(ProfileService);
   private readonly dashboardService = inject(AdminDashboardService);
   private readonly countriesService = inject(CountriesService);
 
-  // Signals para estado
+  // Estado de lista
   readonly users = signal<UserAdmin[]>([]);
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
@@ -39,25 +36,27 @@ export class AdminUsersComponent implements OnInit {
   readonly pageSize = signal<number>(20);
   readonly totalCount = signal<number>(0);
 
-  // Country/Location signals
+  // Notificaciones
+  readonly successMessage = signal<string | null>(null);
+  readonly modalError = signal<string | null>(null);
+  private notifTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Países / ubicación
   readonly selectedCountryCode = signal<string>('+57');
   readonly countries = this.countriesService.getCountriesWithPhoneCodes();
-  readonly departmentsList = computed(() => this.countriesService.getDepartments(this.selectedCountryCode()));
-  readonly availableCities = computed(() => this.countriesService.getCities(this.formData().department || ''));
 
-  // Roles for creation - only usuario and administrador
   readonly rolesForCreation = [
     { value: 'guest', label: 'Usuario' },
-    { value: 'admin', label: 'Administrador' }
+    { value: 'advertiser', label: 'Anunciante' },
+    { value: 'admin', label: 'Administrador' },
   ];
 
-  // Modal state
+  // Modal crear/editar
   readonly showModal = signal<boolean>(false);
   readonly modalMode = signal<'create' | 'edit' | 'view'>('create');
   readonly selectedUser = signal<UserAdmin | null>(null);
   readonly saving = signal<boolean>(false);
 
-  // Form data
   readonly formData = signal<Partial<CreateUserAdminData>>({
     email: '',
     password: '',
@@ -69,47 +68,59 @@ export class AdminUsersComponent implements OnInit {
     country: '',
     country_code: '+57',
     department: '',
-    city: ''
+    city: '',
   });
 
-  // Admin referrer code
+  // Modal eliminar
+  readonly showDeleteConfirm = signal<boolean>(false);
+  readonly userToDelete = signal<UserAdmin | null>(null);
+  readonly deleteError = signal<string | null>(null);
+
+  // Admin referrer
   readonly adminReferralCode = signal<string>('');
   readonly adminProfile = signal<Profile | null>(null);
 
+  // Realtime
+  private realtimeChannel: RealtimeChannel | null = null;
+
+  // Balance
   readonly balanceOperation = signal<'add' | 'subtract' | 'set'>('add');
   readonly balanceAmount = signal<number>(0);
   readonly balanceReason = signal<string>('');
 
-  // Computed
-  readonly totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
-  readonly filteredUsers = computed(() => {
-    return this.users().filter(u => {
-      const matchesSearch = !this.searchQuery() ||
-        u.username.toLowerCase().includes(this.searchQuery().toLowerCase()) ||
-        u.email.toLowerCase().includes(this.searchQuery().toLowerCase()) ||
-        (u.full_name && u.full_name.toLowerCase().includes(this.searchQuery().toLowerCase()));
+  readonly Math = Math;
 
+  readonly totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
+
+  readonly filteredUsers = computed(() =>
+    this.users().filter((u) => {
+      const q = this.searchQuery().toLowerCase();
+      const matchesSearch =
+        !q ||
+        u.username.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        (u.full_name && u.full_name.toLowerCase().includes(q));
       const matchesRole = this.selectedRole() === 'all' || u.role === this.selectedRole();
-      const matchesStatus = this.selectedStatus() === 'all' ||
+      const matchesStatus =
+        this.selectedStatus() === 'all' ||
         (this.selectedStatus() === 'active' && u.is_active) ||
         (this.selectedStatus() === 'inactive' && !u.is_active);
-
       return matchesSearch && matchesRole && matchesStatus;
-    });
-  });
+    })
+  );
 
   readonly roles: { value: UserRole | 'all'; label: string }[] = [
     { value: 'all', label: 'Todos los roles' },
     { value: 'dev', label: 'Desarrollador' },
     { value: 'admin', label: 'Administrador' },
     { value: 'advertiser', label: 'Anunciante' },
-    { value: 'guest', label: 'Usuario' }
+    { value: 'guest', label: 'Usuario' },
   ];
 
   readonly statuses = [
     { value: 'all', label: 'Todos' },
     { value: 'active', label: 'Activos' },
-    { value: 'inactive', label: 'Inactivos' }
+    { value: 'inactive', label: 'Inactivos' },
   ];
 
   readonly numberFormatter = new Intl.NumberFormat('es-CO');
@@ -117,15 +128,62 @@ export class AdminUsersComponent implements OnInit {
     style: 'currency',
     currency: 'COP',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   });
 
   ngOnInit(): void {
     this.loadAdminProfile();
     this.loadUsers();
+    this.subscribeToProfiles();
   }
 
-  // Cargar perfil del admin actual para obtener su código de referido
+  ngOnDestroy(): void {
+    if (this.notifTimer) clearTimeout(this.notifTimer);
+    if (this.realtimeChannel) {
+      getSupabaseClient().removeChannel(this.realtimeChannel);
+    }
+  }
+
+  private subscribeToProfiles(): void {
+    this.realtimeChannel = getSupabaseClient()
+      .channel('admin-profiles-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => this.loadUsers()
+      )
+      .subscribe();
+  }
+
+  // ─── Notificaciones ───────────────────────────────────────────────────────
+
+  private showSuccess(message: string): void {
+    this.successMessage.set(message);
+    this.error.set(null);
+    if (this.notifTimer) clearTimeout(this.notifTimer);
+    this.notifTimer = setTimeout(() => this.successMessage.set(null), 4000);
+  }
+
+  private parseUserError(err: unknown): string {
+    const msg: string =
+      (err as any)?.message || (err as any)?.toString() || 'Error desconocido';
+    if (msg.includes('duplicate key') || msg.includes('already exists') || msg.includes('already registered'))
+      return 'Ya existe un usuario con ese email o username';
+    if (msg.includes('weak') || (msg.includes('password') && msg.includes('short')))
+      return 'La contraseña es demasiado débil (mínimo 6 caracteres)';
+    if (msg.includes('Invalid email') || msg.includes('invalid email'))
+      return 'El formato del email es inválido';
+    if (msg.includes('rate limit') || msg.includes('Rate limit'))
+      return 'Límite de solicitudes excedido. Espera unos minutos e intenta de nuevo';
+    if (msg.includes('No puedes eliminar tu propia cuenta'))
+      return 'No puedes eliminar tu propia cuenta';
+    if (msg.includes('Forbidden'))
+      return 'No tienes permisos para realizar esta acción';
+    return msg;
+  }
+
+  // ─── Carga ────────────────────────────────────────────────────────────────
+
   private async loadAdminProfile(): Promise<void> {
     try {
       const profile = await this.profileService.getCurrentProfile();
@@ -138,24 +196,18 @@ export class AdminUsersComponent implements OnInit {
     }
   }
 
-  // Exponer Math para template
-  readonly Math = Math;
-
   async loadUsers(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
-
     try {
       const from = (this.currentPage() - 1) * this.pageSize();
       const to = from + this.pageSize() - 1;
-
       const { data, count } = await this.supabaseQuery(from, to);
-
       if (data) {
         this.users.set(data as UserAdmin[]);
         this.totalCount.set(count || 0);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading users:', err);
       this.error.set('Error al cargar los usuarios');
     } finally {
@@ -163,46 +215,38 @@ export class AdminUsersComponent implements OnInit {
     }
   }
 
-  private async supabaseQuery(from: number, to: number): Promise<{ data: unknown[]; count: number | null }> {
-    const supabase = this.profileService['supabase'];
-
+  private async supabaseQuery(
+    from: number,
+    to: number
+  ): Promise<{ data: unknown[]; count: number | null }> {
+    const supabase = getSupabaseClient();
     let query = supabase
       .from('profiles')
-      .select(`
-        *,
-        referrer:referred_by (username)
-      `, { count: 'exact' })
+      .select('*, referrer:referred_by (username)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (this.selectedRole() !== 'all') {
-      query = query.eq('role', this.selectedRole());
-    }
-
-    if (this.selectedStatus() !== 'all') {
+    if (this.selectedRole() !== 'all') query = query.eq('role', this.selectedRole());
+    if (this.selectedStatus() !== 'all')
       query = query.eq('is_active', this.selectedStatus() === 'active');
-    }
 
     const { data, error, count } = await query;
-
     if (error) throw error;
 
-    // Transform data to include referrer_username
     const transformedData = (data || []).map((u: any) => ({
       ...u,
-      referrer_username: u.referrer?.username
+      referrer_username: u.referrer?.username,
     }));
-
     return { data: transformedData, count };
   }
 
-  // Search
+  // ─── Filtros y paginación ─────────────────────────────────────────────────
+
   onSearch(query: string): void {
     this.searchQuery.set(query);
     this.currentPage.set(1);
   }
 
-  // Filter changes
   onRoleChange(role: UserRole | 'all'): void {
     this.selectedRole.set(role);
     this.currentPage.set(1);
@@ -215,30 +259,21 @@ export class AdminUsersComponent implements OnInit {
     this.loadUsers();
   }
 
-  onDepartmentChange(value: string): void {
-    this.formData.update(data => ({ ...data, department: value, city: '' }));
-  }
-
-  // Pagination
   goToPage(page: number): void {
     if (page >= 1 && page <= this.totalPages()) {
       this.currentPage.set(page);
       this.loadUsers();
     }
   }
+  nextPage(): void { this.goToPage(this.currentPage() + 1); }
+  prevPage(): void { this.goToPage(this.currentPage() - 1); }
 
-  nextPage(): void {
-    this.goToPage(this.currentPage() + 1);
-  }
+  // ─── Modal crear/editar ───────────────────────────────────────────────────
 
-  prevPage(): void {
-    this.goToPage(this.currentPage() - 1);
-  }
-
-  // Modal actions
   openCreateModal(): void {
     this.modalMode.set('create');
     this.selectedUser.set(null);
+    this.modalError.set(null);
     this.formData.set({
       email: '',
       password: '',
@@ -250,7 +285,7 @@ export class AdminUsersComponent implements OnInit {
       country: '',
       country_code: '+57',
       department: '',
-      city: ''
+      city: '',
     });
     this.showModal.set(true);
   }
@@ -258,6 +293,7 @@ export class AdminUsersComponent implements OnInit {
   openEditModal(user: UserAdmin): void {
     this.modalMode.set('edit');
     this.selectedUser.set(user);
+    this.modalError.set(null);
     this.formData.set({
       username: user.username,
       full_name: user.full_name || '',
@@ -267,7 +303,7 @@ export class AdminUsersComponent implements OnInit {
       country: user.country || '',
       country_code: user.country_code || '+57',
       department: user.department || '',
-      city: user.city || ''
+      city: user.city || '',
     });
     this.balanceAmount.set(0);
     this.balanceReason.set('');
@@ -283,28 +319,28 @@ export class AdminUsersComponent implements OnInit {
   closeModal(): void {
     this.showModal.set(false);
     this.selectedUser.set(null);
+    this.modalError.set(null);
     this.balanceAmount.set(0);
     this.balanceReason.set('');
   }
 
-  // CRUD operations
+  // ─── CRUD ─────────────────────────────────────────────────────────────────
+
   async saveUser(): Promise<void> {
     this.saving.set(true);
-
+    this.modalError.set(null);
     try {
       if (this.modalMode() === 'create') {
-        // Crear usuario
         await this.createUser();
+        this.showSuccess('Usuario creado correctamente');
       } else {
-        // Actualizar usuario
         await this.updateUser();
+        this.showSuccess('Usuario actualizado correctamente');
       }
-
       await this.loadUsers();
       this.closeModal();
-    } catch (err: any) {
-      console.error('Error saving user:', err);
-      this.error.set(err.message || 'Error al guardar el usuario');
+    } catch (err: unknown) {
+      this.modalError.set(this.parseUserError(err));
     } finally {
       this.saving.set(false);
     }
@@ -315,10 +351,7 @@ export class AdminUsersComponent implements OnInit {
     if (!data.email || !data.password || !data.username) {
       throw new Error('Email, contraseña y username son requeridos');
     }
-
     const supabase = getSupabaseClient();
-
-    // Usar Edge Function con Admin API: sin rate limits, email confirmado automáticamente
     const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
       body: {
         email: data.email,
@@ -335,7 +368,6 @@ export class AdminUsersComponent implements OnInit {
         referral_code: this.adminReferralCode() || '',
       },
     });
-
     if (error) throw error;
     if (result?.error) throw new Error(result.error);
 
@@ -348,55 +380,99 @@ export class AdminUsersComponent implements OnInit {
   private async updateUser(): Promise<void> {
     const user = this.selectedUser();
     if (!user) return;
-
     const data = this.formData();
-    const updateData: UpdateUserAdminData = {
-      username: data.username,
-      full_name: data.full_name,
-      role: data.role,
-      is_active: data.is_active
-    };
+    const supabase = getSupabaseClient();
 
-    // Actualizar perfil
-    await this.profileService.updateProfile(updateData as any);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        username: data.username,
+        full_name: data.full_name || null,
+        role: data.role,
+        is_active: data.is_active,
+        phone: data.phone || null,
+        country: data.country || null,
+        country_code: data.country_code || null,
+        department: data.department || null,
+        city: data.city || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
 
-    // Log activity
-    await this.dashboardService.logActivity(
-      'update_user',
-      'user',
-      user.id,
-      { changes: Object.keys(updateData) }
-    );
+    if (error) throw error;
+
+    await this.dashboardService.logActivity('update_user', 'user', user.id, {
+      changes: ['username', 'full_name', 'role', 'is_active', 'phone', 'country'],
+    });
   }
+
+  // ─── Eliminar ─────────────────────────────────────────────────────────────
+
+  openDeleteConfirm(user: UserAdmin): void {
+    this.userToDelete.set(user);
+    this.showDeleteConfirm.set(true);
+  }
+
+  closeDeleteConfirm(): void {
+    this.userToDelete.set(null);
+    this.showDeleteConfirm.set(false);
+    this.deleteError.set(null);
+  }
+
+  async confirmDelete(): Promise<void> {
+    const user = this.userToDelete();
+    if (!user) return;
+    this.saving.set(true);
+    this.deleteError.set(null);
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: result, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: user.id },
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+
+      await this.dashboardService.logActivity('delete_user', 'user', user.id, {
+        email: user.email,
+        username: user.username,
+      });
+
+      this.showSuccess(`Usuario "${user.username}" eliminado correctamente`);
+      await this.loadUsers();
+      this.closeDeleteConfirm();
+    } catch (err: unknown) {
+      this.deleteError.set(this.parseUserError(err));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  // ─── Balance ──────────────────────────────────────────────────────────────
 
   async updateBalance(): Promise<void> {
     const user = this.selectedUser();
     if (!user || !this.balanceReason()) return;
-
     this.saving.set(true);
-
+    this.modalError.set(null);
     try {
       await this.profileService.updateBalance(
         user.id,
         this.balanceAmount(),
         this.balanceOperation()
       );
-
-      await this.dashboardService.logActivity(
-        'update_balance',
-        'user',
-        user.id,
-        {
-          operation: this.balanceOperation(),
-          amount: this.balanceAmount(),
-          reason: this.balanceReason()
-        }
-      );
-
+      await this.dashboardService.logActivity('update_balance', 'user', user.id, {
+        operation: this.balanceOperation(),
+        amount: this.balanceAmount(),
+        reason: this.balanceReason(),
+      });
+      this.showSuccess('Balance actualizado correctamente');
+      this.balanceAmount.set(0);
+      this.balanceReason.set('');
       await this.loadUsers();
-    } catch (err: any) {
-      console.error('Error updating balance:', err);
-      this.error.set(err.message || 'Error al actualizar el balance');
+    } catch (err: unknown) {
+      this.modalError.set(this.parseUserError(err));
     } finally {
       this.saving.set(false);
     }
@@ -405,7 +481,6 @@ export class AdminUsersComponent implements OnInit {
   async toggleUserStatus(user: UserAdmin): Promise<void> {
     const newStatus = !user.is_active;
     const success = await this.profileService.setUserActive(user.id, newStatus);
-
     if (success) {
       await this.dashboardService.logActivity(
         newStatus ? 'activate_user' : 'deactivate_user',
@@ -413,47 +488,26 @@ export class AdminUsersComponent implements OnInit {
         user.id,
         { previous_status: user.is_active }
       );
-
-      // Update local state
-      this.users.update(users =>
-        users.map(u => u.id === user.id ? { ...u, is_active: newStatus } : u)
+      this.users.update((users) =>
+        users.map((u) => (u.id === user.id ? { ...u, is_active: newStatus } : u))
+      );
+      this.showSuccess(
+        `Usuario "${user.username}" ${newStatus ? 'activado' : 'desactivado'} correctamente`
       );
     }
   }
 
-  async changeUserRole(user: UserAdmin, newRole: UserRole): Promise<void> {
-    const success = await this.profileService.setUserRole(user.id, newRole);
-
-    if (success) {
-      await this.dashboardService.logActivity(
-        'change_role',
-        'user',
-        user.id,
-        { previous_role: user.role, new_role: newRole }
-      );
-
-      // Update local state
-      this.users.update(users =>
-        users.map(u => u.id === user.id ? { ...u, role: newRole } : u)
-      );
-    }
-  }
-
-  // Formatting
-  formatNumber(value: number): string {
-    return this.numberFormatter.format(value);
-  }
+  // ─── Formato ──────────────────────────────────────────────────────────────
 
   formatCurrency(value: number): string {
-    return this.currencyFormatter.format(value);
+    return this.currencyFormatter.format(value ?? 0);
   }
 
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-CO', {
+    return new Date(dateString).toLocaleDateString('es-CO', {
       day: '2-digit',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
     });
   }
 
@@ -462,18 +516,18 @@ export class AdminUsersComponent implements OnInit {
       dev: 'Desarrollador',
       admin: 'Administrador',
       advertiser: 'Anunciante',
-      guest: 'Usuario'
+      guest: 'Usuario',
     };
     return labels[role] || role;
   }
 
   getRoleBadgeClass(role: UserRole): string {
     const classes: Record<UserRole, string> = {
-      dev: 'bg-violet-500/10 text-violet-500',
-      admin: 'bg-rose-500/10 text-rose-500',
-      advertiser: 'bg-amber-500/10 text-amber-500',
-      guest: 'bg-blue-500/10 text-blue-500'
+      dev: 'bg-violet-500/10 text-violet-400',
+      admin: 'bg-rose-500/10 text-rose-400',
+      advertiser: 'bg-amber-500/10 text-amber-400',
+      guest: 'bg-blue-500/10 text-blue-400',
     };
-    return classes[role] || 'bg-slate-500/10 text-slate-500';
+    return classes[role] || 'bg-slate-500/10 text-slate-400';
   }
 }

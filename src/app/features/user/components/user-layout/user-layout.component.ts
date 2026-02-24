@@ -1,4 +1,4 @@
-import { Component, signal, ViewChild, HostListener, OnInit } from '@angular/core';
+import { Component, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -9,38 +9,28 @@ import { UserReferralModalComponent } from '../user-referral-modal/user-referral
   standalone: true,
   imports: [CommonModule, RouterModule, UserReferralModalComponent],
   templateUrl: './user-layout.component.html',
-  styleUrl: './user-layout.component.scss'
+  styleUrl: './user-layout.component.scss',
 })
-export class UserLayoutComponent implements OnInit {
+export class UserLayoutComponent {
   isDarkMode = true;
   userLevel = 5;
-  protected readonly sidebarOpen = signal(false);
-  protected readonly isMobile = signal(false);
 
-  @ViewChild('referralModal') referralModal!: UserReferralModalComponent;
+  protected readonly sidebarCollapsed = signal(false);
 
   // Stats para el sidebar
-  dailyProgress = 65; // Porcentaje de clicks del día
+  dailyProgress = 65;
   dailyGoal = 10;
   dailyClicks = 7;
 
-  constructor(private readonly authService: AuthService, private readonly router: Router) {}
+  @ViewChild('referralModal') referralModal!: UserReferralModalComponent;
 
-  ngOnInit(): void {
-    this.checkMobile();
-  }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly router: Router
+  ) {}
 
-  @HostListener('window:resize', [])
-  onResize(): void {
-    this.checkMobile();
-  }
-
-  private checkMobile(): void {
-    this.isMobile.set(window.innerWidth < 1024);
-  }
-
-  toggleSidebar(): void {
-    this.sidebarOpen.update(v => !v);
+  toggleSidebarCollapse(): void {
+    this.sidebarCollapsed.update((v) => !v);
   }
 
   toggleDarkMode(): void {
