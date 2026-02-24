@@ -230,6 +230,23 @@ export const roleRedirectGuard: CanActivateFn = async (route, state) => {
   const profileService = inject(ProfileService);
   const router = inject(Router);
 
+  console.log('[RoleRedirectGuard] Verificando...');
+
+  // Si está cargando la sesión, esperar
+  if (authService.isLoading()) {
+    console.log('[RoleRedirectGuard] Esperando carga de sesión...');
+    await new Promise<void>(resolve => {
+      const subscription = authService.authStateObservable$.subscribe(state => {
+        if (!state.isLoading) {
+          subscription.unsubscribe();
+          resolve();
+        }
+      });
+    });
+  }
+
+  console.log('[RoleRedirectGuard] ¿Usuario autenticado?:', authService.isAuthenticated());
+
   // Verificar si el usuario está autenticado
   if (!authService.isAuthenticated()) {
     // Usuario no autenticado, permitir acceso (mostrar landing/login)
