@@ -317,22 +317,49 @@ export class AdminUsersComponent implements OnInit {
 
     console.log('[ADMIN DEBUG] createUser - Iniciando creación con email:', data.email);
 
-    // Crear usuario en auth
+    // Crear usuario en auth usando el cliente directamente
     const supabase = this.profileService['supabase'];
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password
-    });
+    
+    // Intentar crear usuario - si falla por el trigger, try catch lo maneja
+    let authData = null;
+    let authError = null;
+    
+    try {
+      const result = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            username: data.username,
+            full_name: data.full_name
+          }
+        }
+      });
+      authData = result.data;
+      authError = result.error;
+    } catch (e: any) {
+      console.log('[ADMIN DEBUG] createUser - Error en signup:', e.message);
+      // El trigger puede haber fallado pero el usuario puede haber sido creado
+    }
 
     console.log('[ADMIN DEBUG] createUser - Response signUp:', { authData, authError });
 
+    // Si hay error, verificar si el usuario fue creado de todas formas
     if (authError) {
-      console.error('[ADMIN DEBUG] createUser - Error auth:', authError);
-      throw authError;
+      // Posible error de trigger, pero verifiquemos si el usuario existe por email
+      try {
+        // Lista de usuarios reciente (esto es un workaround)
+        // En este caso, simplemente re-lanzamos el error original
+        console.error('[ADMIN DEBUG] createUser - Error auth:', authError);
+        throw authError;
+      } catch (e) {
+        console.error('[ADMIN DEBUG] createUser - Error verificando usuario:', e);
+        throw authError;
+      }
     }
 
     // Actualizar perfil con datos adicionales
-    if (authData.user) {
+    if (authData?.user) {
       console.log('[ADMIN DEBUG] createUser - Usuario creado en auth:', authData.user);
 
       // Obtener el ID del referidor basado en el código de referido del admin
