@@ -315,6 +315,8 @@ export class AdminUsersComponent implements OnInit {
       throw new Error('Email y contraseña son requeridos');
     }
 
+    console.log('[ADMIN DEBUG] createUser - Iniciando creación con email:', data.email);
+
     // Crear usuario en auth
     const supabase = this.profileService['supabase'];
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -322,20 +324,30 @@ export class AdminUsersComponent implements OnInit {
       password: data.password
     });
 
-    if (authError) throw authError;
+    console.log('[ADMIN DEBUG] createUser - Response signUp:', { authData, authError });
+
+    if (authError) {
+      console.error('[ADMIN DEBUG] createUser - Error auth:', authError);
+      throw authError;
+    }
 
     // Actualizar perfil con datos adicionales
     if (authData.user) {
+      console.log('[ADMIN DEBUG] createUser - Usuario creado en auth:', authData.user);
+
       // Obtener el ID del referidor basado en el código de referido del admin
       let referredById: string | null = null;
       const adminReferralCode = this.adminReferralCode();
       
       if (adminReferralCode) {
+        console.log('[ADMIN DEBUG] createUser - Buscando referidor:', adminReferralCode);
         const { data: referrerData } = await supabase
           .from('profiles')
           .select('id')
           .eq('referral_code', adminReferralCode)
           .single();
+        
+        console.log('[ADMIN DEBUG] createUser - Datos referidor:', referrerData);
         
         if (referrerData) {
           referredById = referrerData.id;
@@ -346,11 +358,19 @@ export class AdminUsersComponent implements OnInit {
       const usernameLower = (data.username || '').toLowerCase();
       const referralCode = usernameLower;
       // Generar el link de referido (formato corto)
-      const referralLink = `/ref/${referralCode}`;
+      const referralLink = '/ref/' + referralCode;
 
+      console.log('[ADMIN DEBUG] createUser - Actualizando perfil con:', {
+        username: data.username,
+        full_name: data.full_name,
+        role: data.role
+      });
+
+      // Usar upsert para insertar o actualizar el perfil
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: authData.user.id,
           username: data.username,
           full_name: data.full_name,
           role: data.role,
@@ -363,10 +383,14 @@ export class AdminUsersComponent implements OnInit {
           referred_by: referredById,
           referral_code: referralCode,
           referral_link: referralLink
-        })
-        .eq('id', authData.user.id);
+        }, { onConflict: 'id' });
 
-      if (error) throw error;
+      console.log('[ADMIN DEBUG] createUser - Error update perfil:', error);
+
+      if (error) {
+        console.error('[ADMIN DEBUG] createUser - Error:', error);
+        throw error;
+      }
 
       // Log activity
       await this.dashboardService.logActivity(

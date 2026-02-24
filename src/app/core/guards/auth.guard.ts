@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { ProfileService } from '../services/profile.service';
 import { environment } from '../../../environments/environment';
 import { map, take } from 'rxjs/operators';
 
@@ -96,10 +97,43 @@ function handleAuthCheck(
  */
 export const authGuard: CanActivateFn = createAuthGuard();
 
-export const guestGuard: CanActivateFn = createAuthGuard({
-  guestOnly: true,
-  redirectTo: environment.redirect?.loginSuccess ?? '/admin'
-});
+export const guestGuard: CanActivateFn = async (route, state) => {
+  const authService = inject(AuthService);
+  const profileService = inject(ProfileService);
+  const router = inject(Router);
+
+  // Si no está autenticado, permitir acceso (mostrar login/register/landing)
+  if (!authService.isAuthenticated()) {
+    return true;
+  }
+
+  // Usuario autenticado, redirigir según su rol
+  try {
+    const profile = await profileService.getCurrentProfile();
+    
+    if (!profile) {
+      // No hay perfil, cerrar sesión y permitir acceso
+      await authService.logout();
+      return true;
+    }
+
+    console.log('[GuestGuard] Redirigiendo usuario autenticado con rol:', profile.role);
+    
+    // Redirigir según el rol
+    switch (profile.role) {
+      case 'admin':
+      case 'dev':
+        return router.createUrlTree(['/admin']);
+      case 'advertiser':
+      case 'guest':
+      default:
+        return router.createUrlTree(['/dashboard']);
+    }
+  } catch (error) {
+    console.error('[GuestGuard] Error:', error);
+    return true; // En caso de error, permitir acceso
+  }
+};
 
 /**
  * Guard para verificar si el usuario tiene un email confirmado
@@ -158,3 +192,53 @@ export function roleGuard(roles: string[]): CanActivateFn {
     return true;
   };
 }
+
+/**
+ * Guard que redirige al usuario según su rol después del login
+ * Útil para la ruta raíz o después del login
+ * 
+ * Uso:
+ * {
+ *   path: '',
+ *   canActivate: [roleRedirectGuard]
+ * }
+ */
+export const roleRedirectGuard: CanActivateFn = async (route, state) => {
+  const authService = inject(AuthService);
+  const profileService = inject(ProfileService);
+  const router = inject(Router);
+
+  // Verificar si el usuario está autenticado
+  if (!authService.isAuthenticated()) {
+    // Usuario no autenticado, permitir acceso (mostrar landing/login)
+    return true;
+  }
+
+  try {
+    // Obtener el perfil del usuario
+    const profile = await profileService.getCurrentProfile();
+    
+    if (!profile) {
+      // No hay perfil, cerrar sesión y mostrar landing
+      await authService.logout();
+      return true;
+    }
+
+    // Redirigir según el rol
+    console.log('[RoleRedirectGuard] Redirigiendo usuario con rol:', profile.role);
+    
+    switch (profile.role) {
+      case 'admin':
+      case 'dev':
+        return router.createUrlTree(['/admin']);
+      case 'advertiser':
+        return router.createUrlTree(['/dashboard']);
+      case 'guest':
+      default:
+        return router.createUrlTree(['/dashboard']);
+    }
+  } catch (error) {
+    console.error('[RoleRedirectGuard] Error:', error);
+    return true; // En caso de error, permitir acceso
+  }
+};

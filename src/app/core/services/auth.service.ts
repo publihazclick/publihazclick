@@ -304,6 +304,8 @@ export class AuthService implements OnDestroy {
     this._isLoading.set(true);
     this._error.set(null);
 
+    console.log('[AUTH DEBUG] register - Iniciando registro con email:', options.email);
+
     return from(
       this.supabase.auth.signUp({
         email: options.email,
@@ -318,6 +320,8 @@ export class AuthService implements OnDestroy {
       })
     ).pipe(
       map(({ data, error }) => {
+        console.log('[AUTH DEBUG] register - Response:', { data, error });
+        
         if (error) {
           this.handleAuthError(error);
           return {
@@ -369,6 +373,8 @@ export class AuthService implements OnDestroy {
     this._isLoading.set(true);
     this._error.set(null);
 
+    console.log('[AUTH DEBUG] registerWithReferral - Iniciando registro con email:', options.email);
+
     return from(
       this.supabase.auth.signUp({
         email: options.email,
@@ -388,8 +394,11 @@ export class AuthService implements OnDestroy {
       })
     ).pipe(
       switchMap(async ({ data, error }) => {
+        console.log('[AUTH DEBUG] signUp response:', { data, error });
+        
         if (error) {
           this.handleAuthError(error);
+          console.error('[AUTH DEBUG] Error en signUp:', error);
           return {
             success: false,
             data: null,
@@ -397,6 +406,8 @@ export class AuthService implements OnDestroy {
             message: this.parseErrorMessage(error)
           } as AuthResult;
         }
+
+        console.log('[AUTH DEBUG] Usuario creado en auth:', data.user);
 
         // Si el usuario se creó correctamente, actualizar el referido y la ubicación
         if (data.user) {
@@ -408,11 +419,15 @@ export class AuthService implements OnDestroy {
             const urlMatch = normalizedCode.match(/register[\/:]([a-zA-Z0-9\-]+)/);
             const cleanReferralCode = urlMatch ? urlMatch[1] : normalizedCode;
             
+            console.log('[AUTH DEBUG] Buscando referidor con código:', cleanReferralCode);
+            
             const { data: referrerData } = await this.supabase
               .from('profiles')
               .select('id, username')
               .eq('referral_code', cleanReferralCode)
               .single();
+
+            console.log('[AUTH DEBUG] Datos del referidor:', referrerData);
 
             // Preparar datos del perfil a actualizar
             const profileData: Record<string, any> = {};
@@ -436,17 +451,28 @@ export class AuthService implements OnDestroy {
             profileData['referral_code'] = newReferralCode;
             profileData['referral_link'] = newReferralLink;
 
-            // Actualizar el perfil con los datos del referidor, ubicación y código de referido
+            console.log('[AUTH DEBUG] Actualizando perfil con datos:', profileData);
+
+            // Usar upsert para insertar o actualizar el perfil
+            // Esto funciona tanto si el trigger de Supabase creó el perfil como si no
             if (Object.keys(profileData).length > 0) {
-              await this.supabase
+              const { error: profileError } = await this.supabase
                 .from('profiles')
-                .update(profileData)
-                .eq('id', data.user.id);
+                .upsert({
+                  id: data.user.id,
+                  ...profileData
+                }, { onConflict: 'id' });
+              
+              console.log('[AUTH DEBUG] Error al upsert perfil:', profileError);
+              
+              if (profileError) {
+                console.error('[AUTH DEBUG] Error actualizando perfil:', profileError);
+              }
             }
 
             // Crear registro en la tabla de referidos
             if (referrerData) {
-              await this.supabase
+              const { error: referralError } = await this.supabase
                 .from('referrals')
                 .insert({
                   referrer_id: referrerData.id,
@@ -454,9 +480,11 @@ export class AuthService implements OnDestroy {
                   referred_username: '',
                   referred_level: 1
                 });
+              
+              console.log('[AUTH DEBUG] Error al crear referido:', referralError);
             }
           } catch (referralError) {
-            console.error('Error al procesar referido:', referralError);
+            console.error('[AUTH DEBUG] Error al procesar referido:', referralError);
           }
         }
 

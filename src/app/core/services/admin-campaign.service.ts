@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../../environments/environment';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '../supabase.client';
 import type {
   CampaignAdmin,
   CampaignFilters,
@@ -19,10 +19,7 @@ export class AdminCampaignService {
   private readonly supabase: SupabaseClient;
 
   constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+    this.supabase = getSupabaseClient();
   }
 
   /**

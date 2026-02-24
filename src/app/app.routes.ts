@@ -1,25 +1,28 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
-import { authGuard } from './core/guards/auth.guard';
+import { authGuard, guestGuard, roleRedirectGuard } from './core/guards/auth.guard';
 
 /**
  * Rutas de la aplicación
  */
 export const routes: Routes = [
-  // Ruta de login
+  // Ruta de login - solo para usuarios NO autenticados
   {
     path: 'login',
-    loadComponent: () => import('./features/auth/components/login/login.component').then(m => m.LoginComponent)
+    loadComponent: () => import('./features/auth/components/login/login.component').then(m => m.LoginComponent),
+    canActivate: [guestGuard]
   },
-  // Ruta de registro
+  // Ruta de registro - solo para usuarios NO autenticados
   {
     path: 'register',
-    loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent)
+    loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent),
+    canActivate: [guestGuard]
   },
-  // Ruta corta de referido /ref/:code
+  // Ruta corta de referido /ref/:code - solo para usuarios NO autenticados
   {
     path: 'ref/:code',
-    loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent)
+    loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent),
+    canActivate: [guestGuard]
   },
   // Rutas de admin
   {
@@ -93,10 +96,11 @@ export const routes: Routes = [
       }
     ]
   },
-  // Ruta raíz - Landing page
+  // Ruta raíz - Landing page con redirección según rol
   {
     path: '',
-    loadComponent: () => import('./app').then(m => m.App)
+    loadComponent: () => import('./app').then(m => m.App),
+    canActivate: [roleRedirectGuard]
   },
   // 404 - redirigir a home
   {

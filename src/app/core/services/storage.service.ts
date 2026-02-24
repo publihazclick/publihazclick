@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../../environments/environment';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '../supabase.client';
 
 /**
  * Tipo para resultado de upload
@@ -43,10 +43,7 @@ export class StorageService {
   readonly uploadProgress = signal(0);
   
   constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+    this.supabase = getSupabaseClient();
   }
 
   /**

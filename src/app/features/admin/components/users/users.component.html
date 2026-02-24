@@ -382,65 +382,30 @@
               </div>
 
               <!-- Campos de ubicación -->
-              @if (formData().country_code === '+57') {
-                <!-- Colombia: Selector de departamento y ciudad -->
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Departamento</label>
-                    <select
-                      [(ngModel)]="formData().department"
-                      name="department"
-                      (change)="onDepartmentChange($any($event).target.value)"
-                      class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                    >
-                      <option value="">Seleccionar...</option>
-                      @for (dept of departmentsList(); track dept) {
-                        <option [value]="dept">{{ dept }}</option>
-                      }
-                    </select>
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Ciudad</label>
-                    <select
-                      [(ngModel)]="formData().city"
-                      name="city"
-                      [disabled]="!formData().department"
-                      class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
-                    >
-                      <option value="">Seleccionar...</option>
-                      @for (city of availableCities(); track city) {
-                        <option [value]="city">{{ city }}</option>
-                      }
-                    </select>
-                  </div>
+              <!-- Siempre mostrar campos de texto para mayor flexibilidad -->
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Departamento/Estado/Provincia</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formData().department"
+                    name="department"
+                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Ej: Cundinamarca"
+                  />
                 </div>
-              } @else {
-                <!-- Otros países: Campos de texto -->
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Estado/Provincia/Región</label>
-                    <input
-                      type="text"
-                      [(ngModel)]="formData().department"
-                      name="department"
-                      class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                      placeholder="Estado o Provincia"
-                    />
-                  </div>
 
-                  <div>
-                    <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Ciudad</label>
-                    <input
-                      type="text"
-                      [(ngModel)]="formData().city"
-                      name="city"
-                      class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                      placeholder="Ciudad"
-                    />
-                  </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">Ciudad</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formData().city"
+                    name="city"
+                    class="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-xl text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Ej: Bogotá"
+                  />
                 </div>
-              }
+              </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div>
