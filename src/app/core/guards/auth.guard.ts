@@ -102,28 +102,53 @@ export const guestGuard: CanActivateFn = async (route, state) => {
   const profileService = inject(ProfileService);
   const router = inject(Router);
 
-  console.log('[GuestGuard] Verificando autenticación...');
+  console.log('[GuestGuard] ===== INICIO =====');
+  console.log('[GuestGuard] URL:', state.url);
+  console.log('[GuestGuard] Ruta:', route.url.map(s => s.path));
+  console.log('[GuestGuard] ¿Cargando sesión?:', authService.isLoading());
   
   // Si está cargando la sesión, esperar
   if (authService.isLoading()) {
     console.log('[GuestGuard] Sesión todavía cargando, esperando...');
-    // Esperar a que la sesión esté lista
-    await new Promise<void>(resolve => {
-      const subscription = authService.authStateObservable$.subscribe(state => {
-        if (!state.isLoading) {
+    // Primero verificar si ya terminó de cargar mientras preparamos la suscripción
+    if (!authService.isLoading()) {
+      console.log('[GuestGuard] La sesión ya terminó de cargar!');
+    } else {
+      // Esperar a que la sesión esté lista
+      await new Promise<void>(resolve => {
+        const subscription = authService.authStateObservable$.subscribe(state => {
+          console.log('[GuestGuard] Estado recibido:', state.isLoading);
+          if (!state.isLoading) {
+            subscription.unsubscribe();
+            resolve();
+          }
+        });
+        
+        // Timeout de seguridad: si no responde en 5 segundos, continuar
+        setTimeout(() => {
           subscription.unsubscribe();
+          console.log('[GuestGuard] Timeout, continuando...');
           resolve();
-        }
+        }, 5000);
       });
-    });
+    }
   }
 
   // Ahora verificar si está autenticado
   const isAuth = authService.isAuthenticated();
+  const url = state.url;
+  
   console.log('[GuestGuard] ¿Usuario autenticado?:', isAuth);
   
   // Si no está autenticado, permitir acceso (mostrar login/register/landing)
   if (!isAuth) {
+    console.log('[GuestGuard] Usuario no autenticado, permitido');
+    return true;
+  }
+  
+  // Si está autenticado pero la URL es /ref/:code, permitir acceso para ver el código
+  if (url.includes('/ref/')) {
+    console.log('[GuestGuard] Usuario autenticado pero URL es /ref/, permitido');
     return true;
   }
 
@@ -152,9 +177,10 @@ export const guestGuard: CanActivateFn = async (route, state) => {
         return router.createUrlTree(['/dashboard']);
     }
   } catch (error) {
-    console.error('[GuestGuard] Error:', error);
+    console.log('[GuestGuard] Error:', error);
     return true; // En caso de error, permitir acceso
   }
+  console.log('[GuestGuard] ===== FIN - PERMITIDO =====');
 };
 
 /**
@@ -230,7 +256,8 @@ export const roleRedirectGuard: CanActivateFn = async (route, state) => {
   const profileService = inject(ProfileService);
   const router = inject(Router);
 
-  console.log('[RoleRedirectGuard] Verificando...');
+  console.log('[RoleRedirectGuard] ===== INICIO =====');
+  console.log('[RoleRedirectGuard] URL:', state.url);
 
   // Si está cargando la sesión, esperar
   if (authService.isLoading()) {

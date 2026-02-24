@@ -8,7 +8,7 @@ import {
   AuthError
 } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable, Subject, from, of } from 'rxjs';
-import { map, catchError, takeUntil, tap, switchMap } from 'rxjs/operators';
+import { map, catchError, takeUntil, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { getSupabaseClient } from '../supabase.client';
 
@@ -125,13 +125,15 @@ export class AuthService implements OnDestroy {
   private initializeAuthListener(): void {
     // Verificar sesión actual al iniciar
     this.supabase.auth.getSession().then(({ data: { session }, error }) => {
+      // Primero marcar como no cargado
+      this._isLoading.set(false);
+      
       if (error) {
         console.error('Error al obtener sesión:', error.message);
         this.handleAuthError(error);
       } else {
         this.handleSessionChange(session);
       }
-      this._isLoading.set(false);
     });
 
     // Escuchar cambios de autenticación
@@ -364,16 +366,15 @@ export class AuthService implements OnDestroy {
   }
 
   /**
-   * Registra un nuevo usuario con código de referido
-   * @param options - Opciones de registro
-   * @param referralCode - Código de referido
-   * @returns Observable con el resultado
+   * Registra un nuevo usuario con código de referido.
+   * El trigger handle_new_user (SECURITY DEFINER) se encarga de crear
+   * el perfil completo con todos los datos del metadata en la BD.
    */
   registerWithReferral(options: RegisterOptions, referralCode: string): Observable<AuthResult> {
     this._isLoading.set(true);
     this._error.set(null);
 
-    console.log('[AUTH DEBUG] registerWithReferral - Iniciando registro con email:', options.email);
+    const redirectBase = typeof window !== 'undefined' ? window.location.origin : '';
 
     return from(
       this.supabase.auth.signUp({
@@ -382,23 +383,22 @@ export class AuthService implements OnDestroy {
         options: {
           data: {
             full_name: options.fullName,
+            username: options.username,
             referral_code: referralCode,
+            phone: options.phone || null,
             country: options.country || null,
             country_code: options.country_code || null,
             department: options.department || null,
             city: options.city || null,
             ...options.metadata
           },
-          emailRedirectTo: window.location.origin + '/auth/callback'
+          emailRedirectTo: redirectBase + '/auth/callback'
         }
       })
     ).pipe(
-      switchMap(async ({ data, error }) => {
-        console.log('[AUTH DEBUG] signUp response:', { data, error });
-        
+      map(({ data, error }) => {
         if (error) {
           this.handleAuthError(error);
-          console.error('[AUTH DEBUG] Error en signUp:', error);
           return {
             success: false,
             data: null,
@@ -407,88 +407,7 @@ export class AuthService implements OnDestroy {
           } as AuthResult;
         }
 
-        console.log('[AUTH DEBUG] Usuario creado en auth:', data.user);
-
-        // Si el usuario se creó correctamente, actualizar el referido y la ubicación
-        if (data.user) {
-          try {
-            // Buscar el perfil del referidor (el nuevo formato no usa mayúsculas)
-            const normalizedCode = referralCode.trim();
-            
-            // Limpiar el código de cualquier URL
-            const urlMatch = normalizedCode.match(/register[\/:]([a-zA-Z0-9\-]+)/);
-            const cleanReferralCode = urlMatch ? urlMatch[1] : normalizedCode;
-            
-            console.log('[AUTH DEBUG] Buscando referidor con código:', cleanReferralCode);
-            
-            const { data: referrerData } = await this.supabase
-              .from('profiles')
-              .select('id, username')
-              .eq('referral_code', cleanReferralCode)
-              .single();
-
-            console.log('[AUTH DEBUG] Datos del referidor:', referrerData);
-
-            // Preparar datos del perfil a actualizar
-            const profileData: Record<string, any> = {};
-            
-            if (referrerData) {
-              profileData['referred_by'] = referrerData.id;
-            }
-
-            // Agregar datos de ubicación si existen
-            if (options.phone) profileData['phone'] = options.phone;
-            if (options.country) profileData['country'] = options.country;
-            if (options.country_code) profileData['country_code'] = options.country_code;
-            if (options.department) profileData['department'] = options.department;
-            if (options.city) profileData['city'] = options.city;
-            if (options.username) profileData['username'] = options.username;
-
-            // Generar código de referido igual al username del formulario
-            const newReferralCode = options.username?.toLowerCase() || 'user';
-            const newReferralLink = `/ref/${newReferralCode}`;
-            
-            profileData['referral_code'] = newReferralCode;
-            profileData['referral_link'] = newReferralLink;
-
-            console.log('[AUTH DEBUG] Actualizando perfil con datos:', profileData);
-
-            // Usar upsert para insertar o actualizar el perfil
-            // Esto funciona tanto si el trigger de Supabase creó el perfil como si no
-            if (Object.keys(profileData).length > 0) {
-              const { error: profileError } = await this.supabase
-                .from('profiles')
-                .upsert({
-                  id: data.user.id,
-                  ...profileData
-                }, { onConflict: 'id' });
-              
-              console.log('[AUTH DEBUG] Error al upsert perfil:', profileError);
-              
-              if (profileError) {
-                console.error('[AUTH DEBUG] Error actualizando perfil:', profileError);
-              }
-            }
-
-            // Crear registro en la tabla de referidos
-            if (referrerData) {
-              const { error: referralError } = await this.supabase
-                .from('referrals')
-                .insert({
-                  referrer_id: referrerData.id,
-                  referred_id: data.user.id,
-                  referred_username: '',
-                  referred_level: 1
-                });
-              
-              console.log('[AUTH DEBUG] Error al crear referido:', referralError);
-            }
-          } catch (referralError) {
-            console.error('[AUTH DEBUG] Error al procesar referido:', referralError);
-          }
-        }
-
-        // Si el usuario se creó inmediatamente (sin confirmación de email)
+        // Sin confirmación de email: se recibe sesión inmediata
         if (data.user && data.session) {
           this.handleSessionChange(data.session);
           return {
@@ -498,7 +417,7 @@ export class AuthService implements OnDestroy {
           } as AuthResult;
         }
 
-        // Si requiere confirmación de email
+        // Con confirmación de email: sin sesión hasta que el usuario confirme
         return {
           success: true,
           data: data.user,

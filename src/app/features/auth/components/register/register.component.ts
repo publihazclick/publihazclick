@@ -165,9 +165,9 @@ export class RegisterComponent implements OnInit {
 
     // Usar el método de registro con referido obligatorio y datos de ubicación
     this.authService.registerWithReferral(
-      { 
-        email, 
-        password, 
+      {
+        email,
+        password,
         fullName,
         username: username,
         phone: fullPhone,
@@ -181,18 +181,17 @@ export class RegisterComponent implements OnInit {
       next: (result) => {
         if (result.success) {
           this.successMessage.set(result.message || 'Registro exitoso');
-
-          if (result.data) {
+          // Navegar solo si hay sesión activa (sin confirmación de email)
+          if (this.authService.isAuthenticated()) {
             setTimeout(() => {
               this.router.navigate([this.returnUrl]);
-            }, 1000);
-          } else {
-            this.registerForm.reset();
+            }, 1500);
           }
+          // Si requiere confirmación: el mensaje de "revisa tu correo" queda visible
         }
       },
       error: (err) => {
-        console.error('Error inesperado:', err);
+        console.error('Error inesperado en registro:', err);
       }
     });
   }

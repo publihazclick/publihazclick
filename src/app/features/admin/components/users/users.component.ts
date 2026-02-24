@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { getSupabaseClient } from '../../../../core/supabase.client';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
@@ -311,122 +312,37 @@ export class AdminUsersComponent implements OnInit {
 
   private async createUser(): Promise<void> {
     const data = this.formData();
-    if (!data.email || !data.password) {
-      throw new Error('Email y contraseña son requeridos');
+    if (!data.email || !data.password || !data.username) {
+      throw new Error('Email, contraseña y username son requeridos');
     }
 
-    console.log('[ADMIN DEBUG] createUser - Iniciando creación con email:', data.email);
+    const supabase = getSupabaseClient();
 
-    // Crear usuario en auth usando el cliente directamente
-    const supabase = this.profileService['supabase'];
-    
-    // Intentar crear usuario - si falla por el trigger, try catch lo maneja
-    let authData = null;
-    let authError = null;
-    
-    try {
-      const result = await supabase.auth.signUp({
+    // Usar Edge Function con Admin API: sin rate limits, email confirmado automáticamente
+    const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
+      body: {
         email: data.email,
         password: data.password,
-        options: {
-          data: {
-            username: data.username,
-            full_name: data.full_name
-          }
-        }
-      });
-      authData = result.data;
-      authError = result.error;
-    } catch (e: any) {
-      console.log('[ADMIN DEBUG] createUser - Error en signup:', e.message);
-      // El trigger puede haber fallado pero el usuario puede haber sido creado
-    }
-
-    console.log('[ADMIN DEBUG] createUser - Response signUp:', { authData, authError });
-
-    // Si hay error, verificar si el usuario fue creado de todas formas
-    if (authError) {
-      // Posible error de trigger, pero verifiquemos si el usuario existe por email
-      try {
-        // Lista de usuarios reciente (esto es un workaround)
-        // En este caso, simplemente re-lanzamos el error original
-        console.error('[ADMIN DEBUG] createUser - Error auth:', authError);
-        throw authError;
-      } catch (e) {
-        console.error('[ADMIN DEBUG] createUser - Error verificando usuario:', e);
-        throw authError;
-      }
-    }
-
-    // Actualizar perfil con datos adicionales
-    if (authData?.user) {
-      console.log('[ADMIN DEBUG] createUser - Usuario creado en auth:', authData.user);
-
-      // Obtener el ID del referidor basado en el código de referido del admin
-      let referredById: string | null = null;
-      const adminReferralCode = this.adminReferralCode();
-      
-      if (adminReferralCode) {
-        console.log('[ADMIN DEBUG] createUser - Buscando referidor:', adminReferralCode);
-        const { data: referrerData } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('referral_code', adminReferralCode)
-          .single();
-        
-        console.log('[ADMIN DEBUG] createUser - Datos referidor:', referrerData);
-        
-        if (referrerData) {
-          referredById = referrerData.id;
-        }
-      }
-
-      // Generar código de referido igual al username
-      const usernameLower = (data.username || '').toLowerCase();
-      const referralCode = usernameLower;
-      // Generar el link de referido (formato corto)
-      const referralLink = '/ref/' + referralCode;
-
-      console.log('[ADMIN DEBUG] createUser - Actualizando perfil con:', {
         username: data.username,
         full_name: data.full_name,
-        role: data.role
-      });
+        role: data.role,
+        is_active: data.is_active,
+        phone: data.phone || null,
+        country: data.country || null,
+        country_code: data.country_code || null,
+        city: data.city || null,
+        department: data.department || null,
+        referral_code: this.adminReferralCode() || '',
+      },
+    });
 
-      // Usar upsert para insertar o actualizar el perfil
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          username: data.username,
-          full_name: data.full_name,
-          role: data.role,
-          is_active: data.is_active,
-          phone: data.phone || null,
-          country: data.country || null,
-          country_code: data.country_code || null,
-          city: data.city || null,
-          department: data.department || null,
-          referred_by: referredById,
-          referral_code: referralCode,
-          referral_link: referralLink
-        }, { onConflict: 'id' });
+    if (error) throw error;
+    if (result?.error) throw new Error(result.error);
 
-      console.log('[ADMIN DEBUG] createUser - Error update perfil:', error);
-
-      if (error) {
-        console.error('[ADMIN DEBUG] createUser - Error:', error);
-        throw error;
-      }
-
-      // Log activity
-      await this.dashboardService.logActivity(
-        'create_user',
-        'user',
-        authData.user.id,
-        { email: data.email, role: data.role }
-      );
-    }
+    await this.dashboardService.logActivity('create_user', 'user', result.user.id, {
+      email: data.email,
+      role: data.role,
+    });
   }
 
   private async updateUser(): Promise<void> {
