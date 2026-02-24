@@ -102,17 +102,39 @@ export const guestGuard: CanActivateFn = async (route, state) => {
   const profileService = inject(ProfileService);
   const router = inject(Router);
 
+  console.log('[GuestGuard] Verificando autenticación...');
+  
+  // Si está cargando la sesión, esperar
+  if (authService.isLoading()) {
+    console.log('[GuestGuard] Sesión todavía cargando, esperando...');
+    // Esperar a que la sesión esté lista
+    await new Promise<void>(resolve => {
+      const subscription = authService.authStateObservable$.subscribe(state => {
+        if (!state.isLoading) {
+          subscription.unsubscribe();
+          resolve();
+        }
+      });
+    });
+  }
+
+  // Ahora verificar si está autenticado
+  const isAuth = authService.isAuthenticated();
+  console.log('[GuestGuard] ¿Usuario autenticado?:', isAuth);
+  
   // Si no está autenticado, permitir acceso (mostrar login/register/landing)
-  if (!authService.isAuthenticated()) {
+  if (!isAuth) {
     return true;
   }
 
   // Usuario autenticado, redirigir según su rol
   try {
+    console.log('[GuestGuard] Obteniendo perfil...');
     const profile = await profileService.getCurrentProfile();
     
     if (!profile) {
       // No hay perfil, cerrar sesión y permitir acceso
+      console.log('[GuestGuard] Sin perfil, cerrando sesión');
       await authService.logout();
       return true;
     }
