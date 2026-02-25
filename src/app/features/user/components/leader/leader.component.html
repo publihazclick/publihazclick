@@ -54,9 +54,9 @@
             <!-- Badge nivel -->
             <span
               class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold"
-              [ngClass]="getLevelColor(leader()!.level)"
+              [ngClass]="getTierInfo(leader()!.total_referrals_count).color"
             >
-              {{ getLevelLabel(leader()!.level) }} · Nv. {{ leader()!.level }}
+              {{ getTierInfo(leader()!.total_referrals_count).name }}
             </span>
             <!-- Paquete -->
             @if (leader()!.has_active_package) {
@@ -76,7 +76,10 @@
       <!-- Stats del líder -->
       <div class="grid grid-cols-3 gap-3 mt-6">
         <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
-          <p class="text-2xl font-black text-primary">{{ leader()!.level }}</p>
+          <p class="text-sm font-black leading-tight mt-1"
+             [class]="getTierInfo(leader()!.total_referrals_count).color">
+            {{ getTierInfo(leader()!.total_referrals_count).name }}
+          </p>
           <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Nivel</p>
         </div>
         <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">

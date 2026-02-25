@@ -36,7 +36,10 @@
         </div>
         @if (profile()) {
           <h3 class="font-bold text-center text-sm">{{ profile()!.full_name || profile()!.username }}</h3>
-          <p class="text-[10px] text-primary mt-1 font-bold uppercase tracking-widest">Nivel {{ profile()!.level }}</p>
+          <p class="text-[10px] font-bold uppercase tracking-widest mt-1"
+             [class]="getTierInfo(profile()!.total_referrals_count).color">
+            {{ getTierInfo(profile()!.total_referrals_count).name }}
+          </p>
         } @else {
           <h3 class="font-bold text-center text-sm">Mi Cuenta</h3>
         }
@@ -288,8 +291,9 @@
                 <p class="text-xs text-slate-500 truncate">@{{ profile()?.username }}</p>
                 <p class="text-[10px] text-slate-600 truncate mt-0.5">{{ profile()?.email }}</p>
               </div>
-              <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded uppercase tracking-wider flex-shrink-0">
-                Nv. {{ profile()?.level }}
+              <span class="px-2 py-0.5 text-[10px] font-black rounded uppercase tracking-wider flex-shrink-0"
+                [class]="getTierInfo(profile()?.total_referrals_count ?? 0).color">
+                {{ getTierInfo(profile()?.total_referrals_count ?? 0).name }}
               </span>
             </div>
 

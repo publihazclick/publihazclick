@@ -8,7 +8,9 @@ import type {
   AssignPackageData,
   PaginatedResponse,
   PaginationParams,
-  UserAdmin
+  UserAdmin,
+  Payment,
+  PaymentStatus
 } from '../models/admin.model';
 
 /**
@@ -65,6 +67,7 @@ export class AdminPackageService {
         referral_bonus: p.referral_bonus || 0,
         is_active: p.is_active,
         display_order: p.display_order || 0,
+        nequi_payment_link: p.nequi_payment_link || null,
         created_at: p.created_at,
         updated_at: p.updated_at
       }));
@@ -112,12 +115,204 @@ export class AdminPackageService {
         referral_bonus: data.referral_bonus || 0,
         is_active: data.is_active,
         display_order: data.display_order || 0,
+        nequi_payment_link: data.nequi_payment_link || null,
         created_at: data.created_at,
         updated_at: data.updated_at
       };
     } catch (error: any) {
       console.error('Error getting package:', error);
       return null;
+    }
+  }
+
+  // ============================================================================
+  // GESTIÓN DE PAGOS
+  // ============================================================================
+
+  /**
+   * Obtener pagos pendientes (para que el admin apruebe)
+   */
+  async getPendingPayments(
+    pagination: PaginationParams = { page: 1, pageSize: 20 }
+  ): Promise<PaginatedResponse<Payment>> {
+    try {
+      const { page, pageSize } = pagination;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error, count } = await this.supabase
+        .from('payments')
+        .select('*, profiles:user_id(username, email)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const payments: Payment[] = (data || []).map(p => ({
+        id: p.id,
+        user_id: p.user_id,
+        username: (p.profiles as any)?.username,
+        email: (p.profiles as any)?.email,
+        package_id: p.package_id,
+        package_name: p.package_name,
+        amount_in_cents: p.amount_in_cents,
+        currency: p.currency,
+        status: p.status as PaymentStatus,
+        payment_method: p.payment_method,
+        gateway: p.gateway,
+        gateway_transaction_id: p.gateway_transaction_id,
+        gateway_reference: p.gateway_reference,
+        phone_number: p.phone_number,
+        error_message: p.error_message,
+        metadata: p.metadata || {},
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+      }));
+
+      return {
+        data: payments,
+        total: count || 0,
+        page,
+        pageSize,
+        totalPages: Math.ceil((count || 0) / pageSize),
+      };
+    } catch (error: any) {
+      console.error('Error getting payments:', error);
+      return { data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 };
+    }
+  }
+
+  /**
+   * Aprobar pago y activar paquete (llama a función RPC)
+   */
+  async approvePayment(paymentId: string): Promise<boolean> {
+    try {
+      const { data, error } = await this.supabase.rpc('approve_payment', {
+        p_payment_id: paymentId,
+      });
+      if (error) throw error;
+      return !!data;
+    } catch (error: any) {
+      console.error('Error approving payment:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Rechazar pago
+   */
+  async rejectPayment(paymentId: string, reason?: string): Promise<boolean> {
+    try {
+      const { data, error } = await this.supabase.rpc('reject_payment', {
+        p_payment_id: paymentId,
+        p_reason: reason ?? null,
+      });
+      if (error) throw error;
+      return !!data;
+    } catch (error: any) {
+      console.error('Error rejecting payment:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Contar pagos pendientes (para badge en sidebar)
+   */
+  async getPendingPaymentsCount(): Promise<number> {
+    try {
+      const { count, error } = await this.supabase
+        .from('payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      if (error) throw error;
+      return count ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Verificar pago con Wompi y auto-aprobar si está confirmado.
+   * Llama a la Edge Function verify-nequi-payment que consulta la API de Wompi.
+   */
+  async verifyAndSubmitPayment(data: {
+    packageId: string;
+    packageName: string;
+    amountInCents: number;
+    phoneNumber: string;
+    transactionId: string;
+  }): Promise<{ success: boolean; autoApproved: boolean; message: string }> {
+    try {
+      const { data: result, error } = await this.supabase.functions.invoke(
+        'verify-nequi-payment',
+        {
+          body: {
+            transactionId: data.transactionId,
+            packageId: data.packageId,
+            packageName: data.packageName,
+            amountInCents: data.amountInCents,
+            phoneNumber: data.phoneNumber,
+          },
+        }
+      );
+      if (error) throw error;
+      return result as { success: boolean; autoApproved: boolean; message: string };
+    } catch (error: any) {
+      console.error('Error verifying payment:', error);
+      return { success: false, autoApproved: false, message: 'Error al verificar el pago. Intenta de nuevo.' };
+    }
+  }
+
+  /**
+   * Guardar comprobante de pago del usuario (fallback sin verificación automática)
+   */
+  async submitPaymentProof(data: {
+    packageId: string;
+    packageName: string;
+    amountInCents: number;
+    phoneNumber: string;
+    transactionId: string;
+  }): Promise<boolean> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return false;
+
+      const { error } = await this.supabase.from('payments').insert({
+        user_id: user.id,
+        package_id: data.packageId,
+        package_name: data.packageName,
+        amount_in_cents: data.amountInCents,
+        currency: 'COP',
+        status: 'pending',
+        payment_method: 'nequi',
+        gateway: 'nequi_link',
+        gateway_transaction_id: data.transactionId,
+        phone_number: data.phoneNumber,
+        metadata: { submitted_by_user: true },
+      });
+
+      if (error) throw error;
+      return true;
+    } catch (error: any) {
+      console.error('Error submitting payment proof:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Obtener historial de pagos del usuario autenticado
+   */
+  async getMyPayments(): Promise<Payment[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('payments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return (data || []) as Payment[];
+    } catch {
+      return [];
     }
   }
 
@@ -133,14 +328,23 @@ export class AdminPackageService {
           description: data.description,
           package_type: data.package_type,
           price: data.price,
+          currency: data.currency || 'USD',
           duration_days: data.duration_days,
           features: data.features || [],
-          max_ptc_ads: data.max_ptc_ads || 5,
-          max_banner_ads: data.max_banner_ads || 2,
-          max_campaigns: data.max_campaigns || 3,
+          min_ptc_visits: data.min_ptc_visits || 0,
+          min_banner_views: data.min_banner_views || 0,
+          included_ptc_ads: data.included_ptc_ads || 0,
+          has_clickable_banner: data.has_clickable_banner ?? true,
+          banner_clicks_limit: data.banner_clicks_limit || 0,
+          banner_impressions_limit: data.banner_impressions_limit || 0,
+          daily_ptc_limit: data.daily_ptc_limit || 9,
+          max_ptc_ads: data.max_ptc_ads || 1,
+          max_banner_ads: data.max_banner_ads || 1,
+          max_campaigns: data.max_campaigns || 1,
           ptc_reward_bonus: data.ptc_reward_bonus || 0,
           banner_reward_bonus: data.banner_reward_bonus || 0,
-          referral_bonus: data.referral_bonus || 0
+          referral_bonus: data.referral_bonus || 0,
+          nequi_payment_link: data.nequi_payment_link || null
         })
         .select('id')
         .single();

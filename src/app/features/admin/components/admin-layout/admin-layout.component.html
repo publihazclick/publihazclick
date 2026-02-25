@@ -76,6 +76,9 @@
               <span class="material-symbols-outlined">inventory_2</span>
               @if (!sidebarCollapsed()) {
                 <span>Gestión de Paquetes</span>
+                @if (pendingPaymentsCount() > 0) {
+                  <span class="ml-auto bg-amber-400 text-black text-[10px] px-1.5 py-0.5 rounded font-bold">{{ pendingPaymentsCount() }}</span>
+                }
               }
             </a>
           </li>

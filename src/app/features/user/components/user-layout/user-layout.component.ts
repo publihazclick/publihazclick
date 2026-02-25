@@ -103,4 +103,16 @@ export class UserLayoutComponent implements OnInit {
   isSettingsRoute(): boolean {
     return this.router.url.includes('/settings');
   }
+
+  getTierInfo(referrals: number): { name: string; color: string } {
+    if (referrals >= 40) return { name: 'DIAMANTE CORONA', color: 'text-amber-400' };
+    if (referrals >= 36) return { name: 'DIAMANTE NEGRO', color: 'text-gray-300' };
+    if (referrals >= 31) return { name: 'DIAMANTE AZUL', color: 'text-blue-400' };
+    if (referrals >= 26) return { name: 'DIAMANTE', color: 'text-cyan-400' };
+    if (referrals >= 20) return { name: 'ESMERALDA', color: 'text-green-500' };
+    if (referrals >= 10) return { name: 'RUBY', color: 'text-red-400' };
+    if (referrals >= 6)  return { name: 'ZAFIRO', color: 'text-blue-300' };
+    if (referrals >= 3)  return { name: 'PERLA', color: 'text-pink-400' };
+    return { name: 'JADE', color: 'text-emerald-400' };
+  }
 }

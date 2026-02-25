@@ -8,7 +8,9 @@ import type {
   CreatePackageData,
   UserPackage,
   PackageType,
-  UserAdmin
+  UserAdmin,
+  Payment,
+  PaymentStatus
 } from '../../../../core/models/admin.model';
 
 type SearchedUser = Pick<UserAdmin, 'id' | 'username' | 'email' | 'role' | 'is_active'>;
@@ -31,7 +33,7 @@ export class AdminPackagesComponent implements OnInit {
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
-  readonly activeTab = signal<'packages' | 'user-packages' | 'assign'>('packages');
+  readonly activeTab = signal<'packages' | 'user-packages' | 'assign' | 'payments'>('packages');
 
   // Pagination
   readonly currentPage = signal<number>(1);
@@ -77,10 +79,18 @@ export class AdminPackagesComponent implements OnInit {
     // Bonificaciones
     ptc_reward_bonus: 5,
     banner_reward_bonus: 0,
-    referral_bonus: 5
+    referral_bonus: 5,
+    nequi_payment_link: null
   });
 
   readonly saving = signal<boolean>(false);
+
+  // Pagos pendientes
+  readonly payments = signal<Payment[]>([]);
+  readonly pendingPaymentsCount = signal<number>(0);
+  readonly processingPayment = signal<string | null>(null);
+  readonly rejectTarget = signal<Payment | null>(null);
+  readonly rejectReason = signal<string>('');
 
   // Revocar paquete
   readonly revokeTarget = signal<UserPackage | null>(null);
@@ -108,6 +118,7 @@ export class AdminPackagesComponent implements OnInit {
   ngOnInit(): void {
     this.loadPackages();
     this.loadUserPackages();
+    this.loadPayments();
   }
 
   async loadPackages(): Promise<void> {
@@ -136,14 +147,91 @@ export class AdminPackagesComponent implements OnInit {
     }
   }
 
-  setTab(tab: 'packages' | 'user-packages' | 'assign'): void {
+  setTab(tab: 'packages' | 'user-packages' | 'assign' | 'payments'): void {
     this.activeTab.set(tab);
-    if (tab === 'user-packages') {
-      this.loadUserPackages();
+    if (tab === 'user-packages') this.loadUserPackages();
+    if (tab === 'assign') this.resetAssignForm();
+    if (tab === 'payments') this.loadPayments();
+  }
+
+  async loadPayments(): Promise<void> {
+    try {
+      const result = await this.packageService.getPendingPayments({ page: 1, pageSize: 50 });
+      this.payments.set(result.data);
+      this.pendingPaymentsCount.set(result.data.filter(p => p.status === 'pending').length);
+    } catch (err: any) {
+      console.error('Error loading payments:', err);
     }
-    if (tab === 'assign') {
-      this.resetAssignForm();
+  }
+
+  async approvePayment(payment: Payment): Promise<void> {
+    this.processingPayment.set(payment.id);
+    try {
+      const ok = await this.packageService.approvePayment(payment.id);
+      if (!ok) throw new Error('No se pudo aprobar');
+      this.showSuccessMessage(`Pago aprobado. Paquete "${payment.package_name}" activado para ${payment.username ?? 'el usuario'}.`);
+      await this.loadPayments();
+    } catch (err: any) {
+      this.error.set(err.message || 'Error al aprobar el pago');
+    } finally {
+      this.processingPayment.set(null);
     }
+  }
+
+  openRejectModal(payment: Payment): void {
+    this.rejectTarget.set(payment);
+    this.rejectReason.set('');
+  }
+
+  closeRejectModal(): void {
+    this.rejectTarget.set(null);
+    this.rejectReason.set('');
+  }
+
+  async confirmRejectPayment(): Promise<void> {
+    const target = this.rejectTarget();
+    if (!target) return;
+    this.processingPayment.set(target.id);
+    try {
+      await this.packageService.rejectPayment(target.id, this.rejectReason() || undefined);
+      this.showSuccessMessage(`Pago rechazado para ${target.username ?? 'el usuario'}.`);
+      this.closeRejectModal();
+      await this.loadPayments();
+    } catch (err: any) {
+      this.error.set(err.message || 'Error al rechazar el pago');
+    } finally {
+      this.processingPayment.set(null);
+    }
+  }
+
+  setNequiLink(value: string): void {
+    this.formData.update(fd => ({ ...fd, nequi_payment_link: value || null }));
+  }
+
+  getPaymentStatusLabel(status: PaymentStatus | string): string {
+    const map: Record<string, string> = {
+      pending: 'Pendiente', approved: 'Aprobado',
+      declined: 'Rechazado', voided: 'Anulado', error: 'Error',
+    };
+    return map[status] ?? status;
+  }
+
+  getPaymentStatusClass(status: PaymentStatus | string): string {
+    const map: Record<string, string> = {
+      pending:  'bg-amber-500/10 text-amber-400 border-amber-500/20',
+      approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      declined: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+      voided:   'bg-slate-500/10 text-slate-400 border-slate-500/20',
+      error:    'bg-rose-500/10 text-rose-400 border-rose-500/20',
+    };
+    return map[status] ?? 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+  }
+
+  formatCOPCents(cents: number): string {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency', currency: 'COP',
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
+    }).format(cents / 100);
   }
 
   // Modal actions
@@ -173,7 +261,8 @@ export class AdminPackagesComponent implements OnInit {
       // Bonificaciones
       ptc_reward_bonus: 5,
       banner_reward_bonus: 0,
-      referral_bonus: 5
+      referral_bonus: 5,
+      nequi_payment_link: null
     });
     this.showModal.set(true);
   }
@@ -204,7 +293,8 @@ export class AdminPackagesComponent implements OnInit {
       // Bonificaciones
       ptc_reward_bonus: pkg.ptc_reward_bonus,
       banner_reward_bonus: pkg.banner_reward_bonus,
-      referral_bonus: pkg.referral_bonus
+      referral_bonus: pkg.referral_bonus,
+      nequi_payment_link: pkg.nequi_payment_link || null
     });
     this.showModal.set(true);
   }

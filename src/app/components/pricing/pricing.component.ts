@@ -85,6 +85,7 @@ export class PricingComponent implements OnInit {
         referral_bonus: 5,
         is_active: true,
         display_order: 1,
+        nequi_payment_link: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       },
@@ -121,6 +122,7 @@ export class PricingComponent implements OnInit {
         referral_bonus: 10,
         is_active: true,
         display_order: 2,
+        nequi_payment_link: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       },
@@ -159,6 +161,7 @@ export class PricingComponent implements OnInit {
         referral_bonus: 20,
         is_active: true,
         display_order: 3,
+        nequi_payment_link: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       },
@@ -198,6 +201,7 @@ export class PricingComponent implements OnInit {
         referral_bonus: 30,
         is_active: true,
         display_order: 4,
+        nequi_payment_link: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }

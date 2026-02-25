@@ -430,6 +430,30 @@ export interface Package {
   referral_bonus: number;
   is_active: boolean;
   display_order: number;
+  nequi_payment_link: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PaymentStatus = 'pending' | 'approved' | 'declined' | 'voided' | 'error';
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  username?: string;
+  email?: string;
+  package_id: string;
+  package_name: string;
+  amount_in_cents: number;
+  currency: string;
+  status: PaymentStatus;
+  payment_method: string;
+  gateway: string;
+  gateway_transaction_id: string | null;
+  gateway_reference: string | null;
+  phone_number: string | null;
+  error_message: string | null;
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -458,6 +482,8 @@ export interface CreatePackageData {
   ptc_reward_bonus?: number;
   banner_reward_bonus?: number;
   referral_bonus?: number;
+  // Pago
+  nequi_payment_link?: string | null;
 }
 
 export interface UserPackage {

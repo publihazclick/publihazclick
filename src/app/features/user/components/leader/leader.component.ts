@@ -70,20 +70,16 @@ export class LeaderComponent implements OnInit {
     this.loading.set(false);
   }
 
-  getLevelLabel(level: number): string {
-    if (level <= 2) return 'Bronce';
-    if (level <= 4) return 'Plata';
-    if (level <= 6) return 'Oro';
-    if (level <= 8) return 'Platino';
-    return 'Diamante';
-  }
-
-  getLevelColor(level: number): string {
-    if (level <= 2) return 'bg-slate-700 text-slate-200';
-    if (level <= 4) return 'bg-blue-900 text-blue-200';
-    if (level <= 6) return 'bg-cyan-900 text-cyan-200';
-    if (level <= 8) return 'bg-amber-900 text-amber-200';
-    return 'bg-purple-900 text-purple-200';
+  getTierInfo(referrals: number): { name: string; color: string } {
+    if (referrals >= 40) return { name: 'DIAMANTE CORONA', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/30' };
+    if (referrals >= 36) return { name: 'DIAMANTE NEGRO', color: 'bg-gray-500/10 text-gray-300 border border-gray-500/30' };
+    if (referrals >= 31) return { name: 'DIAMANTE AZUL', color: 'bg-blue-500/10 text-blue-400 border border-blue-500/30' };
+    if (referrals >= 26) return { name: 'DIAMANTE', color: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' };
+    if (referrals >= 20) return { name: 'ESMERALDA', color: 'bg-green-500/10 text-green-400 border border-green-500/30' };
+    if (referrals >= 10) return { name: 'RUBY', color: 'bg-red-500/10 text-red-400 border border-red-500/30' };
+    if (referrals >= 6)  return { name: 'ZAFIRO', color: 'bg-blue-900/30 text-blue-300 border border-blue-400/30' };
+    if (referrals >= 3)  return { name: 'PERLA', color: 'bg-pink-500/10 text-pink-400 border border-pink-500/30' };
+    return { name: 'JADE', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' };
   }
 
   formatDate(dateStr: string): string {

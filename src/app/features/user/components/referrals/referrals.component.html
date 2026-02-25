@@ -115,9 +115,9 @@
               <!-- Nivel -->
               <span
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                [ngClass]="getLevelColor(afiliado.level)"
+                [ngClass]="getTierInfo(afiliado.total_referrals_count).color"
               >
-                Nv. {{ afiliado.level }}
+                {{ getTierInfo(afiliado.total_referrals_count).name }}
               </span>
               <!-- Paquete -->
               @if (afiliado.has_active_package) {

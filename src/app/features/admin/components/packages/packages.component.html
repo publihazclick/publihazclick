@@ -49,6 +49,17 @@
       <span class="material-symbols-outlined text-lg">group</span>
       Asignados
     </button>
+    <button
+      (click)="setTab('payments')"
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-colors whitespace-nowrap"
+      [class]="activeTab() === 'payments' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white hover:bg-white/5'"
+    >
+      <span class="material-symbols-outlined text-lg">payments</span>
+      Pagos Nequi
+      @if (pendingPaymentsCount() > 0) {
+        <span class="bg-amber-400 text-black text-[10px] px-1.5 py-0.5 rounded font-black leading-none">{{ pendingPaymentsCount() }}</span>
+      }
+    </button>
   </div>
 
   <!-- Error de carga -->
@@ -563,6 +574,178 @@
     </div>
   }
 
+  <!-- ═══ TAB: PAGOS NEQUI ════════════════════════════════════════════════ -->
+  @if (activeTab() === 'payments') {
+    <div class="space-y-4">
+
+      @if (payments().length === 0) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl p-12 flex flex-col items-center text-center gap-3">
+          <span class="material-symbols-outlined text-slate-700" style="font-size:48px">payments</span>
+          <p class="text-white font-bold text-sm">Sin pagos registrados</p>
+          <p class="text-slate-500 text-xs max-w-xs">Cuando un usuario envíe un comprobante de pago Nequi, aparecerá aquí para que lo apruebes.</p>
+        </div>
+      } @else {
+
+        <!-- Desktop table -->
+        <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="bg-white/5 text-xs font-black uppercase text-slate-400 tracking-widest">
+                  <th class="px-5 py-4">Usuario</th>
+                  <th class="px-5 py-4">Paquete</th>
+                  <th class="px-5 py-4">Monto</th>
+                  <th class="px-5 py-4">Nequi / ID Transacción</th>
+                  <th class="px-5 py-4">Estado</th>
+                  <th class="px-5 py-4">Fecha</th>
+                  <th class="px-5 py-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                @for (p of payments(); track p.id) {
+                  <tr class="hover:bg-white/[0.03] transition-colors">
+                    <td class="px-5 py-4">
+                      <p class="font-bold text-white text-sm">{{ p.username ?? '—' }}</p>
+                      <p class="text-[10px] text-slate-500">{{ p.email }}</p>
+                    </td>
+                    <td class="px-5 py-4 text-sm text-slate-300">{{ p.package_name }}</td>
+                    <td class="px-5 py-4 font-black text-white text-sm">{{ formatCOPCents(p.amount_in_cents) }}</td>
+                    <td class="px-5 py-4">
+                      <p class="text-xs text-slate-300 font-mono">{{ p.phone_number ?? '—' }}</p>
+                      @if (p.gateway_transaction_id) {
+                        <p class="text-[10px] text-slate-500 font-mono truncate max-w-[160px]">{{ p.gateway_transaction_id }}</p>
+                      }
+                    </td>
+                    <td class="px-5 py-4">
+                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black border" [class]="getPaymentStatusClass(p.status)">
+                        {{ getPaymentStatusLabel(p.status) }}
+                      </span>
+                    </td>
+                    <td class="px-5 py-4 text-xs text-slate-400">{{ formatDateTime(p.created_at) }}</td>
+                    <td class="px-5 py-4">
+                      @if (p.status === 'pending') {
+                        <div class="flex items-center justify-end gap-2">
+                          <button
+                            (click)="approvePayment(p)"
+                            [disabled]="processingPayment() === p.id"
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                          >
+                            @if (processingPayment() === p.id) {
+                              <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+                            } @else {
+                              <span class="material-symbols-outlined text-sm">check_circle</span>
+                              Aprobar
+                            }
+                          </button>
+                          <button
+                            (click)="openRejectModal(p)"
+                            [disabled]="processingPayment() === p.id"
+                            class="flex items-center gap-1 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg text-xs font-bold transition-colors border border-rose-500/30 disabled:opacity-50"
+                          >
+                            <span class="material-symbols-outlined text-sm">cancel</span>
+                            Rechazar
+                          </button>
+                        </div>
+                      } @else {
+                        <span class="text-xs text-slate-600 text-right block">Sin acciones</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden space-y-3">
+          @for (p of payments(); track p.id) {
+            <div class="bg-card-dark border border-white/5 rounded-2xl p-4 space-y-3">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-bold text-white text-sm">{{ p.username ?? 'Usuario' }}</p>
+                  <p class="text-[10px] text-slate-500">{{ p.package_name }} · {{ formatCOPCents(p.amount_in_cents) }}</p>
+                </div>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-black border flex-shrink-0" [class]="getPaymentStatusClass(p.status)">
+                  {{ getPaymentStatusLabel(p.status) }}
+                </span>
+              </div>
+              <div class="text-xs text-slate-400 space-y-0.5">
+                <p>Nequi: <span class="text-white font-mono">{{ p.phone_number ?? '—' }}</span></p>
+                @if (p.gateway_transaction_id) {
+                  <p class="truncate">ID: <span class="font-mono text-slate-300">{{ p.gateway_transaction_id }}</span></p>
+                }
+                <p>{{ formatDateTime(p.created_at) }}</p>
+              </div>
+              @if (p.status === 'pending') {
+                <div class="flex gap-2 pt-1">
+                  <button
+                    (click)="approvePayment(p)"
+                    [disabled]="processingPayment() === p.id"
+                    class="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
+                  >
+                    <span class="material-symbols-outlined text-sm">check_circle</span>
+                    Aprobar
+                  </button>
+                  <button
+                    (click)="openRejectModal(p)"
+                    [disabled]="processingPayment() === p.id"
+                    class="flex-1 flex items-center justify-center gap-1 py-2 bg-rose-500/10 text-rose-400 rounded-xl text-xs font-bold border border-rose-500/30 disabled:opacity-50"
+                  >
+                    <span class="material-symbols-outlined text-sm">cancel</span>
+                    Rechazar
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══ MODAL RECHAZAR PAGO ═══ -->
+  @if (rejectTarget()) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-rose-400">cancel</span>
+            Rechazar Pago
+          </h2>
+          <button (click)="closeRejectModal()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="bg-rose-500/5 border border-rose-500/20 rounded-xl p-4">
+            <p class="text-sm text-slate-300">Vas a rechazar el pago de <span class="font-bold text-white">{{ rejectTarget()?.username }}</span> por el paquete <span class="font-bold text-white">{{ rejectTarget()?.package_name }}</span>.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Motivo del rechazo (opcional)</label>
+            <textarea
+              [(ngModel)]="rejectReason"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-rose-500 resize-none"
+              rows="2"
+              placeholder="Ej: No se pudo verificar el pago..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+          <button (click)="closeRejectModal()" class="px-4 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors">Cancelar</button>
+          <button
+            (click)="confirmRejectPayment()"
+            [disabled]="processingPayment() !== null"
+            class="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
+          >
+            <span class="material-symbols-outlined text-lg">cancel</span>
+            Confirmar rechazo
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══ MODAL CREAR / EDITAR PAQUETE ═══ -->
   @if (showModal()) {
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -687,6 +870,28 @@
                 }
               </ul>
             }
+          </div>
+        </div>
+
+        <!-- Link de pago Nequi -->
+        <div class="px-6 pb-2">
+          <div class="border-t border-white/10 pt-5">
+            <p class="text-xs font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-sm text-[#00B4D8]">link</span>
+              Link de Pago Nequi
+            </p>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">URL del link de Nequi Negocios</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#00B4D8] text-base">link</span>
+              <input
+                type="url"
+                [ngModel]="formData().nequi_payment_link ?? ''"
+                (ngModelChange)="setNequiLink($event)"
+                class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-[#00B4D8] focus:border-transparent"
+                placeholder="https://checkout.nequi.wompi.co/l/..."
+              />
+            </div>
+            <p class="text-[10px] text-slate-600 mt-1.5">Crea el link en tu app Nequi Negocios y pégalo aquí. Los usuarios serán redirigidos a este link para pagar.</p>
           </div>
         </div>
 

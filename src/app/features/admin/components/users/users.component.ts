@@ -352,6 +352,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       throw new Error('Email, contraseña y username son requeridos');
     }
     const supabase = getSupabaseClient();
+    const { data: { session } } = await supabase.auth.getSession();
     const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
       body: {
         email: data.email,
@@ -367,6 +368,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
         department: data.department || null,
         referral_code: this.adminReferralCode() || '',
       },
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
     });
     if (error) throw error;
     if (result?.error) throw new Error(result.error);

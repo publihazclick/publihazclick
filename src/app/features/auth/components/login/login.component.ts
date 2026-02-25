@@ -23,10 +23,9 @@ export class LoginComponent implements OnInit {
   // Estado del login
   isLoading = false;
   
-  // Formulario reactivo con credenciales de prueba
   loginForm: FormGroup = this.fb.group({
-    email: ['publihazclick.com@gmail.com', [Validators.required, Validators.email]],
-    password: ['publihazclick', [Validators.required, Validators.minLength(6)]]
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
   // Estado de la contraseña
@@ -35,11 +34,6 @@ export class LoginComponent implements OnInit {
   // Mensajes
   errorMessage: string | null = null;
   successMessage: string | null = null;
-
-  // Credenciales de prueba predefinidas
-  testAccounts = [
-    { email: 'publihazclick.com@gmail.com', password: 'publihazclick', label: 'Admin Principal' }
-  ];
 
   ngOnInit(): void {
     // Si ya está autenticado, redirigir según su rol
@@ -61,14 +55,6 @@ export class LoginComponent implements OnInit {
 
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
-  }
-
-  // Seleccionar credenciales de prueba
-  selectTestAccount(account: { email: string; password: string }): void {
-    this.loginForm.patchValue({
-      email: account.email,
-      password: account.password
-    });
   }
 
   onSubmit(): void {

@@ -367,7 +367,7 @@
                       name="country_code"
                       class="w-24 px-2 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                     >
-                      @for (c of countries; track c.code) {
+                      @for (c of countries; track c.name) {
                         <option [value]="c.code">{{ c.flag }} {{ c.code }}</option>
                       }
                     </select>

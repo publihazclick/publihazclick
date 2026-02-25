@@ -3,6 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
+import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminReferralModalComponent } from '../admin-referral-modal/admin-referral-modal.component';
 
@@ -17,11 +18,12 @@ export class AdminLayoutComponent implements OnInit {
   isDarkMode = true;
   serverLoad = 42;
   private readonly dashboardService = inject(AdminDashboardService);
+  private readonly packageService = inject(AdminPackageService);
   readonly profileService = inject(ProfileService);
   readonly profile = this.profileService.profile;
 
   @ViewChild('referralModal') referralModal!: AdminReferralModalComponent;
-  
+
   // Estado del sidebar (mobile)
   protected readonly sidebarOpen = signal(false);
   // Estado colapsado del sidebar (tablet/desktop)
@@ -30,6 +32,8 @@ export class AdminLayoutComponent implements OnInit {
   protected readonly isBrowser = signal(false);
   // Conteo de moderación
   protected readonly pendingModerationCount = signal(0);
+  // Conteo de pagos pendientes
+  protected readonly pendingPaymentsCount = signal(0);
 
   constructor(
     private readonly authService: AuthService,
@@ -45,6 +49,7 @@ export class AdminLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadPendingCount();
+    this.loadPendingPaymentsCount();
     this.profileService.getCurrentProfile();
   }
 
@@ -54,6 +59,15 @@ export class AdminLayoutComponent implements OnInit {
       this.pendingModerationCount.set(pending.length);
     } catch (error) {
       console.error('Error loading pending count:', error);
+    }
+  }
+
+  private async loadPendingPaymentsCount(): Promise<void> {
+    try {
+      const count = await this.packageService.getPendingPaymentsCount();
+      this.pendingPaymentsCount.set(count);
+    } catch {
+      // silencioso
     }
   }
 
