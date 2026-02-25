@@ -1,5 +1,5 @@
-import { Component, signal, ViewChild, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, ViewChild, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -21,7 +21,10 @@ export class AdvertiserLayoutComponent implements OnInit {
 
   isDarkMode = true;
 
-  protected readonly sidebarCollapsed = signal(false);
+  // Sidebar colapsado por defecto en móvil/tablet
+  protected readonly sidebarCollapsed = signal(
+    isPlatformBrowser(inject(PLATFORM_ID)) && window.innerWidth < 1024
+  );
   protected readonly currencyMenuOpen = signal(false);
   protected readonly profileMenuOpen = signal(false);
 

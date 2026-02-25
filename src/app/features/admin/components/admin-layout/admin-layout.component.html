@@ -72,6 +72,14 @@
             </a>
           </li>
           <li>
+            <a routerLink="/admin/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">inventory_2</span>
+              @if (!sidebarCollapsed()) {
+                <span>Gestión de Paquetes</span>
+              }
+            </a>
+          </li>
+          <li>
             <a routerLink="/admin/reports" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
               <span class="material-symbols-outlined">bar_chart</span>
               @if (!sidebarCollapsed()) {

@@ -1,5 +1,5 @@
-import { Component, signal, ViewChild, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, ViewChild, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -20,10 +20,14 @@ export class UserLayoutComponent implements OnInit {
   readonly walletState = inject(WalletStateService);
   readonly currencyService = inject(CurrencyService);
   private readonly router = inject(Router);
+  private readonly platformId = inject(PLATFORM_ID);
 
   isDarkMode = true;
 
-  protected readonly sidebarCollapsed = signal(false);
+  // Sidebar colapsado por defecto en móvil/tablet
+  protected readonly sidebarCollapsed = signal(
+    isPlatformBrowser(this.platformId) && window.innerWidth < 1024
+  );
   protected readonly currencyMenuOpen = signal(false);
   protected readonly profileMenuOpen = signal(false);
 

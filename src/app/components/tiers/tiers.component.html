@@ -15,11 +15,11 @@
     </div>
 
     <!-- Tiers Grid - Dark Theme with Cyan Accents -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
       @for (tier of formattedTiers(); track tier.name) {
         <button 
           (click)="selectTier(tier)"
-          class="group relative bg-zinc-900/60 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-5 text-left border border-zinc-800/80 hover:border-cyan-500/60 hover:bg-zinc-800/80 transition-all duration-300 hover:-translate-y-2 overflow-hidden"
+          class="group relative bg-zinc-900/60 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 text-left border border-zinc-800/80 hover:border-cyan-500/60 hover:bg-zinc-800/80 transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2 overflow-hidden"
         >
           <!-- Background Glow Effect -->
           <div class="absolute inset-0 bg-gradient-to-br {{ tier.bgGradient }} opacity-0 group-hover:opacity-15 transition-opacity duration-300"></div>
@@ -28,24 +28,24 @@
           <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r {{ tier.bgGradient }} opacity-0 group-hover:opacity-100 transition-opacity"></div>
           
           <!-- Tier Icon with Glow -->
-          <div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br {{ tier.bgGradient }} flex items-center justify-center mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
-            <span class="material-symbols-outlined text-white text-xl md:text-2xl">{{ tier.icon }}</span>
+          <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl bg-gradient-to-br {{ tier.bgGradient }} flex items-center justify-center mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
+            <span class="material-symbols-outlined text-white text-lg sm:text-xl md:text-2xl">{{ tier.icon }}</span>
           </div>
-          
+
           <!-- Tier Name -->
-          <h4 class="font-black text-sm md:text-lg {{ tier.color }} uppercase tracking-tight mb-1">
+          <h4 class="font-black text-xs sm:text-sm md:text-lg {{ tier.color }} uppercase tracking-tight mb-1">
             {{ tier.name }}
           </h4>
-          
+
           <!-- Referrals Range -->
-          <p class="text-[11px] md:text-xs text-gray-500 mb-3">
+          <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
             {{ tier.maxReferrals ? tier.minReferrals + '-' + tier.maxReferrals : tier.minReferrals + '+' }} invitados
           </p>
-          
+
           <!-- Earnings Preview -->
-          <div class="pt-3 border-t border-zinc-700/50">
-            <p class="text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aproximadas</p>
-            <p class="font-black text-green-400 text-lg md:text-xl">{{ tier.monthlyEarnings }}</p>
+          <div class="pt-2 sm:pt-3 border-t border-zinc-700/50">
+            <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
+            <p class="font-black text-green-400 text-base sm:text-lg md:text-xl">{{ tier.monthlyEarnings }}</p>
           </div>
 
           <!-- Hover Arrow -->

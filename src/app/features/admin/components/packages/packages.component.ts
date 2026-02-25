@@ -2,12 +2,16 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
+import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 import type {
   Package as PackageModel,
   CreatePackageData,
   UserPackage,
-  PackageType
+  PackageType,
+  UserAdmin
 } from '../../../../core/models/admin.model';
+
+type SearchedUser = Pick<UserAdmin, 'id' | 'username' | 'email' | 'role' | 'is_active'>;
 
 @Component({
   selector: 'app-admin-packages',
@@ -19,23 +23,35 @@ import type {
 export class AdminPackagesComponent implements OnInit {
   // Servicios
   private readonly packageService = inject(AdminPackageService);
+  private readonly dashboardService = inject(AdminDashboardService);
 
   // Estado
   readonly packages = signal<PackageModel[]>([]);
   readonly userPackages = signal<UserPackage[]>([]);
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
-  readonly activeTab = signal<'packages' | 'user-packages'>('packages');
+  readonly successMessage = signal<string | null>(null);
+  readonly activeTab = signal<'packages' | 'user-packages' | 'assign'>('packages');
 
   // Pagination
   readonly currentPage = signal<number>(1);
   readonly pageSize = signal<number>(20);
   readonly totalCount = signal<number>(0);
 
-  // Modal
+  // Modal crear/editar paquete
   readonly showModal = signal<boolean>(false);
   readonly modalMode = signal<'create' | 'edit'>('create');
   readonly selectedPackage = signal<PackageModel | null>(null);
+
+  // Asignar paquete
+  readonly userSearchQuery = signal<string>('');
+  readonly searchResults = signal<SearchedUser[]>([]);
+  readonly selectedUser = signal<SearchedUser | null>(null);
+  readonly selectedAssignPackage = signal<PackageModel | null>(null);
+  readonly assigning = signal<boolean>(false);
+  readonly assignError = signal<string | null>(null);
+  readonly searching = signal<boolean>(false);
+  private searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Form data
   readonly formData = signal<Partial<CreatePackageData>>({
@@ -116,10 +132,13 @@ export class AdminPackagesComponent implements OnInit {
     }
   }
 
-  setTab(tab: 'packages' | 'user-packages'): void {
+  setTab(tab: 'packages' | 'user-packages' | 'assign'): void {
     this.activeTab.set(tab);
     if (tab === 'user-packages') {
       this.loadUserPackages();
+    }
+    if (tab === 'assign') {
+      this.resetAssignForm();
     }
   }
 
@@ -304,5 +323,114 @@ export class AdminPackagesComponent implements OnInit {
       cancelled: 'bg-slate-500/10 text-slate-500'
     };
     return classes[status] || 'bg-slate-500/10 text-slate-500';
+  }
+
+  // ─── Asignar Paquete ────────────────────────────────────────────────────
+
+  onUserSearch(query: string): void {
+    this.userSearchQuery.set(query);
+    if (this.searchTimeout) clearTimeout(this.searchTimeout);
+
+    if (query.trim().length < 2) {
+      this.searchResults.set([]);
+      this.searching.set(false);
+      return;
+    }
+
+    this.searching.set(true);
+    this.searchTimeout = setTimeout(async () => {
+      const results = await this.packageService.searchUsers(query.trim());
+      this.searchResults.set(results);
+      this.searching.set(false);
+    }, 400);
+  }
+
+  selectUser(user: SearchedUser): void {
+    this.selectedUser.set(user);
+    this.searchResults.set([]);
+    this.userSearchQuery.set('');
+  }
+
+  clearSelectedUser(): void {
+    this.selectedUser.set(null);
+  }
+
+  selectAssignPackage(pkg: PackageModel): void {
+    this.selectedAssignPackage.set(pkg);
+  }
+
+  resetAssignForm(): void {
+    this.selectedUser.set(null);
+    this.selectedAssignPackage.set(null);
+    this.userSearchQuery.set('');
+    this.searchResults.set([]);
+    this.assignError.set(null);
+    this.assigning.set(false);
+  }
+
+  async confirmAssignPackage(): Promise<void> {
+    const user = this.selectedUser();
+    const pkg = this.selectedAssignPackage();
+    if (!user || !pkg) return;
+
+    this.assigning.set(true);
+    this.assignError.set(null);
+
+    try {
+      const result = await this.packageService.assignPackage({
+        user_id: user.id,
+        package_id: pkg.id,
+        payment_method: 'admin_manual',
+        amount_paid: pkg.price
+      });
+
+      if (!result) {
+        throw new Error('No se pudo asignar el paquete');
+      }
+
+      await this.dashboardService.logActivity('assign_package', 'user', user.id, {
+        package_id: pkg.id,
+        package_name: pkg.name,
+        username: user.username,
+        new_role: 'advertiser'
+      });
+
+      this.showSuccessMessage(
+        `Paquete "${pkg.name}" asignado a ${user.username}. Rol actualizado a Anunciante.`
+      );
+      this.resetAssignForm();
+      this.loadUserPackages();
+    } catch (err: any) {
+      console.error('Error assigning package:', err);
+      this.assignError.set(err.message || 'Error al asignar el paquete');
+    } finally {
+      this.assigning.set(false);
+    }
+  }
+
+  getRoleLabel(role: string): string {
+    const labels: Record<string, string> = {
+      dev: 'Desarrollador',
+      admin: 'Administrador',
+      advertiser: 'Anunciante',
+      guest: 'Usuario'
+    };
+    return labels[role] || role;
+  }
+
+  getRoleBadgeClass(role: string): string {
+    const classes: Record<string, string> = {
+      dev: 'bg-violet-500/10 text-violet-400',
+      admin: 'bg-rose-500/10 text-rose-400',
+      advertiser: 'bg-amber-500/10 text-amber-400',
+      guest: 'bg-blue-500/10 text-blue-400'
+    };
+    return classes[role] || 'bg-slate-500/10 text-slate-400';
+  }
+
+  private showSuccessMessage(message: string): void {
+    this.successMessage.set(message);
+    this.error.set(null);
+    setTimeout(() => this.successMessage.set(null), 5000);
   }
 }

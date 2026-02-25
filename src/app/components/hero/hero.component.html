@@ -1,15 +1,12 @@
 <!-- Main Hero Section -->
-<section class="relative bg-black  overflow-hidden text-white px-4 md:px-6">
+<section class="relative bg-black overflow-hidden text-white px-4 md:px-6">
   <!-- Background Glow -->
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
-  
-  <div class="max-w-7xl mx-auto px-4 md:px-6 text-center relative z-10">
-    
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
 
-    
+  <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 text-center relative z-10">
 
     <!-- Floating Images -->
-    <div class="relative   min-h-[300px] md:min-h-[450px] flex items-center justify-center">
+    <div class="relative min-h-[220px] sm:min-h-[280px] md:min-h-[450px] flex items-center justify-center">
       <!-- Product Image 1 -->
       <div class="absolute top-20 -left-4 md:-left-12 w-24 md:w-36 h-24 md:h-36 animate-float hidden lg:block">
         <img 
@@ -47,34 +44,33 @@
       </div>
       
       <!-- Main Text -->
-      <div class="text-center z-10 ">
-        <h2 class="text-3xl sm:text-4xl md:text-4xl  lg:text-8xl  xl:text-8xl  font-black tracking-[-0.05em] text-primary leading-none mb-2 md:mb-4 uppercase font-display text-glow-cyan">
+      <div class="text-center z-10">
+        <h2 class="text-4xl sm:text-5xl md:text-5xl lg:text-8xl xl:text-8xl font-black tracking-[-0.05em] text-primary leading-none mb-2 md:mb-4 uppercase font-display text-glow-cyan">
           Gana Dinero
         </h2>
-        <p class="text-2xl md:text-3xl lg:text-5xl font-black mb-4 md:mb-8 text-white uppercase tracking-tighter">
+        <p class="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-black mb-4 md:mb-8 text-white uppercase tracking-tighter">
           Viendo Anuncios
         </p>
-        <div class="">
-          <p class="text-lg md:text-2xl :text-4xl font-black mb-2 md:mb-4 text-white tracking-tighterk tracking-tight inline-block px-4 md:px-8 py-1 md:py-2 border-y-2 border-primary/30 max-w-4xl">
+        <div>
+          <p class="text-sm sm:text-base md:text-2xl font-black mb-2 md:mb-4 text-white tracking-tight inline-block px-3 sm:px-4 md:px-8 py-1 md:py-2 border-y-2 border-primary/30 max-w-4xl">
             El mejor sistema que existe para posicionar sitios en internet. Las empresas pagan, tú ganas, todos crecemos.
           </p>
-          
         </div>
       </div>
     </div>
   </div>
 
   <!-- Ticker -->
-  <div class="mt-16 md:mt-24 overflow-hidden border-y border-white/5  bg-zinc-950/50 backdrop-blur-sm">
+  <div class="mt-8 sm:mt-12 md:mt-24 overflow-hidden border-y border-white/5 bg-zinc-950/50 backdrop-blur-sm">
     <div class="animate-scroll flex">
       @for (item of tickerItems; track item) {
-        <div class="flex space-x-32 px-16 items-center shrink-0">
-          <span class="text-3xl font-black text-white/20 tracking-widest italic">{{ item }}</span>
+        <div class="flex space-x-16 sm:space-x-32 px-8 sm:px-16 items-center shrink-0">
+          <span class="text-xl sm:text-2xl md:text-3xl font-black text-white/20 tracking-widest italic">{{ item }}</span>
         </div>
       }
       @for (item of tickerItems; track item) {
-        <div class="flex space-x-32 px-16 items-center shrink-0">
-          <span class="text-3xl font-black text-white/20 tracking-widest italic">{{ item }}</span>
+        <div class="flex space-x-16 sm:space-x-32 px-8 sm:px-16 items-center shrink-0">
+          <span class="text-xl sm:text-2xl md:text-3xl font-black text-white/20 tracking-widest italic">{{ item }}</span>
         </div>
       }
     </div>

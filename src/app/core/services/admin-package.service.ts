@@ -7,7 +7,8 @@ import type {
   UserPackage,
   AssignPackageData,
   PaginatedResponse,
-  PaginationParams
+  PaginationParams,
+  UserAdmin
 } from '../models/admin.model';
 
 /**
@@ -305,7 +306,30 @@ export class AdminPackageService {
   }
 
   /**
-   * Asignar paquete a usuario
+   * Buscar usuarios por nombre o email (para asignación de paquetes)
+   */
+  async searchUsers(query: string): Promise<Pick<UserAdmin, 'id' | 'username' | 'email' | 'role' | 'is_active'>[]> {
+    try {
+      if (!query || query.trim().length < 2) return [];
+
+      const { data, error } = await this.supabase
+        .from('profiles')
+        .select('id, username, email, role, is_active')
+        .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
+        .eq('is_active', true)
+        .order('username', { ascending: true })
+        .limit(10);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error: any) {
+      console.error('Error searching users:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Asignar paquete a usuario y cambiar rol a advertiser
    */
   async assignPackage(data: AssignPackageData): Promise<{ id: string } | null> {
     try {
@@ -338,14 +362,19 @@ export class AdminPackageService {
 
       if (error) throw error;
 
-      // Actualizar el perfil del usuario
-      await this.supabase
+      // Actualizar el perfil del usuario: paquete activo + cambiar rol a advertiser
+      const { error: profileError } = await this.supabase
         .from('profiles')
         .update({
           current_package_id: data.package_id,
-          package_expires_at: endDate.toISOString()
+          package_expires_at: endDate.toISOString(),
+          role: 'advertiser'
         })
         .eq('id', data.user_id);
+
+      if (profileError) {
+        console.error('Error updating profile role:', profileError);
+      }
 
       return result;
     } catch (error: any) {

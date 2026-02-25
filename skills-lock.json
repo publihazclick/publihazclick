@@ -1,6 +1,21 @@
 {
   "version": 1,
   "skills": {
+    "angular-architect": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "f3c7bb5ac0bfb6235cc5627bcc4a2e6b2f6085671b179f14fbcf3973975fbacd"
+    },
+    "angular-best-practices-signalstore": {
+      "source": "alfredoperez/angular-best-practices",
+      "sourceType": "github",
+      "computedHash": "46b969d0fb0867d857a03350fb310aec198ec270e33cf62c47e6a0c6218be01f"
+    },
+    "angular-performance": {
+      "source": "gentleman-programming/gentleman-skills",
+      "sourceType": "github",
+      "computedHash": "315036848c4b231b1c206492e94b2f0f0d29b93c2ef5bc7c86f4d92f92d3d0db"
+    },
     "github": {
       "source": "callstackincubator/agent-skills",
       "sourceType": "github",
@@ -9,7 +24,12 @@
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
-      "computedHash": "7e1a5a1e76805889b83b4c20bc4b9e25de70eff71b7c5b9c4789f98a77ef81ab"
+      "computedHash": "9c87c315aed143ee3b34bec8117100f5035e0df09e6b23e1ecc772cff434c9ad"
+    },
+    "typescript": {
+      "source": "gentleman-programming/gentleman-skills",
+      "sourceType": "github",
+      "computedHash": "1693c0e8bf539e479179332543ac9ba13ab2c2dadb04e1f1e4ae0587040de2a0"
     }
   }
 }

@@ -32,11 +32,15 @@ export class AdminLayoutComponent implements OnInit {
   protected readonly pendingModerationCount = signal(0);
 
   constructor(
-    private readonly authService: AuthService, 
+    private readonly authService: AuthService,
     private readonly router: Router,
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) {
     this.isBrowser.set(isPlatformBrowser(this.platformId));
+    // Sidebar siempre colapsado en móvil/tablet
+    if (this.isBrowser() && window.innerWidth < 1024) {
+      this.sidebarCollapsed.set(true);
+    }
   }
 
   ngOnInit(): void {

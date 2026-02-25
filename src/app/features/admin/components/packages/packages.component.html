@@ -1,107 +1,135 @@
 <div class="space-y-6">
+
+  <!-- Toast de éxito -->
+  @if (successMessage()) {
+    <div class="fixed top-6 right-6 z-[100] flex items-center gap-3 bg-emerald-500 text-white px-5 py-3.5 rounded-2xl shadow-2xl shadow-emerald-500/30 animate-fade-in max-w-sm">
+      <span class="material-symbols-outlined text-xl flex-shrink-0">check_circle</span>
+      <p class="text-sm font-semibold">{{ successMessage() }}</p>
+    </div>
+  }
+
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-black">Gestión de Paquetes</h1>
+      <h1 class="text-2xl font-black text-white">Gestión de Paquetes</h1>
       <p class="text-slate-400 text-sm">Administrar paquetes y asignaciones a usuarios</p>
     </div>
     <button
       (click)="openCreateModal()"
       class="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors"
     >
-      <span class="material-icons text-black w-4 h-4">add</span>
+      <span class="material-symbols-outlined text-xl">add_circle</span>
       Nuevo Paquete
     </button>
   </div>
 
   <!-- Tabs -->
-  <div class="flex gap-2 border-b border-slate-200 dark:border-white/10">
+  <div class="bg-card-dark p-1 rounded-2xl border border-white/5 flex gap-1 overflow-x-auto">
     <button
       (click)="setTab('packages')"
-      class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
-      [class]="activeTab() === 'packages' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-colors whitespace-nowrap"
+      [class]="activeTab() === 'packages' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white hover:bg-white/5'"
     >
-      <span class="material-icons w-4 h-4 inline mr-2">inventory_2</span>
-      Paquetes Disponibles
+      <span class="material-symbols-outlined text-lg">inventory_2</span>
+      Paquetes
+    </button>
+    <button
+      (click)="setTab('assign')"
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-colors whitespace-nowrap"
+      [class]="activeTab() === 'assign' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white hover:bg-white/5'"
+    >
+      <span class="material-symbols-outlined text-lg">person_add</span>
+      Asignar
     </button>
     <button
       (click)="setTab('user-packages')"
-      class="px-4 py-2 text-sm font-bold transition-colors border-b-2 -mb-px"
-      [class]="activeTab() === 'user-packages' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'"
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-colors whitespace-nowrap"
+      [class]="activeTab() === 'user-packages' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white hover:bg-white/5'"
     >
-      <span class="material-icons w-4 h-4 inline mr-2">group</span>
-      Paquetes de Usuarios
+      <span class="material-symbols-outlined text-lg">group</span>
+      Asignados
     </button>
   </div>
+
+  <!-- Error de carga -->
+  @if (error() && !loading()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
+      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
+      <button (click)="loadPackages()" class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors">
+        Reintentar
+      </button>
+    </div>
+  }
 
   <!-- Loading -->
   @if (loading()) {
     <div class="flex flex-col items-center justify-center py-20">
-      <span class="material-icons w-10 h-10 text-primary animate-spin mb-4">sync</span>
-      <p class="text-slate-400 text-sm font-medium">Cargando paquetes...</p>
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-3">sync</span>
+      <p class="text-slate-400 text-sm">Cargando paquetes...</p>
     </div>
   }
 
   @if (!loading()) {
     <!-- Tab: Paquetes Disponibles -->
     @if (activeTab() === 'packages') {
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         @for (pkg of packages(); track pkg.id) {
-          <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 p-6">
-            <div class="flex items-start justify-between mb-4">
+          <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+            <div class="flex items-start justify-between mb-3">
               <div>
                 <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getPackageTypeClass(pkg.package_type)">
                   {{ getPackageTypeLabel(pkg.package_type) }}
                 </span>
-                <h3 class="text-lg font-bold mt-2">{{ pkg.name }}</h3>
+                <h3 class="text-lg font-bold text-white mt-2">{{ pkg.name }}</h3>
               </div>
               <div class="flex gap-1">
                 <button
                   (click)="openEditModal(pkg)"
-                  class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                  class="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                   title="Editar"
                 >
-                  <span class="material-icons w-4 h-4">edit</span>
+                  <span class="material-symbols-outlined text-xl">edit</span>
                 </button>
                 <button
                   (click)="deletePackage(pkg)"
-                  class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                  class="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                   title="Eliminar"
                 >
-                  <span class="material-icons w-4 h-4">delete</span>
+                  <span class="material-symbols-outlined text-xl">delete</span>
                 </button>
               </div>
             </div>
 
-            <p class="text-slate-400 text-sm mb-4">{{ pkg.description || 'Sin descripción' }}</p>
+            <p class="text-slate-500 text-sm mb-3">{{ pkg.description || 'Sin descripción' }}</p>
 
             <div class="text-2xl font-black text-primary mb-4">
               {{ pkg.price === 0 ? 'GRATIS' : formatCurrency(pkg.price) }}
-              <span class="text-sm font-normal text-slate-400">/ {{ pkg.duration_days }} días</span>
+              <span class="text-sm font-normal text-slate-500">/ {{ pkg.duration_days }} días</span>
             </div>
 
-            <div class="space-y-2 text-sm">
+            <div class="space-y-2 text-sm text-slate-300">
               <div class="flex items-center gap-2">
-                <span class="material-icons w-4 h-4 text-amber-500">flash_on</span>
+                <span class="material-symbols-outlined text-amber-400 text-lg">bolt</span>
                 <span>{{ pkg.max_ptc_ads }} anuncios PTC</span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="material-icons w-4 h-4 text-violet-500">trending_up</span>
+                <span class="material-symbols-outlined text-violet-400 text-lg">trending_up</span>
                 <span>{{ pkg.max_banner_ads }} banners</span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="material-icons w-4 h-4 text-blue-500">group</span>
+                <span class="material-symbols-outlined text-blue-400 text-lg">group</span>
                 <span>{{ pkg.referral_bonus }}% bono por referidos</span>
               </div>
             </div>
 
             @if (pkg.features && pkg.features.length > 0) {
-              <div class="mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
-                <h4 class="text-xs font-bold uppercase text-slate-400 mb-2">Características</h4>
+              <div class="mt-4 pt-4 border-t border-white/5">
+                <h4 class="text-[10px] font-bold uppercase text-slate-500 tracking-widest mb-2">Características</h4>
                 <ul class="space-y-1">
                   @for (feature of pkg.features; track feature) {
-                    <li class="flex items-center gap-2 text-sm">
-                      <span class="material-icons w-3 h-3 text-emerald-500">check</span>
+                    <li class="flex items-center gap-2 text-sm text-slate-300">
+                      <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
                       <span>{{ feature }}</span>
                     </li>
                   }
@@ -112,22 +140,217 @@
         }
 
         @if (packages().length === 0) {
-          <div class="col-span-full bg-white dark:bg-card-dark p-12 rounded-2xl border border-slate-200 dark:border-white/5 text-center">
-            <span class="material-icons w-12 h-12 text-slate-400 mx-auto mb-4">inventory_2</span>
-            <h3 class="font-bold text-lg mb-2">No hay paquetes disponibles</h3>
-            <p class="text-slate-400 text-sm">Crea el primer paquete para comenzar</p>
+          <div class="col-span-full bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+            <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">inventory_2</span>
+            <h3 class="font-bold text-lg mb-2 text-white">No hay paquetes disponibles</h3>
+            <p class="text-slate-500 text-sm">Crea el primer paquete para comenzar</p>
           </div>
         }
       </div>
     }
 
+    <!-- Tab: Asignar Paquete -->
+    @if (activeTab() === 'assign') {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Paso 1: Buscar Usuario -->
+        <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+          <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">1. Buscar Usuario</h4>
+
+          @if (selectedUser()) {
+            <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-primary text-lg">person</span>
+                </div>
+                <div>
+                  <div class="font-bold text-white text-sm">{{ selectedUser()!.username }}</div>
+                  <div class="text-xs text-slate-500">{{ selectedUser()!.email }}</div>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getRoleBadgeClass(selectedUser()!.role)">
+                  {{ getRoleLabel(selectedUser()!.role) }}
+                </span>
+              </div>
+              <button
+                (click)="clearSelectedUser()"
+                class="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+              >
+                <span class="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+          } @else {
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+              <input
+                type="text"
+                [ngModel]="userSearchQuery()"
+                (ngModelChange)="onUserSearch($event)"
+                class="w-full pl-10 pr-10 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Buscar por usuario o email..."
+              />
+              @if (searching()) {
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-primary text-xl animate-spin">sync</span>
+              }
+
+              @if (searchResults().length > 0) {
+                <div class="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-10 max-h-60 overflow-y-auto">
+                  @for (user of searchResults(); track user.id) {
+                    <button
+                      (click)="selectUser(user)"
+                      class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors text-left border-b border-white/5 last:border-0"
+                    >
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-primary text-base">person</span>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-bold text-sm text-white truncate">{{ user.username }}</div>
+                        <div class="text-xs text-slate-500 truncate">{{ user.email }}</div>
+                      </div>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase flex-shrink-0" [class]="getRoleBadgeClass(user.role)">
+                        {{ getRoleLabel(user.role) }}
+                      </span>
+                    </button>
+                  }
+                </div>
+              }
+
+              @if (userSearchQuery().length >= 2 && !searching() && searchResults().length === 0) {
+                <div class="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-10 p-6 text-center">
+                  <span class="material-symbols-outlined text-slate-600 text-3xl mb-1 block">person_off</span>
+                  <p class="text-slate-500 text-sm">No se encontraron usuarios</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Paso 2: Seleccionar Paquete -->
+        <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+          <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">2. Seleccionar Paquete</h4>
+
+          @if (packages().length === 0) {
+            <div class="text-center py-8">
+              <span class="material-symbols-outlined text-slate-600 text-3xl mb-1 block">inventory_2</span>
+              <p class="text-slate-500 text-sm">No hay paquetes disponibles</p>
+            </div>
+          } @else {
+            <div class="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+              @for (pkg of packages(); track pkg.id) {
+                <button
+                  (click)="selectAssignPackage(pkg)"
+                  class="w-full text-left p-3.5 rounded-xl border transition-all"
+                  [class]="selectedAssignPackage()?.id === pkg.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-white/5 hover:border-white/10 hover:bg-white/[0.03]'"
+                >
+                  <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getPackageTypeClass(pkg.package_type)">
+                        {{ getPackageTypeLabel(pkg.package_type) }}
+                      </span>
+                      <span class="font-bold text-white text-sm">{{ pkg.name }}</span>
+                    </div>
+                    @if (selectedAssignPackage()?.id === pkg.id) {
+                      <span class="material-symbols-outlined text-primary text-xl">check_circle</span>
+                    }
+                  </div>
+                  <div class="flex items-center gap-4 text-xs text-slate-500">
+                    <span class="text-primary font-black text-sm">{{ pkg.price === 0 ? 'GRATIS' : formatCurrency(pkg.price) }}</span>
+                    <span>{{ pkg.duration_days }} días</span>
+                    <span>{{ pkg.max_ptc_ads }} PTC</span>
+                    <span>{{ pkg.referral_bonus }}% ref.</span>
+                  </div>
+                  @if (pkg.features && pkg.features.length > 0) {
+                    <div class="flex flex-wrap gap-1 mt-2">
+                      @for (feature of pkg.features.slice(0, 3); track feature) {
+                        <span class="text-[10px] bg-white/5 px-2 py-0.5 rounded-full text-slate-500">{{ feature }}</span>
+                      }
+                      @if (pkg.features.length > 3) {
+                        <span class="text-[10px] text-slate-600">+{{ pkg.features.length - 3 }} más</span>
+                      }
+                    </div>
+                  }
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Resumen y confirmación -->
+      @if (selectedUser() && selectedAssignPackage()) {
+        <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+          <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">3. Confirmar Asignación</h4>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
+            <div class="bg-white/5 rounded-xl p-4">
+              <p class="text-xs text-slate-500 mb-1">Usuario</p>
+              <p class="font-bold text-white">{{ selectedUser()!.username }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">{{ selectedUser()!.email }}</p>
+              <span class="mt-1.5 inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getRoleBadgeClass(selectedUser()!.role)">
+                {{ getRoleLabel(selectedUser()!.role) }}
+              </span>
+            </div>
+            <div class="bg-white/5 rounded-xl p-4">
+              <p class="text-xs text-slate-500 mb-1">Paquete</p>
+              <p class="font-bold text-white">{{ selectedAssignPackage()!.name }}</p>
+              <p class="text-xl font-black text-primary">{{ formatCurrency(selectedAssignPackage()!.price) }}</p>
+              <p class="text-xs text-slate-500">{{ selectedAssignPackage()!.duration_days }} días</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-4 col-span-2 md:col-span-1">
+              <p class="text-xs text-slate-500 mb-2">Cambios</p>
+              <ul class="space-y-1.5 text-sm">
+                <li class="flex items-center gap-2 text-slate-300">
+                  <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
+                  <span>Paquete activo</span>
+                </li>
+                <li class="flex items-center gap-2 text-slate-300">
+                  <span class="material-symbols-outlined text-amber-400 text-base">swap_horiz</span>
+                  <span>Rol a <strong class="text-amber-400">Anunciante</strong></span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          @if (assignError()) {
+            <div class="flex items-start gap-3 bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 mb-4">
+              <span class="material-symbols-outlined text-rose-400 flex-shrink-0 mt-0.5">error</span>
+              <p class="text-rose-400 text-sm">{{ assignError() }}</p>
+            </div>
+          }
+
+          <div class="flex items-center justify-end gap-3">
+            <button
+              (click)="resetAssignForm()"
+              class="px-4 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              (click)="confirmAssignPackage()"
+              [disabled]="assigning()"
+              class="px-5 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 transition-colors"
+            >
+              @if (assigning()) {
+                <span class="material-symbols-outlined text-lg animate-spin">sync</span>
+                Asignando...
+              } @else {
+                <span class="material-symbols-outlined text-lg">check</span>
+                Confirmar Asignación
+              }
+            </button>
+          </div>
+        </div>
+      }
+    }
+
     <!-- Tab: Paquetes de Usuarios -->
     @if (activeTab() === 'user-packages') {
-      <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
+      <!-- Tabla desktop -->
+      <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left">
             <thead>
-              <tr class="bg-slate-50 dark:bg-white/5 text-xs font-black uppercase text-slate-500 tracking-widest">
+              <tr class="bg-white/5 text-xs font-black uppercase text-slate-400 tracking-widest">
                 <th class="px-6 py-4">Usuario</th>
                 <th class="px-6 py-4">Paquete</th>
                 <th class="px-6 py-4">Inicio</th>
@@ -136,28 +359,29 @@
                 <th class="px-6 py-4">Monto</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+            <tbody class="divide-y divide-white/5">
               @for (up of userPackages(); track up.id) {
-                <tr class="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                <tr class="hover:bg-white/[0.03] transition-colors">
                   <td class="px-6 py-4">
-                    <div>
-                      <div class="font-bold">{{ up.username || 'Usuario' }}</div>
-                      <div class="text-xs text-slate-400">{{ up.email }}</div>
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-primary text-lg">person</span>
+                      </div>
+                      <div>
+                        <div class="font-bold text-white text-sm">{{ up.username || 'Usuario' }}</div>
+                        <div class="text-xs text-slate-500">{{ up.email }}</div>
+                      </div>
                     </div>
                   </td>
-                  <td class="px-6 py-4 font-bold">{{ up.package_name }}</td>
-                  <td class="px-6 py-4 text-sm text-slate-400">
-                    {{ formatDateTime(up.start_date) }}
-                  </td>
-                  <td class="px-6 py-4 text-sm text-slate-400">
-                    {{ formatDateTime(up.end_date) }}
-                  </td>
+                  <td class="px-6 py-4 font-bold text-white text-sm">{{ up.package_name }}</td>
+                  <td class="px-6 py-4 text-sm text-slate-400">{{ formatDateTime(up.start_date) }}</td>
+                  <td class="px-6 py-4 text-sm text-slate-400">{{ formatDateTime(up.end_date) }}</td>
                   <td class="px-6 py-4">
                     <span class="px-2 py-1 rounded text-xs font-bold uppercase" [class]="getStatusClass(up.status)">
                       {{ up.status }}
                     </span>
                   </td>
-                  <td class="px-6 py-4 font-bold">
+                  <td class="px-6 py-4 font-bold text-white text-sm">
                     {{ up.amount_paid ? formatCurrency(up.amount_paid) : '-' }}
                   </td>
                 </tr>
@@ -165,87 +389,127 @@
             </tbody>
           </table>
         </div>
+      </div>
 
-        @if (userPackages().length === 0) {
-          <div class="p-12 text-center">
-            <span class="material-icons w-12 h-12 text-slate-400 mx-auto mb-4">group</span>
-            <h3 class="font-bold text-lg mb-2">No hay paquetes asignados</h3>
-            <p class="text-slate-400 text-sm">Asigna paquetes a los usuarios desde la gestión de usuarios</p>
-          </div>
-        }
-
-        <!-- Pagination -->
-        @if (totalPages() > 1) {
-          <div class="flex items-center justify-between p-4 border-t border-slate-100 dark:border-white/5">
-            <div class="text-sm text-slate-400">
-              Página {{ currentPage() }} de {{ totalPages() }}
+      <!-- Cards mobile -->
+      <div class="md:hidden space-y-3">
+        @for (up of userPackages(); track up.id) {
+          <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-primary">person</span>
+                </div>
+                <div>
+                  <div class="font-bold text-white text-sm">{{ up.username || 'Usuario' }}</div>
+                  <div class="text-xs text-slate-500">{{ up.email }}</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getStatusClass(up.status)">
+                {{ up.status }}
+              </span>
             </div>
-            <div class="flex items-center gap-2">
-              <button
-                (click)="goToPage(currentPage() - 1)"
-                [disabled]="currentPage() === 1"
-                class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-50"
-              >
-                <span class="material-icons w-5 h-5">chevron_left</span>
-              </button>
-              <button
-                (click)="goToPage(currentPage() + 1)"
-                [disabled]="currentPage() === totalPages()"
-                class="p-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-50"
-              >
-                <span class="material-icons w-5 h-5">chevron_right</span>
-              </button>
+            <div class="space-y-1.5 text-sm">
+              <div class="flex justify-between">
+                <span class="text-slate-500">Paquete:</span>
+                <span class="font-bold text-white">{{ up.package_name }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-500">Inicio:</span>
+                <span class="text-white">{{ formatDateTime(up.start_date) }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-500">Fin:</span>
+                <span class="text-white">{{ formatDateTime(up.end_date) }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-500">Monto:</span>
+                <span class="font-bold text-primary">{{ up.amount_paid ? formatCurrency(up.amount_paid) : '-' }}</span>
+              </div>
             </div>
           </div>
         }
       </div>
+
+      <!-- Empty state -->
+      @if (userPackages().length === 0) {
+        <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+          <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">group_remove</span>
+          <h3 class="font-bold text-lg mb-2 text-white">No hay paquetes asignados</h3>
+          <p class="text-slate-500 text-sm">Usa la pestaña "Asignar" para asignar paquetes a usuarios</p>
+        </div>
+      }
+
+      <!-- Paginación -->
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between pt-2">
+          <p class="text-sm text-slate-500">
+            Página {{ currentPage() }} de {{ totalPages() }}
+          </p>
+          <div class="flex items-center gap-2">
+            <button
+              (click)="goToPage(currentPage() - 1)"
+              [disabled]="currentPage() === 1"
+              class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white"
+            >
+              <span class="material-symbols-outlined text-xl">chevron_left</span>
+            </button>
+            <span class="text-sm font-medium px-3 text-slate-300">{{ currentPage() }} / {{ totalPages() }}</span>
+            <button
+              (click)="goToPage(currentPage() + 1)"
+              [disabled]="currentPage() === totalPages()"
+              class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white"
+            >
+              <span class="material-symbols-outlined text-xl">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      }
     }
   }
 
-  <!-- Modal -->
+  <!-- ═══ MODAL CREAR / EDITAR PAQUETE ═══ -->
   @if (showModal()) {
-    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white dark:bg-card-dark rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
-        <div class="p-6 border-b border-slate-200 dark:border-white/5 flex items-center justify-between sticky top-0 bg-white dark:bg-card-dark">
-          <h2 class="text-xl font-bold">
-            @if (modalMode() === 'create') {
-              Crear Paquete
-            } @else {
-              Editar Paquete
-            }
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+          <h2 class="text-lg font-bold text-white">
+            @if (modalMode() === 'create') { Crear Paquete }
+            @else { Editar Paquete }
           </h2>
-          <button (click)="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg">
-            <span class="material-icons w-5 h-5">close</span>
+          <button (click)="closeModal()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400">
+            <span class="material-symbols-outlined">close</span>
           </button>
         </div>
 
         <div class="p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium mb-1">Nombre *</label>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Nombre *</label>
             <input
               type="text"
               [(ngModel)]="formData().name"
-              class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Nombre del paquete"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-1">Descripción</label>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Descripción</label>
             <textarea
               [(ngModel)]="formData().description"
-              class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
               rows="2"
               placeholder="Descripción breve"
             ></textarea>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-1">Tipo</label>
+              <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Tipo</label>
               <select
                 [(ngModel)]="formData().package_type"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
               >
                 @for (type of packageTypes; track type.value) {
                   <option [value]="type.value">{{ type.label }}</option>
@@ -253,75 +517,76 @@
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium mb-1">Duración (días)</label>
+              <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Duración (días)</label>
               <input
                 type="number"
                 [(ngModel)]="formData().duration_days"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                 min="1"
               />
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-1">Precio (COP)</label>
+              <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Precio (USD)</label>
               <input
                 type="number"
                 [(ngModel)]="formData().price"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                 min="0"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium mb-1">Bono referidos (%)</label>
+              <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Bono referidos (%)</label>
               <input
                 type="number"
                 [(ngModel)]="formData().referral_bonus"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                 min="0"
                 max="100"
               />
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1">Máx Campañas</label>
-              <input
-                type="number"
-                [(ngModel)]="formData().max_campaigns"
-                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
-                min="0"
-              />
-            </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Máx Campañas</label>
+            <input
+              type="number"
+              [(ngModel)]="formData().max_campaigns"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+              min="0"
+            />
           </div>
 
-          <div>
-            <label class="block text-sm font-medium mb-1">Características</label>
+          <div class="border-t border-white/10 pt-4">
+            <label class="block text-xs font-semibold mb-2 text-slate-400 uppercase tracking-wide">Características</label>
             <div class="flex gap-2 mb-2">
               <input
                 type="text"
                 [(ngModel)]="newFeature"
                 (keyup.enter)="addFeature()"
-                class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm"
+                class="flex-1 px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Agregar característica"
               />
               <button
                 type="button"
                 (click)="addFeature()"
-                class="px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm"
+                class="px-4 py-2.5 bg-primary/20 text-primary border border-primary/30 rounded-xl font-bold text-sm hover:bg-primary hover:text-black transition-colors"
               >
-                <span class="material-icons text-black w-4 h-4">add</span>
+                <span class="material-symbols-outlined text-lg">add</span>
               </button>
             </div>
             @if (formData().features && formData().features!.length > 0) {
               <ul class="space-y-1">
                 @for (feature of formData().features; track feature; let i = $index) {
-                  <li class="flex items-center justify-between bg-slate-50 dark:bg-slate-900 px-3 py-2 rounded-lg text-sm">
-                    <span>{{ feature }}</span>
-                    <button (click)="removeFeature(i)" class="text-rose-500 hover:text-rose-600">
-                      <span class="material-icons w-4 h-4">close</span>
+                  <li class="flex items-center justify-between bg-white/5 px-3 py-2 rounded-lg text-sm text-slate-300">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
+                      <span>{{ feature }}</span>
+                    </div>
+                    <button (click)="removeFeature(i)" class="p-1 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded transition-colors">
+                      <span class="material-symbols-outlined text-base">close</span>
                     </button>
                   </li>
                 }
@@ -330,22 +595,28 @@
           </div>
         </div>
 
-        <div class="p-6 border-t border-slate-200 dark:border-white/5 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-card-dark">
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3 sticky bottom-0 bg-zinc-900">
           <button
             (click)="closeModal()"
-            class="px-4 py-2.5 border border-slate-200 dark:border-white/10 rounded-xl font-bold text-sm"
+            class="px-4 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors"
           >
             Cancelar
           </button>
           <button
             (click)="savePackage()"
             [disabled]="saving() || !formData().name"
-            class="px-4 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+            class="px-5 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 transition-colors"
           >
             @if (saving()) {
-              <span class="material-icons w-4 h-4 animate-spin">sync</span>
+              <span class="material-symbols-outlined text-lg animate-spin">sync</span>
+              Guardando...
+            } @else if (modalMode() === 'create') {
+              <span class="material-symbols-outlined text-lg">add_circle</span>
+              Crear Paquete
+            } @else {
+              <span class="material-symbols-outlined text-lg">save</span>
+              Guardar Cambios
             }
-            Guardar
           </button>
         </div>
       </div>

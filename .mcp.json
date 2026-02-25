@@ -8,7 +8,7 @@
         "--project-ref=btkdmdhzouzvzgyuzgbh"
       ],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "sbp_be51970f1071aef4708a277c7e4081ac7abad8a7"
+        "SUPABASE_ACCESS_TOKEN": "sbp_v0_1002898f0fa824f0a0a3a59744c371b11e299c27"
       }
     },
     "github": {
@@ -48,6 +48,19 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "fetch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch"
+      ]
+    },
+    "browsermcp": {
+      "command": "npx",
+      "args": [
+        "@browsermcp/mcp@latest"
       ]
     }
   }
