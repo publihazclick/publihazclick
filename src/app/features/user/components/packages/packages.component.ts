@@ -118,4 +118,47 @@ export class UserPackagesComponent implements OnInit {
   isCurrentPackage(pkg: Package): boolean {
     return this.hasActivePackage() && this.profile()?.current_package_id === pkg.id;
   }
+
+  /** Porcentaje de tiempo consumido del paquete (0–100) */
+  getProgressPct(): number {
+    const started = this.profile()?.package_started_at;
+    const expires = this.profile()?.package_expires_at;
+    if (!started || !expires) return 0;
+    const total = new Date(expires).getTime() - new Date(started).getTime();
+    const elapsed = Date.now() - new Date(started).getTime();
+    return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+  }
+
+  /** Color de fondo del glow según tipo de paquete */
+  getBgGlowColor(type: string): string {
+    const map: Record<string, string> = {
+      basic: '#3b82f6',
+      premium: '#00E5FF',
+      enterprise: '#f59e0b',
+      custom: '#8b5cf6',
+    };
+    return map[type] ?? '#ffffff';
+  }
+
+  /** Clase de fondo del ícono badge */
+  getBadgeBg(type: string): string {
+    const map: Record<string, string> = {
+      basic: 'bg-blue-500/15 border-blue-500/30',
+      premium: 'bg-primary/15 border-primary/30',
+      enterprise: 'bg-amber-500/15 border-amber-500/30',
+      custom: 'bg-violet-500/15 border-violet-500/30',
+    };
+    return map[type] ?? 'bg-white/10 border-white/20';
+  }
+
+  /** Color de la barra de progreso */
+  getProgressBarColor(type: string): string {
+    const map: Record<string, string> = {
+      basic: 'bg-blue-400',
+      premium: 'bg-primary',
+      enterprise: 'bg-amber-400',
+      custom: 'bg-violet-400',
+    };
+    return map[type] ?? 'bg-white';
+  }
 }

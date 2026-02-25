@@ -87,6 +87,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/user/components/referrals/referrals.component').then(m => m.UserReferralsComponent)
       },
       {
+        path: 'leader',
+        loadComponent: () => import('./features/user/components/leader/leader.component').then(m => m.LeaderComponent)
+      },
+      {
         path: 'history',
         loadComponent: () => import('./features/user/components/history/history.component').then(m => m.UserHistoryComponent)
       },
@@ -123,6 +127,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/user/components/referrals/referrals.component').then(m => m.UserReferralsComponent)
       },
       {
+        path: 'leader',
+        loadComponent: () => import('./features/user/components/leader/leader.component').then(m => m.LeaderComponent)
+      },
+      {
         path: 'history',
         loadComponent: () => import('./features/user/components/history/history.component').then(m => m.UserHistoryComponent)
       },
@@ -142,9 +150,18 @@ export const routes: Routes = [
     loadComponent: () => import('./app').then(m => m.App),
     canActivate: [roleRedirectGuard]
   },
-  // 404 - redirigir a home
+  // Páginas públicas
+  {
+    path: 'quienes-somos',
+    loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent)
+  },
+  {
+    path: 'terminos',
+    loadComponent: () => import('./pages/terms/terms.component').then(m => m.TermsComponent)
+  },
+  // 404
   {
     path: '**',
-    redirectTo: ''
+    loadComponent: () => import('./pages/not-found/not-found.component').then(m => m.NotFoundComponent)
   }
 ];

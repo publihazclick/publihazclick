@@ -13,7 +13,7 @@ interface PtcAdCard {
   description: string;
   advertiserType: 'company' | 'person';
   imageUrl: string;
-  youtubeVideoId: string;
+  videoUrl: string;
   destinationUrl: string;
   adType: PtcAdType;
   rewardCOP: number;
@@ -22,13 +22,6 @@ interface PtcAdCard {
   status: string;
 }
 
-function extractYoutubeId(url: string | null | undefined): string {
-  if (!url) return '';
-  const match = url.match(
-    /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
-  );
-  return match?.[1] ?? '';
-}
 
 @Component({
   selector: 'app-user-ads',
@@ -79,24 +72,15 @@ export class UserAdsComponent implements OnInit {
       );
 
       if (result.data && result.data.length > 0) {
-        // Debug: verificar youtube_url en datos crudos
-        console.log('[Ads] Datos crudos:', result.data.map(t => ({
-          title: t.title, youtube_url: t.youtube_url, url: t.url
-        })));
-
         const mapped: PtcAdCard[] = result.data.map((task) => {
           const adType = task.ad_type || 'mini';
-          const videoId = extractYoutubeId(task.youtube_url);
-          if (task.youtube_url) {
-            console.log('[Ads]', task.title, '→ youtube_url:', task.youtube_url, '→ videoId:', videoId);
-          }
           return {
             id: task.id,
             companyName: task.title,
             description: task.description || '',
             advertiserType: 'company' as const,
             imageUrl: task.image_url || '',
-            youtubeVideoId: videoId,
+            videoUrl: task.youtube_url || '',
             destinationUrl: task.url || '',
             adType,
             rewardCOP: this.adTypeRewards[adType] ?? task.reward ?? 0,
@@ -142,7 +126,7 @@ export class UserAdsComponent implements OnInit {
       advertiserName: ad.companyName,
       advertiserType: ad.advertiserType,
       imageUrl: ad.imageUrl,
-      youtubeVideoId: ad.youtubeVideoId,
+      videoUrl: ad.videoUrl,
       destinationUrl: ad.destinationUrl,
       adType: ad.adType,
       rewardCOP: ad.rewardCOP,

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ProfileService } from '../../../../core/services/profile.service';
 import { AuthAdsComponent } from '../auth-ads/auth-ads.component';
 
 @Component({
@@ -16,6 +17,7 @@ import { AuthAdsComponent } from '../auth-ads/auth-ads.component';
 export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly profileService = inject(ProfileService);
   private readonly router = inject(Router);
 
   // Estado del login
@@ -40,9 +42,20 @@ export class LoginComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    // Verificar si ya está autenticado
+    // Si ya está autenticado, redirigir según su rol
     if (this.authService.isAuthenticated()) {
-      this.router.navigate(['/admin']);
+      this.profileService.getCurrentProfile().then(profile => {
+        const role = profile?.role;
+        if (role === 'admin' || role === 'dev') {
+          this.router.navigate(['/admin']);
+        } else if (role === 'advertiser') {
+          this.router.navigate(['/advertiser']);
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
+      }).catch(() => {
+        this.router.navigate(['/dashboard']);
+      });
     }
   }
 
@@ -80,12 +93,18 @@ export class LoginComponent implements OnInit {
         
         if (result.success) {
           this.successMessage = 'Inicio de sesión exitoso';
-          // Redirigir al admin dashboard
-          console.log('Redirecting to /admin/...');
-          this.router.navigate(['/admin/']).then(success => {
-            console.log('Navigation success:', success);
-          }).catch(err => {
-            console.error('Navigation error:', err);
+          // Redirigir según el rol del usuario
+          this.profileService.getCurrentProfile().then(profile => {
+            const role = profile?.role;
+            if (role === 'admin' || role === 'dev') {
+              this.router.navigate(['/admin']);
+            } else if (role === 'advertiser') {
+              this.router.navigate(['/advertiser']);
+            } else {
+              this.router.navigate(['/dashboard']);
+            }
+          }).catch(() => {
+            this.router.navigate(['/dashboard']);
           });
         } else {
           this.errorMessage = result.message || 'Error al iniciar sesión';

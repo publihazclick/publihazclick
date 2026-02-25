@@ -71,19 +71,19 @@
             </a>
           </li>
           <li>
-            <a routerLink="/dashboard/wallet" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-icons">account_balance_wallet</span>
-              @if (!sidebarCollapsed()) { <span>Mi Billetera</span> }
-            </a>
-          </li>
-          <li>
             <a routerLink="/dashboard/referrals" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
                [class.justify-center]="sidebarCollapsed()">
               <span class="material-icons">group</span>
-              @if (!sidebarCollapsed()) { <span>Referidos</span> }
+              @if (!sidebarCollapsed()) { <span>Mis Afiliados</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/dashboard/leader" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">military_tech</span>
+              @if (!sidebarCollapsed()) { <span>Mi Líder</span> }
             </a>
           </li>
           <li>
@@ -101,10 +101,7 @@
               [class.justify-center]="sidebarCollapsed()"
             >
               <span class="material-icons text-accent">card_giftcard</span>
-              @if (!sidebarCollapsed()) {
-                <span>Recomienda y Gana</span>
-                <span class="ml-auto bg-accent/20 text-accent text-[10px] px-1.5 py-0.5 rounded font-bold">NEW</span>
-              }
+              @if (!sidebarCollapsed()) { <span>Recomienda y Gana</span> }
             </button>
           </li>
         </ul>
@@ -310,7 +307,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
                   <span class="material-icons text-violet-400" style="font-size:14px">group</span>
-                  <span class="text-xs text-slate-400">Referidos</span>
+                  <span class="text-xs text-slate-400">Afiliados</span>
                 </div>
                 <span class="text-xs font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</span>
               </div>

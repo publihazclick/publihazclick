@@ -34,6 +34,7 @@ export class App {
 
   readonly isAuthRoute = signal(false);
   readonly isAdminOrDashboardRoute = signal(false);
+  readonly isLandingRoute = signal(true);
 
   private readonly router = inject(Router);
 
@@ -55,5 +56,6 @@ export class App {
     this.isAdminOrDashboardRoute.set(
       url.includes('/admin') || url.includes('/dashboard') || url.includes('/advertiser')
     );
+    this.isLandingRoute.set(url === '/' || url === '');
   }
 }

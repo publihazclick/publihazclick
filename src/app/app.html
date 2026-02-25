@@ -6,17 +6,20 @@
   @if (isAuthRoute() || isAdminOrDashboardRoute()) {
     <!-- Mostrar solo el router-outlet para rutas de autenticación, admin y dashboard -->
     <router-outlet />
-  } @else {
+  } @else if (isLandingRoute()) {
     <!-- Mostrar contenido principal de la landing page -->
     <app-package-promo-modal />
     <app-banner-slider location="landing" />
     <app-hero />
     <app-ptc-ads />
     <app-video-section />
-    
-   
+
+
     <app-pricing />
     <app-tiers />
+  } @else {
+    <!-- Páginas públicas: about, terms, 404, etc. -->
+    <router-outlet />
   }
 </main>
 

@@ -1,0 +1,271 @@
+<div class="min-h-screen bg-zinc-950 text-white font-sans">
+
+  <!-- Header -->
+  <div class="border-b border-white/10 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="font-display font-black text-xl sm:text-2xl text-white">Términos y Condiciones</h1>
+        <span class="inline-flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+          <span class="material-symbols-outlined text-sm">schedule</span>
+          Última actualización: {{ lastUpdated }}
+        </span>
+      </div>
+      <span class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+        <span class="material-symbols-outlined text-sm">verified</span>
+        Versión {{ currentYear }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Mobile: horizontal scrollable section tabs -->
+  <div class="md:hidden sticky top-[72px] z-10 bg-zinc-950 border-b border-white/10 overflow-x-auto">
+    <div class="flex gap-2 px-4 py-3 w-max">
+      @for (section of sections; track section.id) {
+        <button
+          (click)="scrollTo(section.id)"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all duration-200"
+          [class.bg-primary]="activeSection() === section.id"
+          [class.text-black]="activeSection() === section.id"
+          [class.bg-zinc-800]="activeSection() !== section.id"
+          [class.text-gray-400]="activeSection() !== section.id"
+        >
+          <span class="material-symbols-outlined text-sm">{{ section.icon }}</span>
+          {{ section.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 py-8 flex gap-8">
+
+    <!-- Desktop sidebar -->
+    <aside class="hidden md:block w-64 flex-shrink-0">
+      <div class="sticky top-24 bg-zinc-900 rounded-2xl border border-white/10 p-4 overflow-hidden">
+        <p class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-4 px-2">Secciones</p>
+        <nav class="flex flex-col gap-1">
+          @for (section of sections; track section.id) {
+            <button
+              (click)="scrollTo(section.id)"
+              class="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all duration-200 w-full"
+              [class.border-l-2]="activeSection() === section.id"
+              [class.border-primary]="activeSection() === section.id"
+              [class.text-primary]="activeSection() === section.id"
+              [class.bg-primary/10]="activeSection() === section.id"
+              [class.text-gray-400]="activeSection() !== section.id"
+              [class.hover:text-white]="activeSection() !== section.id"
+              [class.hover:bg-white/5]="activeSection() !== section.id"
+            >
+              <span class="material-symbols-outlined text-lg flex-shrink-0"
+                [class.text-primary]="activeSection() === section.id"
+                [class.text-gray-600]="activeSection() !== section.id">
+                {{ section.icon }}
+              </span>
+              {{ section.label }}
+            </button>
+          }
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 min-w-0 space-y-8">
+
+      <!-- Intro card -->
+      <div class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8">
+        <p class="text-gray-300 text-base leading-relaxed">
+          Al usar <strong class="text-white">Publihazclick</strong>, aceptas estos términos en su totalidad.
+          Léelos con atención antes de crear tu cuenta o interactuar con nuestra plataforma.
+          Si tienes dudas, contáctanos antes de continuar.
+        </p>
+      </div>
+
+      <!-- ===== USO DEL SERVICIO ===== -->
+      <section id="uso" class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">policy</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">1. Uso del Servicio</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p>Publihazclick es una plataforma PTC (Paid To Click) legítima que opera como intermediario entre anunciantes que desean promocionar sus productos/servicios y usuarios que reciben una compensación económica por visualizar dichos anuncios.</p>
+          <ul class="space-y-2 ml-4">
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> El uso del servicio está restringido a personas mayores de <strong class="text-white">18 años</strong> o la edad legal en tu país de residencia.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Debes proporcionar información veraz y actualizada en todo momento.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> El servicio se ofrece "tal cual" y podemos modificar o interrumpir funciones sin previo aviso.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Nos reservamos el derecho de suspender o cancelar cuentas que incumplan estos términos.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Publihazclick no garantiza un ingreso fijo; los pagos dependen de la disponibilidad de anuncios activos.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== REGISTRO ===== -->
+      <section id="registro" class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">manage_accounts</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">2. Registro y Cuenta</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p>El registro en Publihazclick requiere un código de referido válido. Este mecanismo garantiza la integridad de nuestra red y el sistema de comisiones multinivel.</p>
+          <ul class="space-y-2 ml-4">
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Código de referido obligatorio:</strong> No es posible registrarse sin un código válido proporcionado por otro usuario activo.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Una cuenta por persona:</strong> Está prohibido crear múltiples cuentas bajo la misma identidad o dispositivo.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Datos reales:</strong> Debes registrarte con tu nombre real, correo electrónico funcional y datos bancarios válidos para procesar retiros.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Verificación de email:</strong> Debes confirmar tu correo electrónico antes de acceder a las funcionalidades completas.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Eres responsable de mantener la confidencialidad de tus credenciales de acceso.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== SISTEMA PTC ===== -->
+      <section id="ptc" class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">ads_click</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">3. Sistema PTC</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p>El sistema PTC (Paid To Click) es el núcleo de Publihazclick. Cada anuncio visualizado correctamente genera una compensación para el usuario.</p>
+          <ul class="space-y-2 ml-4">
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Visualización real:</strong> Debes permanecer en el anuncio el tiempo mínimo requerido para que el click sea validado.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Tiempo mínimo:</strong> Cada anuncio especifica su tiempo de visualización; salir antes invalida la ganancia.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Validación automática:</strong> El sistema detecta comportamientos fraudulentos como uso de bots, VPN o clics automáticos.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Límite diario:</strong> La cantidad de anuncios disponibles varía según el paquete de membresía activo.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Los valores por click pueden variar según el anunciante y el tipo de campaña.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== PAGOS ===== -->
+      <section id="pagos" class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">payments</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">4. Pagos y Retiros</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <!-- Highlight box -->
+          <div class="rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <p class="text-primary font-bold text-base">Monto mínimo de retiro: $20.000 COP</p>
+            <p class="text-gray-400 text-sm mt-1">Los retiros por debajo de este valor no serán procesados.</p>
+          </div>
+          <ul class="space-y-2 ml-4">
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Tiempo de procesamiento:</strong> Entre 1 y 5 días hábiles desde la solicitud aprobada.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Métodos aceptados:</strong> Nequi, Daviplata, transferencia bancaria a cuentas colombianas.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Datos bancarios correctos:</strong> Eres responsable de proporcionar datos correctos; no nos hacemos responsables de transferencias a cuentas incorrectas.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Los pagos se realizan en pesos colombianos (COP).</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Publihazclick puede retener pagos en caso de sospecha de fraude hasta concluir la investigación.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== REFERIDOS ===== -->
+      <section id="referidos" class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">group_add</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">5. Programa de Referidos</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p>Nuestro programa de referidos multinivel permite que ganes comisiones por la actividad de los usuarios que se unan usando tu código.</p>
+          <ul class="space-y-2 ml-4">
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Sistema multinivel:</strong> Ganas comisiones sobre la actividad de tus referidos directos e indirectos según los niveles de tu plan.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Referidos reales:</strong> Está prohibido auto-referirse con cuentas falsas o usar el mismo dispositivo/red para registrar múltiples usuarios.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Las comisiones por referido se acreditan cuando el referido completa actividades válidas (no por solo registrarse).</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Los porcentajes de comisión varían según el paquete de membresía activo y pueden cambiar sin previo aviso.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Publihazclick puede anular comisiones si detecta actividad fraudulenta en la red de referidos.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== PRIVACIDAD ===== -->
+      <section id="privacidad" class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">security</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">6. Privacidad de Datos</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p>Tu privacidad es importante para nosotros. Recopilamos únicamente los datos necesarios para operar el servicio.</p>
+          <ul class="space-y-2 ml-4">
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Datos recolectados:</strong> Nombre, correo electrónico, datos bancarios para retiros, actividad en la plataforma e información del dispositivo.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">Uso de datos:</strong> Para operar el servicio, procesar pagos, detectar fraude y mejorar la experiencia de usuario.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> <strong class="text-white">No vendemos tus datos:</strong> Nunca compartimos tu información personal con terceros con fines comerciales.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Usamos Supabase como proveedor de base de datos, el cual cumple con estándares de seguridad internacionales.</li>
+            <li class="flex gap-2"><span class="text-primary mt-0.5 flex-shrink-0">▸</span> Puedes solicitar la eliminación de tu cuenta y datos personales contactando a nuestro equipo.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== PROHIBICIONES ===== -->
+      <section id="prohibiciones" class="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-rose-400 text-lg">block</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">7. Prohibiciones</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p class="text-rose-300">Las siguientes conductas resultarán en suspensión inmediata y pérdida de todos los saldos acumulados:</p>
+          <ul class="space-y-2 ml-4">
+            <li class="flex gap-2"><span class="text-rose-400 mt-0.5 flex-shrink-0">✕</span> <strong class="text-white">Múltiples cuentas:</strong> Crear más de una cuenta por persona, hogar o dispositivo.</li>
+            <li class="flex gap-2"><span class="text-rose-400 mt-0.5 flex-shrink-0">✕</span> <strong class="text-white">Automatización:</strong> Uso de bots, scripts, macros o cualquier software para automatizar clicks o acciones.</li>
+            <li class="flex gap-2"><span class="text-rose-400 mt-0.5 flex-shrink-0">✕</span> <strong class="text-white">VPN / Proxies:</strong> Usar servicios de VPN, proxies o cualquier método para ocultar la ubicación real.</li>
+            <li class="flex gap-2"><span class="text-rose-400 mt-0.5 flex-shrink-0">✕</span> <strong class="text-white">Fraude en referidos:</strong> Auto-referirse con cuentas falsas o pagar a otras personas para registrarse sin intención de usar la plataforma.</li>
+            <li class="flex gap-2"><span class="text-rose-400 mt-0.5 flex-shrink-0">✕</span> <strong class="text-white">Manipulación de sistema:</strong> Cualquier intento de explotar bugs, vulnerabilidades o manipular el sistema de créditos.</li>
+            <li class="flex gap-2"><span class="text-rose-400 mt-0.5 flex-shrink-0">✕</span> <strong class="text-white">Datos falsos:</strong> Proporcionar información personal o bancaria falsa.</li>
+          </ul>
+          <div class="mt-4 rounded-xl bg-rose-500/10 border border-rose-500/20 p-4">
+            <p class="text-rose-300 font-bold text-sm">Consecuencia: Suspensión permanente, pérdida de saldo y posible reporte a autoridades competentes según la gravedad.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CONTACTO ===== -->
+      <section id="contacto" class="rounded-2xl border border-white/10 bg-zinc-900 p-6 sm:p-8 scroll-mt-32">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">contact_support</span>
+          </div>
+          <h2 class="font-display font-black text-xl text-white">8. Contacto</h2>
+        </div>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p>Si tienes preguntas sobre estos términos o necesitas soporte, puedes contactarnos por los siguientes medios:</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col items-center text-center gap-2">
+              <span class="material-symbols-outlined text-primary text-2xl">mail</span>
+              <span class="text-white font-bold text-xs uppercase tracking-wider">Email</span>
+              <span class="text-gray-400 text-xs">soporte&#64;publihazclick.com</span>
+            </div>
+            <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex flex-col items-center text-center gap-2">
+              <span class="material-symbols-outlined text-emerald-400 text-2xl">chat</span>
+              <span class="text-white font-bold text-xs uppercase tracking-wider">WhatsApp</span>
+              <span class="text-gray-400 text-xs">+57 300 000 0000</span>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col items-center text-center gap-2">
+              <span class="material-symbols-outlined text-primary text-2xl">schedule</span>
+              <span class="text-white font-bold text-xs uppercase tracking-wider">Horarios</span>
+              <span class="text-gray-400 text-xs">Lun–Vie 8am–6pm (COT)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer note -->
+      <div class="rounded-2xl border border-white/5 bg-zinc-900/50 p-6 text-center">
+        <p class="text-gray-600 text-xs leading-relaxed">
+          Al registrarte y usar Publihazclick aceptas estos términos en su versión vigente.
+          Nos reservamos el derecho de actualizar estos términos con 30 días de aviso previo a los usuarios activos.
+          <br/>© {{ currentYear }} Publihazclick · Todos los derechos reservados.
+        </p>
+      </div>
+
+    </main>
+  </div>
+</div>

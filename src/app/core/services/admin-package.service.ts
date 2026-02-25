@@ -329,54 +329,21 @@ export class AdminPackageService {
   }
 
   /**
-   * Asignar paquete a usuario y cambiar rol a advertiser
+   * Asignar paquete a usuario y cambiar rol a advertiser.
+   * Usa función RPC `activate_user_package` con SECURITY DEFINER (bypasa RLS).
+   * Requiere migración 010_fix_assign_package.sql
    */
   async assignPackage(data: AssignPackageData): Promise<{ id: string } | null> {
     try {
-      // Obtener información del paquete
-      const pkg = await this.getPackageById(data.package_id);
-      if (!pkg) throw new Error('Paquete no encontrado');
-
-      // Calcular fecha de fin
-      const duration = data.duration_days || pkg.duration_days;
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + duration);
-
-      const { data: result, error } = await this.supabase
-        .from('user_packages')
-        .insert({
-          user_id: data.user_id,
-          package_id: data.package_id,
-          package_name: pkg.name,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          status: 'active',
-          auto_renew: false,
-          payment_method: data.payment_method || 'admin',
-          payment_id: data.payment_id || `admin-${Date.now()}`,
-          amount_paid: data.amount_paid || pkg.price
-        })
-        .select('id')
-        .single();
+      const { data: result, error } = await this.supabase.rpc('activate_user_package', {
+        p_user_id: data.user_id,
+        p_package_id: data.package_id
+      });
 
       if (error) throw error;
+      if (!result) throw new Error('No se pudo activar el paquete');
 
-      // Actualizar el perfil del usuario: paquete activo + cambiar rol a advertiser
-      const { error: profileError } = await this.supabase
-        .from('profiles')
-        .update({
-          current_package_id: data.package_id,
-          package_expires_at: endDate.toISOString(),
-          role: 'advertiser'
-        })
-        .eq('id', data.user_id);
-
-      if (profileError) {
-        console.error('Error updating profile role:', profileError);
-      }
-
-      return result;
+      return { id: data.package_id };
     } catch (error: any) {
       console.error('Error assigning package:', error);
       return null;

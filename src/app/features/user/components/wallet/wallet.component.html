@@ -1,72 +1,189 @@
 <div class="space-y-6">
-  <div class="flex items-center justify-between">
-    <div>
-      <h2 class="text-xl font-black">Mi Billetera</h2>
-      <p class="text-xs text-slate-400">Gestiona tus fondos y solicita retiros</p>
-    </div>
+
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white">Mi Billetera</h2>
+    <p class="text-xs text-slate-400">Tus saldos reales conectados a la plataforma</p>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Balance Card -->
-    <div class="bg-gradient-to-br from-primary/20 to-accent/20 p-6 rounded-2xl border border-primary/20">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="p-3 bg-primary/20 rounded-xl">
-          <span class="material-icons w-6 h-6 text-primary">account_balance_wallet</span>
+  @if (loading()) {
+    <div class="flex items-center justify-center py-20">
+      <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  } @else {
+
+    <!-- Balance cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <!-- Balance disponible -->
+      <div class="bg-gradient-to-br from-primary/15 to-cyan-500/5 border border-primary/20 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary" style="font-size:20px">account_balance_wallet</span>
+          </div>
+          <span class="text-[10px] font-black text-primary uppercase tracking-widest px-2 py-0.5 bg-primary/10 rounded-full border border-primary/20">Real</span>
         </div>
-        <div>
-          <p class="text-xs text-slate-500 uppercase font-bold">Balance Total</p>
-          <p class="text-3xl font-black">$25,450 COP</p>
-        </div>
+        <p class="text-2xl font-black text-white leading-tight">
+          {{ formatCOP(profile()?.real_balance ?? 0) }}
+        </p>
+        <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Saldo Disponible</p>
       </div>
-      <div class="space-y-2">
-        <div class="flex justify-between text-sm">
-          <span class="text-slate-500">Disponible</span>
-          <span class="font-bold">$25,450</span>
+
+      <!-- Pendiente -->
+      <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-amber-400" style="font-size:20px">hourglass_empty</span>
+          </div>
+          <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest px-2 py-0.5 bg-amber-500/10 rounded-full border border-amber-500/20">Espera</span>
         </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-slate-500">Pendiente</span>
-          <span class="font-bold">$5,000</span>
-        </div>
+        <p class="text-2xl font-black text-white leading-tight">
+          {{ formatCOP(profile()?.pending_balance ?? 0) }}
+        </p>
+        <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Saldo Pendiente</p>
       </div>
+
+      <!-- Donaciones -->
+      <div class="bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-violet-500/20 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-violet-400" style="font-size:20px">volunteer_activism</span>
+          </div>
+          <span class="text-[10px] font-black text-violet-400 uppercase tracking-widest px-2 py-0.5 bg-violet-500/10 rounded-full border border-violet-500/20">Total</span>
+        </div>
+        <p class="text-2xl font-black text-white leading-tight">
+          {{ formatCOP(profile()?.total_donated ?? 0) }}
+        </p>
+        <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Total Donado</p>
+      </div>
+
+      <!-- Total ganado -->
+      <div class="bg-gradient-to-br from-emerald-500/10 to-green-500/5 border border-emerald-500/20 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">trending_up</span>
+          </div>
+          <span class="text-[10px] font-black text-emerald-400 uppercase tracking-widest px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">Histórico</span>
+        </div>
+        <p class="text-2xl font-black text-white leading-tight">
+          {{ formatCOP(profile()?.total_earned ?? 0) }}
+        </p>
+        <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Total Ganado</p>
+      </div>
+
     </div>
 
-    <!-- Withdraw Card -->
-    <div class="bg-white dark:bg-card-dark p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="p-3 bg-accent/10 rounded-xl">
-          <span class="material-icons w-6 h-6 text-accent">download</span>
+    <!-- Solicitar retiro -->
+    <div class="bg-card-dark border border-white/5 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-accent" style="font-size:22px">payments</span>
         </div>
         <div>
-          <p class="text-xs text-slate-500 uppercase font-bold">Solicitar Retiro</p>
-          <p class="text-sm text-slate-400">Mínimo $20,000 COP</p>
+          <p class="font-black text-white text-sm">Solicitar Retiro</p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Disponible: <span class="text-primary font-bold">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
+            · Mínimo $20,000 COP
+          </p>
         </div>
       </div>
-      <button class="w-full py-3 bg-accent hover:bg-accent/90 text-white font-bold rounded-xl transition-all">
-        Solicitar Retiro
+      <button
+        class="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white font-black py-2.5 px-5 rounded-xl transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+        [disabled]="(profile()?.real_balance ?? 0) < 20000"
+      >
+        <span class="material-symbols-outlined" style="font-size:18px">download</span>
+        Retirar fondos
       </button>
     </div>
-  </div>
 
-  <!-- Transaction History -->
-  <div class="bg-white dark:bg-card-dark rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
-    <div class="p-4 border-b border-slate-100 dark:border-white/5">
-      <h3 class="font-bold">Historial de Transacciones</h3>
-    </div>
-    <div class="divide-y divide-slate-100 dark:divide-white/5">
-      @for (tx of transactions; track tx.id) {
-        <div class="p-4 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <span class="material-icons w-5 h-5 text-emerald-500">attach_money</span>
-            </div>
-            <div>
-              <p class="font-bold text-sm">{{ tx.type }}</p>
-              <p class="text-[10px] text-slate-500">{{ tx.time }}</p>
-            </div>
-          </div>
-          <span class="text-emerald-500 font-bold">+${{ tx.amount }}</span>
+    <!-- Ganancias por referidos -->
+    <div class="bg-card-dark border border-white/5 rounded-2xl p-5 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-violet-400" style="font-size:22px">group</span>
         </div>
+        <div>
+          <p class="font-black text-white text-sm">Ganancias por Afiliados</p>
+          <p class="text-xs text-slate-400 mt-0.5">Comisiones acumuladas de tu red de referidos</p>
+        </div>
+      </div>
+      <p class="text-lg font-black text-violet-400 flex-shrink-0">
+        {{ formatCOP(profile()?.referral_earnings ?? 0) }}
+      </p>
+    </div>
+
+    <!-- Historial de retiros -->
+    <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+        <div>
+          <h3 class="font-black text-white text-sm">Historial de Retiros</h3>
+          <p class="text-[10px] text-slate-500 mt-0.5">Últimas solicitudes de retiro</p>
+        </div>
+        <span class="material-symbols-outlined text-slate-600" style="font-size:20px">receipt_long</span>
+      </div>
+
+      @if (withdrawals().length === 0) {
+        <div class="flex flex-col items-center justify-center py-12 gap-3 text-center px-6">
+          <span class="material-symbols-outlined text-slate-700" style="font-size:44px">payments</span>
+          <p class="text-white font-bold text-sm">Sin retiros aún</p>
+          <p class="text-slate-500 text-xs max-w-xs">
+            Cuando realices tu primera solicitud de retiro, aparecerá aquí.
+          </p>
+        </div>
+      } @else {
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/5">
+                <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Fecha</th>
+                <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Monto</th>
+                <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Método</th>
+                <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Estado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              @for (w of withdrawals(); track w.id) {
+                <tr class="hover:bg-white/2 transition-colors">
+                  <td class="px-5 py-3.5 text-slate-400 text-xs">{{ formatDate(w.created_at) }}</td>
+                  <td class="px-5 py-3.5 font-black text-white">{{ formatCOP(w.amount) }}</td>
+                  <td class="px-5 py-3.5 text-slate-400 text-xs">{{ w.details?.method || '—' }}</td>
+                  <td class="px-5 py-3.5">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black" [ngClass]="getStatusStyle(w.status)">
+                      <span class="material-symbols-outlined" style="font-size:11px">{{ getStatusIcon(w.status) }}</span>
+                      {{ getStatusLabel(w.status) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden divide-y divide-white/5">
+          @for (w of withdrawals(); track w.id) {
+            <div class="px-5 py-4 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-slate-400" style="font-size:17px">payments</span>
+                </div>
+                <div class="min-w-0">
+                  <p class="font-black text-white text-sm">{{ formatCOP(w.amount) }}</p>
+                  <p class="text-[10px] text-slate-500">{{ formatDate(w.created_at) }} · {{ w.details?.method || '—' }}</p>
+                </div>
+              </div>
+              <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black flex-shrink-0" [ngClass]="getStatusStyle(w.status)">
+                {{ getStatusLabel(w.status) }}
+              </span>
+            </div>
+          }
+        </div>
+
       }
     </div>
-  </div>
+
+  }
+
 </div>

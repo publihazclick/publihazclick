@@ -1,0 +1,121 @@
+<div class="relative min-h-screen bg-black flex items-center justify-center overflow-hidden px-4">
+
+  <!-- Radial glow background -->
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full"
+         style="background: radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 70%);">
+    </div>
+  </div>
+
+  <!-- Decorative scattered glowing dots -->
+  <div class="absolute top-10 left-10 w-2 h-2 rounded-full bg-primary/60 shadow-[0_0_12px_#00E5FF]"></div>
+  <div class="absolute top-20 left-1/4 w-1 h-1 rounded-full bg-accent/80 shadow-[0_0_8px_#FF007F]"></div>
+  <div class="absolute top-32 right-16 w-2 h-2 rounded-full bg-primary/40 shadow-[0_0_10px_#00E5FF]"></div>
+  <div class="absolute top-1/4 right-10 w-1.5 h-1.5 rounded-full bg-accent/60 shadow-[0_0_8px_#FF007F]"></div>
+  <div class="absolute top-1/3 left-8 w-1 h-1 rounded-full bg-primary/70 shadow-[0_0_6px_#00E5FF]"></div>
+  <div class="absolute bottom-20 left-16 w-2 h-2 rounded-full bg-primary/50 shadow-[0_0_12px_#00E5FF]"></div>
+  <div class="absolute bottom-32 right-20 w-1.5 h-1.5 rounded-full bg-accent/70 shadow-[0_0_10px_#FF007F]"></div>
+  <div class="absolute bottom-16 left-1/3 w-1 h-1 rounded-full bg-primary/40 shadow-[0_0_8px_#00E5FF]"></div>
+  <div class="absolute bottom-24 right-1/4 w-2 h-2 rounded-full bg-accent/50 shadow-[0_0_12px_#FF007F]"></div>
+  <div class="absolute top-1/2 left-5 w-1 h-1 rounded-full bg-primary/30 shadow-[0_0_6px_#00E5FF]"></div>
+  <div class="absolute top-2/3 right-8 w-1.5 h-1.5 rounded-full bg-primary/60 shadow-[0_0_10px_#00E5FF]"></div>
+  <div class="absolute top-16 right-1/3 w-1 h-1 rounded-full bg-accent/40 shadow-[0_0_6px_#FF007F]"></div>
+
+  <!-- Grid line decoration (subtle) -->
+  <div class="absolute inset-0 pointer-events-none opacity-[0.03]"
+       style="background-image: linear-gradient(#00E5FF 1px, transparent 1px), linear-gradient(90deg, #00E5FF 1px, transparent 1px); background-size: 80px 80px;">
+  </div>
+
+  <!-- Main content -->
+  <div class="relative z-10 text-center max-w-2xl mx-auto">
+
+    <!-- Floating spacecraft -->
+    <div class="text-7xl sm:text-8xl mb-4 animate-float select-none">
+      🛸
+    </div>
+
+    <!-- 404 Glitch text -->
+    <div class="relative inline-block mb-6 select-none">
+      <!-- Base layer -->
+      <span class="block font-display font-black leading-none text-[120px] sm:text-[180px] text-primary"
+            style="filter: drop-shadow(0 0 40px rgba(0,229,255,0.6)) drop-shadow(0 0 80px rgba(0,229,255,0.3));">
+        404
+      </span>
+      <!-- Glitch layer 1 - cyan shifted -->
+      <span class="absolute inset-0 block font-display font-black leading-none text-[120px] sm:text-[180px] text-accent pointer-events-none"
+            style="transform: translate(-3px, 0); opacity: 0.5; clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%); animation: glitch1 3s infinite;">
+        404
+      </span>
+      <!-- Glitch layer 2 - magenta shifted -->
+      <span class="absolute inset-0 block font-display font-black leading-none text-[120px] sm:text-[180px] text-primary pointer-events-none"
+            style="transform: translate(3px, 0); opacity: 0.4; clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); animation: glitch2 3s infinite 0.15s;">
+        404
+      </span>
+    </div>
+
+    <!-- Headline -->
+    <h1 class="font-display font-black text-2xl sm:text-3xl md:text-4xl text-white mb-4 leading-tight">
+      Houston, tenemos un <span class="text-accent">problema</span>
+    </h1>
+
+    <!-- Subtext -->
+    <p class="text-gray-400 text-base sm:text-lg mb-10 max-w-md mx-auto leading-relaxed">
+      La página que buscas se perdió en el espacio digital. Quizás fue absorbida por un agujero negro, o simplemente no existe.
+    </p>
+
+    <!-- Action buttons -->
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+      <a
+        routerLink="/"
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-primary text-black font-display font-black text-sm uppercase tracking-wider hover:shadow-[0_0_30px_rgba(0,229,255,0.5)] hover:scale-105 transition-all duration-300"
+      >
+        <span class="material-symbols-outlined text-lg">home</span>
+        Volver al inicio
+      </a>
+
+      <a
+        routerLink="/dashboard/ads"
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full border border-white/20 bg-white/5 text-white font-display font-bold text-sm uppercase tracking-wider hover:border-primary/40 hover:bg-primary/10 hover:text-primary transition-all duration-300"
+      >
+        <span class="material-symbols-outlined text-lg">ads_click</span>
+        Ver anuncios
+      </a>
+
+      <a
+        [href]="supportLink"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-display font-bold text-sm uppercase tracking-wider hover:bg-emerald-500/30 hover:scale-105 transition-all duration-300"
+      >
+        <span class="material-symbols-outlined text-lg">chat</span>
+        Contactar soporte
+      </a>
+    </div>
+
+    <!-- Lore detail -->
+    <div class="flex items-center justify-center gap-3 text-gray-700 text-xs font-mono">
+      <span>ERR_PAGE_NOT_FOUND</span>
+      <span class="w-1 h-1 rounded-full bg-gray-700"></span>
+      <span>STATUS: 404</span>
+      <span class="w-1 h-1 rounded-full bg-gray-700"></span>
+      <span class="text-primary/50">PUBLIHAZCLICK.COM</span>
+    </div>
+  </div>
+
+  <!-- Glitch keyframe styles injected inline via style tag -->
+  <style>
+    @keyframes glitch1 {
+      0%, 90%, 100% { transform: translate(-3px, 0); opacity: 0.5; }
+      91% { transform: translate(-6px, -2px); opacity: 0.8; }
+      92% { transform: translate(4px, 0); opacity: 0.3; }
+      93% { transform: translate(-3px, 0); opacity: 0.5; }
+    }
+    @keyframes glitch2 {
+      0%, 87%, 100% { transform: translate(3px, 0); opacity: 0.4; }
+      88% { transform: translate(6px, 2px); opacity: 0.7; }
+      89% { transform: translate(-4px, 0); opacity: 0.2; }
+      90% { transform: translate(3px, 0); opacity: 0.4; }
+    }
+  </style>
+
+</div>

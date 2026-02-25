@@ -1,27 +1,23 @@
-import { Component, signal, ViewChild, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, signal, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
-import { WalletStateService } from '../../../../core/services/wallet-state.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
-import { UserReferralModalComponent } from '../../../user/components/user-referral-modal/user-referral-modal.component';
 
 @Component({
   selector: 'app-advertiser-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, UserReferralModalComponent],
+  imports: [CommonModule, RouterModule],
   templateUrl: './advertiser-layout.component.html',
 })
 export class AdvertiserLayoutComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
-  readonly walletState = inject(WalletStateService);
   readonly currencyService = inject(CurrencyService);
 
   isDarkMode = true;
 
-  // Sidebar colapsado por defecto en móvil/tablet
   protected readonly sidebarCollapsed = signal(
     isPlatformBrowser(inject(PLATFORM_ID)) && window.innerWidth < 1024
   );
@@ -31,8 +27,6 @@ export class AdvertiserLayoutComponent implements OnInit {
   readonly profile = this.profileService.profile;
   readonly selectedCurrency = this.currencyService.selectedCurrency;
   readonly currencies = this.currencyService.currencies;
-
-  @ViewChild('referralModal') referralModal!: UserReferralModalComponent;
 
   ngOnInit(): void {
     this.profileService.getCurrentProfile().catch(() => {});
@@ -76,9 +70,5 @@ export class AdvertiserLayoutComponent implements OnInit {
 
   logout(): void {
     this.authService.logout().subscribe();
-  }
-
-  openReferralModal(): void {
-    this.referralModal?.open();
   }
 }

@@ -28,13 +28,11 @@ export class UserSettingsComponent implements OnInit {
 
   // Form fields as signals for OnPush compatibility
   readonly fullName = signal('');
-  readonly username = signal('');
 
   async ngOnInit(): Promise<void> {
     const p = await this.profileService.getCurrentProfile();
     if (p) {
       this.fullName.set(p.full_name ?? '');
-      this.username.set(p.username ?? '');
     }
     this.loading.set(false);
   }
@@ -89,7 +87,6 @@ export class UserSettingsComponent implements OnInit {
 
     const updated = await this.profileService.updateProfile({
       full_name: this.fullName().trim() || undefined,
-      username: this.username().trim() || undefined,
     });
 
     this.saving.set(false);

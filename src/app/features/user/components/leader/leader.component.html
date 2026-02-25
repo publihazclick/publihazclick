@@ -1,0 +1,106 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white">Mi Líder</h2>
+    <p class="text-xs text-slate-400">Información sobre quien te invitó a la plataforma</p>
+  </div>
+
+  @if (loading()) {
+    <div class="flex items-center justify-center py-20">
+      <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  } @else if (notFound()) {
+    <!-- Sin líder asignado -->
+    <div class="bg-card-dark border border-white/5 rounded-2xl p-10 flex flex-col items-center justify-center gap-4 text-center">
+      <span class="material-icons text-slate-600" style="font-size:52px;">person_off</span>
+      <div>
+        <p class="text-white font-black text-lg">Sin líder asignado</p>
+        <p class="text-slate-400 text-sm mt-1 max-w-xs mx-auto">
+          Tu cuenta fue creada sin un código de referido. Eres un miembro fundador.
+        </p>
+      </div>
+      <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-cyan-500/10 text-primary text-xs font-bold border border-cyan-500/20">
+        <span class="material-icons" style="font-size:14px;">star</span>
+        Miembro Fundador
+      </span>
+    </div>
+  } @else if (leader()) {
+    <!-- Card principal del líder -->
+    <div class="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 rounded-2xl p-6">
+      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+        <!-- Avatar grande -->
+        @if (leader()!.avatar_url) {
+          <img
+            [src]="leader()!.avatar_url"
+            [alt]="leader()!.username"
+            class="w-20 h-20 rounded-full object-cover border-2 border-primary/40 flex-shrink-0"
+          />
+        } @else {
+          <div
+            class="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center flex-shrink-0 text-black font-black text-2xl uppercase border-2 border-primary/40"
+          >
+            {{ leader()!.username.charAt(0) }}
+          </div>
+        }
+
+        <!-- Datos del líder -->
+        <div class="flex-1 text-center sm:text-left">
+          <p class="text-white font-black text-lg">
+            {{ leader()!.full_name || leader()!.username }}
+          </p>
+          <p class="text-slate-400 text-sm">&#64;{{ leader()!.username }}</p>
+
+          <div class="flex items-center gap-2 mt-2 justify-center sm:justify-start flex-wrap">
+            <!-- Badge nivel -->
+            <span
+              class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold"
+              [ngClass]="getLevelColor(leader()!.level)"
+            >
+              {{ getLevelLabel(leader()!.level) }} · Nv. {{ leader()!.level }}
+            </span>
+            <!-- Paquete -->
+            @if (leader()!.has_active_package) {
+              <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span class="material-icons" style="font-size:12px;">workspace_premium</span>
+                Paquete Activo
+              </span>
+            }
+          </div>
+
+          <p class="text-slate-500 text-xs mt-2">
+            Miembro desde {{ formatDate(leader()!.created_at) }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Stats del líder -->
+      <div class="grid grid-cols-3 gap-3 mt-6">
+        <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
+          <p class="text-2xl font-black text-primary">{{ leader()!.level }}</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Nivel</p>
+        </div>
+        <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
+          <p class="text-2xl font-black text-white">{{ leader()!.total_referrals_count }}</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Afiliados</p>
+        </div>
+        <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
+          <p class="text-base font-black text-emerald-400 leading-tight mt-1">Activo</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Estado</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info adicional -->
+    <div class="bg-card-dark border border-white/5 rounded-xl p-5 space-y-3">
+      <div>
+        <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Código del Líder</p>
+        <code class="bg-black/40 px-3 py-1.5 rounded-lg font-mono text-sm text-primary border border-primary/20 inline-block">
+          {{ leader()!.referral_code }}
+        </code>
+      </div>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        Tu líder gana comisiones cuando completas actividades en la plataforma. Esta relación es permanente y te beneficia al motivarte a alcanzar mayores niveles.
+      </p>
+    </div>
+  }
+</div>

@@ -21,7 +21,7 @@ export interface PtcAd {
   advertiserName: string;
   advertiserType: 'company' | 'person';
   imageUrl: string;
-  youtubeVideoId: string;
+  videoUrl: string;
   destinationUrl: string;
   adType: 'mega' | 'standard_400' | 'standard_600' | 'mini';
   rewardCOP: number;
@@ -72,25 +72,38 @@ export interface PtcAd {
             <div class="w-full h-1 shrink-0" [class]="getGlowClass()"></div>
           }
 
-          <!-- Video / Imagen — limpio, sin overlays -->
-          <div class="relative w-full bg-black shrink-0" style="aspect-ratio: 16/9; max-height: 42vh">
-            @if (ad().youtubeVideoId) {
-              <iframe
-                [src]="getVideoUrl()"
-                title="YouTube video player"
-                frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                allowfullscreen
-                class="w-full h-full"
-              ></iframe>
-            } @else if (ad().imageUrl) {
-              <img [src]="ad().imageUrl" [alt]="ad().title" class="w-full h-full object-cover">
-            } @else {
-              <div class="w-full h-full flex items-center justify-center bg-zinc-950">
-                <span class="material-symbols-outlined text-slate-800 text-7xl">campaign</span>
+          <!-- Video / Imagen -->
+          @if (isVerticalVideo()) {
+            <!-- Vertical: YouTube Shorts -->
+            <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
+              <div class="relative" style="aspect-ratio:9/16;height:100%">
+                <iframe
+                  [src]="getVideoUrl()"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  class="absolute inset-0 w-full h-full"
+                ></iframe>
               </div>
-            }
-          </div>
+            </div>
+          } @else {
+            <!-- Horizontal: YouTube regular, Facebook o imagen -->
+            <div class="relative w-full bg-black shrink-0" style="aspect-ratio:16/9;max-height:42vh">
+              @if (ad().videoUrl) {
+                <iframe
+                  [src]="getVideoUrl()"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  class="absolute inset-0 w-full h-full"
+                ></iframe>
+              } @else if (ad().imageUrl) {
+                <img [src]="ad().imageUrl" [alt]="ad().title" class="w-full h-full object-cover">
+              } @else {
+                <div class="w-full h-full flex items-center justify-center bg-zinc-950">
+                  <span class="material-symbols-outlined text-slate-800 text-7xl">campaign</span>
+                </div>
+              }
+            </div>
+          }
 
           <!-- Alerta de pestaña inactiva -->
           @if (tabWasInactive()) {
@@ -107,10 +120,7 @@ export interface PtcAd {
             <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-slate-500" style="font-size:10px">{{ ad().advertiserType === 'company' ? 'business' : 'person' }}</span>
-                  </div>
-                  <span class="text-white font-black text-sm sm:text-base leading-tight truncate">{{ ad().advertiserName }}</span>
+                  <span class="text-white font-black text-sm sm:text-base leading-tight truncate">{{ ad().title }}</span>
                 </div>
                 <p class="text-slate-400 text-xs mt-1 line-clamp-2">{{ ad().description }}</p>
               </div>
@@ -313,8 +323,13 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   ];
 
   private countdownInterval: any;
-  private videoUrl: SafeResourceUrl | null = null;
+  private cachedVideoUrl: SafeResourceUrl | null = null;
   private visibilityHandler = this.onVisibilityChange.bind(this);
+
+  protected isVerticalVideo = computed(() => {
+    const url = this.ad().videoUrl;
+    return !!url && url.includes('youtube.com/shorts/');
+  });
 
   ngOnInit(): void {
     this.alreadyViewed.set(!this.userTracking.canClaimReward(this.ad().id));
@@ -437,14 +452,34 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   // ── Video ───────────────────────────────────────────────────────────────
 
   getVideoUrl(): SafeResourceUrl | null {
-    const videoId = this.ad().youtubeVideoId;
-    if (!videoId) return null;
-    if (!this.videoUrl) {
-      this.videoUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
-        `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
-      );
+    const url = this.ad().videoUrl;
+    if (!url) return null;
+    if (this.cachedVideoUrl) return this.cachedVideoUrl;
+
+    let embedUrl = '';
+
+    if (url.includes('facebook.com') || url.includes('fb.watch')) {
+      // Facebook video / Reels
+      embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=true&allowfullscreen=false&mute=0`;
+    } else if (url.includes('youtube.com/shorts/')) {
+      // YouTube Shorts (vertical)
+      const match = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
+      if (!match) return null;
+      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&controls=0&rel=0&loop=1&playlist=${match[1]}`;
+    } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      // YouTube regular
+      const match = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+      if (!match) return null;
+      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&controls=0&rel=0&modestbranding=1&fs=0&iv_load_policy=3`;
+    } else if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+      // ID bare de YouTube (datos de muestra / legacy)
+      embedUrl = `https://www.youtube.com/embed/${url}?autoplay=1&controls=0&rel=0&modestbranding=1&fs=0`;
+    } else {
+      return null;
     }
-    return this.videoUrl;
+
+    this.cachedVideoUrl = this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
+    return this.cachedVideoUrl;
   }
 
   // ── Helpers de estilo ───────────────────────────────────────────────────

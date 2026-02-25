@@ -8,13 +8,6 @@ import { WalletStateService } from '../../core/services/wallet-state.service';
 import { PtcModalComponent, PtcAd } from '../ptc-modal/ptc-modal.component';
 import { PtcAdType, AdLocation } from '../../core/models/admin.model';
 
-function extractYoutubeId(url: string | null | undefined): string {
-  if (!url) return '';
-  const match = url.match(
-    /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
-  );
-  return match?.[1] ?? '';
-}
 
 interface PtcAdCard {
   id: string;
@@ -23,7 +16,7 @@ interface PtcAdCard {
   advertiserName: string;
   advertiserType: 'company' | 'person';
   imageUrl: string;
-  youtubeVideoId: string;
+  videoUrl: string;
   destinationUrl?: string;
   adType: PtcAdType;
   rewardCOP: number;
@@ -105,7 +98,7 @@ export class PtcAdsComponent implements OnInit {
             advertiserName: task.advertiser_username || task.title,
             advertiserType: 'company' as const,
             imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
-            youtubeVideoId: extractYoutubeId(task.youtube_url),
+            videoUrl: task.youtube_url || '',
             destinationUrl: task.url || '',
             adType: adType,
             rewardCOP: rewardCOP,
@@ -136,7 +129,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Mileniustore',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
-        youtubeVideoId: 'dQw4w9WgXcQ',
+        videoUrl: 'dQw4w9WgXcQ',
         adType: 'mega',
         rewardCOP: 2000,
         dailyLimit: 100,
@@ -150,7 +143,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Restaurante Los Parados',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
-        youtubeVideoId: 'jfKfPfyJRdk',
+        videoUrl: 'jfKfPfyJRdk',
         adType: 'mega',
         rewardCOP: 2000,
         dailyLimit: 120,
@@ -164,7 +157,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'TecnoWorld',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
-        youtubeVideoId: '5qap5aO4i9A',
+        videoUrl: '5qap5aO4i9A',
         adType: 'mega',
         rewardCOP: 2000,
         dailyLimit: 80,
@@ -178,7 +171,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Relax & Vida',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
-        youtubeVideoId: 'DWcJFNfaw9c',
+        videoUrl: 'DWcJFNfaw9c',
         adType: 'mega',
         rewardCOP: 2000,
         dailyLimit: 60,
@@ -193,7 +186,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Fashion Colombia',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
-        youtubeVideoId: 'KG4otu6nO1I',
+        videoUrl: 'KG4otu6nO1I',
         adType: 'standard_400',
         rewardCOP: 400,
         dailyLimit: 80,
@@ -207,7 +200,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'ShoeStore',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
-        youtubeVideoId: 'VGg46O4GgiM',
+        videoUrl: 'VGg46O4GgiM',
         adType: 'standard_400',
         rewardCOP: 400,
         dailyLimit: 70,
@@ -221,7 +214,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'CelularAccesories',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=300&fit=crop',
-        youtubeVideoId: '9bZkp7q19f0',
+        videoUrl: '9bZkp7q19f0',
         adType: 'standard_400',
         rewardCOP: 400,
         dailyLimit: 90,
@@ -235,7 +228,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'HogarExpress',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
-        youtubeVideoId: 'jNQXAC9IVRw',
+        videoUrl: 'jNQXAC9IVRw',
         adType: 'standard_400',
         rewardCOP: 400,
         dailyLimit: 50,
@@ -250,7 +243,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Juan Pérez',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
-        youtubeVideoId: 'fJ9rUzIMcZQ',
+        videoUrl: 'fJ9rUzIMcZQ',
         adType: 'standard_600',
         rewardCOP: 600,
         dailyLimit: 60,
@@ -264,7 +257,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'Carlos Música',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop',
-        youtubeVideoId: 'hT_nvWreIhg',
+        videoUrl: 'hT_nvWreIhg',
         adType: 'standard_600',
         rewardCOP: 600,
         dailyLimit: 40,
@@ -278,7 +271,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'LimpioMax',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695b97835?w=400&h=300&fit=crop',
-        youtubeVideoId: 'kXYiU_JCYtU',
+        videoUrl: 'kXYiU_JCYtU',
         adType: 'standard_600',
         rewardCOP: 600,
         dailyLimit: 55,
@@ -292,7 +285,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'MascotasFelices',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=300&fit=crop',
-        youtubeVideoId: 'RgKAFKcjG3w',
+        videoUrl: 'RgKAFKcjG3w',
         adType: 'standard_600',
         rewardCOP: 600,
         dailyLimit: 35,
@@ -307,7 +300,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'TechnoShop',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop',
-        youtubeVideoId: 'OPf0YbXqDm0',
+        videoUrl: 'OPf0YbXqDm0',
         adType: 'mini',
         rewardCOP: 83.33,
         dailyLimit: 50,
@@ -321,7 +314,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'María García',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=300&fit=crop',
-        youtubeVideoId: 'jofNRWkoRGY',
+        videoUrl: 'jofNRWkoRGY',
         adType: 'mini',
         rewardCOP: 83.33,
         dailyLimit: 30,
@@ -335,7 +328,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'SweetDelivery',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
-        youtubeVideoId: '9bZkp7q19f0',
+        videoUrl: '9bZkp7q19f0',
         adType: 'mini',
         rewardCOP: 83.33,
         dailyLimit: 45,
@@ -349,7 +342,7 @@ export class PtcAdsComponent implements OnInit {
         advertiserName: 'TechFix',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=400&h=300&fit=crop',
-        youtubeVideoId: 'kJQP7kiw5Fk',
+        videoUrl: 'kJQP7kiw5Fk',
         adType: 'mini',
         rewardCOP: 83.33,
         dailyLimit: 25,
@@ -417,7 +410,7 @@ export class PtcAdsComponent implements OnInit {
       advertiserName: ad.advertiserName,
       advertiserType: ad.advertiserType,
       imageUrl: ad.imageUrl,
-      youtubeVideoId: ad.youtubeVideoId,
+      videoUrl: ad.videoUrl,
       destinationUrl: ad.destinationUrl || '',
       adType: ad.adType,
       rewardCOP: ad.rewardCOP,

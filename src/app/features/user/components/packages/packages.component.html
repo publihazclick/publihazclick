@@ -1,98 +1,277 @@
-<div class="space-y-6">
+<div class="space-y-8">
 
   <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-      <h1 class="text-2xl font-black text-white">Paquetes</h1>
-      <p class="text-slate-400 text-sm">Elige un plan y potencia tus ganancias en la plataforma</p>
-    </div>
+  <div>
+    <h2 class="text-xl font-black text-white">Mi Paquete</h2>
+    <p class="text-xs text-slate-400">Información de tu plan activo, beneficios y oportunidades de crecimiento</p>
   </div>
 
   <!-- Loading -->
   @if (loading()) {
-    <div class="flex flex-col items-center justify-center py-24">
-      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-4">sync</span>
-      <p class="text-slate-400 text-sm">Cargando paquetes...</p>
+    <div class="flex items-center justify-center py-24">
+      <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
     </div>
   }
 
-  <!-- Error -->
-  @if (error() && !loading()) {
-    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
-      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
-      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
-      <button (click)="ngOnInit()"
-        class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors">
-        Reintentar
-      </button>
-    </div>
-  }
+  @if (!loading()) {
 
-  @if (!loading() && !error()) {
-
-    <!-- Paquete activo del usuario -->
+    <!-- ═══════════════════════════════════════════
+         PAQUETE ACTIVO
+    ════════════════════════════════════════════ -->
     @if (hasActivePackage() && currentPackage()) {
-      <div class="bg-card-dark rounded-2xl border border-primary/20 overflow-hidden">
-        <div class="px-6 py-4 border-b border-white/5 flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-primary" style="font-size:18px">verified</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <h2 class="font-black text-white text-sm">Tu Paquete Activo</h2>
-            <p class="text-xs text-slate-500">Vigente hasta el {{ formatExpiry(profile()?.package_expires_at ?? null) }}</p>
-          </div>
-          <span class="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-bold uppercase">
-            {{ getDaysRemaining() }} días restantes
-          </span>
+
+      <!-- Hero del paquete -->
+      <div class="relative overflow-hidden bg-gradient-to-br from-[#0a0a0a] to-[#111] border rounded-3xl"
+           [class]="getTypeAccentClass(currentPackage()!.package_type)">
+
+        <!-- Glow de fondo -->
+        <div class="absolute inset-0 opacity-10 pointer-events-none"
+             [ngStyle]="{'background': 'radial-gradient(ellipse at 70% 40%, ' + getBgGlowColor(currentPackage()!.package_type) + ', transparent 70%)'}">
         </div>
-        <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div class="flex items-center gap-4 flex-1">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-              [class]="getTypeColorClass(currentPackage()!.package_type).replace('text-', 'bg-').replace('/10', '/10')">
-              <span class="material-symbols-outlined" [class]="getTypeIconColor(currentPackage()!.package_type)" style="font-size:22px">workspace_premium</span>
+
+        <!-- Contenido principal -->
+        <div class="relative z-10 px-6 py-7 sm:px-8">
+
+          <!-- Fila superior: nombre + badge estado -->
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 border"
+                   [ngClass]="getBadgeBg(currentPackage()!.package_type)">
+                <span class="material-symbols-outlined text-3xl" [class]="getTypeIconColor(currentPackage()!.package_type)">workspace_premium</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                        [class]="getTypeColorClass(currentPackage()!.package_type)">
+                    {{ getTypeLabel(currentPackage()!.package_type) }}
+                  </span>
+                </div>
+                <h3 class="text-2xl font-black text-white leading-tight">{{ currentPackage()!.name }}</h3>
+                @if (currentPackage()!.description) {
+                  <p class="text-sm text-slate-400 mt-1 leading-relaxed">{{ currentPackage()!.description }}</p>
+                }
+              </div>
             </div>
-            <div>
-              <p class="font-black text-white text-lg">{{ currentPackage()!.name }}</p>
-              <p class="text-xs text-slate-400 mt-0.5">{{ currentPackage()!.description }}</p>
+            <div class="flex flex-col items-start sm:items-end gap-2 flex-shrink-0">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-black">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                ACTIVO
+              </span>
+              <span class="text-xs text-slate-500">
+                Vence: <span class="text-slate-300 font-bold">{{ formatExpiry(profile()?.package_expires_at ?? null) }}</span>
+              </span>
             </div>
           </div>
-          <div class="flex gap-6 text-center">
-            <div>
-              <p class="text-lg font-black text-primary">+{{ currentPackage()!.ptc_reward_bonus }}%</p>
-              <p class="text-[10px] text-slate-500 uppercase font-bold">Bonus PTC</p>
+
+          <!-- Días restantes + barra de progreso -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-slate-400 font-medium">Tiempo restante</span>
+              <span class="text-xs font-black" [class]="getTypeIconColor(currentPackage()!.package_type)">
+                {{ getDaysRemaining() }} / {{ currentPackage()!.duration_days }} días
+              </span>
             </div>
-            <div>
-              <p class="text-lg font-black text-accent">+{{ currentPackage()!.referral_bonus }}%</p>
-              <p class="text-[10px] text-slate-500 uppercase font-bold">Bonus Ref.</p>
+            <div class="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+              <div class="h-full rounded-full transition-all duration-700"
+                   [ngClass]="getProgressBarColor(currentPackage()!.package_type)"
+                   [style.width]="getProgressPct() + '%'">
+              </div>
             </div>
-            <div>
-              <p class="text-lg font-black text-white">{{ currentPackage()!.daily_ptc_limit || '∞' }}</p>
-              <p class="text-[10px] text-slate-500 uppercase font-bold">Clicks/día</p>
+          </div>
+
+          <!-- Grid de métricas clave -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+
+            @if (currentPackage()!.ptc_reward_bonus > 0) {
+              <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
+                <p class="text-xl font-black text-primary">+{{ currentPackage()!.ptc_reward_bonus }}%</p>
+                <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Bonus Click</p>
+              </div>
+            }
+
+            @if (currentPackage()!.referral_bonus > 0) {
+              <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
+                <p class="text-xl font-black text-accent">+{{ currentPackage()!.referral_bonus }}%</p>
+                <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Bonus Ref.</p>
+              </div>
+            }
+
+            @if (currentPackage()!.banner_reward_bonus > 0) {
+              <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
+                <p class="text-xl font-black text-emerald-400">+{{ currentPackage()!.banner_reward_bonus }}%</p>
+                <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Bonus Banner</p>
+              </div>
+            }
+
+            <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
+              <p class="text-xl font-black text-white">{{ currentPackage()!.daily_ptc_limit || '∞' }}</p>
+              <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Clicks/día</p>
             </div>
+
+            <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
+              <p class="text-xl font-black text-white">{{ currentPackage()!.max_ptc_ads }}</p>
+              <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Anuncios PTC</p>
+            </div>
+
+            <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
+              <p class="text-xl font-black text-white">{{ currentPackage()!.max_banner_ads }}</p>
+              <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Banners</p>
+            </div>
+
           </div>
         </div>
       </div>
-    }
 
-    <!-- Sin paquete activo -->
-    @if (!hasActivePackage()) {
-      <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-          <span class="material-symbols-outlined text-amber-400" style="font-size:20px">info</span>
+      <!-- Beneficios detallados -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- Bonificaciones -->
+        @if (currentPackage()!.ptc_reward_bonus > 0 || currentPackage()!.referral_bonus > 0 || currentPackage()!.banner_reward_bonus > 0) {
+          <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-3">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="material-symbols-outlined text-primary" style="font-size:18px">trending_up</span>
+              <h4 class="font-black text-white text-sm">Bonificaciones Activas</h4>
+            </div>
+            @if (currentPackage()!.ptc_reward_bonus > 0) {
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary" style="font-size:16px">ads_click</span>
+                  </div>
+                  <div>
+                    <p class="text-sm text-white font-medium">Bonus por click PTC</p>
+                    <p class="text-[10px] text-slate-500">Ganas más por cada anuncio visto</p>
+                  </div>
+                </div>
+                <span class="text-lg font-black text-primary">+{{ currentPackage()!.ptc_reward_bonus }}%</span>
+              </div>
+            }
+            @if (currentPackage()!.referral_bonus > 0) {
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-accent" style="font-size:16px">group_add</span>
+                  </div>
+                  <div>
+                    <p class="text-sm text-white font-medium">Bonus por referido</p>
+                    <p class="text-[10px] text-slate-500">Comisiones extra de tu red</p>
+                  </div>
+                </div>
+                <span class="text-lg font-black text-accent">+{{ currentPackage()!.referral_bonus }}%</span>
+              </div>
+            }
+            @if (currentPackage()!.banner_reward_bonus > 0) {
+              <div class="flex items-center justify-between py-2">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">image</span>
+                  </div>
+                  <div>
+                    <p class="text-sm text-white font-medium">Bonus por banner</p>
+                    <p class="text-[10px] text-slate-500">Ingresos adicionales por impresiones</p>
+                  </div>
+                </div>
+                <span class="text-lg font-black text-emerald-400">+{{ currentPackage()!.banner_reward_bonus }}%</span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Límites y capacidades -->
+        <div class="bg-card-dark border border-white/5 rounded-2xl p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-amber-400" style="font-size:18px">tune</span>
+            <h4 class="font-black text-white text-sm">Capacidades del Plan</h4>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between py-1.5 border-b border-white/5">
+              <span class="text-sm text-slate-400">Anuncios PTC activos</span>
+              <span class="font-black text-white">{{ currentPackage()!.max_ptc_ads }}</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5 border-b border-white/5">
+              <span class="text-sm text-slate-400">Clicks PTC por día</span>
+              <span class="font-black text-white">{{ currentPackage()!.daily_ptc_limit || 'Ilimitado' }}</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5 border-b border-white/5">
+              <span class="text-sm text-slate-400">Banners máx.</span>
+              <span class="font-black text-white">{{ currentPackage()!.max_banner_ads }}</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5 border-b border-white/5">
+              <span class="text-sm text-slate-400">Anuncios PTC incluidos</span>
+              <span class="font-black text-white">{{ currentPackage()!.included_ptc_ads }}</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5">
+              <span class="text-sm text-slate-400">Banner con clic</span>
+              @if (currentPackage()!.has_clickable_banner) {
+                <span class="flex items-center gap-1 text-emerald-400 font-bold text-sm">
+                  <span class="material-symbols-outlined" style="font-size:15px">check_circle</span> Sí
+                </span>
+              } @else {
+                <span class="text-slate-600 font-bold text-sm">No</span>
+              }
+            </div>
+          </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <p class="font-bold text-white text-sm">Sin paquete activo</p>
-          <p class="text-xs text-slate-400 mt-0.5">Adquiere un paquete para desbloquear límites más altos y mejores bonificaciones.</p>
+
+      </div>
+
+      <!-- Features incluidas -->
+      @if (currentPackage()!.features.length > 0) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">verified</span>
+            <h4 class="font-black text-white text-sm">Incluye en tu Plan</h4>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            @for (feature of currentPackage()!.features; track $index) {
+              <div class="flex items-start gap-2.5 py-1.5">
+                <span class="material-symbols-outlined text-emerald-400 flex-shrink-0 mt-0.5" style="font-size:16px">check_circle</span>
+                <span class="text-sm text-slate-300">{{ feature }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Divisor oportunidades -->
+      <div class="flex items-center gap-4">
+        <div class="flex-1 h-px bg-white/5"></div>
+        <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest flex-shrink-0">Oportunidades de mejora</span>
+        <div class="flex-1 h-px bg-white/5"></div>
+      </div>
+
+    } @else {
+
+      <!-- Sin paquete activo -->
+      <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-amber-400" style="font-size:24px">info</span>
+        </div>
+        <div>
+          <p class="font-black text-white">Sin paquete activo</p>
+          <p class="text-sm text-slate-400 mt-1 leading-relaxed">
+            Adquiere un paquete para desbloquear bonificaciones, aumentar tus límites diarios y potenciar tus ganancias con referidos.
+          </p>
         </div>
       </div>
+
+      <!-- Divisor -->
+      <div class="flex items-center gap-4">
+        <div class="flex-1 h-px bg-white/5"></div>
+        <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest flex-shrink-0">Elige tu plan</span>
+        <div class="flex-1 h-px bg-white/5"></div>
+      </div>
+
     }
 
-    <!-- Grid de paquetes -->
+    <!-- ═══════════════════════════════════════════
+         GRID DE PAQUETES DISPONIBLES
+    ════════════════════════════════════════════ -->
     @if (packages().length > 0) {
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         @for (pkg of packages(); track pkg.id) {
           <div class="bg-card-dark rounded-2xl border overflow-hidden flex flex-col transition-all"
-            [class]="isCurrentPackage(pkg) ? 'border-primary/30' : 'border-white/5 hover:border-white/10'">
+               [class]="isCurrentPackage(pkg) ? getTypeAccentClass(pkg.package_type) : 'border-white/5 hover:border-white/10'">
 
             <!-- Card header -->
             <div class="px-6 pt-6 pb-4 border-b border-white/5">
@@ -113,13 +292,11 @@
                   </div>
                 </div>
                 @if (isCurrentPackage(pkg)) {
-                  <span class="px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase flex-shrink-0">
-                    Activo
+                  <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold uppercase flex-shrink-0 border border-emerald-500/20">
+                    Tu plan
                   </span>
                 }
               </div>
-
-              <!-- Precio -->
               <div class="flex items-baseline gap-1.5">
                 <span class="text-3xl font-black text-white">{{ formatPrice(pkg.price, pkg.currency) }}</span>
                 @if (pkg.duration_days) {
@@ -131,10 +308,8 @@
               }
             </div>
 
-            <!-- Beneficios clave -->
+            <!-- Beneficios -->
             <div class="px-6 py-4 flex-1 space-y-4">
-
-              <!-- Bonificaciones -->
               @if (pkg.ptc_reward_bonus > 0 || pkg.referral_bonus > 0 || pkg.banner_reward_bonus > 0) {
                 <div>
                   <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Bonificaciones</p>
@@ -143,7 +318,7 @@
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                           <span class="material-symbols-outlined text-primary" style="font-size:14px">ads_click</span>
-                          <span class="text-sm text-slate-300">Bonus por click</span>
+                          <span class="text-sm text-slate-300">Bonus click</span>
                         </div>
                         <span class="text-sm font-bold text-primary">+{{ pkg.ptc_reward_bonus }}%</span>
                       </div>
@@ -152,7 +327,7 @@
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                           <span class="material-symbols-outlined text-accent" style="font-size:14px">group_add</span>
-                          <span class="text-sm text-slate-300">Bonus por referido</span>
+                          <span class="text-sm text-slate-300">Bonus referido</span>
                         </div>
                         <span class="text-sm font-bold text-accent">+{{ pkg.referral_bonus }}%</span>
                       </div>
@@ -169,8 +344,6 @@
                   </div>
                 </div>
               }
-
-              <!-- Features extra -->
               @if (pkg.features.length > 0) {
                 <div>
                   <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Incluye</p>
@@ -189,13 +362,13 @@
             <!-- CTA -->
             <div class="px-6 pb-6 pt-4 border-t border-white/5">
               @if (isCurrentPackage(pkg)) {
-                <div class="flex items-center justify-center gap-2 py-2.5 bg-primary/5 border border-primary/20 rounded-xl text-primary text-sm font-bold">
+                <div class="flex items-center justify-center gap-2 py-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm font-bold">
                   <span class="material-symbols-outlined" style="font-size:18px">verified</span>
                   Plan actual activo
                 </div>
               } @else {
                 <a [href]="getWhatsAppUrl(pkg)" target="_blank" rel="noopener noreferrer"
-                  class="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold transition-colors">
+                   class="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold transition-colors">
                   <span class="material-symbols-outlined" style="font-size:18px">chat</span>
                   Solicitar por WhatsApp
                 </a>
@@ -204,26 +377,20 @@
           </div>
         }
       </div>
-    } @else {
-      <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
-        <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">inventory_2</span>
-        <h3 class="font-bold text-lg mb-2 text-white">No hay paquetes disponibles</h3>
-        <p class="text-slate-500 text-sm">Los paquetes serán publicados próximamente.</p>
-      </div>
     }
 
     <!-- Nota informativa -->
     <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex items-start gap-4">
-      <span class="material-symbols-outlined text-primary flex-shrink-0 mt-0.5" style="font-size:20px">help_outline</span>
+      <span class="material-symbols-outlined text-slate-500 flex-shrink-0 mt-0.5" style="font-size:20px">help_outline</span>
       <div>
-        <p class="font-bold text-white text-sm mb-1">¿Cómo adquirir un paquete?</p>
+        <p class="font-bold text-white text-sm mb-1">¿Cómo adquirir o mejorar un paquete?</p>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Por ahora los paquetes se gestionan vía WhatsApp con nuestro equipo de soporte. Haz clic en
-          <span class="text-emerald-400 font-bold">Solicitar por WhatsApp</span> en el plan que desees y un
-          asesor te contactará para coordinar el pago y la activación.
+          Los paquetes se gestionan vía WhatsApp con nuestro equipo. Haz clic en
+          <span class="text-emerald-400 font-bold">Solicitar por WhatsApp</span> en el plan que desees y un asesor te contactará para coordinar el pago y la activación.
         </p>
       </div>
     </div>
 
   }
+
 </div>
