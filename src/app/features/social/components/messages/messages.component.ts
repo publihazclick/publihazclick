@@ -2,7 +2,7 @@ import {
   Component, OnInit, OnDestroy, signal, inject, ChangeDetectionStrategy,
   ViewChild, ElementRef, AfterViewChecked, PLATFORM_ID, HostListener
 } from '@angular/core';
-import { CommonModule, NgClass, isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocialService } from '../../../../core/services/social.service';
@@ -12,7 +12,7 @@ import type { SocialConversation, SocialMessage } from '../../../../core/models/
 @Component({
   selector: 'app-social-messages',
   standalone: true,
-  imports: [CommonModule, NgClass, FormsModule],
+  imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './messages.component.html',
 })

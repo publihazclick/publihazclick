@@ -46,11 +46,11 @@
             >
               <div class="relative flex-shrink-0">
                 <div class="w-11 h-11 rounded-full overflow-hidden border border-white/10">
-                  @if (conv.other_user?.avatar_url) {
+                  @if (conv.other_user.avatar_url) {
                     <img [src]="conv.other_user.avatar_url" alt="avatar" class="w-full h-full object-cover">
                   } @else {
                     <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
-                      <span class="text-white font-black text-xs">{{ getInitials(conv.other_user?.full_name ?? null, conv.other_user?.username ?? '') }}</span>
+                      <span class="text-white font-black text-xs">{{ getInitials(conv.other_user.full_name, conv.other_user.username) }}</span>
                     </div>
                   }
                 </div>
@@ -62,7 +62,7 @@
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between mb-0.5">
-                  <p class="font-bold text-white text-sm truncate">{{ conv.other_user?.full_name || conv.other_user?.username }}</p>
+                  <p class="font-bold text-white text-sm truncate">{{ conv.other_user.full_name || conv.other_user.username }}</p>
                   <span class="text-[10px] text-slate-500 flex-shrink-0 ml-2">{{ formatConvDate(conv.last_message_at) }}</span>
                 </div>
                 <p class="text-xs truncate"

@@ -1,4 +1,5 @@
-import { inject } from '@angular/core';
+import { inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router, CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
@@ -101,12 +102,18 @@ export const guestGuard: CanActivateFn = async (route, state) => {
   const authService = inject(AuthService);
   const profileService = inject(ProfileService);
   const router = inject(Router);
+  const platformId = inject(PLATFORM_ID);
+
+  // En SSR no hay sesión de usuario — permitir acceso directamente
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
 
   console.log('[GuestGuard] ===== INICIO =====');
   console.log('[GuestGuard] URL:', state.url);
   console.log('[GuestGuard] Ruta:', route.url.map(s => s.path));
   console.log('[GuestGuard] ¿Cargando sesión?:', authService.isLoading());
-  
+
   // Si está cargando la sesión, esperar
   if (authService.isLoading()) {
     console.log('[GuestGuard] Sesión todavía cargando, esperando...');

@@ -1,10 +1,10 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 
 export const serverRoutes: ServerRoute[] = [
-  // Rutas dinámicas - renderizado del lado del cliente
+  // Ruta de referido - SSR dinámico para que el servidor la maneje correctamente
   {
     path: 'ref/:code',
-    renderMode: RenderMode.Client
+    renderMode: RenderMode.Server
   },
   {
     path: 'social/messages/:convId',
