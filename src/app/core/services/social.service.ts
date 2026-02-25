@@ -34,14 +34,14 @@ export class SocialService {
   async getDirectory(search = '', page = 0, limit = 20): Promise<AdvertiserCard[]> {
     const userId = await this.getUserId();
 
-    // Obtener perfiles de anunciantes
+    // Obtener perfiles de advertiser, admin y dev
     let query = this.supabase
       .from('profiles')
       .select(`
-        id, username, full_name, avatar_url, total_referrals_count,
+        id, username, full_name, avatar_url, total_referrals_count, role,
         social_business_profiles (business_name, description, category, location)
       `)
-      .eq('role', 'advertiser')
+      .in('role', ['advertiser', 'admin', 'dev'])
       .neq('id', userId)
       .eq('is_active', true)
       .range(page * limit, (page + 1) * limit - 1);
@@ -59,10 +59,14 @@ export class SocialService {
       .select('id, requester_id, receiver_id, status')
       .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`);
 
-    const connMap = new Map<string, { status: ConnectionStatus; id: string }>();
+    const connMap = new Map<string, { status: ConnectionStatus; id: string; is_requester: boolean }>();
     (connections ?? []).forEach((c: any) => {
       const otherId = c.requester_id === userId ? c.receiver_id : c.requester_id;
-      connMap.set(otherId, { status: c.status, id: c.id });
+      connMap.set(otherId, {
+        status: c.status,
+        id: c.id,
+        is_requester: c.requester_id === userId,
+      });
     });
 
     return (profiles ?? []).map((p: any) => {
@@ -75,6 +79,7 @@ export class SocialService {
         username: p.username,
         full_name: p.full_name,
         avatar_url: p.avatar_url,
+        role: p.role,
         total_referrals_count: p.total_referrals_count ?? 0,
         business_name: bp?.business_name ?? null,
         description: bp?.description ?? null,
@@ -82,6 +87,7 @@ export class SocialService {
         location: bp?.location ?? null,
         connection_status: conn?.status ?? null,
         connection_id: conn?.id ?? null,
+        is_requester: conn?.is_requester ?? false,
       } as AdvertiserCard;
     });
   }

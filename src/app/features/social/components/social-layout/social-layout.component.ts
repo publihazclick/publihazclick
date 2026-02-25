@@ -66,7 +66,12 @@ export class SocialLayoutComponent implements OnInit, OnDestroy {
   }
 
   goBackToDashboard(): void {
-    this.router.navigate(['/advertiser']);
+    const role = this.profile()?.role;
+    if (role === 'admin' || role === 'dev') {
+      this.router.navigate(['/admin']);
+    } else {
+      this.router.navigate(['/advertiser']);
+    }
   }
 
   logout(): void {

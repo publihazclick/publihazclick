@@ -1,8 +1,8 @@
 import {
   Component, OnInit, OnDestroy, signal, inject, ChangeDetectionStrategy,
-  ViewChild, ElementRef, AfterViewChecked, PLATFORM_ID
+  ViewChild, ElementRef, AfterViewChecked, PLATFORM_ID, HostListener
 } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, NgClass, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocialService } from '../../../../core/services/social.service';
@@ -12,7 +12,7 @@ import type { SocialConversation, SocialMessage } from '../../../../core/models/
 @Component({
   selector: 'app-social-messages',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, NgClass, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './messages.component.html',
 })
@@ -36,6 +36,14 @@ export class SocialMessagesComponent implements OnInit, OnDestroy, AfterViewChec
   loadingMsgs = signal(false);
   sending = signal(false);
   messageText = '';
+  isMobile = signal(isPlatformBrowser(inject(PLATFORM_ID)) ? window.innerWidth < 768 : false);
+
+  @HostListener('window:resize')
+  onResize(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.isMobile.set(window.innerWidth < 768);
+    }
+  }
 
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private shouldScrollBottom = false;

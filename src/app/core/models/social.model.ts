@@ -23,6 +23,7 @@ export interface AdvertiserCard {
   username: string;
   full_name: string | null;
   avatar_url: string | null;
+  role: 'advertiser' | 'admin' | 'dev';
   business_name: string | null;
   description: string | null;
   category: string | null;
@@ -30,6 +31,7 @@ export interface AdvertiserCard {
   total_referrals_count: number;
   connection_status: ConnectionStatus | null; // null = sin relación
   connection_id: string | null;
+  is_requester: boolean; // true = yo envié la solicitud, false = me la enviaron
 }
 
 export interface SocialConnection {

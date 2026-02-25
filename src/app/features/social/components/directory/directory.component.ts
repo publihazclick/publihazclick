@@ -53,11 +53,27 @@ export class SocialDirectoryComponent implements OnInit {
     try {
       await this.socialService.sendConnectionRequest(advertiser.id);
       this.advertisers.update(list =>
-        list.map(a => a.id === advertiser.id ? { ...a, connection_status: 'pending' } : a)
+        list.map(a => a.id === advertiser.id ? { ...a, connection_status: 'pending', is_requester: true } : a)
       );
       this.showToast(`Solicitud enviada a ${advertiser.username}`, 'success');
     } catch {
       this.showToast('Error al enviar solicitud', 'error');
+    } finally {
+      this.actionLoading.set(null);
+    }
+  }
+
+  async acceptRequest(advertiser: AdvertiserCard): Promise<void> {
+    if (!advertiser.connection_id) return;
+    this.actionLoading.set(advertiser.id);
+    try {
+      await this.socialService.respondToRequest(advertiser.connection_id, true);
+      this.advertisers.update(list =>
+        list.map(a => a.id === advertiser.id ? { ...a, connection_status: 'accepted' } : a)
+      );
+      this.showToast(`Conectado con ${advertiser.username}`, 'success');
+    } catch {
+      this.showToast('Error al aceptar solicitud', 'error');
     } finally {
       this.actionLoading.set(null);
     }

@@ -1,6 +1,6 @@
 <!-- Toast -->
 @if (toast()) {
-  <div class="fixed top-6 right-6 z-[100] px-5 py-3 rounded-xl text-sm font-bold shadow-2xl flex items-center gap-2 animate-pulse"
+  <div class="fixed top-6 right-6 z-[100] px-5 py-3 rounded-xl text-sm font-bold shadow-2xl flex items-center gap-2"
     [class.bg-emerald-500]="toast()!.type === 'success'"
     [class.bg-rose-500]="toast()!.type === 'error'">
     <span class="material-symbols-outlined text-base">{{ toast()!.type === 'success' ? 'check_circle' : 'error' }}</span>
@@ -11,9 +11,17 @@
 <div class="p-4 lg:p-8 max-w-7xl mx-auto w-full">
 
   <!-- Header -->
-  <div class="mb-6">
-    <h2 class="text-2xl font-black text-white">Directorio de Anunciantes</h2>
-    <p class="text-sm text-slate-400 mt-1">Descubre y conecta con otros anunciantes de la comunidad</p>
+  <div class="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+    <div class="flex-1">
+      <h2 class="text-2xl font-black text-white">Directorio de la Comunidad</h2>
+      <p class="text-sm text-slate-400 mt-1">Descubre y conecta con anunciantes, administradores y equipo</p>
+    </div>
+    <!-- Leyenda de roles -->
+    <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
+      <span class="flex items-center gap-1 text-accent"><span class="w-2 h-2 rounded-full bg-accent"></span>Anunciante</span>
+      <span class="flex items-center gap-1 text-blue-400"><span class="w-2 h-2 rounded-full bg-blue-400"></span>Admin</span>
+      <span class="flex items-center gap-1 text-violet-400"><span class="w-2 h-2 rounded-full bg-violet-400"></span>Dev</span>
+    </div>
   </div>
 
   <!-- Búsqueda -->
@@ -51,21 +59,34 @@
   } @else if (advertisers().length === 0) {
     <div class="flex flex-col items-center justify-center py-20 text-center">
       <span class="material-symbols-outlined text-slate-600 mb-4" style="font-size:56px">people_alt</span>
-      <h3 class="text-lg font-bold text-slate-400 mb-2">No se encontraron anunciantes</h3>
+      <h3 class="text-lg font-bold text-slate-400 mb-2">No se encontraron miembros</h3>
       <p class="text-sm text-slate-600">{{ searchTerm ? 'Intenta con otro término de búsqueda' : 'Sé el primero en unirte a la comunidad' }}</p>
     </div>
   } @else {
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       @for (advertiser of advertisers(); track advertiser.id) {
-        <div class="bg-card-dark border border-white/5 hover:border-white/10 rounded-2xl p-5 flex flex-col transition-all hover:shadow-lg hover:shadow-black/20">
+        <div class="bg-card-dark border hover:border-white/10 rounded-2xl p-5 flex flex-col transition-all hover:shadow-lg hover:shadow-black/20 group"
+          [class.border-white/5]="advertiser.role === 'advertiser'"
+          [class.border-blue-500/10]="advertiser.role === 'admin'"
+          [class.border-violet-500/10]="advertiser.role === 'dev'">
 
-          <!-- Avatar + info -->
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+          <!-- Avatar + info + badge de rol -->
+          <div class="flex items-start gap-3 mb-3">
+            <div class="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border"
+              [class.border-accent/20]="advertiser.role === 'advertiser'"
+              [class.border-blue-500/30]="advertiser.role === 'admin'"
+              [class.border-violet-500/30]="advertiser.role === 'dev'">
               @if (advertiser.avatar_url) {
                 <img [src]="advertiser.avatar_url" alt="avatar" class="w-full h-full object-cover">
               } @else {
-                <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+                <div class="w-full h-full flex items-center justify-center"
+                  [class.bg-gradient-to-tr]="true"
+                  [class.from-accent]="advertiser.role === 'advertiser'"
+                  [class.to-pink-600]="advertiser.role === 'advertiser'"
+                  [class.from-blue-600]="advertiser.role === 'admin'"
+                  [class.to-blue-400]="advertiser.role === 'admin'"
+                  [class.from-violet-600]="advertiser.role === 'dev'"
+                  [class.to-violet-400]="advertiser.role === 'dev'">
                   <span class="text-white font-black text-sm">{{ getInitials(advertiser.full_name, advertiser.username) }}</span>
                 </div>
               }
@@ -73,6 +94,20 @@
             <div class="flex-1 min-w-0">
               <p class="font-bold text-white text-sm truncate">{{ advertiser.full_name || advertiser.username }}</p>
               <p class="text-xs text-slate-500 truncate">&#64;{{ advertiser.username }}</p>
+              <!-- Badge de rol -->
+              @if (advertiser.role === 'admin') {
+                <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-[9px] font-black text-blue-400 uppercase tracking-wider">
+                  <span class="material-symbols-outlined" style="font-size:10px">shield</span>Admin
+                </span>
+              } @else if (advertiser.role === 'dev') {
+                <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-violet-500/10 border border-violet-500/20 rounded text-[9px] font-black text-violet-400 uppercase tracking-wider">
+                  <span class="material-symbols-outlined" style="font-size:10px">code</span>Dev
+                </span>
+              } @else {
+                <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-accent/10 border border-accent/20 rounded text-[9px] font-black text-accent uppercase tracking-wider">
+                  <span class="material-symbols-outlined" style="font-size:10px">storefront</span>Anunciante
+                </span>
+              }
             </div>
           </div>
 
@@ -85,11 +120,11 @@
           @if (advertiser.description) {
             <p class="text-xs text-slate-400 line-clamp-2 mb-3 flex-1">{{ advertiser.description }}</p>
           } @else {
-            <div class="flex-1"></div>
+            <div class="flex-1 min-h-[20px]"></div>
           }
 
           <!-- Tags -->
-          <div class="flex flex-wrap gap-1.5 mb-4">
+          <div class="flex flex-wrap gap-1.5 mb-4 min-h-[22px]">
             @if (advertiser.category) {
               <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
                 <span class="material-symbols-outlined" style="font-size:11px">category</span>
@@ -102,10 +137,12 @@
                 {{ advertiser.location }}
               </span>
             }
-            <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
-              <span class="material-symbols-outlined" style="font-size:11px">group</span>
-              {{ advertiser.total_referrals_count }} afiliados
-            </span>
+            @if (advertiser.role === 'advertiser') {
+              <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:11px">group</span>
+                {{ advertiser.total_referrals_count }} afiliados
+              </span>
+            }
           </div>
 
           <!-- Acción -->
@@ -113,13 +150,24 @@
             <button
               (click)="openChat(advertiser)"
               [disabled]="actionLoading() === advertiser.id"
-              class="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition-all disabled:opacity-50"
+              class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition-all disabled:opacity-50"
             >
               <span class="material-symbols-outlined" style="font-size:15px">chat</span>
               {{ actionLoading() === advertiser.id ? 'Abriendo...' : 'Enviar mensaje' }}
             </button>
+          } @else if (advertiser.connection_status === 'pending' && !advertiser.is_requester) {
+            <!-- Solicitud recibida: puede aceptar directamente -->
+            <button
+              (click)="acceptRequest(advertiser)"
+              [disabled]="actionLoading() === advertiser.id"
+              class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/20 transition-all disabled:opacity-50"
+            >
+              <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>
+              {{ actionLoading() === advertiser.id ? 'Aceptando...' : 'Aceptar solicitud' }}
+            </button>
           } @else if (advertiser.connection_status === 'pending') {
-            <div class="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
+            <!-- Solicitud enviada por mí -->
+            <div class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
               <span class="material-symbols-outlined" style="font-size:15px">schedule</span>
               Solicitud enviada
             </div>
@@ -127,7 +175,7 @@
             <button
               (click)="sendRequest(advertiser)"
               [disabled]="actionLoading() === advertiser.id"
-              class="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-xs font-bold border border-accent/20 transition-all disabled:opacity-50"
+              class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-accent/10 text-slate-400 hover:text-accent text-xs font-bold border border-white/10 hover:border-accent/20 transition-all disabled:opacity-50"
             >
               <span class="material-symbols-outlined" style="font-size:15px">person_add</span>
               {{ actionLoading() === advertiser.id ? 'Enviando...' : 'Conectar' }}
