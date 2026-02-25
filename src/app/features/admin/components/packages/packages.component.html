@@ -873,25 +873,47 @@
           </div>
         </div>
 
-        <!-- Link de pago Nequi -->
+        <!-- Link de pago Nequi + Precio COP -->
         <div class="px-6 pb-2">
-          <div class="border-t border-white/10 pt-5">
-            <p class="text-xs font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
-              <span class="material-symbols-outlined text-sm text-[#00B4D8]">link</span>
-              Link de Pago Nequi
+          <div class="border-t border-white/10 pt-5 space-y-4">
+            <p class="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+              <span class="material-symbols-outlined text-sm text-[#00B4D8]">payments</span>
+              Pago con Nequi
             </p>
-            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">URL del link de Nequi Negocios</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#00B4D8] text-base">link</span>
-              <input
-                type="url"
-                [ngModel]="formData().nequi_payment_link ?? ''"
-                (ngModelChange)="setNequiLink($event)"
-                class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-[#00B4D8] focus:border-transparent"
-                placeholder="https://checkout.nequi.wompi.co/l/..."
-              />
+
+            <!-- URL del link -->
+            <div>
+              <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">URL del link de Nequi Negocios</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#00B4D8] text-base">link</span>
+                <input
+                  type="url"
+                  [ngModel]="formData().nequi_payment_link ?? ''"
+                  (ngModelChange)="setNequiLink($event)"
+                  class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-[#00B4D8] focus:border-transparent"
+                  placeholder="https://checkout.nequi.wompi.co/l/..."
+                />
+              </div>
+              <p class="text-[10px] text-slate-600 mt-1">Crea el link en Nequi Negocios con el monto exacto del plan.</p>
             </div>
-            <p class="text-[10px] text-slate-600 mt-1.5">Crea el link en tu app Nequi Negocios y pégalo aquí. Los usuarios serán redirigidos a este link para pagar.</p>
+
+            <!-- Precio COP exacto -->
+            <div>
+              <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Precio exacto en COP</label>
+              <div class="relative">
+                <span class="text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold">$</span>
+                <input
+                  type="number"
+                  [ngModel]="formData().price_cop ?? null"
+                  (ngModelChange)="setPriceCOP($event)"
+                  min="0"
+                  step="1000"
+                  class="w-full pl-7 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-[#00B4D8] focus:border-transparent"
+                  placeholder="Ej: 105000"
+                />
+              </div>
+              <p class="text-[10px] text-slate-600 mt-1">Monto en COP del link Nequi. Se muestra al usuario en el modal de compra.</p>
+            </div>
           </div>
         </div>
 

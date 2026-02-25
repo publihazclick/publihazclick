@@ -8,10 +8,7 @@ import type { Package } from '../../../../core/models/admin.model';
 import type { Profile } from '../../../../core/models/profile.model';
 
 // Estado del flujo de pago Nequi
-type PayStep = 'idle' | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error';
-
-// Tasa COP/USD fija (Nequi links tienen monto fijo en COP)
-const COP_RATE = 4200;
+type PayStep = 'idle' | 'select' | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -71,6 +68,17 @@ export class UserPackagesComponent implements OnInit {
 
   // ── Pago Nequi ────────────────────────────────────────────────────────────
 
+  /** Abre el modal en paso de selección de paquete */
+  openPaymentModal(): void {
+    this.selectedPackage.set(null);
+    this.proofPhone = '';
+    this.proofTransactionId = '';
+    this.payError.set(null);
+    this.verifyMessage.set('');
+    this.payStep.set('select');
+  }
+
+  /** Abre el modal directamente en el paso de pago para un paquete */
   openNequiPayment(pkg: Package): void {
     if (!pkg.nequi_payment_link) return;
     this.selectedPackage.set(pkg);
@@ -78,6 +86,13 @@ export class UserPackagesComponent implements OnInit {
     this.proofTransactionId = '';
     this.payError.set(null);
     this.verifyMessage.set('');
+    this.payStep.set('redirect');
+  }
+
+  /** Selecciona un paquete desde el paso 'select' y avanza a redirect */
+  selectAndPay(pkg: Package): void {
+    if (!pkg.nequi_payment_link) return;
+    this.selectedPackage.set(pkg);
     this.payStep.set('redirect');
   }
 
@@ -118,7 +133,9 @@ export class UserPackagesComponent implements OnInit {
     this.payStep.set('submitting');
     this.payError.set(null);
 
-    const amountInCents = Math.round(pkg.price * COP_RATE) * 100;
+    // Usar price_cop del plan si está disponible, sino calcular con tasa de referencia
+    const copAmount = pkg.price_cop ?? Math.round(pkg.price * 4200);
+    const amountInCents = copAmount * 100;
 
     const result = await this.packageService.verifyAndSubmitPayment({
       packageId: pkg.id,
@@ -156,9 +173,20 @@ export class UserPackagesComponent implements OnInit {
 
   // ── Utilidades ────────────────────────────────────────────────────────────
 
-  /** Precio en COP equivalente al precio USD del paquete */
-  getPriceCOP(usdPrice: number): string {
-    return COP_FORMATTER.format(Math.round(usdPrice * COP_RATE));
+  /** Precio COP directo del paquete (price_cop), sin calcular */
+  getPriceCOP(pkg: Package | null): string {
+    if (!pkg) return '';
+    if (pkg.price_cop) return COP_FORMATTER.format(pkg.price_cop);
+    return COP_FORMATTER.format(Math.round(pkg.price * 4200));
+  }
+
+  /** Precio USD directo del paquete (price en USD) */
+  getPriceUSD(pkg: Package | null): string {
+    if (!pkg) return '';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD',
+      minimumFractionDigits: 0, maximumFractionDigits: 0
+    }).format(pkg.price);
   }
 
   getDaysRemaining(): number {

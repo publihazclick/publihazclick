@@ -311,7 +311,7 @@
                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-white"
                 >
                   <span class="material-symbols-outlined" style="font-size:18px">payments</span>
-                  Pagar con Nequi
+                  Pagar
                 </button>
               } @else {
                 <button disabled
@@ -383,8 +383,8 @@
             <div class="bg-[#00B4D8]/5 border border-[#00B4D8]/20 rounded-2xl p-4">
               <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Monto a pagar</p>
               <div class="flex items-baseline gap-3">
-                <p class="text-3xl font-black text-[#00B4D8]">{{ getPriceCOP(selectedPackage()?.price ?? 0) }}</p>
-                <p class="text-sm text-slate-500">≈ {{ formatPrice(selectedPackage()?.price ?? 0, 'USD') }} USD</p>
+                <p class="text-3xl font-black text-[#00B4D8]">{{ getPriceCOP(selectedPackage()) }}</p>
+                <p class="text-sm text-slate-500">{{ getPriceUSD(selectedPackage()) }} USD</p>
               </div>
               <p class="text-[10px] text-slate-600 mt-1">Duración: {{ selectedPackage()?.duration_days }} días · Pago único</p>
             </div>
@@ -417,7 +417,7 @@
               class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-white transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-sm"
             >
               <span class="material-symbols-outlined" style="font-size:20px">open_in_new</span>
-              Ir a Nequi · Pagar {{ getPriceCOP(selectedPackage()?.price ?? 0) }}
+              Ir a Nequi · Pagar {{ getPriceCOP(selectedPackage()) }}
             </button>
           </div>
         }
@@ -434,7 +434,7 @@
               </div>
               <div class="text-right">
                 <p class="text-[10px] text-slate-500 uppercase font-bold">Monto pagado</p>
-                <p class="text-[#00B4D8] font-black text-sm">{{ getPriceCOP(selectedPackage()?.price ?? 0) }}</p>
+                <p class="text-[#00B4D8] font-black text-sm">{{ getPriceCOP(selectedPackage()) }}</p>
               </div>
             </div>
 
@@ -528,8 +528,8 @@
               <p class="font-black text-white text-lg">¡Pago Verificado!</p>
               <p class="text-emerald-400 font-bold text-sm mt-1">Tu paquete está activo</p>
               <p class="text-slate-400 text-xs mt-3 max-w-xs leading-relaxed">
-                Hemos verificado tu pago de <span class="font-bold text-[#00B4D8]">{{ getPriceCOP(selectedPackage()?.price ?? 0) }}</span>
-                y el plan <span class="font-bold text-white">{{ selectedPackage()?.name }}</span> ha sido activado de inmediato.
+                Hemos verificado tu pago de <span class="font-bold text-[#00B4D8]">{{ getPriceCOP(selectedPackage()) }}</span>
+                y el plan <span class="font-bold text-white">{{ selectedPackage()?.name }}</span> fue activado de inmediato.
               </p>
             </div>
             <!-- Beneficios desbloqueados -->

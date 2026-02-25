@@ -80,7 +80,8 @@ export class AdminPackagesComponent implements OnInit {
     ptc_reward_bonus: 5,
     banner_reward_bonus: 0,
     referral_bonus: 5,
-    nequi_payment_link: null
+    nequi_payment_link: null,
+    price_cop: null
   });
 
   readonly saving = signal<boolean>(false);
@@ -208,6 +209,11 @@ export class AdminPackagesComponent implements OnInit {
     this.formData.update(fd => ({ ...fd, nequi_payment_link: value || null }));
   }
 
+  setPriceCOP(value: number | string | null): void {
+    const num = value !== null && value !== '' ? Number(value) : null;
+    this.formData.update(fd => ({ ...fd, price_cop: num && num > 0 ? num : null }));
+  }
+
   getPaymentStatusLabel(status: PaymentStatus | string): string {
     const map: Record<string, string> = {
       pending: 'Pendiente', approved: 'Aprobado',
@@ -262,7 +268,8 @@ export class AdminPackagesComponent implements OnInit {
       ptc_reward_bonus: 5,
       banner_reward_bonus: 0,
       referral_bonus: 5,
-      nequi_payment_link: null
+      nequi_payment_link: null,
+      price_cop: null
     });
     this.showModal.set(true);
   }
@@ -294,7 +301,8 @@ export class AdminPackagesComponent implements OnInit {
       ptc_reward_bonus: pkg.ptc_reward_bonus,
       banner_reward_bonus: pkg.banner_reward_bonus,
       referral_bonus: pkg.referral_bonus,
-      nequi_payment_link: pkg.nequi_payment_link || null
+      nequi_payment_link: pkg.nequi_payment_link || null,
+      price_cop: pkg.price_cop ?? null
     });
     this.showModal.set(true);
   }

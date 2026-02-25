@@ -431,6 +431,7 @@ export interface Package {
   is_active: boolean;
   display_order: number;
   nequi_payment_link: string | null;
+  price_cop: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -484,6 +485,7 @@ export interface CreatePackageData {
   referral_bonus?: number;
   // Pago
   nequi_payment_link?: string | null;
+  price_cop?: number | null;
 }
 
 export interface UserPackage {

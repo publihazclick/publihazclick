@@ -68,6 +68,7 @@ export class AdminPackageService {
         is_active: p.is_active,
         display_order: p.display_order || 0,
         nequi_payment_link: p.nequi_payment_link || null,
+        price_cop: p.price_cop ?? null,
         created_at: p.created_at,
         updated_at: p.updated_at
       }));
@@ -116,6 +117,7 @@ export class AdminPackageService {
         is_active: data.is_active,
         display_order: data.display_order || 0,
         nequi_payment_link: data.nequi_payment_link || null,
+        price_cop: data.price_cop ?? null,
         created_at: data.created_at,
         updated_at: data.updated_at
       };
@@ -344,7 +346,8 @@ export class AdminPackageService {
           ptc_reward_bonus: data.ptc_reward_bonus || 0,
           banner_reward_bonus: data.banner_reward_bonus || 0,
           referral_bonus: data.referral_bonus || 0,
-          nequi_payment_link: data.nequi_payment_link || null
+          nequi_payment_link: data.nequi_payment_link || null,
+          price_cop: data.price_cop ?? null
         })
         .select('id')
         .single();

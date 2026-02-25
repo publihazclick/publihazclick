@@ -44,3 +44,12 @@ __screenshots__/
 Thumbs.db
 .vercel
 .env*.local
+
+# Large files
+*.pdf
+
+# Claude config (local settings)
+.claude/
+
+# Supabase local functions (secrets)
+supabase/functions/
