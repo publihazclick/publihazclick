@@ -56,6 +56,28 @@ export class PtcAdsComponent implements OnInit {
   // Estado de anuncios vistos
   viewedAds = signal<Set<string>>(new Set());
 
+  // Categorías expandidas
+  expandedCategories = signal<Set<string>>(new Set());
+
+  isExpanded(type: string): boolean {
+    return this.expandedCategories().has(type);
+  }
+
+  toggleExpanded(type: string): void {
+    this.expandedCategories.update(set => {
+      const next = new Set(set);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }
+
+  getCardNgClass(index: number, type: string): Record<string, boolean> {
+    if (this.isExpanded(type) || index < 2) return {};
+    if (index < 4) return { hidden: true, 'md:block': true };
+    return { hidden: true };
+  }
+
   ngOnInit(): void {
     this.loadPtcAds();
   }
@@ -80,10 +102,11 @@ export class PtcAdsComponent implements OnInit {
             id: task.id,
             title: task.title,
             description: task.description || '',
-            advertiserName: task.title,
+            advertiserName: task.advertiser_username || task.title,
             advertiserType: 'company' as const,
             imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
             youtubeVideoId: extractYoutubeId(task.youtube_url),
+            destinationUrl: task.url || '',
             adType: adType,
             rewardCOP: rewardCOP,
             dailyLimit: task.daily_limit || 0,

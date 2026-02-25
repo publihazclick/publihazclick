@@ -135,6 +135,7 @@ export interface CreatePtcTaskData {
   reward: number;
   duration: number;
   daily_limit: number;
+  total_clicks?: number;
   advertiser_id?: string;
   location?: AdLocation;
   ad_type?: PtcAdType;

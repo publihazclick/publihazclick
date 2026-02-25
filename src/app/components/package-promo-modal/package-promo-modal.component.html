@@ -1,0 +1,151 @@
+@if (visible()) {
+  <div
+    class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/85 backdrop-blur-sm p-0 sm:p-4"
+    (click)="close()"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Opciones de paquetes"
+  >
+    <div
+      class="relative w-full sm:max-w-2xl bg-zinc-900 sm:rounded-2xl border-t sm:border border-white/10 shadow-2xl overflow-hidden max-h-[95dvh] flex flex-col"
+      (click)="$event.stopPropagation()"
+    >
+      <!-- Botón cerrar -->
+      <button
+        (click)="close()"
+        class="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+        aria-label="Cerrar"
+      >
+        <span class="material-symbols-outlined text-slate-300 text-lg">close</span>
+      </button>
+
+      <!-- ── Header ── -->
+      <div class="relative bg-gradient-to-r from-primary/20 via-primary/5 to-transparent border-b border-white/5 px-6 pt-7 pb-5 flex-shrink-0 overflow-hidden">
+        <div class="absolute -top-8 -left-8 w-40 h-40 bg-primary/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative flex items-start gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-2xl">rocket_launch</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-0.5">
+              <h2 class="text-lg font-black text-white tracking-tight">¡Potencia tus ganancias!</h2>
+              <span class="px-2 py-0.5 bg-primary/15 border border-primary/25 rounded-full text-primary text-[10px] font-bold uppercase tracking-wider">Nuevo</span>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed max-w-sm">
+              Invierte en un paquete, obtén <strong class="text-white">más visibilidad</strong> y
+              <strong class="text-white">multiplica tus comisiones</strong> mes a mes.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Cuerpo: dos paquetes ── -->
+      <div class="overflow-y-auto flex-1 p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          @for (pkg of promoPackages; track pkg.id) {
+            <div
+              class="relative rounded-2xl border flex flex-col overflow-hidden transition-transform duration-200 hover:scale-[1.02]"
+              [ngClass]="pkg.borderClass"
+              [class.shadow-[0_0_30px_rgba(0,229,255,0.12)]]="pkg.recommended"
+            >
+              <!-- Badge recomendado -->
+              @if (pkg.recommended) {
+                <div class="absolute top-0 left-0 right-0 bg-primary text-black text-[10px] font-black uppercase tracking-widest text-center py-1 flex items-center justify-center gap-1 z-10">
+                  <span class="material-symbols-outlined text-xs">auto_awesome</span> Recomendado
+                </div>
+              }
+
+              <div
+                class="bg-gradient-to-br p-5 flex flex-col gap-4 flex-1"
+                [ngClass]="[pkg.bgGradient, pkg.recommended ? 'pt-8' : '']"
+              >
+                <!-- Icono + nombre -->
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    [class]="pkg.recommended ? 'bg-primary/20 border border-primary/30' : 'bg-white/8 border border-white/10'"
+                  >
+                    <span class="material-symbols-outlined text-xl" [ngClass]="pkg.colorClass">{{ pkg.icon }}</span>
+                  </div>
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">{{ pkg.label }}</p>
+                    <p class="text-base font-black text-white leading-tight">{{ pkg.name }}</p>
+                  </div>
+                </div>
+
+                <!-- Precio -->
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-3xl font-black" [ngClass]="pkg.recommended ? 'text-primary' : 'text-white'">${{ pkg.price }}</span>
+                  <span class="text-xs text-slate-500 font-medium">USD / 30 días</span>
+                </div>
+
+                <!-- Bonus stats -->
+                <div
+                  class="rounded-xl px-4 py-3 grid grid-cols-2 gap-3"
+                  [class]="pkg.recommended ? 'bg-primary/10 border border-primary/20' : 'bg-white/5 border border-white/8'"
+                >
+                  <div class="flex flex-col items-center justify-center gap-0.5">
+                    <p class="text-lg font-black" [ngClass]="pkg.recommended ? 'text-primary' : 'text-white'">+{{ pkg.ptcBonus }}%</p>
+                    <p class="text-[10px] text-slate-500 text-center leading-tight">en ganancias PTC</p>
+                  </div>
+                  <div class="flex flex-col items-center justify-center gap-0.5 border-l border-white/10">
+                    <p class="text-lg font-black" [ngClass]="pkg.recommended ? 'text-primary' : 'text-white'">+{{ pkg.referralBonus }}%</p>
+                    <p class="text-[10px] text-slate-500 text-center leading-tight">en comisiones</p>
+                  </div>
+                </div>
+
+                <!-- Features -->
+                <ul class="space-y-2 flex-1">
+                  @for (f of pkg.features; track f) {
+                    <li class="flex items-start gap-2 text-xs text-slate-300">
+                      <span class="material-symbols-outlined text-primary text-sm flex-shrink-0 mt-0.5">check_circle</span>
+                      {{ f }}
+                    </li>
+                  }
+                </ul>
+
+                <!-- Botón WhatsApp -->
+                <a
+                  [href]="getWhatsappLink(pkg.whatsappMsg)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  (click)="close()"
+                  class="flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-wide transition-all"
+                  [class]="pkg.recommended
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25'
+                    : 'bg-white/10 hover:bg-emerald-500 hover:text-white text-slate-200 border border-white/10 hover:border-emerald-500'"
+                >
+                  <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                  Solicitar información
+                </a>
+              </div>
+            </div>
+          }
+
+        </div>
+      </div>
+
+      <!-- ── Footer ── -->
+      <div class="flex-shrink-0 px-5 pb-5 pt-2 border-t border-white/5 flex flex-col sm:flex-row items-center gap-3">
+        <a
+          [routerLink]="packagesRoute()"
+          (click)="close()"
+          class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-white/8 hover:bg-white/12 border border-white/10 text-white font-bold text-xs uppercase tracking-wide transition-all"
+        >
+          <span class="material-symbols-outlined text-primary text-base">grid_view</span>
+          Ver todos los paquetes
+        </a>
+        <button
+          (click)="close()"
+          class="text-xs text-slate-600 hover:text-slate-400 transition-colors py-2 px-4"
+        >
+          Ahora no
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

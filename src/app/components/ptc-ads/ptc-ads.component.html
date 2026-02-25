@@ -19,11 +19,12 @@
           <span class="px-2 py-1 bg-purple-100 text-purple-600 text-xs font-bold rounded-full">{{ getRewardDisplay(2000) }}</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          @for (ad of getAdsByType('mega'); track ad.id) {
-            <div 
+          @for (ad of getAdsByType('mega'); track ad.id; let i = $index) {
+            <div
               class="bg-white rounded-2xl overflow-hidden flex flex-col group border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_25px_-5px_rgba(147,51,234,0.2)] transition-all duration-300 hover:-translate-y-1"
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
+              [ngClass]="getCardNgClass(i, 'mega')"
             >
               <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
                 <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -73,6 +74,32 @@
             </div>
           }
         </div>
+        @if (!isExpanded('mega')) {
+          @if (getAdsByType('mega').length > 2) {
+            <div class="mt-5 flex justify-center md:hidden">
+              <button (click)="toggleExpanded('mega')" class="flex items-center gap-2 px-5 py-2 border border-purple-200 text-purple-600 rounded-xl font-bold text-sm hover:bg-purple-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+          @if (getAdsByType('mega').length > 4) {
+            <div class="mt-5 hidden md:flex justify-center">
+              <button (click)="toggleExpanded('mega')" class="flex items-center gap-2 px-5 py-2 border border-purple-200 text-purple-600 rounded-xl font-bold text-sm hover:bg-purple-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+        }
+        @if (isExpanded('mega')) {
+          <div class="mt-5 flex justify-center">
+            <button (click)="toggleExpanded('mega')" class="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">
+              <span>Ver menos</span>
+              <span class="material-symbols-outlined text-sm">expand_less</span>
+            </button>
+          </div>
+        }
       </div>
 
       <!-- Anuncio 600 -->
@@ -83,11 +110,12 @@
           <span class="px-2 py-1 bg-cyan-100 text-cyan-600 text-xs font-bold rounded-full">{{ getRewardDisplay(600) }}</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          @for (ad of getAdsByType('standard_600'); track ad.id) {
-            <div 
+          @for (ad of getAdsByType('standard_600'); track ad.id; let i = $index) {
+            <div
               class="bg-white rounded-2xl overflow-hidden flex flex-col group border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_25px_-5px_rgba(6,182,212,0.2)] transition-all duration-300 hover:-translate-y-1"
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
+              [ngClass]="getCardNgClass(i, 'standard_600')"
             >
               <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
                 <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -137,6 +165,32 @@
             </div>
           }
         </div>
+        @if (!isExpanded('standard_600')) {
+          @if (getAdsByType('standard_600').length > 2) {
+            <div class="mt-5 flex justify-center md:hidden">
+              <button (click)="toggleExpanded('standard_600')" class="flex items-center gap-2 px-5 py-2 border border-cyan-200 text-cyan-600 rounded-xl font-bold text-sm hover:bg-cyan-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+          @if (getAdsByType('standard_600').length > 4) {
+            <div class="mt-5 hidden md:flex justify-center">
+              <button (click)="toggleExpanded('standard_600')" class="flex items-center gap-2 px-5 py-2 border border-cyan-200 text-cyan-600 rounded-xl font-bold text-sm hover:bg-cyan-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+        }
+        @if (isExpanded('standard_600')) {
+          <div class="mt-5 flex justify-center">
+            <button (click)="toggleExpanded('standard_600')" class="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">
+              <span>Ver menos</span>
+              <span class="material-symbols-outlined text-sm">expand_less</span>
+            </button>
+          </div>
+        }
       </div>
 
       <!-- Anuncio 400 -->
@@ -147,11 +201,12 @@
           <span class="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-bold rounded-full">{{ getRewardDisplay(400) }}</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          @for (ad of getAdsByType('standard_400'); track ad.id) {
-            <div 
+          @for (ad of getAdsByType('standard_400'); track ad.id; let i = $index) {
+            <div
               class="bg-white rounded-2xl overflow-hidden flex flex-col group border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_25px_-5px_rgba(59,130,246,0.2)] transition-all duration-300 hover:-translate-y-1"
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
+              [ngClass]="getCardNgClass(i, 'standard_400')"
             >
               <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
                 <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -201,6 +256,32 @@
             </div>
           }
         </div>
+        @if (!isExpanded('standard_400')) {
+          @if (getAdsByType('standard_400').length > 2) {
+            <div class="mt-5 flex justify-center md:hidden">
+              <button (click)="toggleExpanded('standard_400')" class="flex items-center gap-2 px-5 py-2 border border-blue-200 text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+          @if (getAdsByType('standard_400').length > 4) {
+            <div class="mt-5 hidden md:flex justify-center">
+              <button (click)="toggleExpanded('standard_400')" class="flex items-center gap-2 px-5 py-2 border border-blue-200 text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+        }
+        @if (isExpanded('standard_400')) {
+          <div class="mt-5 flex justify-center">
+            <button (click)="toggleExpanded('standard_400')" class="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">
+              <span>Ver menos</span>
+              <span class="material-symbols-outlined text-sm">expand_less</span>
+            </button>
+          </div>
+        }
       </div>
 
       <!-- Mini Anuncios -->
@@ -211,11 +292,12 @@
           <span class="px-2 py-1 bg-green-100 text-green-600 text-xs font-bold rounded-full">{{ getRewardDisplay(83.33) }}</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          @for (ad of getAdsByType('mini'); track ad.id) {
-            <div 
+          @for (ad of getAdsByType('mini'); track ad.id; let i = $index) {
+            <div
               class="bg-white rounded-2xl overflow-hidden flex flex-col group border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_25px_-5px_rgba(34,197,94,0.2)] transition-all duration-300 hover:-translate-y-1"
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
+              [ngClass]="getCardNgClass(i, 'mini')"
             >
               <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
                 <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -265,15 +347,34 @@
             </div>
           }
         </div>
+        @if (!isExpanded('mini')) {
+          @if (getAdsByType('mini').length > 2) {
+            <div class="mt-5 flex justify-center md:hidden">
+              <button (click)="toggleExpanded('mini')" class="flex items-center gap-2 px-5 py-2 border border-green-200 text-green-600 rounded-xl font-bold text-sm hover:bg-green-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+          @if (getAdsByType('mini').length > 4) {
+            <div class="mt-5 hidden md:flex justify-center">
+              <button (click)="toggleExpanded('mini')" class="flex items-center gap-2 px-5 py-2 border border-green-200 text-green-600 rounded-xl font-bold text-sm hover:bg-green-50 transition-colors">
+                <span>Ver más</span>
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+              </button>
+            </div>
+          }
+        }
+        @if (isExpanded('mini')) {
+          <div class="mt-5 flex justify-center">
+            <button (click)="toggleExpanded('mini')" class="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">
+              <span>Ver menos</span>
+              <span class="material-symbols-outlined text-sm">expand_less</span>
+            </button>
+          </div>
+        }
       </div>
 
-      <!-- View All Link -->
-      <div class="text-center mt-10">
-        <a routerLink="/register" class="inline-flex items-center space-x-2 text-cyan-500 font-bold hover:text-cyan-400 transition-colors">
-          <span>Ver todos los anuncios</span>
-          <span class="material-symbols-outlined">arrow_forward</span>
-        </a>
-      </div>
     }
   </div>
 

@@ -739,6 +739,23 @@
                 </select>
               </div>
             </div>
+
+            @if (ptcFormData.location === 'landing') {
+              <div class="p-3 bg-primary/5 border border-primary/15 rounded-xl">
+                <label class="block text-xs font-semibold mb-1.5 text-primary uppercase tracking-wide">
+                  <span class="material-symbols-outlined align-middle text-sm mr-1">visibility</span>
+                  Visitas mostradas (Landing)
+                  <span class="ml-1 font-normal normal-case text-slate-500">— número de vistas que se mostrará al público</span>
+                </label>
+                <input
+                  type="number"
+                  [(ngModel)]="ptcFormData.total_clicks"
+                  class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
+                  min="0"
+                  placeholder="0"
+                />
+              </div>
+            }
           }
 
           <!-- ── Formulario Banner ──────────────────────────────────────── -->

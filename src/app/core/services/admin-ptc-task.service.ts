@@ -172,7 +172,7 @@ export class AdminPtcTaskService {
           is_demo_only: data.is_demo_only,
           status: 'active',
           location: data.location,
-          total_clicks: 0
+          total_clicks: data.total_clicks || 0
         })
         .select('id')
         .single();
@@ -206,6 +206,7 @@ export class AdminPtcTaskService {
     if (data.ad_type !== undefined) payload['ad_type'] = data.ad_type;
     if (data.is_demo_only !== undefined) payload['is_demo_only'] = data.is_demo_only;
     if (data.youtube_url !== undefined) payload['youtube_url'] = data.youtube_url || null;
+    if (data.total_clicks !== undefined) payload['total_clicks'] = data.total_clicks;
 
     const { error } = await this.supabase
       .from('ptc_tasks')

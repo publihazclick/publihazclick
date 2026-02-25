@@ -9,6 +9,7 @@ import { VideoSectionComponent } from './components/video-section/video-section.
 import { FooterComponent } from './components/footer/footer.component';
 import { BannerSliderComponent } from './components/banner-slider/banner-slider.component';
 import { TiersComponent } from './components/tiers/tiers.component';
+import { PackagePromoModalComponent } from './components/package-promo-modal/package-promo-modal.component';
 
 @Component({
   selector: 'app-root',
@@ -23,6 +24,7 @@ import { TiersComponent } from './components/tiers/tiers.component';
     PtcAdsComponent,
     VideoSectionComponent,
     FooterComponent,
+    PackagePromoModalComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

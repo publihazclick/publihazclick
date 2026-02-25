@@ -87,6 +87,7 @@ export class AdminAdsComponent implements OnInit {
     reward: 2000,
     duration: 60,
     daily_limit: 0,
+    total_clicks: 0,
     location: 'app',
     ad_type: 'mega',
   };
@@ -271,6 +272,7 @@ export class AdminAdsComponent implements OnInit {
       reward: 2000,
       duration: 60,
       daily_limit: 0,
+      total_clicks: 0,
       location: this.activeLocation(),
       ad_type: 'mega',
     };
@@ -290,6 +292,7 @@ export class AdminAdsComponent implements OnInit {
       reward: ptc.reward,
       duration: ptc.duration,
       daily_limit: ptc.daily_limit,
+      total_clicks: ptc.total_clicks || 0,
       location: ptc.location || 'app',
       ad_type: ptc.ad_type || 'mini',
     };
