@@ -3,7 +3,7 @@
   <!-- Header -->
   <div>
     <h2 class="text-xl font-black text-white">Mis Tareas Diarias</h2>
-    <p class="text-xs text-slate-400">Anuncios disponibles hoy según tu plan y afiliados activos</p>
+    <p class="text-xs text-slate-400">Anuncios disponibles hoy según tu plan e invitados activos</p>
   </div>
 
   @if (loading()) {
@@ -24,7 +24,7 @@
       </div>
       <div class="bg-card-dark border border-white/5 rounded-xl p-3 text-center">
         <p class="text-xl font-black text-emerald-400">{{ affiliatesWithPackage() }}</p>
-        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Afiliados activos</p>
+        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Invitados activos</p>
       </div>
       <div class="bg-card-dark border border-white/5 rounded-xl p-3 text-center">
         <p class="text-xl font-black text-white">{{ formatReward(maxDailyOwn() + maxDailyMega()) }}</p>
@@ -116,7 +116,7 @@
       </div>
     </div>
 
-    <!-- Mega ads: desbloqueados por afiliados -->
+    <!-- Mega ads: desbloqueados por invitados -->
     <div>
       <div class="flex items-center gap-3 mb-2">
         <span class="material-symbols-outlined text-purple-400">workspace_premium</span>
@@ -127,8 +127,8 @@
       </div>
       <p class="text-xs text-slate-500 mb-4 flex items-start gap-1">
         <span class="material-symbols-outlined text-[14px] text-purple-500/60 mt-0.5">all_inclusive</span>
-        <span>Se desbloquean 5 por cada afiliado con paquete activo. Son <span class="text-purple-400 font-bold">acumulables</span> — no se reinician hasta que los completes.
-        <span class="text-purple-400 font-bold">{{ affiliatesWithPackage() }}/40 afiliados activos.</span></span>
+        <span>Se desbloquean 5 por cada invitado con paquete activo. Son <span class="text-purple-400 font-bold">acumulables</span> — no se reinician hasta que los completes.
+        <span class="text-purple-400 font-bold">{{ affiliatesWithPackage() }}/40 invitados activos.</span></span>
       </p>
 
       @if (megaSlots().length === 0) {
@@ -139,11 +139,11 @@
           </div>
           <p class="text-white font-black text-sm">Sin Mega Anuncios todavía</p>
           <p class="text-slate-500 text-xs max-w-xs">
-            Cuando uno de tus afiliados compre un paquete, se desbloquearán 5 Mega Anuncios de 2,000 COP cada uno.
+            Cuando uno de tus invitados compre un paquete, se desbloquearán 5 Mega Anuncios de 2,000 COP cada uno.
           </p>
           <div class="flex items-center gap-2 mt-1 px-4 py-2 bg-purple-500/5 border border-purple-500/15 rounded-xl">
             <span class="material-symbols-outlined text-purple-400 text-sm">military_tech</span>
-            <span class="text-xs text-purple-400 font-bold">Próximo desbloqueo: 1 afiliado activo</span>
+            <span class="text-xs text-purple-400 font-bold">Próximo desbloqueo: 1 invitado activo</span>
           </div>
         </div>
       } @else {
@@ -218,8 +218,8 @@
         <span class="material-symbols-outlined text-accent mt-0.5 flex-shrink-0">info</span>
         <div class="text-xs text-slate-400 space-y-1">
           <p><span class="text-white font-bold">Tareas base:</span> 5 Anuncios 400 ({{ formatReward(2000) }}) + 4 Mini ({{ formatReward(333.32) }}) = <span class="text-emerald-400 font-bold">{{ formatReward(2333.32) }}/día</span></p>
-          <p><span class="text-white font-bold">Por afiliado activo:</span> 5 Mega Anuncios = <span class="text-purple-400 font-bold">{{ formatReward(10000) }}</span> adicionales</p>
-          <p><span class="text-slate-500">Límite de afiliados: 40 • Duración del plan: 30 días</span></p>
+          <p><span class="text-white font-bold">Por invitado activo:</span> 5 Mega Anuncios = <span class="text-purple-400 font-bold">{{ formatReward(10000) }}</span> adicionales</p>
+          <p><span class="text-slate-500">Límite de invitados: 40 • Duración del plan: 30 días</span></p>
         </div>
       </div>
     </div>

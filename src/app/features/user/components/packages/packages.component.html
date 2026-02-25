@@ -361,9 +361,11 @@
           </div>
           <div>
             <p class="font-black text-white text-sm">
-              {{ payStep() === 'approved' ? '¡Pago Verificado!' : 'Pago con Nequi' }}
+              {{ payStep() === 'select' ? 'Elige tu plan' : payStep() === 'approved' ? '¡Pago Verificado!' : 'Completar pago' }}
             </p>
-            <p class="text-[10px] text-slate-500">{{ selectedPackage()?.name }}</p>
+            <p class="text-[10px] text-slate-500">
+              {{ payStep() === 'select' ? 'Selecciona el paquete a comprar' : selectedPackage()?.name }}
+            </p>
           </div>
         </div>
         @if (payStep() !== 'submitting') {
@@ -374,6 +376,44 @@
       </div>
 
       <div class="px-6 py-5 space-y-5">
+
+        <!-- ── Paso 0: Selección de paquete ──────────────────────────────── -->
+        @if (payStep() === 'select') {
+          <div class="space-y-3">
+            @for (pkg of packages(); track pkg.id) {
+              @if (pkg.nequi_payment_link && !isCurrentPackage(pkg)) {
+                <div class="flex items-center justify-between bg-zinc-800 border border-white/10 hover:border-[#00B4D8]/40 rounded-2xl px-4 py-3.5 transition-colors">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+                      <span class="material-symbols-outlined text-base" [class]="getTypeIconColor(pkg.package_type)">
+                        {{ pkg.package_type === 'basic' ? 'star' :
+                           pkg.package_type === 'premium' ? 'workspace_premium' :
+                           pkg.package_type === 'enterprise' ? 'diamond' : 'tune' }}
+                      </span>
+                    </div>
+                    <div>
+                      <p class="font-black text-white text-sm leading-tight">{{ pkg.name }}</p>
+                      <p class="text-[11px] font-black text-[#00B4D8]">{{ getPriceCOP(pkg) }}</p>
+                    </div>
+                  </div>
+                  <button
+                    (click)="selectAndPay(pkg)"
+                    class="flex items-center gap-1.5 px-4 py-2 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-xl text-xs font-black transition-colors flex-shrink-0"
+                  >
+                    <span class="material-symbols-outlined" style="font-size:16px">payments</span>
+                    Pagar
+                  </button>
+                </div>
+              }
+            }
+            @if (hasActivePackage()) {
+              <div class="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3">
+                <span class="material-symbols-outlined text-emerald-400 text-base">info</span>
+                <p class="text-xs text-emerald-400">Ya tienes el plan <strong>{{ currentPackage()?.name }}</strong> activo. Puedes adquirir uno superior.</p>
+              </div>
+            }
+          </div>
+        }
 
         <!-- ── Paso 1: Ir al link ─────────────────────────────────────────── -->
         @if (payStep() === 'redirect') {
@@ -412,13 +452,24 @@
               </ol>
             </div>
 
-            <button
-              (click)="goToNequiLink()"
-              class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-white transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-sm"
-            >
-              <span class="material-symbols-outlined" style="font-size:20px">open_in_new</span>
-              Ir a Nequi · Pagar {{ getPriceCOP(selectedPackage()) }}
-            </button>
+            <div class="flex gap-3">
+              @if (packages().length > 1) {
+                <button
+                  (click)="payStep.set('select')"
+                  class="flex items-center gap-1.5 px-4 py-3 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <span class="material-symbols-outlined text-base">arrow_back</span>
+                  Planes
+                </button>
+              }
+              <button
+                (click)="goToNequiLink()"
+                class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-white transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-sm"
+              >
+                <span class="material-symbols-outlined" style="font-size:20px">open_in_new</span>
+                Pagar {{ getPriceCOP(selectedPackage()) }}
+              </button>
+            </div>
           </div>
         }
 

@@ -99,10 +99,28 @@
         </ul>
       </div>
 
-      <!-- Red de Afiliados -->
+      <!-- Red Social -->
       <div>
         @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Red de Afiliados</h4>
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Red Social</h4>
+        }
+        <ul class="space-y-1">
+          <li>
+            <a routerLink="/social"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary border border-transparent hover:border-primary/20 transition-all"
+               [class.justify-center]="sidebarCollapsed()"
+               title="Comunidad de Anunciantes">
+              <span class="material-symbols-outlined text-primary">diversity_3</span>
+              @if (!sidebarCollapsed()) { <span class="font-semibold">Comunidad</span> }
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Red de Invitados -->
+      <div>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Red de Invitados</h4>
         }
         <ul class="space-y-1">
           <li>
@@ -118,7 +136,7 @@
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
                [class.justify-center]="sidebarCollapsed()">
               <span class="material-symbols-outlined">group</span>
-              @if (!sidebarCollapsed()) { <span>Mis Afiliados</span> }
+              @if (!sidebarCollapsed()) { <span>Mis Invitados</span> }
             </a>
           </li>
           <li>
@@ -326,7 +344,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-slate-400" style="font-size:14px">group</span>
-                  <span class="text-xs text-slate-400">Afiliados</span>
+                  <span class="text-xs text-slate-400">Invitados</span>
                 </div>
                 <span class="text-xs font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</span>
               </div>

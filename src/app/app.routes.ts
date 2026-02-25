@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
+import { socialGuard } from './core/guards/social.guard';
 import { authGuard, guestGuard, roleRedirectGuard } from './core/guards/auth.guard';
 
 /**
@@ -65,6 +66,35 @@ export const routes: Routes = [
           import('./features/admin/components/auth-banners/auth-banners.component').then(
             m => m.AdminAuthBannersComponent
           )
+      }
+    ]
+  },
+  // Red Social (advertiser, admin, dev)
+  {
+    path: 'social',
+    loadComponent: () => import('./features/social/components/social-layout/social-layout.component').then(m => m.SocialLayoutComponent),
+    canActivate: [socialGuard],
+    children: [
+      {
+        path: '',
+        redirectTo: 'messages',
+        pathMatch: 'full'
+      },
+      {
+        path: 'messages',
+        loadComponent: () => import('./features/social/components/messages/messages.component').then(m => m.SocialMessagesComponent)
+      },
+      {
+        path: 'messages/:convId',
+        loadComponent: () => import('./features/social/components/messages/messages.component').then(m => m.SocialMessagesComponent)
+      },
+      {
+        path: 'directory',
+        loadComponent: () => import('./features/social/components/directory/directory.component').then(m => m.SocialDirectoryComponent)
+      },
+      {
+        path: 'connections',
+        loadComponent: () => import('./features/social/components/connections/connections.component').then(m => m.SocialConnectionsComponent)
       }
     ]
   },

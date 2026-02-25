@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 
-interface AfiliadoItem {
+interface InvitadoItem {
   id: string;
   username: string;
   full_name: string | null;
@@ -36,11 +36,11 @@ export class UserReferralsComponent implements OnInit {
 
   profile = this.profileService.profile;
 
-  afiliados = signal<AfiliadoItem[]>([]);
+  invitados = signal<InvitadoItem[]>([]);
   loading = signal(true);
 
-  totalAfiliados = computed(() => this.afiliados().length);
-  afiliadosConPaquete = computed(() => this.afiliados().filter(a => a.has_active_package).length);
+  totalInvitados = computed(() => this.invitados().length);
+  invitadosConPaquete = computed(() => this.invitados().filter(a => a.has_active_package).length);
 
   async ngOnInit(): Promise<void> {
     const {
@@ -52,18 +52,18 @@ export class UserReferralsComponent implements OnInit {
       return;
     }
 
-    await this.loadAfiliados(user.id);
+    await this.loadInvitados(user.id);
     this.loading.set(false);
   }
 
-  private async loadAfiliados(userId: string): Promise<void> {
+  private async loadInvitados(userId: string): Promise<void> {
     const { data, error } = await this.supabase
       .from('profiles')
       .select('id, username, full_name, level, total_referrals_count, has_active_package, avatar_url, created_at')
       .eq('referred_by', userId);
 
     if (!error && data) {
-      this.afiliados.set(data as AfiliadoItem[]);
+      this.invitados.set(data as InvitadoItem[]);
     }
   }
 

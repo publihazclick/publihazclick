@@ -1,0 +1,176 @@
+<!-- Toast -->
+@if (toast()) {
+  <div class="fixed top-6 right-6 z-[100] px-5 py-3 rounded-xl text-sm font-bold shadow-2xl flex items-center gap-2"
+    [class.bg-emerald-500]="toast()!.type === 'success'"
+    [class.bg-rose-500]="toast()!.type === 'error'">
+    <span class="material-symbols-outlined text-base">{{ toast()!.type === 'success' ? 'check_circle' : 'error' }}</span>
+    {{ toast()!.msg }}
+  </div>
+}
+
+<div class="p-4 lg:p-8 max-w-4xl mx-auto w-full">
+
+  <!-- Header -->
+  <div class="mb-6">
+    <h2 class="text-2xl font-black text-white">Conexiones</h2>
+    <p class="text-sm text-slate-400 mt-1">Gestiona tus solicitudes y tu red de contactos</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-1 mb-6 bg-card-dark border border-white/5 rounded-xl p-1 w-fit">
+    <button
+      (click)="setTab('requests')"
+      class="relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+      [class.bg-accent]="activeTab() === 'requests'"
+      [class.text-white]="activeTab() === 'requests'"
+      [class.text-slate-400]="activeTab() !== 'requests'"
+      [class.hover:text-white]="activeTab() !== 'requests'"
+    >
+      <span class="material-symbols-outlined" style="font-size:16px">person_add</span>
+      Solicitudes
+      @if (pendingRequests().length > 0) {
+        <span class="min-w-[18px] h-[18px] rounded-full bg-white text-accent text-[10px] font-black flex items-center justify-center px-1">
+          {{ pendingRequests().length }}
+        </span>
+      }
+    </button>
+    <button
+      (click)="setTab('connections')"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+      [class.bg-primary]="activeTab() === 'connections'"
+      [class.text-black]="activeTab() === 'connections'"
+      [class.text-slate-400]="activeTab() !== 'connections'"
+      [class.hover:text-white]="activeTab() !== 'connections'"
+    >
+      <span class="material-symbols-outlined" style="font-size:16px">group</span>
+      Mis conexiones
+      <span class="text-[10px] opacity-70">({{ myConnections().length }})</span>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="space-y-3">
+      @for (i of [1,2,3]; track i) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl p-4 flex items-center gap-4 animate-pulse">
+          <div class="w-12 h-12 rounded-xl bg-white/5 flex-shrink-0"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-3 bg-white/5 rounded w-1/3"></div>
+            <div class="h-2 bg-white/5 rounded w-1/4"></div>
+          </div>
+          <div class="w-24 h-9 bg-white/5 rounded-xl"></div>
+        </div>
+      }
+    </div>
+  } @else {
+
+    <!-- TAB: Solicitudes -->
+    @if (activeTab() === 'requests') {
+      @if (pendingRequests().length === 0) {
+        <div class="flex flex-col items-center justify-center py-20 text-center">
+          <span class="material-symbols-outlined text-slate-600 mb-4" style="font-size:56px">mark_email_unread</span>
+          <h3 class="text-lg font-bold text-slate-400 mb-2">Sin solicitudes pendientes</h3>
+          <p class="text-sm text-slate-600">Cuando alguien quiera conectar contigo, aparecerá aquí</p>
+        </div>
+      } @else {
+        <div class="space-y-3">
+          @for (req of pendingRequests(); track req.id) {
+            <div class="bg-card-dark border border-white/5 hover:border-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all">
+              <!-- Avatar -->
+              <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+                @if (req.other_user?.avatar_url) {
+                  <img [src]="req.other_user!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+                    <span class="text-white font-black text-sm">{{ getInitials(req.other_user?.full_name ?? null, req.other_user?.username ?? '') }}</span>
+                  </div>
+                }
+              </div>
+              <!-- Info -->
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-white text-sm">{{ req.other_user?.full_name || req.other_user?.username }}</p>
+                <p class="text-xs text-slate-500">&#64;{{ req.other_user?.username }}</p>
+                <p class="text-[10px] text-slate-600 mt-0.5">{{ formatDate(req.created_at) }}</p>
+              </div>
+              <!-- Acciones -->
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button
+                  (click)="accept(req)"
+                  [disabled]="actionLoading() === req.id"
+                  class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/20 transition-all disabled:opacity-50"
+                >
+                  <span class="material-symbols-outlined" style="font-size:14px">check</span>
+                  Aceptar
+                </button>
+                <button
+                  (click)="reject(req)"
+                  [disabled]="actionLoading() === req.id"
+                  class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/20 transition-all disabled:opacity-50"
+                >
+                  <span class="material-symbols-outlined" style="font-size:14px">close</span>
+                  Rechazar
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- TAB: Mis conexiones -->
+    @if (activeTab() === 'connections') {
+      @if (myConnections().length === 0) {
+        <div class="flex flex-col items-center justify-center py-20 text-center">
+          <span class="material-symbols-outlined text-slate-600 mb-4" style="font-size:56px">group_off</span>
+          <h3 class="text-lg font-bold text-slate-400 mb-2">Sin conexiones aún</h3>
+          <p class="text-sm text-slate-600">Ve al directorio para conectar con otros anunciantes</p>
+        </div>
+      } @else {
+        <div class="space-y-3">
+          @for (conn of myConnections(); track conn.id) {
+            <div class="bg-card-dark border border-white/5 hover:border-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all">
+              <!-- Avatar -->
+              <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+                @if (conn.other_user?.avatar_url) {
+                  <img [src]="conn.other_user!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center">
+                    <span class="text-black font-black text-sm">{{ getInitials(conn.other_user?.full_name ?? null, conn.other_user?.username ?? '') }}</span>
+                  </div>
+                }
+              </div>
+              <!-- Info -->
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-white text-sm">{{ conn.other_user?.full_name || conn.other_user?.username }}</p>
+                <p class="text-xs text-slate-500">&#64;{{ conn.other_user?.username }}</p>
+                <span class="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                  Conectado
+                </span>
+              </div>
+              <!-- Acciones -->
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button
+                  (click)="openChat(conn)"
+                  [disabled]="actionLoading() === conn.id"
+                  class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition-all disabled:opacity-50"
+                >
+                  <span class="material-symbols-outlined" style="font-size:14px">chat</span>
+                  Mensaje
+                </button>
+                <button
+                  (click)="remove(conn)"
+                  [disabled]="actionLoading() === conn.id"
+                  class="p-2 rounded-xl bg-white/5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-all disabled:opacity-50"
+                  title="Eliminar conexión"
+                >
+                  <span class="material-symbols-outlined" style="font-size:16px">person_remove</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+  }
+</div>

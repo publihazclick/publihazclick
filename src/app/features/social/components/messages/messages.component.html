@@ -1,0 +1,192 @@
+<!-- Layout WhatsApp: dos paneles -->
+<div class="flex h-[calc(100vh-64px)] overflow-hidden">
+
+  <!-- ===================== PANEL IZQUIERDO: Lista de chats ===================== -->
+  <div class="w-full md:w-80 lg:w-96 flex flex-col border-r border-white/10 bg-card-dark flex-shrink-0"
+       [class.hidden]="activeConvId() !== null"
+       [class.md:flex]="true"
+       [class.flex-col]="true">
+
+    <!-- Header lista -->
+    <div class="px-4 py-4 border-b border-white/10 flex items-center justify-between">
+      <h3 class="font-black text-white text-base">Mensajes</h3>
+      <span class="text-xs text-slate-500">{{ conversations().length }} chats</span>
+    </div>
+
+    <!-- Conversaciones -->
+    <div class="flex-1 overflow-y-auto">
+      @if (loadingConvs()) {
+        <div class="space-y-1 p-2">
+          @for (i of [1,2,3,4]; track i) {
+            <div class="flex items-center gap-3 p-3 rounded-xl animate-pulse">
+              <div class="w-11 h-11 rounded-full bg-white/5 flex-shrink-0"></div>
+              <div class="flex-1 space-y-2">
+                <div class="h-3 bg-white/5 rounded w-2/3"></div>
+                <div class="h-2 bg-white/5 rounded w-1/2"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (conversations().length === 0) {
+        <div class="flex flex-col items-center justify-center h-full py-10 px-4 text-center">
+          <span class="material-symbols-outlined text-slate-600 mb-3" style="font-size:48px">chat_bubble_outline</span>
+          <p class="text-sm font-bold text-slate-400 mb-1">Sin mensajes</p>
+          <p class="text-xs text-slate-600">Conecta con anunciantes en el Directorio para empezar a chatear</p>
+        </div>
+      } @else {
+        @for (conv of conversations(); track conv.id) {
+          <button
+            (click)="selectConversation(conv)"
+            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-all text-left"
+            [class.bg-primary/5]="activeConvId() === conv.id"
+            [class.border-l-2]="activeConvId() === conv.id"
+            [class.border-primary]="activeConvId() === conv.id"
+          >
+            <!-- Avatar -->
+            <div class="relative flex-shrink-0">
+              <div class="w-11 h-11 rounded-full overflow-hidden border border-white/10">
+                @if (conv.other_user?.avatar_url) {
+                  <img [src]="conv.other_user.avatar_url" alt="avatar" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+                    <span class="text-white font-black text-xs">{{ getInitials(conv.other_user?.full_name ?? null, conv.other_user?.username ?? '') }}</span>
+                  </div>
+                }
+              </div>
+              @if ((conv.unread_count ?? 0) > 0) {
+                <span class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-primary text-black text-[9px] font-black flex items-center justify-center px-0.5">
+                  {{ conv.unread_count }}
+                </span>
+              }
+            </div>
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <p class="font-bold text-white text-sm truncate">{{ conv.other_user?.full_name || conv.other_user?.username }}</p>
+                <span class="text-[10px] text-slate-500 flex-shrink-0 ml-2">{{ formatConvDate(conv.last_message_at) }}</span>
+              </div>
+              <p class="text-xs text-slate-500 truncate">
+                {{ conv.last_message || 'Sin mensajes aún' }}
+              </p>
+            </div>
+          </button>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- ===================== PANEL DERECHO: Ventana de chat ===================== -->
+  <div class="flex-1 flex flex-col"
+       [class.hidden]="activeConvId() === null"
+       [class.md:flex]="true"
+       [class.flex-col]="true">
+
+    @if (!activeConvId()) {
+      <!-- Estado vacío desktop -->
+      <div class="flex-1 flex flex-col items-center justify-center text-center px-8">
+        <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-slate-600" style="font-size:40px">chat</span>
+        </div>
+        <h3 class="text-lg font-black text-slate-400 mb-2">Selecciona un chat</h3>
+        <p class="text-sm text-slate-600 max-w-xs">Elige una conversación de la lista o conecta con nuevos anunciantes en el Directorio</p>
+      </div>
+    } @else {
+
+      <!-- Header del chat activo -->
+      <div class="px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-card-dark flex-shrink-0">
+        <!-- Back button mobile -->
+        <button
+          class="md:hidden p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all mr-1"
+          (click)="activeConvId.set(null); activeConversation.set(null)"
+        >
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+
+        <!-- Avatar -->
+        <div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
+          @if (activeConversation()?.other_user?.avatar_url) {
+            <img [src]="activeConversation()!.other_user.avatar_url" alt="avatar" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+              <span class="text-white font-black text-xs">
+                {{ getInitials(activeConversation()?.other_user?.full_name ?? null, activeConversation()?.other_user?.username ?? '') }}
+              </span>
+            </div>
+          }
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-white text-sm">{{ activeConversation()?.other_user?.full_name || activeConversation()?.other_user?.username }}</p>
+          <p class="text-xs text-slate-500">&#64;{{ activeConversation()?.other_user?.username }}</p>
+        </div>
+      </div>
+
+      <!-- Mensajes -->
+      <div class="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#080808]">
+        @if (loadingMsgs()) {
+          <div class="flex items-center justify-center h-full">
+            <div class="flex items-center gap-2 text-slate-500 text-sm">
+              <span class="material-symbols-outlined animate-spin" style="font-size:20px">progress_activity</span>
+              Cargando mensajes...
+            </div>
+          </div>
+        } @else if (messages().length === 0) {
+          <div class="flex flex-col items-center justify-center h-full text-center">
+            <span class="material-symbols-outlined text-slate-700 mb-3" style="font-size:48px">chat_bubble_outline</span>
+            <p class="text-sm text-slate-500">Sé el primero en escribir un mensaje</p>
+          </div>
+        } @else {
+          @for (msg of messages(); track msg.id) {
+            <div class="flex" [class.justify-end]="isMyMessage(msg)" [class.justify-start]="!isMyMessage(msg)">
+              <div
+                class="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+                [class.bg-primary]="isMyMessage(msg)"
+                [class.text-black]="isMyMessage(msg)"
+                [class.rounded-br-sm]="isMyMessage(msg)"
+                [class.bg-card-dark]="!isMyMessage(msg)"
+                [class.text-white]="!isMyMessage(msg)"
+                [class.border]="!isMyMessage(msg)"
+                [class.border-white/10]="!isMyMessage(msg)"
+                [class.rounded-bl-sm]="!isMyMessage(msg)"
+              >
+                <p class="break-words">{{ msg.content }}</p>
+                <p class="text-[10px] mt-1 text-right"
+                   [class.text-black/50]="isMyMessage(msg)"
+                   [class.text-slate-500]="!isMyMessage(msg)">
+                  {{ formatTime(msg.created_at) }}
+                  @if (isMyMessage(msg) && msg.read_at) {
+                    <span class="material-symbols-outlined ml-0.5" style="font-size:11px">done_all</span>
+                  }
+                </p>
+              </div>
+            </div>
+          }
+          <div #messagesEnd></div>
+        }
+      </div>
+
+      <!-- Input de mensaje -->
+      <div class="px-4 py-3 border-t border-white/10 bg-card-dark flex items-end gap-3 flex-shrink-0">
+        <textarea
+          [(ngModel)]="messageText"
+          (keydown)="onKeyDown($event)"
+          placeholder="Escribe un mensaje... (Enter para enviar)"
+          rows="1"
+          class="flex-1 bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/40 transition-colors resize-none min-h-[44px] max-h-[120px]"
+          [disabled]="sending()"
+        ></textarea>
+        <button
+          (click)="sendMessage()"
+          [disabled]="!messageText.trim() || sending()"
+          class="w-11 h-11 rounded-xl bg-primary hover:bg-primary/80 disabled:bg-white/5 disabled:text-slate-600 text-black flex items-center justify-center transition-all flex-shrink-0"
+        >
+          @if (sending()) {
+            <span class="material-symbols-outlined animate-spin" style="font-size:18px">progress_activity</span>
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:18px">send</span>
+          }
+        </button>
+      </div>
+    }
+  </div>
+</div>

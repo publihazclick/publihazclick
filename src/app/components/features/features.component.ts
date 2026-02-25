@@ -24,7 +24,7 @@ export class FeaturesComponent {
     {
       icon: 'monetization_on',
       title: 'Ingresos Pasivos',
-      description: 'Genera ganancias constantes a través de nuestra red inteligente de afiliados premium.'
+      description: 'Genera ganancias constantes a través de nuestra red inteligente de invitados premium.'
     },
     {
       icon: 'verified_user',

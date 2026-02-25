@@ -1,0 +1,221 @@
+<aside
+  class="bg-sidebar-dark text-white flex flex-col fixed inset-y-0 left-0 z-50 transition-all duration-300"
+  [class.w-16]="sidebarCollapsed()"
+  [class.w-64]="!sidebarCollapsed()"
+>
+  <!-- Logo + collapse -->
+  <div class="p-3 lg:p-4 flex items-center justify-between border-b border-white/10">
+    @if (!sidebarCollapsed()) {
+      <img src="/logo.webp" alt="PublihazClik" class="h-12 lg:h-14 w-auto" width="200" height="56">
+    }
+    <button
+      (click)="toggleSidebar()"
+      class="flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
+    >
+      @if (sidebarCollapsed()) {
+        <span class="material-symbols-outlined text-2xl">chevron_right</span>
+      } @else {
+        <span class="material-symbols-outlined text-2xl">chevron_left</span>
+      }
+    </button>
+  </div>
+
+  <div class="sidebar-scroll overflow-y-auto flex-1 p-2 lg:p-4 space-y-4">
+
+    <!-- Volver al panel -->
+    <div>
+      <button
+        (click)="goBackToDashboard()"
+        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg bg-white/5 hover:bg-primary/10 hover:text-primary text-slate-400 transition-all border border-white/5 hover:border-primary/20"
+        [class.justify-center]="sidebarCollapsed()"
+        title="Volver al Panel Anunciante"
+      >
+        <span class="material-symbols-outlined text-base">arrow_back</span>
+        @if (!sidebarCollapsed()) { <span class="font-semibold text-xs uppercase tracking-wider">Panel Anunciante</span> }
+      </button>
+    </div>
+
+    <!-- Badge anunciante -->
+    @if (!sidebarCollapsed()) {
+      <div class="flex flex-col items-center py-4 border-b border-white/10">
+        <div class="w-14 h-14 rounded-2xl overflow-hidden mb-2 shadow-lg shadow-primary/20 border-2 border-white/10 flex-shrink-0">
+          @if (profile()?.avatar_url) {
+            <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center">
+              <span class="text-black font-black text-lg">{{ getInitials() }}</span>
+            </div>
+          }
+        </div>
+        @if (profile()) {
+          <h3 class="font-bold text-center text-sm">{{ profile()!.full_name || profile()!.username }}</h3>
+          <p class="text-[10px] text-primary mt-1 font-bold uppercase tracking-widest">Red Social</p>
+        }
+      </div>
+    } @else {
+      <div class="flex flex-col items-center pb-2 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl overflow-hidden border-2 border-white/10 flex-shrink-0">
+          @if (profile()?.avatar_url) {
+            <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center">
+              <span class="text-black font-black text-sm">{{ getInitials() }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <nav class="space-y-1">
+      @if (!sidebarCollapsed()) {
+        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-2 px-2 tracking-widest">Comunidad</h4>
+      }
+
+      <a routerLink="/social/messages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+         class="relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+         [class.justify-center]="sidebarCollapsed()">
+        <span class="material-symbols-outlined">chat</span>
+        @if (!sidebarCollapsed()) { <span>Mensajes</span> }
+        @if (unreadMessages() > 0) {
+          <span class="ml-auto min-w-[18px] h-[18px] rounded-full bg-primary text-black text-[10px] font-black flex items-center justify-center px-1"
+                [class.absolute]="sidebarCollapsed()"
+                [class.top-1]="sidebarCollapsed()"
+                [class.right-1]="sidebarCollapsed()">
+            {{ unreadMessages() > 99 ? '99+' : unreadMessages() }}
+          </span>
+        }
+      </a>
+
+      <a routerLink="/social/directory" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+         class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+         [class.justify-center]="sidebarCollapsed()">
+        <span class="material-symbols-outlined">people_alt</span>
+        @if (!sidebarCollapsed()) { <span>Directorio</span> }
+      </a>
+
+      <a routerLink="/social/connections" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+         class="relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+         [class.justify-center]="sidebarCollapsed()">
+        <span class="material-symbols-outlined">person_add</span>
+        @if (!sidebarCollapsed()) { <span>Conexiones</span> }
+        @if (pendingRequests() > 0) {
+          <span class="ml-auto min-w-[18px] h-[18px] rounded-full bg-accent text-white text-[10px] font-black flex items-center justify-center px-1"
+                [class.absolute]="sidebarCollapsed()"
+                [class.top-1]="sidebarCollapsed()"
+                [class.right-1]="sidebarCollapsed()">
+            {{ pendingRequests() }}
+          </span>
+        }
+      </a>
+    </nav>
+  </div>
+
+  <!-- Bottom -->
+  <div class="p-2 lg:p-4 border-t border-white/10 space-y-2">
+    <button (click)="logout()"
+      class="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold py-2.5 px-2 lg:px-4 rounded-lg transition-all text-xs border border-rose-500/20 flex items-center justify-center gap-2 uppercase tracking-wider"
+      [class.justify-center]="sidebarCollapsed()">
+      <span class="material-symbols-outlined">logout</span>
+      @if (!sidebarCollapsed()) { <span>Salir</span> }
+    </button>
+  </div>
+</aside>
+
+<main
+  class="flex-1 flex flex-col min-h-screen transition-all duration-300"
+  [class.ml-16]="sidebarCollapsed()"
+  [class.ml-64]="!sidebarCollapsed()"
+>
+  <!-- Header -->
+  <header class="bg-card-dark/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
+    <div class="flex items-center gap-3 px-4 lg:px-8 h-16">
+      <div class="flex-1 min-w-0">
+        <h1 class="text-base lg:text-lg font-black text-white tracking-tight">RED SOCIAL</h1>
+        <p class="text-[10px] text-slate-500 font-medium hidden sm:block uppercase tracking-widest">
+          Comunidad de Anunciantes
+        </p>
+      </div>
+
+      <!-- Notifications badge -->
+      <div class="flex items-center gap-2">
+        @if (unreadMessages() > 0 || pendingRequests() > 0) {
+          <div class="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5">
+            @if (unreadMessages() > 0) {
+              <span class="material-symbols-outlined text-primary" style="font-size:16px">chat</span>
+              <span class="text-xs font-black text-primary">{{ unreadMessages() }}</span>
+            }
+            @if (pendingRequests() > 0) {
+              <span class="material-symbols-outlined text-accent ml-1" style="font-size:16px">person_add</span>
+              <span class="text-xs font-black text-accent">{{ pendingRequests() }}</span>
+            }
+          </div>
+        }
+
+        <!-- Avatar + dropdown -->
+        <div class="relative flex-shrink-0">
+          <button
+            (click)="toggleProfileMenu()"
+            class="flex items-center gap-2 p-1 rounded-xl hover:bg-white/5 transition-all group"
+          >
+            <div class="w-8 h-8 lg:w-9 lg:h-9 rounded-full overflow-hidden border-2 transition-colors flex-shrink-0"
+              [class]="profileMenuOpen() ? 'border-primary/60' : 'border-white/10 group-hover:border-white/30'">
+              @if (profile()?.avatar_url) {
+                <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+              } @else {
+                <div class="w-full h-full bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center">
+                  <span class="text-black font-black text-xs">{{ getInitials() }}</span>
+                </div>
+              }
+            </div>
+            <span class="material-symbols-outlined text-slate-500 group-hover:text-slate-300 transition-colors hidden sm:block" style="font-size:14px">
+              {{ profileMenuOpen() ? 'expand_less' : 'expand_more' }}
+            </span>
+          </button>
+
+          @if (profileMenuOpen()) {
+            <div class="fixed inset-0 z-40" (click)="closeProfileMenu()"></div>
+            <div class="absolute top-full right-0 mt-2 w-64 bg-[#0d0d0d] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+              <div class="px-4 py-4 flex items-center gap-3 border-b border-white/5">
+                <div class="w-12 h-12 rounded-xl overflow-hidden border-2 border-white/10 flex-shrink-0">
+                  @if (profile()?.avatar_url) {
+                    <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+                  } @else {
+                    <div class="w-full h-full bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center">
+                      <span class="text-black font-black">{{ getInitials() }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-black text-white text-sm truncate">{{ profile()?.full_name || profile()?.username }}</p>
+                  <p class="text-xs text-slate-500 truncate">@{{ profile()?.username }}</p>
+                </div>
+              </div>
+              <div class="p-2">
+                <button
+                  (click)="goBackToDashboard(); closeProfileMenu()"
+                  class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group"
+                >
+                  <span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors" style="font-size:18px">dashboard</span>
+                  <span class="text-sm text-slate-300 group-hover:text-white transition-colors font-medium">Panel Anunciante</span>
+                </button>
+                <div class="my-1 border-t border-white/5"></div>
+                <button
+                  (click)="logout(); closeProfileMenu()"
+                  class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-rose-500/10 transition-all group"
+                >
+                  <span class="material-symbols-outlined text-slate-500 group-hover:text-rose-400 transition-colors" style="font-size:18px">logout</span>
+                  <span class="text-sm text-slate-400 group-hover:text-rose-400 transition-colors font-medium">Cerrar sesión</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="flex-1 flex flex-col">
+    <router-outlet></router-outlet>
+  </div>
+</main>

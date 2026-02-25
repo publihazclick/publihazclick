@@ -22,14 +22,14 @@
             Invita · Gana · Repite
           </p>
           <p class="text-slate-400 text-sm mt-2 max-w-md leading-relaxed">
-            Cada persona que se registra con tu enlace se convierte en tu afiliado.
+            Cada persona que se registra con tu enlace se convierte en tu invitado.
             Ganas comisiones cada vez que interactúa con la plataforma.
           </p>
         </div>
 
         <!-- Código de referido -->
         <div>
-          <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Tu Código de Afiliado</p>
+          <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Tu Código de Invitado</p>
           <div class="flex items-center gap-2">
             <code class="flex-1 bg-black/50 border border-primary/30 rounded-xl px-4 py-2.5 font-mono text-lg text-primary font-black tracking-widest">
               {{ profile()?.referral_code || '—' }}
@@ -51,7 +51,7 @@
 
         <!-- Enlace de referido -->
         <div>
-          <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Tu Enlace de Afiliado</p>
+          <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Tu Enlace de Invitado</p>
           <div class="flex items-center gap-2">
             <span class="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 font-mono text-xs text-slate-300 truncate block">
               {{ getReferralUrl() }}
@@ -75,11 +75,11 @@
       <!-- Stats verticales -->
       <div class="flex lg:flex-col gap-4 lg:gap-3 flex-wrap">
         <div class="flex-1 lg:flex-none bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-center min-w-[120px]">
-          <p class="text-3xl font-black text-white">{{ totalAfiliados }}</p>
-          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Total Afiliados</p>
+          <p class="text-3xl font-black text-white">{{ totalInvitados }}</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Total Invitados</p>
         </div>
         <div class="flex-1 lg:flex-none bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-center min-w-[120px]">
-          <p class="text-3xl font-black text-amber-400">{{ afiliadosActivos }}</p>
+          <p class="text-3xl font-black text-amber-400">{{ invitadosActivos }}</p>
           <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Con Paquete</p>
         </div>
         <div class="flex-1 lg:flex-none bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-center min-w-[120px]">
@@ -109,14 +109,14 @@
         <div class="w-8 h-8 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center flex-shrink-0 text-accent font-black text-sm">2</div>
         <div>
           <p class="font-bold text-white text-sm">Se registran</p>
-          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Al registrarse usando tu enlace quedan vinculados como tus afiliados de forma permanente.</p>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Al registrarse usando tu enlace quedan vinculados como tus invitados de forma permanente.</p>
         </div>
       </div>
       <div class="flex items-start gap-3">
         <div class="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 text-emerald-400 font-black text-sm">3</div>
         <div>
           <p class="font-bold text-white text-sm">Ganas comisiones</p>
-          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Cada vez que tu afiliado interactúa con la plataforma, una comisión se suma automáticamente a tu billetera.</p>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Cada vez que tu invitado interactúa con la plataforma, una comisión se suma automáticamente a tu billetera.</p>
         </div>
       </div>
     </div>
@@ -130,7 +130,7 @@
         <span class="material-symbols-outlined text-primary" style="font-size:22px">group</span>
       </div>
       <div class="flex-1 min-w-0">
-        <p class="font-black text-white text-sm">Ver mis Afiliados</p>
+        <p class="font-black text-white text-sm">Ver mis Invitados</p>
         <p class="text-xs text-slate-500 mt-0.5">Lista completa de tu red de referidos</p>
       </div>
       <span class="material-symbols-outlined text-slate-600 group-hover:text-slate-400 transition-colors" style="font-size:20px">chevron_right</span>

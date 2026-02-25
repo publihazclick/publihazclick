@@ -96,7 +96,7 @@
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
                [class.justify-center]="sidebarCollapsed()">
               <span class="material-icons">group</span>
-              @if (!sidebarCollapsed()) { <span>Mis Afiliados</span> }
+              @if (!sidebarCollapsed()) { <span>Mis Invitados</span> }
             </a>
           </li>
           <li>
@@ -311,7 +311,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
                   <span class="material-icons text-violet-400" style="font-size:14px">group</span>
-                  <span class="text-xs text-slate-400">Afiliados</span>
+                  <span class="text-xs text-slate-400">Invitados</span>
                 </div>
                 <span class="text-xs font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</span>
               </div>

@@ -1,0 +1,140 @@
+<!-- Toast -->
+@if (toast()) {
+  <div class="fixed top-6 right-6 z-[100] px-5 py-3 rounded-xl text-sm font-bold shadow-2xl flex items-center gap-2 animate-pulse"
+    [class.bg-emerald-500]="toast()!.type === 'success'"
+    [class.bg-rose-500]="toast()!.type === 'error'">
+    <span class="material-symbols-outlined text-base">{{ toast()!.type === 'success' ? 'check_circle' : 'error' }}</span>
+    {{ toast()!.msg }}
+  </div>
+}
+
+<div class="p-4 lg:p-8 max-w-7xl mx-auto w-full">
+
+  <!-- Header -->
+  <div class="mb-6">
+    <h2 class="text-2xl font-black text-white">Directorio de Anunciantes</h2>
+    <p class="text-sm text-slate-400 mt-1">Descubre y conecta con otros anunciantes de la comunidad</p>
+  </div>
+
+  <!-- Búsqueda -->
+  <div class="mb-6">
+    <div class="relative max-w-md">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500" style="font-size:18px">search</span>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Buscar por nombre o usuario..."
+        class="w-full bg-card-dark border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary/40 transition-colors"
+      >
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl p-5 animate-pulse">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-12 h-12 rounded-xl bg-white/5 flex-shrink-0"></div>
+            <div class="flex-1 space-y-2">
+              <div class="h-3 bg-white/5 rounded w-3/4"></div>
+              <div class="h-2 bg-white/5 rounded w-1/2"></div>
+            </div>
+          </div>
+          <div class="h-2 bg-white/5 rounded mb-2"></div>
+          <div class="h-2 bg-white/5 rounded w-3/4 mb-4"></div>
+          <div class="h-9 bg-white/5 rounded-xl"></div>
+        </div>
+      }
+    </div>
+  } @else if (advertisers().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+      <span class="material-symbols-outlined text-slate-600 mb-4" style="font-size:56px">people_alt</span>
+      <h3 class="text-lg font-bold text-slate-400 mb-2">No se encontraron anunciantes</h3>
+      <p class="text-sm text-slate-600">{{ searchTerm ? 'Intenta con otro término de búsqueda' : 'Sé el primero en unirte a la comunidad' }}</p>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      @for (advertiser of advertisers(); track advertiser.id) {
+        <div class="bg-card-dark border border-white/5 hover:border-white/10 rounded-2xl p-5 flex flex-col transition-all hover:shadow-lg hover:shadow-black/20">
+
+          <!-- Avatar + info -->
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+              @if (advertiser.avatar_url) {
+                <img [src]="advertiser.avatar_url" alt="avatar" class="w-full h-full object-cover">
+              } @else {
+                <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
+                  <span class="text-white font-black text-sm">{{ getInitials(advertiser.full_name, advertiser.username) }}</span>
+                </div>
+              }
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-bold text-white text-sm truncate">{{ advertiser.full_name || advertiser.username }}</p>
+              <p class="text-xs text-slate-500 truncate">&#64;{{ advertiser.username }}</p>
+            </div>
+          </div>
+
+          <!-- Business name -->
+          @if (advertiser.business_name) {
+            <p class="text-xs font-bold text-primary truncate mb-1">{{ advertiser.business_name }}</p>
+          }
+
+          <!-- Description -->
+          @if (advertiser.description) {
+            <p class="text-xs text-slate-400 line-clamp-2 mb-3 flex-1">{{ advertiser.description }}</p>
+          } @else {
+            <div class="flex-1"></div>
+          }
+
+          <!-- Tags -->
+          <div class="flex flex-wrap gap-1.5 mb-4">
+            @if (advertiser.category) {
+              <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:11px">category</span>
+                {{ advertiser.category }}
+              </span>
+            }
+            @if (advertiser.location) {
+              <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:11px">location_on</span>
+                {{ advertiser.location }}
+              </span>
+            }
+            <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:11px">group</span>
+              {{ advertiser.total_referrals_count }} afiliados
+            </span>
+          </div>
+
+          <!-- Acción -->
+          @if (advertiser.connection_status === 'accepted') {
+            <button
+              (click)="openChat(advertiser)"
+              [disabled]="actionLoading() === advertiser.id"
+              class="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition-all disabled:opacity-50"
+            >
+              <span class="material-symbols-outlined" style="font-size:15px">chat</span>
+              {{ actionLoading() === advertiser.id ? 'Abriendo...' : 'Enviar mensaje' }}
+            </button>
+          } @else if (advertiser.connection_status === 'pending') {
+            <div class="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
+              <span class="material-symbols-outlined" style="font-size:15px">schedule</span>
+              Solicitud enviada
+            </div>
+          } @else {
+            <button
+              (click)="sendRequest(advertiser)"
+              [disabled]="actionLoading() === advertiser.id"
+              class="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-xs font-bold border border-accent/20 transition-all disabled:opacity-50"
+            >
+              <span class="material-symbols-outlined" style="font-size:15px">person_add</span>
+              {{ actionLoading() === advertiser.id ? 'Enviando...' : 'Conectar' }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

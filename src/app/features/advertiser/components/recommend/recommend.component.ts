@@ -12,7 +12,7 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 
-interface AfiliadoItem {
+interface InvitadoItem {
   id: string;
   username: string;
   has_active_package: boolean;
@@ -33,17 +33,17 @@ export class AdvertiserRecommendComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly profile = this.profileService.profile;
-  readonly afiliados = signal<AfiliadoItem[]>([]);
+  readonly invitados = signal<InvitadoItem[]>([]);
   readonly loading = signal(true);
   readonly copied = signal<'code' | 'link' | null>(null);
 
   async ngOnInit(): Promise<void> {
     await this.profileService.getCurrentProfile().catch(() => {});
-    await this.loadAfiliados();
+    await this.loadInvitados();
     this.loading.set(false);
   }
 
-  private async loadAfiliados(): Promise<void> {
+  private async loadInvitados(): Promise<void> {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return;
     const { data } = await this.supabase
@@ -51,11 +51,11 @@ export class AdvertiserRecommendComponent implements OnInit {
       .select('id, username, has_active_package, created_at')
       .eq('referred_by', user.id)
       .order('created_at', { ascending: false });
-    if (data) this.afiliados.set(data as AfiliadoItem[]);
+    if (data) this.invitados.set(data as InvitadoItem[]);
   }
 
-  get totalAfiliados(): number { return this.afiliados().length; }
-  get afiliadosActivos(): number { return this.afiliados().filter(a => a.has_active_package).length; }
+  get totalInvitados(): number { return this.invitados().length; }
+  get invitadosActivos(): number { return this.invitados().filter(a => a.has_active_package).length; }
 
   formatCOP(amount: number): string {
     return this.currencyService.formatFromCOP(amount, 0);
