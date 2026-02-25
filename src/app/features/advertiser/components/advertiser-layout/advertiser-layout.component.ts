@@ -1,19 +1,21 @@
 import { Component, signal, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
+import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
 
 @Component({
   selector: 'app-advertiser-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, BannerSliderComponent],
   templateUrl: './advertiser-layout.component.html',
 })
 export class AdvertiserLayoutComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
+  private readonly router = inject(Router);
   readonly currencyService = inject(CurrencyService);
 
   isDarkMode = true;
@@ -70,5 +72,9 @@ export class AdvertiserLayoutComponent implements OnInit {
 
   logout(): void {
     this.authService.logout().subscribe();
+  }
+
+  isSettingsRoute(): boolean {
+    return this.router.url.includes('/settings');
   }
 }

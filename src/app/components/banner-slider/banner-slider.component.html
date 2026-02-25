@@ -1,6 +1,4 @@
-@if (loading()) {
-  <div class="w-full animate-pulse bg-zinc-900" style="height: clamp(180px, 25vw, 300px);"></div>
-} @else if (banners().length > 0) {
+@if (!loading() && banners().length > 0) {
   <div class="relative overflow-hidden" style="height: clamp(180px, 25vw, 300px);">
 
     <!-- Slides track -->

@@ -1,0 +1,338 @@
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white">Mi Anuncio</h2>
+    <p class="text-xs text-slate-400">Gestiona tu anuncio PTC. Solo puedes tener uno activo a la vez.</p>
+  </div>
+
+  <!-- Alertas -->
+  @if (successMsg()) {
+    <div class="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+      <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:18px">check_circle</span>
+      <p class="text-emerald-400 text-sm font-medium">{{ successMsg() }}</p>
+    </div>
+  }
+  @if (errorMsg()) {
+    <div class="flex items-center gap-3 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+      <span class="material-symbols-outlined text-rose-400 flex-shrink-0" style="font-size:18px">error</span>
+      <p class="text-rose-400 text-sm font-medium">{{ errorMsg() }}</p>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center py-20">
+      <div class="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  } @else if (!showForm()) {
+
+    @if (!myAd()) {
+      <!-- Sin anuncio: CTA crear -->
+      <div class="bg-card-dark border border-dashed border-white/10 rounded-2xl p-10 flex flex-col items-center text-center gap-4">
+        <div class="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+          <span class="material-symbols-outlined text-accent text-3xl">add_circle</span>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-white">Crea tu primer anuncio</h3>
+          <p class="text-slate-500 text-sm mt-1 max-w-sm">
+            Tu anuncio aparecerá en la plataforma para que otros usuarios lo vean y ganen recompensas.
+            Será revisado por el administrador antes de publicarse.
+          </p>
+        </div>
+        <button
+          (click)="openCreateForm()"
+          class="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all"
+        >
+          <span class="material-symbols-outlined">add</span>
+          Crear Anuncio
+        </button>
+      </div>
+    } @else {
+      <!-- Mi anuncio existente -->
+      <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+
+        <!-- Imagen + acciones -->
+        <div class="relative">
+          @if (myAd()!.image_url) {
+            <img [src]="myAd()!.image_url" [alt]="myAd()!.title" class="w-full h-48 sm:h-56 object-cover">
+          } @else {
+            <div class="w-full h-48 sm:h-56 bg-zinc-900 flex items-center justify-center">
+              <span class="material-symbols-outlined text-zinc-700 text-6xl">image</span>
+            </div>
+          }
+          <!-- Overlay status -->
+          <div class="absolute top-3 left-3">
+            <span class="text-[10px] font-black px-3 py-1 rounded-full border"
+              [class]="getStatusInfo(myAd()!.status).color">
+              {{ getStatusInfo(myAd()!.status).label }}
+            </span>
+          </div>
+          <!-- Tipo de anuncio -->
+          <div class="absolute top-3 right-3">
+            <span class="text-[10px] font-black px-2 py-1 rounded-full bg-accent/20 text-accent border border-accent/30">
+              {{ myAd()!.ad_type }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="p-5 space-y-3">
+          <h3 class="text-lg font-black text-white">{{ myAd()!.title }}</h3>
+          @if (myAd()!.description) {
+            <p class="text-slate-400 text-sm">{{ myAd()!.description }}</p>
+          }
+
+          <!-- Datos -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Tipo</p>
+              <p class="text-sm font-black text-white">{{ adTypeLabels[myAd()!.ad_type] || myAd()!.ad_type }}</p>
+            </div>
+            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Límite diario</p>
+              <p class="text-sm font-black text-white">{{ myAd()!.daily_limit }} vistas/día</p>
+            </div>
+            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Total vistas</p>
+              <p class="text-sm font-black text-emerald-400">{{ myAd()!.total_clicks }}</p>
+            </div>
+          </div>
+
+          <!-- URL destino -->
+          <div class="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5 min-w-0">
+            <span class="material-symbols-outlined text-accent flex-shrink-0" style="font-size:16px">link</span>
+            <a [href]="myAd()!.url" target="_blank" rel="noopener"
+               class="text-xs text-slate-400 hover:text-accent transition-colors truncate flex-1">
+              {{ myAd()!.url }}
+            </a>
+          </div>
+
+          @if (myAd()!.status === 'rejected') {
+            <div class="flex items-start gap-2 px-4 py-3 bg-rose-500/5 border border-rose-500/15 rounded-xl">
+              <span class="material-symbols-outlined text-rose-400 flex-shrink-0" style="font-size:16px">info</span>
+              <p class="text-xs text-rose-400">Tu anuncio fue rechazado por el administrador. Edítalo y vuelve a enviarlo.</p>
+            </div>
+          }
+
+          <!-- Acciones -->
+          <div class="flex gap-3 pt-2 flex-wrap">
+            <button
+              (click)="openEditForm()"
+              class="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-bold rounded-xl text-sm transition-all"
+            >
+              <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+              Editar
+            </button>
+            <button
+              (click)="showDeleteConfirm.set(true)"
+              class="flex items-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 font-bold rounded-xl text-sm transition-all"
+            >
+              <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nota informativa -->
+      <div class="flex items-start gap-3 px-4 py-3 bg-white/[0.02] border border-white/5 rounded-xl">
+        <span class="material-symbols-outlined text-slate-500 flex-shrink-0" style="font-size:16px">info</span>
+        <p class="text-xs text-slate-500">
+          Solo puedes tener un anuncio activo a la vez. Al editar, tu anuncio vuelve a estado <span class="text-amber-400 font-bold">pendiente</span> hasta que el administrador lo apruebe nuevamente.
+        </p>
+      </div>
+    }
+
+  } @else {
+    <!-- Formulario crear / editar -->
+    <div class="bg-card-dark border border-white/5 rounded-2xl p-5 sm:p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <h3 class="font-black text-white text-sm uppercase tracking-widest">
+          {{ myAd() ? 'Editar Anuncio' : 'Nuevo Anuncio' }}
+        </h3>
+        <button (click)="cancelForm()" class="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+          <span class="material-symbols-outlined" style="font-size:18px">close</span>
+        </button>
+      </div>
+
+      <!-- Título -->
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+          Título <span class="text-rose-400">*</span>
+        </label>
+        <input
+          type="text"
+          [ngModel]="form().title"
+          (ngModelChange)="updateForm('title', $event)"
+          placeholder="Nombre de tu anuncio"
+          maxlength="80"
+          class="w-full bg-white/5 border border-white/10 focus:border-accent/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+        >
+      </div>
+
+      <!-- Descripción -->
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Descripción</label>
+        <textarea
+          [ngModel]="form().description"
+          (ngModelChange)="updateForm('description', $event)"
+          placeholder="Describe brevemente tu producto o servicio"
+          rows="3"
+          maxlength="300"
+          class="w-full bg-white/5 border border-white/10 focus:border-accent/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors resize-none"
+        ></textarea>
+      </div>
+
+      <!-- URL destino + Tipo -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+            URL de destino <span class="text-rose-400">*</span>
+          </label>
+          <input
+            type="url"
+            [ngModel]="form().url"
+            (ngModelChange)="updateForm('url', $event)"
+            placeholder="https://tu-sitio.com"
+            class="w-full bg-white/5 border border-white/10 focus:border-accent/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+          >
+        </div>
+        <div>
+          <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Tipo de anuncio</label>
+          <select
+            [ngModel]="form().ad_type"
+            (ngModelChange)="updateForm('ad_type', $event)"
+            class="w-full bg-white/5 border border-white/10 focus:border-accent/50 rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-colors"
+          >
+            @for (key of adTypeKeys; track key) {
+              <option [value]="key" class="bg-zinc-900">{{ adTypeLabels[key] }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- Video URL -->
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+          Video (YouTube / YouTube Shorts / Facebook) — <span class="text-slate-600 normal-case">opcional</span>
+        </label>
+        <input
+          type="url"
+          [ngModel]="form().youtube_url"
+          (ngModelChange)="updateForm('youtube_url', $event)"
+          placeholder="https://www.youtube.com/watch?v=... o https://youtube.com/shorts/... o facebook.com/..."
+          class="w-full bg-white/5 border border-white/10 focus:border-accent/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+        >
+      </div>
+
+      <!-- Imagen -->
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+          Imagen del anuncio — <span class="text-slate-600 normal-case">opcional</span>
+        </label>
+        @if (form().image_url) {
+          <div class="relative mb-3 rounded-xl overflow-hidden border border-white/10 aspect-[16/9] bg-zinc-900">
+            <img [src]="form().image_url" alt="Preview" class="w-full h-full object-cover">
+            <button
+              (click)="updateForm('image_url', '')"
+              class="absolute top-2 right-2 p-1 bg-black/60 text-white rounded-lg hover:bg-black/80 transition-all"
+            >
+              <span class="material-symbols-outlined" style="font-size:16px">close</span>
+            </button>
+          </div>
+        }
+        <label class="cursor-pointer">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="hidden"
+            (change)="onImageChange($event)"
+            [disabled]="uploadingImage()"
+          >
+          <span class="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 rounded-xl text-sm font-bold text-slate-300 hover:text-white transition-all w-full justify-center">
+            @if (uploadingImage()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span>
+              Subiendo...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:16px">upload</span>
+              {{ form().image_url ? 'Cambiar imagen' : 'Subir imagen' }}
+            }
+          </span>
+        </label>
+        <p class="text-[10px] text-slate-600 mt-1.5">JPG, PNG o WebP · máx 2MB</p>
+      </div>
+
+      <!-- Límite diario -->
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+          Límite diario de vistas
+        </label>
+        <input
+          type="number"
+          [ngModel]="form().daily_limit"
+          (ngModelChange)="updateForm('daily_limit', +$event)"
+          min="1"
+          max="500"
+          class="w-full bg-white/5 border border-white/10 focus:border-accent/50 rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-colors"
+        >
+        <p class="text-[10px] text-slate-600 mt-1.5">Número máximo de usuarios que pueden ver este anuncio por día.</p>
+      </div>
+
+      <!-- Botones -->
+      <div class="flex gap-3 pt-2 flex-wrap">
+        <button
+          (click)="save()"
+          [disabled]="saving() || uploadingImage()"
+          class="flex items-center gap-2 px-6 py-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all"
+        >
+          @if (saving()) {
+            <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span>
+            Guardando...
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:16px">send</span>
+            {{ myAd() ? 'Guardar y enviar a revisión' : 'Crear y enviar a revisión' }}
+          }
+        </button>
+        <button
+          (click)="cancelForm()"
+          class="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white font-bold rounded-xl text-sm transition-all"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  }
+
+</div>
+
+<!-- Modal confirmación eliminar -->
+@if (showDeleteConfirm()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" (click)="showDeleteConfirm.set(false)"></div>
+    <div class="relative bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-rose-400">delete</span>
+        </div>
+        <div>
+          <h3 class="font-black text-white text-sm">¿Eliminar anuncio?</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Esta acción no se puede deshacer.</p>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button
+          (click)="deleteAd()"
+          class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-400 text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all"
+        >
+          Eliminar
+        </button>
+        <button
+          (click)="showDeleteConfirm.set(false)"
+          class="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 font-bold rounded-xl text-sm transition-all"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -35,10 +35,21 @@ export class UserWalletComponent implements OnInit {
   readonly profile = this.profileService.profile;
   readonly withdrawals = signal<WithdrawalRecord[]>([]);
   readonly loading = signal(true);
+  readonly hasActiveAffiliate = signal(false);
+
+  readonly MIN_WITHDRAWAL = 80_000;
+
+  get canWithdraw(): boolean {
+    return (this.profile()?.real_balance ?? 0) >= this.MIN_WITHDRAWAL && this.hasActiveAffiliate();
+  }
+
+  get hasEnoughBalance(): boolean {
+    return (this.profile()?.real_balance ?? 0) >= this.MIN_WITHDRAWAL;
+  }
 
   async ngOnInit(): Promise<void> {
     await this.profileService.getCurrentProfile().catch(() => {});
-    await this.loadWithdrawals();
+    await Promise.all([this.loadWithdrawals(), this.checkActiveAffiliate()]);
     this.loading.set(false);
   }
 
@@ -56,6 +67,22 @@ export class UserWalletComponent implements OnInit {
       .limit(10);
 
     if (data) this.withdrawals.set(data as WithdrawalRecord[]);
+  }
+
+  private async checkActiveAffiliate(): Promise<void> {
+    const {
+      data: { user },
+    } = await this.supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('referred_by', user.id)
+      .eq('role', 'advertiser')
+      .limit(1);
+
+    this.hasActiveAffiliate.set((data?.length ?? 0) > 0);
   }
 
   formatCOP(amount: number): string {

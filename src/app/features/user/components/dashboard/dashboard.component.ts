@@ -12,7 +12,6 @@ import { RouterModule } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { WalletStateService } from '../../../../core/services/wallet-state.service';
-import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
 import { PackagePromoModalComponent } from '../../../../components/package-promo-modal/package-promo-modal.component';
 import type { Profile } from '../../../../core/models/profile.model';
 
@@ -34,7 +33,7 @@ interface PlatformTier {
   selector: 'app-user-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterModule, BannerSliderComponent, PackagePromoModalComponent],
+  imports: [CommonModule, RouterModule, PackagePromoModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })

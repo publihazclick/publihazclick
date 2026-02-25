@@ -1,0 +1,151 @@
+<div class="space-y-8">
+
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white">Recomienda y Gana</h2>
+    <p class="text-xs text-slate-400">Comparte tu enlace, crece tu red y aumenta tus comisiones</p>
+  </div>
+
+  <!-- ══ HERO: código + enlace ══ -->
+  <div class="relative overflow-hidden bg-gradient-to-br from-primary/10 via-[#0a0a0a] to-accent/10 border border-primary/20 rounded-3xl p-6 sm:p-8">
+    <!-- Glow -->
+    <div class="absolute inset-0 pointer-events-none opacity-20"
+         style="background: radial-gradient(ellipse at 20% 50%, #00E5FF, transparent 60%), radial-gradient(ellipse at 80% 50%, #FF007F, transparent 60%)">
+    </div>
+
+    <div class="relative z-10 flex flex-col lg:flex-row lg:items-center gap-8">
+
+      <!-- Texto + inputs -->
+      <div class="flex-1 space-y-5">
+        <div>
+          <p class="text-white font-black text-2xl leading-tight">
+            Invita · Gana · Repite
+          </p>
+          <p class="text-slate-400 text-sm mt-2 max-w-md leading-relaxed">
+            Cada persona que se registra con tu enlace se convierte en tu afiliado.
+            Ganas comisiones cada vez que interactúa con la plataforma.
+          </p>
+        </div>
+
+        <!-- Código de referido -->
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Tu Código de Afiliado</p>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 bg-black/50 border border-primary/30 rounded-xl px-4 py-2.5 font-mono text-lg text-primary font-black tracking-widest">
+              {{ profile()?.referral_code || '—' }}
+            </code>
+            <button
+              (click)="copyToClipboard(profile()?.referral_code ?? '', 'code')"
+              class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
+              [class]="copied() === 'code'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-white/10 hover:bg-white/20 text-slate-300'"
+            >
+              <span class="material-symbols-outlined" style="font-size:16px">
+                {{ copied() === 'code' ? 'check' : 'content_copy' }}
+              </span>
+              {{ copied() === 'code' ? 'Copiado' : 'Copiar' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Enlace de referido -->
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Tu Enlace de Afiliado</p>
+          <div class="flex items-center gap-2">
+            <span class="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 font-mono text-xs text-slate-300 truncate block">
+              {{ getReferralUrl() }}
+            </span>
+            <button
+              (click)="copyToClipboard(getReferralUrl(), 'link')"
+              class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
+              [class]="copied() === 'link'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-white/10 hover:bg-white/20 text-slate-300'"
+            >
+              <span class="material-symbols-outlined" style="font-size:16px">
+                {{ copied() === 'link' ? 'check' : 'link' }}
+              </span>
+              {{ copied() === 'link' ? 'Copiado' : 'Copiar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats verticales -->
+      <div class="flex lg:flex-col gap-4 lg:gap-3 flex-wrap">
+        <div class="flex-1 lg:flex-none bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-center min-w-[120px]">
+          <p class="text-3xl font-black text-white">{{ totalAfiliados }}</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Total Afiliados</p>
+        </div>
+        <div class="flex-1 lg:flex-none bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-center min-w-[120px]">
+          <p class="text-3xl font-black text-amber-400">{{ afiliadosActivos }}</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Con Paquete</p>
+        </div>
+        <div class="flex-1 lg:flex-none bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-center min-w-[120px]">
+          <p class="text-xl font-black text-primary">{{ formatCOP(profile()?.referral_earnings ?? 0) }}</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Ganancias</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ CÓMO FUNCIONA ══ -->
+  <div class="bg-card-dark border border-white/5 rounded-2xl p-6">
+    <h3 class="font-black text-white text-sm mb-5 flex items-center gap-2">
+      <span class="material-symbols-outlined text-primary" style="font-size:18px">help_outline</span>
+      ¿Cómo funciona?
+    </h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 text-primary font-black text-sm">1</div>
+        <div>
+          <p class="font-bold text-white text-sm">Comparte tu enlace</p>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Envía tu código o enlace a personas interesadas por WhatsApp, redes sociales o directamente.</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center flex-shrink-0 text-accent font-black text-sm">2</div>
+        <div>
+          <p class="font-bold text-white text-sm">Se registran</p>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Al registrarse usando tu enlace quedan vinculados como tus afiliados de forma permanente.</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 text-emerald-400 font-black text-sm">3</div>
+        <div>
+          <p class="font-bold text-white text-sm">Ganas comisiones</p>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Cada vez que tu afiliado interactúa con la plataforma, una comisión se suma automáticamente a tu billetera.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ACCESO RÁPIDO ══ -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <a routerLink="/advertiser/referrals"
+       class="group flex items-center gap-4 bg-card-dark hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-2xl p-5 transition-all">
+      <div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-primary" style="font-size:22px">group</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-black text-white text-sm">Ver mis Afiliados</p>
+        <p class="text-xs text-slate-500 mt-0.5">Lista completa de tu red de referidos</p>
+      </div>
+      <span class="material-symbols-outlined text-slate-600 group-hover:text-slate-400 transition-colors" style="font-size:20px">chevron_right</span>
+    </a>
+    <a routerLink="/advertiser/leader"
+       class="group flex items-center gap-4 bg-card-dark hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-2xl p-5 transition-all">
+      <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-amber-400" style="font-size:22px">military_tech</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-black text-white text-sm">Ver mi Líder</p>
+        <p class="text-xs text-slate-500 mt-0.5">Conoce quién te invitó a la plataforma</p>
+      </div>
+      <span class="material-symbols-outlined text-slate-600 group-hover:text-slate-400 transition-colors" style="font-size:20px">chevron_right</span>
+    </a>
+  </div>
+
+</div>

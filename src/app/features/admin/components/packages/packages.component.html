@@ -357,6 +357,7 @@
                 <th class="px-6 py-4">Fin</th>
                 <th class="px-6 py-4">Estado</th>
                 <th class="px-6 py-4">Monto</th>
+                <th class="px-6 py-4">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-white/5">
@@ -383,6 +384,18 @@
                   </td>
                   <td class="px-6 py-4 font-bold text-white text-sm">
                     {{ up.amount_paid ? formatCurrency(up.amount_paid) : '-' }}
+                  </td>
+                  <td class="px-6 py-4">
+                    @if (up.status === 'active') {
+                      <button
+                        (click)="openRevokeModal(up)"
+                        class="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-bold transition-colors"
+                        title="Quitar paquete"
+                      >
+                        <span class="material-symbols-outlined text-base">remove_circle</span>
+                        Quitar
+                      </button>
+                    }
                   </td>
                 </tr>
               }
@@ -427,6 +440,17 @@
                 <span class="font-bold text-primary">{{ up.amount_paid ? formatCurrency(up.amount_paid) : '-' }}</span>
               </div>
             </div>
+            @if (up.status === 'active') {
+              <div class="mt-3 pt-3 border-t border-white/5">
+                <button
+                  (click)="openRevokeModal(up)"
+                  class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl text-sm font-bold transition-colors"
+                >
+                  <span class="material-symbols-outlined text-base">remove_circle</span>
+                  Quitar paquete
+                </button>
+              </div>
+            }
           </div>
         }
       </div>
@@ -466,6 +490,77 @@
         </div>
       }
     }
+  }
+
+  <!-- ═══ MODAL CONFIRMAR REVOCACIÓN ═══ -->
+  @if (revokeTarget()) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
+        <div class="px-6 py-5 border-b border-white/10 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-rose-400 text-xl">remove_circle</span>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white">Quitar paquete</h2>
+            <p class="text-xs text-slate-400">Esta acción no se puede deshacer</p>
+          </div>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <div class="bg-white/5 rounded-xl p-4 space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-slate-400">Usuario</span>
+              <span class="font-bold text-white">{{ revokeTarget()!.username || revokeTarget()!.email }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Paquete</span>
+              <span class="font-bold text-white">{{ revokeTarget()!.package_name }}</span>
+            </div>
+          </div>
+
+          <div class="bg-rose-500/5 border border-rose-500/20 rounded-xl p-4 space-y-2">
+            <p class="text-sm font-bold text-rose-400">Al confirmar:</p>
+            <ul class="space-y-1.5 text-sm text-slate-300">
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-rose-400 text-base">delete</span>
+                La asignación se eliminará del historial
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-400 text-base">swap_horiz</span>
+                El rol cambiará de <strong class="text-amber-400">Anunciante</strong> a <strong class="text-blue-400">Usuario</strong>
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
+                El usuario podrá recibir un nuevo paquete
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+          <button
+            (click)="closeRevokeModal()"
+            [disabled]="revoking()"
+            class="px-4 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 disabled:opacity-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            (click)="confirmRevoke()"
+            [disabled]="revoking()"
+            class="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
+          >
+            @if (revoking()) {
+              <span class="material-symbols-outlined text-lg animate-spin">sync</span>
+              Revocando...
+            } @else {
+              <span class="material-symbols-outlined text-lg">remove_circle</span>
+              Quitar paquete
+            }
+          </button>
+        </div>
+      </div>
+    </div>
   }
 
   <!-- ═══ MODAL CREAR / EDITAR PAQUETE ═══ -->

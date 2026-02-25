@@ -1,10 +1,83 @@
 <div class="space-y-6">
-  <div class="flex items-center justify-between">
+
+  <!-- Toast de éxito -->
+  @if (successToast()) {
+    <div class="fixed top-6 right-6 z-[100] flex items-center gap-3 bg-emerald-500 text-white px-5 py-3.5 rounded-2xl shadow-2xl shadow-emerald-500/30 max-w-sm">
+      <span class="material-symbols-outlined text-xl flex-shrink-0">check_circle</span>
+      <p class="text-sm font-semibold">{{ successToast() }}</p>
+    </div>
+  }
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-xl font-black">Ver Anuncios</h2>
+      <h2 class="text-xl font-black text-white">Ver Anuncios</h2>
       <p class="text-xs text-slate-400">Haz click en los anuncios disponibles para ganar dinero</p>
     </div>
+    <!-- Botones para anunciantes -->
+    @if (isAdvertiser()) {
+      <div class="flex items-center gap-2 flex-wrap">
+        <button
+          (click)="openPtcModal()"
+          class="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors"
+        >
+          <span class="material-symbols-outlined text-base">add</span>
+          Crear Anuncio PTC
+        </button>
+        <button
+          (click)="openBannerModal()"
+          class="flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-xl font-bold text-sm hover:bg-white/15 transition-colors border border-white/10"
+        >
+          <span class="material-symbols-outlined text-base">image</span>
+          Crear Banner
+        </button>
+      </div>
+    }
   </div>
+
+  <!-- CTA: solo para usuarios sin paquete -->
+  @if (!isAdvertiser()) {
+    <div class="bg-gradient-to-br from-primary/10 to-accent/5 border border-primary/20 rounded-2xl p-6 sm:p-10 flex flex-col items-center text-center gap-4">
+      <div class="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary text-3xl">workspace_premium</span>
+      </div>
+      <div>
+        <h3 class="text-lg font-black text-white">Activa tu plan para ganar</h3>
+        <p class="text-slate-400 text-sm mt-1 max-w-sm">
+          Los anuncios PTC están disponibles exclusivamente para usuarios con un paquete activo.
+          Activa tu plan y empieza a ganar desde hoy.
+        </p>
+      </div>
+      <!-- Beneficios -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-md text-left">
+        <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+          <p class="text-primary font-black text-base">2,000 COP</p>
+          <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Diarios garantizados</p>
+        </div>
+        <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+          <p class="text-accent font-black text-base">+10,000 COP</p>
+          <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Por afiliado activo</p>
+        </div>
+        <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+          <p class="text-emerald-400 font-black text-base">70,000 COP</p>
+          <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Mínimo en 30 días</p>
+        </div>
+      </div>
+      <a
+        routerLink="/dashboard/packages"
+        class="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-black font-black rounded-xl text-sm uppercase tracking-wider transition-all"
+      >
+        <span class="material-symbols-outlined">shopping_cart</span>
+        Ver Paquetes
+      </a>
+    </div>
+    <p class="text-center text-slate-600 text-xs">
+      ¿Ya tienes un paquete? <a routerLink="/login" class="text-primary hover:underline">Inicia sesión nuevamente</a> para actualizar tu sesión.
+    </p>
+  }
+
+  <!-- Contenido solo para anunciantes -->
+  @if (isAdvertiser()) {
 
   @if (loading()) {
     <div class="flex justify-center items-center py-16">
@@ -17,10 +90,34 @@
       <button (click)="loadAds()" class="mt-4 px-4 py-2 bg-primary text-black text-xs font-bold rounded-lg">Reintentar</button>
     </div>
   } @else if (ads().length === 0) {
-    <div class="bg-card-dark border border-white/5 rounded-xl p-12 text-center">
-      <span class="material-symbols-outlined text-slate-600 text-5xl mb-3 block">campaign</span>
-      <p class="text-slate-400 font-bold">No hay anuncios disponibles en este momento</p>
-      <p class="text-slate-600 text-xs mt-1">Vuelve más tarde para encontrar nuevos anuncios</p>
+    <!-- Estado "Próximamente" -->
+    <div class="bg-gradient-to-br from-primary/5 to-accent/5 border border-white/10 rounded-2xl p-10 sm:p-16 flex flex-col items-center text-center gap-5">
+      <div class="relative">
+        <div class="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary" style="font-size:40px">campaign</span>
+        </div>
+        <span class="absolute -top-2 -right-2 px-2 py-0.5 bg-accent text-white text-[10px] font-black rounded-full uppercase tracking-wider">Pronto</span>
+      </div>
+      <div>
+        <h3 class="text-xl font-black text-white">Próximamente</h3>
+        <p class="text-slate-400 text-sm mt-2 max-w-sm">
+          Los anuncios PTC estarán disponibles muy pronto. Sé el primero en ganar cuando se activen.
+        </p>
+      </div>
+      <div class="flex flex-wrap justify-center gap-3">
+        <div class="px-4 py-2.5 bg-black/30 border border-white/5 rounded-xl text-center">
+          <p class="text-primary font-black text-sm">400 – 2,000 COP</p>
+          <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Por anuncio</p>
+        </div>
+        <div class="px-4 py-2.5 bg-black/30 border border-white/5 rounded-xl text-center">
+          <p class="text-accent font-black text-sm">9 clicks / día</p>
+          <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Límite diario</p>
+        </div>
+        <div class="px-4 py-2.5 bg-black/30 border border-white/5 rounded-xl text-center">
+          <p class="text-emerald-400 font-black text-sm">Pago directo</p>
+          <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">A tu billetera</p>
+        </div>
+      </div>
     </div>
   } @else {
 
@@ -240,6 +337,8 @@
       </div>
     }
   }
+  } <!-- end @if isAdvertiser -->
+
 </div>
 
 @if (isModalOpen()) {
@@ -249,4 +348,294 @@
     (close)="closeModal()"
     (rewardClaimed)="onRewardClaimed($event)"
   />
+}
+
+<!-- ══ MODAL CREAR ANUNCIO PTC ══════════════════════════════════════════ -->
+@if (showPtcModal()) {
+  <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+
+      <!-- Header -->
+      <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-xl">add_circle</span>
+          Crear Anuncio PTC
+        </h2>
+        <button (click)="closePtcModal()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Error -->
+      @if (ptcModalError()) {
+        <div class="mx-6 mt-5 flex items-start gap-3 bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+          <span class="material-symbols-outlined text-rose-400 flex-shrink-0 mt-0.5">error</span>
+          <p class="text-rose-400 text-sm">{{ ptcModalError() }}</p>
+        </div>
+      }
+
+      <div class="p-6 space-y-5">
+
+        <!-- Info de precio fijo -->
+        <div class="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl p-4">
+          <span class="material-symbols-outlined text-primary flex-shrink-0">info</span>
+          <div>
+            <p class="text-sm font-bold text-white">Anuncio Estándar 400 COP</p>
+            <p class="text-xs text-slate-400 mt-0.5">Tu anuncio pagará <span class="text-primary font-bold">400 COP</span> por cada usuario que lo vea · 9 clicks/día · pendiente de revisión</p>
+          </div>
+        </div>
+
+        <!-- Imagen -->
+        <div>
+          <label class="block text-xs font-semibold mb-2 text-slate-400 uppercase tracking-wide">
+            Imagen del Anuncio
+            @if (uploadingPtc()) {
+              <span class="ml-2 text-primary normal-case font-normal">Subiendo...</span>
+            }
+          </label>
+          <div class="relative group">
+            @if (ptcFormData.image_url) {
+              <div class="relative w-full h-48 rounded-xl overflow-hidden bg-white/5">
+                <img [src]="ptcFormData.image_url" alt="Vista previa" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                  <label class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors">
+                    @if (uploadingPtc()) {
+                      <span class="material-symbols-outlined text-xl animate-spin">sync</span>
+                      Subiendo...
+                    } @else {
+                      <span class="material-symbols-outlined text-xl">photo_camera</span>
+                      Cambiar imagen
+                    }
+                    <input type="file" accept="image/*" class="hidden" (change)="onPtcImageSelected($event)" [disabled]="uploadingPtc()">
+                  </label>
+                  <button type="button" (click)="ptcFormData = { ...ptcFormData, image_url: '' }" class="text-xs text-rose-400 hover:text-rose-300">Quitar imagen</button>
+                </div>
+              </div>
+              <p class="text-xs text-slate-600 mt-1.5">Pasa el cursor sobre la imagen para cambiarla</p>
+            } @else {
+              <label class="flex flex-col items-center justify-center w-full h-36 rounded-xl border-2 border-dashed border-white/20 bg-white/5 hover:bg-white/[0.07] hover:border-primary/50 transition-all cursor-pointer">
+                @if (uploadingPtc()) {
+                  <span class="material-symbols-outlined text-primary text-4xl animate-spin mb-2">sync</span>
+                  <span class="text-sm text-slate-400">Subiendo imagen...</span>
+                } @else {
+                  <span class="material-symbols-outlined text-slate-500 text-4xl mb-2">cloud_upload</span>
+                  <span class="text-sm text-slate-400 font-medium">Haz clic para subir imagen</span>
+                  <span class="text-xs text-slate-600 mt-1">JPEG, PNG, WebP — máx. 5MB</span>
+                }
+                <input type="file" accept="image/*" class="hidden" (change)="onPtcImageSelected($event)" [disabled]="uploadingPtc()">
+              </label>
+            }
+          </div>
+        </div>
+
+        <!-- Campos del formulario -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Nombre de la empresa *</label>
+            <input
+              type="text"
+              [(ngModel)]="ptcFormData.title"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Nombre de la empresa o negocio"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Descripción</label>
+            <textarea
+              [(ngModel)]="ptcFormData.description"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary resize-none"
+              rows="2"
+              placeholder="Descripción breve del anuncio"
+            ></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">URL de Destino *</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">link</span>
+              <input
+                type="url"
+                [(ngModel)]="ptcFormData.url"
+                class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                placeholder="https://tu-sitio.com"
+              />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">
+              Video de YouTube
+              <span class="ml-1 font-normal normal-case text-slate-600">(opcional)</span>
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 text-base">play_circle</span>
+              <input
+                type="url"
+                [(ngModel)]="ptcFormData.youtube_url"
+                class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer botones -->
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
+          <button
+            (click)="closePtcModal()"
+            class="px-5 py-2.5 text-sm font-bold text-slate-400 hover:text-white transition-colors"
+            [disabled]="savingPtc()"
+          >Cancelar</button>
+          <button
+            (click)="savePtcAd()"
+            class="flex items-center gap-2 px-6 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="savingPtc() || uploadingPtc()"
+          >
+            @if (savingPtc()) {
+              <span class="material-symbols-outlined text-base animate-spin">sync</span>
+              Enviando...
+            } @else {
+              <span class="material-symbols-outlined text-base">send</span>
+              Enviar para revisión
+            }
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══ MODAL CREAR BANNER ════════════════════════════════════════════════ -->
+@if (showBannerModal()) {
+  <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+
+      <!-- Header -->
+      <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-xl">add_circle</span>
+          Crear Banner
+        </h2>
+        <button (click)="closeBannerModal()" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Error -->
+      @if (bannerModalError()) {
+        <div class="mx-6 mt-5 flex items-start gap-3 bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+          <span class="material-symbols-outlined text-rose-400 flex-shrink-0 mt-0.5">error</span>
+          <p class="text-rose-400 text-sm">{{ bannerModalError() }}</p>
+        </div>
+      }
+
+      <div class="p-6 space-y-5">
+
+        <!-- Info -->
+        <div class="flex items-center gap-3 bg-violet-500/5 border border-violet-500/20 rounded-xl p-4">
+          <span class="material-symbols-outlined text-violet-400 flex-shrink-0">info</span>
+          <p class="text-xs text-slate-400">Tu banner aparecerá en la plataforma una vez sea revisado y aprobado por el equipo.</p>
+        </div>
+
+        <!-- Imagen del banner -->
+        <div>
+          <label class="block text-xs font-semibold mb-2 text-slate-400 uppercase tracking-wide">
+            Imagen del Banner
+            @if (uploadingBanner()) {
+              <span class="ml-2 text-primary normal-case font-normal">Subiendo...</span>
+            }
+          </label>
+          <div class="relative group">
+            @if (bannerFormData.image_url) {
+              <div class="relative w-full h-48 rounded-xl overflow-hidden bg-white/5">
+                <img [src]="bannerFormData.image_url" alt="Vista previa" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                  <label class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors">
+                    @if (uploadingBanner()) {
+                      <span class="material-symbols-outlined text-xl animate-spin">sync</span>
+                      Subiendo...
+                    } @else {
+                      <span class="material-symbols-outlined text-xl">photo_camera</span>
+                      Cambiar imagen
+                    }
+                    <input type="file" accept="image/*" class="hidden" (change)="onBannerImageSelected($event)" [disabled]="uploadingBanner()">
+                  </label>
+                  <button type="button" (click)="bannerFormData = { ...bannerFormData, image_url: '' }" class="text-xs text-rose-400 hover:text-rose-300">Quitar imagen</button>
+                </div>
+              </div>
+              <p class="text-xs text-slate-600 mt-1.5">Pasa el cursor sobre la imagen para cambiarla</p>
+            } @else {
+              <label class="flex flex-col items-center justify-center w-full h-36 rounded-xl border-2 border-dashed border-white/20 bg-white/5 hover:bg-white/[0.07] hover:border-primary/50 transition-all cursor-pointer">
+                @if (uploadingBanner()) {
+                  <span class="material-symbols-outlined text-primary text-4xl animate-spin mb-2">sync</span>
+                  <span class="text-sm text-slate-400">Subiendo imagen...</span>
+                } @else {
+                  <span class="material-symbols-outlined text-slate-500 text-4xl mb-2">cloud_upload</span>
+                  <span class="text-sm text-slate-400 font-medium">Haz clic para subir imagen</span>
+                  <span class="text-xs text-slate-600 mt-1">JPEG, PNG, WebP — recomendado 728×90 o 300×250</span>
+                }
+                <input type="file" accept="image/*" class="hidden" (change)="onBannerImageSelected($event)" [disabled]="uploadingBanner()">
+              </label>
+            }
+          </div>
+        </div>
+
+        <!-- Campos del formulario -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Nombre del banner *</label>
+            <input
+              type="text"
+              [(ngModel)]="bannerFormData.name"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Nombre de tu banner"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Descripción</label>
+            <textarea
+              [(ngModel)]="bannerFormData.description"
+              class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary resize-none"
+              rows="2"
+              placeholder="Descripción opcional del banner"
+            ></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">URL de Destino *</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">link</span>
+              <input
+                type="url"
+                [(ngModel)]="bannerFormData.url"
+                class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary"
+                placeholder="https://tu-sitio.com"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer botones -->
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
+          <button
+            (click)="closeBannerModal()"
+            class="px-5 py-2.5 text-sm font-bold text-slate-400 hover:text-white transition-colors"
+            [disabled]="savingBanner()"
+          >Cancelar</button>
+          <button
+            (click)="saveBannerAd()"
+            class="flex items-center gap-2 px-6 py-2.5 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="savingBanner() || uploadingBanner()"
+          >
+            @if (savingBanner()) {
+              <span class="material-symbols-outlined text-base animate-spin">sync</span>
+              Enviando...
+            } @else {
+              <span class="material-symbols-outlined text-base">send</span>
+              Enviar para revisión
+            }
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
 }

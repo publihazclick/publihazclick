@@ -6,11 +6,12 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { WalletStateService } from '../../../../core/services/wallet-state.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
 import { UserReferralModalComponent } from '../user-referral-modal/user-referral-modal.component';
+import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
 
 @Component({
   selector: 'app-user-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, UserReferralModalComponent],
+  imports: [CommonModule, RouterModule, UserReferralModalComponent, BannerSliderComponent],
   templateUrl: './user-layout.component.html',
   styleUrl: './user-layout.component.scss',
 })
@@ -97,5 +98,9 @@ export class UserLayoutComponent implements OnInit {
 
   openReferralModal(): void {
     this.referralModal?.open();
+  }
+
+  isSettingsRoute(): boolean {
+    return this.router.url.includes('/settings');
   }
 }

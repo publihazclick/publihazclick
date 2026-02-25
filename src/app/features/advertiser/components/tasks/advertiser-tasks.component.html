@@ -1,0 +1,237 @@
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white">Mis Tareas Diarias</h2>
+    <p class="text-xs text-slate-400">Anuncios disponibles hoy según tu plan y afiliados activos</p>
+  </div>
+
+  @if (loading()) {
+    <div class="flex justify-center items-center py-20">
+      <div class="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  } @else {
+
+    <!-- Stats rápidas -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-card-dark border border-white/5 rounded-xl p-3 text-center">
+        <p class="text-xl font-black text-cyan-400">{{ standardDoneCount() }}<span class="text-sm text-slate-500">/{{ standardSlots().length }}</span></p>
+        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Tareas hoy</p>
+      </div>
+      <div class="bg-card-dark border border-white/5 rounded-xl p-3 text-center">
+        <p class="text-xl font-black text-purple-400">{{ megaDoneCount() }}<span class="text-sm text-slate-500">/{{ megaSlots().length }}</span></p>
+        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Mega hechos</p>
+      </div>
+      <div class="bg-card-dark border border-white/5 rounded-xl p-3 text-center">
+        <p class="text-xl font-black text-emerald-400">{{ affiliatesWithPackage() }}</p>
+        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Afiliados activos</p>
+      </div>
+      <div class="bg-card-dark border border-white/5 rounded-xl p-3 text-center">
+        <p class="text-xl font-black text-white">{{ formatReward(maxDailyOwn() + maxDailyMega()) }}</p>
+        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Máx. disponible</p>
+      </div>
+    </div>
+
+    <!-- Tareas base: standard_400 + mini -->
+    <div>
+      <div class="flex items-center gap-3 mb-1">
+        <span class="material-symbols-outlined text-cyan-400">task_alt</span>
+        <h3 class="text-base font-black uppercase tracking-tight text-white">Tareas del Día</h3>
+        <span class="px-2 py-0.5 bg-white/5 text-slate-400 text-[10px] font-bold rounded-full">{{ formatReward(maxDailyOwn()) }}/día</span>
+      </div>
+      <p class="text-xs text-slate-500 mb-4 flex items-center gap-1">
+        <span class="material-symbols-outlined text-[14px] text-cyan-500/60">schedule</span>
+        Se reinician automáticamente cada día a medianoche. No son acumulables.
+      </p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        @for (slot of standardSlots(); track $index) {
+          <div
+            class="bg-card-dark border rounded-xl overflow-hidden flex flex-col transition-all"
+            [class]="{
+              'border-white/5 opacity-50': slot.viewed,
+              'border-white/5 hover:border-cyan-500/30 hover:-translate-y-0.5 cursor-pointer': !slot.viewed && !!slot.id && slot.adType === 'standard_400',
+              'border-white/5 hover:border-emerald-500/30 hover:-translate-y-0.5 cursor-pointer': !slot.viewed && !!slot.id && slot.adType === 'mini',
+              'border-dashed border-white/10': !slot.id
+            }"
+            (click)="openModal(slot)"
+          >
+            <!-- Imagen / placeholder -->
+            <div class="relative aspect-[16/9] bg-zinc-900 overflow-hidden">
+              @if (slot.imageUrl) {
+                <img [src]="slot.imageUrl" [alt]="slot.title" class="w-full h-full object-cover">
+              } @else {
+                <div class="w-full h-full flex flex-col items-center justify-center gap-2">
+                  <span class="material-symbols-outlined text-slate-700 text-4xl">campaign</span>
+                  @if (!slot.id) {
+                    <p class="text-[10px] text-slate-600 font-bold uppercase">Próximamente</p>
+                  }
+                </div>
+              }
+              @if (slot.viewed) {
+                <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-emerald-400 text-4xl">check_circle</span>
+                </div>
+              }
+              <!-- Badge tipo -->
+              <div class="absolute top-2 left-2">
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full"
+                  [class]="slot.adType === 'standard_400'
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'">
+                  {{ slot.adType === 'standard_400' ? 'Anuncio 400' : 'Mini' }}
+                </span>
+              </div>
+              <!-- Badge recompensa -->
+              <div class="absolute top-2 right-2">
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-black">
+                  +{{ formatReward(slot.rewardCOP) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Info -->
+            <div class="p-3 flex-1 flex flex-col gap-2">
+              <p class="text-sm font-bold text-white line-clamp-1">{{ slot.title }}</p>
+              <p class="text-xs text-slate-500 line-clamp-2 flex-1">{{ slot.description }}</p>
+              <button
+                [disabled]="!slot.id || slot.viewed"
+                class="w-full py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                [class]="slot.viewed
+                  ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+                  : slot.id
+                    ? 'bg-cyan-500 hover:bg-cyan-400 text-black'
+                    : 'bg-white/5 text-slate-600 cursor-not-allowed'"
+              >
+                @if (slot.viewed) {
+                  <span class="material-symbols-outlined text-sm">check</span> Completado
+                } @else if (!slot.id) {
+                  <span class="material-symbols-outlined text-sm">hourglass_empty</span> Sin anuncio
+                } @else {
+                  <span class="material-symbols-outlined text-sm">play_circle</span> Ver anuncio
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Mega ads: desbloqueados por afiliados -->
+    <div>
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-purple-400">workspace_premium</span>
+        <h3 class="text-base font-black uppercase tracking-tight text-white">Mega Anuncios</h3>
+        <span class="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] font-bold rounded-full border border-purple-500/20">
+          {{ formatReward(2000) }} c/u
+        </span>
+      </div>
+      <p class="text-xs text-slate-500 mb-4 flex items-start gap-1">
+        <span class="material-symbols-outlined text-[14px] text-purple-500/60 mt-0.5">all_inclusive</span>
+        <span>Se desbloquean 5 por cada afiliado con paquete activo. Son <span class="text-purple-400 font-bold">acumulables</span> — no se reinician hasta que los completes.
+        <span class="text-purple-400 font-bold">{{ affiliatesWithPackage() }}/40 afiliados activos.</span></span>
+      </p>
+
+      @if (megaSlots().length === 0) {
+        <!-- Sin mega desbloqueados -->
+        <div class="bg-card-dark border border-dashed border-purple-500/20 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-center">
+          <div class="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-purple-400 text-3xl">group_add</span>
+          </div>
+          <p class="text-white font-black text-sm">Sin Mega Anuncios todavía</p>
+          <p class="text-slate-500 text-xs max-w-xs">
+            Cuando uno de tus afiliados compre un paquete, se desbloquearán 5 Mega Anuncios de 2,000 COP cada uno.
+          </p>
+          <div class="flex items-center gap-2 mt-1 px-4 py-2 bg-purple-500/5 border border-purple-500/15 rounded-xl">
+            <span class="material-symbols-outlined text-purple-400 text-sm">military_tech</span>
+            <span class="text-xs text-purple-400 font-bold">Próximo desbloqueo: 1 afiliado activo</span>
+          </div>
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          @for (slot of megaSlots(); track $index) {
+            <div
+              class="bg-card-dark border rounded-xl overflow-hidden flex flex-col transition-all"
+              [class]="slot.viewed
+                ? 'border-white/5 opacity-50'
+                : slot.id
+                  ? 'border-purple-500/20 hover:border-purple-500/40 hover:-translate-y-0.5 cursor-pointer'
+                  : 'border-dashed border-purple-500/15'"
+              (click)="openModal(slot)"
+            >
+              <div class="relative aspect-[16/9] bg-zinc-900 overflow-hidden">
+                @if (slot.imageUrl) {
+                  <img [src]="slot.imageUrl" [alt]="slot.title" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full flex flex-col items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-purple-800 text-4xl">star</span>
+                    @if (!slot.id) {
+                      <p class="text-[10px] text-purple-700 font-bold uppercase">Próximamente</p>
+                    }
+                  </div>
+                }
+                @if (slot.viewed) {
+                  <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-emerald-400 text-4xl">check_circle</span>
+                  </div>
+                }
+                <div class="absolute top-2 left-2">
+                  <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                    Mega Anuncio
+                  </span>
+                </div>
+                <div class="absolute top-2 right-2">
+                  <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500 text-white">
+                    +{{ formatReward(slot.rewardCOP) }}
+                  </span>
+                </div>
+              </div>
+              <div class="p-3 flex-1 flex flex-col gap-2">
+                <p class="text-sm font-bold text-white line-clamp-1">{{ slot.title }}</p>
+                <p class="text-xs text-slate-500 line-clamp-2 flex-1">{{ slot.description }}</p>
+                <button
+                  [disabled]="!slot.id || slot.viewed"
+                  class="w-full py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                  [class]="slot.viewed
+                    ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+                    : slot.id
+                      ? 'bg-purple-500 hover:bg-purple-400 text-white'
+                      : 'bg-white/5 text-slate-600 cursor-not-allowed'"
+                >
+                  @if (slot.viewed) {
+                    <span class="material-symbols-outlined text-sm">check</span> Completado
+                  } @else if (!slot.id) {
+                    <span class="material-symbols-outlined text-sm">hourglass_empty</span> Sin anuncio
+                  } @else {
+                    <span class="material-symbols-outlined text-sm">play_circle</span> Ver anuncio
+                  }
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Ganancia info -->
+    <div class="bg-gradient-to-r from-accent/5 to-purple-500/5 border border-white/5 rounded-2xl p-4">
+      <div class="flex items-start gap-3">
+        <span class="material-symbols-outlined text-accent mt-0.5 flex-shrink-0">info</span>
+        <div class="text-xs text-slate-400 space-y-1">
+          <p><span class="text-white font-bold">Tareas base:</span> 5 Anuncios 400 ({{ formatReward(2000) }}) + 4 Mini ({{ formatReward(333.32) }}) = <span class="text-emerald-400 font-bold">{{ formatReward(2333.32) }}/día</span></p>
+          <p><span class="text-white font-bold">Por afiliado activo:</span> 5 Mega Anuncios = <span class="text-purple-400 font-bold">{{ formatReward(10000) }}</span> adicionales</p>
+          <p><span class="text-slate-500">Límite de afiliados: 40 • Duración del plan: 30 días</span></p>
+        </div>
+      </div>
+    </div>
+
+  }
+</div>
+
+@if (isModalOpen() && selectedAd()) {
+  <app-ptc-modal
+    [ad]="selectedAd()!"
+    [isOpen]="true"
+    (close)="closeModal()"
+    (rewardClaimed)="onRewardClaimed($event)"
+  />
+}

@@ -74,26 +74,78 @@
     </div>
 
     <!-- Solicitar retiro -->
-    <div class="bg-card-dark border border-white/5 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
-          <span class="material-symbols-outlined text-accent" style="font-size:22px">payments</span>
+    <div class="bg-card-dark border rounded-2xl p-5 space-y-4"
+         [class]="canWithdraw ? 'border-accent/20' : 'border-white/5'">
+
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+               [class]="canWithdraw ? 'bg-accent/10 border border-accent/20' : 'bg-white/5 border border-white/10'">
+            <span class="material-symbols-outlined" style="font-size:22px"
+                  [class]="canWithdraw ? 'text-accent' : 'text-slate-500'">
+              {{ canWithdraw ? 'payments' : 'lock' }}
+            </span>
+          </div>
+          <div>
+            <p class="font-black text-white text-sm">Solicitar Retiro</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Disponible: <span class="text-primary font-bold">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
+              · Mínimo <span class="font-bold">{{ formatCOP(MIN_WITHDRAWAL) }}</span>
+            </p>
+          </div>
         </div>
-        <div>
-          <p class="font-black text-white text-sm">Solicitar Retiro</p>
-          <p class="text-xs text-slate-400 mt-0.5">
-            Disponible: <span class="text-primary font-bold">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
-            · Mínimo $20,000 COP
-          </p>
-        </div>
+        <button
+          class="flex items-center gap-2 font-black py-2.5 px-5 rounded-xl transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          [class]="canWithdraw ? 'bg-accent hover:bg-accent/90 text-white' : 'bg-white/5 text-slate-500 cursor-not-allowed'"
+          [disabled]="!canWithdraw"
+        >
+          <span class="material-symbols-outlined" style="font-size:18px">
+            {{ canWithdraw ? 'download' : 'lock' }}
+          </span>
+          {{ canWithdraw ? 'Retirar fondos' : 'Retiro bloqueado' }}
+        </button>
       </div>
-      <button
-        class="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white font-black py-2.5 px-5 rounded-xl transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-        [disabled]="(profile()?.real_balance ?? 0) < 20000"
-      >
-        <span class="material-symbols-outlined" style="font-size:18px">download</span>
-        Retirar fondos
-      </button>
+
+      <!-- Condiciones de desbloqueo -->
+      @if (!canWithdraw) {
+        <div class="border-t border-white/5 pt-4 space-y-2">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Requisitos para desbloquear retiros</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <!-- Condición 1: saldo mínimo -->
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                 [class]="hasEnoughBalance ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+              <span class="material-symbols-outlined text-base flex-shrink-0"
+                    [class]="hasEnoughBalance ? 'text-emerald-400' : 'text-slate-600'">
+                {{ hasEnoughBalance ? 'check_circle' : 'radio_button_unchecked' }}
+              </span>
+              <div>
+                <p class="text-xs font-bold" [class]="hasEnoughBalance ? 'text-emerald-400' : 'text-slate-400'">
+                  Saldo mínimo {{ formatCOP(MIN_WITHDRAWAL) }}
+                </p>
+                <p class="text-[10px] text-slate-500">
+                  Tienes {{ formatCOP(profile()?.real_balance ?? 0) }}
+                </p>
+              </div>
+            </div>
+            <!-- Condición 2: afiliado con paquete -->
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                 [class]="hasActiveAffiliate() ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+              <span class="material-symbols-outlined text-base flex-shrink-0"
+                    [class]="hasActiveAffiliate() ? 'text-emerald-400' : 'text-slate-600'">
+                {{ hasActiveAffiliate() ? 'check_circle' : 'radio_button_unchecked' }}
+              </span>
+              <div>
+                <p class="text-xs font-bold" [class]="hasActiveAffiliate() ? 'text-emerald-400' : 'text-slate-400'">
+                  Al menos 1 afiliado anunciante
+                </p>
+                <p class="text-[10px] text-slate-500">
+                  {{ hasActiveAffiliate() ? 'Condición cumplida' : 'Invita a alguien que compre un paquete' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     </div>
 
     <!-- Ganancias por referidos -->

@@ -65,13 +65,13 @@ export class AdminPackagesComponent implements OnInit {
     // Límites mínimos
     min_ptc_visits: 50,
     min_banner_views: 100,
-    included_ptc_ads: 5,
+    included_ptc_ads: 1,
     has_clickable_banner: true,
     banner_clicks_limit: 500,
     banner_impressions_limit: 1000,
-    daily_ptc_limit: 5,
+    daily_ptc_limit: 9,
     // Límites máximos
-    max_ptc_ads: 5,
+    max_ptc_ads: 1,
     max_banner_ads: 1,
     max_campaigns: 1,
     // Bonificaciones
@@ -81,6 +81,10 @@ export class AdminPackagesComponent implements OnInit {
   });
 
   readonly saving = signal<boolean>(false);
+
+  // Revocar paquete
+  readonly revokeTarget = signal<UserPackage | null>(null);
+  readonly revoking = signal<boolean>(false);
 
   // Form for features
   readonly newFeature = signal<string>('');
@@ -157,13 +161,13 @@ export class AdminPackagesComponent implements OnInit {
       // Límites mínimos
       min_ptc_visits: 50,
       min_banner_views: 100,
-      included_ptc_ads: 5,
+      included_ptc_ads: 1,
       has_clickable_banner: true,
       banner_clicks_limit: 500,
       banner_impressions_limit: 1000,
-      daily_ptc_limit: 5,
+      daily_ptc_limit: 9,
       // Límites máximos
-      max_ptc_ads: 5,
+      max_ptc_ads: 1,
       max_banner_ads: 1,
       max_campaigns: 1,
       // Bonificaciones
@@ -426,6 +430,46 @@ export class AdminPackagesComponent implements OnInit {
       guest: 'bg-blue-500/10 text-blue-400'
     };
     return classes[role] || 'bg-slate-500/10 text-slate-400';
+  }
+
+  // ─── Revocar Paquete ────────────────────────────────────────────────────
+
+  openRevokeModal(up: UserPackage): void {
+    this.revokeTarget.set(up);
+  }
+
+  closeRevokeModal(): void {
+    this.revokeTarget.set(null);
+  }
+
+  async confirmRevoke(): Promise<void> {
+    const target = this.revokeTarget();
+    if (!target) return;
+
+    this.revoking.set(true);
+    try {
+      const ok = await this.packageService.revokeUserPackage(target.id);
+      if (!ok) throw new Error('No se pudo revocar el paquete');
+
+      await this.dashboardService.logActivity('revoke_package', 'user', target.user_id, {
+        package_id: target.package_id,
+        package_name: target.package_name,
+        username: target.username,
+        new_role: 'guest'
+      });
+
+      this.showSuccessMessage(
+        `Paquete "${target.package_name}" revocado. ${target.username ?? 'El usuario'} volvió a rol Usuario.`
+      );
+      this.closeRevokeModal();
+      this.loadUserPackages();
+    } catch (err: any) {
+      console.error('Error revoking package:', err);
+      this.error.set(err.message || 'Error al revocar el paquete');
+      this.closeRevokeModal();
+    } finally {
+      this.revoking.set(false);
+    }
   }
 
   private showSuccessMessage(message: string): void {

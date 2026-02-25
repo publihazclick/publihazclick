@@ -83,6 +83,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/user/components/wallet/wallet.component').then(m => m.UserWalletComponent)
       },
       {
+        path: 'recommend',
+        loadComponent: () => import('./features/advertiser/components/recommend/recommend.component').then(m => m.AdvertiserRecommendComponent)
+      },
+      {
         path: 'referrals',
         loadComponent: () => import('./features/user/components/referrals/referrals.component').then(m => m.UserReferralsComponent)
       },
@@ -97,6 +101,18 @@ export const routes: Routes = [
       {
         path: 'packages',
         loadComponent: () => import('./features/user/components/packages/packages.component').then(m => m.UserPackagesComponent)
+      },
+      {
+        path: 'ads',
+        loadComponent: () => import('./features/advertiser/components/ads/advertiser-ads.component').then(m => m.AdvertiserAdsComponent)
+      },
+      {
+        path: 'banner',
+        loadComponent: () => import('./features/advertiser/components/banner/advertiser-banner.component').then(m => m.AdvertiserBannerComponent)
+      },
+      {
+        path: 'tasks',
+        loadComponent: () => import('./features/advertiser/components/tasks/advertiser-tasks.component').then(m => m.AdvertiserTasksComponent)
       },
       {
         path: 'settings',

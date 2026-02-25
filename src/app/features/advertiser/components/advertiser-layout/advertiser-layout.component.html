@@ -56,7 +56,7 @@
     }
 
     <nav class="space-y-2 lg:space-y-4">
-      <!-- Panel principal -->
+      <!-- Mi Panel -->
       <div>
         @if (!sidebarCollapsed()) {
           <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Mi Panel</h4>
@@ -69,6 +69,48 @@
                [class.justify-center]="sidebarCollapsed()">
               <span class="material-symbols-outlined">dashboard</span>
               @if (!sidebarCollapsed()) { <span>Dashboard</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/ads" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               [routerLinkActiveOptions]="{exact: true}"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">ad_units</span>
+              @if (!sidebarCollapsed()) { <span>Crea tu Anuncio</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/banner" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">photo_size_select_large</span>
+              @if (!sidebarCollapsed()) { <span>Crea tu Banner</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/tasks" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">checklist</span>
+              @if (!sidebarCollapsed()) { <span>Mis Tareas</span> }
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Red de Afiliados -->
+      <div>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Red de Afiliados</h4>
+        }
+        <ul class="space-y-1">
+          <li>
+            <a routerLink="/advertiser/recommend" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">share</span>
+              @if (!sidebarCollapsed()) { <span>Recomienda y Gana</span> }
             </a>
           </li>
           <li>
@@ -90,34 +132,6 @@
         </ul>
       </div>
 
-      <!-- Publicidad -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Publicidad</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/advertiser/packages" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">workspace_premium</span>
-              @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/ads" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">ad_units</span>
-              @if (!sidebarCollapsed()) {
-                <span>Mis Anuncios</span>
-                <span class="ml-auto bg-white/5 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold">Pronto</span>
-              }
-            </a>
-          </li>
-        </ul>
-      </div>
-
       <!-- Actividad -->
       <div>
         @if (!sidebarCollapsed()) {
@@ -130,6 +144,14 @@
                [class.justify-center]="sidebarCollapsed()">
               <span class="material-symbols-outlined">history</span>
               @if (!sidebarCollapsed()) { <span>Historial</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/packages" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
             </a>
           </li>
           <li>
@@ -352,6 +374,11 @@
 
   <!-- Content -->
   <div class="p-4 lg:p-8 max-w-7xl mx-auto w-full">
+    @if (!isSettingsRoute()) {
+      <div class="mb-6 rounded-2xl overflow-hidden border border-white/5">
+        <app-banner-slider location="app" [autoPlayInterval]="6000" />
+      </div>
+    }
     <router-outlet></router-outlet>
   </div>
 

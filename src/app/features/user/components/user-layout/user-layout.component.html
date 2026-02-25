@@ -71,6 +71,24 @@
             </a>
           </li>
           <li>
+            <a routerLink="/dashboard/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-icons">workspace_premium</span>
+              @if (!sidebarCollapsed()) { <span>Ver Paquetes</span> }
+            </a>
+          </li>
+          <li>
+            <button
+              (click)="openReferralModal()"
+              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+              [class.justify-center]="sidebarCollapsed()"
+            >
+              <span class="material-icons text-accent">card_giftcard</span>
+              @if (!sidebarCollapsed()) { <span>Recomienda y Gana</span> }
+            </button>
+          </li>
+          <li>
             <a routerLink="/dashboard/referrals" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
                [class.justify-center]="sidebarCollapsed()">
@@ -85,24 +103,6 @@
               <span class="material-icons">military_tech</span>
               @if (!sidebarCollapsed()) { <span>Mi Líder</span> }
             </a>
-          </li>
-          <li>
-            <a routerLink="/dashboard/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-icons">workspace_premium</span>
-              @if (!sidebarCollapsed()) { <span>Paquetes</span> }
-            </a>
-          </li>
-          <li>
-            <button
-              (click)="openReferralModal()"
-              class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-              [class.justify-center]="sidebarCollapsed()"
-            >
-              <span class="material-icons text-accent">card_giftcard</span>
-              @if (!sidebarCollapsed()) { <span>Recomienda y Gana</span> }
-            </button>
           </li>
         </ul>
       </div>
@@ -366,6 +366,11 @@
 
   <!-- Content -->
   <div class="p-4 lg:p-8 max-w-7xl mx-auto w-full">
+    @if (!isSettingsRoute()) {
+      <div class="mb-6 rounded-2xl overflow-hidden border border-white/5">
+        <app-banner-slider location="app" [autoPlayInterval]="6000" />
+      </div>
+    }
     <router-outlet></router-outlet>
   </div>
 

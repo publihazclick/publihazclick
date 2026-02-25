@@ -351,6 +351,50 @@ export class AdminPackageService {
   }
 
   /**
+   * Revocar paquete de usuario desde admin:
+   * ELIMINA el registro de user_packages y devuelve el rol a 'guest'.
+   * Al eliminar el registro, el usuario puede recibir un nuevo paquete sin conflictos.
+   */
+  async revokeUserPackage(userPackageId: string): Promise<boolean> {
+    try {
+      const { data: userPackage, error: fetchError } = await this.supabase
+        .from('user_packages')
+        .select('user_id')
+        .eq('id', userPackageId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Eliminar el registro para permitir re-asignación futura
+      const { error: deleteError } = await this.supabase
+        .from('user_packages')
+        .delete()
+        .eq('id', userPackageId);
+
+      if (deleteError) throw deleteError;
+
+      const { error: profileError } = await this.supabase
+        .from('profiles')
+        .update({
+          has_active_package: false,
+          current_package_id: null,
+          package_expires_at: null,
+          package_started_at: null,
+          role: 'guest',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userPackage.user_id);
+
+      if (profileError) throw profileError;
+
+      return true;
+    } catch (error: any) {
+      console.error('Error revoking user package:', error);
+      return false;
+    }
+  }
+
+  /**
    * Cancelar paquete de usuario
    */
   async cancelUserPackage(userPackageId: string): Promise<boolean> {
