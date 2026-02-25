@@ -1,10 +1,10 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 
 export const serverRoutes: ServerRoute[] = [
-  // Ruta de referido - SSR dinámico para que el servidor la maneje correctamente
+  // Ruta de referido - Client-side para compatibilidad con Vercel static serving
   {
     path: 'ref/:code',
-    renderMode: RenderMode.Server
+    renderMode: RenderMode.Client
   },
   {
     path: 'social/messages/:convId',
