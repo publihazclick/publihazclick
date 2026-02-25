@@ -6,7 +6,6 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -42,20 +41,9 @@ app.use(
 app.use((req, res, next) => {
   angularApp
     .handle(req)
-    .then((response) => {
-      if (response) {
-        writeResponseToNodeResponse(response, res);
-      } else {
-        // Fallback: serve the CSR shell for client-side rendered routes
-        const csrHtml = join(browserDistFolder, 'index.csr.html');
-        try {
-          const html = readFileSync(csrHtml, 'utf-8');
-          res.status(200).set('Content-Type', 'text/html').send(html);
-        } catch {
-          next();
-        }
-      }
-    })
+    .then((response) =>
+      response ? writeResponseToNodeResponse(response, res) : next(),
+    )
     .catch(next);
 });
 

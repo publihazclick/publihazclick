@@ -10,14 +10,9 @@ export const serverRoutes: ServerRoute[] = [
     path: 'social/messages/:convId',
     renderMode: RenderMode.Client
   },
-  // Landing page - SSR dinámico para que los banners se carguen en tiempo real
-  {
-    path: '',
-    renderMode: RenderMode.Server
-  },
-  // Resto de rutas usan prerendering
+  // Landing page - Client-side rendering para compatibilidad con Vercel
   {
     path: '**',
-    renderMode: RenderMode.Prerender
+    renderMode: RenderMode.Client
   }
 ];
