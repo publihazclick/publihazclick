@@ -41,7 +41,13 @@ export interface DashboardStats {
   todayClicks: number;
   // Retiros
   pendingWithdrawals: number;
+  approvedWithdrawals: number;
+  rejectedWithdrawals: number;
+  completedWithdrawals: number;
   totalWithdrawals: number;
+  pendingWithdrawalsAmount: number;
+  approvedWithdrawalsAmount: number;
+  completedWithdrawalsAmount: number;
   // Donaciones
   totalDonated: number;
 }
@@ -628,58 +634,7 @@ export interface ApprovePackageBannerData {
   reason?: string;
 }
 
-// ============================================================================
-// Anuncios PTC (actualizado con tipos)
-// ============================================================================
-
-export interface PtcTaskAdmin {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  image_url: string | null;
-  reward: number;
-  duration: number;
-  daily_limit: number;
-  total_clicks: number;
-  today_clicks?: number;
-  status: TaskStatus;
-  ad_type?: PtcAdType;
-  is_demo_only?: boolean;
-  advertiser_id: string;
-  advertiser_username?: string;
-  created_at: string;
-  updated_at?: string;
-}
-
-export interface CreatePtcTaskData {
-  title: string;
-  description: string;
-  url: string;
-  image_url?: string;
-  reward: number;
-  duration: number;
-  daily_limit: number;
-  ad_type?: PtcAdType;
-  is_demo_only?: boolean;
-  advertiser_id?: string;
-}
-
-// ============================================================================
-// Estadísticas Extendidas
-// ============================================================================
-
-export interface SystemStats {
-  total_users: number;
-  active_advertisers: number;
-  free_users: number;
-  active_ptc_tasks: number;
-  active_banners: number;
-  total_real_balance: number;
-  total_demo_balance: number;
-  total_donations: number;
-  total_referral_relationships: number;
-}
+// (Duplicate interfaces removed — canonical definitions are above)
 
 // ============================================================================
 // Respuesta de Validación de Referido
@@ -809,18 +764,4 @@ export interface CreatePtcTaskExtendedData extends CreatePtcTaskData {
   is_demo_only?: boolean;
 }
 
-// ============================================================================
-// Estadísticas del Sistema
-// ============================================================================
-
-export interface SystemStats {
-  total_users: number;
-  active_advertisers: number;
-  free_users: number;
-  active_ptc_tasks: number;
-  active_banners: number;
-  total_real_balance: number;
-  total_demo_balance: number;
-  total_donations: number;
-  total_referral_relationships: number;
-}
+// (Duplicate SystemStats removed — canonical definition is above)

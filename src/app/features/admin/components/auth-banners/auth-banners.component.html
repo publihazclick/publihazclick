@@ -1,0 +1,351 @@
+<div class="space-y-6">
+
+  <!-- Encabezado de la página -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-black text-white tracking-tight">Banners de Autenticación</h2>
+      <p class="text-xs text-slate-500 mt-1 uppercase tracking-widest">
+        Gestión de los {{ maxBanners }} slots de publicidad en las páginas de login y registro
+      </p>
+    </div>
+    <button
+      (click)="openCreateModal()"
+      [disabled]="!canAddMore() || loading()"
+      class="flex items-center gap-2 bg-primary hover:bg-primary/80 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-2.5 px-5 rounded-lg transition-all text-sm uppercase tracking-wider"
+    >
+      <span class="material-symbols-outlined text-lg">add_circle</span>
+      Nuevo Banner
+    </button>
+  </div>
+
+  <!-- Aviso de límite -->
+  @if (!loading() && !canAddMore()) {
+    <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-amber-400">info</span>
+      <p class="text-amber-400 text-sm font-medium">
+        Límite máximo de {{ maxBanners }} banners alcanzado. Elimina uno existente para crear otro.
+      </p>
+    </div>
+  }
+
+  <!-- Toast de éxito -->
+  @if (successMessage()) {
+    <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-emerald-400">check_circle</span>
+      <p class="text-emerald-400 text-sm font-medium">{{ successMessage() }}</p>
+    </div>
+  }
+
+  <!-- Toast de error -->
+  @if (errorMessage()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-400">error</span>
+      <p class="text-rose-400 text-sm font-medium">{{ errorMessage() }}</p>
+    </div>
+  }
+
+  <!-- Estado de carga -->
+  @if (loading()) {
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="bg-card-dark border border-white/5 rounded-xl p-5 animate-pulse space-y-3">
+          <div class="h-36 bg-zinc-800 rounded-lg"></div>
+          <div class="h-4 bg-zinc-800 rounded w-2/3"></div>
+          <div class="h-3 bg-zinc-800 rounded w-full"></div>
+          <div class="h-3 bg-zinc-800 rounded w-1/2"></div>
+          <div class="flex gap-2 pt-2">
+            <div class="h-8 bg-zinc-800 rounded w-20"></div>
+            <div class="h-8 bg-zinc-800 rounded w-20"></div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Grid de banners -->
+  @if (!loading()) {
+    @if (banners().length === 0) {
+      <!-- Estado vacío -->
+      <div class="bg-card-dark border border-white/5 rounded-xl p-12 flex flex-col items-center justify-center text-center">
+        <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">view_carousel</span>
+        <h3 class="text-white font-bold text-lg mb-2">Sin banners configurados</h3>
+        <p class="text-slate-500 text-sm mb-6 max-w-sm">
+          Crea hasta {{ maxBanners }} banners que se mostrarán en las páginas de login y registro.
+        </p>
+        <button
+          (click)="openCreateModal()"
+          class="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary font-bold py-2.5 px-5 rounded-lg transition-all text-sm border border-primary/20"
+        >
+          <span class="material-symbols-outlined text-lg">add_circle</span>
+          Crear primer banner
+        </button>
+      </div>
+    } @else {
+      <!-- Indicador de slots usados -->
+      <div class="flex items-center gap-3 px-1">
+        <span class="text-xs text-slate-500 uppercase tracking-widest font-bold">
+          Slots usados:
+        </span>
+        <div class="flex gap-1.5">
+          @for (slot of [1, 2, 3, 4]; track slot) {
+            <div
+              class="w-8 h-2 rounded-full transition-colors"
+              [class]="slot <= banners().length ? 'bg-primary' : 'bg-white/10'"
+            ></div>
+          }
+        </div>
+        <span class="text-xs text-slate-400 font-bold">{{ banners().length }}/{{ maxBanners }}</span>
+      </div>
+
+      <!-- Cards de banners -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        @for (banner of banners(); track trackById($index, banner)) {
+          <div class="bg-card-dark border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all group">
+
+            <!-- Preview de imagen -->
+            <div class="relative h-40 bg-zinc-900 overflow-hidden">
+              @if (banner.image_url) {
+                <img
+                  [src]="banner.image_url"
+                  [alt]="banner.name"
+                  class="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-500"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+              } @else {
+                <div class="w-full h-full flex items-center justify-center">
+                  <span class="material-symbols-outlined text-5xl text-slate-700">image</span>
+                </div>
+              }
+              <!-- Badge de estado -->
+              <div class="absolute top-3 right-3">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full {{ getStatusClass(banner.status) }}">
+                  {{ getStatusLabel(banner.status) }}
+                </span>
+              </div>
+              <!-- Número de slot -->
+              <div class="absolute top-3 left-3 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center">
+                <span class="text-[10px] font-black text-white">{{ $index + 1 }}</span>
+              </div>
+            </div>
+
+            <!-- Contenido de la card -->
+            <div class="p-5 space-y-3">
+              <div>
+                <h3 class="text-white font-bold text-sm leading-tight line-clamp-1">{{ banner.name }}</h3>
+                @if (banner.description) {
+                  <p class="text-slate-500 text-xs mt-1 line-clamp-2">{{ banner.description }}</p>
+                }
+              </div>
+
+              <!-- URL destino -->
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-slate-600 text-sm">link</span>
+                <a
+                  [href]="banner.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-xs text-primary/70 hover:text-primary truncate transition-colors"
+                >
+                  {{ banner.url }}
+                </a>
+              </div>
+
+              <!-- Estadísticas -->
+              <div class="flex items-center gap-4 pt-1 border-t border-white/5">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-slate-600 text-sm">visibility</span>
+                  <span class="text-xs text-slate-500">{{ banner.total_impressions | number }}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-slate-600 text-sm">ads_click</span>
+                  <span class="text-xs text-slate-500">{{ banner.total_clicks | number }}</span>
+                </div>
+              </div>
+
+              <!-- Acciones -->
+              <div class="flex items-center gap-2 pt-1">
+                <!-- Editar -->
+                <button
+                  (click)="openEditModal(banner)"
+                  class="flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 font-semibold py-1.5 px-3 rounded-lg transition-all"
+                >
+                  <span class="material-symbols-outlined text-sm">edit</span>
+                  Editar
+                </button>
+
+                <!-- Activar / Pausar -->
+                <button
+                  (click)="toggleStatus(banner)"
+                  class="flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-lg transition-all"
+                  [class]="banner.status === 'active'
+                    ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400'
+                    : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'"
+                >
+                  <span class="material-symbols-outlined text-sm">
+                    {{ banner.status === 'active' ? 'pause' : 'play_arrow' }}
+                  </span>
+                  {{ banner.status === 'active' ? 'Pausar' : 'Activar' }}
+                </button>
+
+                <!-- Eliminar -->
+                <button
+                  (click)="deleteBanner(banner)"
+                  [disabled]="deleting() === banner.id"
+                  class="ml-auto flex items-center gap-1.5 text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold py-1.5 px-3 rounded-lg transition-all disabled:opacity-50"
+                >
+                  @if (deleting() === banner.id) {
+                    <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+                  } @else {
+                    <span class="material-symbols-outlined text-sm">delete</span>
+                  }
+                </button>
+              </div>
+            </div>
+
+          </div>
+        }
+
+        <!-- Slots vacíos disponibles -->
+        @for (empty of [].constructor(maxBanners - banners().length); track $index) {
+          <div
+            (click)="openCreateModal()"
+            class="bg-card-dark border border-white/5 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-primary/30 hover:bg-primary/5 transition-all group min-h-[280px]"
+          >
+            <div class="w-12 h-12 rounded-full bg-white/5 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined text-slate-600 group-hover:text-primary transition-colors">add</span>
+            </div>
+            <div class="text-center">
+              <p class="text-slate-600 group-hover:text-slate-400 text-sm font-semibold transition-colors">Slot disponible</p>
+              <p class="text-slate-700 text-xs mt-1">Haz clic para añadir un banner</p>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+</div>
+
+<!-- Modal Crear / Editar -->
+@if (showModal()) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+    (click)="closeModal()"
+  >
+    <div
+      class="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl"
+      (click)="$event.stopPropagation()"
+    >
+      <!-- Header del modal -->
+      <div class="flex items-center justify-between p-6 border-b border-white/10">
+        <div>
+          <h3 class="text-white font-black text-base">
+            {{ modalMode() === 'create' ? 'Nuevo Banner de Autenticación' : 'Editar Banner' }}
+          </h3>
+          <p class="text-slate-500 text-xs mt-0.5">
+            {{ modalMode() === 'create'
+              ? 'Se creará como banner interstitial en landing'
+              : 'Modifica los datos del banner seleccionado' }}
+          </p>
+        </div>
+        <button
+          (click)="closeModal()"
+          class="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Cuerpo del modal -->
+      <div class="p-6 space-y-5">
+
+        <!-- Nombre -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Nombre del banner <span class="text-rose-400">*</span>
+          </label>
+          <input
+            type="text"
+            [value]="formData().name"
+            (input)="updateField('name', $any($event.target).value)"
+            placeholder="Ej: Oferta Verano 2026"
+            class="w-full bg-zinc-800 border border-white/10 focus:border-primary/50 text-white text-sm rounded-lg px-4 py-2.5 outline-none transition-colors placeholder-slate-600"
+          />
+        </div>
+
+        <!-- Descripción -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">Descripción</label>
+          <textarea
+            [value]="formData().description"
+            (input)="updateField('description', $any($event.target).value)"
+            placeholder="Texto descriptivo del anuncio (opcional)"
+            rows="3"
+            class="w-full bg-zinc-800 border border-white/10 focus:border-primary/50 text-white text-sm rounded-lg px-4 py-2.5 outline-none transition-colors placeholder-slate-600 resize-none"
+          ></textarea>
+        </div>
+
+        <!-- URL de imagen -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">URL de imagen</label>
+          <input
+            type="url"
+            [value]="formData().image_url"
+            (input)="updateField('image_url', $any($event.target).value)"
+            placeholder="https://ejemplo.com/imagen.jpg"
+            class="w-full bg-zinc-800 border border-white/10 focus:border-primary/50 text-white text-sm rounded-lg px-4 py-2.5 outline-none transition-colors placeholder-slate-600"
+          />
+          <!-- Preview de imagen -->
+          @if (formData().image_url) {
+            <div class="mt-2 h-28 rounded-lg overflow-hidden border border-white/10">
+              <img
+                [src]="formData().image_url"
+                alt="Preview"
+                class="w-full h-full object-cover"
+                (error)="$any($event.target).style.display='none'"
+              />
+            </div>
+          }
+        </div>
+
+        <!-- URL destino -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            URL destino <span class="text-rose-400">*</span>
+          </label>
+          <input
+            type="url"
+            [value]="formData().url"
+            (input)="updateField('url', $any($event.target).value)"
+            placeholder="https://ejemplo.com/oferta"
+            class="w-full bg-zinc-800 border border-white/10 focus:border-primary/50 text-white text-sm rounded-lg px-4 py-2.5 outline-none transition-colors placeholder-slate-600"
+          />
+        </div>
+
+      </div>
+
+      <!-- Footer del modal -->
+      <div class="flex items-center justify-end gap-3 p-6 border-t border-white/10">
+        <button
+          (click)="closeModal()"
+          class="text-sm text-slate-400 hover:text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-white/5 transition-all"
+        >
+          Cancelar
+        </button>
+        <button
+          (click)="saveBanner()"
+          [disabled]="saving() || !formData().name.trim() || !formData().url.trim()"
+          class="flex items-center gap-2 text-sm bg-primary hover:bg-primary/80 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black py-2.5 px-6 rounded-lg transition-all uppercase tracking-wider"
+        >
+          @if (saving()) {
+            <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+            Guardando...
+          } @else {
+            <span class="material-symbols-outlined text-sm">save</span>
+            {{ modalMode() === 'create' ? 'Crear Banner' : 'Guardar Cambios' }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

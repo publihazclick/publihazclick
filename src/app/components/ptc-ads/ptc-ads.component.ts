@@ -8,9 +8,18 @@ import { WalletStateService } from '../../core/services/wallet-state.service';
 import { PtcModalComponent, PtcAd } from '../ptc-modal/ptc-modal.component';
 import { PtcAdType, AdLocation } from '../../core/models/admin.model';
 
+function extractYoutubeId(url: string | null | undefined): string {
+  if (!url) return '';
+  const match = url.match(
+    /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  return match?.[1] ?? '';
+}
+
 interface PtcAdCard {
   id: string;
   title: string;
+  description: string;
   advertiserName: string;
   advertiserType: 'company' | 'person';
   imageUrl: string;
@@ -70,10 +79,11 @@ export class PtcAdsComponent implements OnInit {
           return {
             id: task.id,
             title: task.title,
-            advertiserName: 'Anunciante',
-            advertiserType: 'company',
+            description: task.description || '',
+            advertiserName: task.title,
+            advertiserType: 'company' as const,
             imageUrl: task.image_url || 'https://via.placeholder.com/300x200?text=Anuncio',
-            youtubeVideoId: 'dQw4w9WgXcQ',
+            youtubeVideoId: extractYoutubeId(task.youtube_url),
             adType: adType,
             rewardCOP: rewardCOP,
             dailyLimit: task.daily_limit || 0,
@@ -99,6 +109,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '1',
         title: 'Promo Fin de Semana - Tienda Online',
+        description: 'Ofertas exclusivas este fin de semana',
         advertiserName: 'Mileniustore',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
@@ -112,6 +123,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '5',
         title: 'Restaurante Los Parados',
+        description: 'Los mejores platos típicos',
         advertiserName: 'Restaurante Los Parados',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
@@ -125,6 +137,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '7',
         title: 'Gran Venta de Electrónicos',
+        description: 'Hasta 50% de descuento',
         advertiserName: 'TecnoWorld',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
@@ -138,6 +151,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '8',
         title: 'Spa & Wellness Centro',
+        description: 'Relájate con nuestros servicios',
         advertiserName: 'Relax & Vida',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
@@ -152,6 +166,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '2',
         title: 'Nueva Colección de Ropa',
+        description: 'Moda colombiana al mejor precio',
         advertiserName: 'Fashion Colombia',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
@@ -165,6 +180,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '9',
         title: 'Zapatillas Importadas',
+        description: 'Las mejores marcas importadas',
         advertiserName: 'ShoeStore',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
@@ -178,6 +194,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '10',
         title: 'Accesorios para Celulares',
+        description: 'Protege y personaliza tu celular',
         advertiserName: 'CelularAccesories',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=300&fit=crop',
@@ -191,6 +208,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '11',
         title: 'Muebles para el Hogar',
+        description: 'Renueva tu hogar con estilo',
         advertiserName: 'HogarExpress',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
@@ -205,6 +223,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '3',
         title: 'Servicio de Delivery Express',
+        description: 'Entrega rápida a domicilio',
         advertiserName: 'Juan Pérez',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
@@ -218,6 +237,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '12',
         title: 'Clases de Guitarra Online',
+        description: 'Aprende guitarra desde casa',
         advertiserName: 'Carlos Música',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop',
@@ -231,6 +251,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '13',
         title: 'Servicios de Limpieza',
+        description: 'Tu hogar siempre impecable',
         advertiserName: 'LimpioMax',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695b97835?w=400&h=300&fit=crop',
@@ -244,6 +265,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '14',
         title: 'Peluquería Canina a Domicilio',
+        description: 'Cuidamos a tu mascota con amor',
         advertiserName: 'MascotasFelices',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=300&fit=crop',
@@ -258,6 +280,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '4',
         title: 'Cupón Descuento 20%',
+        description: 'Descuento exclusivo en tecnología',
         advertiserName: 'TechnoShop',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop',
@@ -271,6 +294,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '6',
         title: 'Clases de Inglés Online',
+        description: 'Aprende inglés fácil y rápido',
         advertiserName: 'María García',
         advertiserType: 'person',
         imageUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=300&fit=crop',
@@ -284,6 +308,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '15',
         title: 'Desayunos Sorpresa',
+        description: 'Sorprende a quien más quieres',
         advertiserName: 'SweetDelivery',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
@@ -297,6 +322,7 @@ export class PtcAdsComponent implements OnInit {
       {
         id: '16',
         title: 'Reparación de Computadores',
+        description: 'Servicio técnico profesional',
         advertiserName: 'TechFix',
         advertiserType: 'company',
         imageUrl: 'https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=400&h=300&fit=crop',
@@ -364,6 +390,7 @@ export class PtcAdsComponent implements OnInit {
     const ptcAd: PtcAd = {
       id: ad.id,
       title: ad.title,
+      description: ad.description,
       advertiserName: ad.advertiserName,
       advertiserType: ad.advertiserType,
       imageUrl: ad.imageUrl,

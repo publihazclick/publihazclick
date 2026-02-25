@@ -41,7 +41,12 @@ export class AdminDashboardService {
         { count: totalClicks },
         { count: todayClicks },
         { count: pendingWithdrawals },
-        { count: totalWithdrawals },
+        { count: approvedWithdrawals },
+        { count: rejectedWithdrawals },
+        { count: completedWithdrawals },
+        { data: pendingWdAmounts },
+        { data: approvedWdAmounts },
+        { data: completedWdAmounts },
         { data: revenueData },
         { data: todayRevenueData },
         { data: paidOutData },
@@ -56,12 +61,19 @@ export class AdminDashboardService {
         this.supabase.from('ptc_clicks').select('*', { count: 'exact', head: true }),
         this.supabase.from('ptc_clicks').select('*', { count: 'exact', head: true }).gte('completed_at', today).lt('completed_at', tomorrow),
         this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
+        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
         this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        this.supabase.from('withdrawal_requests').select('amount').eq('status', 'pending'),
+        this.supabase.from('withdrawal_requests').select('amount').eq('status', 'approved'),
+        this.supabase.from('withdrawal_requests').select('amount').eq('status', 'completed'),
         this.supabase.from('profiles').select('total_earned'),
         this.supabase.from('ptc_clicks').select('reward_earned').gte('completed_at', today).lt('completed_at', tomorrow),
         this.supabase.from('ptc_clicks').select('reward_earned'),
         this.supabase.from('profiles').select('total_donated'),
       ]);
+
+      const totalWdCount = (pendingWithdrawals || 0) + (approvedWithdrawals || 0) + (rejectedWithdrawals || 0) + (completedWithdrawals || 0);
 
       return {
         totalUsers: totalUsers || 0,
@@ -76,7 +88,13 @@ export class AdminDashboardService {
         totalClicks: totalClicks || 0,
         todayClicks: todayClicks || 0,
         pendingWithdrawals: pendingWithdrawals || 0,
-        totalWithdrawals: totalWithdrawals || 0,
+        approvedWithdrawals: approvedWithdrawals || 0,
+        rejectedWithdrawals: rejectedWithdrawals || 0,
+        completedWithdrawals: completedWithdrawals || 0,
+        totalWithdrawals: totalWdCount,
+        pendingWithdrawalsAmount: pendingWdAmounts?.reduce((s, w) => s + (w.amount || 0), 0) || 0,
+        approvedWithdrawalsAmount: approvedWdAmounts?.reduce((s, w) => s + (w.amount || 0), 0) || 0,
+        completedWithdrawalsAmount: completedWdAmounts?.reduce((s, w) => s + (w.amount || 0), 0) || 0,
         totalDonated: donatedData?.reduce((s, p) => s + (p.total_donated || 0), 0) || 0,
       };
     } catch (error: any) {
@@ -86,7 +104,10 @@ export class AdminDashboardService {
         totalAds: 0, activeAds: 0, pendingAds: 0,
         totalRevenue: 0, todayRevenue: 0, totalPaidOut: 0,
         totalClicks: 0, todayClicks: 0,
-        pendingWithdrawals: 0, totalWithdrawals: 0, totalDonated: 0,
+        pendingWithdrawals: 0, approvedWithdrawals: 0, rejectedWithdrawals: 0,
+        completedWithdrawals: 0, totalWithdrawals: 0,
+        pendingWithdrawalsAmount: 0, approvedWithdrawalsAmount: 0, completedWithdrawalsAmount: 0,
+        totalDonated: 0,
       };
     }
   }

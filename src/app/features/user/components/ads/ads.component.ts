@@ -9,8 +9,8 @@ import type { PtcAdType } from '../../../../core/models/admin.model';
 
 interface PtcAdCard {
   id: string;
-  title: string;
-  advertiserName: string;
+  companyName: string;
+  description: string;
   advertiserType: 'company' | 'person';
   imageUrl: string;
   youtubeVideoId: string;
@@ -57,6 +57,14 @@ export class UserAdsComponent implements OnInit {
   };
 
   ngOnInit(): void {
+    // Vaciar caché directamente en localStorage para evitar race conditions
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user_session_data');
+      localStorage.removeItem('ptc_wallet');
+      localStorage.removeItem('ptc_donations');
+    }
+    this.userTracking.resetSession();
+    this.walletService.reset();
     this.loadAds();
   }
 
@@ -71,15 +79,24 @@ export class UserAdsComponent implements OnInit {
       );
 
       if (result.data && result.data.length > 0) {
+        // Debug: verificar youtube_url en datos crudos
+        console.log('[Ads] Datos crudos:', result.data.map(t => ({
+          title: t.title, youtube_url: t.youtube_url, url: t.url
+        })));
+
         const mapped: PtcAdCard[] = result.data.map((task) => {
           const adType = task.ad_type || 'mini';
+          const videoId = extractYoutubeId(task.youtube_url);
+          if (task.youtube_url) {
+            console.log('[Ads]', task.title, '→ youtube_url:', task.youtube_url, '→ videoId:', videoId);
+          }
           return {
             id: task.id,
-            title: task.title,
-            advertiserName: task.advertiser_username || 'Anunciante',
-            advertiserType: 'company',
+            companyName: task.title,
+            description: task.description || '',
+            advertiserType: 'company' as const,
             imageUrl: task.image_url || '',
-            youtubeVideoId: extractYoutubeId(task.youtube_url),
+            youtubeVideoId: videoId,
             destinationUrl: task.url || '',
             adType,
             rewardCOP: this.adTypeRewards[adType] ?? task.reward ?? 0,
@@ -111,12 +128,18 @@ export class UserAdsComponent implements OnInit {
     return this.userTracking.hasViewedAd(adId);
   }
 
+  truncate(text: string, max: number): string {
+    if (!text) return '';
+    return text.length > max ? text.substring(0, max) + '...' : text;
+  }
+
   openAdModal(ad: PtcAdCard): void {
     if (this.userTracking.hasViewedAd(ad.id)) return;
     const ptcAd: PtcAd = {
       id: ad.id,
-      title: ad.title,
-      advertiserName: ad.advertiserName,
+      title: ad.companyName,
+      description: ad.description,
+      advertiserName: ad.companyName,
       advertiserType: ad.advertiserType,
       imageUrl: ad.imageUrl,
       youtubeVideoId: ad.youtubeVideoId,

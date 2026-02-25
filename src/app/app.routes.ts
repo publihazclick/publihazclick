@@ -44,10 +44,6 @@ export const routes: Routes = [
         pathMatch: 'full'
       },
       {
-        path: 'reports',
-        loadComponent: () => import('./features/admin/components/reports/reports.component').then(m => m.AdminReportsComponent)
-      },
-      {
         path: 'settings',
         loadComponent: () => import('./features/admin/components/settings/settings.component').then(m => m.AdminSettingsComponent)
       },
@@ -62,6 +58,13 @@ export const routes: Routes = [
       {
         path: 'ads',
         loadComponent: () => import('./features/admin/components/ads/ads.component').then(m => m.AdminAdsComponent)
+      },
+      {
+        path: 'auth-banners',
+        loadComponent: () =>
+          import('./features/admin/components/auth-banners/auth-banners.component').then(
+            m => m.AdminAuthBannersComponent
+          )
       }
     ]
   },

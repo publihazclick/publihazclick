@@ -6,8 +6,7 @@ import { AdminCampaignService } from '../../../../core/services/admin-campaign.s
 import type {
   DashboardStats,
   ChartData,
-  PendingItem,
-  ActivityLog
+  PendingItem
 } from '../../../../core/models/admin.model';
 
 // Pipe para obtener el máximo de un array de números
@@ -38,7 +37,6 @@ export class AdminDashboardComponent implements OnInit {
   readonly stats = signal<DashboardStats | null>(null);
   readonly chartData = signal<ChartData | null>(null);
   readonly pendingItems = signal<PendingItem[]>([]);
-  readonly recentActivity = signal<ActivityLog[]>([]);
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
 
@@ -69,17 +67,15 @@ export class AdminDashboardComponent implements OnInit {
     this.error.set(null);
 
     try {
-      const [stats, chartData, pendingItems, recentActivity] = await Promise.all([
+      const [stats, chartData, pendingItems] = await Promise.all([
         this.dashboardService.getDashboardStats(),
         this.dashboardService.getActivityChartData(),
-        this.dashboardService.getPendingItems(),
-        this.dashboardService.getRecentActivity(5)
+        this.dashboardService.getPendingItems()
       ]);
 
       this.stats.set(stats);
       this.chartData.set(chartData);
       this.pendingItems.set(pendingItems);
-      this.recentActivity.set(recentActivity);
     } catch (err: any) {
       console.error('Error loading dashboard data:', err);
       this.error.set('Error al cargar los datos del dashboard');
@@ -154,24 +150,6 @@ export class AdminDashboardComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit'
     });
-  }
-
-  /**
-   * Obtener texto descriptivo de acción
-   */
-  getActionText(action: string): string {
-    const actionTexts: Record<string, string> = {
-      'approve_ad': 'Aprobó un anuncio',
-      'reject_ad': 'Rechazó un anuncio',
-      'create_user': 'Creó un usuario',
-      'update_user': 'Actualizó un usuario',
-      'delete_user': 'Eliminó un usuario',
-      'approve_withdrawal': 'Aprobó un retiro',
-      'reject_withdrawal': 'Rechazó un retiro',
-      'login': 'Inició sesión',
-      'logout': 'Cerró sesión'
-    };
-    return actionTexts[action] || action;
   }
 
   /**

@@ -201,42 +201,89 @@
         </div>
       </div>
 
-      <!-- Actividad reciente -->
+      <!-- Desglose de Retiros -->
       <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden flex flex-col">
-        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-          <div>
-            <h2 class="font-black text-white text-base">Actividad Reciente</h2>
-            <p class="text-xs text-slate-500 mt-0.5">Últimas acciones del sistema</p>
-          </div>
-          <a routerLink="/admin/logs" class="text-xs text-primary font-bold hover:underline uppercase tracking-wide">
-            Ver logs
-          </a>
+        <div class="px-6 py-4 border-b border-white/5">
+          <h2 class="font-black text-white text-base">Desglose de Retiros</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Estado detallado de solicitudes de retiro</p>
         </div>
 
+        <!-- Total general -->
+        <div class="px-6 py-4 border-b border-white/5 bg-white/[0.02]">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-400 font-medium">Total solicitudes</span>
+            <span class="text-xl font-black text-white">{{ formatNumber(stats()?.totalWithdrawals) }}</span>
+          </div>
+        </div>
+
+        <!-- Desglose por estado -->
         <div class="flex-1 divide-y divide-white/5">
-          @if (recentActivity().length > 0) {
-            @for (activity of recentActivity(); track activity.id) {
-              <div class="px-5 py-3.5 flex items-start gap-3 hover:bg-white/[0.03] transition-colors">
-                <div class="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span class="material-symbols-outlined text-primary" style="font-size:14px">
-                    {{ activity.action.includes('user') ? 'person' :
-                       activity.action.includes('withdrawal') ? 'payments' :
-                       activity.action.includes('ad') || activity.action.includes('approve') ? 'ads_click' : 'history' }}
-                  </span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-bold text-white truncate">{{ activity.username }}</p>
-                  <p class="text-xs text-slate-400 mt-0.5">{{ getActionText(activity.action) }}</p>
-                  <p class="text-xs text-slate-600 mt-0.5">{{ formatDate(activity.created_at) }}</p>
-                </div>
+          <!-- Pendientes -->
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-amber-400" style="font-size:16px">schedule</span>
               </div>
-            }
-          } @else {
-            <div class="flex flex-col items-center justify-center py-10 gap-3">
-              <span class="material-symbols-outlined text-slate-700 text-4xl">history</span>
-              <p class="text-slate-500 text-sm">Sin actividad reciente</p>
+              <div>
+                <p class="text-sm font-bold text-white">Pendientes</p>
+                <p class="text-[10px] text-slate-500">En espera de revisión</p>
+              </div>
             </div>
-          }
+            <div class="text-right">
+              <p class="text-lg font-black text-amber-400">{{ formatNumber(stats()?.pendingWithdrawals) }}</p>
+              <p class="text-[10px] text-slate-500">{{ formatCurrency(stats()?.pendingWithdrawalsAmount) }}</p>
+            </div>
+          </div>
+
+          <!-- Aprobados -->
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-blue-400" style="font-size:16px">thumb_up</span>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-white">Aprobados</p>
+                <p class="text-[10px] text-slate-500">Aprobados, en proceso</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-lg font-black text-blue-400">{{ formatNumber(stats()?.approvedWithdrawals) }}</p>
+              <p class="text-[10px] text-slate-500">{{ formatCurrency(stats()?.approvedWithdrawalsAmount) }}</p>
+            </div>
+          </div>
+
+          <!-- Completados -->
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-white">Completados</p>
+                <p class="text-[10px] text-slate-500">Pagados exitosamente</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-lg font-black text-emerald-400">{{ formatNumber(stats()?.completedWithdrawals) }}</p>
+              <p class="text-[10px] text-slate-500">{{ formatCurrency(stats()?.completedWithdrawalsAmount) }}</p>
+            </div>
+          </div>
+
+          <!-- Rechazados -->
+          <div class="px-6 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-rose-500/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-rose-400" style="font-size:16px">cancel</span>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-white">Rechazados</p>
+                <p class="text-[10px] text-slate-500">Solicitudes denegadas</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-lg font-black text-rose-400">{{ formatNumber(stats()?.rejectedWithdrawals) }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -393,15 +440,15 @@
             <span class="material-symbols-outlined text-accent" style="font-size:18px">campaign</span>
             <span class="text-xs font-bold text-slate-300">Anuncios</span>
           </a>
-          <a routerLink="/admin/ads"
+          <a routerLink="/admin/packages"
             class="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-amber-500/10 border border-white/5 hover:border-amber-500/20 rounded-xl transition-colors">
-            <span class="material-symbols-outlined text-amber-400" style="font-size:18px">campaign</span>
-            <span class="text-xs font-bold text-slate-300">Gestión Ads</span>
+            <span class="material-symbols-outlined text-amber-400" style="font-size:18px">inventory_2</span>
+            <span class="text-xs font-bold text-slate-300">Paquetes</span>
           </a>
-          <a routerLink="/admin/reports"
+          <a routerLink="/admin/logs"
             class="flex items-center gap-2 px-3 py-2.5 bg-white/5 hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/20 rounded-xl transition-colors">
-            <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">bar_chart</span>
-            <span class="text-xs font-bold text-slate-300">Reportes</span>
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">history</span>
+            <span class="text-xs font-bold text-slate-300">Logs</span>
           </a>
         </div>
       </div>
