@@ -197,7 +197,7 @@ export class AdvertiserTasksComponent implements OnInit {
       advertiserName: slot.title, advertiserType: 'company',
       imageUrl: slot.imageUrl, videoUrl: slot.videoUrl,
       destinationUrl: slot.destinationUrl, adType: slot.adType,
-      rewardCOP: slot.rewardCOP, duration: 60,
+      rewardCOP: slot.rewardCOP, duration: slot.adType === 'mini' ? 30 : 60,
     });
     this.isModalOpen.set(true);
   }

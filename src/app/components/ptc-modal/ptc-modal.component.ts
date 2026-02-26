@@ -403,6 +403,8 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // Inicializar countdown con la duración del anuncio
+    this.countdown.set(this.ad().duration || 60);
     this.alreadyViewed.set(!this.userTracking.canClaimReward(this.ad().id));
     this.startCountdown();
 
@@ -421,7 +423,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     if (document.hidden && this.countdown() > 0 && !this.captchaCompleted() && !this.alreadyViewed()) {
       // El usuario salió de la pestaña durante el conteo
       this.stopCountdown();
-      this.countdown.set(60);
+      this.countdown.set(this.ad().duration || 60);
       this.tabWasInactive.set(true);
       this.showCaptchaModal.set(false);
     } else if (!document.hidden && this.tabWasInactive()) {
