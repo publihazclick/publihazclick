@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import { AdminBannerService } from '../../../../core/services/admin-banner.service';
 import { StorageService } from '../../../../core/services/storage.service';
+import { getSupabaseClient } from '../../../../core/supabase.client';
 import type {
   PtcTaskAdmin,
   CreatePtcTaskData,
@@ -17,6 +18,13 @@ import type {
   AdLocation,
   PtcAdType,
 } from '../../../../core/models/admin.model';
+
+interface AdvertiserOption {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+}
 
 interface LocationOption {
   value: AdLocation;
@@ -77,6 +85,13 @@ export class AdminAdsComponent implements OnInit {
     null
   );
 
+  // Buscador de usuario (asignar anuncio a usuario)
+  readonly userSearchQuery = signal<string>('');
+  readonly userSearchResults = signal<AdvertiserOption[]>([]);
+  readonly selectedAdvertiser = signal<AdvertiserOption | null>(null);
+  readonly userSearchLoading = signal<boolean>(false);
+  private userSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+
   // Formularios
   ptcFormDataValue: Partial<CreatePtcTaskData> = {
     title: '',
@@ -122,8 +137,24 @@ export class AdminAdsComponent implements OnInit {
       { value: 'mega', label: 'Mega Anuncio', reward: 2000, duration: 60 },
       { value: 'standard_600', label: 'Standard 600', reward: 600, duration: 60 },
       { value: 'standard_400', label: 'Standard 400', reward: 400, duration: 60 },
-      { value: 'mini', label: 'Mini Anuncio', reward: 83.33, duration: 60 },
+      { value: 'mini', label: 'Mini Anuncio', reward: 83.33, duration: 30 },
     ];
+
+  // Ubicación del modal (compartida entre PTC y Banner)
+  readonly modalLocation = signal<AdLocation>('app');
+
+  // Tipos de anuncio filtrados según ubicación + usuario asignado
+  readonly filteredAdTypeOptions = computed(() => {
+    const loc = this.modalLocation();
+    const hasUser = !!this.selectedAdvertiser();
+    if (loc === 'app' && hasUser) {
+      return this.adTypeOptions.filter((o) => o.value === 'standard_400');
+    }
+    if (loc === 'app') {
+      return this.adTypeOptions.filter((o) => o.value !== 'standard_600');
+    }
+    return this.adTypeOptions;
+  });
 
   readonly ptcStatuses: { value: TaskStatus | 'all'; label: string }[] = [
     { value: 'all', label: 'Todos' },
@@ -257,12 +288,37 @@ export class AdminAdsComponent implements OnInit {
     }
   }
 
+  onModalLocationChange(location: AdLocation): void {
+    this.modalLocation.set(location);
+    this.ptcFormData = { ...this.ptcFormData, location };
+    this.bannerFormData = { ...this.bannerFormData, location };
+    this.autoCorrectAdType();
+  }
+
+  private autoCorrectAdType(): void {
+    const allowed = this.filteredAdTypeOptions();
+    const current = this.ptcFormData.ad_type;
+    if (current && !allowed.find((o) => o.value === current)) {
+      const fallback = allowed[0];
+      if (fallback) {
+        this.ptcFormData = {
+          ...this.ptcFormData,
+          ad_type: fallback.value,
+          reward: fallback.reward,
+          duration: fallback.duration,
+        };
+      }
+    }
+  }
+
   // ── Modal crear/editar ──────────────────────────────────────────────────────
 
   openCreatePtcModal(): void {
     this.modalMode.set('create-ptc');
     this.selectedPtc.set(null);
     this.modalError.set(null);
+    this.clearAdvertiser();
+    this.modalLocation.set(this.activeLocation());
     this.ptcFormData = {
       title: '',
       description: '',
@@ -283,6 +339,11 @@ export class AdminAdsComponent implements OnInit {
     this.modalMode.set('edit-ptc');
     this.selectedPtc.set(ptc);
     this.modalError.set(null);
+    this.clearAdvertiser();
+    this.modalLocation.set(ptc.location || 'app');
+    if (ptc.advertiser_id) {
+      this.loadAdvertiserById(ptc.advertiser_id);
+    }
     this.ptcFormData = {
       title: ptc.title,
       description: ptc.description,
@@ -303,6 +364,8 @@ export class AdminAdsComponent implements OnInit {
     this.modalMode.set('create-banner');
     this.selectedBanner.set(null);
     this.modalError.set(null);
+    this.clearAdvertiser();
+    this.modalLocation.set(this.activeLocation());
     this.bannerFormData = {
       name: '',
       description: '',
@@ -321,6 +384,11 @@ export class AdminAdsComponent implements OnInit {
     this.modalMode.set('edit-banner');
     this.selectedBanner.set(banner);
     this.modalError.set(null);
+    this.clearAdvertiser();
+    this.modalLocation.set((banner as any).location || 'app');
+    if (banner.advertiser_id) {
+      this.loadAdvertiserById(banner.advertiser_id);
+    }
     this.bannerFormData = {
       name: banner.name,
       description: banner.description || '',
@@ -352,6 +420,11 @@ export class AdminAdsComponent implements OnInit {
     this.saving.set(true);
     this.modalError.set(null);
     try {
+      const advertiser = this.selectedAdvertiser();
+      if (advertiser) {
+        this.ptcFormData.advertiser_id = advertiser.id;
+      }
+      this.ptcFormData.duration = this.ptcFormData.ad_type === 'mini' ? 30 : 60;
       if (this.modalMode() === 'create-ptc') {
         await this.ptcService.createPtcTask(this.ptcFormData as CreatePtcTaskData);
         this.showToast('Anuncio PTC creado correctamente');
@@ -405,6 +478,10 @@ export class AdminAdsComponent implements OnInit {
     this.saving.set(true);
     this.modalError.set(null);
     try {
+      const advertiser = this.selectedAdvertiser();
+      if (advertiser) {
+        this.bannerFormData.advertiser_id = advertiser.id;
+      }
       if (this.modalMode() === 'create-banner') {
         await this.bannerService.createBannerAd(this.bannerFormData as CreateBannerAdData);
         this.showToast('Banner creado correctamente');
@@ -549,6 +626,77 @@ export class AdminAdsComponent implements OnInit {
       this.currentPage.update((p) => p + 1);
       this.loadData();
     }
+  }
+
+  // ── Buscador de usuario ────────────────────────────────────────────────────
+
+  onUserSearch(query: string): void {
+    this.userSearchQuery.set(query);
+    if (this.userSearchTimeout) clearTimeout(this.userSearchTimeout);
+    if (!query.trim()) {
+      this.userSearchResults.set([]);
+      return;
+    }
+    this.userSearchTimeout = setTimeout(() => this.searchUsers(query.trim()), 300);
+  }
+
+  private async searchUsers(query: string): Promise<void> {
+    this.userSearchLoading.set(true);
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, email, role')
+        .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
+        .limit(10);
+      if (error) throw error;
+      this.userSearchResults.set(
+        (data || []).map((u: any) => ({
+          id: u.id,
+          username: u.username || '',
+          email: u.email || '',
+          role: u.role || 'guest',
+        }))
+      );
+    } catch {
+      this.userSearchResults.set([]);
+    } finally {
+      this.userSearchLoading.set(false);
+    }
+  }
+
+  private async loadAdvertiserById(userId: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, email, role')
+        .eq('id', userId)
+        .single();
+      if (error || !data) return;
+      this.selectedAdvertiser.set({
+        id: data.id,
+        username: data.username || '',
+        email: data.email || '',
+        role: data.role || 'guest',
+      });
+    } catch {
+      // silently fail — the ad still works without pre-loaded advertiser
+    }
+  }
+
+  selectAdvertiser(user: AdvertiserOption): void {
+    this.selectedAdvertiser.set(user);
+    this.userSearchQuery.set('');
+    this.userSearchResults.set([]);
+    this.autoCorrectAdType();
+  }
+
+  clearAdvertiser(): void {
+    this.selectedAdvertiser.set(null);
+    this.userSearchQuery.set('');
+    this.userSearchResults.set([]);
+    this.autoCorrectAdType();
   }
 
   // ── Toast ───────────────────────────────────────────────────────────────────

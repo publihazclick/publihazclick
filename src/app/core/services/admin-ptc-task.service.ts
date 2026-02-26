@@ -11,6 +11,258 @@ import type {
 } from '../models/admin.model';
 
 /**
+ * Interface para anuncios de ejemplo compartidos (landing + advertiser gallery)
+ */
+export interface SampleAdCard {
+  id: string;
+  title: string;
+  description: string;
+  advertiserName: string;
+  advertiserType: 'company' | 'person';
+  imageUrl: string;
+  videoUrl: string;
+  adType: 'mega' | 'standard_400' | 'standard_600' | 'mini';
+  rewardCOP: number;
+  dailyLimit: number;
+  totalClicks: number;
+  status: string;
+}
+
+/**
+ * 16 anuncios de ejemplo usados en la landing y galería del anunciante
+ */
+export const SAMPLE_PTC_ADS: SampleAdCard[] = [
+  // Mega Anuncios (2000 COP)
+  {
+    id: '1',
+    title: 'Promo Fin de Semana - Tienda Online',
+    description: 'Ofertas exclusivas este fin de semana',
+    advertiserName: 'Mileniustore',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
+    videoUrl: 'dQw4w9WgXcQ',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 100,
+    totalClicks: 450,
+    status: 'active'
+  },
+  {
+    id: '5',
+    title: 'Restaurante Los Parados',
+    description: 'Los mejores platos típicos',
+    advertiserName: 'Restaurante Los Parados',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+    videoUrl: 'jfKfPfyJRdk',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 120,
+    totalClicks: 580,
+    status: 'active'
+  },
+  {
+    id: '7',
+    title: 'Gran Venta de Electrónicos',
+    description: 'Hasta 50% de descuento',
+    advertiserName: 'TecnoWorld',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
+    videoUrl: '5qap5aO4i9A',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 80,
+    totalClicks: 320,
+    status: 'active'
+  },
+  {
+    id: '8',
+    title: 'Spa & Wellness Centro',
+    description: 'Relájate con nuestros servicios',
+    advertiserName: 'Relax & Vida',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
+    videoUrl: 'DWcJFNfaw9c',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 60,
+    totalClicks: 210,
+    status: 'active'
+  },
+  // Standard 400 (400 COP)
+  {
+    id: '2',
+    title: 'Nueva Colección de Ropa',
+    description: 'Moda colombiana al mejor precio',
+    advertiserName: 'Fashion Colombia',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+    videoUrl: 'KG4otu6nO1I',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 80,
+    totalClicks: 320,
+    status: 'active'
+  },
+  {
+    id: '9',
+    title: 'Zapatillas Importadas',
+    description: 'Las mejores marcas importadas',
+    advertiserName: 'ShoeStore',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
+    videoUrl: 'VGg46O4GgiM',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 70,
+    totalClicks: 280,
+    status: 'active'
+  },
+  {
+    id: '10',
+    title: 'Accesorios para Celulares',
+    description: 'Protege y personaliza tu celular',
+    advertiserName: 'CelularAccesories',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=300&fit=crop',
+    videoUrl: '9bZkp7q19f0',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 90,
+    totalClicks: 410,
+    status: 'active'
+  },
+  {
+    id: '11',
+    title: 'Muebles para el Hogar',
+    description: 'Renueva tu hogar con estilo',
+    advertiserName: 'HogarExpress',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
+    videoUrl: 'jNQXAC9IVRw',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 50,
+    totalClicks: 190,
+    status: 'active'
+  },
+  // Standard 600 (600 COP)
+  {
+    id: '3',
+    title: 'Servicio de Delivery Express',
+    description: 'Entrega rápida a domicilio',
+    advertiserName: 'Juan Pérez',
+    advertiserType: 'person',
+    imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
+    videoUrl: 'fJ9rUzIMcZQ',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 60,
+    totalClicks: 180,
+    status: 'active'
+  },
+  {
+    id: '12',
+    title: 'Clases de Guitarra Online',
+    description: 'Aprende a tocar guitarra desde casa',
+    advertiserName: 'MusicaVirtual',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop',
+    videoUrl: 'hT_nvWreIhg',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 40,
+    totalClicks: 150,
+    status: 'active'
+  },
+  {
+    id: '13',
+    title: 'Servicios de Limpieza',
+    description: 'Limpieza profesional garantizada',
+    advertiserName: 'LimpiaHogar',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop',
+    videoUrl: 'kXYiU_JCYtU',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 55,
+    totalClicks: 230,
+    status: 'active'
+  },
+  {
+    id: '14',
+    title: 'Peluquería Canina a Domicilio',
+    description: 'Cuidamos a tu mascota con amor',
+    advertiserName: 'MascotasFelices',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=300&fit=crop',
+    videoUrl: 'RgKAFKcjG3w',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 35,
+    totalClicks: 95,
+    status: 'active'
+  },
+  // Mini Anuncios (83.33 COP)
+  {
+    id: '4',
+    title: 'Cupón Descuento 20%',
+    description: 'Descuento exclusivo en tecnología',
+    advertiserName: 'TechnoShop',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=300&fit=crop',
+    videoUrl: 'OPf0YbXqDm0',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 50,
+    totalClicks: 120,
+    status: 'active'
+  },
+  {
+    id: '6',
+    title: 'Clases de Inglés Online',
+    description: 'Aprende inglés fácil y rápido',
+    advertiserName: 'María García',
+    advertiserType: 'person',
+    imageUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400&h=300&fit=crop',
+    videoUrl: 'jofNRWkoRGY',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 30,
+    totalClicks: 85,
+    status: 'active'
+  },
+  {
+    id: '15',
+    title: 'Desayunos Sorpresa',
+    description: 'Sorprende a quien más quieres',
+    advertiserName: 'SweetDelivery',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
+    videoUrl: '9bZkp7q19f0',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 45,
+    totalClicks: 180,
+    status: 'active'
+  },
+  {
+    id: '16',
+    title: 'Reparación de Computadores',
+    description: 'Servicio técnico profesional',
+    advertiserName: 'TechFix',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=400&h=300&fit=crop',
+    videoUrl: 'kJQP7kiw5Fk',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 25,
+    totalClicks: 65,
+    status: 'active'
+  }
+];
+
+/**
  * Servicio para gestión de anuncios PTC (admin)
  */
 @Injectable({

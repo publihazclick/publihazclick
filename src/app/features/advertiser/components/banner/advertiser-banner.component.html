@@ -2,8 +2,11 @@
 
   <!-- Header -->
   <div>
-    <h2 class="text-xl font-black text-white">Mi Banner</h2>
-    <p class="text-xs text-slate-400">Crea tu banner publicitario. Aparecerá en el slider de todos los usuarios de la plataforma.</p>
+    <h2 class="text-xl font-black text-white flex items-center gap-2">
+      <span class="material-symbols-outlined text-violet-400" style="font-size:22px">photo_library</span>
+      Crea tu banner
+    </h2>
+    <p class="text-xs text-slate-400 mt-1">Clona un banner de la galería o crea el tuyo desde cero.</p>
   </div>
 
   <!-- Alertas -->
@@ -82,10 +85,9 @@
               {{ getStatusInfo(myBanner()!.status).label }}
             </span>
           </div>
-          <!-- Position badge -->
           <div class="absolute top-3 right-3">
             <span class="text-[10px] font-black px-2 py-1 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
-              {{ positionLabels[myBanner()!.position] || myBanner()!.position }}
+              Banner
             </span>
           </div>
         </div>
@@ -98,7 +100,7 @@
           }
 
           <!-- Stats -->
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+          <div class="grid grid-cols-2 gap-3 pt-2">
             <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
               <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Impresiones</p>
               <p class="text-sm font-black text-white">{{ myBanner()!.total_impressions }}</p>
@@ -106,10 +108,6 @@
             <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
               <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Clics</p>
               <p class="text-sm font-black text-emerald-400">{{ myBanner()!.total_clicks }}</p>
-            </div>
-            <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3">
-              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Ubicación</p>
-              <p class="text-sm font-black text-violet-400">App</p>
             </div>
           </div>
 
@@ -200,32 +198,18 @@
         ></textarea>
       </div>
 
-      <!-- URL destino + Posición -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
-            URL de destino <span class="text-rose-400">*</span>
-          </label>
-          <input
-            type="url"
-            [ngModel]="form().url"
-            (ngModelChange)="updateForm('url', $event)"
-            placeholder="https://tu-sitio.com"
-            class="w-full bg-white/5 border border-white/10 focus:border-violet-500/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
-          >
-        </div>
-        <div>
-          <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Posición</label>
-          <select
-            [ngModel]="form().position"
-            (ngModelChange)="updateForm('position', $event)"
-            class="w-full bg-zinc-900 border border-white/10 focus:border-violet-500/50 rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-colors"
-          >
-            @for (key of positionKeys; track key) {
-              <option [value]="key" class="bg-zinc-900">{{ positionLabels[key] }}</option>
-            }
-          </select>
-        </div>
+      <!-- URL destino -->
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+          URL de destino <span class="text-rose-400">*</span>
+        </label>
+        <input
+          type="url"
+          [ngModel]="form().url"
+          (ngModelChange)="updateForm('url', $event)"
+          placeholder="https://tu-sitio.com"
+          class="w-full bg-white/5 border border-white/10 focus:border-violet-500/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+        >
       </div>
 
       <!-- Imagen del banner (obligatoria) -->
@@ -233,7 +217,7 @@
         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
           Imagen del banner <span class="text-rose-400">*</span>
         </label>
-        <p class="text-[10px] text-slate-600 mb-3">Tamaño recomendado: 1200 × 400 px (ratio 3:1) · JPG, PNG o WebP · máx 2MB</p>
+        <p class="text-[10px] text-slate-600 mb-3">JPG, PNG o WebP · máx 2MB · Medida recomendada: <span class="text-slate-400 font-bold">1200 × 400 px</span> (ratio 3:1)</p>
         @if (form().image_url) {
           <div class="relative mb-3 rounded-xl overflow-hidden border border-white/10 aspect-[3/1] bg-zinc-900">
             <img [src]="form().image_url" alt="Preview banner" class="w-full h-full object-cover">
@@ -289,6 +273,66 @@
       </div>
     </div>
   }
+
+  <!-- ── Galería de Banners ──────────────────────────── -->
+  <section class="space-y-4 mt-10">
+    <div>
+      <h3 class="text-sm font-black text-slate-300 uppercase tracking-widest flex items-center gap-2">
+        <span class="material-symbols-outlined text-violet-400" style="font-size:18px">auto_awesome</span>
+        Galería de Banners
+      </h3>
+      <p class="text-xs text-slate-500 mt-1">
+        Selecciona un banner para crear el tuyo automáticamente.
+      </p>
+    </div>
+
+    @if (galleryLoading()) {
+      <div class="flex justify-center py-12">
+        <div class="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    } @else if (galleryBanners().length === 0) {
+      <div class="text-center py-8">
+        <span class="material-symbols-outlined text-zinc-700 text-4xl block mb-2">image_not_supported</span>
+        <p class="text-slate-600 text-xs">No hay banners disponibles en la galería.</p>
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        @for (banner of galleryBanners(); track banner.id) {
+          <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-white/10 transition-all">
+            <div class="relative aspect-[3/1] overflow-hidden bg-zinc-900">
+              @if (banner.image_url) {
+                <img [src]="banner.image_url" [alt]="banner.name"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              } @else {
+                <div class="w-full h-full flex items-center justify-center">
+                  <span class="material-symbols-outlined text-zinc-700 text-5xl">image</span>
+                </div>
+              }
+            </div>
+            <div class="p-3 flex flex-col flex-1 gap-2">
+              <p class="text-xs font-black text-white line-clamp-1 leading-tight">{{ banner.name }}</p>
+              @if (banner.description) {
+                <p class="text-[10px] text-slate-500 line-clamp-2">{{ banner.description }}</p>
+              }
+              <button
+                (click)="cloneAndCreate(banner)"
+                [disabled]="saving()"
+                class="mt-auto flex items-center justify-center gap-1.5 w-full py-2 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 text-violet-400 font-bold rounded-xl text-xs transition-all disabled:opacity-50"
+              >
+                @if (saving() && cloningFrom()?.id === banner.id) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:14px">sync</span>
+                  Creando...
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:14px">bolt</span>
+                  Clonar banner
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
 
 </div>
 

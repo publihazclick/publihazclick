@@ -1,5 +1,5 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, OnInit, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { StorageService } from '../../../../core/services/storage.service';
@@ -34,6 +34,14 @@ const POSITION_LABELS: Record<string, string> = {
   interstitial: 'Banner Intersticial (pantalla completa)',
 };
 
+interface GalleryBanner {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string;
+  url: string;
+}
+
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending:   { label: 'Pendiente de revisión', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
   active:    { label: 'Activo',                color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
@@ -52,6 +60,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export class AdvertiserBannerComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly storageService = inject(StorageService);
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly supabase = getSupabaseClient();
 
   readonly profile = this.profileService.profile;
@@ -76,9 +85,89 @@ export class AdvertiserBannerComponent implements OnInit {
   readonly positionLabels = POSITION_LABELS;
   readonly positionKeys = Object.keys(POSITION_LABELS) as BannerPosition[];
 
+  // Gallery
+  readonly galleryBanners = signal<GalleryBanner[]>([]);
+  readonly galleryLoading = signal(true);
+  readonly cloningFrom = signal<GalleryBanner | null>(null);
+
   async ngOnInit(): Promise<void> {
-    await this.loadMyBanner();
+    await Promise.all([this.loadMyBanner(), this.loadGalleryBanners()]);
     this.loading.set(false);
+  }
+
+  private async loadGalleryBanners(): Promise<void> {
+    try {
+      const { data } = await this.supabase
+        .from('banner_ads')
+        .select('id, name, description, image_url, url')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      this.galleryBanners.set((data || []) as GalleryBanner[]);
+    } catch {
+      this.galleryBanners.set([]);
+    } finally {
+      this.galleryLoading.set(false);
+    }
+  }
+
+  async cloneAndCreate(banner: GalleryBanner): Promise<void> {
+    this.saving.set(true);
+    this.clearMessages();
+    this.cloningFrom.set(banner);
+
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) { this.saving.set(false); return; }
+
+    try {
+      const existing = this.myBanner();
+      if (existing) {
+        const { error } = await this.supabase
+          .from('banner_ads')
+          .update({
+            name: banner.name,
+            description: banner.description,
+            image_url: banner.image_url,
+            status: 'pending',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await this.supabase
+          .from('banner_ads')
+          .insert({
+            name: banner.name,
+            description: banner.description,
+            image_url: banner.image_url,
+            url: banner.url,
+            position: 'header',
+            advertiser_id: user.id,
+            status: 'pending',
+            location: 'app',
+            impressions_limit: 10000,
+            clicks_limit: 1000,
+            reward: 0,
+          });
+
+        if (error) throw error;
+      }
+
+      await this.loadMyBanner();
+      this.showForm.set(false);
+      this.cloningFrom.set(null);
+      this.showSuccess('Banner creado y enviado a revisión.');
+
+      if (isPlatformBrowser(this.platformId)) {
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+      }
+    } catch {
+      this.showError('Error al crear el banner. Intenta de nuevo.');
+    }
+
+    this.saving.set(false);
   }
 
   private async loadMyBanner(): Promise<void> {

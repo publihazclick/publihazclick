@@ -32,11 +32,13 @@ export class RegisterComponent implements OnInit {
   readonly departmentsList = computed(() => this.countriesService.getDepartments(this.selectedCountryCode()));
   readonly availableCities = computed(() => this.countriesService.getCities(this.registerForm.get('department')?.value || ''));
 
-  // Código de referido de la URL
+  // Código de referido de la URL o manual
   referralCode = '';
   referralValid = signal<boolean | null>(null);
   referrerName = signal<string>('');
   referralError = signal<string>('');
+  manualReferralCode = signal<string>('');
+  isValidatingReferral = signal(false);
 
   // Formulario reactivo
   registerForm: FormGroup = this.fb.group({
@@ -72,14 +74,11 @@ export class RegisterComponent implements OnInit {
     this.referralCode = this.route.snapshot.params['code'] ||
                        this.route.snapshot.queryParams['ref'] || '';
 
-    // El código de referido es OBLIGATORIO - sin él no se puede registrar
-    if (!this.referralCode) {
-      this.referralValid.set(false);
-      this.referralError.set('Se requiere un código de referido válido para registrarse. Solicita un enlace de referido a un usuario existente.');
-    } else {
-      // Validar el código de referido
+    if (this.referralCode) {
+      // Validar el código de referido que viene de la URL
       this.validateReferralCode();
     }
+    // Si no hay código, el usuario puede ingresarlo manualmente
 
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
 
@@ -105,6 +104,25 @@ export class RegisterComponent implements OnInit {
       this.referralValid.set(false);
       this.referralError.set(result.error || 'Código de referido inválido');
     }
+  }
+
+  onManualReferralInput(value: string): void {
+    this.manualReferralCode.set(value.trim());
+    // Reset validation state when user types
+    if (this.referralValid() === false) {
+      this.referralValid.set(null);
+      this.referralError.set('');
+    }
+  }
+
+  async applyManualReferralCode(): Promise<void> {
+    const code = this.manualReferralCode();
+    if (!code) return;
+
+    this.isValidatingReferral.set(true);
+    this.referralCode = code;
+    await this.validateReferralCode();
+    this.isValidatingReferral.set(false);
   }
 
   passwordMatchValidator(form: FormGroup) {

@@ -1,8 +1,9 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, OnInit, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { StorageService } from '../../../../core/services/storage.service';
+import { AdminPtcTaskService, SAMPLE_PTC_ADS } from '../../../../core/services/admin-ptc-task.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 
@@ -26,16 +27,17 @@ interface AdForm {
   url: string;
   youtube_url: string;
   image_url: string;
-  ad_type: PtcAdType;
-  daily_limit: number;
 }
 
-const AD_TYPE_LABELS: Record<string, string> = {
-  mega: 'Mega Anuncio — 2,000 COP',
-  standard_600: 'Anuncio 600 — 600 COP',
-  standard_400: 'Anuncio 400 — 400 COP',
-  mini: 'Mini Anuncio — 83.33 COP',
-};
+interface GalleryAdCard {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  videoUrl: string;
+  rewardCOP: number;
+  advertiserName: string;
+}
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending:   { label: 'Pendiente de revisión', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
@@ -55,6 +57,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export class AdvertiserAdsComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly storageService = inject(StorageService);
+  private readonly ptcService = inject(AdminPtcTaskService);
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly supabase = getSupabaseClient();
 
   readonly profile = this.profileService.profile;
@@ -75,15 +79,15 @@ export class AdvertiserAdsComponent implements OnInit {
     url: '',
     youtube_url: '',
     image_url: '',
-    ad_type: 'standard_400',
-    daily_limit: 50,
   });
 
-  readonly adTypeLabels = AD_TYPE_LABELS;
-  readonly adTypeKeys = Object.keys(AD_TYPE_LABELS) as PtcAdType[];
+  // Gallery
+  readonly galleryAds = signal<GalleryAdCard[]>([]);
+  readonly galleryLoading = signal(true);
+  readonly cloningFrom = signal<GalleryAdCard | null>(null);
 
   async ngOnInit(): Promise<void> {
-    await this.loadMyAd();
+    await Promise.all([this.loadMyAd(), this.loadGalleryAds()]);
     this.loading.set(false);
   }
 
@@ -102,16 +106,60 @@ export class AdvertiserAdsComponent implements OnInit {
     this.myAd.set(data as MyAd | null);
   }
 
+  private async loadGalleryAds(): Promise<void> {
+    try {
+      const result = await this.ptcService.getPtcTasks(
+        { status: 'active' },
+        { page: 1, pageSize: 50 }
+      );
+
+      const tasks = result.data ?? [];
+
+      if (tasks.length > 0) {
+        this.galleryAds.set(
+          tasks.map(t => ({
+            id: t.id,
+            title: t.title,
+            description: t.description || '',
+            imageUrl: t.image_url || '',
+            videoUrl: t.youtube_url || '',
+            rewardCOP: 400,
+            advertiserName: t.advertiser_username || t.title,
+          }))
+        );
+      } else {
+        this.setFallbackGallery();
+      }
+    } catch {
+      this.setFallbackGallery();
+    } finally {
+      this.galleryLoading.set(false);
+    }
+  }
+
+  private setFallbackGallery(): void {
+    this.galleryAds.set(
+      SAMPLE_PTC_ADS.map(s => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        imageUrl: s.imageUrl,
+        videoUrl: s.videoUrl,
+        rewardCOP: s.rewardCOP,
+        advertiserName: s.advertiserName,
+      }))
+    );
+  }
+
   openCreateForm(): void {
-    this.form.set({
-      title: '', description: '', url: '', youtube_url: '',
-      image_url: '', ad_type: 'standard_400', daily_limit: 50,
-    });
+    this.cloningFrom.set(null);
+    this.form.set({ title: '', description: '', url: '', youtube_url: '', image_url: '' });
     this.showForm.set(true);
     this.clearMessages();
   }
 
   openEditForm(): void {
+    this.cloningFrom.set(null);
     const ad = this.myAd();
     if (!ad) return;
     this.form.set({
@@ -120,15 +168,96 @@ export class AdvertiserAdsComponent implements OnInit {
       url: ad.url,
       youtube_url: ad.youtube_url || '',
       image_url: ad.image_url || '',
-      ad_type: ad.ad_type,
-      daily_limit: ad.daily_limit,
     });
     this.showForm.set(true);
     this.clearMessages();
   }
 
+  cloneAd(ad: GalleryAdCard): void {
+    this.cloningFrom.set(ad);
+    this.form.set({
+      title: ad.title,
+      description: ad.description,
+      url: '',
+      youtube_url: ad.videoUrl,
+      image_url: ad.imageUrl,
+    });
+    this.showForm.set(true);
+    this.clearMessages();
+
+    if (isPlatformBrowser(this.platformId)) {
+      setTimeout(() => {
+        document.querySelector('[data-ad-form]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  }
+
+  async cloneAndCreate(ad: GalleryAdCard): Promise<void> {
+    this.saving.set(true);
+    this.clearMessages();
+    this.cloningFrom.set(ad);
+
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) { this.saving.set(false); return; }
+
+    try {
+      // Si ya tiene un anuncio, actualizarlo con los datos del clon
+      const existing = this.myAd();
+      if (existing) {
+        const { error } = await this.supabase
+          .from('ptc_tasks')
+          .update({
+            title: ad.title,
+            description: ad.description,
+            youtube_url: ad.videoUrl || null,
+            image_url: ad.imageUrl || null,
+            ad_type: 'standard_400',
+            daily_limit: 50,
+            status: 'pending',
+          })
+          .eq('id', existing.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await this.supabase
+          .from('ptc_tasks')
+          .insert({
+            title: ad.title,
+            description: ad.description,
+            url: ad.description,
+            youtube_url: ad.videoUrl || null,
+            image_url: ad.imageUrl || null,
+            ad_type: 'standard_400',
+            daily_limit: 50,
+            advertiser_id: user.id,
+            status: 'pending',
+            location: 'app',
+            reward: 0,
+            duration: 60,
+            total_clicks: 0,
+          });
+
+        if (error) throw error;
+      }
+
+      await this.loadMyAd();
+      this.showForm.set(false);
+      this.cloningFrom.set(null);
+      this.showSuccess('Anuncio creado y enviado a revisión.');
+
+      if (isPlatformBrowser(this.platformId)) {
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+      }
+    } catch {
+      this.showError('Error al crear el anuncio. Intenta de nuevo.');
+    }
+
+    this.saving.set(false);
+  }
+
   cancelForm(): void {
     this.showForm.set(false);
+    this.cloningFrom.set(null);
     this.clearMessages();
   }
 
@@ -179,7 +308,6 @@ export class AdvertiserAdsComponent implements OnInit {
 
     try {
       if (existing) {
-        // Actualizar — vuelve a pending para revisión del admin
         const { error } = await this.supabase
           .from('ptc_tasks')
           .update({
@@ -188,8 +316,8 @@ export class AdvertiserAdsComponent implements OnInit {
             url: f.url.trim(),
             youtube_url: f.youtube_url.trim() || null,
             image_url: f.image_url.trim() || null,
-            ad_type: f.ad_type,
-            daily_limit: f.daily_limit,
+            ad_type: 'standard_400',
+            daily_limit: 50,
             status: 'pending',
           })
           .eq('id', existing.id);
@@ -197,7 +325,6 @@ export class AdvertiserAdsComponent implements OnInit {
         if (error) throw error;
         this.showSuccess('Anuncio actualizado. Pendiente de revisión por el administrador.');
       } else {
-        // Crear nuevo con status pending
         const { error } = await this.supabase
           .from('ptc_tasks')
           .insert({
@@ -206,8 +333,8 @@ export class AdvertiserAdsComponent implements OnInit {
             url: f.url.trim(),
             youtube_url: f.youtube_url.trim() || null,
             image_url: f.image_url.trim() || null,
-            ad_type: f.ad_type,
-            daily_limit: f.daily_limit,
+            ad_type: 'standard_400',
+            daily_limit: 50,
             advertiser_id: user.id,
             status: 'pending',
             location: 'app',
@@ -222,6 +349,7 @@ export class AdvertiserAdsComponent implements OnInit {
 
       await this.loadMyAd();
       this.showForm.set(false);
+      this.cloningFrom.set(null);
     } catch {
       this.showError('Error al guardar. Intenta de nuevo.');
     }
