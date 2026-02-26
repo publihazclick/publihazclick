@@ -12,7 +12,7 @@
   } @else if (notFound()) {
     <!-- Sin líder asignado -->
     <div class="bg-card-dark border border-white/5 rounded-2xl p-10 flex flex-col items-center justify-center gap-4 text-center">
-      <span class="material-icons text-slate-600" style="font-size:52px;">person_off</span>
+      <span class="material-symbols-outlined text-slate-600" style="font-size:52px;">person_off</span>
       <div>
         <p class="text-white font-black text-lg">Sin líder asignado</p>
         <p class="text-slate-400 text-sm mt-1 max-w-xs mx-auto">
@@ -20,7 +20,7 @@
         </p>
       </div>
       <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-cyan-500/10 text-primary text-xs font-bold border border-cyan-500/20">
-        <span class="material-icons" style="font-size:14px;">star</span>
+        <span class="material-symbols-outlined" style="font-size:14px;">star</span>
         Miembro Fundador
       </span>
     </div>
@@ -61,7 +61,7 @@
             <!-- Paquete -->
             @if (leader()!.has_active_package) {
               <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <span class="material-icons" style="font-size:12px;">workspace_premium</span>
+                <span class="material-symbols-outlined" style="font-size:12px;">workspace_premium</span>
                 Paquete Activo
               </span>
             }

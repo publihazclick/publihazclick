@@ -305,20 +305,13 @@
                   <span class="material-symbols-outlined" style="font-size:18px">verified</span>
                   Plan actual activo
                 </div>
-              } @else if (pkg.nequi_payment_link) {
+              } @else {
                 <button
-                  (click)="openNequiPayment(pkg)"
+                  (click)="selectAndPay(pkg)"
                   class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-white"
                 >
                   <span class="material-symbols-outlined" style="font-size:18px">payments</span>
-                  Pagar
-                </button>
-              } @else {
-                <button disabled
-                  class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold bg-white/5 text-slate-500 cursor-not-allowed border border-white/5"
-                >
-                  <span class="material-symbols-outlined" style="font-size:18px">schedule</span>
-                  Próximamente
+                  Adquirir Plan
                 </button>
               }
             </div>
@@ -333,7 +326,7 @@
       <div>
         <p class="font-bold text-white text-sm mb-1">¿Cómo adquirir un paquete?</p>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Haz clic en <span class="text-[#00B4D8] font-bold">Pagar con Nequi</span>, completa el pago en la app de Nequi y luego regresa aquí para enviar tu comprobante. El equipo verificará y activará tu plan en minutos.
+          Haz clic en <span class="text-[#00B4D8] font-bold">Adquirir Plan</span>, elige tu método de pago preferido (tarjeta, Google Pay, Nequi) y completa el proceso. Con Stripe tu plan se activa al instante.
         </p>
       </div>
     </div>
@@ -353,22 +346,35 @@
       <div class="px-6 pt-6 pb-4 flex items-center justify-between border-b border-white/10">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center"
-               [class]="payStep() === 'approved' ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-[#00B4D8]/10 border border-[#00B4D8]/30'">
+               [class]="(payStep() === 'approved' || payStep() === 'stripe-success')
+                 ? 'bg-emerald-500/10 border border-emerald-500/30'
+                 : payStep() === 'stripe-loading'
+                   ? 'bg-[#635BFF]/10 border border-[#635BFF]/30'
+                   : 'bg-[#00B4D8]/10 border border-[#00B4D8]/30'">
             <span class="material-symbols-outlined" style="font-size:20px"
-                  [class]="payStep() === 'approved' ? 'text-emerald-400' : 'text-[#00B4D8]'">
-              {{ payStep() === 'approved' ? 'verified' : 'payments' }}
+                  [class]="(payStep() === 'approved' || payStep() === 'stripe-success')
+                    ? 'text-emerald-400'
+                    : payStep() === 'stripe-loading'
+                      ? 'text-[#635BFF]'
+                      : 'text-[#00B4D8]'">
+              {{ (payStep() === 'approved' || payStep() === 'stripe-success') ? 'verified' : payStep() === 'choose-gateway' ? 'account_balance_wallet' : 'payments' }}
             </span>
           </div>
           <div>
             <p class="font-black text-white text-sm">
-              {{ payStep() === 'select' ? 'Elige tu plan' : payStep() === 'approved' ? '¡Pago Verificado!' : 'Completar pago' }}
+              {{ payStep() === 'select' ? 'Elige tu plan'
+                 : payStep() === 'choose-gateway' ? 'Método de pago'
+                 : (payStep() === 'approved' || payStep() === 'stripe-success') ? '¡Pago Exitoso!'
+                 : 'Completar pago' }}
             </p>
             <p class="text-[10px] text-slate-500">
-              {{ payStep() === 'select' ? 'Selecciona el paquete a comprar' : selectedPackage()?.name }}
+              {{ payStep() === 'select' ? 'Selecciona el paquete a comprar'
+                 : payStep() === 'choose-gateway' ? 'Elige cómo quieres pagar'
+                 : selectedPackage()?.name }}
             </p>
           </div>
         </div>
-        @if (payStep() !== 'submitting') {
+        @if (payStep() !== 'submitting' && payStep() !== 'stripe-loading') {
           <button (click)="closePaymentModal()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
             <span class="material-symbols-outlined">close</span>
           </button>
@@ -381,7 +387,7 @@
         @if (payStep() === 'select') {
           <div class="space-y-3">
             @for (pkg of packages(); track pkg.id) {
-              @if (pkg.nequi_payment_link && !isCurrentPackage(pkg)) {
+              @if (!isCurrentPackage(pkg)) {
                 <div class="flex items-center justify-between bg-zinc-800 border border-white/10 hover:border-[#00B4D8]/40 rounded-2xl px-4 py-3.5 transition-colors">
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
@@ -393,7 +399,7 @@
                     </div>
                     <div>
                       <p class="font-black text-white text-sm leading-tight">{{ pkg.name }}</p>
-                      <p class="text-[11px] font-black text-[#00B4D8]">{{ getPriceCOP(pkg) }}</p>
+                      <p class="text-[11px] font-black text-[#00B4D8]">{{ getPriceUSD(pkg) }} USD</p>
                     </div>
                   </div>
                   <button
@@ -401,7 +407,7 @@
                     class="flex items-center gap-1.5 px-4 py-2 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-xl text-xs font-black transition-colors flex-shrink-0"
                   >
                     <span class="material-symbols-outlined" style="font-size:16px">payments</span>
-                    Pagar
+                    Elegir
                   </button>
                 </div>
               }
@@ -412,6 +418,121 @@
                 <p class="text-xs text-emerald-400">Ya tienes el plan <strong>{{ currentPackage()?.name }}</strong> activo. Puedes adquirir uno superior.</p>
               </div>
             }
+          </div>
+        }
+
+        <!-- ── Paso: Elegir método de pago ─────────────────────────────── -->
+        @if (payStep() === 'choose-gateway') {
+          <div class="space-y-4">
+
+            <!-- Resumen del paquete -->
+            <div class="flex items-center justify-between bg-black/30 border border-white/5 rounded-xl px-4 py-3">
+              <div>
+                <p class="text-[10px] text-slate-500 uppercase font-bold">Plan seleccionado</p>
+                <p class="text-white font-black text-sm">{{ selectedPackage()?.name }}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-slate-500 uppercase font-bold">Precio</p>
+                <p class="text-[#00B4D8] font-black text-sm">{{ getPriceUSD(selectedPackage()) }} USD</p>
+              </div>
+            </div>
+
+            @if (payError()) {
+              <div class="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
+                <span class="material-symbols-outlined text-rose-400 text-base flex-shrink-0">error</span>
+                <p class="text-xs text-rose-400">{{ payError() }}</p>
+              </div>
+            }
+
+            <!-- Opción Stripe -->
+            <button
+              (click)="selectGateway('stripe')"
+              class="w-full flex items-center gap-4 bg-zinc-800 border border-white/10 hover:border-[#635BFF]/50 rounded-2xl px-5 py-4 transition-all group"
+            >
+              <div class="w-11 h-11 rounded-xl bg-[#635BFF]/10 border border-[#635BFF]/30 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-[#635BFF]" style="font-size:22px">credit_card</span>
+              </div>
+              <div class="flex-1 text-left">
+                <p class="font-black text-white text-sm group-hover:text-[#635BFF] transition-colors">Tarjeta / Google Pay / Apple Pay</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">Pago seguro con Stripe · Activación instantánea</p>
+              </div>
+              <span class="material-symbols-outlined text-slate-600 group-hover:text-[#635BFF] transition-colors" style="font-size:20px">chevron_right</span>
+            </button>
+
+            <!-- Opción Nequi (solo si el paquete tiene link Nequi) -->
+            @if (selectedPackage()?.nequi_payment_link) {
+              <button
+                (click)="selectGateway('nequi')"
+                class="w-full flex items-center gap-4 bg-zinc-800 border border-white/10 hover:border-[#00B4D8]/50 rounded-2xl px-5 py-4 transition-all group"
+              >
+                <div class="w-11 h-11 rounded-xl bg-[#00B4D8]/10 border border-[#00B4D8]/30 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-[#00B4D8]" style="font-size:22px">smartphone</span>
+                </div>
+                <div class="flex-1 text-left">
+                  <p class="font-black text-white text-sm group-hover:text-[#00B4D8] transition-colors">Nequi</p>
+                  <p class="text-[10px] text-slate-500 mt-0.5">Pago con Nequi · Verificación manual</p>
+                </div>
+                <span class="material-symbols-outlined text-slate-600 group-hover:text-[#00B4D8] transition-colors" style="font-size:20px">chevron_right</span>
+              </button>
+            }
+
+            <!-- Volver -->
+            <button
+              (click)="payStep.set('select')"
+              class="flex items-center gap-1.5 text-sm text-slate-500 hover:text-white transition-colors"
+            >
+              <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>
+              Cambiar plan
+            </button>
+          </div>
+        }
+
+        <!-- ── Paso: Stripe loading (creando sesión) ───────────────────── -->
+        @if (payStep() === 'stripe-loading') {
+          <div class="flex flex-col items-center gap-4 py-8">
+            <div class="relative">
+              <div class="w-16 h-16 rounded-full border-4 border-[#635BFF]/20 border-t-[#635BFF] animate-spin"></div>
+              <span class="material-symbols-outlined text-[#635BFF] absolute inset-0 flex items-center justify-center" style="font-size:24px">credit_card</span>
+            </div>
+            <div class="text-center">
+              <p class="text-white font-bold text-sm">Preparando checkout seguro...</p>
+              <p class="text-xs text-slate-500 mt-1">Serás redirigido a Stripe en un momento</p>
+            </div>
+          </div>
+        }
+
+        <!-- ── Paso: Stripe success (retorno exitoso) ──────────────────── -->
+        @if (payStep() === 'stripe-success') {
+          <div class="flex flex-col items-center text-center gap-5 py-4">
+            <!-- Animación de éxito -->
+            <div class="relative">
+              <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/40 flex items-center justify-center">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">verified</span>
+              </div>
+              <div class="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                <span class="material-symbols-outlined text-white" style="font-size:14px">check</span>
+              </div>
+            </div>
+            <div>
+              <p class="font-black text-white text-lg">¡Pago Exitoso!</p>
+              <p class="text-emerald-400 font-bold text-sm mt-1">Tu paquete se está activando</p>
+              <p class="text-slate-400 text-xs mt-3 max-w-xs leading-relaxed">
+                Tu pago ha sido procesado correctamente. El paquete se activará automáticamente en unos segundos.
+              </p>
+            </div>
+            <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3 w-full">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">bolt</span>
+                <p class="text-xs text-emerald-400 font-bold">Activación automática vía Stripe</p>
+              </div>
+              <p class="text-[10px] text-slate-500 mt-1">No necesitas enviar comprobante. Tu plan se activa al instante.</p>
+            </div>
+            <button
+              (click)="closePaymentModal()"
+              class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-black text-sm transition-colors"
+            >
+              ¡Empezar a ganar!
+            </button>
           </div>
         }
 
@@ -453,15 +574,13 @@
             </div>
 
             <div class="flex gap-3">
-              @if (packages().length > 1) {
-                <button
-                  (click)="payStep.set('select')"
-                  class="flex items-center gap-1.5 px-4 py-3 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <span class="material-symbols-outlined text-base">arrow_back</span>
-                  Planes
-                </button>
-              }
+              <button
+                (click)="payStep.set('choose-gateway')"
+                class="flex items-center gap-1.5 px-4 py-3 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <span class="material-symbols-outlined text-base">arrow_back</span>
+                Atrás
+              </button>
               <button
                 (click)="goToNequiLink()"
                 class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-white transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-sm"

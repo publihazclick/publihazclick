@@ -1,14 +1,18 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import type { Package } from '../../../../core/models/admin.model';
 import type { Profile } from '../../../../core/models/profile.model';
 
-// Estado del flujo de pago Nequi
-type PayStep = 'idle' | 'select' | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error';
+// Estado del flujo de pago
+type PayStep =
+  | 'idle' | 'select' | 'choose-gateway'
+  | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error'
+  | 'stripe-loading' | 'stripe-success';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -28,6 +32,7 @@ export class UserPackagesComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly packageService = inject(AdminPackageService);
   private readonly currencyService = inject(CurrencyService);
+  private readonly route = inject(ActivatedRoute);
 
   readonly packages = signal<Package[]>([]);
   readonly profile = signal<Profile | null>(null);
@@ -59,6 +64,13 @@ export class UserPackagesComponent implements OnInit {
       ]);
       this.profile.set(profile);
       this.packages.set(packages);
+
+      // Detectar retorno de Stripe Checkout
+      const params = this.route.snapshot.queryParams;
+      if (params['stripe'] === 'success') {
+        this.payStep.set('stripe-success');
+        this.reloadProfile();
+      }
     } catch {
       this.error.set('No se pudieron cargar los paquetes. Intenta de nuevo.');
     } finally {
@@ -89,11 +101,37 @@ export class UserPackagesComponent implements OnInit {
     this.payStep.set('redirect');
   }
 
-  /** Selecciona un paquete desde el paso 'select' y avanza a redirect */
+  /** Selecciona un paquete y avanza a elegir método de pago */
   selectAndPay(pkg: Package): void {
-    if (!pkg.nequi_payment_link) return;
     this.selectedPackage.set(pkg);
-    this.payStep.set('redirect');
+    this.proofPhone = '';
+    this.proofTransactionId = '';
+    this.payError.set(null);
+    this.verifyMessage.set('');
+    this.payStep.set('choose-gateway');
+  }
+
+  /** Elige gateway de pago */
+  selectGateway(gateway: 'stripe' | 'nequi'): void {
+    if (gateway === 'stripe') {
+      this.startStripeCheckout();
+    } else {
+      this.payStep.set('redirect');
+    }
+  }
+
+  /** Inicia Stripe Checkout */
+  async startStripeCheckout(): Promise<void> {
+    this.payStep.set('stripe-loading');
+    try {
+      const { url } = await this.packageService.createStripeCheckout(
+        this.selectedPackage()!.id
+      );
+      window.location.href = url;
+    } catch (e: any) {
+      this.payError.set(e.message ?? 'Error al iniciar pago con Stripe');
+      this.payStep.set('choose-gateway');
+    }
   }
 
   goToNequiLink(): void {
@@ -104,8 +142,8 @@ export class UserPackagesComponent implements OnInit {
   }
 
   closePaymentModal(): void {
-    // Si fue aprobado automáticamente, recargar el perfil para reflejar el paquete
-    if (this.payStep() === 'approved') {
+    // Si fue aprobado, recargar el perfil para reflejar el paquete
+    if (this.payStep() === 'approved' || this.payStep() === 'stripe-success') {
       this.reloadProfile();
     }
     this.payStep.set('idle');

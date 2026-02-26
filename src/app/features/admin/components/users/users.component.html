@@ -354,7 +354,7 @@
                     name="role"
                     class="w-full px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
                   >
-                    @for (role of rolesForCreation; track role.value) {
+                    @for (role of (modalMode() === 'edit' ? rolesForEdit : rolesForCreation); track role.value) {
                       <option [value]="role.value">{{ role.label }}</option>
                     }
                   </select>

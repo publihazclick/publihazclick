@@ -166,6 +166,8 @@ export class AdminPackageService {
         gateway_reference: p.gateway_reference,
         phone_number: p.phone_number,
         error_message: p.error_message,
+        stripe_session_id: p.stripe_session_id ?? null,
+        stripe_payment_intent_id: p.stripe_payment_intent_id ?? null,
         metadata: p.metadata || {},
         created_at: p.created_at,
         updated_at: p.updated_at,
@@ -299,6 +301,24 @@ export class AdminPackageService {
       console.error('Error submitting payment proof:', error);
       return false;
     }
+  }
+
+  /**
+   * Crear sesión de Stripe Checkout (llama a Edge Function)
+   */
+  async createStripeCheckout(packageId: string): Promise<{ url: string }> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) throw new Error('No autenticado');
+
+    const { data, error } = await this.supabase.functions.invoke(
+      'create-stripe-checkout',
+      { body: { package_id: packageId } }
+    );
+
+    if (error || !data?.url) {
+      throw new Error(data?.error ?? 'Error al crear sesión de pago');
+    }
+    return { url: data.url };
   }
 
   /**

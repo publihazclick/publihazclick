@@ -259,7 +259,7 @@ export interface PtcAd {
       }
     }
 
-    <!-- Modal de recompensa demo -->
+    <!-- Modal de recompensa -->
     @if (showRewardToast()) {
       <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fadeIn">
         <div class="absolute inset-0 bg-black/90 backdrop-blur-md"></div>
@@ -271,8 +271,10 @@ export interface PtcAd {
           <div class="px-6 pt-8 pb-6 text-center">
             <!-- Icono grande -->
             <div class="w-20 h-20 mx-auto mb-5 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">savings</span>
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">celebration</span>
             </div>
+
+            <p class="text-white font-black text-lg mb-1">¡Felicitaciones!</p>
 
             <!-- Monto -->
             <p class="text-emerald-400 font-black text-3xl mb-2 flex items-center justify-center gap-2">
@@ -280,46 +282,35 @@ export interface PtcAd {
               <span class="material-symbols-outlined text-emerald-400" style="font-size:28px">check_circle</span>
             </p>
 
-            <p class="text-white font-bold text-base mb-3">Acreditado a tu billetera</p>
-
-            <!-- Mensaje demo -->
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 mb-5">
+            <!-- Mensaje de acreditación -->
+            <div class="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-4 mb-5">
               <p class="text-slate-200 text-sm leading-relaxed">
-                Este dinero es <span class="text-white font-black">de demostración</span>.
-                Podrás <span class="text-emerald-400 font-bold">retirarlo a tu cuenta bancaria</span>
-                cuando te conviertas en <span class="text-primary font-black">anunciante</span>.
+                El valor de la recompensa <span class="text-emerald-400 font-black">será acreditado a tu billetera</span>.
+                Sigue viendo anuncios para <span class="text-white font-bold">aumentar tu saldo</span>.
               </p>
             </div>
 
-            <!-- Separador -->
-            <div class="flex items-center gap-3 mb-5">
-              <div class="flex-1 h-px bg-white/5"></div>
-              <span class="text-slate-600 text-[10px] font-bold uppercase tracking-widest">Solicitar enlace</span>
-              <div class="flex-1 h-px bg-white/5"></div>
+            <!-- Resumen -->
+            <div class="grid grid-cols-2 gap-3 mb-5">
+              <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-center">
+                <span class="material-symbols-outlined text-primary mb-1" style="font-size:20px">account_balance_wallet</span>
+                <p class="text-[10px] text-slate-500 uppercase font-bold">Billetera</p>
+                <p class="text-white font-black text-sm">{{ toastRewardAmount() }}</p>
+              </div>
+              <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-center">
+                <span class="material-symbols-outlined text-amber-400 mb-1" style="font-size:20px">ads_click</span>
+                <p class="text-[10px] text-slate-500 uppercase font-bold">Anuncio</p>
+                <p class="text-white font-black text-sm truncate">{{ ad().title }}</p>
+              </div>
             </div>
-
-            <!-- Botón WhatsApp para solicitar link de referido -->
-            <a
-              [href]="whatsappReferralUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="flex items-center justify-center gap-2.5 w-full py-3.5 bg-[#25D366] hover:bg-[#20BD5A] text-white font-black rounded-2xl text-sm uppercase tracking-wider transition-all shadow-lg shadow-[#25D366]/20"
-            >
-              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              Solicitar link de referido
-            </a>
-
-            <p class="text-slate-600 text-[10px] mt-3 leading-relaxed">
-              Escríbenos por WhatsApp y te enviaremos tu enlace para empezar a ganar
-            </p>
           </div>
 
-          <!-- Botón cerrar -->
+          <!-- Botón continuar -->
           <button
             (click)="closeRewardModal()"
-            class="w-full py-4 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-bold text-sm uppercase tracking-wider transition-all border-t border-white/5"
+            class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-sm uppercase tracking-wider transition-all"
           >
-            Cerrar
+            ¡Seguir ganando!
           </button>
         </div>
       </div>

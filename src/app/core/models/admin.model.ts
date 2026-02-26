@@ -454,6 +454,8 @@ export interface Payment {
   gateway_reference: string | null;
   phone_number: string | null;
   error_message: string | null;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;

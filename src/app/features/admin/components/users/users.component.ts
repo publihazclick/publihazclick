@@ -47,7 +47,6 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   readonly rolesForCreation = [
     { value: 'guest', label: 'Usuario' },
-    { value: 'advertiser', label: 'Anunciante' },
     { value: 'admin', label: 'Administrador' },
   ];
 
@@ -115,6 +114,11 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     { value: 'admin', label: 'Administrador' },
     { value: 'advertiser', label: 'Anunciante' },
     { value: 'guest', label: 'Usuario' },
+  ];
+
+  readonly rolesForEdit = [
+    { value: 'guest', label: 'Usuario' },
+    { value: 'admin', label: 'Administrador' },
   ];
 
   readonly statuses = [
