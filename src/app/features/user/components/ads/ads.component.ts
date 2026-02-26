@@ -145,7 +145,7 @@ export class UserAdsComponent implements OnInit {
       destinationUrl: ad.destinationUrl,
       adType: ad.adType,
       rewardCOP: ad.rewardCOP,
-      duration: 60,
+      duration: ad.adType === 'mini' ? 30 : 60,
     });
     this.isModalOpen.set(true);
   }

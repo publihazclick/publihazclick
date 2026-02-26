@@ -363,7 +363,10 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     return this.currencyService.formatFromCOP(rewardCOP, 2);
   });
 
-  protected progressPercent = computed(() => ((60 - this.countdown()) / 60) * 100);
+  protected progressPercent = computed(() => {
+    const duration = this.ad().duration || 60;
+    return ((duration - this.countdown()) / duration) * 100;
+  });
 
   protected countdown = signal(60);
   protected captchaCompleted = signal(false);
@@ -438,6 +441,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     this.captchaError.set(null);
     this.selectedShapeId.set(null);
     this.showCaptchaModal.set(false);
+    this.countdown.set(this.ad().duration || 60);
 
     this.countdownInterval = setInterval(() => {
       this.countdown.update((v) => {
