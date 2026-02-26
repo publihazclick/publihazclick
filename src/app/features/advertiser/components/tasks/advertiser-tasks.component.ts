@@ -209,10 +209,22 @@ export class AdvertiserTasksComponent implements OnInit {
 
   onRewardClaimed(event: { walletAmount: number; donationAmount: number }): void {
     const ad = this.selectedAd();
+    const userProfile = this.profile();
     if (!ad) return;
 
+    // Actualizar wallet demo (localStorage)
     this.walletService.updateWallet(event.walletAmount);
     this.walletService.updateDonations(event.donationAmount);
+
+    // Actualizar balance real en la base de datos
+    if (userProfile && event.walletAmount > 0) {
+      this.profileService.updateRealBalance(userProfile.id, event.walletAmount, 'add');
+    }
+
+    // Actualizar donaciones en la base de datos
+    if (userProfile && event.donationAmount > 0) {
+      this.profileService.updateDonations(userProfile.id, event.donationAmount);
+    }
 
     const isMega = ad.adType === 'mega';
 

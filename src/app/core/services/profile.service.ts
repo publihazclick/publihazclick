@@ -389,6 +389,76 @@ export class ProfileService {
   }
 
   /**
+   * Actualizar balance real del usuario (para usuarios que ganan viendo anuncios)
+   */
+  async updateRealBalance(userId: string, amount: number, type: 'add' | 'subtract' | 'set'): Promise<boolean> {
+    try {
+      const profile = await this.getProfileById(userId);
+      if (!profile) return false;
+
+      let newBalance: number;
+      if (type === 'set') {
+        newBalance = amount;
+      } else {
+        newBalance = type === 'add'
+          ? (profile.real_balance || 0) + amount
+          : (profile.real_balance || 0) - amount;
+      }
+
+      if (newBalance < 0) return false;
+
+      const { error } = await this.supabase
+        .from('profiles')
+        .update({
+          real_balance: newBalance,
+          total_earned: (profile.total_earned || 0) + (type === 'add' ? amount : 0),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (!error) {
+        // Actualizar el perfil en memoria
+        this._profile.set({ ...profile, real_balance: newBalance });
+      }
+
+      return !error;
+    } catch (error: any) {
+      this._error.set(error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Actualizar total donado del usuario
+   */
+  async updateDonations(userId: string, amount: number): Promise<boolean> {
+    try {
+      const profile = await this.getProfileById(userId);
+      if (!profile) return false;
+
+      const newDonated = (profile.total_donated || 0) + amount;
+
+      const { error } = await this.supabase
+        .from('profiles')
+        .update({
+          total_donated: newDonated,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (!error) {
+        // Actualizar el perfil en memoria
+        this._profile.set({ ...profile, total_donated: newDonated });
+      }
+
+      return !error;
+    } catch (error: any) {
+      this._error.set(error.message);
+      return false;
+    }
+  }
+
+  /**
    * Generar link de referido
    */
   getReferralLink(): string {
