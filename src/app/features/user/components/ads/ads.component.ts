@@ -172,16 +172,15 @@ export class UserAdsComponent implements OnInit {
       });
 
       if (error) {
-        console.error('Error acreditando recompensa:', error);
-        return;
-      }
-
-      if (data?.success) {
-        // Refrescar perfil para mostrar saldo actualizado
-        this.profileService.getCurrentProfile().catch(() => {});
+        console.error('Error acreditando recompensa:', error.message);
+      } else if (data && !data.success) {
+        console.warn('record_ptc_click:', data.error);
       }
     } catch (err) {
       console.error('Error en creditRewardToDb:', err);
+    } finally {
+      // Siempre refrescar perfil para mostrar saldo real desde DB
+      this.profileService.getCurrentProfile().catch(() => {});
     }
   }
 
