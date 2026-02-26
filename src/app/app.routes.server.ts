@@ -1,18 +1,42 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 
 export const serverRoutes: ServerRoute[] = [
-  // Ruta de referido - Client-side para compatibilidad con Vercel static serving
+  // ── Rutas públicas: Prerender para SEO ──────────────────────────────────
+  // Estas generan HTML estático en build-time para que los crawlers
+  // vean contenido real en lugar de un shell vacío.
+  {
+    path: '',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'login',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'register',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'quienes-somos',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'terminos',
+    renderMode: RenderMode.Prerender,
+  },
+
+  // ── Rutas dinámicas: Client-side ────────────────────────────────────────
   {
     path: 'ref/:code',
-    renderMode: RenderMode.Client
+    renderMode: RenderMode.Client,
   },
   {
     path: 'social/messages/:convId',
-    renderMode: RenderMode.Client
+    renderMode: RenderMode.Client,
   },
-  // Landing page - Client-side rendering para compatibilidad con Vercel
+  // Todas las demás (dashboard, admin, advertiser, etc.)
   {
     path: '**',
-    renderMode: RenderMode.Client
-  }
+    renderMode: RenderMode.Client,
+  },
 ];

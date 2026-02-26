@@ -1,0 +1,79 @@
+# Publihazclick - robots.txt
+# https://www.publihazclick.com
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard/*
+Disallow: /advertiser/*
+Disallow: /social/*
+Disallow: /api/*
+Disallow: /callback
+Disallow: /auth-callback
+
+# Rutas públicas permitidas
+Allow: /login
+Allow: /register
+Allow: /quienes-somos
+Allow: /terminos
+Allow: /ref/
+
+# Sitemap
+Sitemap: https://www.publihazclick.com/sitemap.xml
+
+# Crawl-delay para ser respetuoso con el servidor
+Crawl-delay: 1
+
+# ─── Bots de IA ───────────────────────────────────────────────────────────
+
+# Google AI (Gemini)
+User-agent: Google-Extended
+Allow: /
+
+# OpenAI / ChatGPT
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard/*
+Disallow: /advertiser/*
+Disallow: /social/*
+
+# ChatGPT user-facing
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic / Claude
+User-agent: anthropic-ai
+Allow: /
+Disallow: /admin
+Disallow: /dashboard/*
+Disallow: /advertiser/*
+Disallow: /social/*
+
+User-agent: Claude-Web
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+
+# Microsoft / Bing AI (Copilot)
+User-agent: Bingbot
+Allow: /
+
+# Common Crawl (fuente de datos para muchos LLMs)
+User-agent: CCBot
+Allow: /
+
+# Cohere
+User-agent: cohere-ai
+Allow: /
+
+# Apple (Siri/Spotlight)
+User-agent: Applebot
+Allow: /

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#000000"/>
+      <stop offset="100%" style="stop-color:#0a0a0a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00E5FF"/>
+      <stop offset="100%" style="stop-color:#FF007F"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="4" fill="url(#accent)"/>
+  <rect x="0" y="626" width="1200" height="4" fill="url(#accent)"/>
+  <text x="600" y="250" text-anchor="middle" fill="white" font-family="Montserrat,Arial,sans-serif" font-weight="900" font-size="72">Publihazclick</text>
+  <text x="600" y="330" text-anchor="middle" fill="#00E5FF" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="32">Gana Dinero Viendo Anuncios</text>
+  <text x="600" y="390" text-anchor="middle" fill="#94a3b8" font-family="Inter,Arial,sans-serif" font-weight="400" font-size="22">Plataforma PTC líder en Colombia</text>
+  <rect x="450" y="440" width="300" height="50" rx="25" fill="url(#accent)"/>
+  <text x="600" y="472" text-anchor="middle" fill="black" font-family="Inter,Arial,sans-serif" font-weight="800" font-size="18">REGÍSTRATE GRATIS</text>
+  <text x="600" y="560" text-anchor="middle" fill="#475569" font-family="Inter,Arial,sans-serif" font-weight="400" font-size="16">www.publihazclick.com</text>
+</svg>

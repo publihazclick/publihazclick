@@ -1,0 +1,52 @@
+# Publihazclick — Plataforma PTC (Paid To Click) de Colombia
+
+> Publihazclick es una plataforma digital colombiana donde los usuarios ganan dinero real viendo anuncios publicitarios. Conecta anunciantes con una audiencia comprometida a través de un modelo PTC (Paid To Click).
+
+## Qué es Publihazclick
+
+Publihazclick es una red de publicidad digital que funciona como plataforma PTC:
+
+- **Para usuarios**: Ganan dinero viendo anuncios de video, banners y contenido publicitario. El registro es gratuito y requiere un código de referido.
+- **Para anunciantes**: Crean campañas publicitarias dirigidas a una audiencia activa. Pueden configurar presupuestos, duración y tipo de anuncios.
+- **Sistema de referidos**: Los usuarios construyen una red multinivel de referidos y ganan comisiones por la actividad de sus invitados.
+
+## Cómo funciona
+
+1. Un usuario se registra con un código de referido
+2. Adquiere un paquete de anunciante para acceder a las tareas PTC
+3. Cada día recibe una selección aleatoria de anuncios para ver
+4. Al ver cada anuncio completo y resolver un captcha, recibe la recompensa en su billetera
+5. Puede retirar sus ganancias a Nequi o cuenta bancaria
+
+## Tipos de anuncios
+
+- **Anuncio 400**: Recompensa de 400 COP, duración 60 segundos
+- **Mini Anuncio**: Recompensa de 83.33 COP, duración 30 segundos
+- **Mega Anuncio**: Recompensa de 2,000 COP, duración 60 segundos. Se desbloquean por referidos activos.
+
+## Ganancias diarias
+
+- Tareas base: 5 Anuncios 400 + 4 Mini = ~2,333 COP/día
+- Por cada referido con paquete activo: 5 Mega Anuncios adicionales (10,000 COP)
+- Máximo 40 referidos activos
+
+## Paquetes
+
+Los usuarios adquieren paquetes para convertirse en anunciantes y acceder a las tareas PTC diarias. Los pagos se realizan a través de Nequi.
+
+## Ubicación y moneda
+
+- País: Colombia
+- Moneda: Peso Colombiano (COP)
+- Idioma: Español
+
+## Sitio web
+
+- URL: https://www.publihazclick.com
+- Registro: https://www.publihazclick.com/register
+- Términos: https://www.publihazclick.com/terminos
+- Sobre nosotros: https://www.publihazclick.com/quienes-somos
+
+## Contacto
+
+Los usuarios pueden contactar al equipo de Publihazclick vía WhatsApp para solicitar enlaces de referido y soporte.

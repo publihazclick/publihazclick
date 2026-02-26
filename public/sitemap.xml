@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- Landing Page (prioridad máxima) -->
+  <url>
+    <loc>https://www.publihazclick.com/</loc>
+    <lastmod>2026-02-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Login -->
+  <url>
+    <loc>https://www.publihazclick.com/login</loc>
+    <lastmod>2026-02-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Registro -->
+  <url>
+    <loc>https://www.publihazclick.com/register</loc>
+    <lastmod>2026-02-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Quiénes Somos -->
+  <url>
+    <loc>https://www.publihazclick.com/quienes-somos</loc>
+    <lastmod>2026-02-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Términos y Condiciones -->
+  <url>
+    <loc>https://www.publihazclick.com/terminos</loc>
+    <lastmod>2026-02-26</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+</urlset>
