@@ -8,6 +8,7 @@ import { StorageService } from '../../../../core/services/storage.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { UserTrackingService } from '../../../../core/services/user-tracking.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { getSupabaseClient } from '../../../../core/supabase.client';
 import { PtcModalComponent, PtcAd } from '../../../../components/ptc-modal/ptc-modal.component';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 
@@ -154,9 +155,34 @@ export class UserAdsComponent implements OnInit {
     this.selectedAd.set(null);
   }
 
-  onRewardClaimed(_event: { walletAmount: number; donationAmount: number }): void {
-    this.userTracking.recordAdView(this.selectedAd()?.id || '');
-    this.profileService.getCurrentProfile().catch(() => {});
+  onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string }): void {
+    this.userTracking.recordAdView(event.taskId);
+    this.creditRewardToDb(event.taskId);
+  }
+
+  private async creditRewardToDb(taskId: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase.rpc('record_ptc_click', {
+        p_user_id: user.id,
+        p_task_id: taskId,
+      });
+
+      if (error) {
+        console.error('Error acreditando recompensa:', error);
+        return;
+      }
+
+      if (data?.success) {
+        // Refrescar perfil para mostrar saldo actualizado
+        this.profileService.getCurrentProfile().catch(() => {});
+      }
+    } catch (err) {
+      console.error('Error en creditRewardToDb:', err);
+    }
   }
 
   // ── Crear Anuncio PTC ────────────────────────────────────────────────────

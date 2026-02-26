@@ -337,7 +337,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   ad = input.required<PtcAd>();
   isOpen = input<boolean>(true);
   @Output() close = new EventEmitter<void>();
-  @Output() rewardClaimed = new EventEmitter<{ walletAmount: number; donationAmount: number }>();
+  @Output() rewardClaimed = new EventEmitter<{ walletAmount: number; donationAmount: number; taskId: string }>();
 
   protected currencyService = inject(CurrencyService);
   private sanitizer = inject(DomSanitizer);
@@ -500,7 +500,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
         this.showCaptchaModal.set(false);
 
         const rewardCOP = this.ad().rewardCOP || 1;
-        this.rewardClaimed.emit({ walletAmount: rewardCOP, donationAmount: 10 });
+        this.rewardClaimed.emit({ walletAmount: rewardCOP, donationAmount: 0, taskId: this.ad().id });
 
         // Mostrar modal de recompensa demo
         this.showRewardToast.set(true);
