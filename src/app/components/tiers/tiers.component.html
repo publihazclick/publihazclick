@@ -1,5 +1,6 @@
 <section class="py-16 md:py-24 bg-black text-white px-4 md:px-6">
   <div class="max-w-7xl mx-auto px-4">
+
     <!-- Section Title -->
     <div class="text-center mb-12 md:mb-16">
       <div class="flex items-center justify-center space-x-3 mb-4">
@@ -9,60 +10,214 @@
         Niveles y <span class="text-cyan-500">Ganancias</span>
       </h3>
       <p class="text-gray-400 mt-3 max-w-2xl mx-auto text-sm md:text-base">
-        Descubre cuánto puedes ganar con nuestro sistema de referidos. 
+        Descubre cuánto puedes ganar con nuestro sistema de referidos.
         ¡Es tan fácil como invitar amigos y comenzar a generar ingresos!
       </p>
     </div>
 
-    <!-- Tiers Grid - Dark Theme with Cyan Accents -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
-      @for (tier of formattedTiers(); track tier.name) {
-        <button 
-          (click)="selectTier(tier)"
-          class="group relative bg-zinc-900/60 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 text-left border border-zinc-800/80 hover:border-cyan-500/60 hover:bg-zinc-800/80 transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2 overflow-hidden"
-        >
-          <!-- Background Glow Effect -->
-          <div class="absolute inset-0 bg-gradient-to-br {{ tier.bgGradient }} opacity-0 group-hover:opacity-15 transition-opacity duration-300"></div>
-          
-          <!-- Top Accent Line -->
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r {{ tier.bgGradient }} opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          
-          <!-- Tier Icon with Glow -->
-          <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl bg-gradient-to-br {{ tier.bgGradient }} flex items-center justify-center mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl">
-            <span class="material-symbols-outlined text-white text-lg sm:text-xl md:text-2xl">{{ tier.icon }}</span>
+    <!-- ══════════════════════════════════════
+         CATEGORÍA BÁSICA
+    ══════════════════════════════════════ -->
+    <div class="mb-10 md:mb-14">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-full px-4 py-1.5">
+          <span class="material-symbols-outlined text-base text-gray-400">layers</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Categorías Básicas</span>
+        </div>
+        <div class="flex-1 h-px bg-white/5"></div>
+        <span class="text-[10px] text-gray-600 uppercase tracking-widest">0 – 19 invitados</span>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+        @for (tier of basicTiers(); track tier.name) {
+          <button
+            (click)="selectTier(tier)"
+            class="group relative bg-zinc-900/60 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 text-left border border-zinc-800/80 hover:border-cyan-500/60 hover:bg-zinc-800/80 transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2 overflow-hidden"
+          >
+            <div class="absolute inset-0 bg-gradient-to-br {{ tier.bgGradient }} opacity-0 group-hover:opacity-15 transition-opacity duration-300"></div>
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r {{ tier.bgGradient }} opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="absolute top-2 right-2 bg-zinc-800 border border-white/10 rounded-full px-1.5 py-0.5">
+              <span class="text-[9px] font-bold uppercase tracking-wide text-gray-500">Básica</span>
+            </div>
+
+            <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl bg-gradient-to-br {{ tier.bgGradient }} flex items-center justify-center mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+              <span class="material-symbols-outlined text-white text-lg sm:text-xl md:text-2xl">{{ tier.icon }}</span>
+            </div>
+            <h4 class="font-black text-xs sm:text-sm md:text-base {{ tier.color }} uppercase tracking-tight mb-1">{{ tier.name }}</h4>
+            <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
+              {{ tier.maxReferrals ? tier.minReferrals + '-' + tier.maxReferrals : tier.minReferrals + '+' }} invitados
+            </p>
+            <div class="pt-2 sm:pt-3 border-t border-zinc-700/50">
+              <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
+              <p class="font-black text-green-400 text-base sm:text-lg md:text-xl">{{ tier.monthlyEarnings }}</p>
+            </div>
+            <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+              <span class="material-symbols-outlined text-cyan-400 text-xl">arrow_forward</span>
+            </div>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         CATEGORÍA SUPERIOR
+    ══════════════════════════════════════ -->
+    <div class="mb-10 md:mb-14">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-cyan-500/20 border border-amber-500/30 rounded-full px-4 py-1.5">
+          <span class="material-symbols-outlined text-base text-amber-400">military_tech</span>
+          <span class="text-xs font-bold uppercase tracking-widest text-amber-400">Categorías Superiores</span>
+        </div>
+        <div class="flex-1 h-px bg-gradient-to-r from-amber-500/20 to-transparent"></div>
+        <span class="text-[10px] text-gray-600 uppercase tracking-widest">20+ invitados</span>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+        @for (tier of superiorTiers(); track tier.name) {
+          <button
+            (click)="selectTier(tier)"
+            class="group relative rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 text-left border transition-all duration-300 hover:-translate-y-1 sm:hover:-translate-y-2 overflow-hidden bg-gradient-to-b from-zinc-900/80 to-black border-amber-500/20 hover:border-amber-400/60 hover:from-zinc-800/80"
+          >
+            <div class="absolute inset-0 bg-gradient-to-br {{ tier.bgGradient }} opacity-0 group-hover:opacity-15 transition-opacity duration-300"></div>
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 opacity-40 group-hover:opacity-100 transition-opacity"></div>
+            <div class="absolute top-2 right-2 bg-gradient-to-r from-amber-500/30 to-yellow-500/20 border border-amber-500/40 rounded-full px-1.5 py-0.5">
+              <span class="text-[9px] font-bold uppercase tracking-wide text-amber-400">Superior</span>
+            </div>
+
+            <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl bg-gradient-to-br {{ tier.bgGradient }} flex items-center justify-center mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-amber-500/20">
+              <span class="material-symbols-outlined text-white text-lg sm:text-xl md:text-2xl">{{ tier.icon }}</span>
+            </div>
+            <h4 class="font-black text-xs sm:text-sm md:text-base {{ tier.color }} uppercase tracking-tight mb-1">{{ tier.name }}</h4>
+            <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
+              {{ tier.maxReferrals ? tier.minReferrals + '-' + tier.maxReferrals : tier.minReferrals + '+' }} invitados
+            </p>
+            <div class="pt-2 sm:pt-3 border-t border-amber-500/20">
+              <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
+              <p class="font-black text-green-400 text-base sm:text-lg md:text-xl">{{ tier.monthlyEarnings }}</p>
+            </div>
+            <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+              <span class="material-symbols-outlined text-amber-400 text-xl">arrow_forward</span>
+            </div>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         CATEGORÍA SUPERIOR PLUS
+    ══════════════════════════════════════ -->
+    <div>
+      <!-- Header with glow strip -->
+      <div class="relative mb-6">
+        <!-- Glow line behind the header -->
+        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-rose-500/40 to-transparent"></div>
+        <div class="flex items-center gap-3 relative">
+          <div class="flex items-center gap-2 bg-gradient-to-r from-rose-900/60 via-amber-900/60 to-yellow-900/60 border border-rose-500/40 rounded-full px-4 py-1.5 shadow-lg shadow-rose-500/10">
+            <span class="text-base">👑</span>
+            <span class="text-xs font-black uppercase tracking-widest bg-gradient-to-r from-rose-300 via-amber-300 to-yellow-200 bg-clip-text text-transparent">
+              Categorías Diamantes Coronas
+            </span>
+            <span class="text-[10px] text-rose-400/80 font-bold">EXCLUSIVO</span>
           </div>
+          <div class="flex-1 h-px bg-gradient-to-r from-rose-500/20 to-transparent"></div>
+          <span class="text-[10px] text-gray-600 uppercase tracking-widest">Diamante Corona en tu red</span>
+        </div>
+      </div>
 
-          <!-- Tier Name -->
-          <h4 class="font-black text-xs sm:text-sm md:text-lg {{ tier.color }} uppercase tracking-tight mb-1">
-            {{ tier.name }}
-          </h4>
+      <!-- Info banner -->
+      <div class="mb-5 rounded-xl border border-rose-500/20 bg-gradient-to-r from-rose-950/40 via-amber-950/30 to-yellow-950/40 px-4 py-3 flex items-start gap-3">
+        <span class="material-symbols-outlined text-amber-400 text-lg flex-shrink-0 mt-0.5">info</span>
+        <p class="text-xs text-gray-400 leading-relaxed">
+          <span class="text-amber-300 font-bold">¿Cómo funciona?</span> — Ya eres Diamante Corona (40+ invitados propios).
+          Cuando uno de tus invitados también alcanza Diamante Corona, subes a
+          <span class="text-yellow-300 font-semibold">Corona ★</span> y empiezas a ganar comisión por los clicks
+          de <em>su</em> red de invitados. Cada referido DC adicional suma una estrella, desbloqueando
+          comisiones cada vez más profundas. <span class="text-rose-300 font-bold">Máximo: 5 estrellas.</span>
+        </p>
+      </div>
 
-          <!-- Referrals Range -->
-          <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
-            {{ tier.maxReferrals ? tier.minReferrals + '-' + tier.maxReferrals : tier.minReferrals + '+' }} invitados
-          </p>
+      <!-- Superior Plus Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+        @for (tier of superiorPlusTiers(); track tier.stars) {
+          <button
+            (click)="selectTier(tier)"
+            class="group relative rounded-2xl p-4 md:p-5 text-left border transition-all duration-300 hover:-translate-y-2 overflow-hidden text-center"
+            [class]="tier.stars === 5
+              ? 'bg-gradient-to-b from-rose-950/80 via-amber-950/60 to-black border-rose-400/50 hover:border-rose-300/80 shadow-[0_0_30px_rgba(251,113,133,0.12)] hover:shadow-[0_0_50px_rgba(251,113,133,0.25)]'
+              : 'bg-gradient-to-b from-zinc-950/90 to-black border-amber-500/25 hover:border-amber-400/60 shadow-[0_0_20px_rgba(245,158,11,0.06)] hover:shadow-[0_0_35px_rgba(245,158,11,0.15)]'"
+          >
+            <!-- Top shimmering line -->
+            <div class="absolute top-0 left-0 right-0 h-[2px]"
+              [class]="tier.stars === 5
+                ? 'bg-gradient-to-r from-rose-400 via-amber-300 to-rose-400'
+                : 'bg-gradient-to-r from-amber-500/50 via-yellow-300/80 to-amber-500/50 opacity-60 group-hover:opacity-100 transition-opacity'">
+            </div>
 
-          <!-- Earnings Preview -->
-          <div class="pt-2 sm:pt-3 border-t border-zinc-700/50">
-            <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
-            <p class="font-black text-green-400 text-base sm:text-lg md:text-xl">{{ tier.monthlyEarnings }}</p>
-          </div>
+            <!-- Subtle particle dots (decorative) -->
+            <div class="absolute top-3 right-3 w-1 h-1 rounded-full bg-amber-300/30 group-hover:bg-amber-300/60 transition-colors"></div>
+            <div class="absolute top-6 right-7 w-0.5 h-0.5 rounded-full bg-yellow-200/20 group-hover:bg-yellow-200/50 transition-colors"></div>
+            <div class="absolute bottom-5 left-3 w-0.5 h-0.5 rounded-full bg-amber-400/20 group-hover:bg-amber-400/50 transition-colors"></div>
 
-          <!-- Hover Arrow -->
-          <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-            <span class="material-symbols-outlined text-cyan-400 text-xl">arrow_forward</span>
-          </div>
-        </button>
-      }
+            <!-- Crown icon -->
+            <div class="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br {{ tier.bgGradient }} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 shadow-lg"
+              [class]="tier.stars === 5 ? 'shadow-rose-500/30' : 'shadow-amber-500/20'">
+              <span class="text-xl">👑</span>
+            </div>
+
+            <!-- Tier name -->
+            <h4 class="font-black text-xs md:text-sm uppercase tracking-widest mb-1.5"
+              [class]="tier.stars === 5 ? 'text-rose-300' : 'text-amber-300'">
+              {{ tier.name }}
+            </h4>
+
+            <!-- Stars -->
+            <div class="flex items-center justify-center gap-0.5 mb-3">
+              @for (star of starsArray(tier.stars!); track $index) {
+                <span class="text-base md:text-lg leading-none"
+                  [class]="tier.stars === 5 ? 'text-rose-300' : 'text-amber-400'">★</span>
+              }
+              @for (empty of starsArray(5 - tier.stars!); track $index) {
+                <span class="text-base md:text-lg leading-none text-zinc-700">★</span>
+              }
+            </div>
+
+            <!-- DC referrals required -->
+            <p class="text-[10px] text-gray-500 mb-3">
+              <span class="text-amber-400/80 font-bold">{{ tier.dcReferrals }}</span>
+              {{ tier.dcReferrals === 1 ? 'referido DC' : 'referidos DC' }}
+            </p>
+
+            <!-- Commission levels badge -->
+            <div class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 mb-3"
+              [class]="tier.stars === 5
+                ? 'bg-rose-500/15 border border-rose-500/30'
+                : 'bg-amber-500/10 border border-amber-500/20'">
+              <span class="material-symbols-outlined text-[11px]"
+                [class]="tier.stars === 5 ? 'text-rose-400' : 'text-amber-400'">account_tree</span>
+              <span class="text-[10px] font-bold"
+                [class]="tier.stars === 5 ? 'text-rose-400' : 'text-amber-400'">
+                Hasta nivel {{ tier.commissionLevels }}
+              </span>
+            </div>
+
+            <!-- Earnings -->
+            <div class="pt-3 border-t"
+              [class]="tier.stars === 5 ? 'border-rose-500/20' : 'border-amber-500/15'">
+              <p class="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Ganancias Aprox.</p>
+              <p class="font-black text-amber-400/60 text-sm italic tracking-widest">Próximamente</p>
+            </div>
+          </button>
+        }
+      </div>
     </div>
 
     <!-- Call to Action -->
-    <div class="text-center mt-10 md:mt-14">
+    <div class="text-center mt-12 md:mt-16">
       <p class="text-gray-400 text-sm md:text-base mb-4">
         ¿Quieres ver exactamente cuánto podrías ganar?
       </p>
-      <a 
-        routerLink="/register" 
+      <a
+        routerLink="/register"
         class="inline-flex items-center space-x-2 bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-3 px-6 md:px-8 rounded-full transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-105"
       >
         <span>Regístrate y calcula tus ganancias</span>
@@ -71,54 +226,154 @@
     </div>
   </div>
 
-  <!-- Tier Detail Modal -->
+  <!-- ══════════════════════════════════════
+       TIER DETAIL MODAL
+  ══════════════════════════════════════ -->
   @if (selectedTierFormatted()) {
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" (click)="closeTierDetail()"></div>
-      
-      <!-- Modal Content -->
-      <div class="relative bg-zinc-900 rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-zinc-800">
-        <button 
-          (click)="closeTierDetail()" 
-          class="absolute top-3 right-3 text-gray-400 hover:text-white transition-colors p-1"
-        >
+
+      <div class="relative rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border overflow-hidden"
+        [class]="selectedTierFormatted()!.category === 'superior-plus' && selectedTierFormatted()!.stars === 5
+          ? 'bg-gradient-to-b from-rose-950/90 to-zinc-950 border-rose-400/40'
+          : selectedTierFormatted()!.category === 'superior-plus'
+            ? 'bg-gradient-to-b from-zinc-950 to-black border-amber-500/40'
+            : selectedTierFormatted()!.category === 'superior'
+              ? 'bg-zinc-900 border-amber-500/30'
+              : 'bg-zinc-900 border-zinc-800'">
+
+        <!-- Top shimmer line for superior-plus -->
+        @if (selectedTierFormatted()!.category === 'superior-plus') {
+          <div class="absolute top-0 left-0 right-0 h-[2px]"
+            [class]="selectedTierFormatted()!.stars === 5
+              ? 'bg-gradient-to-r from-rose-400 via-amber-300 to-rose-400'
+              : 'bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-400'">
+          </div>
+        }
+
+        <!-- Category badge top-left -->
+        <div class="absolute top-3 left-3">
+          @if (selectedTierFormatted()!.category === 'superior-plus') {
+            <div class="flex items-center gap-1 rounded-full px-2 py-0.5 border"
+              [class]="selectedTierFormatted()!.stars === 5
+                ? 'bg-rose-500/20 border-rose-500/40'
+                : 'bg-amber-500/20 border-amber-500/40'">
+              <span class="text-[11px]">👑</span>
+              <span class="text-[10px] font-black uppercase tracking-wide"
+                [class]="selectedTierFormatted()!.stars === 5 ? 'text-rose-300' : 'text-amber-300'">
+                Diamantes Coronas
+              </span>
+            </div>
+          } @else if (selectedTierFormatted()!.category === 'superior') {
+            <div class="flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 rounded-full px-2 py-0.5">
+              <span class="material-symbols-outlined text-[12px] text-amber-400">military_tech</span>
+              <span class="text-[10px] font-bold uppercase tracking-wide text-amber-400">Superior</span>
+            </div>
+          } @else {
+            <div class="flex items-center gap-1 bg-zinc-800 border border-white/10 rounded-full px-2 py-0.5">
+              <span class="material-symbols-outlined text-[12px] text-gray-400">layers</span>
+              <span class="text-[10px] font-bold uppercase tracking-wide text-gray-400">Básica</span>
+            </div>
+          }
+        </div>
+
+        <button (click)="closeTierDetail()" class="absolute top-3 right-3 text-gray-400 hover:text-white transition-colors p-1">
           <span class="material-symbols-outlined">close</span>
         </button>
-        
+
         <!-- Tier Header -->
-        <div class="text-center mb-6">
+        <div class="text-center mb-6 mt-4">
+          <!-- Icon -->
           <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br {{ selectedTierFormatted()!.bgGradient }} flex items-center justify-center mb-4 shadow-xl">
-            <span class="material-symbols-outlined text-white text-4xl">{{ selectedTierFormatted()!.icon }}</span>
+            @if (selectedTierFormatted()!.category === 'superior-plus') {
+              <span class="text-3xl">👑</span>
+            } @else {
+              <span class="material-symbols-outlined text-white text-4xl">{{ selectedTierFormatted()!.icon }}</span>
+            }
           </div>
+
+          <!-- Name -->
           <h3 class="text-3xl font-black {{ selectedTierFormatted()!.color }} uppercase">
             {{ selectedTierFormatted()!.name }}
           </h3>
-          <p class="text-gray-500 text-sm mt-2">
-            {{ selectedTierFormatted()!.maxReferrals ? selectedTierFormatted()!.minReferrals + ' - ' + selectedTierFormatted()!.maxReferrals : selectedTierFormatted()!.minReferrals + '+' }} invitados activos
-          </p>
+
+          <!-- Stars for superior-plus -->
+          @if (selectedTierFormatted()!.category === 'superior-plus') {
+            <div class="flex items-center justify-center gap-1 mt-1 mb-1">
+              @for (star of starsArray(selectedTierFormatted()!.stars!); track $index) {
+                <span class="text-2xl leading-none"
+                  [class]="selectedTierFormatted()!.stars === 5 ? 'text-rose-300' : 'text-amber-400'">★</span>
+              }
+              @for (empty of starsArray(5 - selectedTierFormatted()!.stars!); track $index) {
+                <span class="text-2xl leading-none text-zinc-700">★</span>
+              }
+            </div>
+            <p class="text-gray-500 text-xs mt-1">
+              {{ selectedTierFormatted()!.dcReferrals }} {{ selectedTierFormatted()!.dcReferrals === 1 ? 'referido Diamante Corona' : 'referidos Diamante Corona' }} en tu red
+            </p>
+          } @else {
+            <p class="text-gray-500 text-sm mt-2">
+              {{ selectedTierFormatted()!.maxReferrals
+                ? selectedTierFormatted()!.minReferrals + ' - ' + selectedTierFormatted()!.maxReferrals
+                : selectedTierFormatted()!.minReferrals + '+' }} invitados activos
+            </p>
+          }
         </div>
-        
+
         <!-- Earnings Breakdown -->
         <div class="space-y-3">
           <div class="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
             <span class="text-gray-400 text-sm">Tus propios clicks</span>
             <span class="font-bold text-white text-lg">{{ selectedTierFormatted()!.ownClicks }}</span>
           </div>
-          <div class="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
-            <span class="text-gray-400 text-sm">Clicks de tus invitados</span>
-            <span class="font-bold text-white text-lg">{{ selectedTierFormatted()!.referralClicks }}</span>
-          </div>
+
+          @if (selectedTierFormatted()!.category === 'superior-plus') {
+            <!-- Superior Plus: desglose de red directa + red profunda -->
+            <div class="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
+              <div>
+                <span class="text-gray-400 text-sm block">Red directa (nivel 1)</span>
+                <span class="text-[10px] text-gray-600">Tus 40+ invitados propios</span>
+              </div>
+              <span class="font-bold text-white text-lg">{{ selectedTierFormatted()!.directNetwork }}</span>
+            </div>
+            <div class="flex justify-between items-center p-4 rounded-xl border"
+              [class]="selectedTierFormatted()!.stars === 5
+                ? 'bg-rose-500/10 border-rose-500/30'
+                : 'bg-amber-500/10 border-amber-500/25'">
+              <div>
+                <span class="text-sm font-bold block"
+                  [class]="selectedTierFormatted()!.stars === 5 ? 'text-rose-300' : 'text-amber-300'">
+                  Red profunda (niveles 2–{{ selectedTierFormatted()!.commissionLevels }})
+                </span>
+                <span class="text-[10px] text-gray-500">
+                  Clicks de la red de tus {{ selectedTierFormatted()!.dcReferrals }} DC
+                </span>
+              </div>
+              <span class="font-bold text-lg"
+                [class]="selectedTierFormatted()!.stars === 5 ? 'text-rose-300' : 'text-amber-400'">
+                {{ selectedTierFormatted()!.deepNetwork }}
+              </span>
+            </div>
+          } @else {
+            <div class="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
+              <span class="text-gray-400 text-sm">Clicks de tus invitados</span>
+              <span class="font-bold text-white text-lg">{{ selectedTierFormatted()!.referralClicks }}</span>
+            </div>
+          }
+
           <div class="flex justify-between items-center p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/30">
             <span class="text-cyan-400 font-bold">Total aproximado al mes</span>
             <span class="font-black text-cyan-400 text-xl">{{ selectedTierFormatted()!.monthlyEarnings }}</span>
           </div>
         </div>
-        
+
         <!-- CTA -->
-        <a 
+        <a
           routerLink="/register"
-          class="block text-center mt-6 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black font-bold py-4 rounded-xl transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+          class="block text-center mt-6 font-bold py-4 rounded-xl transition-all shadow-lg"
+          [class]="selectedTierFormatted()!.category === 'superior-plus' && selectedTierFormatted()!.stars === 5
+            ? 'bg-gradient-to-r from-rose-400 via-amber-400 to-yellow-300 hover:from-rose-300 hover:to-yellow-200 text-black shadow-rose-500/30'
+            : 'bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black shadow-cyan-500/30'"
         >
           ¡Alcanza este nivel!
         </a>

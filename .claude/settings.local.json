@@ -16,7 +16,8 @@
       "Bash(tail:*)",
       "Bash(head:*)",
       "Bash(cd /c/Users/Victor/Documents/publihazclick && npx tsc --noEmit 2>&1)",
-      "WebFetch(domain:ayuda.nequi.com.co)"
+      "WebFetch(domain:ayuda.nequi.com.co)",
+      "Bash(npx ng:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

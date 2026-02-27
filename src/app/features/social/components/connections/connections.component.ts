@@ -1,13 +1,13 @@
 import { Component, OnInit, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { SocialService } from '../../../../core/services/social.service';
 import type { SocialConnection } from '../../../../core/models/social.model';
 
 @Component({
   selector: 'app-social-connections',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './connections.component.html',
 })

@@ -27,7 +27,7 @@ export class WalletStateService {
       this.walletBalance.set(wallet ? parseFloat(wallet) : 0);
       this.donatedAmount.set(donations ? parseFloat(donations) : 0);
     } catch (e) {
-      console.error('Error loading wallet data:', e);
+      // Silent fail - non-critical localStorage operation
     }
   }
 
@@ -38,7 +38,7 @@ export class WalletStateService {
       localStorage.setItem(this.WALLET_KEY, newValue.toString());
       this.walletBalance.set(newValue);
     } catch (e) {
-      console.error('Error updating wallet:', e);
+      // Silent fail - non-critical localStorage operation
     }
   }
 
@@ -49,7 +49,7 @@ export class WalletStateService {
       localStorage.setItem(this.DONATIONS_KEY, newValue.toString());
       this.donatedAmount.set(newValue);
     } catch (e) {
-      console.error('Error updating donations:', e);
+      // Silent fail - non-critical localStorage operation
     }
   }
 
@@ -61,7 +61,7 @@ export class WalletStateService {
       this.walletBalance.set(0);
       this.donatedAmount.set(0);
     } catch (e) {
-      console.error('Error resetting wallet:', e);
+      // Silent fail - non-critical localStorage operation
     }
   }
 }

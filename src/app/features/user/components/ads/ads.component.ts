@@ -171,13 +171,11 @@ export class UserAdsComponent implements OnInit {
         p_task_id: taskId,
       });
 
-      if (error) {
-        console.error('Error acreditando recompensa:', error.message);
-      } else if (data && !data.success) {
-        console.warn('record_ptc_click:', data.error);
+      if (error || (data && !data.success)) {
+        // PTC click recording failed - will retry on next profile refresh
       }
-    } catch (err) {
-      console.error('Error en creditRewardToDb:', err);
+    } catch {
+      // PTC click recording failed
     } finally {
       // Siempre refrescar perfil para mostrar saldo real desde DB
       this.profileService.getCurrentProfile().catch(() => {});

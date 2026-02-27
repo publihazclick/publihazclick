@@ -326,7 +326,7 @@
       <div>
         <p class="font-bold text-white text-sm mb-1">¿Cómo adquirir un paquete?</p>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Haz clic en <span class="text-[#00B4D8] font-bold">Adquirir Plan</span>, elige tu método de pago preferido (tarjeta, Google Pay, Nequi) y completa el proceso. Con Stripe tu plan se activa al instante.
+          Haz clic en <span class="text-[#00B4D8] font-bold">Adquirir Plan</span> y serás redirigido a dLocal Go para completar el pago con tu método local preferido. Tu plan se activa automáticamente.
         </p>
       </div>
     </div>
@@ -346,35 +346,29 @@
       <div class="px-6 pt-6 pb-4 flex items-center justify-between border-b border-white/10">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center"
-               [class]="(payStep() === 'approved' || payStep() === 'stripe-success')
+               [class]="payStep() === 'dlocal-success'
                  ? 'bg-emerald-500/10 border border-emerald-500/30'
-                 : payStep() === 'stripe-loading'
-                   ? 'bg-[#635BFF]/10 border border-[#635BFF]/30'
-                   : 'bg-[#00B4D8]/10 border border-[#00B4D8]/30'">
+                 : 'bg-[#FF6B35]/10 border border-[#FF6B35]/30'">
             <span class="material-symbols-outlined" style="font-size:20px"
-                  [class]="(payStep() === 'approved' || payStep() === 'stripe-success')
+                  [class]="payStep() === 'dlocal-success'
                     ? 'text-emerald-400'
-                    : payStep() === 'stripe-loading'
-                      ? 'text-[#635BFF]'
-                      : 'text-[#00B4D8]'">
-              {{ (payStep() === 'approved' || payStep() === 'stripe-success') ? 'verified' : payStep() === 'choose-gateway' ? 'account_balance_wallet' : 'payments' }}
+                    : 'text-[#FF6B35]'">
+              {{ payStep() === 'dlocal-success' ? 'verified' : 'payments' }}
             </span>
           </div>
           <div>
             <p class="font-black text-white text-sm">
               {{ payStep() === 'select' ? 'Elige tu plan'
-                 : payStep() === 'choose-gateway' ? 'Método de pago'
-                 : (payStep() === 'approved' || payStep() === 'stripe-success') ? '¡Pago Exitoso!'
-                 : 'Completar pago' }}
+                 : payStep() === 'dlocal-success' ? '¡Pago Exitoso!'
+                 : 'Procesando pago' }}
             </p>
             <p class="text-[10px] text-slate-500">
               {{ payStep() === 'select' ? 'Selecciona el paquete a comprar'
-                 : payStep() === 'choose-gateway' ? 'Elige cómo quieres pagar'
                  : selectedPackage()?.name }}
             </p>
           </div>
         </div>
-        @if (payStep() !== 'submitting' && payStep() !== 'stripe-loading') {
+        @if (payStep() !== 'dlocal-loading') {
           <button (click)="closePaymentModal()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
             <span class="material-symbols-outlined">close</span>
           </button>
@@ -421,88 +415,51 @@
           </div>
         }
 
-        <!-- ── Paso: Elegir método de pago ─────────────────────────────── -->
-        @if (payStep() === 'choose-gateway') {
-          <div class="space-y-4">
 
-            <!-- Resumen del paquete -->
-            <div class="flex items-center justify-between bg-black/30 border border-white/5 rounded-xl px-4 py-3">
-              <div>
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Plan seleccionado</p>
-                <p class="text-white font-black text-sm">{{ selectedPackage()?.name }}</p>
-              </div>
-              <div class="text-right">
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Precio</p>
-                <p class="text-[#00B4D8] font-black text-sm">{{ getPriceUSD(selectedPackage()) }} USD</p>
-              </div>
-            </div>
-
-            @if (payError()) {
-              <div class="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
-                <span class="material-symbols-outlined text-rose-400 text-base flex-shrink-0">error</span>
-                <p class="text-xs text-rose-400">{{ payError() }}</p>
-              </div>
-            }
-
-            <!-- Opción Stripe -->
-            <button
-              (click)="selectGateway('stripe')"
-              class="w-full flex items-center gap-4 bg-zinc-800 border border-white/10 hover:border-[#635BFF]/50 rounded-2xl px-5 py-4 transition-all group"
-            >
-              <div class="w-11 h-11 rounded-xl bg-[#635BFF]/10 border border-[#635BFF]/30 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-[#635BFF]" style="font-size:22px">credit_card</span>
-              </div>
-              <div class="flex-1 text-left">
-                <p class="font-black text-white text-sm group-hover:text-[#635BFF] transition-colors">Tarjeta / Google Pay / Apple Pay</p>
-                <p class="text-[10px] text-slate-500 mt-0.5">Pago seguro con Stripe · Activación instantánea</p>
-              </div>
-              <span class="material-symbols-outlined text-slate-600 group-hover:text-[#635BFF] transition-colors" style="font-size:20px">chevron_right</span>
-            </button>
-
-            <!-- Opción Nequi (solo si el paquete tiene link Nequi) -->
-            @if (selectedPackage()?.nequi_payment_link) {
-              <button
-                (click)="selectGateway('nequi')"
-                class="w-full flex items-center gap-4 bg-zinc-800 border border-white/10 hover:border-[#00B4D8]/50 rounded-2xl px-5 py-4 transition-all group"
-              >
-                <div class="w-11 h-11 rounded-xl bg-[#00B4D8]/10 border border-[#00B4D8]/30 flex items-center justify-center flex-shrink-0">
-                  <span class="material-symbols-outlined text-[#00B4D8]" style="font-size:22px">smartphone</span>
-                </div>
-                <div class="flex-1 text-left">
-                  <p class="font-black text-white text-sm group-hover:text-[#00B4D8] transition-colors">Nequi</p>
-                  <p class="text-[10px] text-slate-500 mt-0.5">Pago con Nequi · Verificación manual</p>
-                </div>
-                <span class="material-symbols-outlined text-slate-600 group-hover:text-[#00B4D8] transition-colors" style="font-size:20px">chevron_right</span>
-              </button>
-            }
-
-            <!-- Volver -->
-            <button
-              (click)="payStep.set('select')"
-              class="flex items-center gap-1.5 text-sm text-slate-500 hover:text-white transition-colors"
-            >
-              <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>
-              Cambiar plan
-            </button>
-          </div>
-        }
-
-        <!-- ── Paso: Stripe loading (creando sesión) ───────────────────── -->
-        @if (payStep() === 'stripe-loading') {
+        <!-- ── Paso: dLocal loading (creando sesión) ───────────────────── -->
+        @if (payStep() === 'dlocal-loading') {
           <div class="flex flex-col items-center gap-4 py-8">
             <div class="relative">
-              <div class="w-16 h-16 rounded-full border-4 border-[#635BFF]/20 border-t-[#635BFF] animate-spin"></div>
-              <span class="material-symbols-outlined text-[#635BFF] absolute inset-0 flex items-center justify-center" style="font-size:24px">credit_card</span>
+              <div class="w-16 h-16 rounded-full border-4 border-[#FF6B35]/20 border-t-[#FF6B35] animate-spin"></div>
+              <span class="material-symbols-outlined text-[#FF6B35] absolute inset-0 flex items-center justify-center" style="font-size:24px">public</span>
             </div>
             <div class="text-center">
-              <p class="text-white font-bold text-sm">Preparando checkout seguro...</p>
-              <p class="text-xs text-slate-500 mt-1">Serás redirigido a Stripe en un momento</p>
+              <p class="text-white font-bold text-sm">Preparando pago...</p>
+              <p class="text-xs text-slate-500 mt-1">Serás redirigido a dLocal Go en un momento</p>
             </div>
           </div>
         }
 
-        <!-- ── Paso: Stripe success (retorno exitoso) ──────────────────── -->
-        @if (payStep() === 'stripe-success') {
+        <!-- ── Paso: Error de dLocal ─────────────────────────────────────── -->
+        @if (payStep() === 'error') {
+          <div class="flex flex-col items-center text-center gap-4 py-6">
+            <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-rose-400" style="font-size:36px">error</span>
+            </div>
+            <div>
+              <p class="font-black text-white text-base">Error al procesar el pago</p>
+              <p class="text-slate-400 text-xs mt-2 max-w-xs leading-relaxed">{{ payError() }}</p>
+            </div>
+            <div class="flex gap-3 w-full">
+              <button
+                (click)="closePaymentModal()"
+                class="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                (click)="startDlocalCheckout()"
+                class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white rounded-xl font-bold text-sm transition-colors"
+              >
+                <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+                Reintentar
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ── Paso: dLocal success (retorno exitoso) ──────────────────── -->
+        @if (payStep() === 'dlocal-success') {
           <div class="flex flex-col items-center text-center gap-5 py-4">
             <!-- Animación de éxito -->
             <div class="relative">
@@ -517,245 +474,25 @@
               <p class="font-black text-white text-lg">¡Pago Exitoso!</p>
               <p class="text-emerald-400 font-bold text-sm mt-1">Tu paquete se está activando</p>
               <p class="text-slate-400 text-xs mt-3 max-w-xs leading-relaxed">
-                Tu pago ha sido procesado correctamente. El paquete se activará automáticamente en unos segundos.
+                Tu pago ha sido procesado correctamente con dLocal Go. El paquete se activará automáticamente en unos segundos.
               </p>
             </div>
             <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3 w-full">
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">bolt</span>
-                <p class="text-xs text-emerald-400 font-bold">Activación automática vía Stripe</p>
+                <p class="text-xs text-emerald-400 font-bold">Activación automática vía dLocal Go</p>
               </div>
               <p class="text-[10px] text-slate-500 mt-1">No necesitas enviar comprobante. Tu plan se activa al instante.</p>
             </div>
             <button
               (click)="closePaymentModal()"
-              class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-black text-sm transition-colors"
+              class="w-full py-3 bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white rounded-xl font-black text-sm transition-colors"
             >
               ¡Empezar a ganar!
             </button>
           </div>
         }
 
-        <!-- ── Paso 1: Ir al link ─────────────────────────────────────────── -->
-        @if (payStep() === 'redirect') {
-          <div class="space-y-4">
-
-            <!-- Precio destacado en COP -->
-            <div class="bg-[#00B4D8]/5 border border-[#00B4D8]/20 rounded-2xl p-4">
-              <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Monto a pagar</p>
-              <div class="flex items-baseline gap-3">
-                <p class="text-3xl font-black text-[#00B4D8]">{{ getPriceCOP(selectedPackage()) }}</p>
-                <p class="text-sm text-slate-500">{{ getPriceUSD(selectedPackage()) }} USD</p>
-              </div>
-              <p class="text-[10px] text-slate-600 mt-1">Duración: {{ selectedPackage()?.duration_days }} días · Pago único</p>
-            </div>
-
-            <!-- Instrucciones -->
-            <div class="space-y-2">
-              <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Pasos para pagar</p>
-              <ol class="space-y-2">
-                <li class="flex items-start gap-3 text-xs text-slate-400">
-                  <span class="w-5 h-5 rounded-full bg-[#00B4D8]/20 text-[#00B4D8] font-black text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                  Haz clic en <span class="font-bold text-white">"Ir a Nequi"</span> — se abrirá el checkout en una nueva pestaña.
-                </li>
-                <li class="flex items-start gap-3 text-xs text-slate-400">
-                  <span class="w-5 h-5 rounded-full bg-[#00B4D8]/20 text-[#00B4D8] font-black text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                  Completa el pago con tu cuenta Nequi.
-                </li>
-                <li class="flex items-start gap-3 text-xs text-slate-400">
-                  <span class="w-5 h-5 rounded-full bg-[#00B4D8]/20 text-[#00B4D8] font-black text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                  Copia el <span class="font-bold text-white">número de transacción</span> del recibo de Nequi.
-                </li>
-                <li class="flex items-start gap-3 text-xs text-slate-400">
-                  <span class="w-5 h-5 rounded-full bg-[#00B4D8]/20 text-[#00B4D8] font-black text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
-                  Regresa aquí y envía el comprobante para activar tu plan.
-                </li>
-              </ol>
-            </div>
-
-            <div class="flex gap-3">
-              <button
-                (click)="payStep.set('choose-gateway')"
-                class="flex items-center gap-1.5 px-4 py-3 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-              >
-                <span class="material-symbols-outlined text-base">arrow_back</span>
-                Atrás
-              </button>
-              <button
-                (click)="goToNequiLink()"
-                class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-white transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-sm"
-              >
-                <span class="material-symbols-outlined" style="font-size:20px">open_in_new</span>
-                Pagar {{ getPriceCOP(selectedPackage()) }}
-              </button>
-            </div>
-          </div>
-        }
-
-        <!-- ── Paso 2: Enviar comprobante ─────────────────────────────────── -->
-        @if (payStep() === 'confirm') {
-          <div class="space-y-4">
-
-            <!-- Resumen del pago -->
-            <div class="flex items-center justify-between bg-black/30 border border-white/5 rounded-xl px-4 py-3">
-              <div>
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Plan</p>
-                <p class="text-white font-black text-sm">{{ selectedPackage()?.name }}</p>
-              </div>
-              <div class="text-right">
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Monto pagado</p>
-                <p class="text-[#00B4D8] font-black text-sm">{{ getPriceCOP(selectedPackage()) }}</p>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3">
-              <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
-              <p class="text-xs text-emerald-400 font-bold">¿Ya pagaste? Ingresa tu comprobante para verificar.</p>
-            </div>
-
-            @if (payError()) {
-              <div class="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
-                <span class="material-symbols-outlined text-rose-400 text-base flex-shrink-0">error</span>
-                <p class="text-xs text-rose-400">{{ payError() }}</p>
-              </div>
-            }
-
-            <div class="space-y-3">
-              <div>
-                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Tu número Nequi *</label>
-                <div class="relative">
-                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">smartphone</span>
-                  <input
-                    type="tel"
-                    [(ngModel)]="proofPhone"
-                    maxlength="10"
-                    class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-[#00B4D8] focus:border-transparent"
-                    placeholder="3001234567"
-                  />
-                </div>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold mb-1.5 text-slate-400 uppercase tracking-wide">Número de transacción *</label>
-                <div class="relative">
-                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">receipt</span>
-                  <input
-                    type="text"
-                    [(ngModel)]="proofTransactionId"
-                    class="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-[#00B4D8] focus:border-transparent"
-                    placeholder="Ej: 987654321"
-                  />
-                </div>
-                <p class="text-[10px] text-slate-600 mt-1">Lo encuentras en el recibo o notificación de Nequi después de pagar.</p>
-              </div>
-            </div>
-
-            <div class="flex gap-3">
-              <button
-                (click)="goToNequiLink()"
-                class="flex items-center gap-1 px-4 py-2.5 text-sm font-bold text-slate-400 hover:text-white border border-white/10 rounded-xl transition-colors"
-              >
-                <span class="material-symbols-outlined text-base">open_in_new</span>
-                Volver a Nequi
-              </button>
-              <button
-                (click)="submitProof()"
-                class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-xl font-bold text-sm transition-colors"
-              >
-                <span class="material-symbols-outlined text-base">verified</span>
-                Verificar pago
-              </button>
-            </div>
-          </div>
-        }
-
-        <!-- ── Paso 3: Verificando ────────────────────────────────────────── -->
-        @if (payStep() === 'submitting') {
-          <div class="flex flex-col items-center gap-4 py-8">
-            <div class="relative">
-              <div class="w-16 h-16 rounded-full border-4 border-[#00B4D8]/20 border-t-[#00B4D8] animate-spin"></div>
-              <span class="material-symbols-outlined text-[#00B4D8] absolute inset-0 flex items-center justify-center" style="font-size:24px">payments</span>
-            </div>
-            <div class="text-center">
-              <p class="text-white font-bold text-sm">Verificando pago con Nequi...</p>
-              <p class="text-xs text-slate-500 mt-1">Consultando la pasarela de pagos</p>
-            </div>
-          </div>
-        }
-
-        <!-- ── Paso 4a: Auto-aprobado por Wompi ──────────────────────────── -->
-        @if (payStep() === 'approved') {
-          <div class="flex flex-col items-center text-center gap-5 py-4">
-            <!-- Animación de éxito -->
-            <div class="relative">
-              <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/40 flex items-center justify-center">
-                <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">verified</span>
-              </div>
-              <div class="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
-                <span class="material-symbols-outlined text-white" style="font-size:14px">check</span>
-              </div>
-            </div>
-            <div>
-              <p class="font-black text-white text-lg">¡Pago Verificado!</p>
-              <p class="text-emerald-400 font-bold text-sm mt-1">Tu paquete está activo</p>
-              <p class="text-slate-400 text-xs mt-3 max-w-xs leading-relaxed">
-                Hemos verificado tu pago de <span class="font-bold text-[#00B4D8]">{{ getPriceCOP(selectedPackage()) }}</span>
-                y el plan <span class="font-bold text-white">{{ selectedPackage()?.name }}</span> fue activado de inmediato.
-              </p>
-            </div>
-            <!-- Beneficios desbloqueados -->
-            <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-5 py-4 w-full space-y-2">
-              <p class="text-[10px] text-emerald-400 uppercase font-black tracking-widest">Ahora tienes acceso a</p>
-              <div class="grid grid-cols-3 gap-2 mt-2">
-                <div class="text-center">
-                  <p class="text-base font-black text-white">{{ selectedPackage()?.daily_ptc_limit }}</p>
-                  <p class="text-[9px] text-slate-500 uppercase">Clicks/día</p>
-                </div>
-                <div class="text-center">
-                  <p class="text-base font-black text-white">{{ selectedPackage()?.max_ptc_ads }}</p>
-                  <p class="text-[9px] text-slate-500 uppercase">Anuncios PTC</p>
-                </div>
-                <div class="text-center">
-                  <p class="text-base font-black text-white">{{ selectedPackage()?.max_banner_ads }}</p>
-                  <p class="text-[9px] text-slate-500 uppercase">Banners</p>
-                </div>
-              </div>
-            </div>
-            <button
-              (click)="closePaymentModal()"
-              class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-black text-sm transition-colors"
-            >
-              ¡Empezar a ganar!
-            </button>
-          </div>
-        }
-
-        <!-- ── Paso 4b: Enviado para revisión manual ──────────────────────── -->
-        @if (payStep() === 'sent') {
-          <div class="flex flex-col items-center text-center gap-4 py-4">
-            <div class="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
-              <span class="material-symbols-outlined text-amber-400" style="font-size:36px">pending</span>
-            </div>
-            <div>
-              <p class="font-black text-white text-base">¡Comprobante recibido!</p>
-              <p class="text-slate-400 text-xs mt-2 max-w-xs leading-relaxed">
-                {{ verifyMessage() || 'Nuestro equipo revisará tu pago y activará el paquete ' + selectedPackage()?.name + ' en los próximos minutos.' }}
-              </p>
-            </div>
-            <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3 w-full space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-amber-400" style="font-size:16px">schedule</span>
-                <p class="text-xs text-amber-400 font-bold">Activación: menos de 30 minutos</p>
-              </div>
-              <p class="text-[10px] text-slate-500">Recibirás acceso tan pronto el equipo confirme el pago.</p>
-            </div>
-            <button
-              (click)="closePaymentModal()"
-              class="w-full py-3 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm transition-colors"
-            >
-              Entendido
-            </button>
-          </div>
-        }
 
       </div>
     </div>

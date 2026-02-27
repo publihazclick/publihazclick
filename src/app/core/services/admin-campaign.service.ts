@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.client';
+import { sanitizePostgrestFilter } from '../utils/sanitize';
 import type {
   CampaignAdmin,
   CampaignFilters,
@@ -64,7 +65,10 @@ export class AdminCampaignService {
       }
 
       if (filters.search) {
-        query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        const safeSearch = sanitizePostgrestFilter(filters.search);
+        if (safeSearch) {
+          query = query.or(`name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+        }
       }
 
       const { data, error, count } = await query
@@ -102,7 +106,7 @@ export class AdminCampaignService {
         totalPages: Math.ceil((count || 0) / pageSize)
       };
     } catch (error: any) {
-      console.error('Error getting campaigns:', error);
+      // Failed to get campaigns
       return {
         data: [],
         total: 0,
@@ -151,7 +155,7 @@ export class AdminCampaignService {
         updated_at: data.updated_at
       };
     } catch (error: any) {
-      console.error('Error getting campaign:', error);
+      // Failed to get campaign
       return null;
     }
   }
@@ -182,7 +186,7 @@ export class AdminCampaignService {
 
       return result;
     } catch (error: any) {
-      console.error('Error creating campaign:', error);
+      // Failed to create campaign
       return null;
     }
   }
@@ -207,7 +211,7 @@ export class AdminCampaignService {
 
       return true;
     } catch (error: any) {
-      console.error('Error updating campaign:', error);
+      // Failed to update campaign
       return false;
     }
   }
@@ -232,7 +236,7 @@ export class AdminCampaignService {
 
       return true;
     } catch (error: any) {
-      console.error('Error updating campaign status:', error);
+      // Failed to update campaign status
       return false;
     }
   }
@@ -261,7 +265,7 @@ export class AdminCampaignService {
 
       return true;
     } catch (error: any) {
-      console.error('Error rejecting campaign:', error);
+      // Failed to reject campaign
       return false;
     }
   }
@@ -280,7 +284,7 @@ export class AdminCampaignService {
 
       return true;
     } catch (error: any) {
-      console.error('Error deleting campaign:', error);
+      // Failed to delete campaign
       return false;
     }
   }

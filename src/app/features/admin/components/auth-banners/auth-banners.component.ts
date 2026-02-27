@@ -58,7 +58,7 @@ export class AdminAuthBannersComponent implements OnInit {
       const result = await this.bannerService.getActiveBannersByLocation('interstitial');
       this.banners.set(result);
     } catch (err: any) {
-      console.error('Error loading auth banners:', err);
+      // Failed to load auth banners
       this.showError('Error al cargar los banners de autenticación');
     } finally {
       this.loading.set(false);
@@ -135,7 +135,7 @@ export class AdminAuthBannersComponent implements OnInit {
       await this.loadBanners();
       this.closeModal();
     } catch (err: any) {
-      console.error('Error saving banner:', err);
+      // Failed to save banner
       this.showError(err.message || 'Error al guardar el banner');
     } finally {
       this.saving.set(false);
@@ -151,7 +151,7 @@ export class AdminAuthBannersComponent implements OnInit {
       );
       await this.loadBanners();
     } catch (err: any) {
-      console.error('Error toggling banner status:', err);
+      // Failed to toggle banner status
       this.showError('Error al cambiar el estado del banner');
     }
   }
@@ -165,7 +165,7 @@ export class AdminAuthBannersComponent implements OnInit {
       this.showSuccess('Banner eliminado correctamente');
       await this.loadBanners();
     } catch (err: any) {
-      console.error('Error deleting banner:', err);
+      // Failed to delete banner
       this.showError(err.message || 'Error al eliminar el banner');
     } finally {
       this.deleting.set(null);

@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
+import { environment } from '../../../environments/environment';
 
 export interface Currency {
   code: string;
@@ -24,7 +25,7 @@ export interface CachedRates {
   providedIn: 'root'
 })
 export class CurrencyService {
-  private readonly API_KEY = 'fca_live_9TcBlO4cZge82CUYl7cta0M7dkkcX7aiexyXwSPJ';
+  private readonly API_KEY = environment.freeCurrencyApiKey;
   private readonly BASE_URL = 'https://api.freecurrencyapi.com/v1/latest';
   private readonly CACHE_KEY = 'cachedExchangeRates';
   private readonly CACHE_HOURS_KEY = 'cachedExchangeRatesHour';
@@ -85,8 +86,8 @@ export class CurrencyService {
       try {
         const currency = JSON.parse(saved) as Currency;
         this._selectedCurrency.set(currency);
-      } catch (e) {
-        console.error('Error parsing saved currency:', e);
+      } catch {
+        // Invalid saved currency data - use default
       }
     }
   }
@@ -127,8 +128,8 @@ export class CurrencyService {
           }
           return;
         }
-      } catch (e) {
-        console.error('Error parsing cached rates:', e);
+      } catch {
+        // Invalid cached rates - will fetch fresh
       }
     }
 
@@ -137,7 +138,7 @@ export class CurrencyService {
     
     // Intentar obtener tasas reales
     this.fetchRates().catch(() => {
-      console.log('Usando tasas fallback');
+      // Using fallback rates
     });
   }
 
@@ -145,9 +146,7 @@ export class CurrencyService {
     this._loading.set(true);
     try {
       const url = `${this.BASE_URL}?apikey=${this.API_KEY}&base_currency=USD`;
-      console.log('Fetching rates from:', url);
       const response: any = await firstValueFrom(this.http.get(url));
-      console.log('API Response:', response);
       
       if (response && response.data) {
         // Mezclar con tasas de respaldo para preservar divisas que el plan de API no incluya (ej. COP, ARS, CLP)
@@ -166,9 +165,8 @@ export class CurrencyService {
           localStorage.setItem(this.CACHE_HOURS_KEY, currentHour.toString());
         }
       }
-    } catch (error) {
-      console.error('Error fetching exchange rates:', error);
-      // Set fallback rates
+    } catch {
+      // Set fallback rates on API failure
       this._rates.set(this.getFallbackRates());
     } finally {
       this._loading.set(false);

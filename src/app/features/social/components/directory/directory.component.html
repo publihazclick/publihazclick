@@ -145,42 +145,48 @@
             }
           </div>
 
-          <!-- Acción -->
-          @if (advertiser.connection_status === 'accepted') {
-            <button
-              (click)="openChat(advertiser)"
-              [disabled]="actionLoading() === advertiser.id"
-              class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition-all disabled:opacity-50"
-            >
-              <span class="material-symbols-outlined" style="font-size:15px">chat</span>
-              {{ actionLoading() === advertiser.id ? 'Abriendo...' : 'Enviar mensaje' }}
-            </button>
-          } @else if (advertiser.connection_status === 'pending' && !advertiser.is_requester) {
-            <!-- Solicitud recibida: puede aceptar directamente -->
-            <button
-              (click)="acceptRequest(advertiser)"
-              [disabled]="actionLoading() === advertiser.id"
-              class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/20 transition-all disabled:opacity-50"
-            >
-              <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>
-              {{ actionLoading() === advertiser.id ? 'Aceptando...' : 'Aceptar solicitud' }}
-            </button>
-          } @else if (advertiser.connection_status === 'pending') {
-            <!-- Solicitud enviada por mí -->
-            <div class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
-              <span class="material-symbols-outlined" style="font-size:15px">schedule</span>
-              Solicitud enviada
-            </div>
-          } @else {
-            <button
-              (click)="sendRequest(advertiser)"
-              [disabled]="actionLoading() === advertiser.id"
-              class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-accent/10 text-slate-400 hover:text-accent text-xs font-bold border border-white/10 hover:border-accent/20 transition-all disabled:opacity-50"
-            >
-              <span class="material-symbols-outlined" style="font-size:15px">person_add</span>
-              {{ actionLoading() === advertiser.id ? 'Enviando...' : 'Conectar' }}
-            </button>
-          }
+          <!-- Acción principal -->
+          <div class="flex gap-2">
+            @if (advertiser.connection_status === 'accepted') {
+              <button
+                (click)="openChat(advertiser)"
+                [disabled]="actionLoading() === advertiser.id"
+                class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition-all disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined" style="font-size:15px">chat</span>
+                {{ actionLoading() === advertiser.id ? 'Abriendo...' : 'Mensaje' }}
+              </button>
+            } @else if (advertiser.connection_status === 'pending' && !advertiser.is_requester) {
+              <button
+                (click)="acceptRequest(advertiser)"
+                [disabled]="actionLoading() === advertiser.id"
+                class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/20 transition-all disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>
+                {{ actionLoading() === advertiser.id ? 'Aceptando...' : 'Aceptar' }}
+              </button>
+            } @else if (advertiser.connection_status === 'pending') {
+              <div class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
+                <span class="material-symbols-outlined" style="font-size:15px">schedule</span>
+                Enviada
+              </div>
+            } @else {
+              <button
+                (click)="sendRequest(advertiser)"
+                [disabled]="actionLoading() === advertiser.id"
+                class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-accent/10 text-slate-400 hover:text-accent text-xs font-bold border border-white/10 hover:border-accent/20 transition-all disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined" style="font-size:15px">person_add</span>
+                {{ actionLoading() === advertiser.id ? 'Enviando...' : 'Conectar' }}
+              </button>
+            }
+            <!-- Botón ver perfil -->
+            <a [routerLink]="['/social/profile', advertiser.id]"
+              class="flex items-center justify-center px-2.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+              title="Ver perfil">
+              <span class="material-symbols-outlined" style="font-size:15px">person</span>
+            </a>
+          </div>
         </div>
       }
     </div>

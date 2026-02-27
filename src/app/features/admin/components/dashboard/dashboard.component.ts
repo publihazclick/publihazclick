@@ -77,7 +77,7 @@ export class AdminDashboardComponent implements OnInit {
       this.chartData.set(chartData);
       this.pendingItems.set(pendingItems);
     } catch (err: any) {
-      console.error('Error loading dashboard data:', err);
+      // Failed to load dashboard data
       this.error.set('Error al cargar los datos del dashboard');
     } finally {
       this.loading.set(false);

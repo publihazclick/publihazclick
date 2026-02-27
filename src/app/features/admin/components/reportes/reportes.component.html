@@ -1,0 +1,354 @@
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-white">Reportes de Usuarios</h1>
+      <p class="text-slate-400 text-sm">Balances, donaciones, anuncios vistos y red de referidos</p>
+    </div>
+    <button
+      (click)="loadUsers()"
+      class="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/10 transition-colors"
+    >
+      <span class="material-symbols-outlined text-xl">refresh</span>
+      Actualizar
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+    <div class="flex flex-col md:flex-row gap-3">
+      <div class="flex-1 relative">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+        <input
+          type="text"
+          placeholder="Buscar por nombre, usuario o email..."
+          [value]="searchQuery()"
+          (input)="onSearch($any($event).target.value)"
+          class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-primary focus:border-transparent"
+        />
+      </div>
+      <select
+        [value]="selectedRole()"
+        (change)="onRoleChange($any($event).target.value)"
+        class="px-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary"
+      >
+        @for (role of roles; track role.value) {
+          <option [value]="role.value">{{ role.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Error -->
+  @if (error() && !loading()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
+      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
+      <button (click)="loadUsers()" class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-20">
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-3">sync</span>
+      <p class="text-slate-400 text-sm">Cargando reportes...</p>
+    </div>
+  }
+
+  @if (!loading()) {
+
+    <!-- Resumen rápido -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Usuarios mostrados</p>
+        <p class="text-2xl font-black text-white">{{ filteredUsers().length }}</p>
+      </div>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Balance total (real)</p>
+        <p class="text-xl font-black text-primary">{{ formatCurrency(totalRealBalance()) }}</p>
+      </div>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Donaciones totales</p>
+        <p class="text-xl font-black text-violet-400">{{ formatCurrency(totalDonated()) }}</p>
+      </div>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Anunciantes activos</p>
+        <p class="text-2xl font-black text-amber-400">{{ activeAdvertisersCount() }}</p>
+      </div>
+    </div>
+
+    <!-- Tabla desktop -->
+    <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-white/5 text-[11px] font-black uppercase text-slate-400 tracking-widest">
+              <th class="px-5 py-4">Usuario</th>
+              <th class="px-5 py-4">Rol</th>
+              <th class="px-5 py-4">Balance Real</th>
+              <th class="px-5 py-4">Demo</th>
+              <th class="px-5 py-4">Donaciones</th>
+              <th class="px-5 py-4">Ganado Total</th>
+              <th class="px-5 py-4">Referidos</th>
+              <th class="px-5 py-4 text-right">Detalle</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            @for (user of filteredUsers(); track user.id) {
+              <tr class="hover:bg-white/[0.03] transition-colors">
+                <!-- Usuario -->
+                <td class="px-5 py-3.5">
+                  <div>
+                    <div class="font-bold text-white text-sm">{{ user.username }}</div>
+                    <div class="text-xs text-slate-500">{{ user.email }}</div>
+                    @if (!user.is_active) {
+                      <span class="text-[10px] text-rose-400 font-bold">INACTIVO</span>
+                    }
+                  </div>
+                </td>
+                <!-- Rol -->
+                <td class="px-5 py-3.5">
+                  <span class="px-2 py-0.5 rounded text-xs font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
+                    {{ getRoleLabel(user.role) }}
+                  </span>
+                  @if (user.has_active_package) {
+                    <span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400">PKG</span>
+                  }
+                </td>
+                <!-- Balance real -->
+                <td class="px-5 py-3.5">
+                  <span class="font-black text-primary text-sm">{{ formatCurrency(user.real_balance ?? 0) }}</span>
+                </td>
+                <!-- Demo -->
+                <td class="px-5 py-3.5">
+                  <span class="text-slate-400 text-sm">{{ formatCurrency(user.demo_balance ?? 0) }}</span>
+                </td>
+                <!-- Donaciones -->
+                <td class="px-5 py-3.5">
+                  <span class="text-violet-400 font-bold text-sm">{{ formatCurrency(user.total_donated ?? 0) }}</span>
+                </td>
+                <!-- Total ganado -->
+                <td class="px-5 py-3.5">
+                  <span class="text-emerald-400 font-bold text-sm">{{ formatCurrency(user.total_earned ?? 0) }}</span>
+                </td>
+                <!-- Referidos -->
+                <td class="px-5 py-3.5">
+                  <span class="text-white font-bold text-sm">{{ user.total_referrals_count }}</span>
+                </td>
+                <!-- Acción -->
+                <td class="px-5 py-3.5 text-right">
+                  <button
+                    (click)="openDetail(user)"
+                    class="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors flex items-center gap-1 ml-auto"
+                  >
+                    <span class="material-symbols-outlined text-base">bar_chart</span>
+                    Ver stats
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cards mobile -->
+    <div class="md:hidden space-y-3">
+      @for (user of filteredUsers(); track user.id) {
+        <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="font-bold text-white text-sm">{{ user.username }}</div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
+                {{ getRoleLabel(user.role) }}
+              </span>
+            </div>
+            <button (click)="openDetail(user)" class="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors">
+              Stats
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-white/5 rounded-lg p-2">
+              <p class="text-slate-500 text-[10px] mb-0.5">Balance Real</p>
+              <p class="text-primary font-black">{{ formatCurrency(user.real_balance ?? 0) }}</p>
+            </div>
+            <div class="bg-white/5 rounded-lg p-2">
+              <p class="text-slate-500 text-[10px] mb-0.5">Donaciones</p>
+              <p class="text-violet-400 font-bold">{{ formatCurrency(user.total_donated ?? 0) }}</p>
+            </div>
+            <div class="bg-white/5 rounded-lg p-2">
+              <p class="text-slate-500 text-[10px] mb-0.5">Total Ganado</p>
+              <p class="text-emerald-400 font-bold">{{ formatCurrency(user.total_earned ?? 0) }}</p>
+            </div>
+            <div class="bg-white/5 rounded-lg p-2">
+              <p class="text-slate-500 text-[10px] mb-0.5">Referidos</p>
+              <p class="text-white font-bold">{{ user.total_referrals_count }}</p>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Empty state -->
+    @if (filteredUsers().length === 0) {
+      <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+        <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">query_stats</span>
+        <h3 class="font-bold text-lg mb-2 text-white">Sin resultados</h3>
+        <p class="text-slate-500 text-sm">Ajusta los filtros de búsqueda</p>
+      </div>
+    }
+
+    <!-- Paginación -->
+    @if (totalPages() > 1) {
+      <div class="flex items-center justify-between pt-2">
+        <p class="text-sm text-slate-500">
+          Página {{ currentPage() }} de {{ totalPages() }} · {{ totalCount() }} usuarios
+        </p>
+        <div class="flex items-center gap-2">
+          <button (click)="prevPage()" [disabled]="currentPage() === 1"
+            class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors">
+            <span class="material-symbols-outlined text-xl">chevron_left</span>
+          </button>
+          <span class="text-sm font-medium px-3 text-slate-300">{{ currentPage() }} / {{ totalPages() }}</span>
+          <button (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+            class="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors">
+            <span class="material-symbols-outlined text-xl">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ═══ MODAL DETALLE ═══ -->
+  @if (detail(); as d) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+          <div>
+            <h2 class="text-lg font-bold text-white">{{ d.user.username }}</h2>
+            <p class="text-xs text-slate-500">{{ d.user.email }}</p>
+          </div>
+          <button (click)="closeDetail()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        @if (d.loading) {
+          <div class="flex items-center justify-center py-16">
+            <span class="material-symbols-outlined text-primary text-4xl animate-spin">sync</span>
+          </div>
+        } @else {
+          <div class="p-6 space-y-6">
+
+            <!-- Balances -->
+            <div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-base">account_balance_wallet</span>
+                Balances
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p class="text-[10px] text-slate-500 uppercase mb-1">Balance Real</p>
+                  <p class="text-lg font-black text-primary">{{ formatCurrency(d.user.real_balance ?? 0) }}</p>
+                </div>
+                <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p class="text-[10px] text-slate-500 uppercase mb-1">Demo</p>
+                  <p class="text-lg font-black text-slate-300">{{ formatCurrency(d.user.demo_balance ?? 0) }}</p>
+                </div>
+                <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p class="text-[10px] text-slate-500 uppercase mb-1">Total Ganado</p>
+                  <p class="text-lg font-black text-emerald-400">{{ formatCurrency(d.user.total_earned ?? 0) }}</p>
+                </div>
+                <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p class="text-[10px] text-slate-500 uppercase mb-1">Donaciones</p>
+                  <p class="text-lg font-black text-violet-400">{{ formatCurrency(d.user.total_donated ?? 0) }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Anuncios por categoría -->
+            <div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-400 text-base">play_circle</span>
+                Anuncios completados — Total: {{ d.totalClicks }}
+              </h3>
+              @if (d.clicksByCategory.length === 0) {
+                <div class="bg-white/5 rounded-xl p-4 text-center">
+                  <p class="text-slate-500 text-sm">Sin anuncios completados aún</p>
+                </div>
+              } @else {
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  @for (stat of d.clicksByCategory; track stat.ad_type) {
+                    <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                      <p class="text-[10px] text-slate-500 uppercase mb-1">{{ getAdLabel(stat.ad_type) }}</p>
+                      <p class="text-xl font-black" [class]="getAdColor(stat.ad_type)">{{ stat.count }}</p>
+                      <p class="text-[10px] text-slate-500 mt-1">{{ formatCurrency(stat.total_reward) }}</p>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Referidos -->
+            <div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-cyan-400 text-base">group_add</span>
+                Red de referidos — {{ d.referralsList.length }} total · {{ d.activeReferrals }} activos
+              </h3>
+              @if (d.referralsList.length === 0) {
+                <div class="bg-white/5 rounded-xl p-4 text-center">
+                  <p class="text-slate-500 text-sm">Sin referidos aún</p>
+                </div>
+              } @else {
+                <!-- Resumen -->
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                  <div class="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/20">
+                    <p class="text-[10px] text-slate-400 uppercase mb-1">Total referidos</p>
+                    <p class="text-2xl font-black text-white">{{ d.referralsList.length }}</p>
+                  </div>
+                  <div class="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
+                    <p class="text-[10px] text-slate-400 uppercase mb-1">Referidos activos</p>
+                    <p class="text-2xl font-black text-emerald-400">{{ d.activeReferrals }}</p>
+                  </div>
+                </div>
+                <!-- Lista -->
+                <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                  @for (ref of d.referralsList; track ref.id) {
+                    <div class="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                      <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                          <span class="material-symbols-outlined text-primary" style="font-size:14px">person</span>
+                        </div>
+                        <span class="text-sm text-white font-medium">{{ ref.username }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" [class]="getRoleBadgeClass(ref.role)">
+                          {{ getRoleLabel(ref.role) }}
+                        </span>
+                        @if (ref.is_active && ref.has_active_package) {
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Activo con paquete"></span>
+                        } @else if (!ref.is_active) {
+                          <span class="w-1.5 h-1.5 rounded-full bg-rose-400" title="Inactivo"></span>
+                        } @else {
+                          <span class="w-1.5 h-1.5 rounded-full bg-slate-400" title="Sin paquete"></span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+</div>

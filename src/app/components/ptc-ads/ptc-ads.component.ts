@@ -112,7 +112,7 @@ export class PtcAdsComponent implements OnInit {
         this.ads.set(this.getSampleAds());
       }
     } catch (err: any) {
-      console.error('Error loading PTC ads:', err);
+      // Failed to load PTC ads - using sample data
       this.ads.set(this.getSampleAds());
     } finally {
       this.loading.set(false);
@@ -221,7 +221,6 @@ export class PtcAdsComponent implements OnInit {
     // Recargar los datos de sesión de anuncios
     this.userTracking.recordAdView(this.selectedAd()?.id || '');
     
-    // Show success message (could add a toast here)
-    console.log('Recompensa reclamada:', event);
+    // Reward claimed successfully
   }
 }

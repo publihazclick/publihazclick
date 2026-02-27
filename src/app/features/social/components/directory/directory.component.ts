@@ -1,7 +1,7 @@
 import { Component, OnInit, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { SocialService } from '../../../../core/services/social.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import type { AdvertiserCard } from '../../../../core/models/social.model';
@@ -9,7 +9,7 @@ import type { AdvertiserCard } from '../../../../core/models/social.model';
 @Component({
   selector: 'app-social-directory',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './directory.component.html',
 })

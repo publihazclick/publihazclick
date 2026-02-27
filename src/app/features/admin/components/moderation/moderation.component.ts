@@ -130,7 +130,7 @@ export class AdminModerationComponent implements OnInit {
 
       this.items.set(allItems);
     } catch (err: unknown) {
-      console.error('Error loading moderation items:', err);
+      // Failed to load moderation items
       this.error.set('Error al cargar los elementos para moderación');
     } finally {
       this.loading.set(false);
@@ -169,7 +169,7 @@ export class AdminModerationComponent implements OnInit {
         this.error.set('Error al aprobar el anuncio');
       }
     } catch (err: unknown) {
-      console.error('Error approving item:', err);
+      // Failed to approve item
       this.error.set('Error al aprobar el anuncio');
     } finally {
       this.processingAction.set(false);
@@ -195,7 +195,7 @@ export class AdminModerationComponent implements OnInit {
         this.error.set('Error al rechazar el anuncio');
       }
     } catch (err: unknown) {
-      console.error('Error rejecting item:', err);
+      // Failed to reject item
       this.error.set('Error al rechazar el anuncio');
     } finally {
       this.processingAction.set(false);
@@ -224,7 +224,7 @@ export class AdminModerationComponent implements OnInit {
         this.error.set('Error al eliminar el anuncio');
       }
     } catch (err: unknown) {
-      console.error('Error deleting item:', err);
+      // Failed to delete item
       this.error.set('Error al eliminar el anuncio');
     } finally {
       this.processingAction.set(false);

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.client';
+import { sanitizePostgrestFilter } from '../utils/sanitize';
 import type {
   BannerAd,
   BannerAdFilters,
@@ -58,7 +59,10 @@ export class AdminBannerService {
       }
 
       if (filters.search) {
-        query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        const safeSearch = sanitizePostgrestFilter(filters.search);
+        if (safeSearch) {
+          query = query.or(`name.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+        }
       }
 
       if (filters.location) {
@@ -103,7 +107,7 @@ export class AdminBannerService {
         totalPages: Math.ceil((count || 0) / pageSize)
       };
     } catch (error: any) {
-      console.error('Error getting banner ads:', error);
+      // Failed to get banner ads
       return {
         data: [],
         total: 0,
@@ -157,7 +161,7 @@ export class AdminBannerService {
         updated_at: data.updated_at
       };
     } catch (error: any) {
-      console.error('Error getting banner ad:', error);
+      // Failed to get banner ad
       return null;
     }
   }
@@ -192,7 +196,7 @@ export class AdminBannerService {
 
       return result;
     } catch (error: any) {
-      console.error('Error creating banner ad:', error);
+      // Failed to create banner ad
       return null;
     }
   }
@@ -247,7 +251,7 @@ export class AdminBannerService {
 
       return true;
     } catch (error: any) {
-      console.error('Error updating banner status:', error);
+      // Failed to update banner status
       return false;
     }
   }
@@ -287,7 +291,7 @@ export class AdminBannerService {
 
       return true;
     } catch (error: any) {
-      console.error('Error deleting banner ad:', error);
+      // Failed to delete banner ad
       return false;
     }
   }
@@ -336,7 +340,7 @@ export class AdminBannerService {
         updated_at: b.updated_at
       }));
     } catch (error: any) {
-      console.error('Error getting active banners:', error);
+      // Failed to get active banners
       return [];
     }
   }
@@ -389,7 +393,7 @@ export class AdminBannerService {
         updated_at: b.updated_at
       }));
     } catch (error: any) {
-      console.error('Error getting active banners by location:', error);
+      // Failed to get active banners by location
       return [];
     }
   }
@@ -429,7 +433,7 @@ export class AdminBannerService {
           reward_earned: banner.reward
         });
     } catch (error: any) {
-      console.error('Error registering banner click:', error);
+      // Failed to register banner click
     }
   }
 }

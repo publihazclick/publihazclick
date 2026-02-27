@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.client';
+import { sanitizePostgrestFilter } from '../utils/sanitize';
 import type {
   PtcTaskAdmin,
   PtcTaskFilters,
@@ -307,7 +308,10 @@ export class AdminPtcTaskService {
       }
 
       if (filters.search) {
-        query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        const safeSearch = sanitizePostgrestFilter(filters.search);
+        if (safeSearch) {
+          query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+        }
       }
 
       if (filters.location) {
@@ -349,7 +353,7 @@ export class AdminPtcTaskService {
         totalPages: Math.ceil((count || 0) / pageSize)
       };
     } catch (error: any) {
-      console.error('Error getting PTC tasks:', error);
+      // Failed to get PTC tasks
       return {
         data: [],
         total: 0,
@@ -398,7 +402,7 @@ export class AdminPtcTaskService {
         updated_at: data.updated_at
       };
     } catch (error: any) {
-      console.error('Error getting PTC task:', error);
+      // Failed to get PTC task
       return null;
     }
   }
@@ -433,7 +437,7 @@ export class AdminPtcTaskService {
 
       return result;
     } catch (error: any) {
-      console.error('Error creating PTC task:', error);
+      // Failed to create PTC task
       return null;
     }
   }
@@ -490,7 +494,7 @@ export class AdminPtcTaskService {
 
       return true;
     } catch (error: any) {
-      console.error('Error updating PTC task status:', error);
+      // Failed to update PTC task status
       return false;
     }
   }
@@ -544,7 +548,7 @@ export class AdminPtcTaskService {
 
       return true;
     } catch (error: any) {
-      console.error('Error deleting PTC task:', error);
+      // Failed to delete PTC task
       return false;
     }
   }
@@ -574,7 +578,7 @@ export class AdminPtcTaskService {
         today: todayClicks || 0
       };
     } catch (error: any) {
-      console.error('Error getting task stats:', error);
+      // Failed to get task stats
       return null;
     }
   }

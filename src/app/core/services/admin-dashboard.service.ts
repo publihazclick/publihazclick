@@ -98,7 +98,7 @@ export class AdminDashboardService {
         totalDonated: donatedData?.reduce((s, p) => s + (p.total_donated || 0), 0) || 0,
       };
     } catch (error: any) {
-      console.error('Error getting dashboard stats:', error);
+      // Failed to get dashboard stats
       return {
         totalUsers: 0, activeUsers: 0, newUsersToday: 0,
         totalAds: 0, activeAds: 0, pendingAds: 0,
@@ -169,7 +169,7 @@ export class AdminDashboardService {
         ]
       };
     } catch (error: any) {
-      console.error('Error getting chart data:', error);
+      // Failed to get chart data
       return {
         labels: [],
         datasets: []
@@ -209,7 +209,7 @@ export class AdminDashboardService {
         submitted_at: c.created_at
       }));
     } catch (error: any) {
-      console.error('Error getting pending items:', error);
+      // Failed to get pending items
       return [];
     }
   }
@@ -250,7 +250,7 @@ export class AdminDashboardService {
         created_at: log.created_at
       }));
     } catch (error: any) {
-      console.error('Error getting recent activity:', error);
+      // Failed to get recent activity
       return [];
     }
   }
@@ -278,7 +278,7 @@ export class AdminDashboardService {
           ip_address: null // Se podría obtener del servidor
         });
     } catch (error: any) {
-      console.error('Error logging activity:', error);
+      // Failed to log activity
     }
   }
 }

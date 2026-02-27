@@ -12,7 +12,7 @@ import type { Profile } from '../../../../core/models/profile.model';
 type PayStep =
   | 'idle' | 'select' | 'choose-gateway'
   | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error'
-  | 'stripe-loading' | 'stripe-success';
+  | 'dlocal-loading' | 'dlocal-success';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -65,10 +65,10 @@ export class UserPackagesComponent implements OnInit {
       this.profile.set(profile);
       this.packages.set(packages);
 
-      // Detectar retorno de Stripe Checkout
+      // Detectar retorno de dLocal
       const params = this.route.snapshot.queryParams;
-      if (params['stripe'] === 'success') {
-        this.payStep.set('stripe-success');
+      if (params['dlocal'] === 'success') {
+        this.payStep.set('dlocal-success');
         this.reloadProfile();
       }
     } catch {
@@ -101,36 +101,33 @@ export class UserPackagesComponent implements OnInit {
     this.payStep.set('redirect');
   }
 
-  /** Selecciona un paquete y avanza a elegir método de pago */
+  /** Selecciona un paquete e inicia pago con dLocal directamente */
   selectAndPay(pkg: Package): void {
     this.selectedPackage.set(pkg);
-    this.proofPhone = '';
-    this.proofTransactionId = '';
     this.payError.set(null);
-    this.verifyMessage.set('');
-    this.payStep.set('choose-gateway');
+    this.startDlocalCheckout();
   }
 
-  /** Elige gateway de pago */
-  selectGateway(gateway: 'stripe' | 'nequi'): void {
-    if (gateway === 'stripe') {
-      this.startStripeCheckout();
+  /** Elige gateway de pago (usado desde sidebar con ambas opciones) */
+  selectGateway(gateway: 'nequi' | 'dlocal'): void {
+    if (gateway === 'dlocal') {
+      this.startDlocalCheckout();
     } else {
       this.payStep.set('redirect');
     }
   }
 
-  /** Inicia Stripe Checkout */
-  async startStripeCheckout(): Promise<void> {
-    this.payStep.set('stripe-loading');
+  /** Inicia pago con dLocal Go */
+  async startDlocalCheckout(): Promise<void> {
+    this.payStep.set('dlocal-loading');
     try {
-      const { url } = await this.packageService.createStripeCheckout(
+      const { url } = await this.packageService.createDlocalPayment(
         this.selectedPackage()!.id
       );
       window.location.href = url;
     } catch (e: any) {
-      this.payError.set(e.message ?? 'Error al iniciar pago con Stripe');
-      this.payStep.set('choose-gateway');
+      this.payError.set(e.message ?? 'Error al iniciar pago con dLocal');
+      this.payStep.set('error');
     }
   }
 
@@ -143,7 +140,7 @@ export class UserPackagesComponent implements OnInit {
 
   closePaymentModal(): void {
     // Si fue aprobado, recargar el perfil para reflejar el paquete
-    if (this.payStep() === 'approved' || this.payStep() === 'stripe-success') {
+    if (this.payStep() === 'approved' || this.payStep() === 'dlocal-success') {
       this.reloadProfile();
     }
     this.payStep.set('idle');

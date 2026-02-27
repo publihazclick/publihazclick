@@ -58,7 +58,7 @@ export class AdminLayoutComponent implements OnInit {
       const pending = await this.dashboardService.getPendingItems();
       this.pendingModerationCount.set(pending.length);
     } catch (error) {
-      console.error('Error loading pending count:', error);
+      // Failed to load pending count
     }
   }
 

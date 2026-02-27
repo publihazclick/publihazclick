@@ -24,10 +24,10 @@ export interface UserSessionData {
 export class UserTrackingService {
   private readonly STORAGE_KEY = 'user_session_data';
   private readonly IP_API_URL = 'https://api.ipify.org?format=json';
-  
+
   // Signal para la IP actual
   readonly currentIp = signal<string>('');
-  
+
   // Signal para datos de sesión
   readonly sessionData = signal<UserSessionData | null>(null);
 
@@ -36,18 +36,59 @@ export class UserTrackingService {
   }
 
   /**
+   * Retorna la fecha de hoy en zona horaria Colombia (America/Bogota, UTC-5)
+   * Formato: 'YYYY-MM-DD'
+   */
+  private getTodayColombia(): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  }
+
+  /**
+   * Verifica si un timestamp corresponde al día de hoy en Colombia.
+   */
+  private isFromTodayColombia(timestamp: number): boolean {
+    const adDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(timestamp));
+    return adDate === this.getTodayColombia();
+  }
+
+  /**
+   * Elimina del historial de anuncios vistos todos los registros que NO
+   * correspondan al día de hoy en Colombia (se purgan al iniciar la app).
+   */
+  private purgeStaleDailyViews(session: UserSessionData): UserSessionData {
+    const todayAds = session.adsViewed.filter(ad => this.isFromTodayColombia(ad.timestamp));
+    if (todayAds.length === session.adsViewed.length) return session;
+    return { ...session, adsViewed: todayAds };
+  }
+
+  /**
    * Inicializa la sesión del usuario
    */
   private async initializeSession(): Promise<void> {
     // Obtener IP del usuario
     await this.fetchUserIp();
-    
+
     // Cargar datos de sesión del localStorage
     const storedData = this.getStoredSession();
-    
+
     if (storedData && storedData.ip === this.currentIp()) {
-      // Si hay datos guardados y la IP es la misma, usarlos
-      this.sessionData.set(storedData);
+      // Purgar anuncios de días anteriores antes de usar la sesión guardada
+      const cleanSession = this.purgeStaleDailyViews(storedData);
+      this.sessionData.set(cleanSession);
+      // Si hubo purga, persistir la sesión limpia
+      if (cleanSession.adsViewed.length !== storedData.adsViewed.length) {
+        this.saveSession(cleanSession);
+      }
     } else {
       // Nueva sesión o IP diferente - crear nuevos datos
       const newSession: UserSessionData = {
@@ -68,9 +109,7 @@ export class UserTrackingService {
       const response = await fetch(this.IP_API_URL);
       const data = await response.json();
       this.currentIp.set(data.ip);
-    } catch (error) {
-      console.error('Error fetching IP:', error);
-      // Usar IP local como fallback
+    } catch {
       this.currentIp.set('127.0.0.1');
     }
   }
@@ -95,8 +134,8 @@ export class UserTrackingService {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.error('Error saving session:', error);
+    } catch {
+      // Silent fail - non-critical localStorage operation
     }
   }
 
@@ -115,7 +154,7 @@ export class UserTrackingService {
 
     // Agregar el anuncio a la lista
     const updatedAds = [...currentData.adsViewed, newAdData];
-    
+
     const updatedSession: UserSessionData = {
       ...currentData,
       adsViewed: updatedAds
@@ -126,17 +165,20 @@ export class UserTrackingService {
   }
 
   /**
-   * Verifica si el usuario ya vio un anuncio específico (por IP)
+   * Verifica si el usuario ya vio un anuncio HOY (hora Colombia).
+   * Anuncios vistos en días anteriores no se consideran vistos.
    */
   hasViewedAd(adId: string): boolean {
     const currentData = this.sessionData();
     if (!currentData) return false;
-    return currentData.adsViewed.some(ad => ad.adId === adId);
+    return currentData.adsViewed.some(
+      ad => ad.adId === adId && this.isFromTodayColombia(ad.timestamp)
+    );
   }
 
   /**
    * Verifica si el usuario puede reclamar una recompensa
-   * Retorna true si puede reclamar, false si ya lo vio
+   * Retorna true si puede reclamar, false si ya lo vio hoy
    */
   canClaimReward(adId: string): boolean {
     return !this.hasViewedAd(adId);
@@ -183,7 +225,7 @@ export class UserTrackingService {
    */
   async refreshIp(): Promise<void> {
     await this.fetchUserIp();
-    
+
     // Actualizar IP en sesión
     const currentData = this.sessionData();
     if (currentData) {

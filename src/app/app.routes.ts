@@ -66,6 +66,13 @@ export const routes: Routes = [
           import('./features/admin/components/auth-banners/auth-banners.component').then(
             m => m.AdminAuthBannersComponent
           )
+      },
+      {
+        path: 'reportes',
+        loadComponent: () =>
+          import('./features/admin/components/reportes/reportes.component').then(
+            m => m.AdminReportesComponent
+          )
       }
     ]
   },
@@ -95,6 +102,10 @@ export const routes: Routes = [
       {
         path: 'connections',
         loadComponent: () => import('./features/social/components/connections/connections.component').then(m => m.SocialConnectionsComponent)
+      },
+      {
+        path: 'profile/:userId',
+        loadComponent: () => import('./features/social/components/profile/profile.component').then(m => m.SocialProfileComponent)
       }
     ]
   },

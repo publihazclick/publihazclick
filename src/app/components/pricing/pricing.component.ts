@@ -43,7 +43,7 @@ export class PricingComponent implements OnInit {
         this.packages.set(this.getDefaultPackages());
       }
     } catch (err: any) {
-      console.error('Error loading packages:', err);
+      // Failed to load packages
       // En caso de error, usar paquetes por defecto
       this.packages.set(this.getDefaultPackages());
     } finally {

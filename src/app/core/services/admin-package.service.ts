@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.client';
+import { LoggerService } from './logger.service';
+import { sanitizePostgrestFilter } from '../utils/sanitize';
 import type {
   Package,
   CreatePackageData,
@@ -21,6 +23,7 @@ import type {
 })
 export class AdminPackageService {
   private readonly supabase: SupabaseClient;
+  private readonly logger = inject(LoggerService);
 
   constructor() {
     this.supabase = getSupabaseClient();
@@ -73,7 +76,7 @@ export class AdminPackageService {
         updated_at: p.updated_at
       }));
     } catch (error: any) {
-      console.error('Error getting packages:', error);
+      this.logger.error('Error getting packages');
       return [];
     }
   }
@@ -122,7 +125,7 @@ export class AdminPackageService {
         updated_at: data.updated_at
       };
     } catch (error: any) {
-      console.error('Error getting package:', error);
+      this.logger.error('Error getting package');
       return null;
     }
   }
@@ -166,8 +169,7 @@ export class AdminPackageService {
         gateway_reference: p.gateway_reference,
         phone_number: p.phone_number,
         error_message: p.error_message,
-        stripe_session_id: p.stripe_session_id ?? null,
-        stripe_payment_intent_id: p.stripe_payment_intent_id ?? null,
+        dlocal_payment_id: p.dlocal_payment_id ?? null,
         metadata: p.metadata || {},
         created_at: p.created_at,
         updated_at: p.updated_at,
@@ -181,7 +183,7 @@ export class AdminPackageService {
         totalPages: Math.ceil((count || 0) / pageSize),
       };
     } catch (error: any) {
-      console.error('Error getting payments:', error);
+      this.logger.error('Error getting payments');
       return { data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 };
     }
   }
@@ -197,7 +199,7 @@ export class AdminPackageService {
       if (error) throw error;
       return !!data;
     } catch (error: any) {
-      console.error('Error approving payment:', error);
+      this.logger.error('Error approving payment');
       return false;
     }
   }
@@ -214,7 +216,7 @@ export class AdminPackageService {
       if (error) throw error;
       return !!data;
     } catch (error: any) {
-      console.error('Error rejecting payment:', error);
+      this.logger.error('Error rejecting payment');
       return false;
     }
   }
@@ -262,7 +264,7 @@ export class AdminPackageService {
       if (error) throw error;
       return result as { success: boolean; autoApproved: boolean; message: string };
     } catch (error: any) {
-      console.error('Error verifying payment:', error);
+      this.logger.error('Error verifying payment');
       return { success: false, autoApproved: false, message: 'Error al verificar el pago. Intenta de nuevo.' };
     }
   }
@@ -298,27 +300,39 @@ export class AdminPackageService {
       if (error) throw error;
       return true;
     } catch (error: any) {
-      console.error('Error submitting payment proof:', error);
+      this.logger.error('Error submitting payment proof');
       return false;
     }
   }
 
   /**
-   * Crear sesión de Stripe Checkout (llama a Edge Function)
+   * Crear pago con dLocal Go (llama a Edge Function)
    */
-  async createStripeCheckout(packageId: string): Promise<{ url: string }> {
+  async createDlocalPayment(
+    packageId: string, 
+    paymentMethodId: string = 'CARD'
+  ): Promise<{ url: string; payment_id?: string; status?: string }> {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) throw new Error('No autenticado');
 
     const { data, error } = await this.supabase.functions.invoke(
-      'create-stripe-checkout',
-      { body: { package_id: packageId } }
+      'create-dlocal-payment',
+      { 
+        body: { 
+          package_id: packageId,
+          payment_method_id: paymentMethodId 
+        } 
+      }
     );
 
     if (error || !data?.url) {
-      throw new Error(data?.error ?? 'Error al crear sesión de pago');
+      throw new Error(data?.error ?? 'Error al crear pago con dLocal');
     }
-    return { url: data.url };
+    return { 
+      url: data.url,
+      payment_id: data.payment_id,
+      status: data.status
+    };
   }
 
   /**
@@ -376,7 +390,7 @@ export class AdminPackageService {
 
       return result;
     } catch (error: any) {
-      console.error('Error creating package:', error);
+      this.logger.error('Error creating package');
       return null;
     }
   }
@@ -401,7 +415,7 @@ export class AdminPackageService {
 
       return true;
     } catch (error: any) {
-      console.error('Error updating package:', error);
+      this.logger.error('Error updating package');
       return false;
     }
   }
@@ -420,7 +434,7 @@ export class AdminPackageService {
 
       return true;
     } catch (error: any) {
-      console.error('Error deleting package:', error);
+      this.logger.error('Error deleting package');
       return false;
     }
   }
@@ -483,7 +497,7 @@ export class AdminPackageService {
         totalPages: Math.ceil((count || 0) / pageSize)
       };
     } catch (error: any) {
-      console.error('Error getting user packages:', error);
+      this.logger.error('Error getting user packages');
       return {
         data: [],
         total: 0,
@@ -527,7 +541,7 @@ export class AdminPackageService {
         created_at: data.created_at
       };
     } catch (error: any) {
-      console.error('Error getting user active package:', error);
+      this.logger.error('Error getting user active package');
       return null;
     }
   }
@@ -539,10 +553,13 @@ export class AdminPackageService {
     try {
       if (!query || query.trim().length < 2) return [];
 
+      const safeQuery = sanitizePostgrestFilter(query);
+      if (!safeQuery) return [];
+
       const { data, error } = await this.supabase
         .from('profiles')
         .select('id, username, email, role, is_active')
-        .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
+        .or(`username.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`)
         .eq('is_active', true)
         .order('username', { ascending: true })
         .limit(10);
@@ -550,7 +567,7 @@ export class AdminPackageService {
       if (error) throw error;
       return data || [];
     } catch (error: any) {
-      console.error('Error searching users:', error);
+      this.logger.error('Error searching users');
       return [];
     }
   }
@@ -572,7 +589,7 @@ export class AdminPackageService {
 
       return { id: data.package_id };
     } catch (error: any) {
-      console.error('Error assigning package:', error);
+      this.logger.error('Error assigning package');
       return null;
     }
   }
@@ -616,7 +633,7 @@ export class AdminPackageService {
 
       return true;
     } catch (error: any) {
-      console.error('Error revoking user package:', error);
+      this.logger.error('Error revoking user package');
       return false;
     }
   }
@@ -657,7 +674,7 @@ export class AdminPackageService {
 
       return true;
     } catch (error: any) {
-      console.error('Error cancelling user package:', error);
+      this.logger.error('Error cancelling user package');
       return false;
     }
   }
@@ -704,7 +721,7 @@ export class AdminPackageService {
 
       return true;
     } catch (error: any) {
-      console.error('Error extending user package:', error);
+      this.logger.error('Error extending user package');
       return false;
     }
   }

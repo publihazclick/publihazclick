@@ -10,6 +10,7 @@ import type {
   UserAdmin,
   CreateUserAdminData,
   UserFilters,
+  UserDetailData,
 } from '../../../../core/models/admin.model';
 import type { Profile, UserRole } from '../../../../core/models/profile.model';
 
@@ -86,6 +87,30 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   readonly balanceOperation = signal<'add' | 'subtract' | 'set'>('add');
   readonly balanceAmount = signal<number>(0);
   readonly balanceReason = signal<string>('');
+
+  // Cambio de contraseña
+  readonly newPassword = signal<string>('');
+  readonly confirmNewPassword = signal<string>('');
+  readonly showNewPassword = signal<boolean>(false);
+  readonly passwordChanging = signal<boolean>(false);
+  readonly passwordError = signal<string | null>(null);
+  readonly passwordSuccess = signal<string | null>(null);
+  readonly lastSetPassword = signal<string>('');
+  readonly copiedPassword = signal<boolean>(false);
+
+  // Balance real (modal ver)
+  readonly realBalanceOperation = signal<'add' | 'subtract' | 'set'>('add');
+  readonly realBalanceAmount = signal<number>(0);
+  readonly realBalanceReason = signal<string>('');
+
+  // Donaciones (modal ver)
+  readonly donationOperation = signal<'add' | 'subtract' | 'set'>('add');
+  readonly donationAmount = signal<number>(0);
+  readonly donationReason = signal<string>('');
+
+  // Detalle de usuario (view modal)
+  readonly userDetailData = signal<UserDetailData | null>(null);
+  readonly detailLoading = signal<boolean>(false);
 
   readonly Math = Math;
 
@@ -196,7 +221,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
         this.adminReferralCode.set(profile.referral_code);
       }
     } catch (err) {
-      console.error('Error loading admin profile:', err);
+      // Failed to load admin profile
     }
   }
 
@@ -212,7 +237,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
         this.totalCount.set(count || 0);
       }
     } catch (err: unknown) {
-      console.error('Error loading users:', err);
+      // Failed to load users
       this.error.set('Error al cargar los usuarios');
     } finally {
       this.loading.set(false);
@@ -311,13 +336,28 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     });
     this.balanceAmount.set(0);
     this.balanceReason.set('');
+    this.donationAmount.set(0);
+    this.donationReason.set('');
+    this.newPassword.set('');
+    this.confirmNewPassword.set('');
+    this.showNewPassword.set(false);
+    this.passwordError.set(null);
+    this.passwordSuccess.set(null);
+    this.lastSetPassword.set('');
+    this.copiedPassword.set(false);
     this.showModal.set(true);
   }
 
   openViewModal(user: UserAdmin): void {
     this.modalMode.set('view');
     this.selectedUser.set(user);
+    this.userDetailData.set(null);
+    this.realBalanceAmount.set(0);
+    this.realBalanceReason.set('');
+    this.donationAmount.set(0);
+    this.donationReason.set('');
     this.showModal.set(true);
+    this.loadUserDetail(user);
   }
 
   closeModal(): void {
@@ -326,6 +366,17 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     this.modalError.set(null);
     this.balanceAmount.set(0);
     this.balanceReason.set('');
+    this.newPassword.set('');
+    this.confirmNewPassword.set('');
+    this.passwordError.set(null);
+    this.passwordSuccess.set(null);
+    this.lastSetPassword.set('');
+    this.copiedPassword.set(false);
+    this.userDetailData.set(null);
+    this.realBalanceAmount.set(0);
+    this.realBalanceReason.set('');
+    this.donationAmount.set(0);
+    this.donationReason.set('');
   }
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────
@@ -463,24 +514,112 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     this.saving.set(true);
     this.modalError.set(null);
     try {
-      await this.profileService.updateBalance(
-        user.id,
-        this.balanceAmount(),
-        this.balanceOperation()
-      );
-      await this.dashboardService.logActivity('update_balance', 'user', user.id, {
-        operation: this.balanceOperation(),
-        amount: this.balanceAmount(),
-        reason: this.balanceReason(),
+      const supabase = getSupabaseClient();
+      const current = user.real_balance ?? 0;
+      const amount = this.balanceAmount();
+      const op = this.balanceOperation();
+      const newBalance = op === 'set' ? amount : op === 'add' ? current + amount : Math.max(0, current - amount);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ real_balance: newBalance, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      await this.dashboardService.logActivity('update_real_balance', 'user', user.id, {
+        operation: op, amount, reason: this.balanceReason(), old_value: current, new_value: newBalance,
       });
       this.showSuccess('Balance actualizado correctamente');
       this.balanceAmount.set(0);
       this.balanceReason.set('');
       await this.loadUsers();
+      const updated = this.users().find(u => u.id === user.id);
+      if (updated) this.selectedUser.set(updated);
     } catch (err: unknown) {
       this.modalError.set(this.parseUserError(err));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  // ─── Cambio de contraseña ─────────────────────────────────────────────────
+
+  generatePassword(): void {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '@#$%!&*';
+    const all = upper + lower + digits + special;
+    let pwd = upper[Math.floor(Math.random() * upper.length)]
+      + lower[Math.floor(Math.random() * lower.length)]
+      + digits[Math.floor(Math.random() * digits.length)]
+      + special[Math.floor(Math.random() * special.length)];
+    for (let i = 4; i < 12; i++) {
+      pwd += all[Math.floor(Math.random() * all.length)];
+    }
+    const shuffled = pwd.split('').sort(() => Math.random() - 0.5).join('');
+    this.newPassword.set(shuffled);
+    this.confirmNewPassword.set(shuffled);
+    this.showNewPassword.set(true);
+    this.passwordError.set(null);
+  }
+
+  async copyPassword(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copiedPassword.set(true);
+      setTimeout(() => this.copiedPassword.set(false), 2000);
+    } catch {
+      // clipboard not available
+    }
+  }
+
+  async changeUserPassword(): Promise<void> {
+    const user = this.selectedUser();
+    if (!user) return;
+
+    const pwd = this.newPassword();
+    const confirm = this.confirmNewPassword();
+
+    if (!pwd) {
+      this.passwordError.set('Ingresa la nueva contraseña');
+      return;
+    }
+    if (pwd.length < 6) {
+      this.passwordError.set('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (pwd !== confirm) {
+      this.passwordError.set('Las contraseñas no coinciden');
+      return;
+    }
+
+    this.passwordChanging.set(true);
+    this.passwordError.set(null);
+    this.passwordSuccess.set(null);
+
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: result, error } = await supabase.functions.invoke('admin-update-password', {
+        body: { userId: user.id, newPassword: pwd },
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+
+      await this.dashboardService.logActivity('update_password', 'user', user.id, {
+        username: user.username,
+      });
+
+      this.lastSetPassword.set(pwd);
+      this.passwordSuccess.set('Contraseña actualizada correctamente');
+      this.newPassword.set('');
+      this.confirmNewPassword.set('');
+    } catch (err: unknown) {
+      this.passwordError.set(this.parseUserError(err));
+    } finally {
+      this.passwordChanging.set(false);
     }
   }
 
@@ -503,6 +642,188 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ─── Detalle de usuario ────────────────────────────────────────────────────
+
+  async loadUserDetail(user: UserAdmin): Promise<void> {
+    this.detailLoading.set(true);
+    try {
+      const supabase = getSupabaseClient();
+
+      // Nombre del paquete actual
+      let packageName: string | null = null;
+      if (user.current_package_id) {
+        const { data: pkg } = await supabase
+          .from('packages')
+          .select('name')
+          .eq('id', user.current_package_id)
+          .single();
+        packageName = pkg?.name ?? null;
+      }
+
+      // Clicks por categoría desde inicio del paquete
+      let clicksQuery = supabase
+        .from('ptc_clicks')
+        .select('reward_earned, ptc_tasks!inner(ad_type)')
+        .eq('user_id', user.id);
+      if (user.package_started_at) {
+        clicksQuery = clicksQuery.gte('completed_at', user.package_started_at);
+      }
+      const { data: clicksRaw } = await clicksQuery;
+
+      const statsMap: Record<string, { count: number; total_reward: number }> = {};
+      (clicksRaw || []).forEach((c: any) => {
+        const adType: string = c.ptc_tasks?.ad_type ?? 'unknown';
+        if (!statsMap[adType]) statsMap[adType] = { count: 0, total_reward: 0 };
+        statsMap[adType].count++;
+        statsMap[adType].total_reward += Number(c.reward_earned ?? 0);
+      });
+      const clicksByCategory = Object.entries(statsMap).map(([ad_type, s]) => ({
+        ad_type,
+        count: s.count,
+        total_reward: s.total_reward,
+      }));
+      const totalClicks = clicksByCategory.reduce((sum, s) => sum + s.count, 0);
+
+      // Referidos
+      const { data: refsRaw } = await supabase
+        .from('referrals')
+        .select('referred_id, referred_username, profile:referred_id(role, is_active, has_active_package)')
+        .eq('referrer_id', user.id);
+
+      const referralsList = (refsRaw || []).map((r: any) => ({
+        id: r.referred_id,
+        username: r.referred_username || 'Usuario',
+        role: r.profile?.role || 'guest',
+        is_active: r.profile?.is_active ?? false,
+        has_active_package: r.profile?.has_active_package ?? false,
+      }));
+      const activeReferrals = referralsList.filter((r) => r.has_active_package).length;
+
+      this.userDetailData.set({ packageName, clicksByCategory, totalClicks, activeReferrals, referralsList });
+    } catch (err) {
+      // Failed to load user detail
+      this.userDetailData.set({ packageName: null, clicksByCategory: [], totalClicks: 0, activeReferrals: 0, referralsList: [] });
+    } finally {
+      this.detailLoading.set(false);
+    }
+  }
+
+  async updateRealBalance(): Promise<void> {
+    const user = this.selectedUser();
+    if (!user || !this.realBalanceReason()) return;
+    this.saving.set(true);
+    this.modalError.set(null);
+    try {
+      const supabase = getSupabaseClient();
+      const current = user.real_balance ?? 0;
+      const amount = this.realBalanceAmount();
+      const op = this.realBalanceOperation();
+      const newBalance = op === 'set' ? amount : op === 'add' ? current + amount : Math.max(0, current - amount);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ real_balance: newBalance, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      await this.dashboardService.logActivity('update_real_balance', 'user', user.id, {
+        operation: op, amount, reason: this.realBalanceReason(), old_value: current, new_value: newBalance,
+      });
+      this.showSuccess('Billetera actualizada correctamente');
+      this.realBalanceAmount.set(0);
+      this.realBalanceReason.set('');
+      await this.loadUsers();
+      const updated = this.users().find((u) => u.id === user.id);
+      if (updated) this.selectedUser.set(updated);
+    } catch (err: unknown) {
+      this.modalError.set(this.parseUserError(err));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async updateDonationBalance(): Promise<void> {
+    const user = this.selectedUser();
+    if (!user || !this.donationReason()) return;
+    this.saving.set(true);
+    this.modalError.set(null);
+    try {
+      const supabase = getSupabaseClient();
+      const current = user.total_donated ?? 0;
+      const amount = this.donationAmount();
+      const op = this.donationOperation();
+      const newDonated = op === 'set' ? amount : op === 'add' ? current + amount : Math.max(0, current - amount);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ total_donated: newDonated, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      await this.dashboardService.logActivity('update_donation', 'user', user.id, {
+        operation: op, amount, reason: this.donationReason(), old_value: current, new_value: newDonated,
+      });
+      this.showSuccess('Donaciones actualizadas correctamente');
+      this.donationAmount.set(0);
+      this.donationReason.set('');
+      await this.loadUsers();
+      const updated = this.users().find((u) => u.id === user.id);
+      if (updated) this.selectedUser.set(updated);
+    } catch (err: unknown) {
+      this.modalError.set(this.parseUserError(err));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  getDaysRemaining(expiresAt: string | null): number {
+    if (!expiresAt) return 0;
+    const diff = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, diff);
+  }
+
+  getPackageProgress(startedAt: string | null, expiresAt: string | null): number {
+    if (!startedAt || !expiresAt) return 0;
+    const total = Math.max(1, Math.ceil((new Date(expiresAt).getTime() - new Date(startedAt).getTime()) / 86400000));
+    const elapsed = total - this.getDaysRemaining(expiresAt);
+    return Math.min(100, Math.round((elapsed / total) * 100));
+  }
+
+  getClickLabel(adType: string): string {
+    const labels: Record<string, string> = {
+      mini: 'Mini',
+      standard_400: 'Standard 400',
+      standard_600: 'Standard 600',
+      mega: 'Mega',
+    };
+    return labels[adType] ?? adType;
+  }
+
+  getClickColor(adType: string): string {
+    const colors: Record<string, string> = {
+      mini: 'text-sky-400',
+      standard_400: 'text-violet-400',
+      standard_600: 'text-amber-400',
+      mega: 'text-rose-400',
+    };
+    return colors[adType] ?? 'text-slate-400';
+  }
+
+  getClickBg(adType: string): string {
+    const bgs: Record<string, string> = {
+      mini: 'bg-sky-500/10',
+      standard_400: 'bg-violet-500/10',
+      standard_600: 'bg-amber-500/10',
+      mega: 'bg-rose-500/10',
+    };
+    return bgs[adType] ?? 'bg-slate-500/10';
+  }
+
+  getClickStatForType(adType: string): { count: number; total_reward: number } {
+    const stats = this.userDetailData()?.clicksByCategory ?? [];
+    return stats.find((s) => s.ad_type === adType) ?? { count: 0, total_reward: 0 };
+  }
+
   // ─── Formato ──────────────────────────────────────────────────────────────
 
   formatCurrency(value: number): string {
@@ -517,8 +838,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     });
   }
 
-  getRoleLabel(role: UserRole): string {
-    const labels: Record<UserRole, string> = {
+  getRoleLabel(role: string): string {
+    const labels: Record<string, string> = {
       dev: 'Desarrollador',
       admin: 'Administrador',
       advertiser: 'Anunciante',
@@ -527,8 +848,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     return labels[role] || role;
   }
 
-  getRoleBadgeClass(role: UserRole): string {
-    const classes: Record<UserRole, string> = {
+  getRoleBadgeClass(role: string): string {
+    const classes: Record<string, string> = {
       dev: 'bg-violet-500/10 text-violet-400',
       admin: 'bg-rose-500/10 text-rose-400',
       advertiser: 'bg-amber-500/10 text-amber-400',

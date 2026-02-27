@@ -114,7 +114,7 @@
                     {{ getRoleLabel(user.role) }}
                   </span>
                 </td>
-                <td class="px-6 py-4 font-bold text-white text-sm">{{ formatCurrency(user.balance) }}</td>
+                <td class="px-6 py-4 font-bold text-white text-sm">{{ formatCurrency(user.real_balance ?? user.balance ?? 0) }}</td>
                 <td class="px-6 py-4">
                   @if (user.is_active) {
                     <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-xs font-bold uppercase">Activo</span>
@@ -197,7 +197,7 @@
             </div>
             <div class="flex justify-between">
               <span class="text-slate-500">Balance:</span>
-              <span class="font-bold text-primary">{{ formatCurrency(user.balance) }}</span>
+              <span class="font-bold text-primary">{{ formatCurrency(user.real_balance ?? user.balance ?? 0) }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-slate-500">Registro:</span>
@@ -264,10 +264,11 @@
     }
   }
 
-  <!-- ═══ MODAL CREAR / EDITAR ═══ -->
+  <!-- ═══ MODAL CREAR / EDITAR / VER ═══ -->
   @if (showModal()) {
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+      <div class="bg-zinc-900 rounded-2xl w-full max-h-[90vh] overflow-auto border border-white/10 shadow-2xl"
+           [class]="modalMode() === 'view' ? 'max-w-3xl' : 'max-w-2xl'">
 
         <!-- Header modal -->
         <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
@@ -426,52 +427,221 @@
                 </div>
               }
 
-              <!-- Balance (solo edit) -->
+              <!-- Balance y donaciones (solo edit) -->
               @if (modalMode() === 'edit') {
+                <div class="border-t border-white/10 pt-5 mt-1 space-y-4">
+
+                  <!-- Billetera real -->
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="material-symbols-outlined text-primary text-base">wallet</span>
+                      <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400">Balance Real</h4>
+                      <span class="ml-auto text-primary font-black text-sm">{{ formatCurrency(selectedUser()?.real_balance ?? 0) }}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <select
+                        [ngModel]="balanceOperation()"
+                        (ngModelChange)="balanceOperation.set($event)"
+                        name="balanceOperation"
+                        class="px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
+                      >
+                        <option value="add">+ Agregar</option>
+                        <option value="subtract">- Restar</option>
+                        <option value="set">= Establecer</option>
+                      </select>
+                      <input
+                        type="number"
+                        [ngModel]="balanceAmount()"
+                        (ngModelChange)="balanceAmount.set(+$event)"
+                        name="balanceAmount"
+                        min="0"
+                        class="w-28 px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
+                        placeholder="Monto"
+                      />
+                      <input
+                        type="text"
+                        [ngModel]="balanceReason()"
+                        (ngModelChange)="balanceReason.set($event)"
+                        name="balanceReason"
+                        class="flex-1 min-w-[120px] px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
+                        placeholder="Motivo (requerido)"
+                      />
+                      <button
+                        type="button"
+                        (click)="updateBalance()"
+                        [disabled]="!balanceAmount() || !balanceReason() || saving()"
+                        class="px-4 py-2 bg-primary/20 text-primary border border-primary/30 rounded-xl font-bold text-sm hover:bg-primary hover:text-black disabled:opacity-40 transition-colors flex items-center gap-1"
+                      >
+                        @if (saving()) {
+                          <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+                        } @else {
+                          <span class="material-symbols-outlined text-sm">check</span>
+                          Aplicar
+                        }
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Donaciones -->
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="material-symbols-outlined text-violet-400 text-base">volunteer_activism</span>
+                      <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400">Donaciones</h4>
+                      <span class="ml-auto text-violet-400 font-black text-sm">{{ formatCurrency(selectedUser()?.total_donated ?? 0) }}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <select
+                        [ngModel]="donationOperation()"
+                        (ngModelChange)="donationOperation.set($event)"
+                        name="donationOperationEdit"
+                        class="px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
+                      >
+                        <option value="add">+ Agregar</option>
+                        <option value="subtract">- Restar</option>
+                        <option value="set">= Establecer</option>
+                      </select>
+                      <input
+                        type="number"
+                        [ngModel]="donationAmount()"
+                        (ngModelChange)="donationAmount.set(+$event)"
+                        name="donationAmountEdit"
+                        min="0"
+                        class="w-28 px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
+                        placeholder="Monto"
+                      />
+                      <input
+                        type="text"
+                        [ngModel]="donationReason()"
+                        (ngModelChange)="donationReason.set($event)"
+                        name="donationReasonEdit"
+                        class="flex-1 min-w-[120px] px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
+                        placeholder="Motivo (requerido)"
+                      />
+                      <button
+                        type="button"
+                        (click)="updateDonationBalance()"
+                        [disabled]="!donationAmount() || !donationReason() || saving()"
+                        class="px-4 py-2 bg-violet-500/20 text-violet-400 border border-violet-500/30 rounded-xl font-bold text-sm hover:bg-violet-500 hover:text-white disabled:opacity-40 transition-colors flex items-center gap-1"
+                      >
+                        @if (saving()) {
+                          <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+                        } @else {
+                          <span class="material-symbols-outlined text-sm">check</span>
+                          Aplicar
+                        }
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Cambiar contraseña (solo edit) -->
                 <div class="border-t border-white/10 pt-5 mt-1">
-                  <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Ajustar Balance</h4>
-                  <div class="flex flex-wrap gap-2">
-                    <select
-                      [(ngModel)]="balanceOperation"
-                      name="balanceOperation"
-                      class="px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
-                    >
-                      <option value="add">Agregar</option>
-                      <option value="subtract">Restar</option>
-                      <option value="set">Establecer</option>
-                    </select>
-                    <input
-                      type="number"
-                      [(ngModel)]="balanceAmount"
-                      name="balanceAmount"
-                      min="0"
-                      class="flex-1 min-w-[100px] px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
-                      placeholder="Monto"
-                    />
-                    <input
-                      type="text"
-                      [(ngModel)]="balanceReason"
-                      name="balanceReason"
-                      class="flex-1 min-w-[120px] px-3 py-2 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white"
-                      placeholder="Motivo (requerido)"
-                    />
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                      <span class="material-symbols-outlined text-base">lock_reset</span>
+                      Cambiar Contraseña
+                    </h4>
                     <button
                       type="button"
-                      (click)="updateBalance()"
-                      [disabled]="!balanceAmount() || !balanceReason() || saving()"
-                      class="px-4 py-2 bg-primary/20 text-primary border border-primary/30 rounded-xl font-bold text-sm hover:bg-primary hover:text-black disabled:opacity-40 transition-colors"
+                      (click)="generatePassword()"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-bold transition-colors"
                     >
-                      Aplicar
+                      <span class="material-symbols-outlined text-sm">auto_fix_high</span>
+                      Generar
                     </button>
+                  </div>
+
+                  <!-- Nota: contraseña actual no visible -->
+                  <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 mb-3">
+                    <span class="material-symbols-outlined text-slate-500 text-base flex-shrink-0">info</span>
+                    <p class="text-xs text-slate-500">La contraseña actual no puede verse — está cifrada con bcrypt</p>
+                  </div>
+
+                  @if (passwordError()) {
+                    <div class="flex items-start gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 mb-3">
+                      <span class="material-symbols-outlined text-rose-400 text-lg flex-shrink-0 mt-0.5">error</span>
+                      <p class="text-rose-400 text-xs">{{ passwordError() }}</p>
+                    </div>
+                  }
+
+                  <!-- Contraseña recién establecida -->
+                  @if (lastSetPassword()) {
+                    <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-3">
+                      <p class="text-emerald-400 text-xs font-bold mb-2 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-base">check_circle</span>
+                        Contraseña establecida correctamente
+                      </p>
+                      <div class="flex items-center gap-2 bg-black/30 rounded-lg px-3 py-2">
+                        <span class="flex-1 font-mono text-sm text-white tracking-wider break-all">{{ lastSetPassword() }}</span>
+                        <button
+                          type="button"
+                          (click)="copyPassword(lastSetPassword())"
+                          class="flex-shrink-0 p-1.5 rounded-lg transition-colors"
+                          [class.text-emerald-400]="copiedPassword()"
+                          [class.text-slate-400]="!copiedPassword()"
+                          [class.hover:text-white]="!copiedPassword()"
+                          title="Copiar contraseña"
+                        >
+                          <span class="material-symbols-outlined text-base">{{ copiedPassword() ? 'check' : 'content_copy' }}</span>
+                        </button>
+                      </div>
+                      <p class="text-[10px] text-slate-600 mt-1.5">Copia y comparte esta contraseña con el usuario de forma segura</p>
+                    </div>
+                  }
+
+                  <div class="space-y-2">
+                    <div class="relative">
+                      <input
+                        [type]="showNewPassword() ? 'text' : 'password'"
+                        [ngModel]="newPassword()"
+                        (ngModelChange)="newPassword.set($event)"
+                        name="newPassword"
+                        class="w-full pl-4 pr-10 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="Nueva contraseña (mín. 6 caracteres)"
+                      />
+                      <button
+                        type="button"
+                        (click)="showNewPassword.set(!showNewPassword())"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-primary transition-colors"
+                      >
+                        <span class="material-symbols-outlined text-lg">{{ showNewPassword() ? 'visibility_off' : 'visibility' }}</span>
+                      </button>
+                    </div>
+                    <div class="flex gap-2">
+                      <input
+                        type="password"
+                        [ngModel]="confirmNewPassword()"
+                        (ngModelChange)="confirmNewPassword.set($event)"
+                        name="confirmNewPassword"
+                        class="flex-1 px-4 py-2.5 bg-zinc-800 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="Confirmar contraseña"
+                      />
+                      <button
+                        type="button"
+                        (click)="changeUserPassword()"
+                        [disabled]="!newPassword() || !confirmNewPassword() || passwordChanging()"
+                        class="px-4 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl font-bold text-sm hover:bg-amber-500 hover:text-black disabled:opacity-40 transition-colors flex items-center gap-1 whitespace-nowrap"
+                      >
+                        @if (passwordChanging()) {
+                          <span class="material-symbols-outlined text-base animate-spin">sync</span>
+                        } @else {
+                          <span class="material-symbols-outlined text-base">lock_reset</span>
+                          Cambiar
+                        }
+                      </button>
+                    </div>
                   </div>
                 </div>
               }
 
             </form>
           } @else {
-            <!-- Vista detalle -->
+            <!-- ═══ Vista detalle completa ═══ -->
             @if (selectedUser(); as user) {
-              <div class="space-y-5">
+              <div class="space-y-6">
+
+                <!-- ── Header usuario ────────────────────────────────────── -->
                 <div class="flex items-center gap-4 pb-5 border-b border-white/10">
                   <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
                     @if (user.avatar_url) {
@@ -480,57 +650,326 @@
                       <span class="material-symbols-outlined text-primary text-3xl">person</span>
                     }
                   </div>
-                  <div>
-                    <h3 class="text-lg font-bold text-white">{{ user.full_name || user.username }}</h3>
-                    <p class="text-slate-400 text-sm">{{ user.email }}</p>
-                    <span class="mt-1 inline-block px-2 py-0.5 rounded text-xs font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
-                      {{ getRoleLabel(user.role) }}
-                    </span>
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-lg font-bold text-white truncate">{{ user.full_name || user.username }}</h3>
+                    <p class="text-slate-400 text-sm truncate">{{ user.email }}</p>
+                    <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span class="px-2 py-0.5 rounded text-xs font-bold uppercase" [class]="getRoleBadgeClass(user.role)">
+                        {{ getRoleLabel(user.role) }}
+                      </span>
+                      @if (user.is_active) {
+                        <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-xs font-bold uppercase">Activo</span>
+                      } @else {
+                        <span class="px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded text-xs font-bold uppercase">Inactivo</span>
+                      }
+                      @if (user.has_active_package) {
+                        <span class="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-bold uppercase flex items-center gap-1">
+                          <span class="material-symbols-outlined text-xs leading-none">verified</span>
+                          Paquete activo
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  <div class="text-right text-xs text-slate-500 shrink-0">
+                    <p>Registro</p>
+                    <p class="text-slate-300 font-semibold">{{ formatDate(user.created_at) }}</p>
+                    @if (user.last_sign_in_at) {
+                      <p class="mt-1">Último acceso</p>
+                      <p class="text-slate-300 font-semibold">{{ formatDate(user.last_sign_in_at) }}</p>
+                    }
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <p class="text-xs text-slate-500 mb-1">Balance</p>
-                    <p class="text-xl font-black text-primary">{{ formatCurrency(user.balance) }}</p>
-                  </div>
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <p class="text-xs text-slate-500 mb-1">Total Ganado</p>
-                    <p class="text-xl font-black text-white">{{ formatCurrency(user.total_earned) }}</p>
-                  </div>
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <p class="text-xs text-slate-500 mb-1">Estado</p>
-                    <p class="font-bold" [class]="user.is_active ? 'text-emerald-400' : 'text-rose-400'">
-                      {{ user.is_active ? 'Activo' : 'Inactivo' }}
-                    </p>
-                  </div>
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <p class="text-xs text-slate-500 mb-1">Referidos</p>
-                    <p class="font-bold text-white">{{ user.total_referrals || 0 }}</p>
-                  </div>
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <p class="text-xs text-slate-500 mb-1">Registro</p>
-                    <p class="font-bold text-white">{{ formatDate(user.created_at) }}</p>
-                  </div>
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <p class="text-xs text-slate-500 mb-1">Código referido</p>
-                    <p class="font-bold text-white">{{ user.referral_code || '—' }}</p>
+                <!-- ── Paquete activo ─────────────────────────────────────── -->
+                <div>
+                  <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">inventory_2</span>
+                    Paquete
+                  </h4>
+                  @if (user.has_active_package) {
+                    <div class="bg-white/5 rounded-xl p-4">
+                      <div class="flex items-start justify-between gap-4 mb-3">
+                        <div>
+                          @if (detailLoading()) {
+                            <div class="h-5 w-32 bg-white/10 rounded animate-pulse mb-1"></div>
+                          } @else {
+                            <p class="font-bold text-white text-base">{{ userDetailData()?.packageName || 'Paquete activo' }}</p>
+                          }
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            Inició {{ user.package_started_at ? formatDate(user.package_started_at) : '—' }}
+                            &nbsp;·&nbsp;
+                            Vence {{ user.package_expires_at ? formatDate(user.package_expires_at) : '—' }}
+                          </p>
+                        </div>
+                        <div class="text-right shrink-0">
+                          @if (getDaysRemaining(user.package_expires_at) > 0) {
+                            <p class="text-2xl font-black text-primary">{{ getDaysRemaining(user.package_expires_at) }}</p>
+                            <p class="text-xs text-slate-500">días restantes</p>
+                          } @else {
+                            <span class="px-2 py-1 bg-rose-500/10 text-rose-400 rounded text-xs font-bold">Vencido</span>
+                          }
+                        </div>
+                      </div>
+                      <!-- Barra de progreso días -->
+                      @if (user.package_started_at && user.package_expires_at) {
+                        <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div class="h-full rounded-full transition-all"
+                               [style.width.%]="getPackageProgress(user.package_started_at, user.package_expires_at)"
+                               [class]="getPackageProgress(user.package_started_at, user.package_expires_at) < 80 ? 'bg-primary' : getPackageProgress(user.package_started_at, user.package_expires_at) < 95 ? 'bg-amber-400' : 'bg-rose-500'">
+                          </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">{{ getPackageProgress(user.package_started_at, user.package_expires_at) }}% del paquete consumido</p>
+                      }
+                    </div>
+                  } @else {
+                    <div class="bg-white/5 rounded-xl p-4 flex items-center gap-3 text-slate-500">
+                      <span class="material-symbols-outlined text-2xl">inventory_2</span>
+                      <p class="text-sm">Sin paquete activo</p>
+                    </div>
+                  }
+                </div>
+
+                <!-- ── Clicks PTC por categoría ──────────────────────────── -->
+                <div>
+                  <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">ads_click</span>
+                    Clicks PTC {{ user.has_active_package ? '(desde inicio del paquete)' : '(totales)' }}
+                  </h4>
+                  @if (detailLoading()) {
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      @for (_ of [1,2,3,4]; track $index) {
+                        <div class="bg-white/5 rounded-xl p-3 animate-pulse h-20"></div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div class="rounded-xl p-3 border border-white/5 bg-sky-500/10">
+                        <p class="text-xs font-bold uppercase text-sky-400">Mini</p>
+                        <p class="text-2xl font-black text-white mt-1">{{ getClickStatForType('mini').count }}</p>
+                        <p class="text-xs text-slate-500 mt-0.5">clicks</p>
+                        <p class="text-xs font-semibold mt-1 text-sky-400">{{ formatCurrency(getClickStatForType('mini').total_reward) }}</p>
+                      </div>
+                      <div class="rounded-xl p-3 border border-white/5 bg-violet-500/10">
+                        <p class="text-xs font-bold uppercase text-violet-400">Std 400</p>
+                        <p class="text-2xl font-black text-white mt-1">{{ getClickStatForType('standard_400').count }}</p>
+                        <p class="text-xs text-slate-500 mt-0.5">clicks → donación</p>
+                        <p class="text-xs font-semibold mt-1 text-violet-400">{{ formatCurrency(getClickStatForType('standard_400').total_reward) }}</p>
+                      </div>
+                      <div class="rounded-xl p-3 border border-white/5 bg-amber-500/10">
+                        <p class="text-xs font-bold uppercase text-amber-400">Std 600</p>
+                        <p class="text-2xl font-black text-white mt-1">{{ getClickStatForType('standard_600').count }}</p>
+                        <p class="text-xs text-slate-500 mt-0.5">clicks</p>
+                        <p class="text-xs font-semibold mt-1 text-amber-400">{{ formatCurrency(getClickStatForType('standard_600').total_reward) }}</p>
+                      </div>
+                      <div class="rounded-xl p-3 border border-white/5 bg-rose-500/10">
+                        <p class="text-xs font-bold uppercase text-rose-400">Mega</p>
+                        <p class="text-2xl font-black text-white mt-1">{{ getClickStatForType('mega').count }}</p>
+                        <p class="text-xs text-slate-500 mt-0.5">clicks</p>
+                        <p class="text-xs font-semibold mt-1 text-rose-400">{{ formatCurrency(getClickStatForType('mega').total_reward) }}</p>
+                      </div>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5">
+                      <span class="text-sm text-slate-400">Total clicks</span>
+                      <span class="text-lg font-black text-white">{{ userDetailData()?.totalClicks ?? 0 }}</span>
+                    </div>
+                  }
+                </div>
+
+                <!-- ── Saldos (editables) ─────────────────────────────────── -->
+                <div>
+                  <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">account_balance_wallet</span>
+                    Saldos
+                  </h4>
+
+                  <!-- Error -->
+                  @if (modalError()) {
+                    <div class="flex items-start gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 mb-3">
+                      <span class="material-symbols-outlined text-rose-400 text-lg flex-shrink-0">error</span>
+                      <p class="text-rose-400 text-xs">{{ modalError() }}</p>
+                    </div>
+                  }
+
+                  <div class="space-y-3">
+                    <!-- Billetera real -->
+                    <div class="bg-white/5 rounded-xl p-4">
+                      <div class="flex items-center justify-between mb-3">
+                        <div>
+                          <p class="text-xs text-slate-500">Billetera</p>
+                          <p class="text-2xl font-black text-primary">{{ formatCurrency(user.real_balance ?? 0) }}</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary/50 text-3xl">wallet</span>
+                      </div>
+                      <div class="flex flex-wrap gap-2 pt-3 border-t border-white/10">
+                        <select
+                          [ngModel]="realBalanceOperation()"
+                          (ngModelChange)="realBalanceOperation.set($event)"
+                          name="realBalOp"
+                          class="px-2 py-1.5 bg-zinc-800 border border-white/10 rounded-lg text-xs text-white"
+                        >
+                          <option value="add">+ Agregar</option>
+                          <option value="subtract">- Restar</option>
+                          <option value="set">= Establecer</option>
+                        </select>
+                        <input
+                          type="number"
+                          [ngModel]="realBalanceAmount()"
+                          (ngModelChange)="realBalanceAmount.set(+$event)"
+                          name="realBalAmt"
+                          min="0"
+                          class="w-24 px-2 py-1.5 bg-zinc-800 border border-white/10 rounded-lg text-xs text-white"
+                          placeholder="Monto"
+                        />
+                        <input
+                          type="text"
+                          [ngModel]="realBalanceReason()"
+                          (ngModelChange)="realBalanceReason.set($event)"
+                          name="realBalReason"
+                          class="flex-1 min-w-[100px] px-2 py-1.5 bg-zinc-800 border border-white/10 rounded-lg text-xs text-white"
+                          placeholder="Motivo (requerido)"
+                        />
+                        <button
+                          type="button"
+                          (click)="updateRealBalance()"
+                          [disabled]="!realBalanceAmount() || !realBalanceReason() || saving()"
+                          class="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg font-bold text-xs hover:bg-primary hover:text-black disabled:opacity-40 transition-colors flex items-center gap-1"
+                        >
+                          @if (saving()) {
+                            <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+                          } @else {
+                            <span class="material-symbols-outlined text-sm">check</span>
+                            Aplicar
+                          }
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Donaciones -->
+                    <div class="bg-white/5 rounded-xl p-4">
+                      <div class="flex items-center justify-between mb-3">
+                        <div>
+                          <p class="text-xs text-slate-500">Donaciones</p>
+                          <p class="text-2xl font-black text-violet-400">{{ formatCurrency(user.total_donated ?? 0) }}</p>
+                        </div>
+                        <span class="material-symbols-outlined text-violet-400/50 text-3xl">volunteer_activism</span>
+                      </div>
+                      <div class="flex flex-wrap gap-2 pt-3 border-t border-white/10">
+                        <select
+                          [ngModel]="donationOperation()"
+                          (ngModelChange)="donationOperation.set($event)"
+                          name="donOp"
+                          class="px-2 py-1.5 bg-zinc-800 border border-white/10 rounded-lg text-xs text-white"
+                        >
+                          <option value="add">+ Agregar</option>
+                          <option value="subtract">- Restar</option>
+                          <option value="set">= Establecer</option>
+                        </select>
+                        <input
+                          type="number"
+                          [ngModel]="donationAmount()"
+                          (ngModelChange)="donationAmount.set(+$event)"
+                          name="donAmt"
+                          min="0"
+                          class="w-24 px-2 py-1.5 bg-zinc-800 border border-white/10 rounded-lg text-xs text-white"
+                          placeholder="Monto"
+                        />
+                        <input
+                          type="text"
+                          [ngModel]="donationReason()"
+                          (ngModelChange)="donationReason.set($event)"
+                          name="donReason"
+                          class="flex-1 min-w-[100px] px-2 py-1.5 bg-zinc-800 border border-white/10 rounded-lg text-xs text-white"
+                          placeholder="Motivo (requerido)"
+                        />
+                        <button
+                          type="button"
+                          (click)="updateDonationBalance()"
+                          [disabled]="!donationAmount() || !donationReason() || saving()"
+                          class="px-3 py-1.5 bg-violet-500/20 text-violet-400 border border-violet-500/30 rounded-lg font-bold text-xs hover:bg-violet-500 hover:text-white disabled:opacity-40 transition-colors flex items-center gap-1"
+                        >
+                          @if (saving()) {
+                            <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+                          } @else {
+                            <span class="material-symbols-outlined text-sm">check</span>
+                            Aplicar
+                          }
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Resumen saldos (solo lectura) -->
+                    <div class="grid grid-cols-3 gap-2">
+                      <div class="bg-white/5 rounded-xl p-3 text-center">
+                        <p class="text-xs text-slate-500">Total ganado</p>
+                        <p class="font-bold text-white text-sm mt-0.5">{{ formatCurrency(user.total_earned ?? 0) }}</p>
+                      </div>
+                      <div class="bg-white/5 rounded-xl p-3 text-center">
+                        <p class="text-xs text-slate-500">Ganancias ref.</p>
+                        <p class="font-bold text-amber-400 text-sm mt-0.5">{{ formatCurrency(user.referral_earnings ?? 0) }}</p>
+                      </div>
+                      <div class="bg-white/5 rounded-xl p-3 text-center">
+                        <p class="text-xs text-slate-500">Pendiente</p>
+                        <p class="font-bold text-slate-300 text-sm mt-0.5">{{ formatCurrency(user.pending_balance ?? 0) }}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                @if (user.phone || user.country || user.city) {
-                  <div class="pt-4 border-t border-white/10 grid grid-cols-2 gap-3 text-sm">
-                    @if (user.phone) {
-                      <div><span class="text-slate-500">Teléfono: </span><span class="text-white">{{ user.phone }}</span></div>
+                <!-- ── Referidos ──────────────────────────────────────────── -->
+                <div>
+                  <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">group</span>
+                    Referidos
+                  </h4>
+                  @if (detailLoading()) {
+                    <div class="bg-white/5 rounded-xl p-4 animate-pulse h-20"></div>
+                  } @else {
+                    @let detail = userDetailData();
+                    <!-- Contadores -->
+                    <div class="flex items-center gap-3 mb-3">
+                      <div class="flex-1 bg-white/5 rounded-xl p-3 text-center">
+                        <p class="text-2xl font-black text-white">{{ detail?.referralsList?.length ?? (user.total_referrals_count ?? 0) }}</p>
+                        <p class="text-xs text-slate-500">Referidos totales</p>
+                      </div>
+                      <div class="flex-1 bg-emerald-500/10 rounded-xl p-3 text-center">
+                        <p class="text-2xl font-black text-emerald-400">{{ detail?.activeReferrals ?? 0 }}</p>
+                        <p class="text-xs text-slate-500">Con paquete activo</p>
+                      </div>
+                      <div class="flex-1 bg-white/5 rounded-xl p-3 text-center">
+                        <p class="text-sm font-bold text-slate-300">{{ user.referral_code || '—' }}</p>
+                        <p class="text-xs text-slate-500">Código referido</p>
+                      </div>
+                    </div>
+                    <!-- Lista de referidos -->
+                    @if (detail?.referralsList?.length) {
+                      <div class="bg-white/5 rounded-xl overflow-hidden">
+                        <div class="max-h-48 overflow-y-auto">
+                          @for (ref of detail!.referralsList; track ref.id) {
+                            <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5 last:border-0">
+                              <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-slate-500 text-base">person</span>
+                                <span class="text-sm text-white font-medium">{{ ref.username }}</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded" [class]="getRoleBadgeClass(ref.role)">
+                                  {{ getRoleLabel(ref.role) }}
+                                </span>
+                              </div>
+                              <div class="flex items-center gap-2">
+                                @if (ref.has_active_package) {
+                                  <span class="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded font-bold">Activo</span>
+                                } @else {
+                                  <span class="text-xs px-2 py-0.5 bg-slate-500/10 text-slate-400 rounded">Sin paquete</span>
+                                }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    } @else if (!detailLoading()) {
+                      <p class="text-sm text-slate-500 bg-white/5 rounded-xl p-4 text-center">Sin referidos aún</p>
                     }
-                    @if (user.country) {
-                      <div><span class="text-slate-500">País: </span><span class="text-white">{{ user.country }}</span></div>
-                    }
-                    @if (user.city) {
-                      <div><span class="text-slate-500">Ciudad: </span><span class="text-white">{{ user.city }}</span></div>
-                    }
-                  </div>
-                }
+                  }
+                </div>
+
               </div>
             }
           }

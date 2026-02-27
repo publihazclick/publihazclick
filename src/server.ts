@@ -13,16 +13,62 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 /**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
- * });
- * ```
+ * Security headers middleware.
+ * Protects against common web vulnerabilities:
+ * - XSS (X-Content-Type-Options, X-XSS-Protection)
+ * - Clickjacking (X-Frame-Options)
+ * - MIME sniffing (X-Content-Type-Options)
+ * - Information leakage (X-Powered-By removal, Referrer-Policy)
+ * - Protocol downgrade (Strict-Transport-Security)
  */
+app.use((req, res, next) => {
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // XSS protection (legacy browsers)
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Referrer policy - don't leak full URL to external sites
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Permissions policy - restrict browser features
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=()'
+  );
+
+  // HSTS - enforce HTTPS (1 year, include subdomains)
+  res.setHeader(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains'
+  );
+
+  // Content Security Policy
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.nequi.wompi.co",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://via.placeholder.com https://*.googleusercontent.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.freecurrencyapi.com https://countriesnow.space",
+      "frame-src 'self' https://checkout.nequi.wompi.co https://www.youtube.com https://www.facebook.com https://www.tiktok.com",
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+    ].join('; ')
+  );
+
+  // Remove Express fingerprint
+  res.removeHeader('X-Powered-By');
+
+  next();
+});
 
 /**
  * Serve static files from /browser
@@ -58,7 +104,7 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
       throw error;
     }
 
-    console.log(`Node Express server listening on http://localhost:${port}`);
+    console.log(`Server listening on port ${port}`);
   });
 }
 

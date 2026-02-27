@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.client';
+import { sanitizePostgrestFilter } from '../utils/sanitize';
 import type {
   AdvertiserCard,
   SocialConnection,
@@ -47,7 +48,10 @@ export class SocialService {
       .range(page * limit, (page + 1) * limit - 1);
 
     if (search.trim()) {
-      query = query.or(`username.ilike.%${search}%,full_name.ilike.%${search}%`);
+      const safeSearch = sanitizePostgrestFilter(search);
+      if (safeSearch) {
+        query = query.or(`username.ilike.%${safeSearch}%,full_name.ilike.%${safeSearch}%`);
+      }
     }
 
     const { data: profiles, error } = await query;
@@ -90,6 +94,64 @@ export class SocialService {
         is_requester: conn?.is_requester ?? false,
       } as AdvertiserCard;
     });
+  }
+
+  // ============================================================
+  // PERFIL DE USUARIO
+  // ============================================================
+
+  async getUserProfile(userId: string): Promise<AdvertiserCard | null> {
+    const currentUserId = await this.getUserId();
+
+    const { data: profile, error } = await this.supabase
+      .from('profiles')
+      .select(`
+        id, username, full_name, avatar_url, total_referrals_count, role,
+        social_business_profiles (business_name, description, category, location)
+      `)
+      .eq('id', userId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error || !profile) return null;
+
+    let connectionStatus: ConnectionStatus | null = null;
+    let connectionId: string | null = null;
+    let isRequester = false;
+
+    if (currentUserId && currentUserId !== userId) {
+      const { data: conn } = await this.supabase
+        .from('social_connections')
+        .select('id, status, requester_id')
+        .or(`and(requester_id.eq.${currentUserId},receiver_id.eq.${userId}),and(requester_id.eq.${userId},receiver_id.eq.${currentUserId})`)
+        .maybeSingle();
+
+      if (conn) {
+        connectionStatus = (conn as any).status;
+        connectionId = (conn as any).id;
+        isRequester = (conn as any).requester_id === currentUserId;
+      }
+    }
+
+    const bp = Array.isArray((profile as any).social_business_profiles)
+      ? (profile as any).social_business_profiles[0]
+      : (profile as any).social_business_profiles;
+
+    return {
+      id: (profile as any).id,
+      username: (profile as any).username,
+      full_name: (profile as any).full_name,
+      avatar_url: (profile as any).avatar_url,
+      role: (profile as any).role,
+      total_referrals_count: (profile as any).total_referrals_count ?? 0,
+      business_name: bp?.business_name ?? null,
+      description: bp?.description ?? null,
+      category: bp?.category ?? null,
+      location: bp?.location ?? null,
+      connection_status: connectionStatus,
+      connection_id: connectionId,
+      is_requester: isRequester,
+    } as AdvertiserCard;
   }
 
   // ============================================================

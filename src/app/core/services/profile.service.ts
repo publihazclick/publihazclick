@@ -9,6 +9,7 @@ import {
 } from '../models/profile.model';
 import type { UserLevel } from '../models/admin.model';
 import { getSupabaseClient } from '../supabase.client';
+import { sanitizePostgrestFilter } from '../utils/sanitize';
 
 /**
  * Servicio para gestionar perfiles de usuario
@@ -193,7 +194,7 @@ export class ProfileService {
         const { data: linkData, error: linkError } = await this.supabase
           .from('profiles')
           .select('id, username, is_active')
-          .ilike('referral_link', `%${normalizedCode}%`)
+          .ilike('referral_link', `%${sanitizePostgrestFilter(normalizedCode)}%`)
           .maybeSingle();
         
         if (linkError || !linkData) {

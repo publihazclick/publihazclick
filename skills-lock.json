@@ -21,6 +21,16 @@
       "sourceType": "github",
       "computedHash": "b921c4fc13646b52bb767948ffa8821f26e6465c7e5979ba74ed317903608860"
     },
+    "react-email": {
+      "source": "resend/react-email",
+      "sourceType": "github",
+      "computedHash": "5abde077d6f10a25727a52f8d3ad5bf8c56e8ab17c277e3de32a0a3c32bf6f06"
+    },
+    "resend": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "computedHash": "a449be6d89ca789b97a756c7380251356461b0b1160fa3baa35b168f74b3e440"
+    },
     "stripe-best-practices": {
       "source": "stripe/ai",
       "sourceType": "github",

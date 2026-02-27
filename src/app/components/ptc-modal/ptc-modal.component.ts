@@ -74,28 +74,80 @@ export interface PtcAd {
           }
 
           <!-- Video / Imagen -->
-          @if (isVerticalVideo()) {
-            <!-- Vertical: YouTube Shorts -->
+          @if (isFacebookReel()) {
+            <!-- Facebook Reel (vertical): iframe nativo + overlay de play -->
+            <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
+              <div class="relative" style="aspect-ratio:9/16;height:100%">
+                <iframe
+                  [src]="getFacebookEmbedUrl()"
+                  frameborder="0"
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  allowfullscreen
+                  class="absolute inset-0 w-full h-full"
+                ></iframe>
+                @if (waitingForFbPlay()) {
+                  <div
+                    class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/50 cursor-pointer"
+                    (click)="onFbPlayClicked()"
+                  >
+                    <div class="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all">
+                      <span class="material-symbols-outlined text-white" style="font-size:38px">play_arrow</span>
+                    </div>
+                    <p class="text-white text-xs font-bold tracking-wide">Toca para iniciar</p>
+                  </div>
+                }
+              </div>
+            </div>
+          } @else if (isFacebookVideo()) {
+            <!-- Facebook video horizontal: iframe nativo + overlay de play -->
+            <div class="relative w-full bg-black shrink-0" style="aspect-ratio:16/9;max-height:42vh">
+              <iframe
+                [src]="getFacebookEmbedUrl()"
+                frameborder="0"
+                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                allowfullscreen
+                class="absolute inset-0 w-full h-full"
+              ></iframe>
+              @if (waitingForFbPlay()) {
+                <div
+                  class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/50 cursor-pointer"
+                  (click)="onFbPlayClicked()"
+                >
+                  <div class="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all">
+                    <span class="material-symbols-outlined text-white" style="font-size:38px">play_arrow</span>
+                  </div>
+                  <p class="text-white text-xs font-bold tracking-wide">Toca para iniciar</p>
+                </div>
+              }
+            </div>
+          } @else if (isVerticalVideo()) {
+            <!-- Vertical: YouTube Shorts / TikTok -->
             <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
               <div class="relative" style="aspect-ratio:9/16;height:100%">
                 <iframe
                   [src]="getVideoUrl()"
                   frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen"
+                  allowfullscreen
                   class="absolute inset-0 w-full h-full"
                 ></iframe>
+                <!-- Overlay: bloquea controles -->
+                <div class="absolute inset-0 z-10" style="cursor:default"></div>
               </div>
             </div>
           } @else {
-            <!-- Horizontal: YouTube regular, Facebook o imagen -->
+            <!-- Horizontal: YouTube regular o imagen -->
             <div class="relative w-full bg-black shrink-0" style="aspect-ratio:16/9;max-height:42vh">
               @if (ad().videoUrl) {
                 <iframe
                   [src]="getVideoUrl()"
                   frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen"
+                  allowfullscreen
                   class="absolute inset-0 w-full h-full"
                 ></iframe>
+                <!-- Overlay: bloquea controles -->
+                <div class="absolute inset-0 z-10" style="cursor:default"></div>
               } @else if (ad().imageUrl) {
                 <img [src]="ad().imageUrl" [alt]="ad().title" class="w-full h-full object-cover">
               } @else {
@@ -155,6 +207,15 @@ export interface PtcAd {
                 <button (click)="onClose()" class="mt-3 px-6 py-2 bg-white/5 hover:bg-white/10 text-slate-400 font-bold rounded-xl text-xs uppercase tracking-wider">
                   Cerrar
                 </button>
+              </div>
+            } @else if (waitingForFbPlay() && !captchaCompleted()) {
+              <!-- Esperando que el usuario dé play al video de Facebook -->
+              <div class="bg-blue-500/5 border border-blue-500/15 rounded-xl p-4 text-center">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-blue-400 text-2xl">play_circle</span>
+                </div>
+                <p class="text-blue-300 font-black text-sm">Dale play al video</p>
+                <p class="text-slate-500 text-xs mt-1">El contador inicia cuando comience el video</p>
               </div>
             } @else if (!captchaCompleted()) {
               <!-- Contador circular -->
@@ -331,6 +392,13 @@ export interface PtcAd {
     .animate-scaleIn {
       animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+    /* Fuerza que el video de Facebook ocupe todo el contenedor */
+    :host ::ng-deep .fb-video,
+    :host ::ng-deep .fb-video span,
+    :host ::ng-deep .fb-video > span > iframe {
+      width: 100% !important;
+      height: 100% !important;
+    }
   `],
 })
 export class PtcModalComponent implements OnInit, OnDestroy {
@@ -345,6 +413,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   protected alreadyViewed = signal(false);
   protected tabWasInactive = signal(false);
+  protected waitingForFbPlay = signal(false);
 
   protected whatsappReferralUrl = `https://wa.me/${environment.whatsappNumber}?text=${encodeURIComponent('Hola! Quiero solicitar mi link de referido para empezar a ganar en Publihazclick')}`;
 
@@ -395,21 +464,39 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   private countdownInterval: any;
   private cachedVideoUrl: SafeResourceUrl | null = null;
+  private cachedVideoUrlSource: string | null = null;
   private visibilityHandler = this.onVisibilityChange.bind(this);
+
+  protected isFacebookVideo = computed(() => {
+    const url = this.ad().videoUrl;
+    return !!(url && (url.includes('facebook.com') || url.includes('fb.watch')));
+  });
+
+  protected isFacebookReel = computed(() => {
+    const url = this.ad().videoUrl;
+    return !!(url && url.includes('facebook.com/reel/'));
+  });
 
   protected isVerticalVideo = computed(() => {
     const url = this.ad().videoUrl;
-    return !!url && url.includes('youtube.com/shorts/');
+    if (!url) return false;
+    // Facebook se maneja por separado con el SDK
+    return url.includes('youtube.com/shorts/') || url.includes('tiktok.com');
   });
 
   ngOnInit(): void {
-    // Inicializar countdown con la duración del anuncio
     this.countdown.set(this.ad().duration || 60);
     this.alreadyViewed.set(!this.userTracking.canClaimReward(this.ad().id));
-    this.startCountdown();
 
-    // Detectar salida de pestaña
     document.addEventListener('visibilitychange', this.visibilityHandler);
+
+    if (this.isFacebookVideo()) {
+      // Facebook/Instagram: esperar a que el usuario toque el overlay de play
+      this.waitingForFbPlay.set(true);
+    } else {
+      // YouTube / TikTok: autoplay, contador inicia de inmediato
+      this.startCountdown();
+    }
   }
 
   ngOnDestroy(): void {
@@ -420,14 +507,15 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   // ── Visibilidad de pestaña ──────────────────────────────────────────────
 
   private onVisibilityChange(): void {
+    // Si el video de Facebook aún no ha iniciado, no hay contador que resetear
+    if (this.waitingForFbPlay()) return;
+
     if (document.hidden && this.countdown() > 0 && !this.captchaCompleted() && !this.alreadyViewed()) {
-      // El usuario salió de la pestaña durante el conteo
       this.stopCountdown();
       this.countdown.set(this.ad().duration || 60);
       this.tabWasInactive.set(true);
       this.showCaptchaModal.set(false);
     } else if (!document.hidden && this.tabWasInactive()) {
-      // Volvió a la pestaña — reiniciar conteo
       setTimeout(() => {
         this.tabWasInactive.set(false);
         this.startCountdown();
@@ -532,36 +620,57 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     this.close.emit();
   }
 
-  // ── Video ───────────────────────────────────────────────────────────────
+  // ── Facebook ─────────────────────────────────────────────────────────────
+
+  /** El usuario tocó el overlay → retirar overlay e iniciar contador. */
+  onFbPlayClicked(): void {
+    this.waitingForFbPlay.set(false);
+    this.startCountdown();
+  }
+
+  /** URL del plugin de Facebook para el iframe. */
+  getFacebookEmbedUrl(): SafeResourceUrl {
+    const url = this.ad().videoUrl;
+    const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=560&height=315&appId`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
+  }
+
+  // ── Video (YouTube / TikTok) ─────────────────────────────────────────────
 
   getVideoUrl(): SafeResourceUrl | null {
     const url = this.ad().videoUrl;
     if (!url) return null;
-    if (this.cachedVideoUrl) return this.cachedVideoUrl;
+    if (this.cachedVideoUrl && this.cachedVideoUrlSource === url) return this.cachedVideoUrl;
 
     let embedUrl = '';
 
     if (url.includes('facebook.com') || url.includes('fb.watch')) {
-      // Facebook video / Reels
-      embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=true&allowfullscreen=false&mute=0`;
+      // Facebook se maneja con getFacebookEmbedUrl() y su propio bloque en el template
+      return null;
+    } else if (url.includes('tiktok.com')) {
+      // TikTok: https://www.tiktok.com/@user/video/1234567890123456789
+      const match = url.match(/\/video\/(\d+)/);
+      if (!match) return null;
+      embedUrl = `https://www.tiktok.com/embed/v2/${match[1]}?autoplay=1&music_info=0&description=0`;
     } else if (url.includes('youtube.com/shorts/')) {
-      // YouTube Shorts (vertical)
+      // YouTube Shorts (vertical): sin controles, autoplay, con sonido, loop
       const match = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
       if (!match) return null;
-      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&controls=0&rel=0&loop=1&playlist=${match[1]}`;
+      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&mute=0&controls=0&rel=0&loop=1&playlist=${match[1]}&modestbranding=1&fs=0&iv_load_policy=3&disablekb=1`;
     } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      // YouTube regular
+      // YouTube regular: sin controles, autoplay, con sonido
       const match = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
       if (!match) return null;
-      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&controls=0&rel=0&modestbranding=1&fs=0&iv_load_policy=3`;
+      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&fs=0&iv_load_policy=3&disablekb=1`;
     } else if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
-      // ID bare de YouTube (datos de muestra / legacy)
-      embedUrl = `https://www.youtube.com/embed/${url}?autoplay=1&controls=0&rel=0&modestbranding=1&fs=0`;
+      // ID bare de YouTube (legacy)
+      embedUrl = `https://www.youtube.com/embed/${url}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&fs=0&disablekb=1`;
     } else {
       return null;
     }
 
     this.cachedVideoUrl = this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
+    this.cachedVideoUrlSource = url;
     return this.cachedVideoUrl;
   }
 

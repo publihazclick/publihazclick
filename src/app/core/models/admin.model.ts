@@ -311,24 +311,64 @@ export interface UserAdmin {
   role: UserRole;
   level: number;
   is_active: boolean;
-  balance: number;
-  pending_balance: number;
-  total_earned: number;
-  total_spent: number;
-  referral_earnings: number;
+  // Balances
+  balance: number | null;
+  real_balance: number | null;
+  demo_balance: number | null;
+  pending_balance: number | null;
+  total_earned: number | null;
+  total_demo_earned: number | null;
+  total_spent: number | null;
+  total_donated: number | null;
+  referral_earnings: number | null;
+  // Referidos
   referral_code: string;
   referred_by: string | null;
   referrer_username?: string;
+  total_referrals_count: number | null;
+  // Paquete
+  has_active_package: boolean;
+  current_package_id: string | null;
+  package_started_at: string | null;
+  package_expires_at: string | null;
+  // Contacto
   phone?: string;
   country?: string;
   country_code?: string;
   department?: string;
   city?: string;
+  // Timestamps
   created_at: string;
   updated_at: string;
   last_sign_in_at?: string;
   total_clicks?: number;
   total_referrals?: number;
+}
+
+// ============================================================================
+// Detalle de usuario (vista admin enriquecida)
+// ============================================================================
+
+export interface UserClickStats {
+  ad_type: string;
+  count: number;
+  total_reward: number;
+}
+
+export interface UserReferralItem {
+  id: string;
+  username: string;
+  role: string;
+  is_active: boolean;
+  has_active_package: boolean;
+}
+
+export interface UserDetailData {
+  packageName: string | null;
+  clicksByCategory: UserClickStats[];
+  totalClicks: number;
+  activeReferrals: number;
+  referralsList: UserReferralItem[];
 }
 
 export interface CreateUserAdminData {
@@ -454,8 +494,7 @@ export interface Payment {
   gateway_reference: string | null;
   phone_number: string | null;
   error_message: string | null;
-  stripe_session_id: string | null;
-  stripe_payment_intent_id: string | null;
+  dlocal_payment_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;

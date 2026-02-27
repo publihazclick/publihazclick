@@ -76,7 +76,7 @@ export class StorageService {
       });
 
       if (error) {
-        console.error('Error uploading to Supabase:', error);
+        // Upload failed
         return {
           success: false,
           error: error.message
@@ -97,7 +97,7 @@ export class StorageService {
         path: data.path
       };
     } catch (error: any) {
-      console.error('Upload error:', error);
+      // Upload operation failed
       this.uploading.set(false);
       return {
         success: false,
@@ -137,12 +137,12 @@ export class StorageService {
         .remove([path]);
 
       if (error) {
-        console.error('Error deleting image:', error);
+        // Delete failed
         return false;
       }
       return true;
     } catch (error) {
-      console.error('Delete error:', error);
+      // Delete operation failed
       return false;
     }
   }
@@ -171,13 +171,13 @@ export class StorageService {
         });
 
       if (error) {
-        console.error('Error listing images:', error);
+        // List operation failed
         return [];
       }
 
       return data || [];
     } catch (error) {
-      console.error('List error:', error);
+      // List operation failed
       return [];
     }
   }

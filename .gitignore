@@ -53,3 +53,6 @@ Thumbs.db
 
 # Supabase local functions (secrets)
 supabase/functions/
+
+# Environment files with real secrets (keep only environment.ts template in git)
+src/environments/environment.prod.ts

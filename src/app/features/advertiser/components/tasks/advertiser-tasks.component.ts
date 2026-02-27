@@ -210,8 +210,6 @@ export class AdvertiserTasksComponent implements OnInit {
   onRewardClaimed(event: { walletAmount: number; donationAmount: number }): void {
     const ad = this.selectedAd();
     const userProfile = this.profile();
-    console.log('onRewardClaimed - Profile:', userProfile);
-    console.log('onRewardClaimed - Wallet Amount:', event.walletAmount);
     if (!ad) return;
 
     // Actualizar wallet demo (localStorage)
@@ -220,18 +218,12 @@ export class AdvertiserTasksComponent implements OnInit {
 
     // Actualizar balance real en la base de datos
     if (userProfile && event.walletAmount > 0) {
-      console.log('Updating real balance for user:', userProfile.id, 'amount:', event.walletAmount);
-      this.profileService.updateRealBalance(userProfile.id, event.walletAmount, 'add').then(success => {
-        console.log('Real balance update result:', success);
-      });
+      this.profileService.updateRealBalance(userProfile.id, event.walletAmount, 'add');
     }
 
     // Actualizar donaciones en la base de datos
     if (userProfile && event.donationAmount > 0) {
-      console.log('Updating donations for user:', userProfile.id, 'amount:', event.donationAmount);
-      this.profileService.updateDonations(userProfile.id, event.donationAmount).then(success => {
-        console.log('Donations update result:', success);
-      });
+      this.profileService.updateDonations(userProfile.id, event.donationAmount);
     }
 
     const isMega = ad.adType === 'mega';

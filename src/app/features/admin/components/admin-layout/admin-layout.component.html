@@ -83,6 +83,14 @@
             </a>
           </li>
           <li>
+            <a routerLink="/admin/reportes" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">query_stats</span>
+              @if (!sidebarCollapsed()) {
+                <span>Reportes</span>
+              }
+            </a>
+          </li>
+          <li>
             <a routerLink="/admin/auth-banners" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
               <span class="material-symbols-outlined">view_carousel</span>
               @if (!sidebarCollapsed()) {

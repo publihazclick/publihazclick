@@ -59,14 +59,9 @@ export const authInterceptor: HttpInterceptorFn = (
     catchError((error: HttpErrorResponse) => {
       // Manejar errores de autenticación
       if (error.status === 401) {
-        // Token expirado o inválido
-        console.warn('Token expirado o inválido. Intentando refrescar...');
-        
-        // Intentar refrescar el token
+        // Token expirado o invalido - intentar refrescar
         return authService.refreshSession().pipe(
-          catchError((refreshError) => {
-            // Error al refrescar, cerrar sesión y redirigir
-            console.error('Error al refrescar token:', refreshError);
+          catchError(() => {
             authService.logout();
             
             // Redirigir a login
@@ -95,8 +90,6 @@ export const authInterceptor: HttpInterceptorFn = (
       }
 
       if (error.status === 403) {
-        // Forbidden - El usuario no tiene permisos
-        console.error('Acceso denegado:', error.message);
         router.navigate(['/unauthorized']);
       }
 

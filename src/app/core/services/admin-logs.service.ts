@@ -87,7 +87,7 @@ export class AdminLogsService {
         totalPages: Math.ceil((count || 0) / pageSize)
       };
     } catch (error: any) {
-      console.error('Error getting activity logs:', error);
+      // Failed to get activity logs
       return {
         data: [],
         total: 0,
@@ -128,7 +128,7 @@ export class AdminLogsService {
         created_at: data.created_at
       };
     } catch (error: any) {
-      console.error('Error getting activity log:', error);
+      // Failed to get activity log
       return null;
     }
   }
@@ -147,7 +147,7 @@ export class AdminLogsService {
       const actions = [...new Set((data || []).map(l => l.action))];
       return actions.sort();
     } catch (error: any) {
-      console.error('Error getting action types:', error);
+      // Failed to get action types
       return [];
     }
   }
@@ -166,7 +166,7 @@ export class AdminLogsService {
       const entities = [...new Set((data || []).map(l => l.entity_type))];
       return entities.sort() as ActivityLog['entity_type'][];
     } catch (error: any) {
-      console.error('Error getting entity types:', error);
+      // Failed to get entity types
       return [];
     }
   }
@@ -199,7 +199,7 @@ export class AdminLogsService {
 
       return true;
     } catch (error: any) {
-      console.error('Error creating activity log:', error);
+      // Failed to create activity log
       return false;
     }
   }
@@ -222,7 +222,7 @@ export class AdminLogsService {
 
       return { deleted: count || 0 };
     } catch (error: any) {
-      console.error('Error cleaning old logs:', error);
+      // Failed to clean old logs
       return null;
     }
   }
@@ -280,7 +280,7 @@ export class AdminLogsService {
         created_at: log.created_at
       }));
     } catch (error: any) {
-      console.error('Error exporting logs:', error);
+      // Failed to export logs
       return [];
     }
   }

@@ -53,8 +53,7 @@ export class RecentPostsComponent {
   ];
 
   sendMessage(postId: number): void {
-    console.log('Sending message for post:', postId, 'Message:', this.message());
-    alert('¡Mensaje enviado!');
+    alert('Mensaje enviado!');
     this.message.set('');
   }
 }

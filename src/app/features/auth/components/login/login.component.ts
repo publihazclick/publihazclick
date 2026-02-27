@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -20,23 +20,17 @@ export class LoginComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly router = inject(Router);
 
-  // Estado del login
-  isLoading = false;
-  
+  readonly isLoading = signal(false);
+  readonly showPassword = signal(false);
+  readonly errorMessage = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(null);
+
   loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
-  // Estado de la contraseña
-  showPassword = false;
-  
-  // Mensajes
-  errorMessage: string | null = null;
-  successMessage: string | null = null;
-
   ngOnInit(): void {
-    // Si ya está autenticado, redirigir según su rol
     if (this.authService.isAuthenticated()) {
       this.profileService.getCurrentProfile().then(profile => {
         const role = profile?.role;
@@ -54,7 +48,7 @@ export class LoginComponent implements OnInit {
   }
 
   togglePasswordVisibility(): void {
-    this.showPassword = !this.showPassword;
+    this.showPassword.update(v => !v);
   }
 
   onSubmit(): void {
@@ -63,23 +57,18 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    // Limpiar estados
-    this.isLoading = true;
-    this.successMessage = null;
-    this.errorMessage = null;
+    this.isLoading.set(true);
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
 
     const email = this.loginForm.get('email')?.value;
     const password = this.loginForm.get('password')?.value;
 
-    // Llamar al servicio de autenticación
     this.authService.login({ email, password }).subscribe({
       next: (result) => {
-        console.log('Login result:', result);
-        this.isLoading = false;
-        
+        this.isLoading.set(false);
         if (result.success) {
-          this.successMessage = 'Inicio de sesión exitoso';
-          // Redirigir según el rol del usuario
+          this.successMessage.set('Inicio de sesión exitoso. Redirigiendo...');
           this.profileService.getCurrentProfile().then(profile => {
             const role = profile?.role;
             if (role === 'admin' || role === 'dev') {
@@ -93,13 +82,12 @@ export class LoginComponent implements OnInit {
             this.router.navigate(['/dashboard']);
           });
         } else {
-          this.errorMessage = result.message || 'Error al iniciar sesión';
+          this.errorMessage.set(result.message || 'Correo o contraseña incorrectos');
         }
       },
-      error: (err) => {
-        console.error('Login error:', err);
-        this.isLoading = false;
-        this.errorMessage = 'Error de conexión. Intenta de nuevo.';
+      error: () => {
+        this.isLoading.set(false);
+        this.errorMessage.set('Error de conexión. Verifica tu internet e intenta de nuevo.');
       }
     });
   }
@@ -111,20 +99,13 @@ export class LoginComponent implements OnInit {
 
   getErrorMessage(field: string): string {
     const control = this.loginForm.get(field);
-    
     if (!control || !control.errors) return '';
-
-    if (control.errors['required']) {
-      return 'Este campo es requerido';
-    }
-    if (control.errors['email']) {
-      return 'Ingrese un correo electrónico válido';
-    }
+    if (control.errors['required']) return 'Este campo es requerido';
+    if (control.errors['email']) return 'Ingresa un correo electrónico válido';
     if (control.errors['minlength']) {
-      const minLength = control.errors['minlength'].requiredLength;
-      return `La contraseña debe tener al menos ${minLength} caracteres`;
+      const min = control.errors['minlength'].requiredLength;
+      return `La contraseña debe tener al menos ${min} caracteres`;
     }
-
     return '';
   }
 }

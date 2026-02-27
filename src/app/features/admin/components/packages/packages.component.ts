@@ -128,7 +128,7 @@ export class AdminPackagesComponent implements OnInit {
       const data = await this.packageService.getPackages();
       this.packages.set(data);
     } catch (err: any) {
-      console.error('Error loading packages:', err);
+      // Failed to load packages
       this.error.set('Error al cargar los paquetes');
     } finally {
       this.loading.set(false);
@@ -144,7 +144,7 @@ export class AdminPackagesComponent implements OnInit {
       this.userPackages.set(result.data);
       this.totalCount.set(result.total);
     } catch (err: any) {
-      console.error('Error loading user packages:', err);
+      // Failed to load user packages
     }
   }
 
@@ -161,7 +161,7 @@ export class AdminPackagesComponent implements OnInit {
       this.payments.set(result.data);
       this.pendingPaymentsCount.set(result.data.filter(p => p.status === 'pending').length);
     } catch (err: any) {
-      console.error('Error loading payments:', err);
+      // Failed to load payments
     }
   }
 
@@ -346,7 +346,7 @@ export class AdminPackagesComponent implements OnInit {
       await this.loadPackages();
       this.closeModal();
     } catch (err: any) {
-      console.error('Error saving package:', err);
+      // Failed to save package
       this.error.set(err.message || 'Error al guardar el paquete');
     } finally {
       this.saving.set(false);
@@ -360,7 +360,7 @@ export class AdminPackagesComponent implements OnInit {
       await this.packageService.deletePackage(pkg.id);
       await this.loadPackages();
     } catch (err: any) {
-      console.error('Error deleting package:', err);
+      // Failed to delete package
       this.error.set(err.message || 'Error al eliminar el paquete');
     }
   }
@@ -503,7 +503,7 @@ export class AdminPackagesComponent implements OnInit {
       this.resetAssignForm();
       this.loadUserPackages();
     } catch (err: any) {
-      console.error('Error assigning package:', err);
+      // Failed to assign package
       this.assignError.set(err.message || 'Error al asignar el paquete');
     } finally {
       this.assigning.set(false);
@@ -562,7 +562,7 @@ export class AdminPackagesComponent implements OnInit {
       this.closeRevokeModal();
       this.loadUserPackages();
     } catch (err: any) {
-      console.error('Error revoking package:', err);
+      // Failed to revoke package
       this.error.set(err.message || 'Error al revocar el paquete');
       this.closeRevokeModal();
     } finally {

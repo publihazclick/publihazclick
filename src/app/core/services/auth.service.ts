@@ -11,6 +11,7 @@ import { BehaviorSubject, Observable, Subject, from, of } from 'rxjs';
 import { map, catchError, takeUntil, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { getSupabaseClient } from '../supabase.client';
+import { LoggerService } from './logger.service';
 
 /**
  * Interfaz para las opciones de login
@@ -82,6 +83,7 @@ export interface AuthState {
 export class AuthService implements OnDestroy {
   private readonly supabase: SupabaseClient;
   private readonly router = inject(Router);
+  private readonly logger = inject(LoggerService);
   private readonly destroy$ = new Subject<void>();
 
   // Signals de Angular para estado reactivo
@@ -129,7 +131,7 @@ export class AuthService implements OnDestroy {
       this._isLoading.set(false);
       
       if (error) {
-        console.error('Error al obtener sesión:', error.message);
+        this.logger.error('Error al obtener sesion');
         this.handleAuthError(error);
       } else {
         this.handleSessionChange(session);
@@ -173,12 +175,10 @@ export class AuthService implements OnDestroy {
    * Maneja el cambio de sesión
    */
   private handleSessionChange(session: Session | null): void {
-    console.log('handleSessionChange called with:', session);
     this._session.set(session);
     this._user.set(session?.user ?? null);
     this._error.set(null);
     this.updateAuthState();
-    console.log('Session set, isAuthenticated:', this.isAuthenticated());
   }
 
   /**
@@ -247,16 +247,12 @@ export class AuthService implements OnDestroy {
     this._isLoading.set(true);
     this._error.set(null);
 
-    console.log('Login attempt with email:', options.email);
-
     // Usar un Observable que siempre completa
     return new Observable<AuthResult>(observer => {
       this.supabase.auth.signInWithPassword({
         email: options.email,
         password: options.password
       }).then(({ data, error }) => {
-        console.log('Supabase response:', { data, error });
-        
         if (error) {
           this.handleAuthError(error);
           this._isLoading.set(false);
@@ -267,7 +263,6 @@ export class AuthService implements OnDestroy {
             message: this.parseErrorMessage(error)
           });
         } else {
-          console.log('Login successful, session:', data.session, 'user:', data.user);
           // Guardar sesión y usuario
           if (data.session) {
             this.handleSessionChange(data.session);
@@ -287,7 +282,7 @@ export class AuthService implements OnDestroy {
         }
         observer.complete();
       }).catch((error: AuthError) => {
-        console.error('Login error:', error);
+        this.logger.error('Error en login');
         this.handleAuthError(error);
         this._isLoading.set(false);
         observer.next({
@@ -310,8 +305,6 @@ export class AuthService implements OnDestroy {
     this._isLoading.set(true);
     this._error.set(null);
 
-    console.log('[AUTH DEBUG] register - Iniciando registro con email:', options.email);
-
     return from(
       this.supabase.auth.signUp({
         email: options.email,
@@ -326,8 +319,6 @@ export class AuthService implements OnDestroy {
       })
     ).pipe(
       map(({ data, error }) => {
-        console.log('[AUTH DEBUG] register - Response:', { data, error });
-        
         if (error) {
           this.handleAuthError(error);
           return {

@@ -85,7 +85,7 @@ export class AdminWithdrawalService {
         totalPages: Math.ceil((count || 0) / pageSize)
       };
     } catch (error: any) {
-      console.error('Error getting withdrawals:', error);
+      // Failed to get withdrawals
       return {
         data: [],
         total: 0,
@@ -128,7 +128,7 @@ export class AdminWithdrawalService {
         created_at: data.created_at
       };
     } catch (error: any) {
-      console.error('Error getting withdrawal:', error);
+      // Failed to get withdrawal
       return null;
     }
   }
@@ -153,7 +153,7 @@ export class AdminWithdrawalService {
 
       return true;
     } catch (error: any) {
-      console.error('Error approving withdrawal:', error);
+      // Failed to approve withdrawal
       return false;
     }
   }
@@ -178,7 +178,7 @@ export class AdminWithdrawalService {
 
       return true;
     } catch (error: any) {
-      console.error('Error completing withdrawal:', error);
+      // Failed to complete withdrawal
       return false;
     }
   }
@@ -204,7 +204,7 @@ export class AdminWithdrawalService {
 
       return true;
     } catch (error: any) {
-      console.error('Error rejecting withdrawal:', error);
+      // Failed to reject withdrawal
       return false;
     }
   }
@@ -264,7 +264,7 @@ export class AdminWithdrawalService {
 
       return stats;
     } catch (error: any) {
-      console.error('Error getting withdrawal stats:', error);
+      // Failed to get withdrawal stats
       return {
         pending: 0,
         pendingAmount: 0,

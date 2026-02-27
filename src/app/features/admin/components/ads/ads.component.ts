@@ -5,6 +5,7 @@ import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.se
 import { AdminBannerService } from '../../../../core/services/admin-banner.service';
 import { StorageService } from '../../../../core/services/storage.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
+import { sanitizePostgrestFilter } from '../../../../core/utils/sanitize';
 import type {
   PtcTaskAdmin,
   CreatePtcTaskData,
@@ -647,7 +648,7 @@ export class AdminAdsComponent implements OnInit {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, email, role')
-        .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
+        .or(`username.ilike.%${sanitizePostgrestFilter(query)}%,email.ilike.%${sanitizePostgrestFilter(query)}%`)
         .limit(10);
       if (error) throw error;
       this.userSearchResults.set(

@@ -75,7 +75,7 @@ export class CountriesService {
       }),
       map(response => response?.data || []),
       catchError(err => {
-        console.error('Error fetching countries:', err);
+        // Failed to fetch countries
         this._error.set('Error al cargar los países');
         this._loading.set(false);
         return of([]);
@@ -111,7 +111,7 @@ export class CountriesService {
       }),
       map(response => response?.data?.cities || []),
       catchError(err => {
-        console.error('Error fetching cities:', err);
+        // Failed to fetch cities
         this._error.set('Error al cargar las ciudades');
         this._loading.set(false);
         return of([]);
@@ -154,7 +154,7 @@ export class CountriesService {
       }),
       map(response => response?.data?.states || []),
       catchError(err => {
-        console.error('Error fetching states:', err);
+        // Failed to fetch states
         this._error.set('Error al cargar los estados');
         this._loading.set(false);
         return of([]);
@@ -336,6 +336,111 @@ export class CountriesService {
       name,
       flag
     }));
+  }
+
+  /**
+   * Lista completa de todos los países del mundo con código telefónico
+   */
+  getAllCountries(): { code: string; name: string }[] {
+    return [
+      { name: 'Afganistán', code: '+93' }, { name: 'Albania', code: '+355' },
+      { name: 'Alemania', code: '+49' }, { name: 'Andorra', code: '+376' },
+      { name: 'Angola', code: '+244' }, { name: 'Antigua y Barbuda', code: '+1' },
+      { name: 'Arabia Saudita', code: '+966' }, { name: 'Argelia', code: '+213' },
+      { name: 'Argentina', code: '+54' }, { name: 'Armenia', code: '+374' },
+      { name: 'Australia', code: '+61' }, { name: 'Austria', code: '+43' },
+      { name: 'Azerbaiyán', code: '+994' }, { name: 'Bahamas', code: '+1' },
+      { name: 'Bangladés', code: '+880' }, { name: 'Barbados', code: '+1' },
+      { name: 'Baréin', code: '+973' }, { name: 'Bélgica', code: '+32' },
+      { name: 'Belice', code: '+501' }, { name: 'Benín', code: '+229' },
+      { name: 'Bielorrusia', code: '+375' }, { name: 'Bolivia', code: '+591' },
+      { name: 'Bosnia y Herzegovina', code: '+387' }, { name: 'Botsuana', code: '+267' },
+      { name: 'Brasil', code: '+55' }, { name: 'Brunéi', code: '+673' },
+      { name: 'Bulgaria', code: '+359' }, { name: 'Burkina Faso', code: '+226' },
+      { name: 'Burundi', code: '+257' }, { name: 'Bután', code: '+975' },
+      { name: 'Cabo Verde', code: '+238' }, { name: 'Camboya', code: '+855' },
+      { name: 'Camerún', code: '+237' }, { name: 'Canadá', code: '+1' },
+      { name: 'Catar', code: '+974' }, { name: 'Chad', code: '+235' },
+      { name: 'Chile', code: '+56' }, { name: 'China', code: '+86' },
+      { name: 'Chipre', code: '+357' }, { name: 'Colombia', code: '+57' },
+      { name: 'Comoras', code: '+269' }, { name: 'Congo', code: '+242' },
+      { name: 'Corea del Norte', code: '+850' }, { name: 'Corea del Sur', code: '+82' },
+      { name: 'Costa Rica', code: '+506' }, { name: 'Costa de Marfil', code: '+225' },
+      { name: 'Croacia', code: '+385' }, { name: 'Cuba', code: '+53' },
+      { name: 'Dinamarca', code: '+45' }, { name: 'Dominica', code: '+1' },
+      { name: 'Ecuador', code: '+593' }, { name: 'Egipto', code: '+20' },
+      { name: 'El Salvador', code: '+503' }, { name: 'Emiratos Árabes Unidos', code: '+971' },
+      { name: 'Eritrea', code: '+291' }, { name: 'Eslovaquia', code: '+421' },
+      { name: 'Eslovenia', code: '+386' }, { name: 'España', code: '+34' },
+      { name: 'Estados Unidos', code: '+1' }, { name: 'Estonia', code: '+372' },
+      { name: 'Etiopía', code: '+251' }, { name: 'Filipinas', code: '+63' },
+      { name: 'Finlandia', code: '+358' }, { name: 'Fiyi', code: '+679' },
+      { name: 'Francia', code: '+33' }, { name: 'Gabón', code: '+241' },
+      { name: 'Gambia', code: '+220' }, { name: 'Georgia', code: '+995' },
+      { name: 'Ghana', code: '+233' }, { name: 'Granada', code: '+1' },
+      { name: 'Grecia', code: '+30' }, { name: 'Guatemala', code: '+502' },
+      { name: 'Guinea', code: '+224' }, { name: 'Guinea Ecuatorial', code: '+240' },
+      { name: 'Guinea-Bisáu', code: '+245' }, { name: 'Guyana', code: '+592' },
+      { name: 'Haití', code: '+509' }, { name: 'Honduras', code: '+504' },
+      { name: 'Hungría', code: '+36' }, { name: 'India', code: '+91' },
+      { name: 'Indonesia', code: '+62' }, { name: 'Irak', code: '+964' },
+      { name: 'Irán', code: '+98' }, { name: 'Irlanda', code: '+353' },
+      { name: 'Islandia', code: '+354' }, { name: 'Islas Marshall', code: '+692' },
+      { name: 'Islas Salomón', code: '+677' }, { name: 'Israel', code: '+972' },
+      { name: 'Italia', code: '+39' }, { name: 'Jamaica', code: '+1' },
+      { name: 'Japón', code: '+81' }, { name: 'Jordania', code: '+962' },
+      { name: 'Kazajistán', code: '+7' }, { name: 'Kenia', code: '+254' },
+      { name: 'Kirguistán', code: '+996' }, { name: 'Kiribati', code: '+686' },
+      { name: 'Kuwait', code: '+965' }, { name: 'Laos', code: '+856' },
+      { name: 'Lesoto', code: '+266' }, { name: 'Letonia', code: '+371' },
+      { name: 'Líbano', code: '+961' }, { name: 'Liberia', code: '+231' },
+      { name: 'Libia', code: '+218' }, { name: 'Liechtenstein', code: '+423' },
+      { name: 'Lituania', code: '+370' }, { name: 'Luxemburgo', code: '+352' },
+      { name: 'Madagascar', code: '+261' }, { name: 'Malasia', code: '+60' },
+      { name: 'Malaui', code: '+265' }, { name: 'Maldivas', code: '+960' },
+      { name: 'Malí', code: '+223' }, { name: 'Malta', code: '+356' },
+      { name: 'Marruecos', code: '+212' }, { name: 'Mauricio', code: '+230' },
+      { name: 'Mauritania', code: '+222' }, { name: 'México', code: '+52' },
+      { name: 'Micronesia', code: '+691' }, { name: 'Moldavia', code: '+373' },
+      { name: 'Mónaco', code: '+377' }, { name: 'Mongolia', code: '+976' },
+      { name: 'Montenegro', code: '+382' }, { name: 'Mozambique', code: '+258' },
+      { name: 'Myanmar', code: '+95' }, { name: 'Namibia', code: '+264' },
+      { name: 'Nauru', code: '+674' }, { name: 'Nepal', code: '+977' },
+      { name: 'Nicaragua', code: '+505' }, { name: 'Níger', code: '+227' },
+      { name: 'Nigeria', code: '+234' }, { name: 'Noruega', code: '+47' },
+      { name: 'Nueva Zelanda', code: '+64' }, { name: 'Omán', code: '+968' },
+      { name: 'Países Bajos', code: '+31' }, { name: 'Pakistán', code: '+92' },
+      { name: 'Palaos', code: '+680' }, { name: 'Panamá', code: '+507' },
+      { name: 'Papúa Nueva Guinea', code: '+675' }, { name: 'Paraguay', code: '+595' },
+      { name: 'Perú', code: '+51' }, { name: 'Polonia', code: '+48' },
+      { name: 'Portugal', code: '+351' }, { name: 'Reino Unido', code: '+44' },
+      { name: 'República Centroafricana', code: '+236' }, { name: 'República Checa', code: '+420' },
+      { name: 'República del Congo', code: '+243' }, { name: 'República Dominicana', code: '+1' },
+      { name: 'Ruanda', code: '+250' }, { name: 'Rumanía', code: '+40' },
+      { name: 'Rusia', code: '+7' }, { name: 'Samoa', code: '+685' },
+      { name: 'San Cristóbal y Nieves', code: '+1' }, { name: 'San Marino', code: '+378' },
+      { name: 'San Vicente y las Granadinas', code: '+1' }, { name: 'Santa Lucía', code: '+1' },
+      { name: 'Santo Tomé y Príncipe', code: '+239' }, { name: 'Senegal', code: '+221' },
+      { name: 'Serbia', code: '+381' }, { name: 'Seychelles', code: '+248' },
+      { name: 'Sierra Leona', code: '+232' }, { name: 'Singapur', code: '+65' },
+      { name: 'Siria', code: '+963' }, { name: 'Somalia', code: '+252' },
+      { name: 'Sri Lanka', code: '+94' }, { name: 'Sudáfrica', code: '+27' },
+      { name: 'Sudán', code: '+249' }, { name: 'Sudán del Sur', code: '+211' },
+      { name: 'Suecia', code: '+46' }, { name: 'Suiza', code: '+41' },
+      { name: 'Surinam', code: '+597' }, { name: 'Suazilandia', code: '+268' },
+      { name: 'Tailandia', code: '+66' }, { name: 'Taiwán', code: '+886' },
+      { name: 'Tanzania', code: '+255' }, { name: 'Tayikistán', code: '+992' },
+      { name: 'Timor-Leste', code: '+670' }, { name: 'Togo', code: '+228' },
+      { name: 'Tonga', code: '+676' }, { name: 'Trinidad y Tobago', code: '+1' },
+      { name: 'Túnez', code: '+216' }, { name: 'Turkmenistán', code: '+993' },
+      { name: 'Turquía', code: '+90' }, { name: 'Tuvalu', code: '+688' },
+      { name: 'Ucrania', code: '+380' }, { name: 'Uganda', code: '+256' },
+      { name: 'Uruguay', code: '+598' }, { name: 'Uzbekistán', code: '+998' },
+      { name: 'Vanuatu', code: '+678' }, { name: 'Venezuela', code: '+58' },
+      { name: 'Vietnam', code: '+84' }, { name: 'Yemen', code: '+967' },
+      { name: 'Yibuti', code: '+253' }, { name: 'Zambia', code: '+260' },
+      { name: 'Zimbabue', code: '+263' }
+    ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
   }
 
   /**

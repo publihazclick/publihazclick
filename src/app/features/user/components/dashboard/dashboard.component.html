@@ -8,14 +8,14 @@
   <!-- ═══ STATS ROW ═══ -->
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-    <!-- Referidos activos -->
+    <!-- Invitados activos -->
     <div class="bg-card-dark rounded-2xl p-5 border border-white/5 flex items-center gap-4">
       <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
         <span class="material-symbols-outlined text-primary text-2xl">group</span>
       </div>
       <div>
         <p class="text-2xl font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</p>
-        <p class="text-xs text-slate-500 font-medium">Referidos activos</p>
+        <p class="text-xs text-slate-500 font-medium">Invitados activos</p>
       </div>
     </div>
 
@@ -65,7 +65,7 @@
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-lg">tune</span>
-            <span class="text-sm font-bold text-white">Referidos directos</span>
+            <span class="text-sm font-bold text-white">Invitados directos</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-2xl font-black text-primary tabular-nums">{{ simulatedRefs() }}</span>
@@ -125,9 +125,9 @@
               </p>
               <p class="text-[10px] text-slate-500">
                 @if (currentTier().maxReferrals !== null) {
-                  {{ currentTier().minReferrals }}–{{ currentTier().maxReferrals }} referidos directos
+                  {{ currentTier().minReferrals }}–{{ currentTier().maxReferrals }} invitados directos
                 } @else {
-                  {{ currentTier().minReferrals }}+ referidos directos
+                  {{ currentTier().minReferrals }}+ invitados directos
                 }
               </p>
             </div>
@@ -140,7 +140,7 @@
           </div>
         </div>
 
-        <!-- Desglose: propios + referidos -->
+        <!-- Desglose: propios + invitados -->
         <div class="grid grid-cols-2 divide-x divide-white/5 bg-black/20">
           <div class="p-4 flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -160,7 +160,7 @@
               <p class="text-sm font-black" [ngClass]="currentTier().color">
                 {{ currencyService.formatFromCOP(referralEarningsCOP()) }}
               </p>
-              <p class="text-[10px] text-slate-500">Clicks de referidos</p>
+              <p class="text-[10px] text-slate-500">Clicks de invitados</p>
             </div>
           </div>
         </div>
@@ -239,15 +239,15 @@
         <p class="text-[11px] text-slate-400 leading-relaxed">
           Los valores reflejan el <strong class="text-white">sistema de tiers real</strong> de la plataforma.
           La ganancia propia (<strong class="text-white">$70.000 COP/mes</strong>) es constante en todos los tiers;
-          la ganancia por referidos escala con el numero de personas que invitas.
-          Haz clic en cualquier tier para simular esa cantidad de referidos.
+          la ganancia por invitados escala con el numero de personas que invitas.
+          Haz clic en cualquier tier para simular esa cantidad de invitados.
         </p>
       </div>
 
     </div>
   </div>
 
-  <!-- ═══ RED DE REFERIDOS VISUAL ═══ -->
+  <!-- ═══ RED DE INVITADOS VISUAL ═══ -->
   <div class="bg-card-dark rounded-2xl border border-white/5 p-6">
     <div class="flex items-center gap-3 mb-5">
       <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
@@ -270,7 +270,7 @@
         <span class="material-symbols-outlined text-slate-700 text-base">arrow_forward</span>
       </div>
 
-      <!-- Referidos directos -->
+      <!-- Invitados directos -->
       <div class="flex flex-col items-center flex-shrink-0 px-2">
         <div class="flex gap-1 mb-1">
           @for (n of [1,2,3]; track n) {
@@ -281,7 +281,7 @@
           }
         </div>
         <span class="text-[9px] font-bold uppercase" [ngClass]="currentTier().color">Tier {{ currentTier().name }}</span>
-        <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} refs directos</span>
+        <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} invitados directos</span>
       </div>
 
       <!-- Flecha -->
@@ -298,7 +298,7 @@
             </div>
           }
         </div>
-        <span class="text-[9px] font-bold text-slate-400 uppercase">Red de referidos</span>
+        <span class="text-[9px] font-bold text-slate-400 uppercase">Red de invitados</span>
         <span class="text-[9px] text-slate-600">ganancias acumuladas</span>
       </div>
 

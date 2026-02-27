@@ -28,8 +28,18 @@ export class RegisterComponent implements OnInit {
 
   // Countries and locations
   readonly countries = this.countriesService.getCountriesWithPhoneCodes();
+  readonly allCountries = this.countriesService.getAllCountries();
   readonly selectedCountryCode = signal<string>('+57');
-  readonly departmentsList = computed(() => this.countriesService.getDepartments(this.selectedCountryCode()));
+  readonly residenceCountryCode = signal<string>('+57');
+  readonly residenceCountryName = signal<string>('Colombia');
+  readonly countrySearch = signal<string>('Colombia');
+  readonly showCountryDropdown = signal<boolean>(false);
+  readonly filteredCountries = computed(() => {
+    const q = this.countrySearch().toLowerCase().trim();
+    if (!q) return this.allCountries;
+    return this.allCountries.filter(c => c.name.toLowerCase().includes(q));
+  });
+  readonly departmentsList = computed(() => this.countriesService.getDepartments(this.residenceCountryCode()));
   readonly availableCities = computed(() => this.countriesService.getCities(this.registerForm.get('department')?.value || ''));
 
   // Código de referido de la URL o manual
@@ -54,6 +64,7 @@ export class RegisterComponent implements OnInit {
     confirmPassword: ['', [Validators.required]],
     acceptTerms: [false, [Validators.requiredTrue]],
     countryCode: ['+57'],
+    residenceCountry: ['+57'],
     department: [''],
     city: ['']
   }, {
@@ -63,8 +74,9 @@ export class RegisterComponent implements OnInit {
   // Estado de la contraseña
   readonly showPassword = signal(false);
 
-  // Mensaje de éxito
+  // Mensaje de éxito / error local
   successMessage = signal<string | null>(null);
+  localError = signal<string | null>(null);
 
   // Return URL
   returnUrl: string = '/dashboard';
@@ -141,10 +153,34 @@ export class RegisterComponent implements OnInit {
     this.showPassword.update(v => !v);
   }
 
-  // Handle country code change
+  // Handle phone country code change
   onCountryCodeChange(code: string): void {
     this.selectedCountryCode.set(code);
+  }
+
+  // Handle residence country change — resets department and city
+  onResidenceCountryChange(code: string): void {
+    this.residenceCountryCode.set(code);
     this.registerForm.patchValue({ department: '', city: '' });
+  }
+
+  onCountrySearchInput(value: string): void {
+    this.countrySearch.set(value);
+    this.showCountryDropdown.set(true);
+  }
+
+  selectResidenceCountry(country: { code: string; name: string }): void {
+    this.residenceCountryCode.set(country.code);
+    this.residenceCountryName.set(country.name);
+    this.countrySearch.set(country.name);
+    this.registerForm.patchValue({ residenceCountry: country.code, department: '', city: '' });
+    this.showCountryDropdown.set(false);
+  }
+
+  closeCountryDropdown(): void {
+    // Restaura el texto al país seleccionado si se cerró sin elegir
+    this.countrySearch.set(this.residenceCountryName());
+    this.showCountryDropdown.set(false);
   }
 
   // Handle department change - clear city
@@ -172,11 +208,11 @@ export class RegisterComponent implements OnInit {
     }
 
     this.successMessage.set(null);
+    this.localError.set(null);
     const { username, fullName, email, phone, password, countryCode, department, city } = this.registerForm.value;
 
-    // Get country name from code
-    const countryObj = this.countries.find(c => c.code === countryCode);
-    const countryName = countryObj ? countryObj.name : '';
+    const countryName = this.residenceCountryName();
+    const residenceCode = this.residenceCountryCode();
 
     // Combinar código de país con número de teléfono
     const fullPhone = phone ? `${countryCode}${phone}` : null;
@@ -190,7 +226,7 @@ export class RegisterComponent implements OnInit {
         username: username,
         phone: fullPhone,
         country: countryName,
-        country_code: countryCode,
+        country_code: residenceCode,
         department: department || null,
         city: city || null
       },
@@ -199,6 +235,7 @@ export class RegisterComponent implements OnInit {
       next: (result) => {
         if (result.success) {
           this.successMessage.set(result.message || 'Registro exitoso');
+          this.localError.set(null);
           // Navegar solo si hay sesión activa (sin confirmación de email)
           if (this.authService.isAuthenticated()) {
             setTimeout(() => {
@@ -206,10 +243,12 @@ export class RegisterComponent implements OnInit {
             }, 1500);
           }
           // Si requiere confirmación: el mensaje de "revisa tu correo" queda visible
+        } else {
+          this.localError.set(result.message || 'Error al crear la cuenta. Intenta de nuevo.');
         }
       },
-      error: (err) => {
-        console.error('Error inesperado en registro:', err);
+      error: () => {
+        this.localError.set('Error de conexion. Verifica tu internet e intenta de nuevo.');
       }
     });
   }
