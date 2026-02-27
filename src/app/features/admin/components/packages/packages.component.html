@@ -55,7 +55,7 @@
       [class]="activeTab() === 'payments' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white hover:bg-white/5'"
     >
       <span class="material-symbols-outlined text-lg">payments</span>
-      Pagos Nequi
+      Pagos
       @if (pendingPaymentsCount() > 0) {
         <span class="bg-amber-400 text-black text-[10px] px-1.5 py-0.5 rounded font-black leading-none">{{ pendingPaymentsCount() }}</span>
       }
@@ -582,7 +582,7 @@
         <div class="bg-card-dark border border-white/5 rounded-2xl p-12 flex flex-col items-center text-center gap-3">
           <span class="material-symbols-outlined text-slate-700" style="font-size:48px">payments</span>
           <p class="text-white font-bold text-sm">Sin pagos registrados</p>
-          <p class="text-slate-500 text-xs max-w-xs">Cuando un usuario envíe un comprobante de pago Nequi, aparecerá aquí para que lo apruebes.</p>
+          <p class="text-slate-500 text-xs max-w-xs">Cuando un usuario realice un pago, aparecerá aquí para que lo gestiones.</p>
         </div>
       } @else {
 
