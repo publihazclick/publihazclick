@@ -4,11 +4,12 @@ import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { SocialService } from '../../../../core/services/social.service';
+import { FloatingChatComponent } from '../floating-chat/floating-chat.component';
 
 @Component({
   selector: 'app-social-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FloatingChatComponent],
   templateUrl: './social-layout.component.html',
 })
 export class SocialLayoutComponent implements OnInit, OnDestroy {

@@ -81,21 +81,6 @@
         </a>
       }
 
-      <a routerLink="/social/messages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-         class="relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-         [class.justify-center]="sidebarCollapsed()">
-        <span class="material-symbols-outlined">chat</span>
-        @if (!sidebarCollapsed()) { <span>Mensajes</span> }
-        @if (unreadMessages() > 0) {
-          <span class="ml-auto min-w-[18px] h-[18px] rounded-full bg-primary text-black text-[10px] font-black flex items-center justify-center px-1"
-                [class.absolute]="sidebarCollapsed()"
-                [class.top-1]="sidebarCollapsed()"
-                [class.right-1]="sidebarCollapsed()">
-            {{ unreadMessages() > 99 ? '99+' : unreadMessages() }}
-          </span>
-        }
-      </a>
-
       <a routerLink="/social/directory" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
          class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
          [class.justify-center]="sidebarCollapsed()">
@@ -241,3 +226,5 @@
     <router-outlet></router-outlet>
   </div>
 </main>
+
+<app-floating-chat />

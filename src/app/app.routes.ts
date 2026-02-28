@@ -89,11 +89,12 @@ export const routes: Routes = [
       },
       {
         path: 'messages',
-        loadComponent: () => import('./features/social/components/messages/messages.component').then(m => m.SocialMessagesComponent)
+        redirectTo: '/social',
+        pathMatch: 'full',
       },
       {
         path: 'messages/:convId',
-        loadComponent: () => import('./features/social/components/messages/messages.component').then(m => m.SocialMessagesComponent)
+        redirectTo: '/social',
       },
       {
         path: 'directory',

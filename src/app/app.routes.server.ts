@@ -30,10 +30,6 @@ export const serverRoutes: ServerRoute[] = [
     path: 'ref/:code',
     renderMode: RenderMode.Client,
   },
-  {
-    path: 'social/messages/:convId',
-    renderMode: RenderMode.Client,
-  },
   // Todas las demás (dashboard, admin, advertiser, etc.)
   {
     path: '**',
