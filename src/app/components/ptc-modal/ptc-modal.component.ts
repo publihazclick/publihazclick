@@ -75,55 +75,52 @@ export interface PtcAd {
 
           <!-- Video / Imagen -->
           @if (isFacebookReel()) {
-            <!-- Facebook Reel (vertical): iframe nativo + overlay de play -->
+            <!-- Facebook Reel (vertical) -->
             <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
-              <div class="relative" style="aspect-ratio:9/16;height:100%">
+              <div class="relative h-full" style="aspect-ratio:9/16">
                 <iframe
                   [src]="getFacebookEmbedUrl()"
                   frameborder="0"
                   allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
                   allowfullscreen
+                  scrolling="no"
                   class="absolute inset-0 w-full h-full"
+                  style="overflow:hidden"
                 ></iframe>
-                @if (waitingForFbPlay()) {
-                  <div
-                    class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/50 cursor-pointer"
-                    (click)="onFbPlayClicked()"
-                  >
-                    <div class="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all">
-                      <span class="material-symbols-outlined text-white" style="font-size:38px">play_arrow</span>
-                    </div>
-                    <p class="text-white text-xs font-bold tracking-wide">Toca para iniciar</p>
-                  </div>
-                }
               </div>
             </div>
           } @else if (isFacebookVideo()) {
-            <!-- Facebook video horizontal: iframe nativo + overlay de play -->
-            <div class="relative w-full bg-black shrink-0" style="aspect-ratio:16/9;max-height:42vh">
+            <!-- Facebook video horizontal -->
+            <div class="relative w-full bg-black shrink-0" style="padding-bottom:56.25%">
               <iframe
                 [src]="getFacebookEmbedUrl()"
                 frameborder="0"
                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
                 allowfullscreen
+                scrolling="no"
                 class="absolute inset-0 w-full h-full"
+                style="overflow:hidden"
               ></iframe>
-              @if (waitingForFbPlay()) {
-                <div
-                  class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/50 cursor-pointer"
-                  (click)="onFbPlayClicked()"
-                >
-                  <div class="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all">
-                    <span class="material-symbols-outlined text-white" style="font-size:38px">play_arrow</span>
-                  </div>
-                  <p class="text-white text-xs font-bold tracking-wide">Toca para iniciar</p>
-                </div>
-              }
+            </div>
+          } @else if (isTikTokVideo()) {
+            <!-- TikTok (vertical, sin autoplay) -->
+            <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
+              <div class="relative h-full" style="aspect-ratio:9/16">
+                <iframe
+                  [src]="getVideoUrl()"
+                  frameborder="0"
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                  allowfullscreen
+                  scrolling="no"
+                  class="absolute inset-0 w-full h-full"
+                  style="overflow:hidden"
+                ></iframe>
+              </div>
             </div>
           } @else if (isVerticalVideo()) {
-            <!-- Vertical: YouTube Shorts / TikTok -->
+            <!-- Vertical: YouTube Shorts (autoplay) -->
             <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
-              <div class="relative" style="aspect-ratio:9/16;height:100%">
+              <div class="relative h-full" style="aspect-ratio:9/16">
                 <iframe
                   [src]="getVideoUrl()"
                   frameborder="0"
@@ -209,13 +206,11 @@ export interface PtcAd {
                 </button>
               </div>
             } @else if (waitingForFbPlay() && !captchaCompleted()) {
-              <!-- Esperando que el usuario dé play al video de Facebook -->
+              <!-- Esperando play en video (Facebook / TikTok) -->
               <div class="bg-blue-500/5 border border-blue-500/15 rounded-xl p-4 text-center">
-                <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-blue-400 text-2xl">play_circle</span>
-                </div>
-                <p class="text-blue-300 font-black text-sm">Dale play al video</p>
-                <p class="text-slate-500 text-xs mt-1">El contador inicia cuando comience el video</p>
+                <span class="material-symbols-outlined text-blue-400 text-3xl mb-2 block">play_circle</span>
+                <p class="text-blue-300 font-black text-sm">Reproduce el video para iniciar</p>
+                <p class="text-slate-500 text-xs mt-1">El contador comenzará cuando se reproduzca el video</p>
               </div>
             } @else if (!captchaCompleted()) {
               <!-- Contador circular -->
@@ -392,12 +387,15 @@ export interface PtcAd {
     .animate-scaleIn {
       animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
-    /* Fuerza que el video de Facebook ocupe todo el contenedor */
+    /* Fuerza que el iframe de Facebook ocupe todo el contenedor */
     :host ::ng-deep .fb-video,
     :host ::ng-deep .fb-video span,
     :host ::ng-deep .fb-video > span > iframe {
       width: 100% !important;
       height: 100% !important;
+    }
+    :host ::ng-deep iframe {
+      border: 0;
     }
   `],
 })
@@ -463,6 +461,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   ];
 
   private countdownInterval: any;
+  private fbFocusInterval: any;
   private cachedVideoUrl: SafeResourceUrl | null = null;
   private cachedVideoUrlSource: string | null = null;
   private visibilityHandler = this.onVisibilityChange.bind(this);
@@ -477,12 +476,19 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     return !!(url && url.includes('facebook.com/reel/'));
   });
 
+  protected isTikTokVideo = computed(() => {
+    const url = this.ad().videoUrl;
+    return !!(url && url.includes('tiktok.com'));
+  });
+
   protected isVerticalVideo = computed(() => {
     const url = this.ad().videoUrl;
     if (!url) return false;
-    // Facebook se maneja por separado con el SDK
-    return url.includes('youtube.com/shorts/') || url.includes('tiktok.com');
+    return url.includes('youtube.com/shorts/');
   });
+
+  /** Videos que no hacen autoplay y requieren que el usuario dé play manualmente. */
+  protected requiresManualPlay = computed(() => this.isFacebookVideo() || this.isTikTokVideo());
 
   ngOnInit(): void {
     this.countdown.set(this.ad().duration || 60);
@@ -490,24 +496,25 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
     document.addEventListener('visibilitychange', this.visibilityHandler);
 
-    if (this.isFacebookVideo()) {
-      // Facebook/Instagram: esperar a que el usuario toque el overlay de play
+    if (this.requiresManualPlay()) {
+      // Facebook / TikTok no hacen autoplay: esperar a que el usuario dé play
       this.waitingForFbPlay.set(true);
+      this.startFbFocusDetection();
     } else {
-      // YouTube / TikTok: autoplay, contador inicia de inmediato
+      // YouTube: autoplay, contador inicia de inmediato
       this.startCountdown();
     }
   }
 
   ngOnDestroy(): void {
     this.stopCountdown();
+    this.stopFbFocusDetection();
     document.removeEventListener('visibilitychange', this.visibilityHandler);
   }
 
   // ── Visibilidad de pestaña ──────────────────────────────────────────────
 
   private onVisibilityChange(): void {
-    // Si el video de Facebook aún no ha iniciado, no hay contador que resetear
     if (this.waitingForFbPlay()) return;
 
     if (document.hidden && this.countdown() > 0 && !this.captchaCompleted() && !this.alreadyViewed()) {
@@ -520,6 +527,26 @@ export class PtcModalComponent implements OnInit, OnDestroy {
         this.tabWasInactive.set(false);
         this.startCountdown();
       }, 1500);
+    }
+  }
+
+  // ── Detección de play en Facebook ─────────────────────────────────────
+
+  /** Detecta cuando el usuario hace clic dentro del iframe (play) monitoreando el foco. */
+  private startFbFocusDetection(): void {
+    this.fbFocusInterval = setInterval(() => {
+      if (document.activeElement?.tagName === 'IFRAME' && this.waitingForFbPlay()) {
+        this.waitingForFbPlay.set(false);
+        this.stopFbFocusDetection();
+        this.startCountdown();
+      }
+    }, 300);
+  }
+
+  private stopFbFocusDetection(): void {
+    if (this.fbFocusInterval) {
+      clearInterval(this.fbFocusInterval);
+      this.fbFocusInterval = null;
     }
   }
 
@@ -622,17 +649,17 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   // ── Facebook ─────────────────────────────────────────────────────────────
 
-  /** El usuario tocó el overlay → retirar overlay e iniciar contador. */
-  onFbPlayClicked(): void {
-    this.waitingForFbPlay.set(false);
-    this.startCountdown();
-  }
+  private cachedFbUrl: SafeResourceUrl | null = null;
+  private cachedFbSource: string | null = null;
 
-  /** URL del plugin de Facebook para el iframe. */
+  /** URL del plugin de Facebook — cacheada para evitar recargas del iframe. */
   getFacebookEmbedUrl(): SafeResourceUrl {
     const url = this.ad().videoUrl;
-    const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=560&height=315&appId`;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
+    if (this.cachedFbUrl && this.cachedFbSource === url) return this.cachedFbUrl;
+    const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=0`;
+    this.cachedFbUrl = this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
+    this.cachedFbSource = url;
+    return this.cachedFbUrl;
   }
 
   // ── Video (YouTube / TikTok) ─────────────────────────────────────────────

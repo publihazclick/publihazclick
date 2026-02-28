@@ -7,8 +7,8 @@ import {
   AuthChangeEvent,
   AuthError
 } from '@supabase/supabase-js';
-import { BehaviorSubject, Observable, Subject, from, of } from 'rxjs';
-import { map, catchError, takeUntil, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, Subject, from, of, shareReplay } from 'rxjs';
+import { map, catchError, takeUntil, tap, finalize } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { getSupabaseClient } from '../supabase.client';
 import { LoggerService } from './logger.service';
@@ -92,6 +92,12 @@ export class AuthService implements OnDestroy {
   private readonly _isLoading = signal<boolean>(true);
   private readonly _error = signal<string | null>(null);
 
+  // Deduplicación de refresh token
+  private _refreshInFlight$: Observable<AuthResult> | null = null;
+
+  // Timer para monitor proactivo de expiración
+  private _sessionMonitorTimer: ReturnType<typeof setTimeout> | null = null;
+
   // Computed signals para acceso público
   readonly user = computed(() => this._user());
   readonly session = computed(() => this._session());
@@ -129,12 +135,13 @@ export class AuthService implements OnDestroy {
     this.supabase.auth.getSession().then(({ data: { session }, error }) => {
       // Primero marcar como no cargado
       this._isLoading.set(false);
-      
+
       if (error) {
         this.logger.error('Error al obtener sesion');
         this.handleAuthError(error);
       } else {
         this.handleSessionChange(session);
+        this.startSessionMonitor(session);
       }
     });
 
@@ -153,13 +160,16 @@ export class AuthService implements OnDestroy {
     switch (event) {
       case 'SIGNED_IN':
         this.handleSessionChange(session);
+        this.startSessionMonitor(session);
         break;
       case 'SIGNED_OUT':
         this.handleSignOut();
+        this.stopSessionMonitor();
         break;
       case 'TOKEN_REFRESHED':
         if (session) {
           this.handleSessionChange(session);
+          this.startSessionMonitor(session);
         }
         break;
       case 'USER_UPDATED':
@@ -650,11 +660,15 @@ export class AuthService implements OnDestroy {
   }
 
   /**
-   * Refresca la sesión actual
+   * Refresca la sesión actual (deduplicado: si ya hay un refresh en curso, lo reutiliza)
    * @returns Observable con el resultado
    */
   refreshSession(): Observable<AuthResult> {
-    return from(this.supabase.auth.refreshSession()).pipe(
+    if (this._refreshInFlight$) {
+      return this._refreshInFlight$;
+    }
+
+    this._refreshInFlight$ = from(this.supabase.auth.refreshSession()).pipe(
       map(({ data, error }) => {
         if (error) {
           return {
@@ -662,15 +676,16 @@ export class AuthService implements OnDestroy {
             data: null,
             error,
             message: this.parseErrorMessage(error)
-          };
+          } as AuthResult;
         }
 
         this.handleSessionChange(data.session);
+        this.startSessionMonitor(data.session);
         return {
           success: true,
           data: data.session,
           message: 'Sesión refrescada'
-        };
+        } as AuthResult;
       }),
       catchError((error: AuthError) => {
         return of({
@@ -678,10 +693,79 @@ export class AuthService implements OnDestroy {
           data: null,
           error,
           message: 'Error al refrescar sesión'
-        });
+        } as AuthResult);
       }),
+      finalize(() => {
+        this._refreshInFlight$ = null;
+      }),
+      shareReplay(1),
       takeUntil(this.destroy$)
     );
+
+    return this._refreshInFlight$;
+  }
+
+  /**
+   * Refresca la sesión como Promise (útil para el wrapper de Supabase)
+   */
+  async refreshSessionAsync(): Promise<AuthResult> {
+    return new Promise<AuthResult>((resolve) => {
+      this.refreshSession().subscribe({
+        next: (result) => resolve(result),
+        error: () =>
+          resolve({ success: false, data: null, message: 'Error al refrescar sesión' }),
+      });
+    });
+  }
+
+  /**
+   * Verifica si la sesión actual está expirada o a punto de expirar
+   * @param bufferSeconds - Segundos de margen antes de considerar expirada (default 30)
+   */
+  isSessionExpired(bufferSeconds = 30): boolean {
+    const session = this._session();
+    if (!session?.expires_at) return true;
+    const nowSec = Math.floor(Date.now() / 1000);
+    return session.expires_at - nowSec < bufferSeconds;
+  }
+
+  /**
+   * Monitor proactivo: programa un refresh silencioso 5 min antes de que expire el token.
+   * Si el token ya expiró, intenta refresh inmediato.
+   */
+  private startSessionMonitor(session: Session | null): void {
+    this.stopSessionMonitor();
+    if (!session?.expires_at) return;
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expiresAt = session.expires_at;
+    const remainingSec = expiresAt - nowSec;
+
+    // Si ya expiró, refrescar ahora
+    if (remainingSec <= 0) {
+      this.refreshSession().subscribe();
+      return;
+    }
+
+    // Programar refresh 5 minutos antes de expirar (o ahora si faltan menos de 5 min)
+    const refreshInSec = Math.max(remainingSec - 300, 0);
+    this._sessionMonitorTimer = setTimeout(() => {
+      this.logger.info('Session monitor: refreshing token proactively');
+      this.refreshSession().subscribe({
+        next: (result) => {
+          if (!result.success) {
+            this.logger.warn('Proactive refresh failed, session may expire soon');
+          }
+        },
+      });
+    }, refreshInSec * 1000);
+  }
+
+  private stopSessionMonitor(): void {
+    if (this._sessionMonitorTimer) {
+      clearTimeout(this._sessionMonitorTimer);
+      this._sessionMonitorTimer = null;
+    }
   }
 
   /**
@@ -704,6 +788,7 @@ export class AuthService implements OnDestroy {
    * ngOnDestroy - Limpieza de recursos
    */
   ngOnDestroy(): void {
+    this.stopSessionMonitor();
     this.destroy$.next();
     this.destroy$.complete();
     this.authState$.complete();

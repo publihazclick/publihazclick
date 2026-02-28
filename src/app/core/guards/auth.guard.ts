@@ -242,7 +242,7 @@ export const roleRedirectGuard: CanActivateFn = async (route, state) => {
   const profileService = inject(ProfileService);
   const router = inject(Router);
 
-  // Si esta cargando la sesion, esperar
+  // Si esta cargando la sesion, esperar (con timeout de seguridad)
   if (authService.isLoading()) {
     await new Promise<void>(resolve => {
       const subscription = authService.authStateObservable$.subscribe(authState => {
@@ -251,6 +251,12 @@ export const roleRedirectGuard: CanActivateFn = async (route, state) => {
           resolve();
         }
       });
+
+      // Timeout de seguridad: si no responde en 5 segundos, continuar
+      setTimeout(() => {
+        subscription.unsubscribe();
+        resolve();
+      }, 5000);
     });
   }
 

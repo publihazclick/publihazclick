@@ -14,99 +14,117 @@
   }
 
   @if (!loading()) {
-    <!-- Tarjeta 1 - Fondo blanco, imagen producto abajo-derecha -->
-    <div
-      class="bg-white rounded-lg p-6 relative overflow-hidden flex items-center min-h-[200px]"
-      [class.cursor-pointer]="cards()[0].url"
-      (click)="openUrl(cards()[0].url)"
-    >
-      <div class="relative z-10 w-2/3">
-        <h2 class="text-black font-black text-xl uppercase leading-tight mb-2">
-          {{ cards()[0].name }}
-        </h2>
-        <p class="text-gray-600 text-xs mb-4">
-          {{ cards()[0].description }}
-        </p>
-        <button class="bg-gray-200 text-black text-[10px] font-bold py-1.5 px-3 rounded flex items-center">
-          Get Your Scoop of Bliss Now!
-          <span class="material-symbols-outlined text-sm ml-1">north_east</span>
-        </button>
-      </div>
-      @if (cards()[0].imageUrl) {
-        <img
-          [alt]="cards()[0].name"
-          class="absolute right-0 bottom-0 w-32 h-32 object-contain opacity-80"
-          [src]="cards()[0].imageUrl"
-        />
-      }
-    </div>
-
-    <!-- Tarjeta 2 - Fondo oscuro, imagen completa, texto grande -->
-    <div
-      class="bg-[#1a1a1a] rounded-lg p-6 relative overflow-hidden min-h-[220px] group cursor-pointer"
-      (click)="openUrl(cards()[1].url)"
-    >
-      @if (cards()[1].imageUrl) {
-        <img
-          [alt]="cards()[1].name"
-          class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-700"
-          [src]="cards()[1].imageUrl"
-        />
-      }
-      <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-      <div class="relative z-10 mt-auto flex flex-col justify-end h-full">
-        <h2 class="text-white font-black text-3xl uppercase leading-none">{{ cards()[1].name }}</h2>
-      </div>
-    </div>
-
-    <!-- Tarjeta 3 - Fondo oscuro con borde, imagen circular derecha -->
-    <div
-      class="bg-[#0f0f0f] rounded-lg p-6 relative border border-gray-800 flex items-center min-h-[180px]"
-      [class.cursor-pointer]="cards()[2].url"
-      (click)="openUrl(cards()[2].url)"
-    >
-      <div class="z-10 w-3/4">
-        <div class="flex items-center gap-2 mb-4">
-          <span class="material-symbols-outlined text-gray-500 text-sm">restaurant</span>
-          <span class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Sushi Express</span>
+    @for (card of cards(); track $index; let i = $index) {
+      @if (hasBanner(i)) {
+        <!-- Banner cargado desde admin: imagen completa como anuncio -->
+        <div
+          class="rounded-xl overflow-hidden relative group min-h-[200px] flex"
+          [class.cursor-pointer]="card.url"
+          (click)="openUrl(card.url)"
+        >
+          @if (card.imageUrl) {
+            <img
+              [alt]="card.name"
+              [src]="card.imageUrl"
+              class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          } @else {
+            <div class="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20"></div>
+          }
+          <!-- Overlay gradiente para legibilidad -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          <!-- Contenido sobre la imagen -->
+          <div class="relative z-10 mt-auto p-5 w-full">
+            <h3 class="text-white font-black text-lg leading-tight mb-1">{{ card.name }}</h3>
+            @if (card.description) {
+              <p class="text-white/70 text-xs line-clamp-2">{{ card.description }}</p>
+            }
+            @if (card.url) {
+              <span class="inline-flex items-center gap-1 mt-2 text-primary text-[10px] font-bold uppercase tracking-wider">
+                Ver más
+                <span class="material-symbols-outlined" style="font-size:12px">north_east</span>
+              </span>
+            }
+          </div>
         </div>
-        <h2 class="text-white font-bold text-lg mb-1 leading-tight">{{ cards()[2].name }}</h2>
-        <p class="text-gray-500 text-xs mb-4">{{ cards()[2].description }}</p>
-        <button class="bg-gray-700 hover:bg-gray-600 text-white text-[10px] font-bold py-1.5 px-4 rounded-full transition-colors">
-          ORDER NOW
-        </button>
-      </div>
-      @if (cards()[2].imageUrl) {
-        <img
-          [alt]="cards()[2].name"
-          class="absolute right-[-20px] top-1/2 -translate-y-1/2 w-40 h-40 object-cover rounded-full opacity-40"
-          [src]="cards()[2].imageUrl"
-        />
+      } @else {
+        <!-- Fallbacks cuando no hay banner cargado -->
+        @if (i === 0) {
+          <div
+            class="bg-white rounded-lg p-6 relative overflow-hidden flex items-center min-h-[200px]"
+            [class.cursor-pointer]="card.url"
+            (click)="openUrl(card.url)"
+          >
+            <div class="relative z-10 w-2/3">
+              <h2 class="text-black font-black text-xl uppercase leading-tight mb-2">{{ card.name }}</h2>
+              <p class="text-gray-600 text-xs mb-4">{{ card.description }}</p>
+              <button class="bg-gray-200 text-black text-[10px] font-bold py-1.5 px-3 rounded flex items-center">
+                Get Your Scoop of Bliss Now!
+                <span class="material-symbols-outlined text-sm ml-1">north_east</span>
+              </button>
+            </div>
+            @if (card.imageUrl) {
+              <img [alt]="card.name" class="absolute right-0 bottom-0 w-32 h-32 object-contain opacity-80" [src]="card.imageUrl" />
+            }
+          </div>
+        }
+        @if (i === 1) {
+          <div
+            class="bg-[#1a1a1a] rounded-lg p-6 relative overflow-hidden min-h-[220px] group cursor-pointer"
+            (click)="openUrl(card.url)"
+          >
+            @if (card.imageUrl) {
+              <img [alt]="card.name" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-700" [src]="card.imageUrl" />
+            }
+            <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+            <div class="relative z-10 mt-auto flex flex-col justify-end h-full">
+              <h2 class="text-white font-black text-3xl uppercase leading-none">{{ card.name }}</h2>
+            </div>
+          </div>
+        }
+        @if (i === 2) {
+          <div
+            class="bg-[#0f0f0f] rounded-lg p-6 relative border border-gray-800 flex items-center min-h-[180px]"
+            [class.cursor-pointer]="card.url"
+            (click)="openUrl(card.url)"
+          >
+            <div class="z-10 w-3/4">
+              <div class="flex items-center gap-2 mb-4">
+                <span class="material-symbols-outlined text-gray-500 text-sm">restaurant</span>
+                <span class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Sushi Express</span>
+              </div>
+              <h2 class="text-white font-bold text-lg mb-1 leading-tight">{{ card.name }}</h2>
+              <p class="text-gray-500 text-xs mb-4">{{ card.description }}</p>
+              <button class="bg-gray-700 hover:bg-gray-600 text-white text-[10px] font-bold py-1.5 px-4 rounded-full transition-colors">
+                ORDER NOW
+              </button>
+            </div>
+            @if (card.imageUrl) {
+              <img [alt]="card.name" class="absolute right-[-20px] top-1/2 -translate-y-1/2 w-40 h-40 object-cover rounded-full opacity-40" [src]="card.imageUrl" />
+            }
+          </div>
+        }
+        @if (i === 3) {
+          <div
+            class="bg-white rounded-lg p-8 relative min-h-[220px] flex flex-col justify-center"
+            [class.cursor-pointer]="card.url"
+            (click)="openUrl(card.url)"
+          >
+            <div class="flex items-center gap-2 mb-3">
+              <div class="flex gap-1">
+                <span class="w-2 h-2 bg-black rounded-full"></span>
+                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+              </div>
+              <span class="text-black font-bold text-xs">Elevate Interiors</span>
+            </div>
+            <h2 class="text-black font-extrabold text-xl leading-tight mb-3 uppercase">{{ card.name }}</h2>
+            <p class="text-gray-500 text-[10px] leading-relaxed mb-6 max-w-xs">{{ card.description }}</p>
+            <button class="border border-black text-black font-bold text-[10px] py-2 px-6 w-fit hover:bg-black hover:text-white transition-colors">
+              DISCOVER THE ART OF LIVING
+            </button>
+          </div>
+        }
       }
-    </div>
-
-    <!-- Tarjeta 4 - Fondo blanco minimalista -->
-    <div
-      class="bg-white rounded-lg p-8 relative min-h-[220px] flex flex-col justify-center"
-      [class.cursor-pointer]="cards()[3].url"
-      (click)="openUrl(cards()[3].url)"
-    >
-      <div class="flex items-center gap-2 mb-3">
-        <div class="flex gap-1">
-          <span class="w-2 h-2 bg-black rounded-full"></span>
-          <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
-        </div>
-        <span class="text-black font-bold text-xs">Elevate Interiors</span>
-      </div>
-      <h2 class="text-black font-extrabold text-xl leading-tight mb-3 uppercase">
-        {{ cards()[3].name }}
-      </h2>
-      <p class="text-gray-500 text-[10px] leading-relaxed mb-6 max-w-xs">
-        {{ cards()[3].description }}
-      </p>
-      <button class="border border-black text-black font-bold text-[10px] py-2 px-6 w-fit hover:bg-black hover:text-white transition-colors">
-        DISCOVER THE ART OF LIVING
-      </button>
-    </div>
+    }
   }
 </div>

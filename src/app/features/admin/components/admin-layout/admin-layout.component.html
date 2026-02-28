@@ -15,11 +15,7 @@
       class="flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
       [title]="sidebarCollapsed() ? 'Expandir menú' : 'Colapsar menú'"
     >
-      @if (sidebarCollapsed()) {
-        <span class="material-symbols-outlined text-2xl">chevron_right</span>
-      } @else {
-        <span class="material-symbols-outlined text-2xl">chevron_left</span>
-      }
+      <span class="material-symbols-outlined text-2xl">menu</span>
     </button>
   </div>
   <div class="sidebar-scroll overflow-y-auto flex-1 p-2 lg:p-4">

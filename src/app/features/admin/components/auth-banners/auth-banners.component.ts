@@ -1,8 +1,9 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminBannerService } from '../../../../core/services/admin-banner.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { StorageService } from '../../../../core/services/storage.service';
 import type { BannerAd, CreateBannerAdData } from '../../../../core/models/admin.model';
 
 interface BannerFormData {
@@ -31,11 +32,15 @@ const MAX_AUTH_BANNERS = 4;
 export class AdminAuthBannersComponent implements OnInit {
   private readonly bannerService = inject(AdminBannerService);
   private readonly profileService = inject(ProfileService);
+  private readonly storageService = inject(StorageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly banners = signal<BannerAd[]>([]);
   readonly loading = signal<boolean>(true);
   readonly saving = signal<boolean>(false);
   readonly deleting = signal<string | null>(null);
+  readonly uploadingImage = signal<boolean>(false);
+  readonly dragging = signal<boolean>(false);
   readonly successMessage = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
 
@@ -170,6 +175,60 @@ export class AdminAuthBannersComponent implements OnInit {
     } finally {
       this.deleting.set(null);
     }
+  }
+
+  async onImageSelected(event: Event): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) await this.uploadFile(file);
+    (event.target as HTMLInputElement).value = '';
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragging.set(true);
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragging.set(false);
+  }
+
+  async onDrop(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragging.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) await this.uploadFile(file);
+  }
+
+  private async uploadFile(file: File): Promise<void> {
+    if (!this.storageService.isValidImage(file)) {
+      this.showError('Formato no válido. Usa JPG, PNG, GIF o WebP');
+      return;
+    }
+    if (!this.storageService.isValidSize(file, 5)) {
+      this.showError('La imagen no puede superar 5 MB');
+      return;
+    }
+    this.uploadingImage.set(true);
+    this.cdr.markForCheck();
+    try {
+      const result = await this.storageService.uploadBannerImage(file);
+      if (result.success && result.url) {
+        this.updateField('image_url', result.url);
+      } else {
+        this.showError(result.error ?? 'Error al subir la imagen');
+      }
+    } finally {
+      this.uploadingImage.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  removeImage(): void {
+    this.updateField('image_url', '');
   }
 
   canAddMore(): boolean {

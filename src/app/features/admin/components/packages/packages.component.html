@@ -646,8 +646,16 @@
                             Rechazar
                           </button>
                         </div>
-                      } @else {
-                        <span class="text-xs text-slate-600 text-right block">Sin acciones</span>
+                      } @else if (isResolvedPayment(p.status)) {
+                        <div class="flex items-center justify-end">
+                          <button
+                            (click)="openDeletePaymentModal(p)"
+                            class="flex items-center gap-1 px-3 py-1.5 bg-slate-500/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg text-xs font-bold transition-colors border border-white/5 hover:border-rose-500/30"
+                          >
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                            Eliminar
+                          </button>
+                        </div>
                       }
                     </td>
                   </tr>
@@ -696,6 +704,16 @@
                     Rechazar
                   </button>
                 </div>
+              } @else if (isResolvedPayment(p.status)) {
+                <div class="pt-1">
+                  <button
+                    (click)="openDeletePaymentModal(p)"
+                    class="w-full flex items-center justify-center gap-1.5 py-2 bg-slate-500/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-xl text-xs font-bold transition-colors border border-white/5 hover:border-rose-500/30"
+                  >
+                    <span class="material-symbols-outlined text-sm">delete</span>
+                    Eliminar
+                  </button>
+                </div>
               }
             </div>
           }
@@ -740,6 +758,45 @@
           >
             <span class="material-symbols-outlined text-lg">cancel</span>
             Confirmar rechazo
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ MODAL ELIMINAR PAGO ═══ -->
+  @if (deletePaymentTarget()) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-rose-400">delete</span>
+            Eliminar Pago
+          </h2>
+          <button (click)="closeDeletePaymentModal()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="bg-rose-500/5 border border-rose-500/20 rounded-xl p-4">
+            <p class="text-sm text-slate-300">Vas a eliminar permanentemente el registro de pago de <span class="font-bold text-white">{{ deletePaymentTarget()?.username ?? 'usuario' }}</span> por el paquete <span class="font-bold text-white">{{ deletePaymentTarget()?.package_name }}</span>.</p>
+          </div>
+          <p class="text-xs text-slate-500">Esta acción no se puede deshacer. El pago ya fue {{ getPaymentStatusLabel(deletePaymentTarget()?.status ?? '').toLowerCase() }}.</p>
+        </div>
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+          <button (click)="closeDeletePaymentModal()" class="px-4 py-2.5 border border-white/10 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 transition-colors">Cancelar</button>
+          <button
+            (click)="confirmDeletePayment()"
+            [disabled]="deletingPayment()"
+            class="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
+          >
+            @if (deletingPayment()) {
+              <span class="material-symbols-outlined text-lg animate-spin">sync</span>
+              Eliminando...
+            } @else {
+              <span class="material-symbols-outlined text-lg">delete</span>
+              Confirmar eliminación
+            }
           </button>
         </div>
       </div>

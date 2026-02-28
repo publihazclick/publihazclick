@@ -37,7 +37,12 @@ export class SocialProfileComponent implements OnInit {
   readonly showEditPanel = signal(false);
   readonly saving = signal(false);
   readonly uploadingBanner = signal(false);
+  readonly uploadingGallery = signal(false);
   readonly bannerPreview = signal<string | null>(null);
+  readonly galleryImages = signal<string[]>([]);
+
+  // ── Galería lightbox ─────────────────────────────────────────
+  readonly lightboxImage = signal<string | null>(null);
 
   readonly isOwnProfile = computed(() => {
     const current = this.profileService.profile();
@@ -58,26 +63,29 @@ export class SocialProfileComponent implements OnInit {
     website:       ['', [Validators.maxLength(200)]],
     whatsapp:      ['', [Validators.maxLength(20)]],
     location:      ['', [Validators.maxLength(100)]],
+    instagram:     ['', [Validators.maxLength(100)]],
+    facebook:      ['', [Validators.maxLength(200)]],
+    tiktok:        ['', [Validators.maxLength(100)]],
+    twitter:       ['', [Validators.maxLength(100)]],
   });
 
   // ── Init ─────────────────────────────────────────────────────
   ngOnInit(): void {
-    const userId = this.route.snapshot.paramMap.get('userId');
-    if (userId) this.loadProfile(userId);
+    const username = this.route.snapshot.paramMap.get('username');
+    if (username) this.loadProfileByUsername(username);
     else this.error.set('Perfil no encontrado');
   }
 
-  async loadProfile(userId: string): Promise<void> {
+  async loadProfileByUsername(username: string): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [card, biz] = await Promise.all([
-        this.socialService.getUserProfile(userId),
-        this.socialService.getBusinessProfile(userId),
-      ]);
+      const card = await this.socialService.getUserProfileByUsername(username);
       if (!card) { this.error.set('Perfil no encontrado'); return; }
+      const biz = await this.socialService.getBusinessProfile(card.id);
       this.card.set(card);
       this.business.set(biz);
+      this.galleryImages.set(biz?.gallery_images ?? []);
     } catch {
       this.error.set('Error al cargar el perfil');
     } finally {
@@ -97,8 +105,13 @@ export class SocialProfileComponent implements OnInit {
       website:       biz?.website ?? '',
       whatsapp:      biz?.whatsapp ?? '',
       location:      biz?.location ?? c?.location ?? '',
+      instagram:     biz?.instagram ?? '',
+      facebook:      biz?.facebook ?? '',
+      tiktok:        biz?.tiktok ?? '',
+      twitter:       biz?.twitter ?? '',
     });
     this.bannerPreview.set(biz?.banner_url ?? null);
+    this.galleryImages.set(biz?.gallery_images ?? []);
     this.showEditPanel.set(true);
   }
 
@@ -131,6 +144,40 @@ export class SocialProfileComponent implements OnInit {
     }
   }
 
+  async onGalleryImageSelected(event: Event): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      this.showToast('La imagen no puede superar 5 MB', 'error');
+      return;
+    }
+    if (this.galleryImages().length >= 10) {
+      this.showToast('Máximo 10 imágenes en la galería', 'error');
+      return;
+    }
+    this.uploadingGallery.set(true);
+    this.cdr.markForCheck();
+    try {
+      const result = await this.storageService.uploadImage(
+        this.storageService.BANNERS_BUCKET, file, 'social-gallery'
+      );
+      if (result.success && result.url) {
+        this.galleryImages.update(imgs => [...imgs, result.url!]);
+      } else {
+        this.showToast(result.error ?? 'Error al subir la imagen', 'error');
+      }
+    } finally {
+      this.uploadingGallery.set(false);
+      // Reset file input
+      (event.target as HTMLInputElement).value = '';
+      this.cdr.markForCheck();
+    }
+  }
+
+  removeGalleryImage(index: number): void {
+    this.galleryImages.update(imgs => imgs.filter((_, i) => i !== index));
+  }
+
   async saveProfile(): Promise<void> {
     if (this.editForm.invalid || this.saving()) return;
     this.saving.set(true);
@@ -144,14 +191,20 @@ export class SocialProfileComponent implements OnInit {
         website:       values.website?.trim()        || null,
         whatsapp:      values.whatsapp?.trim()       || null,
         location:      values.location?.trim()       || null,
+        instagram:     values.instagram?.trim()      || null,
+        facebook:      values.facebook?.trim()       || null,
+        tiktok:        values.tiktok?.trim()         || null,
+        twitter:       values.twitter?.trim()        || null,
         banner_url:    this.bannerPreview()          ?? this.business()?.banner_url ?? null,
+        gallery_images: this.galleryImages(),
       };
       await this.socialService.upsertBusinessProfile(payload);
 
       // Actualizar estado local
       this.business.update(prev => ({
-        ...(prev ?? { user_id: '', created_at: '', updated_at: '' }),
+        ...(prev ?? { user_id: '', created_at: '', updated_at: '', gallery_images: [] }),
         ...payload,
+        gallery_images: this.galleryImages(),
         updated_at: new Date().toISOString(),
       } as SocialBusinessProfile));
       this.card.update(prev => prev ? {
@@ -220,6 +273,10 @@ export class SocialProfileComponent implements OnInit {
 
   goBack(): void { history.back(); }
 
+  // ── Lightbox ────────────────────────────────────────────────
+  openLightbox(url: string): void { this.lightboxImage.set(url); }
+  closeLightbox(): void { this.lightboxImage.set(null); }
+
   // ── Helpers ───────────────────────────────────────────────────
   private showToast(message: string, type: 'success' | 'error'): void {
     this.toast.set({ message, type });
@@ -270,7 +327,52 @@ export class SocialProfileComponent implements OnInit {
     return num.startsWith('+') ? num : `+${num}`;
   }
 
+  getWhatsappLink(num: string | null): string {
+    if (!num) return '#';
+    const clean = num.replace(/[^0-9]/g, '');
+    return `https://wa.me/${clean}`;
+  }
+
+  getSocialUrl(platform: string, handle: string | null): string {
+    if (!handle) return '#';
+    // Si ya es una URL completa
+    if (handle.startsWith('http')) return handle;
+    const clean = handle.replace(/^@/, '');
+    switch (platform) {
+      case 'instagram': return `https://instagram.com/${clean}`;
+      case 'facebook':  return handle.startsWith('http') ? handle : `https://facebook.com/${clean}`;
+      case 'tiktok':    return `https://tiktok.com/@${clean}`;
+      case 'twitter':   return `https://x.com/${clean}`;
+      default: return '#';
+    }
+  }
+
+  formatSocialHandle(handle: string | null): string {
+    if (!handle) return '';
+    if (handle.startsWith('http')) {
+      return handle.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+    }
+    return handle.startsWith('@') ? handle : `@${handle}`;
+  }
+
   charCount(field: string): number {
     return this.editForm.get(field)?.value?.length ?? 0;
+  }
+
+  hasContactInfo(): boolean {
+    const biz = this.business();
+    const c = this.card();
+    return !!(biz?.website || biz?.whatsapp || biz?.category || biz?.location || c?.category || c?.location);
+  }
+
+  hasSocialLinks(): boolean {
+    const biz = this.business();
+    return !!(biz?.instagram || biz?.facebook || biz?.tiktok || biz?.twitter);
+  }
+
+  hasAnyContent(): boolean {
+    const c = this.card();
+    const biz = this.business();
+    return !!(c?.description || this.hasContactInfo() || this.hasSocialLinks() || (biz?.gallery_images?.length ?? 0) > 0);
   }
 }

@@ -154,6 +154,18 @@ export class SocialService {
     } as AdvertiserCard;
   }
 
+  async getUserProfileByUsername(username: string): Promise<AdvertiserCard | null> {
+    const { data: profile, error } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error || !profile) return null;
+    return this.getUserProfile((profile as any).id);
+  }
+
   // ============================================================
   // CONEXIONES
   // ============================================================

@@ -14,6 +14,11 @@ export interface SocialBusinessProfile {
   whatsapp: string | null;
   location: string | null;
   banner_url: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
+  twitter: string | null;
+  gallery_images: string[];
   created_at: string;
   updated_at: string;
 }

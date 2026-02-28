@@ -1,27 +1,27 @@
 @if (!loading() && banners().length > 0) {
-  <div class="relative overflow-hidden" style="height: clamp(180px, 25vw, 300px);">
+  <div class="relative overflow-hidden bg-black">
 
     <!-- Slides track -->
     <div
-      class="flex h-full transition-transform duration-700 ease-out"
+      class="flex transition-transform duration-700 ease-out"
       [style.transform]="sliderTransform()"
     >
       @for (banner of banners(); track banner.id) {
-        <div class="w-full h-full flex-shrink-0 relative">
+        <div class="w-full flex-shrink-0 relative">
 
           <!-- Background: image or gradient fallback -->
           @if (banner.image_url) {
             <img
               [src]="banner.image_url"
               [alt]="banner.name"
-              class="absolute inset-0 w-full h-full object-cover"
+              class="w-full h-auto block"
             >
           } @else {
-            <div class="absolute inset-0 bg-gradient-to-r from-cyan-700 to-blue-800"></div>
+            <div class="w-full aspect-[3/1] bg-gradient-to-r from-cyan-700 to-blue-800"></div>
           }
 
           <!-- Overlay -->
-          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
 
           <!-- Content -->
           <div class="absolute inset-0 flex flex-col justify-end p-4 md:p-6">

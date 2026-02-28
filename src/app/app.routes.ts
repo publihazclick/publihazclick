@@ -84,7 +84,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'messages',
+        loadComponent: () => import('./features/social/components/profile-redirect/profile-redirect.component').then(m => m.SocialProfileRedirectComponent),
         pathMatch: 'full'
       },
       {
@@ -104,7 +104,7 @@ export const routes: Routes = [
         loadComponent: () => import('./features/social/components/connections/connections.component').then(m => m.SocialConnectionsComponent)
       },
       {
-        path: 'profile/:userId',
+        path: ':username',
         loadComponent: () => import('./features/social/components/profile/profile.component').then(m => m.SocialProfileComponent)
       }
     ]

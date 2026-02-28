@@ -222,6 +222,25 @@ export class AdminPackageService {
   }
 
   /**
+   * Eliminar un pago resuelto (approved, declined, voided, error)
+   */
+  async deletePayment(paymentId: string): Promise<boolean> {
+    try {
+      const { error } = await this.supabase
+        .from('payments')
+        .delete()
+        .eq('id', paymentId)
+        .neq('status', 'pending');
+
+      if (error) throw error;
+      return true;
+    } catch (error: any) {
+      this.logger.error('Error deleting payment');
+      return false;
+    }
+  }
+
+  /**
    * Contar pagos pendientes (para badge en sidebar)
    */
   async getPendingPaymentsCount(): Promise<number> {

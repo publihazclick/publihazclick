@@ -93,6 +93,10 @@ export class AdminPackagesComponent implements OnInit {
   readonly rejectTarget = signal<Payment | null>(null);
   readonly rejectReason = signal<string>('');
 
+  // Eliminar pago
+  readonly deletePaymentTarget = signal<Payment | null>(null);
+  readonly deletingPayment = signal<boolean>(false);
+
   // Revocar paquete
   readonly revokeTarget = signal<UserPackage | null>(null);
   readonly revoking = signal<boolean>(false);
@@ -567,6 +571,39 @@ export class AdminPackagesComponent implements OnInit {
       this.closeRevokeModal();
     } finally {
       this.revoking.set(false);
+    }
+  }
+
+  // ─── Eliminar Pago Resuelto ─────────────────────────────────────────────
+
+  isResolvedPayment(status: PaymentStatus | string): boolean {
+    return status !== 'pending';
+  }
+
+  openDeletePaymentModal(payment: Payment): void {
+    this.deletePaymentTarget.set(payment);
+  }
+
+  closeDeletePaymentModal(): void {
+    this.deletePaymentTarget.set(null);
+  }
+
+  async confirmDeletePayment(): Promise<void> {
+    const target = this.deletePaymentTarget();
+    if (!target) return;
+
+    this.deletingPayment.set(true);
+    try {
+      const ok = await this.packageService.deletePayment(target.id);
+      if (!ok) throw new Error('No se pudo eliminar el pago');
+      this.showSuccessMessage(`Pago de ${target.username ?? 'usuario'} eliminado.`);
+      this.closeDeletePaymentModal();
+      await this.loadPayments();
+    } catch (err: any) {
+      this.error.set(err.message || 'Error al eliminar el pago');
+      this.closeDeletePaymentModal();
+    } finally {
+      this.deletingPayment.set(false);
     }
   }
 

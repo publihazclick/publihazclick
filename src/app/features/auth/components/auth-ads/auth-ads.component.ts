@@ -82,6 +82,10 @@ export class AuthAdsComponent implements OnInit {
     }
   }
 
+  hasBanner(index: number): boolean {
+    return !!this.banners()[index];
+  }
+
   openUrl(url: string): void {
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');

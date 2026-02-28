@@ -285,25 +285,69 @@
           ></textarea>
         </div>
 
-        <!-- URL de imagen -->
+        <!-- Imagen del banner -->
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">URL de imagen</label>
-          <input
-            type="url"
-            [value]="formData().image_url"
-            (input)="updateField('image_url', $any($event.target).value)"
-            placeholder="https://ejemplo.com/imagen.jpg"
-            class="w-full bg-zinc-800 border border-white/10 focus:border-primary/50 text-white text-sm rounded-lg px-4 py-2.5 outline-none transition-colors placeholder-slate-600"
-          />
-          <!-- Preview de imagen -->
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">Imagen del banner</label>
+
           @if (formData().image_url) {
-            <div class="mt-2 h-28 rounded-lg overflow-hidden border border-white/10">
+            <!-- Preview con opción de reemplazar -->
+            <div class="relative rounded-xl overflow-hidden border border-white/10 group">
               <img
                 [src]="formData().image_url"
                 alt="Preview"
-                class="w-full h-full object-cover"
-                (error)="$any($event.target).style.display='none'"
+                class="w-full h-40 object-cover"
               />
+              <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                <label
+                  class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold py-2 px-4 rounded-lg cursor-pointer transition-colors"
+                >
+                  <span class="material-symbols-outlined" style="font-size:16px">swap_horiz</span>
+                  Reemplazar
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    class="hidden"
+                    (change)="onImageSelected($event)"
+                  />
+                </label>
+                <button
+                  type="button"
+                  (click)="removeImage()"
+                  class="flex items-center gap-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs font-bold py-2 px-4 rounded-lg transition-colors"
+                >
+                  <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+                  Quitar
+                </button>
+              </div>
+            </div>
+          } @else {
+            <!-- Zona de drag & drop / upload -->
+            <div
+              class="relative border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer min-h-[140px]"
+              [class.border-primary/50]="dragging()"
+              [class.bg-primary/5]="dragging()"
+              [class.border-white/10]="!dragging()"
+              [class.hover:border-white/20]="!dragging()"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event)"
+              (click)="fileInput.click()"
+            >
+              <input
+                #fileInput
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                class="hidden"
+                (change)="onImageSelected($event)"
+              />
+              @if (uploadingImage()) {
+                <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-xs text-primary font-bold">Subiendo imagen...</p>
+              } @else {
+                <span class="material-symbols-outlined text-3xl text-slate-600">cloud_upload</span>
+                <p class="text-sm text-slate-400 font-semibold">Arrastra una imagen o haz clic para seleccionar</p>
+                <p class="text-[10px] text-slate-600">JPG, PNG, GIF o WebP · Máx. 5 MB</p>
+              }
             </div>
           }
         </div>

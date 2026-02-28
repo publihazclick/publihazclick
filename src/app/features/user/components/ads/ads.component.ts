@@ -8,7 +8,8 @@ import { StorageService } from '../../../../core/services/storage.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { UserTrackingService } from '../../../../core/services/user-tracking.service';
 import { ProfileService } from '../../../../core/services/profile.service';
-import { getSupabaseClient } from '../../../../core/supabase.client';
+import { SupabaseSessionService } from '../../../../core/services/supabase-session.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { PtcModalComponent, PtcAd } from '../../../../components/ptc-modal/ptc-modal.component';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 
@@ -40,6 +41,8 @@ export class UserAdsComponent implements OnInit {
   protected readonly currencyService = inject(CurrencyService);
   protected readonly userTracking = inject(UserTrackingService);
   private readonly profileService = inject(ProfileService);
+  private readonly sessionService = inject(SupabaseSessionService);
+  private readonly authService = inject(AuthService);
 
   readonly profile = this.profileService.profile;
   readonly isAdvertiser = signal(false);
@@ -162,22 +165,25 @@ export class UserAdsComponent implements OnInit {
 
   private async creditRewardToDb(taskId: string): Promise<void> {
     try {
-      const supabase = getSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase.rpc('record_ptc_click', {
-        p_user_id: user.id,
-        p_task_id: taskId,
-      });
-
-      if (error || (data && !data.success)) {
-        // PTC click recording failed - will retry on next profile refresh
+      const user = this.authService.getCurrentUser();
+      if (!user) {
+        this.error.set('No se pudo acreditar: sesión no encontrada. Inicia sesión de nuevo.');
+        return;
       }
-    } catch {
-      // PTC click recording failed
+
+      const data = await this.sessionService.callRpc<{ success: boolean; error?: string }>(
+        'record_ptc_click',
+        { p_user_id: user.id, p_task_id: taskId }
+      );
+
+      if (data && !data.success) {
+        console.warn('RPC record_ptc_click rejected:', data.error);
+        this.error.set(data.error || 'No se pudo acreditar la recompensa');
+      }
+    } catch (err: any) {
+      console.error('creditRewardToDb error:', err);
+      this.error.set(err.message || 'Error de conexión al acreditar recompensa');
     } finally {
-      // Siempre refrescar perfil para mostrar saldo real desde DB
       this.profileService.getCurrentProfile().catch(() => {});
     }
   }

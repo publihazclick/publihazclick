@@ -8,6 +8,16 @@
   </div>
 }
 
+<!-- Lightbox -->
+@if (lightboxImage()) {
+  <div class="fixed inset-0 z-[90] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" (click)="closeLightbox()">
+    <button class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+    <img [src]="lightboxImage()!" alt="Imagen" class="max-w-full max-h-[90vh] rounded-2xl object-contain" (click)="$event.stopPropagation()">
+  </div>
+}
+
 <div class="p-4 lg:p-6 max-w-3xl mx-auto w-full">
 
   <!-- Botón volver -->
@@ -17,7 +27,7 @@
     Volver
   </button>
 
-  <!-- ── LOADING ───────────────────────────────────────────── -->
+  <!-- LOADING -->
   @if (loading()) {
     <div>
       <div class="h-40 rounded-2xl bg-white/5 animate-pulse mb-16"></div>
@@ -25,12 +35,11 @@
         <div class="h-7 w-48 bg-white/5 rounded-lg animate-pulse"></div>
         <div class="h-4 w-32 bg-white/5 rounded animate-pulse"></div>
         <div class="h-32 bg-white/5 rounded-2xl animate-pulse mt-4"></div>
-        <div class="h-40 bg-white/5 rounded-2xl animate-pulse"></div>
       </div>
     </div>
   }
 
-  <!-- ── ERROR ─────────────────────────────────────────────── -->
+  <!-- ERROR -->
   @if (error() && !loading()) {
     <div class="flex flex-col items-center justify-center py-20 text-center">
       <span class="material-symbols-outlined text-slate-600 mb-4" style="font-size:56px">person_off</span>
@@ -42,27 +51,21 @@
     </div>
   }
 
-  <!-- ── PERFIL ─────────────────────────────────────────────── -->
+  <!-- PERFIL -->
   @if (!loading() && !error() && card(); as c) {
 
     <!-- BANNER + AVATAR -->
     <div class="relative mb-16">
-
-      <!-- Banner -->
       <div class="h-44 rounded-2xl overflow-hidden">
         @if (business()?.banner_url) {
           <img [src]="business()!.banner_url" alt="banner" class="w-full h-full object-cover">
         } @else {
-          <div class="w-full h-full bg-gradient-to-br opacity-80"
-            [ngClass]="getGradientClasses(c.role)"></div>
-          <!-- Patrón decorativo -->
+          <div class="w-full h-full bg-gradient-to-br opacity-80" [ngClass]="getGradientClasses(c.role)"></div>
           <div class="absolute inset-0 rounded-2xl"
             style="background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.04) 0%, transparent 60%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 50%)">
           </div>
         }
       </div>
-
-      <!-- Avatar (superpuesto al banner) -->
       <div class="absolute -bottom-12 left-6">
         <div class="w-24 h-24 rounded-2xl border-4 border-[#0a0a0a] overflow-hidden shadow-2xl">
           @if (c.avatar_url) {
@@ -75,8 +78,6 @@
           }
         </div>
       </div>
-
-      <!-- Botón editar (solo perfil propio) -->
       @if (isOwnProfile()) {
         <div class="absolute bottom-3 right-4">
           <button (click)="openEditPanel()"
@@ -88,9 +89,11 @@
       }
     </div>
 
-    <!-- NOMBRE + ACCIONES -->
-    <div class="flex items-start justify-between gap-4 mb-5">
-      <div class="flex-1 min-w-0">
+    <!-- NOMBRE + MI NEGOCIO (lado a lado) -->
+    <div class="grid grid-cols-1 md:grid-cols-[35%_1fr] gap-5 mb-5">
+
+      <!-- Columna izquierda: datos del perfil -->
+      <div>
         <h1 class="text-2xl font-black text-white truncate">{{ c.full_name || c.username }}</h1>
         <p class="text-sm text-slate-500 mt-0.5">&#64;{{ c.username }}</p>
         <div class="flex flex-wrap items-center gap-2 mt-2">
@@ -98,83 +101,79 @@
             [ngClass]="getRoleBadgeClass(c.role)">
             {{ getRoleLabel(c.role) }}
           </span>
-          @if (c.location) {
+          @if (c.location || business()?.location) {
             <span class="flex items-center gap-1 text-xs text-slate-500">
               <span class="material-symbols-outlined" style="font-size:13px">location_on</span>
-              {{ c.location }}
+              {{ business()?.location || c.location }}
             </span>
           }
-          @if (c.category) {
+          @if (c.category || business()?.category) {
             <span class="flex items-center gap-1 text-xs text-slate-500">
               <span class="material-symbols-outlined" style="font-size:13px">category</span>
-              {{ c.category }}
+              {{ business()?.category || c.category }}
             </span>
           }
         </div>
+
+        <!-- Acciones (perfil ajeno) -->
+        @if (!isOwnProfile()) {
+          <div class="flex flex-wrap gap-2 mt-4">
+            @if (c.connection_status === 'accepted') {
+              <button (click)="openChat()" [disabled]="actionLoading()"
+                class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-bold border border-primary/20 transition-all disabled:opacity-50 whitespace-nowrap">
+                <span class="material-symbols-outlined" style="font-size:16px">chat</span>
+                {{ actionLoading() ? 'Abriendo...' : 'Enviar mensaje' }}
+              </button>
+            } @else if (c.connection_status === 'pending' && !c.is_requester) {
+              <button (click)="acceptRequest()" [disabled]="actionLoading()"
+                class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-bold border border-emerald-500/20 transition-all disabled:opacity-50 whitespace-nowrap">
+                <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
+                {{ actionLoading() ? 'Aceptando...' : 'Aceptar solicitud' }}
+              </button>
+            } @else if (c.connection_status === 'pending') {
+              <div class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 text-amber-400 text-sm font-bold border border-amber-500/20 whitespace-nowrap">
+                <span class="material-symbols-outlined" style="font-size:16px">schedule</span>
+                Solicitud enviada
+              </div>
+            } @else {
+              <button (click)="sendRequest()" [disabled]="actionLoading()"
+                class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-sm font-bold border border-accent/20 transition-all disabled:opacity-50 whitespace-nowrap">
+                <span class="material-symbols-outlined" style="font-size:16px">person_add</span>
+                {{ actionLoading() ? 'Enviando...' : 'Conectar' }}
+              </button>
+            }
+          </div>
+        }
       </div>
 
-      <!-- Botones de acción (solo perfil ajeno) -->
-      @if (!isOwnProfile()) {
-        <div class="flex flex-col sm:flex-row gap-2 flex-shrink-0">
-          @if (c.connection_status === 'accepted') {
-            <button
-              (click)="openChat()"
-              [disabled]="actionLoading()"
-              class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-bold border border-primary/20 transition-all disabled:opacity-50 whitespace-nowrap">
-              <span class="material-symbols-outlined" style="font-size:16px">chat</span>
-              {{ actionLoading() ? 'Abriendo...' : 'Enviar mensaje' }}
-            </button>
-          } @else if (c.connection_status === 'pending' && !c.is_requester) {
-            <button
-              (click)="acceptRequest()"
-              [disabled]="actionLoading()"
-              class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-bold border border-emerald-500/20 transition-all disabled:opacity-50 whitespace-nowrap">
-              <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
-              {{ actionLoading() ? 'Aceptando...' : 'Aceptar solicitud' }}
-            </button>
-          } @else if (c.connection_status === 'pending') {
-            <div class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 text-amber-400 text-sm font-bold border border-amber-500/20 whitespace-nowrap">
-              <span class="material-symbols-outlined" style="font-size:16px">schedule</span>
-              Solicitud enviada
-            </div>
+      <!-- Columna derecha: Mi Negocio -->
+      @if (c.description || business()?.business_name || c.business_name) {
+        <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+          @if (business()?.business_name || c.business_name) {
+            <h2 class="text-lg font-black text-primary mb-2 flex items-center gap-2">
+              <span class="material-symbols-outlined" style="font-size:20px">storefront</span>
+              {{ business()?.business_name || c.business_name }}
+            </h2>
           } @else {
-            <button
-              (click)="sendRequest()"
-              [disabled]="actionLoading()"
-              class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-sm font-bold border border-accent/20 transition-all disabled:opacity-50 whitespace-nowrap">
-              <span class="material-symbols-outlined" style="font-size:16px">person_add</span>
-              {{ actionLoading() ? 'Enviando...' : 'Conectar' }}
-            </button>
+            <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary" style="font-size:16px">storefront</span>
+              Mi Negocio
+            </h2>
+          }
+          @if (c.description) {
+            <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{{ c.description }}</p>
           }
         </div>
       }
+
     </div>
 
-    <!-- NOMBRE DEL NEGOCIO -->
-    @if (business()?.business_name || c.business_name) {
-      <div class="flex items-center gap-2 mb-5">
-        <span class="material-symbols-outlined text-primary" style="font-size:18px">storefront</span>
-        <p class="text-base font-bold text-primary">{{ business()?.business_name || c.business_name }}</p>
-      </div>
-    }
-
-    <!-- SOBRE MÍ -->
-    @if (c.description) {
-      <div class="bg-card-dark rounded-2xl border border-white/5 p-5 mb-4">
-        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary" style="font-size:16px">person</span>
-          Sobre mí
-        </h2>
-        <p class="text-sm text-slate-300 leading-relaxed">{{ c.description }}</p>
-      </div>
-    }
-
-    <!-- NEGOCIO Y SERVICIOS -->
-    @if (business()?.website || business()?.whatsapp || business()?.category || business()?.location || c.category) {
+    <!-- INFORMACIÓN Y REDES -->
+    @if (hasContactInfo() || hasSocialLinks()) {
       <div class="bg-card-dark rounded-2xl border border-white/5 p-5 mb-4">
         <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
           <span class="material-symbols-outlined text-accent" style="font-size:16px">business_center</span>
-          Negocio y Servicios
+          Información y Redes
         </h2>
         <div class="divide-y divide-white/5">
 
@@ -190,19 +189,15 @@
             </div>
           }
 
-          @if (business()?.website) {
+          @if (business()?.location || c.location) {
             <div class="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-              <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-primary" style="font-size:18px">language</span>
+              <div class="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-slate-400" style="font-size:18px">location_on</span>
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest">Sitio web</p>
-                <a [href]="business()?.website ?? ''" target="_blank" rel="noopener noreferrer"
-                  class="text-sm text-primary hover:text-white transition-colors truncate block">
-                  {{ formatWebsite(business()?.website ?? null) }}
-                </a>
+              <div>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest">Dirección</p>
+                <p class="text-sm text-white font-medium">{{ business()?.location || c.location }}</p>
               </div>
-              <span class="material-symbols-outlined text-slate-600" style="font-size:14px">open_in_new</span>
             </div>
           }
 
@@ -213,8 +208,7 @@
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-[10px] text-slate-500 uppercase tracking-widest">WhatsApp</p>
-                <a [href]="'https://wa.me/' + (business()?.whatsapp ?? '').replace(/[^0-9]/g, '')"
-                  target="_blank" rel="noopener noreferrer"
+                <a [href]="getWhatsappLink(business()?.whatsapp ?? null)" target="_blank" rel="noopener noreferrer"
                   class="text-sm text-emerald-400 hover:text-white transition-colors">
                   {{ formatWhatsapp(business()?.whatsapp ?? null) }}
                 </a>
@@ -223,47 +217,76 @@
             </div>
           }
 
-          @if (business()?.location || c.location) {
-            <div class="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+          @if (business()?.facebook) {
+            <a [href]="getSocialUrl('facebook', business()?.facebook ?? null)" target="_blank" rel="noopener noreferrer"
+              class="flex items-center gap-4 py-3 first:pt-0 last:pb-0 hover:bg-white/3 -mx-5 px-5 transition-colors">
+              <div class="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-blue-400" style="font-size:18px">group</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest">Facebook</p>
+                <p class="text-sm text-blue-300 truncate">{{ formatSocialHandle(business()?.facebook ?? null) }}</p>
+              </div>
+              <span class="material-symbols-outlined text-slate-600" style="font-size:14px">open_in_new</span>
+            </a>
+          }
+
+          @if (business()?.instagram) {
+            <a [href]="getSocialUrl('instagram', business()?.instagram ?? null)" target="_blank" rel="noopener noreferrer"
+              class="flex items-center gap-4 py-3 first:pt-0 last:pb-0 hover:bg-white/3 -mx-5 px-5 transition-colors">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-pink-500/15 to-purple-500/15 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-pink-400" style="font-size:18px">photo_camera</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest">Instagram</p>
+                <p class="text-sm text-pink-300 truncate">{{ formatSocialHandle(business()?.instagram ?? null) }}</p>
+              </div>
+              <span class="material-symbols-outlined text-slate-600" style="font-size:14px">open_in_new</span>
+            </a>
+          }
+
+          @if (business()?.tiktok) {
+            <a [href]="getSocialUrl('tiktok', business()?.tiktok ?? null)" target="_blank" rel="noopener noreferrer"
+              class="flex items-center gap-4 py-3 first:pt-0 last:pb-0 hover:bg-white/3 -mx-5 px-5 transition-colors">
               <div class="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-slate-400" style="font-size:18px">location_on</span>
+                <span class="material-symbols-outlined text-white" style="font-size:18px">music_note</span>
               </div>
-              <div>
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest">Ubicación</p>
-                <p class="text-sm text-white font-medium">{{ business()?.location || c.location }}</p>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest">TikTok</p>
+                <p class="text-sm text-slate-300 truncate">{{ formatSocialHandle(business()?.tiktok ?? null) }}</p>
               </div>
-            </div>
+              <span class="material-symbols-outlined text-slate-600" style="font-size:14px">open_in_new</span>
+            </a>
           }
 
         </div>
       </div>
     }
 
-    <!-- ESTADÍSTICAS -->
-    <div class="grid grid-cols-2 gap-3 mb-4">
-      @if (c.role === 'advertiser') {
-        <div class="bg-card-dark rounded-2xl border border-white/5 p-4 text-center">
-          <p class="text-3xl font-black text-primary">{{ c.total_referrals_count }}</p>
-          <p class="text-xs text-slate-500 mt-1 flex items-center justify-center gap-1">
-            <span class="material-symbols-outlined" style="font-size:13px">group</span>
-            Afiliados
-          </p>
+    <!-- GALERÍA DE PRODUCTOS / SERVICIOS -->
+    @if ((business()?.gallery_images?.length ?? 0) > 0) {
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5 mb-4">
+        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+          <span class="material-symbols-outlined text-amber-400" style="font-size:16px">collections</span>
+          Productos y Servicios
+          <span class="ml-auto text-slate-600 font-normal normal-case text-[10px]">{{ business()!.gallery_images.length }} imagen{{ business()!.gallery_images.length > 1 ? 'es' : '' }}</span>
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          @for (img of business()!.gallery_images; track img) {
+            <button (click)="openLightbox(img)"
+              class="aspect-square rounded-xl overflow-hidden border border-white/5 hover:border-primary/30 transition-all group relative">
+              <img [src]="img" alt="Producto" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity" style="font-size:28px">zoom_in</span>
+              </div>
+            </button>
+          }
         </div>
-      }
-      @if (business()?.created_at) {
-        <div class="bg-card-dark rounded-2xl border border-white/5 p-4 text-center"
-          [class.col-span-2]="c.role !== 'advertiser'">
-          <p class="text-sm font-black text-white">{{ formatDate(business()!.created_at) }}</p>
-          <p class="text-xs text-slate-500 mt-1 flex items-center justify-center gap-1">
-            <span class="material-symbols-outlined" style="font-size:13px">calendar_month</span>
-            Miembro desde
-          </p>
-        </div>
-      }
-    </div>
+      </div>
+    }
 
-    <!-- Sin contenido de negocio -->
-    @if (!c.description && !business()?.website && !business()?.whatsapp && !c.category && !business()?.location) {
+    <!-- Sin contenido -->
+    @if (!hasAnyContent()) {
       <div class="bg-card-dark rounded-2xl border border-white/5 p-8 text-center mb-4">
         <span class="material-symbols-outlined text-slate-700 mb-3 block" style="font-size:40px">info</span>
         <p class="text-sm text-slate-500">
@@ -291,15 +314,11 @@
 ════════════════════════════════════════════════════════════ -->
 @if (showEditPanel()) {
 
-  <!-- Backdrop -->
-  <div class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
-    (click)="closeEditPanel()">
-  </div>
+  <div class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" (click)="closeEditPanel()"></div>
 
-  <!-- Panel deslizante -->
   <aside class="fixed inset-y-0 right-0 z-50 w-full max-w-md flex flex-col bg-zinc-950 border-l border-white/8 shadow-2xl overflow-y-auto">
 
-    <!-- Cabecera del panel -->
+    <!-- Cabecera -->
     <div class="flex items-center justify-between px-6 py-4 border-b border-white/8 flex-shrink-0">
       <div>
         <h2 class="text-base font-black text-white">Editar perfil de comercio</h2>
@@ -312,7 +331,7 @@
     </div>
 
     <!-- Formulario -->
-    <form [formGroup]="editForm" (ngSubmit)="saveProfile()" class="flex-1 px-6 py-5 space-y-5">
+    <form [formGroup]="editForm" (ngSubmit)="saveProfile()" class="flex-1 px-6 py-5 space-y-5 overflow-y-auto">
 
       <!-- Banner -->
       <div>
@@ -321,7 +340,6 @@
           Imagen de portada
         </label>
         <div class="relative">
-          <!-- Preview o placeholder -->
           <div class="h-32 rounded-xl overflow-hidden border border-white/8 bg-white/3 flex items-center justify-center mb-2">
             @if (bannerPreview()) {
               <img [src]="bannerPreview()!" alt="banner preview" class="w-full h-full object-cover">
@@ -331,14 +349,12 @@
                 <span class="text-xs">Sin portada</span>
               </div>
             }
-            <!-- Overlay de carga -->
             @if (uploadingBanner()) {
               <div class="absolute inset-0 bg-black/60 flex items-center justify-center rounded-xl">
                 <div class="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
               </div>
             }
           </div>
-          <!-- Input file -->
           <label class="flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-dashed border-white/15 text-slate-400 hover:border-primary/40 hover:text-primary text-xs font-bold cursor-pointer transition-colors">
             <span class="material-symbols-outlined" style="font-size:15px">upload</span>
             {{ uploadingBanner() ? 'Subiendo...' : 'Seleccionar imagen (máx. 5 MB)' }}
@@ -356,8 +372,7 @@
           </span>
           <span class="text-slate-600 font-normal normal-case tracking-normal">{{ charCount('business_name') }}/80</span>
         </label>
-        <input formControlName="business_name" type="text" maxlength="80"
-          placeholder="Ej: Tienda Virtual XYZ"
+        <input formControlName="business_name" type="text" maxlength="80" placeholder="Ej: Tienda Virtual XYZ"
           class="w-full bg-white/5 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors">
       </div>
 
@@ -381,7 +396,7 @@
         <label class="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center justify-between">
           <span class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary" style="font-size:14px">description</span>
-            Descripción / Sobre el negocio
+            Mi Negocio / Descripción
           </span>
           <span class="text-slate-600 font-normal normal-case tracking-normal">{{ charCount('description') }}/500</span>
         </label>
@@ -390,14 +405,13 @@
           class="w-full bg-white/5 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors resize-none leading-relaxed"></textarea>
       </div>
 
-      <!-- Sitio web -->
+      <!-- Ubicación -->
       <div>
         <label class="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary" style="font-size:14px">language</span>
-          Sitio web
+          <span class="material-symbols-outlined text-primary" style="font-size:14px">location_on</span>
+          Dirección / Ubicación
         </label>
-        <input formControlName="website" type="url" maxlength="200"
-          placeholder="https://tu-sitio.com"
+        <input formControlName="location" type="text" maxlength="100" placeholder="Ej: Cra 45 #32-10, Medellín, Colombia"
           class="w-full bg-white/5 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors">
       </div>
 
@@ -409,27 +423,105 @@
         </label>
         <div class="relative">
           <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">+</span>
-          <input formControlName="whatsapp" type="tel" maxlength="20"
-            placeholder="573001234567"
+          <input formControlName="whatsapp" type="tel" maxlength="20" placeholder="573001234567"
             class="w-full bg-white/5 border border-white/8 rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors">
         </div>
         <p class="text-[10px] text-slate-600 mt-1 ml-1">Incluye el código de país. Ej: 573001234567</p>
       </div>
 
-      <!-- Ubicación -->
+      <!-- Separador redes sociales -->
+      <div class="flex items-center gap-3 pt-2">
+        <div class="flex-1 h-px bg-white/5"></div>
+        <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Redes Sociales</span>
+        <div class="flex-1 h-px bg-white/5"></div>
+      </div>
+
+      <!-- Instagram -->
       <div>
         <label class="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary" style="font-size:14px">location_on</span>
-          Ubicación
+          <span class="material-symbols-outlined text-pink-400" style="font-size:14px">photo_camera</span>
+          Instagram
         </label>
-        <input formControlName="location" type="text" maxlength="100"
-          placeholder="Ej: Medellín, Colombia"
-          class="w-full bg-white/5 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors">
+        <div class="relative">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">&#64;</span>
+          <input formControlName="instagram" type="text" maxlength="100" placeholder="tu_usuario"
+            class="w-full bg-white/5 border border-white/8 rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/20 transition-colors">
+        </div>
+      </div>
+
+      <!-- Facebook -->
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-blue-400" style="font-size:14px">group</span>
+          Facebook
+        </label>
+        <input formControlName="facebook" type="text" maxlength="200" placeholder="tu.pagina o URL completa"
+          class="w-full bg-white/5 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-colors">
+      </div>
+
+      <!-- TikTok -->
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-white" style="font-size:14px">music_note</span>
+          TikTok
+        </label>
+        <div class="relative">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">&#64;</span>
+          <input formControlName="tiktok" type="text" maxlength="100" placeholder="tu_usuario"
+            class="w-full bg-white/5 border border-white/8 rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-white/50 focus:ring-1 focus:ring-white/20 transition-colors">
+        </div>
+      </div>
+
+      <!-- Separador galería -->
+      <div class="flex items-center gap-3 pt-2">
+        <div class="flex-1 h-px bg-white/5"></div>
+        <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Galería</span>
+        <div class="flex-1 h-px bg-white/5"></div>
+      </div>
+
+      <!-- Galería de productos -->
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-amber-400" style="font-size:14px">collections</span>
+            Imágenes de productos/servicios
+          </span>
+          <span class="text-slate-600 font-normal normal-case tracking-normal">{{ galleryImages().length }}/10</span>
+        </label>
+
+        @if (galleryImages().length > 0) {
+          <div class="grid grid-cols-3 gap-2 mb-3">
+            @for (img of galleryImages(); track img; let i = $index) {
+              <div class="relative aspect-square rounded-xl overflow-hidden border border-white/8 group">
+                <img [src]="img" alt="Producto" class="w-full h-full object-cover">
+                <button type="button" (click)="removeGalleryImage(i)"
+                  class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-500/80 hover:bg-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span class="material-symbols-outlined text-white" style="font-size:14px">close</span>
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (galleryImages().length < 10) {
+          <label class="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-dashed border-white/15 text-slate-400 hover:border-amber-400/40 hover:text-amber-400 text-xs font-bold cursor-pointer transition-colors"
+            [class.opacity-50]="uploadingGallery()"
+            [class.pointer-events-none]="uploadingGallery()">
+            @if (uploadingGallery()) {
+              <div class="w-4 h-4 rounded-full border-2 border-amber-400/40 border-t-amber-400 animate-spin"></div>
+              Subiendo...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:15px">add_photo_alternate</span>
+              Agregar imagen (máx. 5 MB)
+            }
+            <input type="file" accept="image/*" class="hidden" (change)="onGalleryImageSelected($event)" [disabled]="uploadingGallery()">
+          </label>
+        }
       </div>
 
     </form>
 
-    <!-- Pie del panel con botones -->
+    <!-- Pie con botones -->
     <div class="flex gap-3 px-6 py-4 border-t border-white/8 flex-shrink-0">
       <button type="button" (click)="closeEditPanel()"
         class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-bold transition-colors">

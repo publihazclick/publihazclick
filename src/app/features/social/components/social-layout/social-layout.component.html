@@ -12,11 +12,7 @@
       (click)="toggleSidebar()"
       class="flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
     >
-      @if (sidebarCollapsed()) {
-        <span class="material-symbols-outlined text-2xl">chevron_right</span>
-      } @else {
-        <span class="material-symbols-outlined text-2xl">chevron_left</span>
-      }
+      <span class="material-symbols-outlined text-2xl">menu</span>
     </button>
   </div>
 
@@ -73,6 +69,16 @@
     <nav class="space-y-1">
       @if (!sidebarCollapsed()) {
         <h4 class="text-[10px] uppercase font-black text-slate-500 mb-2 px-2 tracking-widest">Comunidad</h4>
+      }
+
+      @if (profile()?.id) {
+        <a [routerLink]="'/social/' + profile()!.username" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+           class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+           [class.justify-center]="sidebarCollapsed()"
+           title="Mi Perfil">
+          <span class="material-symbols-outlined">account_circle</span>
+          @if (!sidebarCollapsed()) { <span>Mi Perfil</span> }
+        </a>
       }
 
       <a routerLink="/social/messages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
@@ -195,6 +201,16 @@
                 </div>
               </div>
               <div class="p-2">
+                @if (profile()?.id) {
+                  <a
+                    [routerLink]="'/social/' + profile()!.username"
+                    (click)="closeProfileMenu()"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group"
+                  >
+                    <span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors" style="font-size:18px">account_circle</span>
+                    <span class="text-sm text-slate-300 group-hover:text-white transition-colors font-medium">Mi Perfil</span>
+                  </a>
+                }
                 <button
                   (click)="goBackToDashboard(); closeProfileMenu()"
                   class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group"
