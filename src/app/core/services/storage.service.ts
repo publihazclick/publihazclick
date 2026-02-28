@@ -37,6 +37,7 @@ export class StorageService {
   readonly PTC_ADS_BUCKET = 'ptc-ads';
   readonly BANNERS_BUCKET = 'banners';
   readonly PROFILES_BUCKET = 'profiles';
+  readonly MARKETPLACE_BUCKET = 'marketplace';
   
   // Estado de carga
   readonly uploading = signal(false);
@@ -125,6 +126,13 @@ export class StorageService {
    */
   async uploadProfileImage(file: File): Promise<UploadResult> {
     return this.uploadImage(this.PROFILES_BUCKET, file, 'profiles');
+  }
+
+  /**
+   * Sube imagen de producto del marketplace
+   */
+  async uploadMarketplaceImage(file: File): Promise<UploadResult> {
+    return this.uploadImage(this.MARKETPLACE_BUCKET, file, 'products');
   }
 
   /**

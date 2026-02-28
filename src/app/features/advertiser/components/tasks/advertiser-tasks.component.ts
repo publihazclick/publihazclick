@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
@@ -31,7 +32,7 @@ interface TaskSlot {
   selector: 'app-advertiser-tasks',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, PtcModalComponent],
+  imports: [CommonModule, RouterLink, PtcModalComponent],
   templateUrl: './advertiser-tasks.component.html',
 })
 export class AdvertiserTasksComponent implements OnInit {
@@ -43,6 +44,9 @@ export class AdvertiserTasksComponent implements OnInit {
 
   readonly profile = this.profileService.profile;
   readonly loading = signal(true);
+  readonly userHasAd = signal(false);
+  readonly userHasBanner = signal(false);
+  readonly requirementsMet = computed(() => this.userHasAd() && this.userHasBanner());
   readonly affiliatesWithPackage = signal(0);
   readonly standardSlots = signal<TaskSlot[]>([]);
   readonly megaSlots = signal<TaskSlot[]>([]);
@@ -105,8 +109,22 @@ export class AdvertiserTasksComponent implements OnInit {
   // ── Init ─────────────────────────────────────────────────────────────────
 
   async ngOnInit(): Promise<void> {
-    await Promise.all([this.loadAffiliatesCount(), this.loadTasks()]);
+    await this.checkRequirements();
+    if (this.requirementsMet()) {
+      await Promise.all([this.loadAffiliatesCount(), this.loadTasks()]);
+    }
     this.loading.set(false);
+  }
+
+  private async checkRequirements(): Promise<void> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) return;
+    const [{ count: adCount }, { count: bannerCount }] = await Promise.all([
+      this.supabase.from('ptc_tasks').select('id', { count: 'exact', head: true }).eq('advertiser_id', user.id),
+      this.supabase.from('banner_ads').select('id', { count: 'exact', head: true }).eq('advertiser_id', user.id),
+    ]);
+    this.userHasAd.set((adCount ?? 0) > 0);
+    this.userHasBanner.set((bannerCount ?? 0) > 0);
   }
 
   private async loadAffiliatesCount(): Promise<void> {

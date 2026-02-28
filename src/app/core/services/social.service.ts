@@ -9,6 +9,9 @@ import type {
   SocialMessage,
   SocialBusinessProfile,
   ConnectionStatus,
+  MarketplaceListing,
+  CreateListingData,
+  UpdateListingData,
 } from '../models/social.model';
 
 @Injectable({ providedIn: 'root' })
@@ -422,5 +425,123 @@ export class SocialService {
       .is('read_at', null);
 
     return count ?? 0;
+  }
+
+  // ============================================================
+  // MARKETPLACE
+  // ============================================================
+
+  async getListings(
+    search = '',
+    category = '',
+    page = 0,
+    limit = 20
+  ): Promise<MarketplaceListing[]> {
+    let query = this.supabase
+      .from('marketplace_listings')
+      .select(
+        `*, seller:profiles!marketplace_listings_user_id_fkey(id, username, full_name, avatar_url)`
+      )
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .range(page * limit, (page + 1) * limit - 1);
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    if (search.trim()) {
+      const safe = sanitizePostgrestFilter(search);
+      if (safe) {
+        // Search matching sellers by username or full_name
+        const { data: matchedProfiles } = await this.supabase
+          .from('profiles')
+          .select('id')
+          .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`);
+
+        const sellerIds = (matchedProfiles ?? []).map((p: any) => p.id);
+
+        // Build OR: title, description, tags (array contains), or seller match
+        let orParts = [`title.ilike.%${safe}%`, `description.ilike.%${safe}%`];
+
+        // Tags: use cs (contains) with a single-element array
+        orParts.push(`tags.cs.{${safe}}`);
+
+        if (sellerIds.length > 0) {
+          orParts.push(`user_id.in.(${sellerIds.join(',')})`);
+        }
+
+        query = query.or(orParts.join(','));
+      }
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data ?? []).map((d: any) => ({
+      ...d,
+      seller: Array.isArray(d.seller) ? d.seller[0] : d.seller,
+    }));
+  }
+
+  async getMyListings(): Promise<MarketplaceListing[]> {
+    const userId = await this.getUserId();
+    const { data, error } = await this.supabase
+      .from('marketplace_listings')
+      .select(
+        `*, seller:profiles!marketplace_listings_user_id_fkey(id, username, full_name, avatar_url)`
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []).map((d: any) => ({
+      ...d,
+      seller: Array.isArray(d.seller) ? d.seller[0] : d.seller,
+    }));
+  }
+
+  async createListing(listing: CreateListingData): Promise<MarketplaceListing> {
+    const userId = await this.getUserId();
+    const { data, error } = await this.supabase
+      .from('marketplace_listings')
+      .insert({ ...listing, user_id: userId })
+      .select(
+        `*, seller:profiles!marketplace_listings_user_id_fkey(id, username, full_name, avatar_url)`
+      )
+      .single();
+
+    if (error) throw error;
+    const d = data as any;
+    return { ...d, seller: Array.isArray(d.seller) ? d.seller[0] : d.seller };
+  }
+
+  async updateListing(
+    id: string,
+    updates: UpdateListingData
+  ): Promise<MarketplaceListing> {
+    const userId = await this.getUserId();
+    const { data, error } = await this.supabase
+      .from('marketplace_listings')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select(
+        `*, seller:profiles!marketplace_listings_user_id_fkey(id, username, full_name, avatar_url)`
+      )
+      .single();
+
+    if (error) throw error;
+    const d = data as any;
+    return { ...d, seller: Array.isArray(d.seller) ? d.seller[0] : d.seller };
+  }
+
+  async deleteListing(id: string): Promise<void> {
+    const userId = await this.getUserId();
+    const { error } = await this.supabase
+      .from('marketplace_listings')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+    if (error) throw error;
   }
 }

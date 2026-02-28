@@ -1,0 +1,436 @@
+<!-- Toast -->
+@if (toast()) {
+  <div class="fixed top-6 right-6 z-[100] px-5 py-3 rounded-xl text-sm font-bold shadow-2xl flex items-center gap-2"
+    [class.bg-emerald-500]="toast()!.type === 'success'"
+    [class.bg-rose-500]="toast()!.type === 'error'">
+    <span class="material-symbols-outlined" style="font-size:18px">
+      {{ toast()!.type === 'success' ? 'check_circle' : 'error' }}
+    </span>
+    {{ toast()!.msg }}
+  </div>
+}
+
+<div class="p-4 lg:p-8 space-y-6">
+  <!-- Banner -->
+  <div class="mb-6 rounded-2xl overflow-hidden border border-white/5 max-h-48 lg:max-h-56">
+    <app-banner-slider location="app" [autoPlayInterval]="6000" />
+  </div>
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl lg:text-2xl font-black text-white tracking-tight">Marketplace</h2>
+      <p class="text-xs text-slate-500 mt-1">Publica y descubre productos y servicios</p>
+    </div>
+    <div class="flex items-center gap-3">
+      @if (showMine) {
+        <span class="text-xs text-slate-500 font-medium">{{ myListingsCount() }}/{{ MAX_LISTINGS }}</span>
+      }
+      <button (click)="openCreate()"
+        class="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/80 text-black font-bold rounded-xl text-sm transition-all">
+        <span class="material-symbols-outlined" style="font-size:18px">add</span>
+        Publicar
+      </button>
+    </div>
+  </div>
+
+  <!-- Limit info (Mis productos) -->
+  @if (showMine) {
+    <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400">
+      <span class="material-symbols-outlined" style="font-size:16px">info</span>
+      Puedes tener maximo {{ MAX_LISTINGS }} publicaciones activas. Tienes {{ myListingsCount() }} de {{ MAX_LISTINGS }}.
+    </div>
+  }
+
+  <!-- Filters -->
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="relative flex-1">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" style="font-size:18px">search</span>
+      <input type="text" [(ngModel)]="searchTerm" (input)="onSearchChange()" placeholder="Buscar por producto, vendedor o etiqueta..."
+        class="w-full bg-card-dark border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-primary/40 focus:outline-none transition-all">
+    </div>
+    <select [(ngModel)]="filterCategory" (ngModelChange)="onCategoryChange()"
+      class="bg-card-dark border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primary/40 focus:outline-none transition-all">
+      <option value="">Todas las categorias</option>
+      @for (cat of categories; track cat) {
+        <option [value]="cat">{{ cat }}</option>
+      }
+    </select>
+    <button (click)="toggleMine()"
+      class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all"
+      [class]="showMine ? 'bg-primary/10 text-primary border-primary/20' : 'bg-card-dark text-slate-400 border-white/10 hover:border-white/20'">
+      <span class="material-symbols-outlined" style="font-size:16px">person</span>
+      Mis productos
+    </button>
+  </div>
+
+  <!-- Skeleton loading -->
+  @if (loading() && listings().length === 0) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      @for (s of [1,2,3,4,5,6,7,8]; track s) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden animate-pulse">
+          <div class="aspect-[4/3] bg-white/5"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-4 bg-white/5 rounded w-3/4"></div>
+            <div class="h-5 bg-white/5 rounded w-1/3"></div>
+            <div class="h-3 bg-white/5 rounded w-1/2"></div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty state -->
+  @else if (!loading() && listings().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+      <span class="material-symbols-outlined text-slate-600 mb-4" style="font-size:56px">storefront</span>
+      <h3 class="text-lg font-bold text-slate-400 mb-2">
+        {{ showMine ? 'No tienes publicaciones' : 'No se encontraron productos' }}
+      </h3>
+      <p class="text-sm text-slate-600 mb-6">
+        {{ showMine ? 'Publica tu primer producto o servicio' : (searchTerm || filterCategory ? 'Intenta con otros filtros' : 'Se el primero en publicar') }}
+      </p>
+      @if (showMine) {
+        <button (click)="openCreate()" class="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/80 text-black font-bold rounded-xl text-sm transition-all">
+          <span class="material-symbols-outlined" style="font-size:18px">add</span> Publicar
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Grid -->
+  @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      @for (listing of listings(); track listing.id) {
+        <div (click)="openDetail(listing)"
+          class="bg-card-dark border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden transition-all hover:shadow-lg hover:shadow-black/20 cursor-pointer group flex flex-col">
+          <!-- Image -->
+          <div class="aspect-[4/3] bg-white/5 relative overflow-hidden">
+            @if (listing.images.length > 0) {
+              <img [src]="listing.images[0]" [alt]="listing.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+            } @else {
+              <div class="w-full h-full flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-700" style="font-size:48px">image</span>
+              </div>
+            }
+            @if (listing.images.length > 1) {
+              <span class="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:12px">photo_library</span>
+                {{ listing.images.length }}
+              </span>
+            }
+            @if (isOwner(listing) && listing.status !== 'active') {
+              <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-black border {{ getStatusBadge(listing.status).class }}">
+                {{ getStatusBadge(listing.status).label }}
+              </span>
+            }
+          </div>
+
+          <!-- Content -->
+          <div class="p-4 flex-1 flex flex-col gap-2">
+            <h3 class="font-bold text-white text-sm line-clamp-2 leading-tight">{{ listing.title }}</h3>
+            <p class="text-base font-black"
+              [class.text-primary]="listing.price != null"
+              [class.text-slate-500]="listing.price == null">
+              {{ formatPrice(listing) }}
+            </p>
+
+            <!-- Category + tags -->
+            <div class="flex flex-wrap gap-1.5 mt-auto">
+              <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:11px">category</span>
+                {{ listing.category }}
+              </span>
+              @for (tag of listing.tags.slice(0, 2); track tag) {
+                <span class="px-2 py-0.5 bg-primary/5 border border-primary/10 rounded-full text-[10px] text-primary/70">{{ tag }}</span>
+              }
+              @if (listing.tags.length > 2) {
+                <span class="px-2 py-0.5 text-[10px] text-slate-600">+{{ listing.tags.length - 2 }}</span>
+              }
+            </div>
+
+            <!-- Seller -->
+            <div class="flex items-center gap-2 pt-2 border-t border-white/5 mt-1">
+              <div class="w-6 h-6 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
+                @if (listing.seller?.avatar_url) {
+                  <img [src]="listing.seller!.avatar_url" alt="" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center">
+                    <span class="text-black font-black text-[8px]">{{ getSellerInitials(listing) }}</span>
+                  </div>
+                }
+              </div>
+              <span class="text-[11px] text-slate-500 truncate">{{ listing.seller?.full_name || listing.seller?.username }}</span>
+            </div>
+
+            <!-- Owner actions (solo en "Mis productos") -->
+            @if (showMine && isOwner(listing)) {
+              <div class="flex gap-2 pt-2" (click)="$event.stopPropagation()">
+                <button (click)="openEdit(listing, $event)" class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[11px] font-bold transition-all">
+                  <span class="material-symbols-outlined" style="font-size:14px">edit</span> Editar
+                </button>
+                <button (click)="togglePause(listing, $event)" [disabled]="actionLoading() === listing.id"
+                  class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                  [class]="listing.status === 'active' ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'">
+                  <span class="material-symbols-outlined" style="font-size:14px">{{ listing.status === 'active' ? 'pause' : 'play_arrow' }}</span>
+                  {{ listing.status === 'active' ? 'Pausar' : 'Activar' }}
+                </button>
+                <button (click)="confirmDelete(listing.id, $event)" class="flex items-center justify-center p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all">
+                  <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+                </button>
+              </div>
+            } @else if (!showMine && !isOwner(listing)) {
+              <button (click)="goToSeller(listing, $event)"
+                class="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition-all mt-1">
+                <span class="material-symbols-outlined" style="font-size:16px">person</span> Contactar
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Load more -->
+    @if (hasMore() && !showMine) {
+      <div class="flex justify-center pt-4">
+        <button (click)="loadMore()" [disabled]="loading()"
+          class="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm text-slate-400 font-bold transition-all disabled:opacity-50">
+          {{ loading() ? 'Cargando...' : 'Cargar mas' }}
+        </button>
+      </div>
+    }
+  }
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+@if (deletingId()) {
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4" (click)="cancelDelete()">
+    <div class="bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl max-w-sm w-full p-6 space-y-4" (click)="$event.stopPropagation()">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
+          <span class="material-symbols-outlined text-rose-400">delete</span>
+        </div>
+        <h3 class="font-bold text-white">Eliminar producto</h3>
+      </div>
+      <p class="text-sm text-slate-400">Esta accion no se puede deshacer. El producto sera eliminado permanentemente.</p>
+      <div class="flex gap-3">
+        <button (click)="cancelDelete()" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 text-sm font-bold transition-all">Cancelar</button>
+        <button (click)="deleteListing()" [disabled]="actionLoading()" class="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition-all disabled:opacity-50">Eliminar</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- CREATE/EDIT MODAL -->
+@if (modalMode()) {
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4" (click)="closeModal()">
+    <div class="bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="sticky top-0 bg-zinc-900 border-b border-white/10 p-5 flex items-center justify-between z-10">
+        <h3 class="font-bold text-white text-lg">{{ modalMode() === 'create' ? 'Publicar producto' : 'Editar producto' }}</h3>
+        <button (click)="closeModal()" class="p-1.5 rounded-lg hover:bg-white/10 transition-all">
+          <span class="material-symbols-outlined text-slate-400">close</span>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <!-- Title -->
+        <div>
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Titulo *</label>
+          <input type="text" [(ngModel)]="formTitle" maxlength="120" placeholder="Nombre del producto o servicio"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-primary/40 focus:outline-none transition-all">
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Descripcion</label>
+          <textarea [(ngModel)]="formDescription" rows="3" maxlength="1000" placeholder="Describe tu producto o servicio..."
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-primary/40 focus:outline-none transition-all resize-none"></textarea>
+        </div>
+
+        <!-- Price + Category row -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Precio (COP)</label>
+            <input type="number" [(ngModel)]="formPrice" min="0" placeholder="Opcional"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-primary/40 focus:outline-none transition-all">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Categoria *</label>
+            <select [(ngModel)]="formCategory"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primary/40 focus:outline-none transition-all">
+              <option value="" disabled>Seleccionar</option>
+              @for (cat of categories; track cat) {
+                <option [value]="cat">{{ cat }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <!-- Tags -->
+        <div>
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Etiquetas</label>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            @for (tag of formTags; track tag; let i = $index) {
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary font-medium">
+                {{ tag }}
+                <button (click)="removeTag(i)" class="hover:text-white transition-colors">
+                  <span class="material-symbols-outlined" style="font-size:14px">close</span>
+                </button>
+              </span>
+            }
+          </div>
+          @if (formTags.length < 10) {
+            <div class="flex gap-2">
+              <input type="text" [(ngModel)]="formTagInput" (keydown)="onTagKeydown($event)" placeholder="Agregar etiqueta + Enter"
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-slate-600 focus:border-primary/40 focus:outline-none transition-all">
+              <button (click)="addTag()" class="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 text-sm transition-all">
+                <span class="material-symbols-outlined" style="font-size:18px">add</span>
+              </button>
+            </div>
+          }
+        </div>
+
+        <!-- Images -->
+        <div>
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Imagenes (max 5)</label>
+          @if (formImages.length > 0) {
+            <div class="grid grid-cols-5 gap-2 mb-3">
+              @for (img of formImages; track img; let i = $index) {
+                <div class="relative aspect-square rounded-xl overflow-hidden border border-white/10 group/img">
+                  <img [src]="img" class="w-full h-full object-cover">
+                  <button (click)="removeImage(i)"
+                    class="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                    <span class="material-symbols-outlined text-rose-400">delete</span>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+          @if (formImages.length < 5) {
+            <div (drop)="onImageDrop($event)" (dragover)="onDragOver($event)"
+              class="border-2 border-dashed border-white/10 hover:border-primary/30 rounded-xl p-6 text-center transition-all cursor-pointer"
+              (click)="fileInput.click()">
+              <input #fileInput type="file" accept="image/*" multiple (change)="onFileSelect($event)" class="hidden">
+              @if (uploadingImage()) {
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <span class="text-xs text-slate-500">Subiendo...</span>
+                </div>
+              } @else {
+                <span class="material-symbols-outlined text-slate-600 mb-2" style="font-size:32px">cloud_upload</span>
+                <p class="text-xs text-slate-500">Arrastra imagenes o haz clic para seleccionar</p>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Contact link -->
+        <div>
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Link de contacto</label>
+          <input type="url" [(ngModel)]="formContactLink" placeholder="https://wa.me/57... o URL"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-primary/40 focus:outline-none transition-all">
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="sticky bottom-0 bg-zinc-900 border-t border-white/10 p-5 flex gap-3">
+        <button (click)="closeModal()" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 text-sm font-bold transition-all">Cancelar</button>
+        <button (click)="saveForm()" [disabled]="saving() || !formTitle.trim() || !formCategory"
+          class="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/80 text-black text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+          @if (saving()) {
+            <div class="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+          }
+          {{ modalMode() === 'create' ? 'Publicar' : 'Actualizar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- DETAIL MODAL -->
+@if (detailListing(); as listing) {
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4" (click)="closeDetail()">
+    <div class="bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <!-- Carousel -->
+      @if (listing.images.length > 0) {
+        <div class="relative aspect-video bg-black">
+          <img [src]="listing.images[carouselIndex()]" [alt]="listing.title" class="w-full h-full object-contain">
+          @if (listing.images.length > 1) {
+            <button (click)="prevImage()" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center transition-all">
+              <span class="material-symbols-outlined text-white" style="font-size:20px">chevron_left</span>
+            </button>
+            <button (click)="nextImage()" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center transition-all">
+              <span class="material-symbols-outlined text-white" style="font-size:20px">chevron_right</span>
+            </button>
+            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+              @for (img of listing.images; track img; let i = $index) {
+                <button (click)="goToImage(i)"
+                  class="w-2 h-2 rounded-full transition-all"
+                  [class]="i === carouselIndex() ? 'bg-primary w-4' : 'bg-white/40 hover:bg-white/60'"></button>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <div class="p-5 space-y-4">
+        <!-- Close -->
+        <button (click)="closeDetail()" class="absolute top-3 right-3 p-1.5 rounded-lg bg-black/40 hover:bg-black/60 transition-all z-10">
+          <span class="material-symbols-outlined text-white">close</span>
+        </button>
+
+        <!-- Title + price -->
+        <div>
+          <h3 class="text-xl font-black text-white">{{ listing.title }}</h3>
+          <p class="text-2xl font-black mt-1"
+            [class.text-primary]="listing.price != null"
+            [class.text-slate-500]="listing.price == null">
+            {{ formatPrice(listing) }}
+          </p>
+        </div>
+
+        <!-- Description -->
+        @if (listing.description) {
+          <p class="text-sm text-slate-300 whitespace-pre-line leading-relaxed">{{ listing.description }}</p>
+        }
+
+        <!-- Category + tags -->
+        <div class="flex flex-wrap gap-2">
+          <span class="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-slate-400 flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size:14px">category</span>
+            {{ listing.category }}
+          </span>
+          @for (tag of listing.tags; track tag) {
+            <span class="px-3 py-1 bg-primary/5 border border-primary/10 rounded-full text-xs text-primary/70">{{ tag }}</span>
+          }
+        </div>
+
+        <!-- Seller info -->
+        <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+          <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
+            @if (listing.seller?.avatar_url) {
+              <img [src]="listing.seller!.avatar_url" alt="" class="w-full h-full object-cover">
+            } @else {
+              <div class="w-full h-full bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center">
+                <span class="text-black font-black text-xs">{{ getSellerInitials(listing) }}</span>
+              </div>
+            }
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-white">{{ listing.seller?.full_name || listing.seller?.username }}</p>
+            <p class="text-[11px] text-slate-500">@{{ listing.seller?.username }}</p>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        @if (listing.seller?.username) {
+          <button (click)="goToSeller(listing, $event)"
+            class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary hover:bg-primary/80 text-black font-bold text-sm transition-all">
+            <span class="material-symbols-outlined" style="font-size:18px">person</span>
+            Ver perfil del vendedor
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

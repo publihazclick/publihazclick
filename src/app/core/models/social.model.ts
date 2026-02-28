@@ -90,3 +90,63 @@ export interface SendMessageData {
   content: string;
   type?: MessageType;
 }
+
+// ============================================================
+// MARKETPLACE
+// ============================================================
+
+export type ListingStatus = 'active' | 'paused' | 'sold';
+
+export interface MarketplaceListing {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  price: number | null;
+  currency: string;
+  category: string;
+  tags: string[];
+  images: string[];
+  contact_link: string | null;
+  status: ListingStatus;
+  created_at: string;
+  updated_at: string;
+  seller?: {
+    id: string;
+    username: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export interface CreateListingData {
+  title: string;
+  description?: string;
+  price?: number | null;
+  currency?: string;
+  category: string;
+  tags?: string[];
+  images?: string[];
+  contact_link?: string;
+}
+
+export interface UpdateListingData extends Partial<CreateListingData> {
+  status?: ListingStatus;
+}
+
+export const MARKETPLACE_CATEGORIES = [
+  'Tecnologia',
+  'Ropa y Moda',
+  'Salud y Belleza',
+  'Educacion',
+  'Alimentos',
+  'Servicios',
+  'Hogar',
+  'Marketing Digital',
+  'Diseno',
+  'Desarrollo Web',
+  'Consultoria',
+  'E-commerce',
+  'Redes Sociales',
+  'Otros',
+] as const;

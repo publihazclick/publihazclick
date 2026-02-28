@@ -105,6 +105,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/social/components/connections/connections.component').then(m => m.SocialConnectionsComponent)
       },
       {
+        path: 'marketplace',
+        loadComponent: () => import('./features/social/components/marketplace/marketplace.component').then(m => m.MarketplaceComponent)
+      },
+      {
         path: ':username',
         loadComponent: () => import('./features/social/components/profile/profile.component').then(m => m.SocialProfileComponent)
       }

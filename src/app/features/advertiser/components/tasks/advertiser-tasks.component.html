@@ -10,6 +10,63 @@
     <div class="flex justify-center items-center py-20">
       <div class="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
     </div>
+  } @else if (!requirementsMet()) {
+
+    <!-- Bloqueo: requisitos no cumplidos -->
+    <div class="flex items-center justify-center py-10">
+      <div class="bg-card-dark border border-white/10 rounded-2xl p-8 max-w-lg w-full text-center space-y-6">
+        <!-- Icono -->
+        <div class="flex justify-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-accent/20 border border-cyan-500/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-4xl bg-gradient-to-r from-cyan-400 to-accent bg-clip-text text-transparent">rocket_launch</span>
+          </div>
+        </div>
+
+        <!-- Título y descripción -->
+        <div class="space-y-2">
+          <h3 class="text-lg font-black text-white">Completa tu configuración de anunciante</h3>
+          <p class="text-sm text-slate-400">Para acceder a tus tareas diarias y empezar a ganar, primero debes crear tu contenido publicitario.</p>
+        </div>
+
+        <!-- Checklist -->
+        <div class="space-y-3 text-left">
+          <!-- Anuncio PTC -->
+          @if (userHasAd()) {
+            <div class="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3">
+              <span class="material-symbols-outlined text-emerald-400">check_circle</span>
+              <span class="text-sm text-emerald-400 font-bold flex-1">Anuncio PTC creado</span>
+            </div>
+          } @else {
+            <a routerLink="/advertiser/ads" class="flex items-center gap-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl px-4 py-3 hover:bg-cyan-500/10 transition-colors group">
+              <span class="material-symbols-outlined text-cyan-400">campaign</span>
+              <span class="text-sm text-white font-bold flex-1">Crear tu primer anuncio PTC</span>
+              <span class="material-symbols-outlined text-cyan-400 text-lg group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+            </a>
+          }
+
+          <!-- Banner -->
+          @if (userHasBanner()) {
+            <div class="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3">
+              <span class="material-symbols-outlined text-emerald-400">check_circle</span>
+              <span class="text-sm text-emerald-400 font-bold flex-1">Banner creado</span>
+            </div>
+          } @else {
+            <a routerLink="/advertiser/banner" class="flex items-center gap-3 bg-purple-500/5 border border-purple-500/20 rounded-xl px-4 py-3 hover:bg-purple-500/10 transition-colors group">
+              <span class="material-symbols-outlined text-purple-400">image</span>
+              <span class="text-sm text-white font-bold flex-1">Crear tu primer banner</span>
+              <span class="material-symbols-outlined text-purple-400 text-lg group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+            </a>
+          }
+        </div>
+
+        <!-- Nota -->
+        <p class="text-xs text-slate-500 flex items-center justify-center gap-1">
+          <span class="material-symbols-outlined text-[14px]">info</span>
+          Tus anuncios se activarán tras la revisión del administrador, pero las tareas se desbloquean al crearlos.
+        </p>
+      </div>
+    </div>
+
   } @else {
 
     <!-- Stats rápidas -->
