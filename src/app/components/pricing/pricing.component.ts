@@ -1,6 +1,5 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
 import { AdminPackageService } from '../../core/services/admin-package.service';
 import { CurrencyService } from '../../core/services/currency.service';
 import { Package } from '../../core/models/admin.model';
@@ -8,7 +7,7 @@ import { Package } from '../../core/models/admin.model';
 @Component({
   selector: 'app-pricing',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule],
   templateUrl: './pricing.component.html',
   styleUrl: './pricing.component.scss'
 })
