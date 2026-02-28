@@ -21,7 +21,7 @@ import { ReferralLinkComponent } from '../../../../shared/components/referral-li
           <div class="flex items-center justify-between p-4 lg:p-6 border-b border-white/10">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-gradient-to-tr from-accent to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-accent/20">
-                <span class="material-icons text-xl text-white">card_giftcard</span>
+                <span class="material-symbols-outlined text-xl text-white">card_giftcard</span>
               </div>
               <div>
                 <h2 class="text-lg font-bold text-white">Recomienda y Gana</h2>
@@ -32,7 +32,7 @@ import { ReferralLinkComponent } from '../../../../shared/components/referral-li
               (click)="close()"
               class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all"
             >
-              <span class="material-icons">close</span>
+              <span class="material-symbols-outlined">close</span>
             </button>
           </div>
 
