@@ -100,9 +100,8 @@
 
                   <!-- Botón Pagar -->
                   <button
-                    (click)="openNequiPayment(pkg)"
-                    [disabled]="!pkg.nequi_payment_link"
-                    class="flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    (click)="startDlocalCheckout(pkg)"
+                    class="flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-wide transition-all"
                     [class]="isRecommended(pkg)
                       ? 'bg-primary hover:bg-primary/80 text-black shadow-lg shadow-primary/25'
                       : 'bg-white/10 hover:bg-white/20 text-slate-200 border border-white/10'"
@@ -142,11 +141,11 @@
 
       } @else {
 
-        <!-- ── Flujo de pago ── -->
+        <!-- ── Flujo de pago dLocal Go ── -->
 
         <!-- Header pago -->
         <div class="flex items-center gap-3 px-5 py-4 border-b border-white/8 flex-shrink-0">
-          @if (payStep() !== 'approved' && payStep() !== 'sent') {
+          @if (payStep() === 'error') {
             <button
               (click)="backToPackages()"
               class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
@@ -156,11 +155,8 @@
           }
           <div class="flex-1 min-w-0">
             <h3 class="text-sm font-black text-white">
-              @if (payStep() === 'redirect') { Pagar con Nequi }
-              @else if (payStep() === 'confirm') { Confirmar pago }
-              @else if (payStep() === 'submitting') { Verificando... }
-              @else if (payStep() === 'approved') { ¡Pago aprobado! }
-              @else if (payStep() === 'sent') { Comprobante enviado }
+              @if (payStep() === 'dlocal-loading') { Procesando pago }
+              @else if (payStep() === 'error') { Error en el pago }
             </h3>
             @if (selectedPackage()) {
               <p class="text-[11px] text-slate-500 truncate">
@@ -168,153 +164,56 @@
               </p>
             }
           </div>
-          <button
-            (click)="close()"
-            class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
-          >
-            <span class="material-symbols-outlined text-slate-300 text-lg">close</span>
-          </button>
+          @if (payStep() !== 'dlocal-loading') {
+            <button
+              (click)="close()"
+              class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
+            >
+              <span class="material-symbols-outlined text-slate-300 text-lg">close</span>
+            </button>
+          }
         </div>
 
         <!-- Body pago -->
         <div class="overflow-y-auto flex-1 p-5">
 
-          @if (payStep() === 'redirect') {
-            <div class="space-y-4">
-              <div class="rounded-2xl bg-white/5 border border-white/8 p-4 space-y-3">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-emerald-400 text-xl">phone_iphone</span>
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold text-white">Nequi Negocios</p>
-                    <p class="text-xs text-slate-400">Pago seguro con código QR o enlace</p>
-                  </div>
-                </div>
-                <div>
-                  <p class="text-xs text-slate-400 mb-0.5">Monto a pagar:</p>
-                  <p class="text-2xl font-black text-white">{{ getPriceCOP(selectedPackage()) }}</p>
-                  <p class="text-xs text-slate-500">{{ getPriceUSD(selectedPackage()) }} USD</p>
-                </div>
-              </div>
-
-              <div class="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
-                <p class="text-xs text-amber-300 font-medium">
-                  <span class="material-symbols-outlined text-sm align-text-bottom mr-1">info</span>
-                  Paga el monto exacto y guarda el número de transacción de Nequi.
-                </p>
-              </div>
-
-              <button
-                (click)="goToNequiLink()"
-                class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25 transition-all"
-              >
-                <span class="material-symbols-outlined text-lg">open_in_new</span>
-                Pagar {{ getPriceCOP(selectedPackage()) }}
-              </button>
-            </div>
-          }
-
-          @else if (payStep() === 'confirm') {
-            <div class="space-y-4">
-              <div class="rounded-xl bg-primary/10 border border-primary/20 p-3">
-                <p class="text-xs text-primary font-medium">
-                  <span class="material-symbols-outlined text-sm align-text-bottom mr-1">info</span>
-                  Ingresa los datos del pago realizado en Nequi para confirmar.
-                </p>
-              </div>
-
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs font-semibold text-slate-400 mb-1.5">
-                    Número Nequi (el que usaste para pagar)
-                  </label>
-                  <input
-                    type="tel"
-                    [(ngModel)]="proofPhone"
-                    placeholder="3XXXXXXXXX"
-                    maxlength="10"
-                    class="w-full bg-zinc-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold text-slate-400 mb-1.5">
-                    Número de transacción Nequi
-                  </label>
-                  <input
-                    type="text"
-                    [(ngModel)]="proofTransactionId"
-                    placeholder="Ej: 123456789"
-                    class="w-full bg-zinc-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50 transition-colors"
-                  />
-                </div>
-              </div>
-
-              @if (payError()) {
-                <div class="rounded-xl bg-rose-500/10 border border-rose-500/20 p-3">
-                  <p class="text-xs text-rose-400">{{ payError() }}</p>
-                </div>
-              }
-
-              <button
-                (click)="submitProof()"
-                class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-primary hover:bg-primary/80 text-black shadow-lg shadow-primary/25 transition-all"
-              >
-                <span class="material-symbols-outlined text-lg">send</span>
-                Enviar comprobante
-              </button>
-
-              <button
-                (click)="goToNequiLink()"
-                class="w-full flex items-center justify-center gap-1 py-2.5 rounded-xl text-xs text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/8 transition-all"
-              >
-                <span class="material-symbols-outlined text-sm">open_in_new</span>
-                Volver a Nequi
-              </button>
-            </div>
-          }
-
-          @else if (payStep() === 'submitting') {
+          @if (payStep() === 'dlocal-loading') {
             <div class="flex flex-col items-center justify-center py-12 gap-4">
-              <div class="w-14 h-14 rounded-full border-2 border-primary/30 border-t-primary animate-spin"></div>
-              <p class="text-sm text-slate-400">Verificando tu pago...</p>
+              <div class="relative">
+                <div class="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+                <span class="material-symbols-outlined text-primary absolute inset-0 flex items-center justify-center" style="font-size:24px">public</span>
+              </div>
+              <div class="text-center">
+                <p class="text-white font-bold text-sm">Preparando pago...</p>
+                <p class="text-xs text-slate-500 mt-1">Serás redirigido a dLocal Go en un momento</p>
+              </div>
             </div>
           }
 
-          @else if (payStep() === 'approved') {
-            <div class="flex flex-col items-center gap-4 py-6 text-center">
-              <div class="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-                <span class="material-symbols-outlined text-emerald-400 text-3xl">check_circle</span>
+          @else if (payStep() === 'error') {
+            <div class="flex flex-col items-center text-center gap-4 py-6">
+              <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center">
+                <span class="material-symbols-outlined text-rose-400" style="font-size:36px">error</span>
               </div>
               <div>
-                <h3 class="text-lg font-black text-white mb-1">¡Pago aprobado!</h3>
-                <p class="text-sm text-slate-400">{{ verifyMessage() }}</p>
+                <p class="font-black text-white text-base">Error al procesar el pago</p>
+                <p class="text-slate-400 text-xs mt-2 max-w-xs leading-relaxed">{{ payError() }}</p>
               </div>
-              <button
-                (click)="close()"
-                class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25 transition-all"
-              >
-                <span class="material-symbols-outlined text-lg">dashboard</span>
-                Ir al dashboard
-              </button>
-            </div>
-          }
-
-          @else if (payStep() === 'sent') {
-            <div class="flex flex-col items-center gap-4 py-6 text-center">
-              <div class="w-16 h-16 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
-                <span class="material-symbols-outlined text-primary text-3xl">schedule_send</span>
+              <div class="flex gap-3 w-full">
+                <button
+                  (click)="close()"
+                  class="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  (click)="retryCheckout()"
+                  class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/80 text-black rounded-xl font-bold text-sm transition-colors"
+                >
+                  <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+                  Reintentar
+                </button>
               </div>
-              <div>
-                <h3 class="text-lg font-black text-white mb-1">Comprobante enviado</h3>
-                <p class="text-sm text-slate-400">{{ verifyMessage() }}</p>
-              </div>
-              <button
-                (click)="close()"
-                class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-white/10 hover:bg-white/20 text-white border border-white/10 transition-all"
-              >
-                Entendido
-              </button>
             </div>
           }
 

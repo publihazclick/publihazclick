@@ -1,11 +1,10 @@
 import { Component, inject, signal, OnInit, ChangeDetectionStrategy, PLATFORM_ID, input } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { AdminPackageService } from '../../core/services/admin-package.service';
 import type { Package } from '../../core/models/admin.model';
 
-type PayStep = 'idle' | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent';
+type PayStep = 'idle' | 'dlocal-loading' | 'error';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -18,7 +17,7 @@ const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   selector: 'app-package-promo-modal',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './package-promo-modal.component.html',
 })
 export class PackagePromoModalComponent implements OnInit {
@@ -35,10 +34,6 @@ export class PackagePromoModalComponent implements OnInit {
   readonly selectedPackage = signal<Package | null>(null);
   readonly payStep = signal<PayStep>('idle');
   readonly payError = signal<string | null>(null);
-  readonly verifyMessage = signal<string>('');
-
-  proofPhone = '';
-  proofTransactionId = '';
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -60,71 +55,32 @@ export class PackagePromoModalComponent implements OnInit {
     this.payStep.set('idle');
     this.selectedPackage.set(null);
     this.payError.set(null);
-    this.verifyMessage.set('');
-    this.proofPhone = '';
-    this.proofTransactionId = '';
     this.visible.set(false);
   }
 
-  openNequiPayment(pkg: Package): void {
-    if (!pkg.nequi_payment_link) return;
+  /** Inicia pago con dLocal Go */
+  async startDlocalCheckout(pkg: Package): Promise<void> {
     this.selectedPackage.set(pkg);
-    this.proofPhone = '';
-    this.proofTransactionId = '';
     this.payError.set(null);
-    this.verifyMessage.set('');
-    this.payStep.set('redirect');
+    this.payStep.set('dlocal-loading');
+    try {
+      const { url } = await this.packageService.createDlocalPayment(pkg.id);
+      window.location.href = url;
+    } catch (e: any) {
+      this.payError.set(e.message ?? 'Error al iniciar pago con dLocal');
+      this.payStep.set('error');
+    }
   }
 
-  goToNequiLink(): void {
-    const link = this.selectedPackage()?.nequi_payment_link;
-    if (!link) return;
-    window.open(link, '_blank', 'noopener,noreferrer');
-    this.payStep.set('confirm');
+  retryCheckout(): void {
+    const pkg = this.selectedPackage();
+    if (pkg) this.startDlocalCheckout(pkg);
   }
 
   backToPackages(): void {
     this.payStep.set('idle');
     this.selectedPackage.set(null);
     this.payError.set(null);
-  }
-
-  async submitProof(): Promise<void> {
-    const pkg = this.selectedPackage();
-    if (!pkg) return;
-
-    const phone = this.proofPhone.replace(/\D/g, '');
-    if (!/^3\d{9}$/.test(phone)) {
-      this.payError.set('Ingresa tu número Nequi (10 dígitos, empieza por 3).');
-      return;
-    }
-    if (!this.proofTransactionId.trim()) {
-      this.payError.set('Ingresa el número de transacción que recibes en Nequi.');
-      return;
-    }
-
-    this.payStep.set('submitting');
-    this.payError.set(null);
-
-    const copAmount = pkg.price_cop ?? Math.round(pkg.price * 4200);
-    const amountInCents = copAmount * 100;
-
-    const result = await this.packageService.verifyAndSubmitPayment({
-      packageId: pkg.id,
-      packageName: pkg.name,
-      amountInCents,
-      phoneNumber: phone,
-      transactionId: this.proofTransactionId.trim(),
-    });
-
-    if (!result.success) {
-      this.payError.set(result.message);
-      this.payStep.set('confirm');
-      return;
-    }
-
-    this.verifyMessage.set(result.message);
-    this.payStep.set(result.autoApproved ? 'approved' : 'sent');
   }
 
   getPriceCOP(pkg: Package | null): string {
