@@ -231,7 +231,7 @@ export interface ActivityLog {
   username?: string;
   full_name?: string;
   action: string;
-  entity_type: 'user' | 'campaign' | 'ptc_task' | 'withdrawal' | 'system' | 'settings';
+  entity_type: 'user' | 'campaign' | 'ptc_task' | 'withdrawal' | 'system' | 'settings' | 'fraud';
   entity_id: string | null;
   details: Record<string, unknown>;
   ip_address: string | null;
@@ -832,6 +832,61 @@ export interface PtcTaskExtended extends PtcTaskAdmin {
 export interface CreatePtcTaskExtendedData extends CreatePtcTaskData {
   ad_type?: PtcAdType;
   is_demo_only?: boolean;
+}
+
+// ============================================================================
+// Detección de Fraude
+// ============================================================================
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface FraudFactor {
+  rule: string;
+  score: number;
+  detail: string;
+}
+
+export interface FraudScore {
+  id: string;
+  user_id: string;
+  username?: string;
+  email?: string;
+  score: number;
+  risk_level: RiskLevel;
+  factors: FraudFactor[];
+  clicks_analyzed: number;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FraudRule {
+  id: string;
+  name: string;
+  description: string;
+  weight: number;
+  is_active: boolean;
+  parameters: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FraudAnalysisResult {
+  analyzed: number;
+  flagged: number;
+  scores: { user_id: string; score: number; risk_level: RiskLevel }[];
+}
+
+export interface FraudClickDetail {
+  id: string;
+  task_id: string;
+  task_title?: string;
+  reward_earned: number;
+  ip_address: string | null;
+  user_agent: string | null;
+  session_fingerprint: string | null;
+  click_duration_ms: number | null;
+  completed_at: string;
 }
 
 // (Duplicate SystemStats removed — canonical definition is above)

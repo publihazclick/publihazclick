@@ -1,0 +1,291 @@
+<!-- Toast de éxito -->
+@if (successToast()) {
+  <div class="fixed top-6 right-6 z-[100] bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm font-bold animate-pulse">
+    <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+    {{ successToast() }}
+  </div>
+}
+
+<!-- Error -->
+@if (error()) {
+  <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 mb-6 flex items-center gap-3">
+    <span class="material-symbols-outlined text-rose-400">error</span>
+    <span class="text-rose-400 text-sm font-bold">{{ error() }}</span>
+  </div>
+}
+
+<!-- Header -->
+<div class="mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-black text-white flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary" style="font-size:28px">security</span>
+        Detección de Fraude
+      </h2>
+      <p class="text-slate-500 text-sm mt-1">Análisis de patrones sospechosos en clicks PTC</p>
+    </div>
+    <button
+      (click)="runAnalysis()"
+      [disabled]="analyzing()"
+      class="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-black font-black text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+    >
+      @if (analyzing()) {
+        <span class="material-symbols-outlined animate-spin" style="font-size:18px">sync</span>
+        Analizando...
+      } @else {
+        <span class="material-symbols-outlined" style="font-size:18px">analytics</span>
+        Analizar Ahora
+      }
+    </button>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+  <div class="bg-card-dark border border-white/5 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary" style="font-size:20px">person_search</span>
+      </div>
+      <div>
+        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Usuarios Analizados</p>
+        <p class="text-white font-black text-xl">{{ totalAnalyzed() }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="bg-card-dark border border-white/5 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-amber-400" style="font-size:20px">warning</span>
+      </div>
+      <div>
+        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Riesgo Alto</p>
+        <p class="text-amber-400 font-black text-xl">{{ highRiskCount() }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="bg-card-dark border border-white/5 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-rose-400" style="font-size:20px">gpp_bad</span>
+      </div>
+      <div>
+        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Crítico</p>
+        <p class="text-rose-400 font-black text-xl">{{ criticalCount() }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+@if (loading()) {
+  <div class="flex items-center justify-center py-20">
+    <span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span>
+  </div>
+} @else if (!selectedUser()) {
+  <!-- Tabla de Fraud Scores -->
+  @if (scores().length === 0) {
+    <div class="bg-card-dark border border-white/5 rounded-xl p-10 text-center">
+      <span class="material-symbols-outlined text-slate-700 text-5xl mb-3 block">verified_user</span>
+      <p class="text-slate-400 font-bold text-sm">No hay datos de análisis de fraude</p>
+      <p class="text-slate-600 text-xs mt-1">Presiona "Analizar Ahora" para ejecutar el primer análisis</p>
+    </div>
+  } @else {
+    <!-- Desktop Table -->
+    <div class="hidden md:block bg-card-dark border border-white/5 rounded-xl overflow-hidden">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-white/5">
+            <th class="px-4 py-3 text-[10px] text-slate-500 uppercase font-black tracking-wider">Usuario</th>
+            <th class="px-4 py-3 text-[10px] text-slate-500 uppercase font-black tracking-wider">Score</th>
+            <th class="px-4 py-3 text-[10px] text-slate-500 uppercase font-black tracking-wider">Riesgo</th>
+            <th class="px-4 py-3 text-[10px] text-slate-500 uppercase font-black tracking-wider">Factores</th>
+            <th class="px-4 py-3 text-[10px] text-slate-500 uppercase font-black tracking-wider">Clicks</th>
+            <th class="px-4 py-3 text-[10px] text-slate-500 uppercase font-black tracking-wider">Analizado</th>
+            <th class="px-4 py-3 text-[10px] text-slate-500 uppercase font-black tracking-wider"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (score of scores(); track score.id) {
+            <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+              <td class="px-4 py-3">
+                <p class="text-white text-sm font-bold">{{ score.username }}</p>
+                <p class="text-slate-600 text-[10px]">{{ score.email }}</p>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full" [class]="getScoreBarColor(score.score)" [style.width.%]="score.score"></div>
+                  </div>
+                  <span class="text-white font-black text-sm tabular-nums">{{ score.score }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider" [class]="getRiskBadgeClass(score.risk_level)">
+                  {{ getRiskLabel(score.risk_level) }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex flex-wrap gap-1">
+                  @for (factor of score.factors; track factor.rule) {
+                    <span class="text-[9px] bg-white/5 text-slate-400 px-1.5 py-0.5 rounded font-medium" [title]="factor.detail">{{ factor.rule }}</span>
+                  }
+                  @if (score.factors.length === 0) {
+                    <span class="text-slate-700 text-[10px]">—</span>
+                  }
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-slate-300 text-sm font-bold tabular-nums">{{ score.clicks_analyzed }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-slate-500 text-[10px]">{{ formatDate(score.analyzed_at) }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <button
+                  (click)="selectUser(score)"
+                  class="p-1.5 text-slate-500 hover:text-primary hover:bg-white/5 rounded-lg transition-all"
+                  title="Ver detalle"
+                >
+                  <span class="material-symbols-outlined" style="font-size:18px">visibility</span>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div class="md:hidden space-y-3">
+      @for (score of scores(); track score.id) {
+        <div class="bg-card-dark border border-white/5 rounded-xl p-4" (click)="selectUser(score)">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-white text-sm font-bold">{{ score.username }}</p>
+              <p class="text-slate-600 text-[10px]">{{ score.email }}</p>
+            </div>
+            <span class="text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider" [class]="getRiskBadgeClass(score.risk_level)">
+              {{ getRiskLabel(score.risk_level) }}
+            </span>
+          </div>
+          <div class="flex items-center gap-3 mb-2">
+            <div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div class="h-full rounded-full" [class]="getScoreBarColor(score.score)" [style.width.%]="score.score"></div>
+            </div>
+            <span class="text-white font-black text-sm tabular-nums">{{ score.score }}/100</span>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-500">
+            <span>{{ score.clicks_analyzed }} clicks</span>
+            <span>{{ score.factors.length }} factores</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+} @else {
+  <!-- Drill-down: Detalle de usuario -->
+  <div class="space-y-6">
+    <!-- Header del detalle -->
+    <div class="flex items-center gap-4">
+      <button (click)="closeDetail()" class="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+      <div class="flex-1">
+        <h3 class="text-white font-black text-lg">{{ selectedUser()!.username }}</h3>
+        <p class="text-slate-500 text-xs">{{ selectedUser()!.email }}</p>
+      </div>
+      <div class="text-right">
+        <div class="flex items-center gap-2">
+          <span class="text-white font-black text-2xl tabular-nums">{{ selectedUser()!.score }}</span>
+          <span class="text-slate-500 text-xs">/100</span>
+        </div>
+        <span class="text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider" [class]="getRiskBadgeClass(selectedUser()!.risk_level)">
+          {{ getRiskLabel(selectedUser()!.risk_level) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Factores de riesgo -->
+    @if (selectedUser()!.factors.length > 0) {
+      <div class="bg-card-dark border border-white/5 rounded-xl p-4">
+        <h4 class="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-3">Factores de Riesgo</h4>
+        <div class="space-y-2">
+          @for (factor of selectedUser()!.factors; track factor.rule) {
+            <div class="flex items-center gap-3 bg-white/[0.02] rounded-lg p-3">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:16px">warning</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-white text-xs font-bold">{{ factor.rule }}</p>
+                <p class="text-slate-500 text-[10px]">{{ factor.detail }}</p>
+              </div>
+              <span class="text-amber-400 font-black text-sm">+{{ factor.score }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Clicks del usuario -->
+    <div class="bg-card-dark border border-white/5 rounded-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-white/5">
+        <h4 class="text-[10px] text-slate-500 uppercase font-black tracking-wider">Últimos 50 Clicks</h4>
+      </div>
+
+      @if (loadingClicks()) {
+        <div class="flex items-center justify-center py-10">
+          <span class="material-symbols-outlined animate-spin text-primary text-2xl">sync</span>
+        </div>
+      } @else if (userClicks().length === 0) {
+        <div class="p-6 text-center">
+          <p class="text-slate-600 text-sm">Sin clicks registrados</p>
+        </div>
+      } @else {
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-white/5">
+                <th class="px-3 py-2 text-[9px] text-slate-500 uppercase font-black tracking-wider">Anuncio</th>
+                <th class="px-3 py-2 text-[9px] text-slate-500 uppercase font-black tracking-wider">IP</th>
+                <th class="px-3 py-2 text-[9px] text-slate-500 uppercase font-black tracking-wider">Fingerprint</th>
+                <th class="px-3 py-2 text-[9px] text-slate-500 uppercase font-black tracking-wider">Duración</th>
+                <th class="px-3 py-2 text-[9px] text-slate-500 uppercase font-black tracking-wider">Recompensa</th>
+                <th class="px-3 py-2 text-[9px] text-slate-500 uppercase font-black tracking-wider">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (click of userClicks(); track click.id) {
+                <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td class="px-3 py-2 text-white text-xs font-medium max-w-[150px] truncate">{{ click.task_title }}</td>
+                  <td class="px-3 py-2 text-slate-400 text-[10px] font-mono">{{ click.ip_address || '—' }}</td>
+                  <td class="px-3 py-2 text-slate-400 text-[10px] font-mono" [title]="click.session_fingerprint || ''">{{ truncateFp(click.session_fingerprint) }}</td>
+                  <td class="px-3 py-2 text-slate-300 text-xs font-bold tabular-nums">{{ formatDuration(click.click_duration_ms) }}</td>
+                  <td class="px-3 py-2 text-emerald-400 text-xs font-bold tabular-nums">{{ click.reward_earned }}</td>
+                  <td class="px-3 py-2 text-slate-500 text-[10px]">{{ formatDate(click.completed_at) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="md:hidden p-3 space-y-2">
+          @for (click of userClicks(); track click.id) {
+            <div class="bg-white/[0.02] rounded-lg p-3">
+              <div class="flex justify-between items-start mb-2">
+                <p class="text-white text-xs font-bold truncate max-w-[60%]">{{ click.task_title }}</p>
+                <span class="text-emerald-400 text-xs font-black">{{ click.reward_earned }} COP</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1 text-[10px]">
+                <span class="text-slate-500">IP: <span class="text-slate-300 font-mono">{{ click.ip_address || '—' }}</span></span>
+                <span class="text-slate-500">Duración: <span class="text-slate-300">{{ formatDuration(click.click_duration_ms) }}</span></span>
+                <span class="text-slate-500">FP: <span class="text-slate-300 font-mono">{{ truncateFp(click.session_fingerprint) }}</span></span>
+                <span class="text-slate-500">{{ formatDate(click.completed_at) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}

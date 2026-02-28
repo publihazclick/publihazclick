@@ -5,6 +5,9 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { WalletStateService } from '../../../../core/services/wallet-state.service';
+import { UserTrackingService } from '../../../../core/services/user-tracking.service';
+import { SupabaseSessionService } from '../../../../core/services/supabase-session.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { PtcModalComponent, PtcAd } from '../../../../components/ptc-modal/ptc-modal.component';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 import { getSupabaseClient } from '../../../../core/supabase.client';
@@ -40,6 +43,9 @@ export class AdvertiserTasksComponent implements OnInit {
   private readonly ptcService = inject(AdminPtcTaskService);
   private readonly currencyService = inject(CurrencyService);
   private readonly walletService = inject(WalletStateService);
+  private readonly userTracking = inject(UserTrackingService);
+  private readonly sessionService = inject(SupabaseSessionService);
+  private readonly authService = inject(AuthService);
   private readonly supabase = getSupabaseClient();
 
   readonly profile = this.profileService.profile;
@@ -225,24 +231,12 @@ export class AdvertiserTasksComponent implements OnInit {
     this.selectedAd.set(null);
   }
 
-  onRewardClaimed(event: { walletAmount: number; donationAmount: number }): void {
+  onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
     const ad = this.selectedAd();
-    const userProfile = this.profile();
     if (!ad) return;
 
-    // Actualizar wallet demo (localStorage)
-    this.walletService.updateWallet(event.walletAmount);
-    this.walletService.updateDonations(event.donationAmount);
-
-    // Actualizar balance real en la base de datos
-    if (userProfile && event.walletAmount > 0) {
-      this.profileService.updateRealBalance(userProfile.id, event.walletAmount, 'add');
-    }
-
-    // Actualizar donaciones en la base de datos
-    if (userProfile && event.donationAmount > 0) {
-      this.profileService.updateDonations(userProfile.id, event.donationAmount);
-    }
+    // Acreditar vía RPC con metadata anti-fraude
+    this.creditRewardToDb(ad.id, event.durationMs);
 
     const isMega = ad.adType === 'mega';
 
@@ -258,6 +252,30 @@ export class AdvertiserTasksComponent implements OnInit {
       this.standardSlots.update(slots =>
         slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
       );
+    }
+  }
+
+  private async creditRewardToDb(taskId: string, durationMs?: number): Promise<void> {
+    try {
+      const user = this.authService.getCurrentUser();
+      if (!user) return;
+
+      const ip = this.userTracking.getIp() || null;
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+      const fingerprint = await this.userTracking.getSessionFingerprint() || null;
+
+      await this.sessionService.callRpc('record_ptc_click', {
+        p_user_id: user.id,
+        p_task_id: taskId,
+        p_ip_address: ip,
+        p_user_agent: ua,
+        p_session_fingerprint: fingerprint,
+        p_click_duration_ms: durationMs ?? null,
+      });
+    } catch (err) {
+      console.error('creditRewardToDb error:', err);
+    } finally {
+      this.profileService.getCurrentProfile().catch(() => {});
     }
   }
 

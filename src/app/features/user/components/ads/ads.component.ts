@@ -158,12 +158,12 @@ export class UserAdsComponent implements OnInit {
     this.selectedAd.set(null);
   }
 
-  onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string }): void {
+  onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
     this.userTracking.recordAdView(event.taskId);
-    this.creditRewardToDb(event.taskId);
+    this.creditRewardToDb(event.taskId, event.durationMs);
   }
 
-  private async creditRewardToDb(taskId: string): Promise<void> {
+  private async creditRewardToDb(taskId: string, durationMs?: number): Promise<void> {
     try {
       const user = this.authService.getCurrentUser();
       if (!user) {
@@ -171,9 +171,21 @@ export class UserAdsComponent implements OnInit {
         return;
       }
 
+      // Metadata anti-fraude
+      const ip = this.userTracking.getIp() || null;
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+      const fingerprint = await this.userTracking.getSessionFingerprint() || null;
+
       const data = await this.sessionService.callRpc<{ success: boolean; error?: string }>(
         'record_ptc_click',
-        { p_user_id: user.id, p_task_id: taskId }
+        {
+          p_user_id: user.id,
+          p_task_id: taskId,
+          p_ip_address: ip,
+          p_user_agent: ua,
+          p_session_fingerprint: fingerprint,
+          p_click_duration_ms: durationMs ?? null,
+        }
       );
 
       if (data && !data.success) {

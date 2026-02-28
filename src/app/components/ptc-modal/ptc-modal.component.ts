@@ -403,7 +403,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   ad = input.required<PtcAd>();
   isOpen = input<boolean>(true);
   @Output() close = new EventEmitter<void>();
-  @Output() rewardClaimed = new EventEmitter<{ walletAmount: number; donationAmount: number; taskId: string }>();
+  @Output() rewardClaimed = new EventEmitter<{ walletAmount: number; donationAmount: number; taskId: string; durationMs: number }>();
 
   protected currencyService = inject(CurrencyService);
   private sanitizer = inject(DomSanitizer);
@@ -462,6 +462,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   private countdownInterval: any;
   private fbFocusInterval: any;
+  private countdownStartTime: number = 0;
   private cachedVideoUrl: SafeResourceUrl | null = null;
   private cachedVideoUrlSource: string | null = null;
   private visibilityHandler = this.onVisibilityChange.bind(this);
@@ -559,6 +560,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     this.selectedShapeId.set(null);
     this.showCaptchaModal.set(false);
     this.countdown.set(this.ad().duration || 60);
+    this.countdownStartTime = Date.now();
 
     this.countdownInterval = setInterval(() => {
       this.countdown.update((v) => {
@@ -621,7 +623,8 @@ export class PtcModalComponent implements OnInit, OnDestroy {
         this.showCaptchaModal.set(false);
 
         const rewardCOP = this.ad().rewardCOP || 1;
-        this.rewardClaimed.emit({ walletAmount: rewardCOP, donationAmount: 0, taskId: this.ad().id });
+        const durationMs = this.countdownStartTime > 0 ? Date.now() - this.countdownStartTime : 0;
+        this.rewardClaimed.emit({ walletAmount: rewardCOP, donationAmount: 0, taskId: this.ad().id, durationMs });
 
         // Mostrar modal de recompensa demo
         this.showRewardToast.set(true);

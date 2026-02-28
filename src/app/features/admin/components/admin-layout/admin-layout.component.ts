@@ -6,6 +6,7 @@ import { AdminDashboardService } from '../../../../core/services/admin-dashboard
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminReferralModalComponent } from '../admin-referral-modal/admin-referral-modal.component';
+import { getSupabaseClient } from '../../../../core/supabase.client';
 
 @Component({
   selector: 'app-admin-layout',
@@ -34,6 +35,8 @@ export class AdminLayoutComponent implements OnInit {
   protected readonly pendingModerationCount = signal(0);
   // Conteo de pagos pendientes
   protected readonly pendingPaymentsCount = signal(0);
+  // Conteo de usuarios de alto riesgo (fraude)
+  protected readonly highRiskFraudCount = signal(0);
 
   constructor(
     private readonly authService: AuthService,
@@ -50,6 +53,7 @@ export class AdminLayoutComponent implements OnInit {
   ngOnInit(): void {
     this.loadPendingCount();
     this.loadPendingPaymentsCount();
+    this.loadHighRiskFraudCount();
     this.profileService.getCurrentProfile();
   }
 
@@ -66,6 +70,19 @@ export class AdminLayoutComponent implements OnInit {
     try {
       const count = await this.packageService.getPendingPaymentsCount();
       this.pendingPaymentsCount.set(count);
+    } catch {
+      // silencioso
+    }
+  }
+
+  private async loadHighRiskFraudCount(): Promise<void> {
+    try {
+      const supabase = getSupabaseClient();
+      const { count } = await supabase
+        .from('fraud_scores')
+        .select('id', { count: 'exact', head: true })
+        .in('risk_level', ['high', 'critical']);
+      this.highRiskFraudCount.set(count ?? 0);
     } catch {
       // silencioso
     }

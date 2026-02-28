@@ -31,6 +31,9 @@ export class UserTrackingService {
   // Signal para datos de sesión
   readonly sessionData = signal<UserSessionData | null>(null);
 
+  // Cache del fingerprint de sesión (no cambia durante la sesión)
+  private cachedFingerprint: string | null = null;
+
   constructor() {
     this.initializeSession();
   }
@@ -211,6 +214,42 @@ export class UserTrackingService {
     };
     this.sessionData.set(newSession);
     this.saveSession(newSession);
+  }
+
+  /**
+   * Genera un fingerprint de sesión basado en propiedades del navegador.
+   * Hash SHA-256 de userAgent + screen + timezone + language.
+   * Se cachea en memoria (no cambia durante la sesión).
+   */
+  async getSessionFingerprint(): Promise<string> {
+    if (this.cachedFingerprint) return this.cachedFingerprint;
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return '';
+
+    const raw = [
+      navigator.userAgent || '',
+      `${screen.width}x${screen.height}x${screen.colorDepth}`,
+      Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+      navigator.language || '',
+    ].join('|');
+
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(raw);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      this.cachedFingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // Fallback: simple hash si crypto.subtle no está disponible
+      let hash = 0;
+      for (let i = 0; i < raw.length; i++) {
+        const char = raw.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+      }
+      this.cachedFingerprint = Math.abs(hash).toString(16).padStart(16, '0');
+    }
+
+    return this.cachedFingerprint;
   }
 
   /**

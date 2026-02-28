@@ -33,6 +33,17 @@
         @if (profile()) {
           <h3 class="font-bold text-center text-sm">{{ profile()!.full_name || profile()!.username }}</h3>
           <p class="text-[10px] text-accent mt-1 font-bold uppercase tracking-widest">Anunciante</p>
+          @if (profile()!.has_active_package) {
+            <div class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:12px">verified</span>
+              <span class="text-[10px] text-emerald-400 font-black uppercase tracking-wider">Paquete Activo</span>
+            </div>
+          } @else {
+            <a routerLink="/advertiser/packages" class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-all">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:12px">warning</span>
+              <span class="text-[10px] text-amber-400 font-black uppercase tracking-wider">Sin Paquete</span>
+            </a>
+          }
         } @else {
           <h3 class="font-bold text-center text-sm">Mi Cuenta</h3>
         }
