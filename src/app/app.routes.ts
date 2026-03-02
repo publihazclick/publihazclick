@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
 import { socialGuard } from './core/guards/social.guard';
-import { authGuard, guestGuard, roleRedirectGuard } from './core/guards/auth.guard';
+import { authGuard, guestGuard, roleRedirectGuard, dashboardGuard } from './core/guards/auth.guard';
 
 /**
  * Rutas de la aplicación
@@ -180,11 +180,11 @@ export const routes: Routes = [
       }
     ]
   },
-  // Rutas de usuario (dashboard)
+  // Rutas de usuario (dashboard) — solo rol 'guest'; advertiser/admin son redirigidos
   {
     path: 'dashboard',
     loadComponent: () => import('./features/user/components/user-layout/user-layout.component').then(m => m.UserLayoutComponent),
-    canActivate: [authGuard],
+    canActivate: [dashboardGuard],
     children: [
       {
         path: '',

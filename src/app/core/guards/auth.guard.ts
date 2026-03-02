@@ -228,6 +228,49 @@ export function roleGuard(roles: string[]): CanActivateFn {
 }
 
 /**
+ * Guard para proteger /dashboard — solo permite rol 'guest'.
+ * Redirige advertiser → /advertiser, admin/dev → /admin.
+ */
+export const dashboardGuard: CanActivateFn = async (route, state) => {
+  const authService = inject(AuthService);
+  const profileService = inject(ProfileService);
+  const router = inject(Router);
+  const platformId = inject(PLATFORM_ID);
+
+  if (!isPlatformBrowser(platformId)) return true;
+
+  if (authService.isLoading()) {
+    await new Promise<void>(resolve => {
+      const sub = authService.authStateObservable$.subscribe(s => {
+        if (!s.isLoading) { sub.unsubscribe(); resolve(); }
+      });
+      setTimeout(() => { sub.unsubscribe(); resolve(); }, 5000);
+    });
+  }
+
+  if (!authService.isAuthenticated()) {
+    return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+  }
+
+  try {
+    const profile = await profileService.getCurrentProfile();
+    if (!profile) return router.createUrlTree(['/login']);
+
+    switch (profile.role) {
+      case 'advertiser':
+        return router.createUrlTree(['/advertiser']);
+      case 'admin':
+      case 'dev':
+        return router.createUrlTree(['/admin']);
+      default:
+        return true; // guest puede entrar a /dashboard
+    }
+  } catch {
+    return true;
+  }
+};
+
+/**
  * Guard que redirige al usuario según su rol después del login
  * Útil para la ruta raíz o después del login
  * 

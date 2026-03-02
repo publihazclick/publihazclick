@@ -11,6 +11,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { PtcModalComponent, PtcAd } from '../../../../components/ptc-modal/ptc-modal.component';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 import { getSupabaseClient } from '../../../../core/supabase.client';
+import { RewardAnimationService } from '../../../../core/services/reward-animation.service';
 
 const DAILY_SLOTS = {
   standard_400: 5,
@@ -55,6 +56,7 @@ export class AdvertiserTasksComponent implements OnInit {
   private readonly userTracking = inject(UserTrackingService);
   private readonly sessionService = inject(SupabaseSessionService);
   private readonly authService = inject(AuthService);
+  private readonly rewardAnimation = inject(RewardAnimationService);
   private readonly supabase = getSupabaseClient();
 
   readonly profile = this.profileService.profile;
@@ -86,6 +88,8 @@ export class AdvertiserTasksComponent implements OnInit {
 
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
+  readonly showRewardOverlay = signal(false);
+  readonly overlayAmount = signal(0);
 
   private readonly adTypeRewards: Record<string, number> = {
     mega: 2000, standard_600: 600, standard_400: 400, mini: 83.33, mini_referral: 100,
@@ -290,26 +294,24 @@ export class AdvertiserTasksComponent implements OnInit {
   onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
     const ad = this.selectedAd();
     if (!ad) return;
+    // Cierra el modal inmediatamente para buena UX
+    this.closeModal();
+    // Acreditar en DB — el marcado del slot ocurre dentro solo si el RPC es exitoso
+    this.creditRewardToDb(ad, event.durationMs);
+  }
 
-    // Acreditar vía RPC con metadata anti-fraude
-    this.creditRewardToDb(ad.id, event.durationMs);
-
-    const isMega = ad.adType === 'mega';
-
-    if (isMega) {
-      // Mega: tracking permanente — acumula
+  private markSlotViewed(ad: PtcAd): void {
+    if (ad.adType === 'mega') {
       this.markMegaDone(ad.id);
       this.megaSlots.update(slots =>
         slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
       );
     } else if (ad.adType === 'mini_referral') {
-      // Mini referral: diaria como las base
       this.markDailyDone(ad.id);
       this.miniReferralSlots.update(slots =>
         slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
       );
     } else {
-      // Diaria: tracking solo por hoy
       this.markDailyDone(ad.id);
       this.standardSlots.update(slots =>
         slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
@@ -317,27 +319,41 @@ export class AdvertiserTasksComponent implements OnInit {
     }
   }
 
-  private async creditRewardToDb(taskId: string, durationMs?: number): Promise<void> {
+  private async creditRewardToDb(ad: PtcAd, durationMs?: number): Promise<void> {
     try {
       const user = this.authService.getCurrentUser();
-      if (!user) return;
+      if (!user) { console.warn('[PTC] No user'); return; }
 
       const ip = this.userTracking.getIp() || null;
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
       const fingerprint = await this.userTracking.getSessionFingerprint() || null;
 
-      await this.sessionService.callRpc('record_ptc_click', {
+      const result: any = await this.sessionService.callRpc('record_ptc_click', {
         p_user_id: user.id,
-        p_task_id: taskId,
+        p_task_id: ad.id,
         p_ip_address: ip,
         p_user_agent: ua,
         p_session_fingerprint: fingerprint,
         p_click_duration_ms: durationMs ?? null,
       });
+
+      console.log('[PTC] record_ptc_click result:', result);
+
+      if (result?.success === true) {
+        this.markSlotViewed(ad);
+        const actualReward: number = result.reward ?? ad.rewardCOP;
+        // Refrescar balance desde DB (el RPC ya lo actualizó) y mostrar animación
+        try { await this.profileService.getCurrentProfile(); } catch { /* ignore */ }
+        this.overlayAmount.set(actualReward);
+        this.showRewardOverlay.set(true);
+        setTimeout(() => this.showRewardOverlay.set(false), 2800);
+      } else {
+        console.warn('[PTC] Reward rejected:', result?.error ?? 'unknown reason');
+        await this.profileService.getCurrentProfile().catch(() => {});
+      }
     } catch (err) {
-      console.error('creditRewardToDb error:', err);
-    } finally {
-      this.profileService.getCurrentProfile().catch(() => {});
+      console.error('[PTC] creditRewardToDb error:', err);
+      await this.profileService.getCurrentProfile().catch(() => {});
     }
   }
 

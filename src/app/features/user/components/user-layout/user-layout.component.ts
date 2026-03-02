@@ -1,4 +1,4 @@
-import { Component, signal, ViewChild, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, signal, ViewChild, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -15,7 +15,7 @@ import { BannerSliderComponent } from '../../../../components/banner-slider/bann
   templateUrl: './user-layout.component.html',
   styleUrl: './user-layout.component.scss',
 })
-export class UserLayoutComponent implements OnInit {
+export class UserLayoutComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
   readonly walletState = inject(WalletStateService);
@@ -42,10 +42,38 @@ export class UserLayoutComponent implements OnInit {
   dailyGoal = 10;
   dailyClicks = 7;
 
+  // Toast de activación de cuenta
+  readonly upgradeToast = signal(false);
+  private initialRole: string | null = null;
+  private roleWatchReady = false;
+
   @ViewChild('referralModal') referralModal!: UserReferralModalComponent;
 
+  constructor() {
+    // Detecta en tiempo real cuando el admin cambia el rol mientras el usuario está activo
+    effect(() => {
+      const role = this.profile()?.role ?? null;
+      if (!this.roleWatchReady || role === null) return;
+      if (role === this.initialRole) return;
+      // El rol cambió → activar toast y redirigir
+      this.onRoleUpgraded(role);
+    });
+  }
+
   ngOnInit(): void {
-    this.loadProfile();
+    this.loadProfile().then(() => {
+      this.initialRole = this.profile()?.role ?? null;
+      this.roleWatchReady = true;
+      // Iniciar escucha Realtime solo en el browser
+      const userId = this.profile()?.id;
+      if (userId && isPlatformBrowser(this.platformId)) {
+        this.profileService.startRealtimeProfileWatch(userId);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.profileService.stopRealtimeProfileWatch();
   }
 
   private async loadProfile(): Promise<void> {
@@ -54,6 +82,18 @@ export class UserLayoutComponent implements OnInit {
     } catch {
       // silencioso
     }
+  }
+
+  private onRoleUpgraded(newRole: string): void {
+    this.upgradeToast.set(true);
+    setTimeout(() => {
+      this.upgradeToast.set(false);
+      if (newRole === 'advertiser') {
+        this.router.navigate(['/advertiser']);
+      } else if (newRole === 'admin' || newRole === 'dev') {
+        this.router.navigate(['/admin']);
+      }
+    }, 3500);
   }
 
   formatCOP(amount: number): string {

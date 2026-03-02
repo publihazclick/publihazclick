@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AdminPtcTaskService, SAMPLE_PTC_ADS } from '../../core/services/admin-ptc-task.service';
@@ -28,6 +28,7 @@ interface PtcAdCard {
 @Component({
   selector: 'app-ptc-ads',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule, PtcModalComponent],
   templateUrl: './ptc-ads.component.html',
   styleUrl: './ptc-ads.component.scss'
@@ -48,6 +49,10 @@ export class PtcAdsComponent implements OnInit {
   
   // Estado de anuncios vistos
   viewedAds = signal<Set<string>>(new Set());
+
+  // Animación de recompensa
+  readonly showRewardOverlay = signal(false);
+  readonly overlayAmount = signal(0);
 
   // Categorías expandidas
   expandedCategories = signal<Set<string>>(new Set());
@@ -214,14 +219,19 @@ export class PtcAdsComponent implements OnInit {
     return viewed;
   }
 
-  onRewardClaimed(event: { walletAmount: number; donationAmount: number }): void {
-    // Usar el servicio de wallet para actualizar
+  onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
+    const ad = this.selectedAd();
+    // Cerrar modal primero para buena UX
+    this.closeModal();
+
+    // Actualizar wallet demo y registrar vista
     this.walletService.updateWallet(event.walletAmount);
     this.walletService.updateDonations(event.donationAmount);
-    
-    // Recargar los datos de sesión de anuncios
-    this.userTracking.recordAdView(this.selectedAd()?.id || '');
-    
-    // Reward claimed successfully
+    if (ad) this.userTracking.recordAdView(ad.id);
+
+    // Mostrar animación de recompensa
+    this.overlayAmount.set(ad?.rewardCOP ?? event.walletAmount);
+    this.showRewardOverlay.set(true);
+    setTimeout(() => this.showRewardOverlay.set(false), 2800);
   }
 }

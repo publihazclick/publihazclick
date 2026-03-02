@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import {
   Profile,
   Referral,
@@ -30,10 +30,28 @@ export class ProfileService {
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<string | null>(null);
 
+  // Canal de Supabase Realtime para escuchar cambios de perfil en tiempo real
+  private _profileChannel: RealtimeChannel | null = null;
+
   readonly profile = this._profile.asReadonly();
   readonly referrals = this._referrals.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
+
+  /**
+   * Actualización optimista del balance tras acreditar una recompensa.
+   * Se llama inmediatamente después del RPC exitoso para reflejar el cambio en la UI
+   * sin esperar al round-trip HTTP.
+   */
+  patchBalance(rewardCOP: number, donationCOP: number = 0): void {
+    const current = this._profile();
+    if (!current) return;
+    this._profile.set({
+      ...current,
+      real_balance: (current.real_balance ?? 0) + rewardCOP,
+      total_donated: (current.total_donated ?? 0) + donationCOP,
+    });
+  }
 
   /**
    * Obtener perfil del usuario actual
@@ -547,6 +565,33 @@ export class ProfileService {
       return data as UserLevel;
     } catch (error: any) {
       return null;
+    }
+  }
+
+  /**
+   * Inicia una suscripción Realtime a la fila de perfil del usuario.
+   * Cuando el admin cambia el rol, has_active_package u otro campo,
+   * el signal _profile se actualiza al instante sin recargar la página.
+   */
+  startRealtimeProfileWatch(userId: string): void {
+    this.stopRealtimeProfileWatch();
+    this._profileChannel = this.supabase
+      .channel(`profile-watch:${userId}`)
+      .on(
+        'postgres_changes' as any,
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        (payload: any) => {
+          this._profile.set(payload.new as Profile);
+        }
+      )
+      .subscribe();
+  }
+
+  /** Cancela la suscripción Realtime activa (llamar en ngOnDestroy). */
+  stopRealtimeProfileWatch(): void {
+    if (this._profileChannel) {
+      this.supabase.removeChannel(this._profileChannel);
+      this._profileChannel = null;
     }
   }
 

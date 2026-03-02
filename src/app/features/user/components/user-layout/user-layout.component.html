@@ -399,3 +399,22 @@
     <span class="absolute right-full mr-3 bg-black text-white text-[10px] font-bold px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10">Cambiar Tema</span>
   </button>
 </div>
+
+<!-- ══ Toast: cuenta activada como Anunciante ════════════════════════════ -->
+@if (upgradeToast()) {
+  <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[300] pointer-events-none">
+    <div class="animate-reward-badge bg-gradient-to-r from-emerald-500 to-cyan-400 text-black rounded-2xl shadow-2xl shadow-emerald-500/50 overflow-hidden min-w-[320px] max-w-sm">
+      <div class="flex items-center gap-4 px-6 py-4">
+        <span class="material-symbols-outlined text-4xl shrink-0" style="font-size:40px">workspace_premium</span>
+        <div>
+          <p class="font-black text-base leading-tight">¡Cuenta activada como Anunciante!</p>
+          <p class="text-xs font-semibold opacity-75 mt-0.5">Redirigiendo a tu nuevo panel...</p>
+        </div>
+      </div>
+      <!-- Barra de progreso que se vacía en 3.5s -->
+      <div class="h-1.5 bg-black/10">
+        <div class="h-full bg-black/25 animate-[shrinkBar_3.5s_linear_forwards]"></div>
+      </div>
+    </div>
+  </div>
+}
