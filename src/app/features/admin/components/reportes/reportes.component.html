@@ -15,6 +15,183 @@
     </button>
   </div>
 
+  <!-- Tabs -->
+  <div class="flex gap-1 bg-white/5 p-1 rounded-xl w-fit">
+    <button
+      (click)="setTab('users')"
+      [class]="activeTab() === 'users'
+        ? 'px-4 py-2 rounded-lg text-sm font-bold bg-card-dark text-white shadow'
+        : 'px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white transition-colors'"
+    >
+      <span class="flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-base">group</span>
+        Usuarios
+      </span>
+    </button>
+    <button
+      (click)="setTab('daily')"
+      [class]="activeTab() === 'daily'
+        ? 'px-4 py-2 rounded-lg text-sm font-bold bg-card-dark text-white shadow'
+        : 'px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white transition-colors'"
+    >
+      <span class="flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-base">today</span>
+        Actividad de Hoy
+        @if (dailyActivity().length > 0) {
+          <span class="bg-primary text-black text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">
+            {{ dailyActivity().length }}
+          </span>
+        }
+      </span>
+    </button>
+  </div>
+
+  <!-- ═══ TAB: ACTIVIDAD DE HOY ═══ -->
+  @if (activeTab() === 'daily') {
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <p class="text-slate-400 text-sm">
+          Anuncios vistos hoy · <span class="text-white font-bold">{{ dailyDate() }}</span>
+        </p>
+        <button
+          (click)="loadDailyActivity()"
+          [disabled]="loadingDaily()"
+          class="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
+        >
+          <span class="material-symbols-outlined text-xl" [class.animate-spin]="loadingDaily()">sync</span>
+          Actualizar
+        </button>
+      </div>
+
+      @if (loadingDaily()) {
+        <div class="flex items-center justify-center py-16">
+          <span class="material-symbols-outlined text-primary text-4xl animate-spin">sync</span>
+        </div>
+      } @else if (dailyActivity().length === 0) {
+        <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+          <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">play_circle</span>
+          <h3 class="font-bold text-lg mb-2 text-white">Sin actividad hoy</h3>
+          <p class="text-slate-500 text-sm">Ningún usuario ha completado anuncios todavía</p>
+        </div>
+      } @else {
+
+        <!-- Resumen rápido del día -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Usuarios activos</p>
+            <p class="text-2xl font-black text-white">{{ dailyActivity().length }}</p>
+          </div>
+          <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Total clicks</p>
+            <p class="text-2xl font-black text-cyan-400">{{ dailyTotalClicks() }}</p>
+          </div>
+          <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Mega vistos</p>
+            <p class="text-2xl font-black text-violet-400">{{ dailyTotalMega() }}</p>
+          </div>
+          <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Pagado hoy</p>
+            <p class="text-xl font-black text-emerald-400">{{ formatCurrency(dailyTotalCOP()) }}</p>
+          </div>
+        </div>
+
+        <!-- Tabla desktop -->
+        <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="bg-white/5 text-[11px] font-black uppercase text-slate-400 tracking-widest">
+                  <th class="px-5 py-4">Usuario</th>
+                  <th class="px-5 py-4 text-cyan-400">Estándar</th>
+                  <th class="px-5 py-4 text-amber-400">Mini</th>
+                  <th class="px-5 py-4 text-orange-400">Mini Ref.</th>
+                  <th class="px-5 py-4 text-violet-400">Mega</th>
+                  <th class="px-5 py-4">Total</th>
+                  <th class="px-5 py-4 text-emerald-400">Ganado</th>
+                  <th class="px-5 py-4 text-slate-500">Último</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                @for (row of dailyActivity(); track row.user_id) {
+                  <tr class="hover:bg-white/[0.03] transition-colors">
+                    <td class="px-5 py-3.5">
+                      <div class="font-bold text-white text-sm">{{ row.username }}</div>
+                      <div class="text-xs text-slate-500">{{ row.email }}</div>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-black text-cyan-400 text-lg">{{ row.standard_400 }}</span>
+                      <span class="text-slate-600 text-xs ml-1">/ 5</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-black text-amber-400 text-lg">{{ row.mini }}</span>
+                      <span class="text-slate-600 text-xs ml-1">/ 4</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-black text-orange-400 text-lg">{{ row.mini_referral }}</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-black text-violet-400 text-lg">{{ row.mega }}</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-black text-white">{{ row.total_clicks }}</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-black text-emerald-400">{{ formatCurrency(row.total_cop) }}</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="text-xs text-slate-500">{{ formatTime(row.last_click) }}</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Cards mobile -->
+        <div class="md:hidden space-y-3">
+          @for (row of dailyActivity(); track row.user_id) {
+            <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+              <div class="flex items-start justify-between mb-3">
+                <div>
+                  <div class="font-bold text-white text-sm">{{ row.username }}</div>
+                  <div class="text-xs text-slate-500">{{ row.email }}</div>
+                </div>
+                <span class="text-xs text-slate-500">{{ formatTime(row.last_click) }}</span>
+              </div>
+              <div class="grid grid-cols-4 gap-2 text-center">
+                <div class="bg-cyan-500/10 rounded-lg p-2">
+                  <p class="text-[10px] text-slate-400 mb-0.5">Std</p>
+                  <p class="text-lg font-black text-cyan-400">{{ row.standard_400 }}</p>
+                </div>
+                <div class="bg-amber-500/10 rounded-lg p-2">
+                  <p class="text-[10px] text-slate-400 mb-0.5">Mini</p>
+                  <p class="text-lg font-black text-amber-400">{{ row.mini }}</p>
+                </div>
+                <div class="bg-orange-500/10 rounded-lg p-2">
+                  <p class="text-[10px] text-slate-400 mb-0.5">Ref.</p>
+                  <p class="text-lg font-black text-orange-400">{{ row.mini_referral }}</p>
+                </div>
+                <div class="bg-violet-500/10 rounded-lg p-2">
+                  <p class="text-[10px] text-slate-400 mb-0.5">Mega</p>
+                  <p class="text-lg font-black text-violet-400">{{ row.mega }}</p>
+                </div>
+              </div>
+              <div class="mt-2 flex justify-between items-center">
+                <span class="text-xs text-slate-500">{{ row.total_clicks }} anuncios</span>
+                <span class="text-sm font-black text-emerald-400">{{ formatCurrency(row.total_cop) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+      }
+    </div>
+  }
+
+  <!-- ═══ TAB: USUARIOS ═══ -->
+  @if (activeTab() === 'users') {
+
   <!-- Filtros -->
   <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
     <div class="flex flex-col md:flex-row gap-3">
@@ -222,6 +399,8 @@
       </div>
     }
   }
+
+  } <!-- fin @if activeTab === 'users' -->
 
   <!-- ═══ MODAL DETALLE ═══ -->
   @if (detail(); as d) {

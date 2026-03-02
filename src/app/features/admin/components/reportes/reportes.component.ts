@@ -30,6 +30,19 @@ interface UserDetailModal {
   loading: boolean;
 }
 
+interface DailyActivityRow {
+  user_id: string;
+  username: string;
+  email: string;
+  standard_400: number;
+  mini: number;
+  mini_referral: number;
+  mega: number;
+  total_clicks: number;
+  total_cop: number;
+  last_click: string;
+}
+
 @Component({
   selector: 'app-admin-reportes',
   standalone: true,
@@ -48,6 +61,13 @@ export class AdminReportesComponent implements OnInit {
   readonly pageSize = 20;
   readonly totalCount = signal(0);
   readonly detail = signal<UserDetailModal | null>(null);
+  readonly activeTab = signal<'users' | 'daily'>('users');
+  readonly dailyActivity = signal<DailyActivityRow[]>([]);
+  readonly loadingDaily = signal(false);
+  readonly dailyDate = signal('');
+  readonly dailyTotalClicks = computed(() => this.dailyActivity().reduce((s, r) => s + r.total_clicks, 0));
+  readonly dailyTotalMega = computed(() => this.dailyActivity().reduce((s, r) => s + r.mega, 0));
+  readonly dailyTotalCOP = computed(() => this.dailyActivity().reduce((s, r) => s + r.total_cop, 0));
 
   readonly Math = Math;
 
@@ -70,6 +90,7 @@ export class AdminReportesComponent implements OnInit {
     standard_400: { label: 'Estándar 400', color: 'text-cyan-400' },
     standard_600: { label: 'Estándar 600', color: 'text-blue-400' },
     mini: { label: 'Mini', color: 'text-amber-400' },
+    mini_referral: { label: 'Mini Referido', color: 'text-orange-400' },
     mega: { label: 'Mega', color: 'text-violet-400' },
   };
 
@@ -102,6 +123,12 @@ export class AdminReportesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadUsers();
+    this.loadDailyActivity();
+  }
+
+  setTab(tab: 'users' | 'daily'): void {
+    this.activeTab.set(tab);
+    if (tab === 'daily') this.loadDailyActivity();
   }
 
   async loadUsers(): Promise<void> {
@@ -237,6 +264,62 @@ export class AdminReportesComponent implements OnInit {
 
   prevPage(): void {
     this.goToPage(this.currentPage() - 1);
+  }
+
+  async loadDailyActivity(): Promise<void> {
+    this.loadingDaily.set(true);
+    try {
+      const supabase = getSupabaseClient();
+      const bogotaToday = new Date().toLocaleDateString('sv', { timeZone: 'America/Bogota' });
+      this.dailyDate.set(bogotaToday);
+      // Colombia = UTC-5. Midnight Bogota = 05:00 UTC
+      const startUTC = new Date(`${bogotaToday}T05:00:00Z`);
+      const endUTC = new Date(startUTC.getTime() + 24 * 60 * 60 * 1000);
+
+      const { data } = await supabase
+        .from('ptc_clicks')
+        .select('user_id, reward_earned, completed_at, profiles(username, email), ptc_tasks(ad_type)')
+        .gte('completed_at', startUTC.toISOString())
+        .lt('completed_at', endUTC.toISOString());
+
+      if (!data) { this.dailyActivity.set([]); return; }
+
+      const map = new Map<string, DailyActivityRow>();
+      for (const row of data as any[]) {
+        const uid = row.user_id;
+        if (!map.has(uid)) {
+          map.set(uid, {
+            user_id: uid,
+            username: row.profiles?.username ?? uid,
+            email: row.profiles?.email ?? '',
+            standard_400: 0, mini: 0, mini_referral: 0, mega: 0,
+            total_clicks: 0, total_cop: 0, last_click: row.completed_at,
+          });
+        }
+        const entry = map.get(uid)!;
+        const reward = Number(row.reward_earned ?? 0);
+        const adType: string = row.ptc_tasks?.ad_type ?? 'unknown';
+        // mini_referral paga 100 COP; mini regular paga 83.33
+        const effectiveType = (adType === 'mini' && reward > 90) ? 'mini_referral' : adType;
+        if (effectiveType in entry) (entry as any)[effectiveType]++;
+        entry.total_clicks++;
+        entry.total_cop += reward;
+        if (row.completed_at > entry.last_click) entry.last_click = row.completed_at;
+      }
+
+      this.dailyActivity.set([...map.values()].sort((a, b) => b.total_clicks - a.total_clicks));
+    } catch {
+      this.dailyActivity.set([]);
+    } finally {
+      this.loadingDaily.set(false);
+    }
+  }
+
+  formatTime(iso: string): string {
+    return new Date(iso).toLocaleTimeString('es-CO', {
+      timeZone: 'America/Bogota',
+      hour: '2-digit', minute: '2-digit',
+    });
   }
 
   formatCurrency(v: number): string {
