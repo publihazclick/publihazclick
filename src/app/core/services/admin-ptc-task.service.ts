@@ -30,7 +30,8 @@ export interface SampleAdCard {
 }
 
 /**
- * 16 anuncios de ejemplo usados en la landing y galería del anunciante
+ * 32 anuncios de ejemplo usados en la landing y galería del anunciante
+ * 8 por categoría: mega, standard_400, standard_600, mini
  */
 export const SAMPLE_PTC_ADS: SampleAdCard[] = [
   // Mega Anuncios (2000 COP)
@@ -259,6 +260,238 @@ export const SAMPLE_PTC_ADS: SampleAdCard[] = [
     rewardCOP: 83.33,
     dailyLimit: 25,
     totalClicks: 65,
+    status: 'active'
+  },
+
+  // ── Mega extra ×4 (clonan imágenes de std para completar 8) ─────────────
+  {
+    id: '17',
+    title: 'Moda de Temporada',
+    description: 'Las últimas tendencias colombianas',
+    advertiserName: 'Fashion Colombia',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+    videoUrl: 'KG4otu6nO1I',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 90,
+    totalClicks: 390,
+    status: 'active'
+  },
+  {
+    id: '18',
+    title: 'Zapatillas Exclusivas',
+    description: 'Importaciones directas de fábrica',
+    advertiserName: 'ShoeStore',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
+    videoUrl: 'VGg46O4GgiM',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 70,
+    totalClicks: 310,
+    status: 'active'
+  },
+  {
+    id: '19',
+    title: 'Accesorios Tech Premium',
+    description: 'Gadgets y accesorios de última generación',
+    advertiserName: 'CelularAccesories',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=300&fit=crop',
+    videoUrl: '9bZkp7q19f0',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 85,
+    totalClicks: 470,
+    status: 'active'
+  },
+  {
+    id: '20',
+    title: 'Muebles de Diseño Moderno',
+    description: 'Decora tu espacio con estilo propio',
+    advertiserName: 'HogarExpress',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop',
+    videoUrl: 'jNQXAC9IVRw',
+    adType: 'mega',
+    rewardCOP: 2000,
+    dailyLimit: 65,
+    totalClicks: 255,
+    status: 'active'
+  },
+
+  // ── Standard 400 extra ×4 (clonan imágenes de mega) ─────────────────────
+  {
+    id: '21',
+    title: 'Tienda Online — Envío Gratis',
+    description: 'Compra hoy y recibe mañana',
+    advertiserName: 'Mileniustore',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
+    videoUrl: 'dQw4w9WgXcQ',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 100,
+    totalClicks: 430,
+    status: 'active'
+  },
+  {
+    id: '22',
+    title: 'Menú del Día — Almuerzo Ejecutivo',
+    description: 'Comida casera en el corazón de la ciudad',
+    advertiserName: 'Restaurante Los Parados',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+    videoUrl: 'jfKfPfyJRdk',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 75,
+    totalClicks: 290,
+    status: 'active'
+  },
+  {
+    id: '23',
+    title: 'Oferta en Laptops y PCs',
+    description: 'Tecnología al mejor precio del mercado',
+    advertiserName: 'TecnoWorld',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
+    videoUrl: '5qap5aO4i9A',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 60,
+    totalClicks: 215,
+    status: 'active'
+  },
+  {
+    id: '24',
+    title: 'Tratamientos de Bienestar',
+    description: 'Cuida tu cuerpo y tu mente',
+    advertiserName: 'Relax & Vida',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
+    videoUrl: 'DWcJFNfaw9c',
+    adType: 'standard_400',
+    rewardCOP: 400,
+    dailyLimit: 55,
+    totalClicks: 175,
+    status: 'active'
+  },
+
+  // ── Standard 600 extra ×4 (clonan imágenes de mega) ─────────────────────
+  {
+    id: '25',
+    title: 'Outlet de Temporada',
+    description: 'Hasta 60% de descuento en miles de productos',
+    advertiserName: 'Mileniustore',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
+    videoUrl: 'dQw4w9WgXcQ',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 80,
+    totalClicks: 360,
+    status: 'active'
+  },
+  {
+    id: '26',
+    title: 'Cena Romántica para Dos',
+    description: 'Reserva tu mesa especial hoy',
+    advertiserName: 'Restaurante Los Parados',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+    videoUrl: 'jfKfPfyJRdk',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 45,
+    totalClicks: 195,
+    status: 'active'
+  },
+  {
+    id: '27',
+    title: 'Celulares Desbloqueados',
+    description: 'Los mejores smartphones al mejor precio',
+    advertiserName: 'TecnoWorld',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
+    videoUrl: '5qap5aO4i9A',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 70,
+    totalClicks: 280,
+    status: 'active'
+  },
+  {
+    id: '28',
+    title: 'Paquete Spa Día Completo',
+    description: 'Masajes, sauna y tratamientos faciales',
+    advertiserName: 'Relax & Vida',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
+    videoUrl: 'DWcJFNfaw9c',
+    adType: 'standard_600',
+    rewardCOP: 600,
+    dailyLimit: 40,
+    totalClicks: 130,
+    status: 'active'
+  },
+
+  // ── Mini extra ×4 (clonan imágenes de mega) ──────────────────────────────
+  {
+    id: '29',
+    title: 'Flash Sale 24h',
+    description: 'Descuentos relámpago por tiempo limitado',
+    advertiserName: 'Mileniustore',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
+    videoUrl: 'dQw4w9WgXcQ',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 60,
+    totalClicks: 240,
+    status: 'active'
+  },
+  {
+    id: '30',
+    title: 'Domicilios Todo el Día',
+    description: 'Pide tu comida favorita sin salir',
+    advertiserName: 'Restaurante Los Parados',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+    videoUrl: 'jfKfPfyJRdk',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 35,
+    totalClicks: 110,
+    status: 'active'
+  },
+  {
+    id: '31',
+    title: 'Accesorios Gratis con tu Compra',
+    description: 'Lleva audífonos o cargador de regalo',
+    advertiserName: 'TecnoWorld',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
+    videoUrl: '5qap5aO4i9A',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 50,
+    totalClicks: 155,
+    status: 'active'
+  },
+  {
+    id: '32',
+    title: 'Primera Sesión Gratis',
+    description: 'Prueba nuestro spa sin costo',
+    advertiserName: 'Relax & Vida',
+    advertiserType: 'company',
+    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
+    videoUrl: 'DWcJFNfaw9c',
+    adType: 'mini',
+    rewardCOP: 83.33,
+    dailyLimit: 30,
+    totalClicks: 90,
     status: 'active'
   }
 ];
