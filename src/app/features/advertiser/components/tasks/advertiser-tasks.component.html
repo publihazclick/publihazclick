@@ -84,8 +84,8 @@
         <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Invitados activos</p>
       </div>
       <div class="bg-card-dark border border-white/5 rounded-xl p-3 text-center">
-        <p class="text-xl font-black text-white">{{ formatReward(maxDailyOwn() + maxDailyMega()) }}</p>
-        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Máx. disponible</p>
+        <p class="text-xl font-black text-amber-400">{{ miniReferralDoneCount() }}<span class="text-sm text-slate-500">/{{ miniReferralSlots().length }}</span></p>
+        <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Mini invitar</p>
       </div>
     </div>
 
@@ -172,6 +172,90 @@
         }
       </div>
     </div>
+
+    <!-- Mini anuncios por invitar -->
+    @if (miniReferralSlotsAvailable() > 0) {
+      <div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-symbols-outlined text-amber-400">featured_play_list</span>
+          <h3 class="text-base font-black uppercase tracking-tight text-white">Mini Anuncios por Invitar</h3>
+          <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/20">
+            100 COP c/u
+          </span>
+        </div>
+        <p class="text-xs text-slate-500 mb-4 flex items-start gap-1">
+          <span class="material-symbols-outlined text-[14px] text-amber-500/60 mt-0.5">schedule</span>
+          <span>
+            Se generan diariamente según tus invitados activos.
+            <span class="text-amber-400 font-bold">{{ affiliatesWithPackage() }} inv × {{ miniReferralSlotsAvailable() / affiliatesWithPackage() }} slots = {{ miniReferralSlotsAvailable() }} anuncios hoy.</span>
+            Se reinician cada día.
+          </span>
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          @for (slot of miniReferralSlots(); track $index) {
+            <div
+              class="bg-card-dark border rounded-xl overflow-hidden flex flex-col transition-all"
+              [class]="{
+                'border-white/5 opacity-50': slot.viewed,
+                'border-amber-500/20 hover:border-amber-500/40 hover:-translate-y-0.5 cursor-pointer': !slot.viewed && !!slot.id,
+                'border-dashed border-amber-500/15': !slot.id
+              }"
+              (click)="openModal(slot)"
+            >
+              <div class="relative aspect-[16/9] bg-zinc-900 overflow-hidden">
+                @if (slot.imageUrl) {
+                  <img [src]="slot.imageUrl" [alt]="slot.title" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full flex flex-col items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-amber-800 text-4xl">featured_play_list</span>
+                    @if (!slot.id) {
+                      <p class="text-[10px] text-amber-700 font-bold uppercase">Próximamente</p>
+                    }
+                  </div>
+                }
+                @if (slot.viewed) {
+                  <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-emerald-400 text-4xl">check_circle</span>
+                  </div>
+                }
+                <div class="absolute top-2 left-2">
+                  <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    Mini por Invitar
+                  </span>
+                </div>
+                <div class="absolute top-2 right-2">
+                  <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-black">
+                    +{{ formatReward(slot.rewardCOP) }}
+                  </span>
+                </div>
+              </div>
+              <div class="p-3 flex-1 flex flex-col gap-2">
+                <p class="text-sm font-bold text-white line-clamp-1">{{ slot.title }}</p>
+                <p class="text-xs text-slate-500 line-clamp-2 flex-1">{{ slot.description }}</p>
+                <button
+                  [disabled]="!slot.id || slot.viewed"
+                  class="w-full py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                  [class]="slot.viewed
+                    ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+                    : slot.id
+                      ? 'bg-amber-500 hover:bg-amber-400 text-black'
+                      : 'bg-white/5 text-slate-600 cursor-not-allowed'"
+                >
+                  @if (slot.viewed) {
+                    <span class="material-symbols-outlined text-sm">check</span> Completado
+                  } @else if (!slot.id) {
+                    <span class="material-symbols-outlined text-sm">hourglass_empty</span> Sin anuncio
+                  } @else {
+                    <span class="material-symbols-outlined text-sm">play_circle</span> Ver anuncio
+                  }
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
 
     <!-- Mega ads: desbloqueados por invitados -->
     <div>
@@ -274,9 +358,10 @@
       <div class="flex items-start gap-3">
         <span class="material-symbols-outlined text-accent mt-0.5 flex-shrink-0">info</span>
         <div class="text-xs text-slate-400 space-y-1">
-          <p><span class="text-white font-bold">Tareas base:</span> 5 Anuncios 400 ({{ formatReward(2000) }}) + 4 Mini ({{ formatReward(333.32) }}) = <span class="text-emerald-400 font-bold">{{ formatReward(2333.32) }}/día</span></p>
-          <p><span class="text-white font-bold">Por invitado activo:</span> 5 Mega Anuncios = <span class="text-purple-400 font-bold">{{ formatReward(10000) }}</span> adicionales</p>
-          <p><span class="text-slate-500">Límite de invitados: 40 • Duración del plan: 30 días</span></p>
+          <p><span class="text-white font-bold">Tareas base:</span> 5 Anuncios ({{ formatReward(2000) }}) + 4 Mini ({{ formatReward(333.32) }}) = <span class="text-emerald-400 font-bold">{{ formatReward(2333.32) }}/día</span></p>
+          <p><span class="text-white font-bold">Mini por invitar:</span> {{ affiliatesWithPackage() }} inv activos × slots nivel = <span class="text-amber-400 font-bold">{{ formatReward(maxDailyMiniReferral()) }}/día</span> (100 COP c/u)</p>
+          <p><span class="text-white font-bold">Por invitado activo:</span> 5 Mega Anuncios = <span class="text-purple-400 font-bold">{{ formatReward(10000) }}</span> acumulables</p>
+          <p><span class="text-slate-500">Límite mega: 40 invitados • Duración del plan: 30 días</span></p>
         </div>
       </div>
     </div>

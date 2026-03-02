@@ -1,0 +1,405 @@
+<div class="space-y-6">
+
+  <!-- Toast -->
+  @if (successToast()) {
+    <div class="fixed top-6 right-6 z-[100] bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-xl font-bold text-sm flex items-center gap-2">
+      <span class="material-symbols-outlined text-base">check_circle</span>
+      {{ successToast() }}
+    </div>
+  }
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-white">Reporte PTC por Anunciante</h1>
+      <p class="text-slate-400 text-sm">Anuncios asignados, realizados y perdidos por fecha</p>
+    </div>
+    <button (click)="loadReport()"
+      class="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/10 transition-colors">
+      <span class="material-symbols-outlined text-xl">refresh</span>
+      Actualizar
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+    <div class="flex flex-col md:flex-row gap-3">
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-slate-400 font-bold uppercase tracking-widest whitespace-nowrap">Desde</label>
+        <input type="date" [value]="dateFrom()" (change)="dateFrom.set($any($event).target.value); onDateChange()"
+          class="px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary" />
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-slate-400 font-bold uppercase tracking-widest whitespace-nowrap">Hasta</label>
+        <input type="date" [value]="dateTo()" (change)="dateTo.set($any($event).target.value); onDateChange()"
+          class="px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-primary" />
+      </div>
+      <div class="flex-1 relative">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+        <input type="text" placeholder="Buscar anunciante..."
+          [value]="searchQuery()" (input)="searchQuery.set($any($event).target.value)"
+          class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-primary" />
+      </div>
+      <!-- Vista toggle -->
+      <div class="flex rounded-xl overflow-hidden border border-white/10 self-start">
+        <button (click)="viewMode.set('fecha')"
+          [class]="viewMode() === 'fecha' ? 'bg-primary text-black font-bold' : 'bg-slate-900 text-slate-400 hover:bg-white/5'"
+          class="px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors">Por Fecha</button>
+        <button (click)="viewMode.set('anunciante')"
+          [class]="viewMode() === 'anunciante' ? 'bg-primary text-black font-bold' : 'bg-slate-900 text-slate-400 hover:bg-white/5'"
+          class="px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors">Por Anunciante</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  @if (error() && !loading()) {
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500 flex-shrink-0">error</span>
+      <p class="text-rose-400 text-sm flex-1">{{ error() }}</p>
+      <button (click)="loadReport()" class="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold">Reintentar</button>
+    </div>
+  }
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-20">
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin mb-3">sync</span>
+      <p class="text-slate-400 text-sm">Cargando reporte...</p>
+    </div>
+  }
+
+  @if (!loading()) {
+    <!-- Stats resumen -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Anunciantes</p>
+        <p class="text-2xl font-black text-white">{{ uniqueAdvertisers() }}</p>
+      </div>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Realizados</p>
+        <p class="text-2xl font-black text-emerald-400">{{ totalCompleted() }}</p>
+      </div>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Perdidos (est.)</p>
+        <p class="text-2xl font-black text-rose-400">{{ totalLost() }}</p>
+      </div>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-1">Total Ganado</p>
+        <p class="text-xl font-black text-primary">{{ formatCurrency(totalEarned()) }}</p>
+      </div>
+    </div>
+
+    <!-- ══ VISTA POR FECHA ══ -->
+    @if (viewMode() === 'fecha') {
+      @if (filteredRows().length === 0) {
+        <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+          <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">ads_click</span>
+          <h3 class="font-bold text-lg mb-2 text-white">Sin datos en este rango</h3>
+          <p class="text-slate-500 text-sm">Ajusta las fechas o busca otro anunciante</p>
+        </div>
+      } @else {
+        <!-- Tabla desktop -->
+        <div class="hidden md:block bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="bg-white/5 text-[11px] font-black uppercase text-slate-400 tracking-widest">
+                  <th class="px-5 py-4">Anunciante</th>
+                  <th class="px-5 py-4">Fecha</th>
+                  <th class="px-5 py-4 text-cyan-400">Std 400</th>
+                  <th class="px-5 py-4 text-amber-400">Mini</th>
+                  <th class="px-5 py-4 text-blue-400">Std 600</th>
+                  <th class="px-5 py-4 text-violet-400">Mega</th>
+                  <th class="px-5 py-4 text-emerald-400">Realizados</th>
+                  <th class="px-5 py-4 text-rose-400">Perdidos</th>
+                  <th class="px-5 py-4">Ganado</th>
+                  <th class="px-5 py-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                @for (row of filteredRows(); track row.user_id + row.report_date) {
+                  <tr class="hover:bg-white/[0.03] transition-colors">
+                    <td class="px-5 py-3.5">
+                      <div class="font-bold text-white text-sm">{{ row.username }}</div>
+                      @if (row.full_name) {
+                        <div class="text-xs text-slate-500">{{ row.full_name }}</div>
+                      }
+                    </td>
+                    <td class="px-5 py-3.5 text-sm text-slate-300">{{ formatDate(row.report_date) }}</td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-bold text-cyan-400">{{ row.std400_count }}</span>
+                      <span class="text-slate-600 text-xs">/5</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-bold text-amber-400">{{ row.mini_count }}</span>
+                      <span class="text-slate-600 text-xs">/4</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-bold text-blue-400">{{ row.std600_count }}</span>
+                      <span class="text-slate-600 text-xs">/3</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-bold text-violet-400">{{ row.mega_count }}</span>
+                      <span class="text-slate-600 text-xs">/1</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <div class="flex items-center gap-2">
+                        <span class="font-black text-emerald-400">{{ row.completed_count }}</span>
+                        <!-- Barra de progreso -->
+                        <div class="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div class="h-full bg-emerald-400 rounded-full"
+                            [style.width.%]="getLostPct(row.completed_count)"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-5 py-3.5">
+                      <span class="font-bold" [class]="getLostCount(row) > 0 ? 'text-rose-400' : 'text-slate-500'">
+                        {{ getLostCount(row) }}
+                      </span>
+                    </td>
+                    <td class="px-5 py-3.5 font-bold text-primary text-sm">{{ formatCurrency(row.earned_cop) }}</td>
+                    <td class="px-5 py-3.5">
+                      <div class="flex items-center justify-end gap-2">
+                        <button (click)="openDetail(row.user_id)"
+                          class="px-2.5 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors flex items-center gap-1">
+                          <span class="material-symbols-outlined text-sm">bar_chart</span>
+                        </button>
+                        @if (getLostCount(row) > 0) {
+                          <button (click)="assignTasksForUser(row.user_id, row.report_date)"
+                            [disabled]="assigningUserId() === row.user_id"
+                            class="px-2.5 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg text-xs font-bold hover:bg-amber-500/20 transition-colors flex items-center gap-1 disabled:opacity-50">
+                            <span class="material-symbols-outlined text-sm">assignment_add</span>
+                            Asignar
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Cards mobile -->
+        <div class="md:hidden space-y-3">
+          @for (row of filteredRows(); track row.user_id + row.report_date) {
+            <div class="bg-card-dark p-4 rounded-2xl border border-white/5">
+              <div class="flex items-start justify-between mb-3">
+                <div>
+                  <div class="font-bold text-white text-sm">{{ row.username }}</div>
+                  <div class="text-xs text-slate-500">{{ formatDate(row.report_date) }}</div>
+                </div>
+                <div class="flex gap-2">
+                  <button (click)="openDetail(row.user_id)"
+                    class="p-1.5 bg-primary/10 text-primary rounded-lg text-xs hover:bg-primary/20 transition-colors">
+                    <span class="material-symbols-outlined text-base">bar_chart</span>
+                  </button>
+                  @if (getLostCount(row) > 0) {
+                    <button (click)="assignTasksForUser(row.user_id, row.report_date)"
+                      class="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg text-xs hover:bg-amber-500/20 transition-colors">
+                      <span class="material-symbols-outlined text-base">assignment_add</span>
+                    </button>
+                  }
+                </div>
+              </div>
+              <div class="grid grid-cols-4 gap-2 text-xs mb-2">
+                <div class="bg-white/5 rounded-lg p-2 text-center">
+                  <p class="text-[10px] text-slate-500 mb-0.5">S400</p>
+                  <p class="font-black text-cyan-400">{{ row.std400_count }}<span class="text-slate-600">/5</span></p>
+                </div>
+                <div class="bg-white/5 rounded-lg p-2 text-center">
+                  <p class="text-[10px] text-slate-500 mb-0.5">Mini</p>
+                  <p class="font-black text-amber-400">{{ row.mini_count }}<span class="text-slate-600">/4</span></p>
+                </div>
+                <div class="bg-white/5 rounded-lg p-2 text-center">
+                  <p class="text-[10px] text-slate-500 mb-0.5">Hechos</p>
+                  <p class="font-black text-emerald-400">{{ row.completed_count }}</p>
+                </div>
+                <div class="bg-white/5 rounded-lg p-2 text-center">
+                  <p class="text-[10px] text-slate-500 mb-0.5">Perdidos</p>
+                  <p class="font-black" [class]="getLostCount(row) > 0 ? 'text-rose-400' : 'text-slate-500'">{{ getLostCount(row) }}</p>
+                </div>
+              </div>
+              <p class="text-xs text-primary font-bold">{{ formatCurrency(row.earned_cop) }}</p>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ══ VISTA POR ANUNCIANTE ══ -->
+    @if (viewMode() === 'anunciante') {
+      @if (groupedByUser().length === 0) {
+        <div class="bg-card-dark p-12 rounded-2xl border border-white/5 text-center">
+          <span class="material-symbols-outlined text-slate-600 text-5xl mb-4 block">person_search</span>
+          <h3 class="font-bold text-lg mb-2 text-white">Sin anunciantes en este rango</h3>
+          <p class="text-slate-500 text-sm">Ajusta el rango de fechas</p>
+        </div>
+      } @else {
+        <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="bg-white/5 text-[11px] font-black uppercase text-slate-400 tracking-widest">
+                  <th class="px-5 py-4">Anunciante</th>
+                  <th class="px-5 py-4">Días activos</th>
+                  <th class="px-5 py-4 text-emerald-400">Total realizados</th>
+                  <th class="px-5 py-4">Total ganado</th>
+                  <th class="px-5 py-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                @for (u of groupedByUser(); track u.user_id) {
+                  <tr class="hover:bg-white/[0.03] transition-colors">
+                    <td class="px-5 py-3.5">
+                      <div class="font-bold text-white text-sm">{{ u.username }}</div>
+                      @if (u.full_name) {
+                        <div class="text-xs text-slate-500">{{ u.full_name }}</div>
+                      }
+                    </td>
+                    <td class="px-5 py-3.5 text-white font-bold">{{ u.days_active }}</td>
+                    <td class="px-5 py-3.5 font-black text-emerald-400 text-lg">{{ u.total_completed }}</td>
+                    <td class="px-5 py-3.5 font-bold text-primary">{{ formatCurrency(u.total_earned) }}</td>
+                    <td class="px-5 py-3.5 text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <button (click)="openDetail(u.user_id)"
+                          class="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors flex items-center gap-1">
+                          <span class="material-symbols-outlined text-sm">bar_chart</span>
+                          Historial
+                        </button>
+                        <button (click)="assignTasksForUser(u.user_id)"
+                          [disabled]="assigningUserId() === u.user_id"
+                          class="px-3 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg text-xs font-bold hover:bg-amber-500/20 transition-colors flex items-center gap-1 disabled:opacity-50">
+                          <span class="material-symbols-outlined text-sm">assignment_add</span>
+                          Asignar hoy
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    }
+  }
+
+  <!-- ══ MODAL DETALLE ══ -->
+  @if (detailLoading()) {
+    <div class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+      <span class="material-symbols-outlined text-primary text-5xl animate-spin">sync</span>
+    </div>
+  }
+
+  @if (detail(); as d) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-auto border border-white/10 shadow-2xl">
+
+        <!-- Header modal -->
+        <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+          <div>
+            <h2 class="text-lg font-bold text-white">{{ d.profile.username }}</h2>
+            <p class="text-xs text-slate-500">{{ d.profile.email }} · {{ dateFrom() }} → {{ dateTo() }}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button (click)="assignTasksForUser(d.profile.id)"
+              [disabled]="assigningUserId() === d.profile.id"
+              class="px-3 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg text-xs font-bold hover:bg-amber-500/20 transition-colors flex items-center gap-1 disabled:opacity-50">
+              <span class="material-symbols-outlined text-sm">assignment_add</span>
+              Asignar hoy
+            </button>
+            <button (click)="closeDetail()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+
+          <!-- Info del anunciante -->
+          <div class="flex items-center gap-4 p-4 bg-white/5 rounded-xl">
+            <div class="w-10 h-10 bg-gradient-to-tr from-primary/30 to-accent/30 rounded-xl flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-primary">person</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-bold text-white">{{ d.profile.full_name || d.profile.username }}</p>
+              <p class="text-xs text-slate-500">{{ d.profile.email }}</p>
+            </div>
+            @if (d.profile.has_active_package) {
+              <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-[10px] font-black uppercase">Paquete activo</span>
+            } @else {
+              <span class="px-2 py-1 bg-rose-500/10 text-rose-400 rounded-lg text-[10px] font-black uppercase">Sin paquete</span>
+            }
+          </div>
+
+          <!-- Tabla de días -->
+          @if (d.days.length === 0) {
+            <div class="bg-white/5 rounded-xl p-8 text-center">
+              <span class="material-symbols-outlined text-slate-600 text-4xl mb-3 block">event_busy</span>
+              <p class="text-slate-400 font-bold">Sin actividad en este rango</p>
+            </div>
+          } @else {
+            <div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-base">calendar_month</span>
+                Actividad por día
+              </h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                  <thead>
+                    <tr class="text-[11px] font-black uppercase text-slate-500 tracking-widest border-b border-white/10">
+                      <th class="pb-3 pr-4">Fecha</th>
+                      <th class="pb-3 pr-4 text-cyan-400">S400</th>
+                      <th class="pb-3 pr-4 text-amber-400">Mini</th>
+                      <th class="pb-3 pr-4 text-blue-400">S600</th>
+                      <th class="pb-3 pr-4 text-violet-400">Mega</th>
+                      <th class="pb-3 pr-4 text-emerald-400">Hechos</th>
+                      <th class="pb-3 pr-4 text-rose-400">Perdidos</th>
+                      <th class="pb-3">Ganado</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-white/5">
+                    @for (day of d.days; track day.report_date) {
+                      <tr class="hover:bg-white/[0.03]">
+                        <td class="py-2.5 pr-4 text-slate-300 whitespace-nowrap">{{ formatDate(day.report_date) }}</td>
+                        <td class="py-2.5 pr-4 font-bold text-cyan-400">{{ day.std400_count }}<span class="text-slate-600 text-xs">/5</span></td>
+                        <td class="py-2.5 pr-4 font-bold text-amber-400">{{ day.mini_count }}<span class="text-slate-600 text-xs">/4</span></td>
+                        <td class="py-2.5 pr-4 font-bold text-blue-400">{{ day.std600_count }}<span class="text-slate-600 text-xs">/3</span></td>
+                        <td class="py-2.5 pr-4 font-bold text-violet-400">{{ day.mega_count }}<span class="text-slate-600 text-xs">/1</span></td>
+                        <td class="py-2.5 pr-4 font-black text-emerald-400">{{ day.completed_count }}</td>
+                        <td class="py-2.5 pr-4 font-bold" [class]="day.lost_count > 0 ? 'text-rose-400' : 'text-slate-600'">{{ day.lost_count }}</td>
+                        <td class="py-2.5 font-bold text-primary text-xs">{{ formatCurrency(day.earned_cop) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- Totales del rango -->
+          @if (d.days.length > 0) {
+            <div class="grid grid-cols-3 gap-3 pt-2 border-t border-white/10">
+              <div class="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20">
+                <p class="text-[10px] text-slate-400 uppercase mb-1">Total realizados</p>
+                <p class="text-2xl font-black text-emerald-400">{{ sumDaysCompleted(d.days) }}</p>
+              </div>
+              <div class="bg-rose-500/10 rounded-xl p-3 text-center border border-rose-500/20">
+                <p class="text-[10px] text-slate-400 uppercase mb-1">Total perdidos</p>
+                <p class="text-2xl font-black text-rose-400">{{ sumDaysLost(d.days) }}</p>
+              </div>
+              <div class="bg-primary/10 rounded-xl p-3 text-center border border-primary/20">
+                <p class="text-[10px] text-slate-400 uppercase mb-1">Total ganado</p>
+                <p class="text-xl font-black text-primary">{{ formatCurrency(sumDaysEarned(d.days)) }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

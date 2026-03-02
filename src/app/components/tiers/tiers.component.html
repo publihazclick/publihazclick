@@ -354,6 +354,44 @@
                 {{ selectedTierFormatted()!.deepNetwork }}
               </span>
             </div>
+          } @else if (selectedTierFormatted()!.category === 'basic') {
+            <!-- Básica: 3 fuentes de ingresos por invitados -->
+            <div class="flex justify-between items-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
+              <div>
+                <span class="text-gray-300 text-sm block">Comisión por anuncio</span>
+                <span class="text-[10px] text-gray-600">
+                  {{ selectedTierFormatted()!.minReferrals }} inv × 5 anuncios × {{ selectedTierFormatted()!.commissionPerStd400 }} COP × 30 días
+                </span>
+              </div>
+              <span class="font-bold text-white text-sm">
+                {{ currencyService.formatFromCOP(selectedTierFormatted()!.minReferrals * 5 * (selectedTierFormatted()!.commissionPerStd400 ?? 0) * 30) }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
+              <div>
+                <span class="text-gray-300 text-sm block">Mini anuncios por invitar</span>
+                <span class="text-[10px] text-gray-600">
+                  {{ selectedTierFormatted()!.minReferrals }} inv × {{ selectedTierFormatted()!.miniSlotsPerInvitee }} slots × 100 COP × 30 días
+                </span>
+              </div>
+              <span class="font-bold text-white text-sm">
+                {{ currencyService.formatFromCOP(selectedTierFormatted()!.minReferrals * (selectedTierFormatted()!.miniSlotsPerInvitee ?? 0) * 100 * 30) }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
+              <div>
+                <span class="text-gray-300 text-sm block">Bonus de activación</span>
+                <span class="text-[10px] text-gray-600">
+                  {{ selectedTierFormatted()!.minReferrals }} inv × 5 mega ads × 2.000 COP
+                </span>
+              </div>
+              <span class="font-bold text-white text-sm">
+                {{ currencyService.formatFromCOP(selectedTierFormatted()!.minReferrals * 10000) }}
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-500 text-center">
+              * Valores al mínimo del nivel ({{ selectedTierFormatted()!.minReferrals }} invitados). Escalan con cada invitado adicional.
+            </p>
           } @else {
             <div class="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
               <span class="text-gray-400 text-sm">Clicks de tus invitados</span>

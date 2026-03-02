@@ -15,7 +15,7 @@ export type PackageType = 'basic' | 'premium' | 'enterprise' | 'custom';
 export type UserPackageStatus = 'active' | 'expired' | 'cancelled';
 export type BannerPosition = 'header' | 'sidebar' | 'footer' | 'interstitial';
 export type BannerStatus = 'active' | 'paused' | 'completed' | 'rejected' | 'pending';
-export type PtcAdType = 'mega' | 'standard_400' | 'standard_600' | 'mini';
+export type PtcAdType = 'mega' | 'standard_400' | 'standard_600' | 'mini' | 'mini_referral';
 export type PackageBannerStatus = 'pending' | 'active' | 'completed' | 'rejected';
 export type AdLocation = 'landing' | 'app';
 

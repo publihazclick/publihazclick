@@ -19,6 +19,15 @@ const DAILY_SLOTS = {
   max_affiliates: 40,
 };
 
+/** Slots de mini_referral por afiliado activo según nivel básico */
+function miniReferralSlotsPerAffiliate(affiliates: number): number {
+  if (affiliates >= 10) return 4;
+  if (affiliates >= 6)  return 3;
+  if (affiliates >= 3)  return 2;
+  if (affiliates >= 1)  return 1;
+  return 0;
+}
+
 interface TaskSlot {
   id: string | null;
   adType: PtcAdType;
@@ -56,24 +65,30 @@ export class AdvertiserTasksComponent implements OnInit {
   readonly affiliatesWithPackage = signal(0);
   readonly standardSlots = signal<TaskSlot[]>([]);
   readonly megaSlots = signal<TaskSlot[]>([]);
+  readonly miniReferralSlots = signal<TaskSlot[]>([]);
 
   readonly megaSlotsAvailable = computed(() =>
     Math.min(this.affiliatesWithPackage(), DAILY_SLOTS.max_affiliates) * DAILY_SLOTS.mega_per_affiliate
+  );
+  readonly miniReferralSlotsAvailable = computed(() =>
+    this.affiliatesWithPackage() * miniReferralSlotsPerAffiliate(this.affiliatesWithPackage())
   );
   readonly maxDailyOwn = computed(() =>
     DAILY_SLOTS.standard_400 * 400 + DAILY_SLOTS.mini * 83.33
   );
   readonly maxDailyMega = computed(() => this.megaSlotsAvailable() * 2000);
+  readonly maxDailyMiniReferral = computed(() => this.miniReferralSlotsAvailable() * 100);
 
   // Contadores de completados
   readonly standardDoneCount = computed(() => this.standardSlots().filter(s => s.viewed && s.id).length);
   readonly megaDoneCount = computed(() => this.megaSlots().filter(s => s.viewed && s.id).length);
+  readonly miniReferralDoneCount = computed(() => this.miniReferralSlots().filter(s => s.viewed && s.id).length);
 
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
 
   private readonly adTypeRewards: Record<string, number> = {
-    mega: 2000, standard_600: 600, standard_400: 400, mini: 83.33,
+    mega: 2000, standard_600: 600, standard_400: 400, mini: 83.33, mini_referral: 100,
   };
 
   // ── Tracking ─────────────────────────────────────────────────────────────
@@ -117,7 +132,8 @@ export class AdvertiserTasksComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.checkRequirements();
     if (this.requirementsMet()) {
-      await Promise.all([this.loadAffiliatesCount(), this.loadTasks()]);
+      await this.loadAffiliatesCount();
+      await Promise.all([this.loadTasks(), this.loadMiniReferralSlots()]);
     }
     this.loading.set(false);
   }
@@ -212,6 +228,45 @@ export class AdvertiserTasksComponent implements OnInit {
     };
   }
 
+  private async loadMiniReferralSlots(): Promise<void> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return;
+
+      // Asignar slots si no existen aún hoy (idempotente)
+      await this.sessionService.callRpc('assign_mini_referral_tasks', { p_user_id: user.id });
+
+      // Leer asignaciones del día
+      const { data } = await this.supabase.rpc('get_mini_referral_tasks_today', { p_user_id: user.id });
+      const rows: any[] = data ?? [];
+      const dailyDone = this.getDailyDone();
+      const total = this.miniReferralSlotsAvailable();
+
+      const filled: TaskSlot[] = rows.map(r => ({
+        id: r.task_id,
+        adType: 'mini_referral' as const,
+        title: r.title,
+        description: r.description || '',
+        imageUrl: r.image_url || '',
+        videoUrl: r.youtube_url || '',
+        destinationUrl: r.url || '',
+        rewardCOP: 100,
+        viewed: r.is_completed || dailyDone.has(r.task_id),
+      }));
+
+      // Rellenar con placeholders hasta el total disponible
+      for (let i = filled.length; i < total; i++) {
+        filled.push(this.emptySlot('mini_referral', 100));
+      }
+
+      this.miniReferralSlots.set(filled);
+    } catch {
+      this.miniReferralSlots.set(
+        Array.from({ length: this.miniReferralSlotsAvailable() }, () => this.emptySlot('mini_referral', 100))
+      );
+    }
+  }
+
   // ── Modal ────────────────────────────────────────────────────────────────
 
   openModal(slot: TaskSlot): void {
@@ -221,7 +276,8 @@ export class AdvertiserTasksComponent implements OnInit {
       advertiserName: slot.title, advertiserType: 'company',
       imageUrl: slot.imageUrl, videoUrl: slot.videoUrl,
       destinationUrl: slot.destinationUrl, adType: slot.adType,
-      rewardCOP: slot.rewardCOP, duration: slot.adType === 'mini' ? 30 : 60,
+      rewardCOP: slot.rewardCOP,
+      duration: (slot.adType === 'mini' || slot.adType === 'mini_referral') ? 30 : 60,
     });
     this.isModalOpen.set(true);
   }
@@ -244,6 +300,12 @@ export class AdvertiserTasksComponent implements OnInit {
       // Mega: tracking permanente — acumula
       this.markMegaDone(ad.id);
       this.megaSlots.update(slots =>
+        slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
+      );
+    } else if (ad.adType === 'mini_referral') {
+      // Mini referral: diaria como las base
+      this.markDailyDone(ad.id);
+      this.miniReferralSlots.update(slots =>
         slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
       );
     } else {
@@ -284,7 +346,9 @@ export class AdvertiserTasksComponent implements OnInit {
   }
 
   getSlotColor(adType: PtcAdType): string {
-    const map: Record<string, string> = { standard_400: 'cyan', mini: 'emerald', mega: 'purple' };
+    const map: Record<string, string> = {
+      standard_400: 'cyan', mini: 'emerald', mega: 'purple', mini_referral: 'amber',
+    };
     return map[adType] ?? 'slate';
   }
 }

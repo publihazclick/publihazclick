@@ -24,7 +24,7 @@ export interface PtcAd {
   imageUrl: string;
   videoUrl: string;
   destinationUrl: string;
-  adType: 'mega' | 'standard_400' | 'standard_600' | 'mini';
+  adType: 'mega' | 'standard_400' | 'standard_600' | 'mini' | 'mini_referral';
   rewardCOP: number;
   duration: number;
 }

@@ -14,10 +14,13 @@ interface Tier {
   bgGradient: string;
   icon: string;
   category: 'basic' | 'superior' | 'superior-plus';
-  stars?: number;           // 1-5 para superior-plus
-  dcReferrals?: number;     // cuántos DC en tu red se requieren
-  commissionLevels?: number; // hasta qué nivel profundo llega la comisión
-  deepNetworkCOP?: number;  // ganancias extra de redes profundas
+  stars?: number;
+  dcReferrals?: number;
+  commissionLevels?: number;
+  deepNetworkCOP?: number;
+  // Campos de lógica básica (comisión por invitado)
+  commissionPerStd400?: number;   // COP por cada std_400 que ve un invitado
+  miniSlotsPerInvitee?: number;   // slots mini_referral por invitado activo por día
 }
 
 @Component({
@@ -76,53 +79,63 @@ export class TiersComponent {
   // Values in COP (Colombian Pesos) - the base currency of the site
   protected readonly tiers: Tier[] = [
     // ── CATEGORÍA BÁSICA ──
+    // Valores al mínimo de invitados del rango. commissionPerStd400 y miniSlotsPerInvitee
+    // determinan la fórmula dinámica: refs×5×commission×30 + refs×slots×100×30 + refs×10000
     {
       name: 'JADE',
-      minReferrals: 0,
+      minReferrals: 1,
       maxReferrals: 2,
       ownClicksCOP: 70000,
-      referralClicksCOP: 28000,
+      referralClicksCOP: 28000,      // 1×5×100×30 + 1×1×100×30 + 1×10000
       monthlyEarningsCOP: 98000,
       color: 'text-emerald-500',
       bgGradient: 'from-emerald-400 to-emerald-600',
       icon: 'diamond',
-      category: 'basic'
+      category: 'basic',
+      commissionPerStd400: 100,
+      miniSlotsPerInvitee: 1,
     },
     {
       name: 'PERLA',
       minReferrals: 3,
       maxReferrals: 5,
       ownClicksCOP: 70000,
-      referralClicksCOP: 138000,
+      referralClicksCOP: 138000,     // 3×5×200×30 + 3×2×100×30 + 3×10000
       monthlyEarningsCOP: 208000,
       color: 'text-pink-400',
       bgGradient: 'from-pink-400 to-pink-600',
       icon: 'brightness_7',
-      category: 'basic'
+      category: 'basic',
+      commissionPerStd400: 200,
+      miniSlotsPerInvitee: 2,
     },
     {
       name: 'ZAFIRO',
       minReferrals: 6,
       maxReferrals: 9,
       ownClicksCOP: 70000,
-      referralClicksCOP: 576000,
-      monthlyEarningsCOP: 646000,
+      referralClicksCOP: 384000,     // 6×5×300×30 + 6×3×100×30 + 6×10000
+      monthlyEarningsCOP: 454000,
       color: 'text-blue-400',
       bgGradient: 'from-blue-400 to-blue-600',
       icon: 'auto_awesome',
-      category: 'basic'
+      category: 'basic',
+      commissionPerStd400: 300,
+      miniSlotsPerInvitee: 3,
     },
     {
       name: 'RUBY',
       minReferrals: 10,
       maxReferrals: 19,
       ownClicksCOP: 70000,
-      referralClicksCOP: 1558000,
-      monthlyEarningsCOP: 1628000,
+      referralClicksCOP: 820000,     // 10×5×400×30 + 10×4×100×30 + 10×10000
+      monthlyEarningsCOP: 890000,
       color: 'text-red-500',
       bgGradient: 'from-red-500 to-red-700',
       icon: 'local_fire_department',
-      category: 'basic'
+      category: 'basic',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 4,
     },
     // ── CATEGORÍA SUPERIOR ──
     {

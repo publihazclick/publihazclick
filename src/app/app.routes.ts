@@ -80,6 +80,13 @@ export const routes: Routes = [
           import('./features/admin/components/fraud/fraud.component').then(
             m => m.AdminFraudComponent
           )
+      },
+      {
+        path: 'advertiser-ptc',
+        loadComponent: () =>
+          import('./features/admin/components/advertiser-ptc/advertiser-ptc.component').then(
+            m => m.AdminAdvertiserPtcComponent
+          )
       }
     ]
   },

@@ -20,13 +20,15 @@ interface PlatformTier {
   minReferrals: number;
   maxReferrals: number | null;
   ownClicksCOP: number;
-  referralClicksCOP: number;
-  monthlyEarningsCOP: number;
+  referralClicksCOP: number;   // al mínimo de invitados del rango (para la barra comparativa)
+  monthlyEarningsCOP: number;  // al mínimo de invitados del rango (para la barra comparativa)
   color: string;
   bgGradient: string;
   icon: string;
-  // Derived Tailwind bg class for icon containers (first color stop of gradient)
   bgColorClass: string;
+  category: 'basic' | 'superior' | 'superior-plus';
+  commissionPerStd400?: number;  // COP por std_400 visto por invitado
+  miniSlotsPerInvitee?: number;  // slots mini_referral por invitado activo por día
 }
 
 @Component({
@@ -49,7 +51,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   readonly PLATFORM_TIERS: PlatformTier[] = [
     {
       name: 'JADE',
-      minReferrals: 0,
+      minReferrals: 1,
       maxReferrals: 2,
       ownClicksCOP: 70_000,
       referralClicksCOP: 28_000,
@@ -58,6 +60,9 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
       bgGradient: 'from-emerald-400 to-emerald-600',
       bgColorClass: 'bg-emerald-500',
       icon: 'diamond',
+      category: 'basic',
+      commissionPerStd400: 100,
+      miniSlotsPerInvitee: 1,
     },
     {
       name: 'PERLA',
@@ -70,30 +75,39 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
       bgGradient: 'from-pink-400 to-pink-600',
       bgColorClass: 'bg-pink-400',
       icon: 'brightness_7',
+      category: 'basic',
+      commissionPerStd400: 200,
+      miniSlotsPerInvitee: 2,
     },
     {
       name: 'ZAFIRO',
       minReferrals: 6,
       maxReferrals: 9,
       ownClicksCOP: 70_000,
-      referralClicksCOP: 576_000,
-      monthlyEarningsCOP: 646_000,
+      referralClicksCOP: 384_000,
+      monthlyEarningsCOP: 454_000,
       color: 'text-blue-400',
       bgGradient: 'from-blue-400 to-blue-600',
       bgColorClass: 'bg-blue-400',
       icon: 'auto_awesome',
+      category: 'basic',
+      commissionPerStd400: 300,
+      miniSlotsPerInvitee: 3,
     },
     {
       name: 'RUBY',
       minReferrals: 10,
       maxReferrals: 19,
       ownClicksCOP: 70_000,
-      referralClicksCOP: 1_558_000,
-      monthlyEarningsCOP: 1_628_000,
+      referralClicksCOP: 820_000,
+      monthlyEarningsCOP: 890_000,
       color: 'text-red-500',
       bgGradient: 'from-red-500 to-red-700',
       bgColorClass: 'bg-red-500',
       icon: 'local_fire_department',
+      category: 'basic',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 4,
     },
     {
       name: 'ESMERALDA',
@@ -106,6 +120,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
       bgGradient: 'from-green-500 to-green-700',
       bgColorClass: 'bg-green-500',
       icon: 'park',
+      category: 'superior',
     },
     {
       name: 'DIAMANTE',
@@ -118,6 +133,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
       bgGradient: 'from-cyan-400 to-cyan-600',
       bgColorClass: 'bg-cyan-400',
       icon: 'diamond',
+      category: 'superior',
     },
     {
       name: 'DIAMANTE AZUL',
@@ -130,6 +146,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
       bgGradient: 'from-blue-600 to-indigo-700',
       bgColorClass: 'bg-blue-600',
       icon: 'water_drop',
+      category: 'superior',
     },
     {
       name: 'DIAMANTE NEGRO',
@@ -142,6 +159,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
       bgGradient: 'from-gray-600 to-gray-800',
       bgColorClass: 'bg-gray-600',
       icon: 'dark_mode',
+      category: 'superior',
     },
     {
       name: 'DIAMANTE CORONA',
@@ -154,6 +172,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
       bgGradient: 'from-amber-400 to-yellow-500',
       bgColorClass: 'bg-amber-400',
       icon: 'military_tech',
+      category: 'superior',
     },
   ];
 
@@ -173,14 +192,41 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     return this.PLATFORM_TIERS[0];
   });
 
-  /** Total monthly earnings (COP) for the current simulated tier. */
-  readonly totalMonthlyCOP = computed(() => this.currentTier().monthlyEarningsCOP);
-
-  /** Referral-only portion (COP). */
-  readonly referralEarningsCOP = computed(() => this.currentTier().referralClicksCOP);
-
-  /** Own clicks portion (COP) — constant $70,000 across all tiers. */
+  /** Own clicks — constante 70.000 COP en todos los niveles. */
   readonly ownClicksEarningsCOP = computed(() => this.currentTier().ownClicksCOP);
+
+  /** Comisión por cada std_400 que ve un invitado (básica dinámica). */
+  readonly std400CommissionCOP = computed(() => {
+    const tier = this.currentTier();
+    if (!tier.commissionPerStd400) return 0;
+    return this.simulatedRefs() * 5 * tier.commissionPerStd400 * 30;
+  });
+
+  /** Mini anuncios por invitar (básica dinámica). */
+  readonly miniReferralCOP = computed(() => {
+    const tier = this.currentTier();
+    if (!tier.miniSlotsPerInvitee) return 0;
+    return this.simulatedRefs() * tier.miniSlotsPerInvitee * 100 * 30;
+  });
+
+  /** Bonus activación: 5 mega ads × 2.000 COP por cada invitado que activa. */
+  readonly activationBonusCOP = computed(() => {
+    const tier = this.currentTier();
+    if (tier.category !== 'basic') return 0;
+    return this.simulatedRefs() * 10_000;
+  });
+
+  /** Total por invitados (básica: dinámico; superior: del tier). */
+  readonly referralEarningsCOP = computed(() => {
+    const tier = this.currentTier();
+    if (tier.category === 'basic') {
+      return this.std400CommissionCOP() + this.miniReferralCOP() + this.activationBonusCOP();
+    }
+    return tier.referralClicksCOP;
+  });
+
+  /** Total mensual = propios + invitados. */
+  readonly totalMonthlyCOP = computed(() => this.ownClicksEarningsCOP() + this.referralEarningsCOP());
 
   /** Bar widths as percentages relative to the maximum tier monthly. */
   readonly maxMonthlyInTiers = this.PLATFORM_TIERS[this.PLATFORM_TIERS.length - 1].monthlyEarningsCOP;
@@ -203,7 +249,17 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     return this.PLATFORM_TIERS[0];
   });
 
-  readonly actualMonthlyCOP = computed(() => this.actualTier().monthlyEarningsCOP);
+  readonly actualMonthlyCOP = computed(() => {
+    const tier = this.actualTier();
+    const refs = this.profile()?.total_referrals_count ?? 0;
+    if (tier.category === 'basic' && tier.commissionPerStd400) {
+      const commission = refs * 5 * tier.commissionPerStd400 * 30;
+      const mini = refs * (tier.miniSlotsPerInvitee ?? 0) * 100 * 30;
+      const activation = refs * 10_000;
+      return tier.ownClicksCOP + commission + mini + activation;
+    }
+    return tier.monthlyEarningsCOP;
+  });
 
   // ─── Next tier progress ──────────────────────────────────────────────────────
 

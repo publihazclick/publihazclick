@@ -128,7 +128,8 @@ export class PtcAdsComponent implements OnInit {
       'mega': 'Mega Anuncio',
       'standard_400': 'Anuncio 400',
       'standard_600': 'Anuncio 600',
-      'mini': 'Mini Anuncio'
+      'mini': 'Mini Anuncio',
+      'mini_referral': 'Mini Referido'
     };
     return labels[type] || type;
   }
