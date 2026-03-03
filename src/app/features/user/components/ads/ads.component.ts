@@ -165,8 +165,14 @@ export class UserAdsComponent implements OnInit {
 
   private async creditRewardToDb(taskId: string, durationMs?: number): Promise<void> {
     try {
-      const user = this.authService.getCurrentUser();
-      if (!user) {
+      // Obtener user ID con fallback robusto (el signal puede no estar listo tras login)
+      let userId = this.authService.getCurrentUser()?.id;
+      if (!userId) {
+        const { getSupabaseClient } = await import('../../../../core/supabase.client');
+        const { data: { user } } = await getSupabaseClient().auth.getUser();
+        userId = user?.id;
+      }
+      if (!userId) {
         this.error.set('No se pudo acreditar: sesión no encontrada. Inicia sesión de nuevo.');
         return;
       }
@@ -179,7 +185,7 @@ export class UserAdsComponent implements OnInit {
       const data = await this.sessionService.callRpc<{ success: boolean; reward?: number; error?: string }>(
         'record_ptc_click',
         {
-          p_user_id: user.id,
+          p_user_id: userId,
           p_task_id: taskId,
           p_ip_address: ip,
           p_user_agent: ua,
@@ -189,10 +195,10 @@ export class UserAdsComponent implements OnInit {
       );
 
       if (data?.success) {
-        // Actualización optimista inmediata del balance en la UI
+        // 1. Actualización optimista inmediata del balance en la UI
         const reward = data.reward ?? this.adTypeRewards[this.ads().find(a => a.id === taskId)?.adType || 'mini'] ?? 0;
         this.profileService.patchBalance(reward);
-        // Sincronizar con la DB para obtener el balance real
+        // 2. Sincronizar con la DB en background para obtener el balance exacto
         this.profileService.getCurrentProfile().catch(() => {});
       } else if (data && !data.success) {
         console.warn('RPC record_ptc_click rejected:', data.error);

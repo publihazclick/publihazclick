@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -12,16 +12,17 @@ import { BannerSliderComponent } from '../../../../components/banner-slider/bann
   imports: [CommonModule, RouterModule, BannerSliderComponent],
   templateUrl: './advertiser-layout.component.html',
 })
-export class AdvertiserLayoutComponent implements OnInit {
+export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
   private readonly router = inject(Router);
   readonly currencyService = inject(CurrencyService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   isDarkMode = true;
 
   protected readonly sidebarCollapsed = signal(
-    isPlatformBrowser(inject(PLATFORM_ID)) && window.innerWidth < 1024
+    isPlatformBrowser(this.platformId) && window.innerWidth < 1024
   );
   protected readonly currencyMenuOpen = signal(false);
   protected readonly profileMenuOpen = signal(false);
@@ -30,8 +31,17 @@ export class AdvertiserLayoutComponent implements OnInit {
   readonly selectedCurrency = this.currencyService.selectedCurrency;
   readonly currencies = this.currencyService.currencies;
 
-  ngOnInit(): void {
-    this.profileService.getCurrentProfile().catch(() => {});
+  async ngOnInit(): Promise<void> {
+    const p = await this.profileService.getCurrentProfile();
+    // Iniciar Realtime watch para que el balance se actualice en tiempo real
+    const userId = p?.id;
+    if (userId && isPlatformBrowser(this.platformId)) {
+      this.profileService.startRealtimeProfileWatch(userId);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.profileService.stopRealtimeProfileWatch();
   }
 
   formatCOP(amount: number): string {

@@ -321,15 +321,23 @@ export class AdvertiserTasksComponent implements OnInit {
 
   private async creditRewardToDb(ad: PtcAd, durationMs?: number): Promise<void> {
     try {
-      const user = this.authService.getCurrentUser();
-      if (!user) { console.warn('[PTC] No user'); return; }
+      // Obtener user ID con fallback robusto
+      let userId = this.authService.getCurrentUser()?.id;
+      if (!userId) {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        userId = user?.id;
+      }
+      if (!userId) {
+        console.warn('[PTC] No user ID disponible');
+        return;
+      }
 
       const ip = this.userTracking.getIp() || null;
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
       const fingerprint = await this.userTracking.getSessionFingerprint() || null;
 
       const result: any = await this.sessionService.callRpc('record_ptc_click', {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_task_id: ad.id,
         p_ip_address: ip,
         p_user_agent: ua,
@@ -337,25 +345,22 @@ export class AdvertiserTasksComponent implements OnInit {
         p_click_duration_ms: durationMs ?? null,
       });
 
-      console.log('[PTC] record_ptc_click result:', result);
-
       if (result?.success === true) {
         this.markSlotViewed(ad);
         const actualReward: number = result.reward ?? ad.rewardCOP;
-        // Actualización optimista inmediata del balance en la UI
+        // 1. Actualización optimista inmediata del balance en la UI
         this.profileService.patchBalance(actualReward);
-        // Sincronizar con la DB en background
-        this.profileService.getCurrentProfile().catch(() => {});
+        // 2. Overlay de recompensa
         this.overlayAmount.set(actualReward);
         this.showRewardOverlay.set(true);
         setTimeout(() => this.showRewardOverlay.set(false), 2800);
+        // 3. Sincronizar con la DB en background para obtener balance exacto
+        this.profileService.getCurrentProfile().catch(() => {});
       } else {
         console.warn('[PTC] Reward rejected:', result?.error ?? 'unknown reason');
-        await this.profileService.getCurrentProfile().catch(() => {});
       }
     } catch (err) {
       console.error('[PTC] creditRewardToDb error:', err);
-      await this.profileService.getCurrentProfile().catch(() => {});
     }
   }
 
