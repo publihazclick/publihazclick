@@ -357,41 +357,58 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
 
     <!-- Modal de recompensa (solo tras acreditación exitosa) -->
     @if (rewardStatus() === 'credited') {
-      <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fadeIn">
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-md"></div>
+      <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md animate-fadeIn"></div>
 
+        <!-- ═══ Monedas volando desde el centro ═══ -->
+        <div class="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
+          <span class="absolute text-2xl animate-coin-fly coin-1">💲</span>
+          <span class="absolute text-2xl animate-coin-fly coin-2" style="animation-delay:.05s">💲</span>
+          <span class="absolute text-2xl animate-coin-fly coin-3" style="animation-delay:.1s">💲</span>
+          <span class="absolute text-2xl animate-coin-fly coin-4" style="animation-delay:.15s">💲</span>
+          <span class="absolute text-2xl animate-coin-fly coin-5" style="animation-delay:.08s">💲</span>
+          <span class="absolute text-2xl animate-coin-fly coin-6" style="animation-delay:.12s">💲</span>
+          <span class="absolute text-2xl animate-coin-fly coin-7" style="animation-delay:.18s">💲</span>
+          <span class="absolute text-2xl animate-coin-fly coin-8" style="animation-delay:.06s">💲</span>
+        </div>
+
+        <!-- ═══ Badge flotante con monto ═══ -->
+        <div class="absolute left-1/2 bottom-1/2 animate-reward-badge pointer-events-none z-[201]">
+          <div class="bg-emerald-500 text-white font-black text-2xl sm:text-3xl px-6 py-3 rounded-2xl shadow-2xl shadow-emerald-500/40 whitespace-nowrap flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:28px">paid</span>
+            +{{ toastRewardAmount() }}
+          </div>
+        </div>
+
+        <!-- ═══ Card de confirmación ═══ -->
         <div class="relative w-full max-w-sm bg-zinc-900 border border-emerald-500/20 rounded-3xl shadow-2xl shadow-emerald-500/10 overflow-hidden animate-scaleIn">
-          <!-- Glow top -->
           <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent"></div>
 
           <div class="px-6 pt-8 pb-6 text-center">
-            <!-- Icono grande -->
-            <div class="w-20 h-20 mx-auto mb-5 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">celebration</span>
+            <!-- Wallet con bounce -->
+            <div class="w-20 h-20 mx-auto mb-5 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center animate-wallet-pop">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">account_balance_wallet</span>
             </div>
 
             <p class="text-white font-black text-lg mb-1">¡Felicitaciones!</p>
 
-            <!-- Monto -->
             <p class="text-emerald-400 font-black text-3xl mb-2 flex items-center justify-center gap-2">
               +{{ toastRewardAmount() }}
               <span class="material-symbols-outlined text-emerald-400" style="font-size:28px">check_circle</span>
             </p>
 
-            <!-- Mensaje de acreditación -->
             <div class="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-4 mb-5">
               <p class="text-slate-200 text-sm leading-relaxed">
-                El valor de la recompensa <span class="text-emerald-400 font-black">será acreditado a tu billetera</span>.
+                Tu recompensa <span class="text-emerald-400 font-black">ha sido acreditada</span> a tu billetera.
                 Sigue viendo anuncios para <span class="text-white font-bold">aumentar tu saldo</span>.
               </p>
             </div>
 
-            <!-- Resumen -->
             <div class="grid grid-cols-2 gap-3 mb-5">
               <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-center">
-                <span class="material-symbols-outlined text-primary mb-1" style="font-size:20px">account_balance_wallet</span>
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Billetera</p>
-                <p class="text-white font-black text-sm">{{ toastRewardAmount() }}</p>
+                <span class="material-symbols-outlined text-emerald-400 mb-1" style="font-size:20px">paid</span>
+                <p class="text-[10px] text-slate-500 uppercase font-bold">Acreditado</p>
+                <p class="text-emerald-400 font-black text-sm">{{ toastRewardAmount() }}</p>
               </div>
               <div class="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-center">
                 <span class="material-symbols-outlined text-amber-400 mb-1" style="font-size:20px">ads_click</span>
@@ -401,7 +418,6 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
             </div>
           </div>
 
-          <!-- Botón continuar -->
           <button
             (click)="closeRewardModal()"
             class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-sm uppercase tracking-wider transition-all"
@@ -427,6 +443,15 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
     .animate-scaleIn {
       animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+    /* Coin flight directions */
+    .coin-1 { --coin-tx: -130px; --coin-ty: -210px; }
+    .coin-2 { --coin-tx:  150px; --coin-ty: -190px; }
+    .coin-3 { --coin-tx: -190px; --coin-ty:  -40px; }
+    .coin-4 { --coin-tx:  170px; --coin-ty:  -50px; }
+    .coin-5 { --coin-tx:  -70px; --coin-ty: -260px; }
+    .coin-6 { --coin-tx:  100px; --coin-ty: -250px; }
+    .coin-7 { --coin-tx: -170px; --coin-ty: -130px; }
+    .coin-8 { --coin-tx:  180px; --coin-ty: -120px; }
     /* Fuerza que el iframe de Facebook ocupe todo el contenedor */
     :host ::ng-deep .fb-video,
     :host ::ng-deep .fb-video span,
