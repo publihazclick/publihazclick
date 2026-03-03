@@ -85,6 +85,7 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
   readonly rewardStatus = signal<RewardStatus>('idle');
+  readonly rewardDisplayAmount = signal('');
   private pendingRewardAd: PtcAd | null = null;
   private pendingRewardDuration = 0;
   private destroyed = false;
@@ -300,8 +301,17 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
     if (!ad) return;
     this.pendingRewardAd = ad;
     this.pendingRewardDuration = event.durationMs;
+    this.rewardDisplayAmount.set(this.formatReward(ad.rewardCOP));
+    this.isModalOpen.set(false);
     this.rewardStatus.set('crediting');
     this.creditRewardToDb(ad, event.durationMs);
+  }
+
+  closeRewardOverlay(): void {
+    this.rewardStatus.set('idle');
+    this.isModalOpen.set(false);
+    this.selectedAd.set(null);
+    this.pendingRewardAd = null;
   }
 
   onRetryReward(): void {

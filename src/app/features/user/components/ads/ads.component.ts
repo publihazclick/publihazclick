@@ -56,6 +56,7 @@ export class UserAdsComponent implements OnInit, OnDestroy {
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
   readonly rewardStatus = signal<RewardStatus>('idle');
+  readonly rewardDisplayAmount = signal('');
   private pendingRewardTaskId: string | null = null;
   private pendingRewardDuration = 0;
   private destroyed = false;
@@ -171,8 +172,17 @@ export class UserAdsComponent implements OnInit, OnDestroy {
   onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
     this.pendingRewardTaskId = event.taskId;
     this.pendingRewardDuration = event.durationMs;
+    this.rewardDisplayAmount.set(this.getRewardDisplay(event.walletAmount));
+    this.isModalOpen.set(false);
     this.rewardStatus.set('crediting');
     this.creditRewardToDb(event.taskId, event.durationMs);
+  }
+
+  closeRewardOverlay(): void {
+    this.rewardStatus.set('idle');
+    this.isModalOpen.set(false);
+    this.selectedAd.set(null);
+    this.pendingRewardTaskId = null;
   }
 
   onRetryReward(): void {
