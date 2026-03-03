@@ -159,7 +159,7 @@ export class UserAdsComponent implements OnInit {
   }
 
   onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
-    this.userTracking.recordAdView(event.taskId);
+    // NO marcar como visto aquí — se marca en creditRewardToDb SOLO si el RPC fue exitoso
     this.creditRewardToDb(event.taskId, event.durationMs);
   }
 
@@ -195,6 +195,8 @@ export class UserAdsComponent implements OnInit {
       );
 
       if (data?.success) {
+        // Solo marcar como visto DESPUÉS de que el RPC confirme la recompensa
+        this.userTracking.recordAdView(taskId);
         // 1. Actualización optimista inmediata del balance en la UI
         const reward = data.reward ?? this.adTypeRewards[this.ads().find(a => a.id === taskId)?.adType || 'mini'] ?? 0;
         this.profileService.patchBalance(reward);

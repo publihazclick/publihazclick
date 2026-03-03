@@ -617,8 +617,8 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
     setTimeout(() => {
       if (selected === this.targetShapeId()) {
-        this.userTracking.recordAdView(this.ad().id);
-        this.alreadyViewed.set(true);
+        // NO marcar como visto aquí — el padre decide SOLO si el RPC de recompensa fue exitoso.
+        // this.userTracking.recordAdView() se llama desde el componente padre tras confirmar el crédito.
         this.captchaCompleted.set(true);
         this.showCaptchaModal.set(false);
 
@@ -626,7 +626,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
         const durationMs = this.countdownStartTime > 0 ? Date.now() - this.countdownStartTime : 0;
         this.rewardClaimed.emit({ walletAmount: rewardCOP, donationAmount: 0, taskId: this.ad().id, durationMs });
 
-        // Mostrar modal de recompensa demo
+        // Mostrar modal de recompensa (optimista — el padre acredita en paralelo)
         this.showRewardToast.set(true);
         this.toastRewardAmount.set(this.rewardDisplay());
       } else {

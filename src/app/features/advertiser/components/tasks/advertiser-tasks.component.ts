@@ -340,6 +340,8 @@ export class AdvertiserTasksComponent implements OnInit {
 
       if (result?.success === true) {
         this.markSlotViewed(ad);
+        // Marcar en userTracking para que PtcModal sepa que ya fue reclamado
+        this.userTracking.recordAdView(ad.id);
         const actualReward: number = result.reward ?? ad.rewardCOP;
         // 1. Actualización optimista inmediata del balance en la UI
         this.profileService.patchBalance(actualReward);
