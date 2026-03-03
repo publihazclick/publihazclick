@@ -4,14 +4,12 @@ import { RouterLink } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
-import { WalletStateService } from '../../../../core/services/wallet-state.service';
 import { UserTrackingService } from '../../../../core/services/user-tracking.service';
 import { SupabaseSessionService } from '../../../../core/services/supabase-session.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PtcModalComponent, PtcAd } from '../../../../components/ptc-modal/ptc-modal.component';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 import { getSupabaseClient } from '../../../../core/supabase.client';
-import { RewardAnimationService } from '../../../../core/services/reward-animation.service';
 
 const DAILY_SLOTS = {
   standard_400: 5,
@@ -52,11 +50,9 @@ export class AdvertiserTasksComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly ptcService = inject(AdminPtcTaskService);
   private readonly currencyService = inject(CurrencyService);
-  private readonly walletService = inject(WalletStateService);
   private readonly userTracking = inject(UserTrackingService);
   private readonly sessionService = inject(SupabaseSessionService);
   private readonly authService = inject(AuthService);
-  private readonly rewardAnimation = inject(RewardAnimationService);
   private readonly supabase = getSupabaseClient();
 
   readonly profile = this.profileService.profile;
@@ -88,8 +84,6 @@ export class AdvertiserTasksComponent implements OnInit {
 
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
-  readonly showRewardOverlay = signal(false);
-  readonly overlayAmount = signal(0);
 
   private readonly adTypeRewards: Record<string, number> = {
     mega: 2000, standard_600: 600, standard_400: 400, mini: 83.33, mini_referral: 100,
@@ -294,9 +288,8 @@ export class AdvertiserTasksComponent implements OnInit {
   onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
     const ad = this.selectedAd();
     if (!ad) return;
-    // Cierra el modal inmediatamente para buena UX
-    this.closeModal();
-    // Acreditar en DB — el marcado del slot ocurre dentro solo si el RPC es exitoso
+    // NO cerrar el modal aquí — dejar que PtcModal muestre su toast de recompensa
+    // y se cierre naturalmente cuando el usuario pulse "¡Seguir ganando!"
     this.creditRewardToDb(ad, event.durationMs);
   }
 
@@ -350,11 +343,7 @@ export class AdvertiserTasksComponent implements OnInit {
         const actualReward: number = result.reward ?? ad.rewardCOP;
         // 1. Actualización optimista inmediata del balance en la UI
         this.profileService.patchBalance(actualReward);
-        // 2. Overlay de recompensa
-        this.overlayAmount.set(actualReward);
-        this.showRewardOverlay.set(true);
-        setTimeout(() => this.showRewardOverlay.set(false), 2800);
-        // 3. Sincronizar con la DB en background para obtener balance exacto
+        // 2. Sincronizar con la DB en background para obtener balance exacto
         this.profileService.getCurrentProfile().catch(() => {});
       } else {
         console.warn('[PTC] Reward rejected:', result?.error ?? 'unknown reason');

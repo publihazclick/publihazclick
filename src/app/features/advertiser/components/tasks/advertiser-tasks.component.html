@@ -369,7 +369,7 @@
   }
 </div>
 
-@if (isModalOpen() && selectedAd()) {
+@if (isModalOpen()) {
   <app-ptc-modal
     [ad]="selectedAd()!"
     [isOpen]="true"
@@ -378,37 +378,3 @@
   />
 }
 
-<!-- ══ Reward Animation Overlay ══════════════════════════════════════════ -->
-@if (showRewardOverlay()) {
-  <div class="fixed inset-0 pointer-events-none z-[500]" aria-hidden="true">
-
-    <!-- 6 monedas volando hacia la billetera (arriba-derecha) -->
-    <div class="fixed animate-coin-fly" style="bottom:40%;left:48%;--coin-tx:80px;--coin-ty:-180px;animation-delay:0ms">
-      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shadow-lg shadow-accent/70 text-black font-black text-sm">$</div>
-    </div>
-    <div class="fixed animate-coin-fly" style="bottom:40%;left:50%;--coin-tx:160px;--coin-ty:-220px;animation-delay:90ms">
-      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shadow-lg shadow-accent/70 text-black font-black text-sm">$</div>
-    </div>
-    <div class="fixed animate-coin-fly" style="bottom:40%;left:52%;--coin-tx:60px;--coin-ty:-200px;animation-delay:160ms">
-      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shadow-lg shadow-accent/70 text-black font-black text-sm">$</div>
-    </div>
-    <div class="fixed animate-coin-fly" style="bottom:40%;left:49%;--coin-tx:210px;--coin-ty:-155px;animation-delay:50ms">
-      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shadow-lg shadow-accent/70 text-black font-black text-sm">$</div>
-    </div>
-    <div class="fixed animate-coin-fly" style="bottom:40%;left:51%;--coin-tx:130px;--coin-ty:-240px;animation-delay:200ms">
-      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shadow-lg shadow-accent/70 text-black font-black text-sm">$</div>
-    </div>
-    <div class="fixed animate-coin-fly" style="bottom:40%;left:47%;--coin-tx:95px;--coin-ty:-170px;animation-delay:130ms">
-      <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shadow-lg shadow-accent/70 text-black font-black text-sm">$</div>
-    </div>
-
-    <!-- Badge principal -->
-    <div class="fixed bottom-1/3 left-1/2 animate-reward-badge">
-      <div class="bg-gradient-to-r from-accent to-pink-400 text-black font-black text-2xl px-7 py-4 rounded-2xl shadow-2xl shadow-accent/60 flex items-center gap-3 select-none whitespace-nowrap">
-        <span class="material-symbols-outlined" style="font-size:26px">account_balance_wallet</span>
-        <span>+{{ formatReward(overlayAmount()) }}</span>
-      </div>
-    </div>
-
-  </div>
-}
