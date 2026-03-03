@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +10,7 @@ import { UserTrackingService } from '../../../../core/services/user-tracking.ser
 import { ProfileService } from '../../../../core/services/profile.service';
 import { SupabaseSessionService } from '../../../../core/services/supabase-session.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { PtcModalComponent, PtcAd } from '../../../../components/ptc-modal/ptc-modal.component';
+import { PtcModalComponent, PtcAd, RewardStatus } from '../../../../components/ptc-modal/ptc-modal.component';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 
 interface PtcAdCard {
@@ -34,7 +34,7 @@ interface PtcAdCard {
   imports: [CommonModule, RouterModule, FormsModule, PtcModalComponent],
   templateUrl: './ads.component.html',
 })
-export class UserAdsComponent implements OnInit {
+export class UserAdsComponent implements OnInit, OnDestroy {
   private readonly ptcService = inject(AdminPtcTaskService);
   private readonly bannerService = inject(AdminBannerService);
   private readonly storageService = inject(StorageService);
@@ -55,6 +55,10 @@ export class UserAdsComponent implements OnInit {
   // Ad view modal
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
+  readonly rewardStatus = signal<RewardStatus>('idle');
+  private pendingRewardTaskId: string | null = null;
+  private pendingRewardDuration = 0;
+  private destroyed = false;
 
   // Create PTC modal
   readonly showPtcModal = signal(false);
@@ -85,6 +89,10 @@ export class UserAdsComponent implements OnInit {
     } else {
       this.loading.set(false);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
   }
 
   async loadAds(): Promise<void> {
@@ -156,11 +164,22 @@ export class UserAdsComponent implements OnInit {
   closeModal(): void {
     this.isModalOpen.set(false);
     this.selectedAd.set(null);
+    this.rewardStatus.set('idle');
+    this.pendingRewardTaskId = null;
   }
 
   onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
-    // NO marcar como visto aquí — se marca en creditRewardToDb SOLO si el RPC fue exitoso
+    this.pendingRewardTaskId = event.taskId;
+    this.pendingRewardDuration = event.durationMs;
+    this.rewardStatus.set('crediting');
     this.creditRewardToDb(event.taskId, event.durationMs);
+  }
+
+  onRetryReward(): void {
+    if (this.pendingRewardTaskId) {
+      this.rewardStatus.set('crediting');
+      this.creditRewardToDb(this.pendingRewardTaskId, this.pendingRewardDuration);
+    }
   }
 
   private async creditRewardToDb(taskId: string, durationMs?: number): Promise<void> {
@@ -195,20 +214,18 @@ export class UserAdsComponent implements OnInit {
       );
 
       if (data?.success) {
-        // Solo marcar como visto DESPUÉS de que el RPC confirme la recompensa
         this.userTracking.recordAdView(taskId);
-        // 1. Actualización optimista inmediata del balance en la UI
         const reward = data.reward ?? this.adTypeRewards[this.ads().find(a => a.id === taskId)?.adType || 'mini'] ?? 0;
         this.profileService.patchBalance(reward);
-        // 2. Sincronizar con la DB en background para obtener el balance exacto
         this.profileService.getCurrentProfile().catch(() => {});
+        if (!this.destroyed) this.rewardStatus.set('credited');
       } else if (data && !data.success) {
         console.warn('RPC record_ptc_click rejected:', data.error);
-        this.error.set(data.error || 'No se pudo acreditar la recompensa');
+        if (!this.destroyed) this.rewardStatus.set('failed');
       }
     } catch (err: any) {
       console.error('creditRewardToDb error:', err);
-      this.error.set(err.message || 'Error de conexión al acreditar recompensa');
+      if (!this.destroyed) this.rewardStatus.set('failed');
     }
   }
 

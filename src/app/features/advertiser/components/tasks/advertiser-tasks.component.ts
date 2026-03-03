@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -7,7 +7,7 @@ import { CurrencyService } from '../../../../core/services/currency.service';
 import { UserTrackingService } from '../../../../core/services/user-tracking.service';
 import { SupabaseSessionService } from '../../../../core/services/supabase-session.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { PtcModalComponent, PtcAd } from '../../../../components/ptc-modal/ptc-modal.component';
+import { PtcModalComponent, PtcAd, RewardStatus } from '../../../../components/ptc-modal/ptc-modal.component';
 import type { PtcAdType } from '../../../../core/models/admin.model';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 
@@ -46,7 +46,7 @@ interface TaskSlot {
   imports: [CommonModule, RouterLink, PtcModalComponent],
   templateUrl: './advertiser-tasks.component.html',
 })
-export class AdvertiserTasksComponent implements OnInit {
+export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   private readonly profileService = inject(ProfileService);
   private readonly ptcService = inject(AdminPtcTaskService);
   private readonly currencyService = inject(CurrencyService);
@@ -84,6 +84,10 @@ export class AdvertiserTasksComponent implements OnInit {
 
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
+  readonly rewardStatus = signal<RewardStatus>('idle');
+  private pendingRewardAd: PtcAd | null = null;
+  private pendingRewardDuration = 0;
+  private destroyed = false;
 
   private readonly adTypeRewards: Record<string, number> = {
     mega: 2000, standard_600: 600, standard_400: 400, mini: 83.33, mini_referral: 100,
@@ -126,6 +130,10 @@ export class AdvertiserTasksComponent implements OnInit {
   }
 
   // ── Init ─────────────────────────────────────────────────────────────────
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+  }
 
   async ngOnInit(): Promise<void> {
     await this.checkRequirements();
@@ -283,14 +291,24 @@ export class AdvertiserTasksComponent implements OnInit {
   closeModal(): void {
     this.isModalOpen.set(false);
     this.selectedAd.set(null);
+    this.rewardStatus.set('idle');
+    this.pendingRewardAd = null;
   }
 
   onRewardClaimed(event: { walletAmount: number; donationAmount: number; taskId: string; durationMs: number }): void {
     const ad = this.selectedAd();
     if (!ad) return;
-    // NO cerrar el modal aquí — dejar que PtcModal muestre su toast de recompensa
-    // y se cierre naturalmente cuando el usuario pulse "¡Seguir ganando!"
+    this.pendingRewardAd = ad;
+    this.pendingRewardDuration = event.durationMs;
+    this.rewardStatus.set('crediting');
     this.creditRewardToDb(ad, event.durationMs);
+  }
+
+  onRetryReward(): void {
+    if (this.pendingRewardAd) {
+      this.rewardStatus.set('crediting');
+      this.creditRewardToDb(this.pendingRewardAd, this.pendingRewardDuration);
+    }
   }
 
   private markSlotViewed(ad: PtcAd): void {
@@ -340,18 +358,18 @@ export class AdvertiserTasksComponent implements OnInit {
 
       if (result?.success === true) {
         this.markSlotViewed(ad);
-        // Marcar en userTracking para que PtcModal sepa que ya fue reclamado
         this.userTracking.recordAdView(ad.id);
         const actualReward: number = result.reward ?? ad.rewardCOP;
-        // 1. Actualización optimista inmediata del balance en la UI
         this.profileService.patchBalance(actualReward);
-        // 2. Sincronizar con la DB en background para obtener balance exacto
         this.profileService.getCurrentProfile().catch(() => {});
+        if (!this.destroyed) this.rewardStatus.set('credited');
       } else {
         console.warn('[PTC] Reward rejected:', result?.error ?? 'unknown reason');
+        if (!this.destroyed) this.rewardStatus.set('failed');
       }
     } catch (err) {
       console.error('[PTC] creditRewardToDb error:', err);
+      if (!this.destroyed) this.rewardStatus.set('failed');
     }
   }
 

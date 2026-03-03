@@ -345,8 +345,10 @@
   <app-ptc-modal
     [ad]="selectedAd()!"
     [isOpen]="true"
+    [rewardStatus]="rewardStatus()"
     (close)="closeModal()"
     (rewardClaimed)="onRewardClaimed($event)"
+    (retryReward)="onRetryReward()"
   />
 }
 

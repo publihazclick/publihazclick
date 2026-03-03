@@ -29,6 +29,8 @@ export interface PtcAd {
   duration: number;
 }
 
+export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
+
 @Component({
   selector: 'app-ptc-modal',
   standalone: true,
@@ -315,8 +317,46 @@ export interface PtcAd {
       }
     }
 
-    <!-- Modal de recompensa -->
-    @if (showRewardToast()) {
+    <!-- Overlay: acreditando recompensa (spinner) -->
+    @if (rewardStatus() === 'crediting') {
+      <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fadeIn">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md"></div>
+        <div class="relative text-center">
+          <div class="w-16 h-16 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-white font-black text-lg">Acreditando recompensa...</p>
+          <p class="text-slate-400 text-sm mt-2">Un momento por favor</p>
+        </div>
+      </div>
+    }
+
+    <!-- Overlay: error al acreditar -->
+    @if (rewardStatus() === 'failed') {
+      <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fadeIn">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md"></div>
+        <div class="relative w-full max-w-sm bg-zinc-900 border border-rose-500/20 rounded-3xl shadow-2xl overflow-hidden animate-scaleIn">
+          <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-rose-400/60 to-transparent"></div>
+          <div class="px-6 pt-8 pb-6 text-center">
+            <div class="w-20 h-20 mx-auto mb-5 rounded-3xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-rose-400" style="font-size:44px">error</span>
+            </div>
+            <p class="text-white font-black text-lg mb-1">No se pudo acreditar</p>
+            <p class="text-slate-400 text-sm mb-5">Hubo un error al procesar tu recompensa. Puedes intentar de nuevo.</p>
+            <div class="flex gap-3">
+              <button (click)="onClose()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl font-bold text-sm transition-all">
+                Cerrar
+              </button>
+              <button (click)="onRetry()" class="flex-1 py-3 bg-primary hover:bg-primary/90 text-black rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-base">refresh</span>
+                Reintentar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal de recompensa (solo tras acreditación exitosa) -->
+    @if (rewardStatus() === 'credited') {
       <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fadeIn">
         <div class="absolute inset-0 bg-black/90 backdrop-blur-md"></div>
 
@@ -402,8 +442,10 @@ export interface PtcAd {
 export class PtcModalComponent implements OnInit, OnDestroy {
   ad = input.required<PtcAd>();
   isOpen = input<boolean>(true);
+  rewardStatus = input<RewardStatus>('idle');
   @Output() close = new EventEmitter<void>();
   @Output() rewardClaimed = new EventEmitter<{ walletAmount: number; donationAmount: number; taskId: string; durationMs: number }>();
+  @Output() retryReward = new EventEmitter<void>();
 
   protected currencyService = inject(CurrencyService);
   private sanitizer = inject(DomSanitizer);
@@ -624,11 +666,9 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
         const rewardCOP = this.ad().rewardCOP || 1;
         const durationMs = this.countdownStartTime > 0 ? Date.now() - this.countdownStartTime : 0;
-        this.rewardClaimed.emit({ walletAmount: rewardCOP, donationAmount: 0, taskId: this.ad().id, durationMs });
-
-        // Mostrar modal de recompensa (optimista — el padre acredita en paralelo)
-        this.showRewardToast.set(true);
+        // Preparar monto para el toast (se muestra cuando rewardStatus === 'credited')
         this.toastRewardAmount.set(this.rewardDisplay());
+        this.rewardClaimed.emit({ walletAmount: rewardCOP, donationAmount: 0, taskId: this.ad().id, durationMs });
       } else {
         this.captchaError.set('Figura incorrecta, intenta de nuevo');
         this.selectedShapeId.set(null);
@@ -641,8 +681,11 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   // ── Cerrar ──────────────────────────────────────────────────────────────
 
   closeRewardModal(): void {
-    this.showRewardToast.set(false);
     this.onClose();
+  }
+
+  onRetry(): void {
+    this.retryReward.emit();
   }
 
   onClose(): void {
