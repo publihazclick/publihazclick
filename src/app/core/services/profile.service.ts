@@ -64,8 +64,12 @@ export class ProfileService {
       const { data: { user } } = await this.supabase.auth.getUser();
 
       if (!user) {
-        this._profile.set(null);
-        return null;
+        // Solo limpiar si NO hay un perfil previo cargado.
+        // Evita borrar el balance cuando getUser() falla por timing tras login.
+        if (!this._profile()) {
+          this._profile.set(null);
+        }
+        return this._profile();
       }
 
       const { data, error } = await this.supabase
@@ -80,7 +84,8 @@ export class ProfileService {
       return data as Profile;
     } catch (error: any) {
       this._error.set(error.message);
-      return null;
+      // Retornar perfil existente si lo hay, en lugar de null
+      return this._profile();
     } finally {
       this._loading.set(false);
     }

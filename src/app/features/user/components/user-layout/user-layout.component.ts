@@ -68,6 +68,8 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
       const userId = this.profile()?.id;
       if (userId && isPlatformBrowser(this.platformId)) {
         this.profileService.startRealtimeProfileWatch(userId);
+        // Sincronizar con DB en background sin bloquear la UI
+        this.profileService.getCurrentProfile().catch(() => {});
       }
     });
   }
@@ -78,7 +80,11 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
 
   private async loadProfile(): Promise<void> {
     try {
-      await this.profileService.getCurrentProfile();
+      // Si el perfil ya fue cargado (ej. desde el flujo de login), reutilizarlo
+      // para evitar que un getUser() con timing incorrecto borre el balance.
+      if (!this.profileService.profile()) {
+        await this.profileService.getCurrentProfile();
+      }
     } catch {
       // silencioso
     }

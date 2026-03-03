@@ -32,11 +32,18 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
   readonly currencies = this.currencyService.currencies;
 
   async ngOnInit(): Promise<void> {
-    const p = await this.profileService.getCurrentProfile();
+    // Si el perfil ya fue cargado (ej. desde el flujo de login), reutilizarlo
+    // para evitar que un getUser() con timing incorrecto borre el balance.
+    let p = this.profileService.profile();
+    if (!p) {
+      p = await this.profileService.getCurrentProfile();
+    }
     // Iniciar Realtime watch para que el balance se actualice en tiempo real
     const userId = p?.id;
     if (userId && isPlatformBrowser(this.platformId)) {
       this.profileService.startRealtimeProfileWatch(userId);
+      // Sincronizar con DB en background sin bloquear la UI
+      this.profileService.getCurrentProfile().catch(() => {});
     }
   }
 
