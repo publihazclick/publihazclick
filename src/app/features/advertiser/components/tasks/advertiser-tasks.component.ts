@@ -342,8 +342,10 @@ export class AdvertiserTasksComponent implements OnInit {
       if (result?.success === true) {
         this.markSlotViewed(ad);
         const actualReward: number = result.reward ?? ad.rewardCOP;
-        // Refrescar balance desde DB (el RPC ya lo actualizó) y mostrar animación
-        try { await this.profileService.getCurrentProfile(); } catch { /* ignore */ }
+        // Actualización optimista inmediata del balance en la UI
+        this.profileService.patchBalance(actualReward);
+        // Sincronizar con la DB en background
+        this.profileService.getCurrentProfile().catch(() => {});
         this.overlayAmount.set(actualReward);
         this.showRewardOverlay.set(true);
         setTimeout(() => this.showRewardOverlay.set(false), 2800);

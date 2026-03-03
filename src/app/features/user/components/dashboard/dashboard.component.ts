@@ -13,7 +13,7 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { WalletStateService } from '../../../../core/services/wallet-state.service';
 import { PackagePromoModalComponent } from '../../../../components/package-promo-modal/package-promo-modal.component';
-import type { Profile } from '../../../../core/models/profile.model';
+
 
 interface PlatformTier {
   name: string;
@@ -44,7 +44,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   readonly currencyService = inject(CurrencyService);
   readonly walletState = inject(WalletStateService);
 
-  readonly profile = signal<Profile | null>(null);
+  readonly profile = this.profileService.profile;
 
   // ─── Platform Tiers (mirrors tiers.component.ts) ────────────────────────────
 
@@ -302,7 +302,6 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   private async loadProfile(): Promise<void> {
     try {
       const p = await this.profileService.getCurrentProfile();
-      this.profile.set(p);
       const refs = p?.total_referrals_count;
       if (refs && refs > 0) this.simulatedRefs.set(Math.min(refs, 50));
     } catch {}

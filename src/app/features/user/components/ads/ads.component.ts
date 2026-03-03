@@ -176,7 +176,7 @@ export class UserAdsComponent implements OnInit {
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
       const fingerprint = await this.userTracking.getSessionFingerprint() || null;
 
-      const data = await this.sessionService.callRpc<{ success: boolean; error?: string }>(
+      const data = await this.sessionService.callRpc<{ success: boolean; reward?: number; error?: string }>(
         'record_ptc_click',
         {
           p_user_id: user.id,
@@ -188,15 +188,19 @@ export class UserAdsComponent implements OnInit {
         }
       );
 
-      if (data && !data.success) {
+      if (data?.success) {
+        // Actualización optimista inmediata del balance en la UI
+        const reward = data.reward ?? this.adTypeRewards[this.ads().find(a => a.id === taskId)?.adType || 'mini'] ?? 0;
+        this.profileService.patchBalance(reward);
+        // Sincronizar con la DB para obtener el balance real
+        this.profileService.getCurrentProfile().catch(() => {});
+      } else if (data && !data.success) {
         console.warn('RPC record_ptc_click rejected:', data.error);
         this.error.set(data.error || 'No se pudo acreditar la recompensa');
       }
     } catch (err: any) {
       console.error('creditRewardToDb error:', err);
       this.error.set(err.message || 'Error de conexión al acreditar recompensa');
-    } finally {
-      this.profileService.getCurrentProfile().catch(() => {});
     }
   }
 
