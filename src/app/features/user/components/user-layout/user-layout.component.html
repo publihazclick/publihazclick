@@ -36,6 +36,12 @@
              [class]="getTierInfo(profile()!.total_referrals_count).color">
             {{ getTierInfo(profile()!.total_referrals_count).name }}
           </p>
+          @if (!profile()!.has_active_package) {
+            <div class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+              <span class="material-symbols-outlined text-rose-400" style="font-size:12px">cancel</span>
+              <span class="text-[10px] text-rose-400 font-black uppercase tracking-wider">Paquete Inactivo</span>
+            </div>
+          }
         } @else {
           <h3 class="font-bold text-center text-sm">Mi Cuenta</h3>
         }
