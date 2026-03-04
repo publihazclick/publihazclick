@@ -61,7 +61,8 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   readonly userHasBanner = signal(false);
   readonly requirementsMet = computed(() => this.userHasAd() && this.userHasBanner());
   readonly affiliatesWithPackage = signal(0);
-  readonly standardSlots = signal<TaskSlot[]>([]);
+  readonly standard400Slots = signal<TaskSlot[]>([]);
+  readonly miniSlots = signal<TaskSlot[]>([]);
   readonly megaSlots = signal<TaskSlot[]>([]);
   readonly miniReferralSlots = signal<TaskSlot[]>([]);
 
@@ -77,8 +78,11 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   readonly maxDailyMega = computed(() => this.megaSlotsAvailable() * 2000);
   readonly maxDailyMiniReferral = computed(() => this.miniReferralSlotsAvailable() * 100);
 
-  // Contadores de completados
-  readonly standardDoneCount = computed(() => this.standardSlots().filter(s => s.viewed && s.id).length);
+  // Contadores de completados por categoría
+  readonly standard400DoneCount = computed(() => this.standard400Slots().filter(s => s.viewed && s.id).length);
+  readonly miniDoneCount = computed(() => this.miniSlots().filter(s => s.viewed && s.id).length);
+  readonly totalDailyDoneCount = computed(() => this.standard400DoneCount() + this.miniDoneCount());
+  readonly totalDailySlots = computed(() => this.standard400Slots().length + this.miniSlots().length);
   readonly megaDoneCount = computed(() => this.megaSlots().filter(s => s.viewed && s.id).length);
   readonly miniReferralDoneCount = computed(() => this.miniReferralSlots().filter(s => s.viewed && s.id).length);
 
@@ -204,13 +208,11 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
         return slots;
       };
 
-      // Tareas diarias: standard_400 + mini
+      // Tareas diarias separadas por categoría
       const s400 = tasks.filter(t => t.ad_type === 'standard_400');
       const mini = tasks.filter(t => t.ad_type === 'mini');
-      this.standardSlots.set([
-        ...fillSlots(s400, DAILY_SLOTS.standard_400, 'standard_400', 400, true),
-        ...fillSlots(mini, DAILY_SLOTS.mini, 'mini', 83.33, true),
-      ]);
+      this.standard400Slots.set(fillSlots(s400, DAILY_SLOTS.standard_400, 'standard_400', 400, true));
+      this.miniSlots.set(fillSlots(mini, DAILY_SLOTS.mini, 'mini', 83.33, true));
 
       // Mega tareas: acumulables hasta el máximo disponible
       const mega = tasks.filter(t => t.ad_type === 'mega');
@@ -218,11 +220,8 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
       this.megaSlots.set(fillSlots(mega, megaTotal, 'mega', 2000, false));
 
     } catch {
-      const emptyStandard = [
-        ...Array.from({ length: DAILY_SLOTS.standard_400 }, () => this.emptySlot('standard_400', 400)),
-        ...Array.from({ length: DAILY_SLOTS.mini }, () => this.emptySlot('mini', 83.33)),
-      ];
-      this.standardSlots.set(emptyStandard);
+      this.standard400Slots.set(Array.from({ length: DAILY_SLOTS.standard_400 }, () => this.emptySlot('standard_400', 400)));
+      this.miniSlots.set(Array.from({ length: DAILY_SLOTS.mini }, () => this.emptySlot('mini', 83.33)));
       this.megaSlots.set([]);
     }
   }
@@ -332,9 +331,14 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
       this.miniReferralSlots.update(slots =>
         slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
       );
+    } else if (ad.adType === 'mini') {
+      this.markDailyDone(ad.id);
+      this.miniSlots.update(slots =>
+        slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
+      );
     } else {
       this.markDailyDone(ad.id);
-      this.standardSlots.update(slots =>
+      this.standard400Slots.update(slots =>
         slots.map(s => s.id === ad.id ? { ...s, viewed: true } : s)
       );
     }
