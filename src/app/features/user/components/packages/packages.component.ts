@@ -1,18 +1,16 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import type { Package } from '../../../../core/models/admin.model';
 import type { Profile } from '../../../../core/models/profile.model';
 
-// Estado del flujo de pago
+// Estado del flujo de pago Nequi
 type PayStep =
-  | 'idle' | 'select' | 'choose-gateway'
-  | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error'
-  | 'dlocal-loading' | 'dlocal-success';
+  | 'idle' | 'select'
+  | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -32,7 +30,6 @@ export class UserPackagesComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly packageService = inject(AdminPackageService);
   private readonly currencyService = inject(CurrencyService);
-  private readonly route = inject(ActivatedRoute);
 
   readonly packages = signal<Package[]>([]);
   readonly profile = signal<Profile | null>(null);
@@ -65,12 +62,7 @@ export class UserPackagesComponent implements OnInit {
       this.profile.set(profile);
       this.packages.set(packages);
 
-      // Detectar retorno de dLocal
-      const params = this.route.snapshot.queryParams;
-      if (params['dlocal'] === 'success') {
-        this.payStep.set('dlocal-success');
-        this.reloadProfile();
-      }
+      // (sin detección de retorno de gateway externo)
     } catch {
       this.error.set('No se pudieron cargar los paquetes. Intenta de nuevo.');
     } finally {
@@ -101,34 +93,9 @@ export class UserPackagesComponent implements OnInit {
     this.payStep.set('redirect');
   }
 
-  /** Selecciona un paquete e inicia pago con dLocal directamente */
+  /** Selecciona un paquete e inicia flujo Nequi */
   selectAndPay(pkg: Package): void {
-    this.selectedPackage.set(pkg);
-    this.payError.set(null);
-    this.startDlocalCheckout();
-  }
-
-  /** Elige gateway de pago (usado desde sidebar con ambas opciones) */
-  selectGateway(gateway: 'nequi' | 'dlocal'): void {
-    if (gateway === 'dlocal') {
-      this.startDlocalCheckout();
-    } else {
-      this.payStep.set('redirect');
-    }
-  }
-
-  /** Inicia pago con dLocal Go */
-  async startDlocalCheckout(): Promise<void> {
-    this.payStep.set('dlocal-loading');
-    try {
-      const { url } = await this.packageService.createDlocalPayment(
-        this.selectedPackage()!.id
-      );
-      window.location.href = url;
-    } catch (e: any) {
-      this.payError.set(e.message ?? 'Error al iniciar pago con dLocal');
-      this.payStep.set('error');
-    }
+    this.openNequiPayment(pkg);
   }
 
   goToNequiLink(): void {
@@ -140,7 +107,7 @@ export class UserPackagesComponent implements OnInit {
 
   closePaymentModal(): void {
     // Si fue aprobado, recargar el perfil para reflejar el paquete
-    if (this.payStep() === 'approved' || this.payStep() === 'dlocal-success') {
+    if (this.payStep() === 'approved') {
       this.reloadProfile();
     }
     this.payStep.set('idle');
@@ -172,7 +139,7 @@ export class UserPackagesComponent implements OnInit {
     const copAmount = pkg.price_cop ?? Math.round(pkg.price * 4200);
     const amountInCents = copAmount * 100;
 
-    const result = await this.packageService.verifyAndSubmitPayment({
+    const ok = await this.packageService.submitPaymentProof({
       packageId: pkg.id,
       packageName: pkg.name,
       amountInCents,
@@ -180,21 +147,14 @@ export class UserPackagesComponent implements OnInit {
       transactionId: this.proofTransactionId.trim(),
     });
 
-    if (!result.success) {
-      this.payError.set(result.message);
+    if (!ok) {
+      this.payError.set('Error al enviar el comprobante. Intenta de nuevo.');
       this.payStep.set('confirm');
       return;
     }
 
-    this.verifyMessage.set(result.message);
-
-    if (result.autoApproved) {
-      // Pago verificado automáticamente por Wompi → paquete activo de inmediato
-      this.payStep.set('approved');
-    } else {
-      // Comprobante enviado → revisión manual por el admin
-      this.payStep.set('sent');
-    }
+    this.verifyMessage.set('Comprobante enviado. Un administrador revisará tu pago.');
+    this.payStep.set('sent');
   }
 
   private async reloadProfile(): Promise<void> {

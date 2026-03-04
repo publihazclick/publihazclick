@@ -305,14 +305,19 @@
                   <span class="material-symbols-outlined" style="font-size:18px">verified</span>
                   Plan actual activo
                 </div>
-              } @else {
+              } @else if (pkg.nequi_payment_link) {
                 <button
                   (click)="selectAndPay(pkg)"
-                  class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all bg-[#00B4D8] hover:bg-[#0096B4] text-white"
+                  class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all bg-[#E6007E] hover:bg-[#c4006b] text-white"
                 >
                   <span class="material-symbols-outlined" style="font-size:18px">payments</span>
-                  Adquirir Plan
+                  Pagar con Nequi
                 </button>
+              } @else {
+                <div class="flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 text-sm font-bold">
+                  <span class="material-symbols-outlined" style="font-size:18px">block</span>
+                  No disponible
+                </div>
               }
             </div>
           </div>
@@ -322,11 +327,11 @@
 
     <!-- Nota informativa -->
     <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex items-start gap-4">
-      <span class="material-symbols-outlined text-[#00B4D8] flex-shrink-0 mt-0.5" style="font-size:20px">help_outline</span>
+      <span class="material-symbols-outlined text-[#E6007E] flex-shrink-0 mt-0.5" style="font-size:20px">help_outline</span>
       <div>
         <p class="font-bold text-white text-sm mb-1">¿Cómo adquirir un paquete?</p>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Haz clic en <span class="text-[#00B4D8] font-bold">Adquirir Plan</span> y serás redirigido a dLocal Go para completar el pago con tu método local preferido. Tu plan se activa automáticamente.
+          Haz clic en <span class="text-[#E6007E] font-bold">Pagar con Nequi</span>, realiza el pago en el enlace de Nequi y luego envía tu comprobante (teléfono + número de transacción). Un administrador verificará tu pago y activará tu plan.
         </p>
       </div>
     </div>
@@ -346,29 +351,30 @@
       <div class="px-6 pt-6 pb-4 flex items-center justify-between border-b border-white/10">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center"
-               [class]="payStep() === 'dlocal-success'
+               [class]="payStep() === 'sent' || payStep() === 'approved'
                  ? 'bg-emerald-500/10 border border-emerald-500/30'
-                 : 'bg-[#FF6B35]/10 border border-[#FF6B35]/30'">
+                 : 'bg-[#E6007E]/10 border border-[#E6007E]/30'">
             <span class="material-symbols-outlined" style="font-size:20px"
-                  [class]="payStep() === 'dlocal-success'
+                  [class]="payStep() === 'sent' || payStep() === 'approved'
                     ? 'text-emerald-400'
-                    : 'text-[#FF6B35]'">
-              {{ payStep() === 'dlocal-success' ? 'verified' : 'payments' }}
+                    : 'text-[#E6007E]'">
+              {{ payStep() === 'sent' ? 'mark_email_read' : payStep() === 'approved' ? 'verified' : 'payments' }}
             </span>
           </div>
           <div>
             <p class="font-black text-white text-sm">
-              {{ payStep() === 'select' ? 'Elige tu plan'
-                 : payStep() === 'dlocal-success' ? '¡Pago Exitoso!'
-                 : 'Procesando pago' }}
+              {{ payStep() === 'redirect' ? 'Paso 1: Pagar en Nequi'
+                 : payStep() === 'confirm' ? 'Paso 2: Enviar comprobante'
+                 : payStep() === 'submitting' ? 'Enviando comprobante...'
+                 : payStep() === 'sent' ? 'Comprobante enviado'
+                 : payStep() === 'approved' ? '¡Paquete activado!'
+                 : payStep() === 'error' ? 'Error'
+                 : 'Pago con Nequi' }}
             </p>
-            <p class="text-[10px] text-slate-500">
-              {{ payStep() === 'select' ? 'Selecciona el paquete a comprar'
-                 : selectedPackage()?.name }}
-            </p>
+            <p class="text-[10px] text-slate-500">{{ selectedPackage()?.name }} · {{ getPriceCOP(selectedPackage()) }}</p>
           </div>
         </div>
-        @if (payStep() !== 'dlocal-loading') {
+        @if (payStep() !== 'submitting') {
           <button (click)="closePaymentModal()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
             <span class="material-symbols-outlined">close</span>
           </button>
@@ -377,60 +383,138 @@
 
       <div class="px-6 py-5 space-y-5">
 
-        <!-- ── Paso 0: Selección de paquete ──────────────────────────────── -->
-        @if (payStep() === 'select') {
-          <div class="space-y-3">
-            @for (pkg of packages(); track pkg.id) {
-              @if (!isCurrentPackage(pkg)) {
-                <div class="flex items-center justify-between bg-zinc-800 border border-white/10 hover:border-[#00B4D8]/40 rounded-2xl px-4 py-3.5 transition-colors">
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
-                      <span class="material-symbols-outlined text-base" [class]="getTypeIconColor(pkg.package_type)">
-                        {{ pkg.package_type === 'basic' ? 'star' :
-                           pkg.package_type === 'premium' ? 'workspace_premium' :
-                           pkg.package_type === 'enterprise' ? 'diamond' : 'tune' }}
-                      </span>
-                    </div>
-                    <div>
-                      <p class="font-black text-white text-sm leading-tight">{{ pkg.name }}</p>
-                      <p class="text-[11px] font-black text-[#00B4D8]">{{ getPriceUSD(pkg) }} USD</p>
-                    </div>
-                  </div>
-                  <button
-                    (click)="selectAndPay(pkg)"
-                    class="flex items-center gap-1.5 px-4 py-2 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-xl text-xs font-black transition-colors flex-shrink-0"
-                  >
-                    <span class="material-symbols-outlined" style="font-size:16px">payments</span>
-                    Elegir
-                  </button>
-                </div>
-              }
-            }
-            @if (hasActivePackage()) {
-              <div class="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3">
-                <span class="material-symbols-outlined text-emerald-400 text-base">info</span>
-                <p class="text-xs text-emerald-400">Ya tienes el plan <strong>{{ currentPackage()?.name }}</strong> activo. Puedes adquirir uno superior.</p>
+        <!-- ── Paso 1: Redirigir al link de Nequi ──────────────────────── -->
+        @if (payStep() === 'redirect') {
+          <div class="flex flex-col items-center text-center gap-4 py-2">
+            <div class="w-16 h-16 rounded-2xl bg-[#E6007E]/10 border border-[#E6007E]/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-[#E6007E]" style="font-size:32px">open_in_new</span>
+            </div>
+            <div>
+              <p class="font-bold text-white">Realiza tu pago en Nequi</p>
+              <p class="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
+                Se abrirá una ventana con el enlace de pago de Nequi. Completa el pago y luego vuelve aquí para enviar tu comprobante.
+              </p>
+            </div>
+            <button (click)="goToNequiLink()"
+              class="w-full flex items-center justify-center gap-2 py-3 bg-[#E6007E] hover:bg-[#c4006b] text-white rounded-xl font-black text-sm transition-colors">
+              <span class="material-symbols-outlined" style="font-size:18px">open_in_new</span>
+              Ir a pagar en Nequi
+            </button>
+            <p class="text-[10px] text-slate-600">Al hacer clic se abre el enlace de pago en una nueva pestaña.</p>
+          </div>
+        }
+
+        <!-- ── Paso 2: Enviar comprobante ──────────────────────────────── -->
+        @if (payStep() === 'confirm') {
+          <div class="space-y-4">
+            <div class="bg-[#E6007E]/5 border border-[#E6007E]/15 rounded-xl p-3 flex items-start gap-2">
+              <span class="material-symbols-outlined text-[#E6007E] flex-shrink-0 mt-0.5" style="font-size:16px">info</span>
+              <p class="text-xs text-slate-300">¿Ya pagaste en Nequi? Ingresa los datos de tu comprobante para que un administrador verifique el pago.</p>
+            </div>
+
+            @if (payError()) {
+              <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 text-xs text-rose-400 font-bold">
+                {{ payError() }}
               </div>
             }
+
+            <!-- Teléfono Nequi -->
+            <div>
+              <label class="block text-xs text-slate-400 font-bold mb-1.5 uppercase tracking-wider">Tu número Nequi</label>
+              <input
+                type="tel"
+                [(ngModel)]="proofPhone"
+                placeholder="Ej: 3001234567"
+                maxlength="10"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#E6007E]/50 focus:ring-1 focus:ring-[#E6007E]/30 transition-all"
+              />
+            </div>
+
+            <!-- Nro Transacción -->
+            <div>
+              <label class="block text-xs text-slate-400 font-bold mb-1.5 uppercase tracking-wider">Número de transacción</label>
+              <input
+                type="text"
+                [(ngModel)]="proofTransactionId"
+                placeholder="Ej: 123456789"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#E6007E]/50 focus:ring-1 focus:ring-[#E6007E]/30 transition-all"
+              />
+              <p class="text-[10px] text-slate-600 mt-1">Lo encuentras en el mensaje de confirmación de Nequi.</p>
+            </div>
+
+            <button (click)="submitProof()"
+              class="w-full flex items-center justify-center gap-2 py-3 bg-[#E6007E] hover:bg-[#c4006b] text-white rounded-xl font-black text-sm transition-colors">
+              <span class="material-symbols-outlined" style="font-size:18px">send</span>
+              Enviar comprobante
+            </button>
           </div>
         }
 
-
-        <!-- ── Paso: dLocal loading (creando sesión) ───────────────────── -->
-        @if (payStep() === 'dlocal-loading') {
+        <!-- ── Paso: Enviando ──────────────────────────────────────────── -->
+        @if (payStep() === 'submitting') {
           <div class="flex flex-col items-center gap-4 py-8">
             <div class="relative">
-              <div class="w-16 h-16 rounded-full border-4 border-[#FF6B35]/20 border-t-[#FF6B35] animate-spin"></div>
-              <span class="material-symbols-outlined text-[#FF6B35] absolute inset-0 flex items-center justify-center" style="font-size:24px">public</span>
+              <div class="w-16 h-16 rounded-full border-4 border-[#E6007E]/20 border-t-[#E6007E] animate-spin"></div>
+              <span class="material-symbols-outlined text-[#E6007E] absolute inset-0 flex items-center justify-center" style="font-size:24px">send</span>
             </div>
             <div class="text-center">
-              <p class="text-white font-bold text-sm">Preparando pago...</p>
-              <p class="text-xs text-slate-500 mt-1">Serás redirigido a dLocal Go en un momento</p>
+              <p class="text-white font-bold text-sm">Enviando comprobante...</p>
+              <p class="text-xs text-slate-500 mt-1">Un momento por favor</p>
             </div>
           </div>
         }
 
-        <!-- ── Paso: Error de dLocal ─────────────────────────────────────── -->
+        <!-- ── Paso: Comprobante enviado ───────────────────────────────── -->
+        @if (payStep() === 'sent') {
+          <div class="flex flex-col items-center text-center gap-5 py-4">
+            <div class="relative">
+              <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/40 flex items-center justify-center">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">mark_email_read</span>
+              </div>
+              <div class="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                <span class="material-symbols-outlined text-white" style="font-size:14px">check</span>
+              </div>
+            </div>
+            <div>
+              <p class="font-black text-white text-lg">¡Comprobante enviado!</p>
+              <p class="text-slate-400 text-xs mt-2 max-w-xs leading-relaxed">
+                {{ verifyMessage() || 'Tu comprobante fue registrado. Un administrador verificará tu pago y activará tu plan.' }}
+              </p>
+            </div>
+            <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3 w-full">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-400" style="font-size:16px">schedule</span>
+                <p class="text-xs text-amber-400 font-bold">Revisión pendiente</p>
+              </div>
+              <p class="text-[10px] text-slate-500 mt-1">El administrador revisará tu pago. Tu plan se activará una vez aprobado.</p>
+            </div>
+            <button (click)="closePaymentModal()"
+              class="w-full py-3 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm transition-colors">
+              Entendido
+            </button>
+          </div>
+        }
+
+        <!-- ── Paso: Aprobado automáticamente ──────────────────────────── -->
+        @if (payStep() === 'approved') {
+          <div class="flex flex-col items-center text-center gap-5 py-4">
+            <div class="relative">
+              <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/40 flex items-center justify-center">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">verified</span>
+              </div>
+            </div>
+            <div>
+              <p class="font-black text-white text-lg">¡Paquete activado!</p>
+              <p class="text-emerald-400 font-bold text-sm mt-1">Tu plan ya está activo</p>
+            </div>
+            <button (click)="closePaymentModal()"
+              class="w-full py-3 bg-[#E6007E] hover:bg-[#c4006b] text-white rounded-xl font-black text-sm transition-colors">
+              ¡Empezar a ganar!
+            </button>
+          </div>
+        }
+
+        <!-- ── Paso: Error ─────────────────────────────────────────────── -->
         @if (payStep() === 'error') {
           <div class="flex flex-col items-center text-center gap-4 py-6">
             <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center">
@@ -440,59 +524,12 @@
               <p class="font-black text-white text-base">Error al procesar el pago</p>
               <p class="text-slate-400 text-xs mt-2 max-w-xs leading-relaxed">{{ payError() }}</p>
             </div>
-            <div class="flex gap-3 w-full">
-              <button
-                (click)="closePaymentModal()"
-                class="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                (click)="startDlocalCheckout()"
-                class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white rounded-xl font-bold text-sm transition-colors"
-              >
-                <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
-                Reintentar
-              </button>
-            </div>
-          </div>
-        }
-
-        <!-- ── Paso: dLocal success (retorno exitoso) ──────────────────── -->
-        @if (payStep() === 'dlocal-success') {
-          <div class="flex flex-col items-center text-center gap-5 py-4">
-            <!-- Animación de éxito -->
-            <div class="relative">
-              <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/40 flex items-center justify-center">
-                <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">verified</span>
-              </div>
-              <div class="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
-                <span class="material-symbols-outlined text-white" style="font-size:14px">check</span>
-              </div>
-            </div>
-            <div>
-              <p class="font-black text-white text-lg">¡Pago Exitoso!</p>
-              <p class="text-emerald-400 font-bold text-sm mt-1">Tu paquete se está activando</p>
-              <p class="text-slate-400 text-xs mt-3 max-w-xs leading-relaxed">
-                Tu pago ha sido procesado correctamente con dLocal Go. El paquete se activará automáticamente en unos segundos.
-              </p>
-            </div>
-            <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3 w-full">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">bolt</span>
-                <p class="text-xs text-emerald-400 font-bold">Activación automática vía dLocal Go</p>
-              </div>
-              <p class="text-[10px] text-slate-500 mt-1">No necesitas enviar comprobante. Tu plan se activa al instante.</p>
-            </div>
-            <button
-              (click)="closePaymentModal()"
-              class="w-full py-3 bg-[#FF6B35] hover:bg-[#FF6B35]/80 text-white rounded-xl font-black text-sm transition-colors"
-            >
-              ¡Empezar a ganar!
+            <button (click)="closePaymentModal()"
+              class="w-full py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm transition-colors">
+              Cerrar
             </button>
           </div>
         }
-
 
       </div>
     </div>
