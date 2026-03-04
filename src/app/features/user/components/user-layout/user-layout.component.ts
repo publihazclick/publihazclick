@@ -150,7 +150,8 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
     return this.router.url.includes('/settings');
   }
 
-  getTierInfo(referrals: number): { name: string; color: string } {
+  getTierInfo(referrals: number, hasActivePackage: boolean): { name: string; color: string } | null {
+    if (!hasActivePackage) return null;
     if (referrals >= 40) return { name: 'DIAMANTE CORONA', color: 'text-amber-400' };
     if (referrals >= 36) return { name: 'DIAMANTE NEGRO', color: 'text-gray-300' };
     if (referrals >= 31) return { name: 'DIAMANTE AZUL', color: 'text-blue-400' };

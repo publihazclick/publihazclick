@@ -32,10 +32,12 @@
         </div>
         @if (profile()) {
           <h3 class="font-bold text-center text-sm">{{ profile()!.full_name || profile()!.username }}</h3>
-          <p class="text-[10px] font-bold uppercase tracking-widest mt-1"
-             [class]="getTierInfo(profile()!.total_referrals_count).color">
-            {{ getTierInfo(profile()!.total_referrals_count).name }}
-          </p>
+          @if (getTierInfo(profile()!.total_referrals_count, profile()!.has_active_package); as tier) {
+            <p class="text-[10px] font-bold uppercase tracking-widest mt-1"
+               [class]="tier.color">
+              {{ tier.name }}
+            </p>
+          }
           @if (!profile()!.has_active_package) {
             <div class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 rounded-lg">
               <span class="material-symbols-outlined text-rose-400" style="font-size:12px">cancel</span>
@@ -293,10 +295,12 @@
                 <p class="text-xs text-slate-500 truncate">@{{ profile()?.username }}</p>
                 <p class="text-[10px] text-slate-600 truncate mt-0.5">{{ profile()?.email }}</p>
               </div>
-              <span class="px-2 py-0.5 text-[10px] font-black rounded uppercase tracking-wider flex-shrink-0"
-                [class]="getTierInfo(profile()?.total_referrals_count ?? 0).color">
-                {{ getTierInfo(profile()?.total_referrals_count ?? 0).name }}
-              </span>
+              @if (getTierInfo(profile()?.total_referrals_count ?? 0, profile()?.has_active_package ?? false); as tier) {
+                <span class="px-2 py-0.5 text-[10px] font-black rounded uppercase tracking-wider flex-shrink-0"
+                  [class]="tier.color">
+                  {{ tier.name }}
+                </span>
+              }
             </div>
 
             <!-- Stats -->
