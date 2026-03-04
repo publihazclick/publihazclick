@@ -59,7 +59,7 @@ export class AiScriptComponent {
 
   getImageUrl(visualDescription: string): string {
     const encoded = encodeURIComponent(visualDescription);
-    return `https://image.pollinations.ai/prompt/${encoded}?width=1080&height=1920&nologo=true`;
+    return `https://gen.pollinations.ai/image/${encoded}?width=1080&height=1920&nologo=true`;
   }
 
   async generateScript() {
