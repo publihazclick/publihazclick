@@ -1,0 +1,260 @@
+<!-- Toast de éxito -->
+@if (successMsg()) {
+  <div class="fixed top-6 right-6 z-[100] bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-bold flex items-center gap-2 animate-fade-in">
+    <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+    {{ successMsg() }}
+  </div>
+}
+
+<!-- Toast de error -->
+@if (errorMsg()) {
+  <div class="fixed top-6 right-6 z-[100] bg-rose-500 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-bold flex items-center gap-2 animate-fade-in">
+    <span class="material-symbols-outlined" style="font-size:18px">error</span>
+    {{ errorMsg() }}
+  </div>
+}
+
+<!-- Header -->
+<div class="mb-8">
+  <div class="flex items-center gap-3 mb-2">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
+      <span class="material-symbols-outlined text-white" style="font-size:22px">auto_awesome</span>
+    </div>
+    <div>
+      <h2 class="text-xl font-black text-white tracking-tight">Generador de Guiones IA</h2>
+      <p class="text-xs text-slate-500">Crea guiones para Reels de 60 segundos con inteligencia artificial</p>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario -->
+<div class="bg-card-dark rounded-2xl border border-white/5 p-6 mb-8">
+  <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+    <span class="material-symbols-outlined text-violet-400" style="font-size:18px">edit_note</span>
+    Describe tu producto o servicio
+  </h3>
+
+  <!-- Descripción -->
+  <div class="mb-5">
+    <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Descripción *</label>
+    <textarea
+      [ngModel]="description()"
+      (ngModelChange)="description.set($event)"
+      placeholder="Ej: Tienda de ropa juvenil con envío gratis a todo Colombia, descuentos del 50% en temporada..."
+      rows="3"
+      class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 resize-none transition-all"
+    ></textarea>
+    <p class="text-[10px] text-slate-600 mt-1">Mínimo 10 caracteres. Mientras más detallada, mejor el guión.</p>
+  </div>
+
+  <!-- Tono -->
+  <div class="mb-5">
+    <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Tono del video</label>
+    <div class="flex flex-wrap gap-2">
+      @for (opt of toneOptions; track opt.value) {
+        <button
+          (click)="tone.set(opt.value)"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all"
+          [class]="tone() === opt.value
+            ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
+            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'"
+        >
+          <span class="material-symbols-outlined" style="font-size:16px">{{ opt.icon }}</span>
+          {{ opt.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Audiencia -->
+  <div class="mb-6">
+    <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Audiencia objetivo (opcional)</label>
+    <input
+      type="text"
+      [ngModel]="audience()"
+      (ngModelChange)="audience.set($event)"
+      placeholder="Ej: Mujeres de 18 a 35 años, emprendedores, gamers..."
+      class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all"
+    />
+  </div>
+
+  <!-- Botón generar -->
+  <button
+    (click)="generateScript()"
+    [disabled]="loading() || description().trim().length < 10"
+    class="w-full sm:w-auto px-8 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+    [class]="loading()
+      ? 'bg-violet-500/30 text-violet-300 border border-violet-500/20'
+      : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40'"
+  >
+    @if (loading()) {
+      <span class="material-symbols-outlined animate-spin" style="font-size:18px">progress_activity</span>
+      Generando guión...
+    } @else {
+      <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
+      Generar Guión
+    }
+  </button>
+</div>
+
+<!-- Loading state -->
+@if (loading()) {
+  <div class="bg-card-dark rounded-2xl border border-white/5 p-12 flex flex-col items-center justify-center gap-4">
+    <div class="relative">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+        <span class="material-symbols-outlined text-violet-400 animate-pulse" style="font-size:32px">auto_awesome</span>
+      </div>
+      <div class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-500 animate-ping"></div>
+    </div>
+    <div class="text-center">
+      <p class="text-sm font-bold text-white">La IA está creando tu guión...</p>
+      <p class="text-xs text-slate-500 mt-1">Esto puede tomar unos segundos</p>
+    </div>
+  </div>
+}
+
+<!-- Resultado: Script generado -->
+@if (script(); as s) {
+  <div class="space-y-6">
+    <!-- Header del guión -->
+    <div class="bg-card-dark rounded-2xl border border-white/5 p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+          <h3 class="text-lg font-black text-white">{{ s.title }}</h3>
+          <p class="text-xs text-slate-500 mt-1">
+            <span class="text-violet-400 font-bold">{{ s.total_duration }}s</span> · {{ s.scenes.length }} escenas · {{ s.music_suggestion }}
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            (click)="copyScript()"
+            class="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-all"
+          >
+            <span class="material-symbols-outlined" style="font-size:16px">content_copy</span>
+            Copiar guión
+          </button>
+          <button
+            (click)="generateScript()"
+            [disabled]="loading()"
+            class="flex items-center gap-1.5 px-4 py-2 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 rounded-lg text-xs font-bold text-violet-300 hover:text-violet-200 transition-all"
+          >
+            <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+            Regenerar todo
+          </button>
+        </div>
+      </div>
+
+      <!-- Hook -->
+      <div class="bg-amber-500/5 border border-amber-500/15 rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="material-symbols-outlined text-amber-400" style="font-size:16px">bolt</span>
+          <span class="text-[10px] text-amber-400 font-black uppercase tracking-widest">Hook — Primeros 3 segundos</span>
+        </div>
+        <p class="text-sm text-white font-semibold">{{ s.hook }}</p>
+      </div>
+    </div>
+
+    <!-- Timeline de escenas -->
+    <div class="space-y-4">
+      @for (scene of s.scenes; track scene.scene; let i = $index) {
+        <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+          <!-- Scene header -->
+          <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-black text-white">
+                {{ scene.scene }}
+              </div>
+              <div>
+                <span class="text-xs font-bold text-white">Escena {{ scene.scene }}</span>
+                <span class="text-[10px] text-slate-500 ml-2">{{ scene.duration_seconds }}s</span>
+              </div>
+              <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] text-slate-400 font-bold">
+                {{ scene.camera_direction }}
+              </span>
+            </div>
+            <button
+              (click)="regenerateScene(i)"
+              [disabled]="regeneratingScene() !== null"
+              class="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 hover:bg-violet-500/10 border border-white/10 hover:border-violet-500/20 rounded-lg text-[10px] font-bold text-slate-400 hover:text-violet-300 transition-all disabled:opacity-30"
+            >
+              @if (regeneratingScene() === i) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:14px">progress_activity</span>
+              } @else {
+                <span class="material-symbols-outlined" style="font-size:14px">refresh</span>
+              }
+              Regenerar
+            </button>
+          </div>
+
+          <!-- Scene content -->
+          <div class="flex flex-col lg:flex-row">
+            <!-- Imagen IA -->
+            <div class="lg:w-48 xl:w-56 flex-shrink-0 aspect-[9/16] lg:aspect-auto lg:h-auto bg-black/30 relative overflow-hidden">
+              <img
+                [src]="getImageUrl(scene.visual_description)"
+                [alt]="scene.visual_description"
+                class="w-full h-full object-cover"
+                loading="lazy"
+              />
+              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                <p class="text-[10px] text-white/70 font-medium line-clamp-2">{{ scene.visual_description }}</p>
+              </div>
+            </div>
+
+            <!-- Textos -->
+            <div class="flex-1 p-5 space-y-4">
+              <!-- Narración -->
+              <div>
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <span class="material-symbols-outlined text-violet-400" style="font-size:14px">mic</span>
+                  <span class="text-[10px] text-violet-400 font-black uppercase tracking-widest">Narración</span>
+                </div>
+                <p class="text-sm text-white leading-relaxed">{{ scene.narration }}</p>
+              </div>
+
+              <!-- Overlay -->
+              <div>
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <span class="material-symbols-outlined text-amber-400" style="font-size:14px">text_fields</span>
+                  <span class="text-[10px] text-amber-400 font-black uppercase tracking-widest">Texto en pantalla</span>
+                </div>
+                <span class="inline-block px-3 py-1.5 bg-white/10 border border-white/10 rounded-lg text-sm text-white font-bold">
+                  {{ scene.text_overlay }}
+                </span>
+              </div>
+
+              <!-- Duración barra -->
+              <div class="pt-2">
+                <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                  <span>Duración</span>
+                  <span class="font-bold text-white">{{ scene.duration_seconds }}s / 60s</span>
+                </div>
+                <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    class="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all"
+                    [style.width.%]="(scene.duration_seconds / 60) * 100"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Footer acciones -->
+    <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2 text-xs text-slate-500">
+        <span class="material-symbols-outlined" style="font-size:16px">info</span>
+        Las imágenes son referenciales, generadas por IA para visualizar cada escena.
+      </div>
+      <button
+        (click)="copyScript()"
+        class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-xs font-black text-white uppercase tracking-wider shadow-lg shadow-violet-500/20 transition-all"
+      >
+        <span class="material-symbols-outlined" style="font-size:16px">content_copy</span>
+        Copiar guión completo
+      </button>
+    </div>
+  </div>
+}

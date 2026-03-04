@@ -175,6 +175,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/advertiser/components/tasks/advertiser-tasks.component').then(m => m.AdvertiserTasksComponent)
       },
       {
+        path: 'ai-script',
+        loadComponent: () => import('./features/advertiser/components/ai-script/ai-script.component').then(m => m.AiScriptComponent)
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./features/user/components/settings/settings.component').then(m => m.UserSettingsComponent)
       }
