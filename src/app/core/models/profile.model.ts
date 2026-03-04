@@ -31,6 +31,7 @@ export interface Profile {
   // Referidos
   total_referrals_count: number;
   // Paquete
+  phone: string | null;
   has_active_package: boolean;
   current_package_id: string | null;
   package_started_at: string | null;

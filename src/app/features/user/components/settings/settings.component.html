@@ -131,6 +131,15 @@
           </div>
 
           <div>
+            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Número de teléfono</label>
+            <div class="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5 min-w-0">
+              <span class="material-symbols-outlined text-slate-600 flex-shrink-0" style="font-size:16px">phone</span>
+              <span class="text-sm text-slate-400 flex-1 min-w-0 truncate">{{ profile()?.phone || 'No asignado' }}</span>
+              <span class="flex-shrink-0 px-2 py-0.5 bg-white/5 text-slate-500 text-[10px] font-bold rounded uppercase">No editable</span>
+            </div>
+          </div>
+
+          <div>
             <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Código de invitado</label>
             <div class="flex items-center gap-2 min-w-0">
               <div class="flex-1 flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5 min-w-0">
