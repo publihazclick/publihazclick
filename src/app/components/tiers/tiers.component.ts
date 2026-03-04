@@ -33,6 +33,48 @@ interface Tier {
 export class TiersComponent {
   protected currencyService = inject(CurrencyService);
   protected readonly selectedTier = signal<Tier | null>(null);
+  protected readonly customReferrals = signal<number | null>(null);
+
+  // Determina el tier correcto según número de invitados
+  private getTierForReferrals(refs: number): Tier | null {
+    // Buscar solo en basic + superior (no superior-plus)
+    const allTiers = this.tiers.filter(t => t.category !== 'superior-plus');
+    for (let i = allTiers.length - 1; i >= 0; i--) {
+      if (refs >= allTiers[i].minReferrals) return allTiers[i];
+    }
+    return null;
+  }
+
+  // Tier efectivo basado en el input custom o el seleccionado
+  protected readonly effectiveTier = computed(() => {
+    const custom = this.customReferrals();
+    const selected = this.selectedTier();
+    if (custom !== null && custom > 0) {
+      return this.getTierForReferrals(custom) || selected;
+    }
+    return selected;
+  });
+
+  // Número de referidos para el cálculo (solo del input de la calculadora)
+  protected readonly calcRefs = computed(() => {
+    const custom = this.customReferrals();
+    return (custom !== null && custom > 0) ? custom : 0;
+  });
+
+  // Cálculos dinámicos de ganancias
+  protected readonly calcEarnings = computed(() => {
+    const tier = this.effectiveTier();
+    const refs = this.calcRefs();
+    if (!tier || !refs) return null;
+    const commission = tier.commissionPerStd400 ?? 0;
+    const slots = tier.miniSlotsPerInvitee ?? 0;
+    const ownMonth = 70000;
+    const commissionMonth = refs * 5 * commission * 30;
+    const miniRefMonth = refs * slots * 100 * 30;
+    const megaActivation = refs * 10000;
+    const total = ownMonth + commissionMonth + miniRefMonth + megaActivation;
+    return { ownMonth, commissionMonth, miniRefMonth, megaActivation, total, commission, slots, refs };
+  });
 
   protected readonly formattedTiers = computed(() => {
     return this.tiers.map(tier => ({
@@ -79,15 +121,15 @@ export class TiersComponent {
   // Values in COP (Colombian Pesos) - the base currency of the site
   protected readonly tiers: Tier[] = [
     // ── CATEGORÍA BÁSICA ──
-    // Valores al mínimo de invitados del rango. commissionPerStd400 y miniSlotsPerInvitee
+    // Valores al MÁXIMO de invitados del rango. commissionPerStd400 y miniSlotsPerInvitee
     // determinan la fórmula dinámica: refs×5×commission×30 + refs×slots×100×30 + refs×10000
     {
       name: 'JADE',
       minReferrals: 1,
       maxReferrals: 2,
       ownClicksCOP: 70000,
-      referralClicksCOP: 28000,      // 1×5×100×30 + 1×1×100×30 + 1×10000
-      monthlyEarningsCOP: 98000,
+      referralClicksCOP: 56000,      // 2×5×100×30 + 2×1×100×30 + 2×10000
+      monthlyEarningsCOP: 126000,
       color: 'text-emerald-500',
       bgGradient: 'from-emerald-400 to-emerald-600',
       icon: 'diamond',
@@ -100,8 +142,8 @@ export class TiersComponent {
       minReferrals: 3,
       maxReferrals: 5,
       ownClicksCOP: 70000,
-      referralClicksCOP: 138000,     // 3×5×200×30 + 3×2×100×30 + 3×10000
-      monthlyEarningsCOP: 208000,
+      referralClicksCOP: 230000,     // 5×5×200×30 + 5×2×100×30 + 5×10000
+      monthlyEarningsCOP: 300000,
       color: 'text-pink-400',
       bgGradient: 'from-pink-400 to-pink-600',
       icon: 'brightness_7',
@@ -114,8 +156,8 @@ export class TiersComponent {
       minReferrals: 6,
       maxReferrals: 9,
       ownClicksCOP: 70000,
-      referralClicksCOP: 384000,     // 6×5×300×30 + 6×3×100×30 + 6×10000
-      monthlyEarningsCOP: 454000,
+      referralClicksCOP: 576000,     // 9×5×300×30 + 9×3×100×30 + 9×10000
+      monthlyEarningsCOP: 646000,
       color: 'text-blue-400',
       bgGradient: 'from-blue-400 to-blue-600',
       icon: 'auto_awesome',
@@ -128,8 +170,8 @@ export class TiersComponent {
       minReferrals: 10,
       maxReferrals: 19,
       ownClicksCOP: 70000,
-      referralClicksCOP: 820000,     // 10×5×400×30 + 10×4×100×30 + 10×10000
-      monthlyEarningsCOP: 890000,
+      referralClicksCOP: 1558000,    // 19×5×400×30 + 19×4×100×30 + 19×10000
+      monthlyEarningsCOP: 1628000,
       color: 'text-red-500',
       bgGradient: 'from-red-500 to-red-700',
       icon: 'local_fire_department',
@@ -285,9 +327,16 @@ export class TiersComponent {
 
   selectTier(tier: Tier): void {
     this.selectedTier.set(tier);
+    this.customReferrals.set(null);
   }
 
   closeTierDetail(): void {
     this.selectedTier.set(null);
+    this.customReferrals.set(null);
+  }
+
+  onCustomReferralsInput(value: string): void {
+    const num = parseInt(value, 10);
+    this.customReferrals.set(isNaN(num) || num < 0 ? null : num);
   }
 }

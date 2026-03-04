@@ -253,15 +253,39 @@ export class AuthService implements OnDestroy {
    * @param options - Opciones de login
    * @returns Observable con el resultado
    */
+  /**
+   * Resuelve un identificador de login (email, username o teléfono) al email correspondiente
+   */
+  private async resolveLoginIdentifier(identifier: string): Promise<string> {
+    // Si ya parece un email, devolver directamente
+    if (identifier.includes('@')) {
+      return identifier;
+    }
+    try {
+      const { data, error } = await this.supabase.rpc('resolve_login_identifier', {
+        p_identifier: identifier
+      });
+      if (error || !data) {
+        return identifier;
+      }
+      return data as string;
+    } catch {
+      return identifier;
+    }
+  }
+
   login(options: LoginOptions): Observable<AuthResult> {
     this._isLoading.set(true);
     this._error.set(null);
 
     // Usar un Observable que siempre completa
     return new Observable<AuthResult>(observer => {
-      this.supabase.auth.signInWithPassword({
-        email: options.email,
-        password: options.password
+      // Resolver identificador (email, username o teléfono) a email
+      this.resolveLoginIdentifier(options.email).then(resolvedEmail => {
+        return this.supabase.auth.signInWithPassword({
+          email: resolvedEmail,
+          password: options.password
+        });
       }).then(({ data, error }) => {
         if (error) {
           this.handleAuthError(error);

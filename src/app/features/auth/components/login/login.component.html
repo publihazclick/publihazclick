@@ -33,28 +33,28 @@
           <span class="text-primary text-xs font-bold tracking-[0.2em] uppercase">Iniciar Sesión</span>
         </div>
 
-        <!-- Email -->
+        <!-- Identificador (email, usuario o teléfono) -->
         <div>
           <div
             class="flex border rounded overflow-hidden custom-input-group transition-all duration-300"
-            [class.border-red-500]="isFieldInvalid('email')"
-            [class.border-gray-700]="!isFieldInvalid('email')"
+            [class.border-red-500]="isFieldInvalid('identifier')"
+            [class.border-gray-700]="!isFieldInvalid('identifier')"
           >
             <div class="bg-black/50 px-4 py-3 flex items-center border-r border-gray-700">
-              <span class="material-symbols-outlined text-primary text-xl">mail</span>
+              <span class="material-symbols-outlined text-primary text-xl">person</span>
             </div>
             <input
-              formControlName="email"
-              type="email"
-              autocomplete="off"
+              formControlName="identifier"
+              type="text"
+              autocomplete="username"
               class="bg-transparent border-none text-white w-full focus:ring-0 placeholder-gray-600"
-              placeholder="Correo Electrónico"
+              placeholder="Correo, usuario o celular"
             />
           </div>
-          @if (isFieldInvalid('email')) {
+          @if (isFieldInvalid('identifier')) {
             <p class="text-red-400 text-xs mt-1.5 flex items-center gap-1">
               <span class="material-symbols-outlined text-xs">error</span>
-              {{ getErrorMessage('email') }}
+              {{ getErrorMessage('identifier') }}
             </p>
           }
         </div>

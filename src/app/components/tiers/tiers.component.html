@@ -16,6 +16,91 @@
     </div>
 
     <!-- ══════════════════════════════════════
+         CALCULADORA DE GANANCIAS
+    ══════════════════════════════════════ -->
+    <div class="mb-10 md:mb-14">
+      <div class="max-w-xl mx-auto p-5 md:p-6 bg-zinc-900/80 backdrop-blur-sm rounded-2xl border border-cyan-500/20 shadow-lg shadow-cyan-500/5">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-cyan-400 text-xl">calculate</span>
+          </div>
+          <div>
+            <h4 class="text-sm font-black text-white uppercase tracking-wide">Calculadora de Ganancias</h4>
+            <p class="text-[11px] text-gray-500">Ingresa tu número de invitados y mira cuánto puedes ganar</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mb-3">
+          <div class="relative flex-1">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-base">group</span>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              [value]="customReferrals() ?? ''"
+              (input)="onCustomReferralsInput($any($event).target.value)"
+              class="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              placeholder="¿Cuántos invitados tendrás?"
+            />
+          </div>
+          <span class="text-xs text-gray-500 whitespace-nowrap">invitados</span>
+        </div>
+
+        @if (calcEarnings(); as earnings) {
+          <div class="space-y-2.5 mt-4">
+            <!-- Nivel detectado -->
+            @if (effectiveTier(); as eTier) {
+              <div class="flex items-center gap-2 p-3 rounded-xl bg-gradient-to-r {{ eTier.bgGradient }} bg-opacity-10"
+                style="background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0.8))">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br {{ eTier.bgGradient }} flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-white text-sm">{{ eTier.icon }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-xs text-gray-400">Tu nivel:</span>
+                  <span class="font-black text-sm ml-1 {{ eTier.color }}">{{ eTier.name }}</span>
+                </div>
+                <div class="text-right text-[10px] text-gray-500">
+                  <div>{{ earnings.commission }} COP/comisión</div>
+                  <div>{{ earnings.slots }} slots/invitado</div>
+                </div>
+              </div>
+            }
+
+            <!-- Desglose -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div class="flex justify-between items-center p-2.5 bg-black/40 rounded-lg border border-white/5">
+                <span class="text-gray-400 text-xs">Clicks propios</span>
+                <span class="font-bold text-white text-xs">{{ currencyService.formatFromCOP(earnings.ownMonth) }}</span>
+              </div>
+              <div class="flex justify-between items-center p-2.5 bg-black/40 rounded-lg border border-white/5">
+                <span class="text-gray-400 text-xs">Comisión invitados</span>
+                <span class="font-bold text-white text-xs">{{ currencyService.formatFromCOP(earnings.commissionMonth) }}</span>
+              </div>
+              <div class="flex justify-between items-center p-2.5 bg-black/40 rounded-lg border border-white/5">
+                <span class="text-gray-400 text-xs">Mini referral</span>
+                <span class="font-bold text-white text-xs">{{ currencyService.formatFromCOP(earnings.miniRefMonth) }}</span>
+              </div>
+              <div class="flex justify-between items-center p-2.5 bg-black/40 rounded-lg border border-white/5">
+                <span class="text-gray-400 text-xs">Bonus activación</span>
+                <span class="font-bold text-white text-xs">{{ currencyService.formatFromCOP(earnings.megaActivation) }}</span>
+              </div>
+            </div>
+
+            <!-- Total -->
+            <div class="flex justify-between items-center p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/30">
+              <span class="text-cyan-400 font-bold text-sm">Total aproximado / mes</span>
+              <span class="font-black text-cyan-400 text-xl">{{ currencyService.formatFromCOP(earnings.total) }}</span>
+            </div>
+          </div>
+        } @else {
+          <div class="text-center py-4">
+            <span class="material-symbols-outlined text-gray-700 text-3xl mb-1">trending_up</span>
+            <p class="text-xs text-gray-600">Escribe un número arriba para ver el cálculo</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
          CATEGORÍA BÁSICA
     ══════════════════════════════════════ -->
     <div class="mb-10 md:mb-14">
@@ -45,7 +130,7 @@
             </div>
             <h4 class="font-black text-xs sm:text-sm md:text-base {{ tier.color }} uppercase tracking-tight mb-1">{{ tier.name }}</h4>
             <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
-              {{ tier.maxReferrals ? tier.minReferrals + '-' + tier.maxReferrals : tier.minReferrals + '+' }} invitados
+              {{ tier.maxReferrals ?? tier.minReferrals }}{{ !tier.maxReferrals ? '+' : '' }} invitados
             </p>
             <div class="pt-2 sm:pt-3 border-t border-zinc-700/50">
               <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
@@ -89,7 +174,7 @@
             </div>
             <h4 class="font-black text-xs sm:text-sm md:text-base {{ tier.color }} uppercase tracking-tight mb-1">{{ tier.name }}</h4>
             <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
-              {{ tier.maxReferrals ? tier.minReferrals + '-' + tier.maxReferrals : tier.minReferrals + '+' }} invitados
+              {{ tier.maxReferrals ?? tier.minReferrals }}{{ !tier.maxReferrals ? '+' : '' }} invitados
             </p>
             <div class="pt-2 sm:pt-3 border-t border-amber-500/20">
               <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
@@ -313,9 +398,7 @@
             </p>
           } @else {
             <p class="text-gray-500 text-sm mt-2">
-              {{ selectedTierFormatted()!.maxReferrals
-                ? selectedTierFormatted()!.minReferrals + ' - ' + selectedTierFormatted()!.maxReferrals
-                : selectedTierFormatted()!.minReferrals + '+' }} invitados activos
+              {{ selectedTierFormatted()!.maxReferrals ?? selectedTierFormatted()!.minReferrals }}{{ !selectedTierFormatted()!.maxReferrals ? '+' : '' }} invitados activos
             </p>
           }
         </div>
@@ -354,44 +437,41 @@
                 {{ selectedTierFormatted()!.deepNetwork }}
               </span>
             </div>
-          } @else if (selectedTierFormatted()!.category === 'basic') {
-            <!-- Básica: 3 fuentes de ingresos por invitados -->
+          } @else if (calcEarnings()) {
+            <!-- Básica/Superior: 3 fuentes de ingresos por invitados (cálculo dinámico) -->
             <div class="flex justify-between items-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
               <div>
                 <span class="text-gray-300 text-sm block">Comisión por anuncio</span>
                 <span class="text-[10px] text-gray-600">
-                  {{ selectedTierFormatted()!.minReferrals }} inv × 5 anuncios × {{ selectedTierFormatted()!.commissionPerStd400 }} COP × 30 días
+                  {{ calcEarnings()!.refs }} inv × 5 anuncios × {{ calcEarnings()!.commission }} COP × 30 días
                 </span>
               </div>
               <span class="font-bold text-white text-sm">
-                {{ currencyService.formatFromCOP(selectedTierFormatted()!.minReferrals * 5 * (selectedTierFormatted()!.commissionPerStd400 ?? 0) * 30) }}
+                {{ currencyService.formatFromCOP(calcEarnings()!.commissionMonth) }}
               </span>
             </div>
             <div class="flex justify-between items-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
               <div>
                 <span class="text-gray-300 text-sm block">Mini anuncios por invitar</span>
                 <span class="text-[10px] text-gray-600">
-                  {{ selectedTierFormatted()!.minReferrals }} inv × {{ selectedTierFormatted()!.miniSlotsPerInvitee }} slots × 100 COP × 30 días
+                  {{ calcEarnings()!.refs }} inv × {{ calcEarnings()!.slots }} slots × 100 COP × 30 días
                 </span>
               </div>
               <span class="font-bold text-white text-sm">
-                {{ currencyService.formatFromCOP(selectedTierFormatted()!.minReferrals * (selectedTierFormatted()!.miniSlotsPerInvitee ?? 0) * 100 * 30) }}
+                {{ currencyService.formatFromCOP(calcEarnings()!.miniRefMonth) }}
               </span>
             </div>
             <div class="flex justify-between items-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
               <div>
                 <span class="text-gray-300 text-sm block">Bonus de activación</span>
                 <span class="text-[10px] text-gray-600">
-                  {{ selectedTierFormatted()!.minReferrals }} inv × 5 mega ads × 2.000 COP
+                  {{ calcEarnings()!.refs }} inv × 5 mega ads × 2,000 COP
                 </span>
               </div>
               <span class="font-bold text-white text-sm">
-                {{ currencyService.formatFromCOP(selectedTierFormatted()!.minReferrals * 10000) }}
+                {{ currencyService.formatFromCOP(calcEarnings()!.megaActivation) }}
               </span>
             </div>
-            <p class="text-[10px] text-slate-500 text-center">
-              * Valores al mínimo del nivel ({{ selectedTierFormatted()!.minReferrals }} invitados). Escalan con cada invitado adicional.
-            </p>
           } @else {
             <div class="flex justify-between items-center p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
               <span class="text-gray-400 text-sm">Clicks de tus invitados</span>
@@ -401,7 +481,13 @@
 
           <div class="flex justify-between items-center p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/30">
             <span class="text-cyan-400 font-bold">Total aproximado al mes</span>
-            <span class="font-black text-cyan-400 text-xl">{{ selectedTierFormatted()!.monthlyEarnings }}</span>
+            @if (calcEarnings()) {
+              <span class="font-black text-cyan-400 text-xl">
+                {{ currencyService.formatFromCOP(calcEarnings()!.total) }}
+              </span>
+            } @else {
+              <span class="font-black text-cyan-400 text-xl">{{ selectedTierFormatted()!.monthlyEarnings }}</span>
+            }
           </div>
         </div>
 

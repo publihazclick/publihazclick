@@ -79,6 +79,7 @@ export class AdminAdsComponent implements OnInit {
   readonly selectedBanner = signal<BannerAd | null>(null);
   readonly saving = signal<boolean>(false);
   readonly modalError = signal<string | null>(null);
+  readonly fieldErrors = signal<Record<string, string>>({});
 
   // Modal eliminar
   readonly showDeleteConfirm = signal<boolean>(false);
@@ -409,17 +410,82 @@ export class AdminAdsComponent implements OnInit {
     this.selectedPtc.set(null);
     this.selectedBanner.set(null);
     this.modalError.set(null);
+    this.fieldErrors.set({});
   }
 
   // ── PTC CRUD ────────────────────────────────────────────────────────────────
 
+  private validatePtcForm(): boolean {
+    const errors: Record<string, string> = {};
+    if (!this.ptcFormData.title?.trim()) {
+      errors['ptc_title'] = 'El nombre de la empresa es obligatorio';
+    }
+    if (!this.ptcFormData.url?.trim()) {
+      errors['ptc_url'] = 'La URL de destino es obligatoria';
+    } else if (!/^https?:\/\/.+/.test(this.ptcFormData.url.trim())) {
+      errors['ptc_url'] = 'Ingresa una URL válida (https://...)';
+    }
+    if (this.ptcFormData.youtube_url?.trim() && !/^https?:\/\/.+/.test(this.ptcFormData.youtube_url.trim())) {
+      errors['ptc_youtube'] = 'Ingresa una URL de YouTube válida';
+    }
+    this.fieldErrors.set(errors);
+    const hasErrors = Object.keys(errors).length > 0;
+    if (hasErrors) {
+      const count = Object.keys(errors).length;
+      this.modalError.set(`Hay ${count} campo${count > 1 ? 's' : ''} con errores. Corrígelos para continuar.`);
+    }
+    return !hasErrors;
+  }
+
+  private validateBannerForm(): boolean {
+    const errors: Record<string, string> = {};
+    if (!this.bannerFormData.name?.trim()) {
+      errors['banner_name'] = 'El nombre del banner es obligatorio';
+    }
+    if (!this.bannerFormData.url?.trim()) {
+      errors['banner_url'] = 'La URL de destino es obligatoria';
+    } else if (!/^https?:\/\/.+/.test(this.bannerFormData.url.trim())) {
+      errors['banner_url'] = 'Ingresa una URL válida (https://...)';
+    }
+    this.fieldErrors.set(errors);
+    const hasErrors = Object.keys(errors).length > 0;
+    if (hasErrors) {
+      const count = Object.keys(errors).length;
+      this.modalError.set(`Hay ${count} campo${count > 1 ? 's' : ''} con errores. Corrígelos para continuar.`);
+    }
+    return !hasErrors;
+  }
+
+  hasFieldError(field: string): boolean {
+    return !!this.fieldErrors()[field];
+  }
+
+  getFieldError(field: string): string {
+    return this.fieldErrors()[field] || '';
+  }
+
+  clearFieldError(field: string): void {
+    const current = this.fieldErrors();
+    if (current[field]) {
+      const updated = { ...current };
+      delete updated[field];
+      this.fieldErrors.set(updated);
+      if (Object.keys(updated).length === 0) {
+        this.modalError.set(null);
+      } else {
+        const count = Object.keys(updated).length;
+        this.modalError.set(`Hay ${count} campo${count > 1 ? 's' : ''} con errores. Corrígelos para continuar.`);
+      }
+    }
+  }
+
   async savePtc(): Promise<void> {
-    if (!this.ptcFormData.title || !this.ptcFormData.url) {
-      this.modalError.set('El título y la URL son obligatorios');
+    if (!this.validatePtcForm()) {
       return;
     }
     this.saving.set(true);
     this.modalError.set(null);
+    this.fieldErrors.set({});
     try {
       const advertiser = this.selectedAdvertiser();
       if (advertiser) {
@@ -472,12 +538,12 @@ export class AdminAdsComponent implements OnInit {
   // ── Banner CRUD ─────────────────────────────────────────────────────────────
 
   async saveBanner(): Promise<void> {
-    if (!this.bannerFormData.name || !this.bannerFormData.url) {
-      this.modalError.set('El nombre y la URL son obligatorios');
+    if (!this.validateBannerForm()) {
       return;
     }
     this.saving.set(true);
     this.modalError.set(null);
+    this.fieldErrors.set({});
     try {
       const advertiser = this.selectedAdvertiser();
       if (advertiser) {

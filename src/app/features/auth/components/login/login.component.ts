@@ -26,7 +26,7 @@ export class LoginComponent implements OnInit {
   readonly successMessage = signal<string | null>(null);
 
   loginForm: FormGroup = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+    identifier: ['', [Validators.required]],
     password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
@@ -61,10 +61,10 @@ export class LoginComponent implements OnInit {
     this.successMessage.set(null);
     this.errorMessage.set(null);
 
-    const email = this.loginForm.get('email')?.value;
+    const identifier = this.loginForm.get('identifier')?.value?.trim();
     const password = this.loginForm.get('password')?.value;
 
-    this.authService.login({ email, password }).subscribe({
+    this.authService.login({ email: identifier, password }).subscribe({
       next: (result) => {
         this.isLoading.set(false);
         if (result.success) {
@@ -82,7 +82,7 @@ export class LoginComponent implements OnInit {
             this.router.navigate(['/dashboard']);
           });
         } else {
-          this.errorMessage.set(result.message || 'Correo o contraseña incorrectos');
+          this.errorMessage.set(result.message || 'Credenciales incorrectas. Verifica tu usuario, correo o celular y contraseña.');
         }
       },
       error: () => {
@@ -101,7 +101,6 @@ export class LoginComponent implements OnInit {
     const control = this.loginForm.get(field);
     if (!control || !control.errors) return '';
     if (control.errors['required']) return 'Este campo es requerido';
-    if (control.errors['email']) return 'Ingresa un correo electrónico válido';
     if (control.errors['minlength']) {
       const min = control.errors['minlength'].requiredLength;
       return `La contraseña debe tener al menos ${min} caracteres`;
