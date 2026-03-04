@@ -11,9 +11,21 @@
   animation: fade-in 0.3s ease-out;
 }
 
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+// Custom audio player styling
+.audio-player {
+  &::-webkit-media-controls-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+  }
+
+  &::-webkit-media-controls-play-button,
+  &::-webkit-media-controls-mute-button {
+    filter: invert(1);
+  }
+
+  &::-webkit-media-controls-current-time-display,
+  &::-webkit-media-controls-time-remaining-display {
+    color: #94a3b8;
+    font-size: 10px;
+  }
 }
