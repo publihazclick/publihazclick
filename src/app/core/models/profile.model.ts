@@ -60,6 +60,8 @@ export interface UpdateProfileOptions {
   username?: string;
   full_name?: string;
   avatar_url?: string;
+  phone?: string;
+  email?: string;
 }
 
 /**

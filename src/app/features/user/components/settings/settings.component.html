@@ -120,22 +120,33 @@
             </div>
           </div>
 
-          <!-- Read-only fields -->
-          <div>
-            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Correo electrónico</label>
-            <div class="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5 min-w-0">
-              <span class="material-symbols-outlined text-slate-600 flex-shrink-0" style="font-size:16px">mail</span>
-              <span class="text-sm text-slate-400 flex-1 min-w-0 truncate">{{ profile()?.email || '—' }}</span>
-              <span class="flex-shrink-0 px-2 py-0.5 bg-white/5 text-slate-500 text-[10px] font-bold rounded uppercase">No editable</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Correo electrónico</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" style="font-size:16px">mail</span>
+                <input
+                  type="email"
+                  [ngModel]="email()"
+                  (ngModelChange)="email.set($event)"
+                  placeholder="tu@correo.com"
+                  class="w-full bg-white/5 border border-white/10 focus:border-primary/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+                >
+              </div>
+              <p class="text-[10px] text-slate-600 mt-1.5">Al cambiar el correo se enviará un email de confirmación</p>
             </div>
-          </div>
-
-          <div>
-            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Número de teléfono</label>
-            <div class="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5 min-w-0">
-              <span class="material-symbols-outlined text-slate-600 flex-shrink-0" style="font-size:16px">phone</span>
-              <span class="text-sm text-slate-400 flex-1 min-w-0 truncate">{{ profile()?.phone || 'No asignado' }}</span>
-              <span class="flex-shrink-0 px-2 py-0.5 bg-white/5 text-slate-500 text-[10px] font-bold rounded uppercase">No editable</span>
+            <div>
+              <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Número de teléfono</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" style="font-size:16px">phone</span>
+                <input
+                  type="tel"
+                  [ngModel]="phone()"
+                  (ngModelChange)="phone.set($event)"
+                  placeholder="+57 300 123 4567"
+                  class="w-full bg-white/5 border border-white/10 focus:border-primary/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+                >
+              </div>
             </div>
           </div>
 

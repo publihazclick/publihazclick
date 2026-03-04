@@ -128,6 +128,12 @@ export class ProfileService {
 
       if (!user) throw new Error('No hay usuario autenticado');
 
+      // Si cambia el email, actualizar también en Supabase Auth
+      if (options.email && options.email !== user.email) {
+        const { error: authError } = await this.supabase.auth.updateUser({ email: options.email });
+        if (authError) throw authError;
+      }
+
       const updates = {
         ...options,
         updated_at: new Date().toISOString()

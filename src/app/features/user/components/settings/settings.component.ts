@@ -28,11 +28,15 @@ export class UserSettingsComponent implements OnInit {
 
   // Form fields as signals for OnPush compatibility
   readonly fullName = signal('');
+  readonly email = signal('');
+  readonly phone = signal('');
 
   async ngOnInit(): Promise<void> {
     const p = await this.profileService.getCurrentProfile();
     if (p) {
       this.fullName.set(p.full_name ?? '');
+      this.email.set(p.email ?? '');
+      this.phone.set(p.phone ?? '');
     }
     this.loading.set(false);
   }
@@ -85,13 +89,21 @@ export class UserSettingsComponent implements OnInit {
     this.saving.set(true);
     this.clearMessages();
 
+    const emailChanged = this.email().trim() && this.email().trim() !== this.profile()?.email;
+
     const updated = await this.profileService.updateProfile({
       full_name: this.fullName().trim() || undefined,
+      email: this.email().trim() || undefined,
+      phone: this.phone().trim() || undefined,
     });
 
     this.saving.set(false);
     if (updated) {
-      this.showSuccess('Perfil actualizado correctamente.');
+      if (emailChanged) {
+        this.showSuccess('Perfil actualizado. Se envió un correo de confirmación a tu nuevo email.');
+      } else {
+        this.showSuccess('Perfil actualizado correctamente.');
+      }
     } else {
       this.showError('Error al guardar los cambios. Intenta de nuevo.');
     }
