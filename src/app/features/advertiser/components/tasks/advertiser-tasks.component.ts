@@ -368,6 +368,7 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
         p_user_agent: ua,
         p_session_fingerprint: fingerprint,
         p_click_duration_ms: durationMs ?? null,
+        p_ad_type_override: ad.adType === 'mini_referral' ? 'mini_referral' : null,
       });
 
       if (result?.success === true) {
