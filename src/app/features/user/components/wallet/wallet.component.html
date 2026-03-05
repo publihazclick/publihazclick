@@ -1,5 +1,13 @@
 <div class="space-y-6">
 
+  <!-- Toast de exito -->
+  @if (successMsg()) {
+    <div class="fixed top-6 right-6 z-[100] bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-bold flex items-center gap-2 animate-fade-in">
+      <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+      {{ successMsg() }}
+    </div>
+  }
+
   <!-- Header -->
   <div>
     <h2 class="text-xl font-black text-white">Mi Billetera</h2>
@@ -63,7 +71,7 @@
           <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
             <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">trending_up</span>
           </div>
-          <span class="text-[10px] font-black text-emerald-400 uppercase tracking-widest px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">Histórico</span>
+          <span class="text-[10px] font-black text-emerald-400 uppercase tracking-widest px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">Historico</span>
         </div>
         <p class="text-2xl font-black text-white leading-tight">
           {{ formatCOP(profile()?.total_earned ?? 0) }}
@@ -90,11 +98,12 @@
             <p class="font-black text-white text-sm">Solicitar Retiro</p>
             <p class="text-xs text-slate-400 mt-0.5">
               Disponible: <span class="text-primary font-bold">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
-              · Mínimo <span class="font-bold">{{ formatCOP(MIN_WITHDRAWAL) }}</span>
+              · Minimo <span class="font-bold">{{ formatCOP(MIN_WITHDRAWAL) }}</span>
             </p>
           </div>
         </div>
         <button
+          (click)="openWithdrawModal()"
           class="flex items-center gap-2 font-black py-2.5 px-5 rounded-xl transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           [class]="canWithdraw ? 'bg-accent hover:bg-accent/90 text-white' : 'bg-white/5 text-slate-500 cursor-not-allowed'"
           [disabled]="!canWithdraw"
@@ -111,7 +120,7 @@
         <div class="border-t border-white/5 pt-4 space-y-2">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Requisitos para desbloquear retiros</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <!-- Condición 1: saldo mínimo -->
+            <!-- Condicion 1: saldo minimo -->
             <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                  [class]="hasEnoughBalance ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
               <span class="material-symbols-outlined text-base flex-shrink-0"
@@ -120,14 +129,14 @@
               </span>
               <div>
                 <p class="text-xs font-bold" [class]="hasEnoughBalance ? 'text-emerald-400' : 'text-slate-400'">
-                  Saldo mínimo {{ formatCOP(MIN_WITHDRAWAL) }}
+                  Saldo minimo {{ formatCOP(MIN_WITHDRAWAL) }}
                 </p>
                 <p class="text-[10px] text-slate-500">
                   Tienes {{ formatCOP(profile()?.real_balance ?? 0) }}
                 </p>
               </div>
             </div>
-            <!-- Condición 2: invitado con paquete -->
+            <!-- Condicion 2: invitado con paquete -->
             <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                  [class]="hasActiveAffiliate() ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
               <span class="material-symbols-outlined text-base flex-shrink-0"
@@ -139,7 +148,7 @@
                   Al menos 1 invitado anunciante
                 </p>
                 <p class="text-[10px] text-slate-500">
-                  {{ hasActiveAffiliate() ? 'Condición cumplida' : 'Invita a alguien que compre un paquete' }}
+                  {{ hasActiveAffiliate() ? 'Condicion cumplida' : 'Invita a alguien que compre un paquete' }}
                 </p>
               </div>
             </div>
@@ -169,7 +178,7 @@
       <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
         <div>
           <h3 class="font-black text-white text-sm">Historial de Retiros</h3>
-          <p class="text-[10px] text-slate-500 mt-0.5">Últimas solicitudes de retiro</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Ultimas solicitudes de retiro</p>
         </div>
         <span class="material-symbols-outlined text-slate-600" style="font-size:20px">receipt_long</span>
       </div>
@@ -177,9 +186,9 @@
       @if (withdrawals().length === 0) {
         <div class="flex flex-col items-center justify-center py-12 gap-3 text-center px-6">
           <span class="material-symbols-outlined text-slate-700" style="font-size:44px">payments</span>
-          <p class="text-white font-bold text-sm">Sin retiros aún</p>
+          <p class="text-white font-bold text-sm">Sin retiros aun</p>
           <p class="text-slate-500 text-xs max-w-xs">
-            Cuando realices tu primera solicitud de retiro, aparecerá aquí.
+            Cuando realices tu primera solicitud de retiro, aparecera aqui.
           </p>
         </div>
       } @else {
@@ -191,7 +200,7 @@
               <tr class="border-b border-white/5">
                 <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Fecha</th>
                 <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Monto</th>
-                <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Método</th>
+                <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Metodo</th>
                 <th class="px-5 py-3 text-left text-[10px] text-slate-500 uppercase font-black tracking-wider">Estado</th>
               </tr>
             </thead>
@@ -239,3 +248,219 @@
   }
 
 </div>
+
+<!-- ═══════════ MODAL DE RETIRO ═══════════ -->
+@if (showWithdrawModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeWithdrawModal()"></div>
+
+    <!-- Modal -->
+    <div class="relative w-full max-w-md bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+
+      <!-- ── STEP: FORM ── -->
+      @if (withdrawStep() === 'form') {
+        <div class="p-6">
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-accent" style="font-size:20px">payments</span>
+              </div>
+              <div>
+                <h3 class="text-base font-black text-white">Solicitar Retiro</h3>
+                <p class="text-[10px] text-slate-500">Disponible: {{ formatCOP(profile()?.real_balance ?? 0) }}</p>
+              </div>
+            </div>
+            <button (click)="closeWithdrawModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+              <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+            </button>
+          </div>
+
+          <!-- Error -->
+          @if (withdrawError()) {
+            <div class="mb-4 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2">
+              <span class="material-symbols-outlined text-rose-400" style="font-size:16px">error</span>
+              <p class="text-xs text-rose-400 font-bold">{{ withdrawError() }}</p>
+            </div>
+          }
+
+          <!-- Metodo de retiro -->
+          <div class="mb-5">
+            <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Metodo de retiro</label>
+            <div class="grid grid-cols-2 gap-2">
+              @for (m of withdrawMethods; track m.id) {
+                <button
+                  (click)="withdrawMethod.set(m.id)"
+                  class="flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left transition-all"
+                  [class]="withdrawMethod() === m.id
+                    ? 'bg-accent/10 border-accent/30 text-white'
+                    : 'bg-white/3 border-white/5 text-slate-400 hover:bg-white/5 hover:text-white'"
+                >
+                  <span class="material-symbols-outlined" style="font-size:18px"
+                    [class]="withdrawMethod() === m.id ? 'text-accent' : 'text-slate-500'">{{ m.icon }}</span>
+                  <span class="text-xs font-bold">{{ m.name }}</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Numero de cuenta -->
+          @if (withdrawMethod()) {
+            <div class="mb-5">
+              <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">{{ selectedMethodData()?.name }} - Cuenta</label>
+              <input
+                type="text"
+                [ngModel]="withdrawAccount()"
+                (ngModelChange)="withdrawAccount.set($event)"
+                [placeholder]="selectedMethodData()?.placeholder ?? 'Numero de cuenta'"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all"
+              />
+            </div>
+          }
+
+          <!-- Monto -->
+          <div class="mb-6">
+            <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Monto a retirar (COP)</label>
+            <input
+              type="number"
+              [ngModel]="withdrawAmount()"
+              (ngModelChange)="withdrawAmount.set($event)"
+              [min]="MIN_WITHDRAWAL"
+              [max]="profile()?.real_balance ?? 0"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all"
+            />
+            <p class="text-[10px] text-slate-600 mt-1">Minimo {{ formatCOP(MIN_WITHDRAWAL) }}</p>
+          </div>
+
+          <!-- Submit -->
+          <button
+            (click)="goToConfirm()"
+            [disabled]="!canSubmitWithdraw()"
+            class="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-accent hover:bg-accent/90 text-white"
+          >
+            <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
+            Continuar
+          </button>
+        </div>
+      }
+
+      <!-- ── STEP: CONFIRM ── -->
+      @if (withdrawStep() === 'confirm') {
+        <div class="p-6">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:20px">warning</span>
+            </div>
+            <div>
+              <h3 class="text-base font-black text-white">Confirmar Retiro</h3>
+              <p class="text-[10px] text-slate-500">Verifica los datos antes de enviar</p>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div class="bg-white/3 border border-white/5 rounded-xl p-4 space-y-3 mb-6">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Monto</span>
+              <span class="text-sm font-black text-white">{{ formatCOP(withdrawAmount()) }}</span>
+            </div>
+            <div class="h-px bg-white/5"></div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Metodo</span>
+              <span class="text-xs font-bold text-white">{{ selectedMethodData()?.name }}</span>
+            </div>
+            <div class="h-px bg-white/5"></div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Cuenta</span>
+              <span class="text-xs font-bold text-white">{{ withdrawAccount() }}</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              (click)="withdrawStep.set('form')"
+              class="flex-1 py-3 rounded-xl font-black text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all"
+            >
+              Volver
+            </button>
+            <button
+              (click)="submitWithdrawal()"
+              class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 text-white transition-all"
+            >
+              <span class="material-symbols-outlined" style="font-size:18px">send</span>
+              Enviar solicitud
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- ── STEP: PROCESSING ── -->
+      @if (withdrawStep() === 'processing') {
+        <div class="p-10 flex flex-col items-center justify-center gap-5">
+          <!-- Animated rings -->
+          <div class="relative w-24 h-24">
+            <div class="absolute inset-0 rounded-full border-4 border-accent/20 animate-ping"></div>
+            <div class="absolute inset-2 rounded-full border-4 border-accent/30 animate-pulse"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="w-16 h-16 rounded-full bg-accent/10 border-2 border-accent/40 flex items-center justify-center">
+                <span class="material-symbols-outlined text-accent animate-spin" style="font-size:28px">sync</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center space-y-2">
+            <h3 class="text-lg font-black text-white">Procesando retiro...</h3>
+            <p class="text-sm text-slate-400">{{ formatCOP(withdrawAmount()) }} via {{ selectedMethodData()?.name }}</p>
+            <p class="text-xs text-slate-600">Esto puede tomar unos momentos</p>
+          </div>
+
+          <!-- Progress bar animation -->
+          <div class="w-full max-w-xs h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-accent to-primary rounded-full animate-progress"></div>
+          </div>
+        </div>
+      }
+
+      <!-- ── STEP: DONE ── -->
+      @if (withdrawStep() === 'done') {
+        <div class="p-10 flex flex-col items-center justify-center gap-5">
+          <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:36px">check_circle</span>
+          </div>
+
+          <div class="text-center space-y-2">
+            <h3 class="text-lg font-black text-white">Solicitud Enviada</h3>
+            <p class="text-sm text-slate-400">Tu retiro de {{ formatCOP(withdrawAmount()) }} esta siendo procesado</p>
+            <p class="text-xs text-slate-600">Recibiras tu dinero en las proximas 24-48 horas</p>
+          </div>
+
+          <!-- Status badge -->
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20">
+            <span class="material-symbols-outlined text-amber-400 animate-pulse" style="font-size:14px">hourglass_empty</span>
+            <span class="text-xs font-black text-amber-400">En proceso</span>
+          </div>
+
+          <button
+            (click)="finishWithdrawal()"
+            class="mt-2 flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 text-white transition-all"
+          >
+            <span class="material-symbols-outlined" style="font-size:18px">done</span>
+            Entendido
+          </button>
+        </div>
+      }
+
+    </div>
+  </div>
+}
+
+<style>
+  @keyframes progress {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 95%; }
+  }
+  .animate-progress {
+    animation: progress 3s ease-in-out forwards;
+  }
+</style>

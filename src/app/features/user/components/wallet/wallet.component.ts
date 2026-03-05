@@ -4,9 +4,11 @@ import {
   OnInit,
   inject,
   signal,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
@@ -20,11 +22,20 @@ interface WithdrawalRecord {
   details: { method?: string; account?: string } | null;
 }
 
+interface WithdrawalMethod {
+  id: string;
+  name: string;
+  icon: string;
+  placeholder: string;
+}
+
+type WithdrawStep = 'form' | 'confirm' | 'processing' | 'done';
+
 @Component({
   selector: 'app-user-wallet',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './wallet.component.html',
 })
 export class UserWalletComponent implements OnInit {
@@ -38,6 +49,37 @@ export class UserWalletComponent implements OnInit {
   readonly hasActiveAffiliate = signal(false);
 
   readonly MIN_WITHDRAWAL = 80_000;
+
+  // Withdrawal modal state
+  readonly showWithdrawModal = signal(false);
+  readonly withdrawStep = signal<WithdrawStep>('form');
+  readonly withdrawAmount = signal(0);
+  readonly withdrawMethod = signal<string | null>(null);
+  readonly withdrawAccount = signal('');
+  readonly withdrawError = signal<string | null>(null);
+  readonly successMsg = signal<string | null>(null);
+
+  readonly withdrawMethods: WithdrawalMethod[] = [
+    { id: 'nequi', name: 'Nequi', icon: 'smartphone', placeholder: 'Número Nequi (10 dígitos)' },
+    { id: 'daviplata', name: 'Daviplata', icon: 'phone_android', placeholder: 'Número Daviplata (10 dígitos)' },
+    { id: 'bancolombia', name: 'Bancolombia', icon: 'account_balance', placeholder: 'Número de cuenta' },
+    { id: 'transfiya', name: 'Transfiya', icon: 'swap_horiz', placeholder: 'Número celular (10 dígitos)' },
+  ];
+
+  readonly selectedMethodData = computed(() =>
+    this.withdrawMethods.find(m => m.id === this.withdrawMethod())
+  );
+
+  readonly canSubmitWithdraw = computed(() => {
+    const amount = this.withdrawAmount();
+    const balance = this.profile()?.real_balance ?? 0;
+    return (
+      !!this.withdrawMethod() &&
+      this.withdrawAccount().trim().length >= 6 &&
+      amount >= this.MIN_WITHDRAWAL &&
+      amount <= balance
+    );
+  });
 
   get canWithdraw(): boolean {
     return (this.profile()?.real_balance ?? 0) >= this.MIN_WITHDRAWAL && this.hasActiveAffiliate();
@@ -130,5 +172,64 @@ export class UserWalletComponent implements OnInit {
       month: 'short',
       year: 'numeric',
     });
+  }
+
+  // ── Withdrawal Modal ────────────────────────────────────────────────
+
+  openWithdrawModal(): void {
+    this.withdrawStep.set('form');
+    this.withdrawAmount.set(this.profile()?.real_balance ?? 0);
+    this.withdrawMethod.set(null);
+    this.withdrawAccount.set('');
+    this.withdrawError.set(null);
+    this.showWithdrawModal.set(true);
+  }
+
+  closeWithdrawModal(): void {
+    this.showWithdrawModal.set(false);
+  }
+
+  goToConfirm(): void {
+    if (!this.canSubmitWithdraw()) return;
+    this.withdrawStep.set('confirm');
+  }
+
+  async submitWithdrawal(): Promise<void> {
+    this.withdrawStep.set('processing');
+    this.withdrawError.set(null);
+
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const { error } = await this.supabase.from('withdrawal_requests').insert({
+        user_id: user.id,
+        amount: this.withdrawAmount(),
+        method: this.withdrawMethod(),
+        details: {
+          method: this.selectedMethodData()?.name ?? this.withdrawMethod(),
+          account: this.withdrawAccount().trim(),
+        },
+        status: 'pending',
+      });
+
+      if (error) throw error;
+
+      // Simulate processing animation for 3 seconds
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      this.withdrawStep.set('done');
+      await this.loadWithdrawals();
+      this.profileService.getCurrentProfile().catch(() => {});
+    } catch (err: any) {
+      this.withdrawError.set(err.message || 'Error al procesar el retiro');
+      this.withdrawStep.set('form');
+    }
+  }
+
+  finishWithdrawal(): void {
+    this.showWithdrawModal.set(false);
+    this.successMsg.set('Solicitud de retiro enviada correctamente');
+    setTimeout(() => this.successMsg.set(null), 4000);
   }
 }
