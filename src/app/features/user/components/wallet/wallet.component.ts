@@ -408,6 +408,12 @@ export class UserWalletComponent implements OnInit {
     return this.currencyService.formatFromCOP(amount, 0);
   }
 
+  formatMethodData(data: Record<string, string>): string {
+    if (!data) return '';
+    const values = Object.values(data);
+    return values.length > 0 ? values[0] : '';
+  }
+
   getStatusStyle(status: WithdrawalStatus): string {
     switch (status) {
       case 'completed':
