@@ -18,9 +18,10 @@ interface Tier {
   dcReferrals?: number;
   commissionLevels?: number;
   deepNetworkCOP?: number;
-  // Campos de lógica básica (comisión por invitado)
+  // Campos de lógica (comisión por invitado)
   commissionPerStd400?: number;   // COP por cada std_400 que ve un invitado
   miniSlotsPerInvitee?: number;   // slots mini_referral por invitado activo por día
+  requiredPackage?: string;       // tipo de paquete mínimo requerido (ej: 'enterprise')
 }
 
 @Component({
@@ -68,7 +69,7 @@ export class TiersComponent {
     if (!tier || !refs) return null;
     const commission = tier.commissionPerStd400 ?? 0;
     const slots = tier.miniSlotsPerInvitee ?? 0;
-    const ownMonth = 70000;
+    const ownMonth = tier.ownClicksCOP;
     const commissionMonth = refs * 5 * commission * 30;
     const miniRefMonth = refs * slots * 100 * 30;
     const megaActivation = refs * 10000;
@@ -180,74 +181,91 @@ export class TiersComponent {
       miniSlotsPerInvitee: 4,
     },
     // ── CATEGORÍA SUPERIOR ──
+    // Requisito: paquete Avanzado o superior (no sirve Básico ni Básico Plus)
+    // Clicks propios: 180.000 COP/mes (6.000 COP/día)
     {
       name: 'ESMERALDA',
       minReferrals: 20,
-      maxReferrals: 25,
-      ownClicksCOP: 70000,
-      referralClicksCOP: 2125000,
-      monthlyEarningsCOP: 2195000,
+      maxReferrals: 29,
+      ownClicksCOP: 180000,
+      referralClicksCOP: 2465000,    // 29×5×400×30 + 29×5×100×30 + 29×10000
+      monthlyEarningsCOP: 2645000,   // 180000 + 2465000
       color: 'text-green-500',
       bgGradient: 'from-green-500 to-green-700',
       icon: 'park',
-      category: 'superior'
+      category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE',
-      minReferrals: 26,
-      maxReferrals: 30,
-      ownClicksCOP: 70000,
-      referralClicksCOP: 2550000,
-      monthlyEarningsCOP: 2620000,
+      minReferrals: 30,
+      maxReferrals: 34,
+      ownClicksCOP: 180000,
+      referralClicksCOP: 2890000,    // 34×5×400×30 + 34×5×100×30 + 34×10000
+      monthlyEarningsCOP: 3070000,   // 180000 + 2890000
       color: 'text-cyan-400',
       bgGradient: 'from-cyan-400 to-cyan-600',
       icon: 'diamond',
-      category: 'superior'
+      category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE AZUL',
-      minReferrals: 31,
-      maxReferrals: 35,
-      ownClicksCOP: 70000,
-      referralClicksCOP: 2975000,
-      monthlyEarningsCOP: 3045000,
+      minReferrals: 35,
+      maxReferrals: 39,
+      ownClicksCOP: 180000,
+      referralClicksCOP: 3315000,    // 39×5×400×30 + 39×5×100×30 + 39×10000
+      monthlyEarningsCOP: 3495000,   // 180000 + 3315000
       color: 'text-blue-400',
       bgGradient: 'from-blue-600 to-indigo-700',
       icon: 'water_drop',
-      category: 'superior'
+      category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE NEGRO',
-      minReferrals: 36,
-      maxReferrals: 39,
-      ownClicksCOP: 70000,
-      referralClicksCOP: 3315000,
-      monthlyEarningsCOP: 3385000,
+      minReferrals: 40,
+      maxReferrals: 44,
+      ownClicksCOP: 180000,
+      referralClicksCOP: 3740000,    // 44×5×400×30 + 44×5×100×30 + 44×10000
+      monthlyEarningsCOP: 3920000,   // 180000 + 3740000
       color: 'text-gray-300',
       bgGradient: 'from-gray-600 to-gray-800',
       icon: 'dark_mode',
-      category: 'superior'
+      category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE CORONA',
-      minReferrals: 40,
+      minReferrals: 45,
       maxReferrals: null,
-      ownClicksCOP: 70000,
-      referralClicksCOP: 3400000,
-      monthlyEarningsCOP: 3470000,
+      ownClicksCOP: 180000,
+      referralClicksCOP: 3825000,    // 45×5×400×30 + 45×5×100×30 + 45×10000
+      monthlyEarningsCOP: 4005000,   // 180000 + 3825000
       color: 'text-amber-400',
       bgGradient: 'from-amber-400 to-yellow-500',
       icon: 'military_tech',
-      category: 'superior'
+      category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     // ── CATEGORÍA SUPERIOR PLUS ──
     // Desbloqueo: ser DC + tener N referidos que también son DC
     // Comisión extra por clicks de la red profunda (nivel 2 en adelante)
     {
       name: 'CORONA',
-      minReferrals: 40,
+      minReferrals: 45,
       maxReferrals: null,
-      ownClicksCOP: 70000,
+      ownClicksCOP: 180000,
       referralClicksCOP: 4700000,
       monthlyEarningsCOP: 4770000,
       deepNetworkCOP: 1300000,
@@ -261,9 +279,9 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 40,
+      minReferrals: 45,
       maxReferrals: null,
-      ownClicksCOP: 70000,
+      ownClicksCOP: 180000,
       referralClicksCOP: 6500000,
       monthlyEarningsCOP: 6570000,
       deepNetworkCOP: 3100000,
@@ -277,9 +295,9 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 40,
+      minReferrals: 45,
       maxReferrals: null,
-      ownClicksCOP: 70000,
+      ownClicksCOP: 180000,
       referralClicksCOP: 9000000,
       monthlyEarningsCOP: 9070000,
       deepNetworkCOP: 5600000,
@@ -293,9 +311,9 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 40,
+      minReferrals: 45,
       maxReferrals: null,
-      ownClicksCOP: 70000,
+      ownClicksCOP: 180000,
       referralClicksCOP: 12500000,
       monthlyEarningsCOP: 12570000,
       deepNetworkCOP: 9100000,
@@ -309,9 +327,9 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 40,
+      minReferrals: 45,
       maxReferrals: null,
-      ownClicksCOP: 70000,
+      ownClicksCOP: 180000,
       referralClicksCOP: 17000000,
       monthlyEarningsCOP: 17070000,
       deepNetworkCOP: 13600000,

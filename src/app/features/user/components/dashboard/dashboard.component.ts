@@ -29,6 +29,7 @@ interface PlatformTier {
   category: 'basic' | 'superior' | 'superior-plus';
   commissionPerStd400?: number;  // COP por std_400 visto por invitado
   miniSlotsPerInvitee?: number;  // slots mini_referral por invitado activo por día
+  requiredPackage?: string;      // tipo de paquete mínimo requerido
 }
 
 @Component({
@@ -112,67 +113,82 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     {
       name: 'ESMERALDA',
       minReferrals: 20,
-      maxReferrals: 25,
-      ownClicksCOP: 70_000,
-      referralClicksCOP: 2_125_000,
-      monthlyEarningsCOP: 2_195_000,
+      maxReferrals: 29,
+      ownClicksCOP: 180_000,
+      referralClicksCOP: 2_465_000,    // 29×5×400×30 + 29×5×100×30 + 29×10000
+      monthlyEarningsCOP: 2_645_000,   // 180000 + 2465000
       color: 'text-green-500',
       bgGradient: 'from-green-500 to-green-700',
       bgColorClass: 'bg-green-500',
       icon: 'park',
       category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE',
-      minReferrals: 26,
-      maxReferrals: 30,
-      ownClicksCOP: 70_000,
-      referralClicksCOP: 2_550_000,
-      monthlyEarningsCOP: 2_620_000,
+      minReferrals: 30,
+      maxReferrals: 34,
+      ownClicksCOP: 180_000,
+      referralClicksCOP: 2_890_000,    // 34×5×400×30 + 34×5×100×30 + 34×10000
+      monthlyEarningsCOP: 3_070_000,   // 180000 + 2890000
       color: 'text-cyan-400',
       bgGradient: 'from-cyan-400 to-cyan-600',
       bgColorClass: 'bg-cyan-400',
       icon: 'diamond',
       category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE AZUL',
-      minReferrals: 31,
-      maxReferrals: 35,
-      ownClicksCOP: 70_000,
-      referralClicksCOP: 2_975_000,
-      monthlyEarningsCOP: 3_045_000,
+      minReferrals: 35,
+      maxReferrals: 39,
+      ownClicksCOP: 180_000,
+      referralClicksCOP: 3_315_000,    // 39×5×400×30 + 39×5×100×30 + 39×10000
+      monthlyEarningsCOP: 3_495_000,   // 180000 + 3315000
       color: 'text-blue-400',
       bgGradient: 'from-blue-600 to-indigo-700',
       bgColorClass: 'bg-blue-600',
       icon: 'water_drop',
       category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE NEGRO',
-      minReferrals: 36,
-      maxReferrals: 39,
-      ownClicksCOP: 70_000,
-      referralClicksCOP: 3_315_000,
-      monthlyEarningsCOP: 3_385_000,
+      minReferrals: 40,
+      maxReferrals: 44,
+      ownClicksCOP: 180_000,
+      referralClicksCOP: 3_740_000,    // 44×5×400×30 + 44×5×100×30 + 44×10000
+      monthlyEarningsCOP: 3_920_000,   // 180000 + 3740000
       color: 'text-gray-300',
       bgGradient: 'from-gray-600 to-gray-800',
       bgColorClass: 'bg-gray-600',
       icon: 'dark_mode',
       category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
     {
       name: 'DIAMANTE CORONA',
-      minReferrals: 40,
+      minReferrals: 45,
       maxReferrals: null,
-      ownClicksCOP: 70_000,
-      referralClicksCOP: 3_400_000,
-      monthlyEarningsCOP: 3_470_000,
+      ownClicksCOP: 180_000,
+      referralClicksCOP: 3_825_000,    // 45×5×400×30 + 45×5×100×30 + 45×10000
+      monthlyEarningsCOP: 4_005_000,   // 180000 + 3825000
       color: 'text-amber-400',
       bgGradient: 'from-amber-400 to-yellow-500',
       bgColorClass: 'bg-amber-400',
       icon: 'military_tech',
       category: 'superior',
+      commissionPerStd400: 400,
+      miniSlotsPerInvitee: 5,
+      requiredPackage: 'enterprise',
     },
   ];
 
@@ -192,7 +208,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     return this.PLATFORM_TIERS[0];
   });
 
-  /** Own clicks — constante 70.000 COP en todos los niveles. */
+  /** Own clicks — depende del nivel (básico: 70.000, superior: 180.000 COP). */
   readonly ownClicksEarningsCOP = computed(() => this.currentTier().ownClicksCOP);
 
   /** Comisión por cada std_400 que ve un invitado (básica dinámica). */
@@ -212,14 +228,14 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   /** Bonus activación: 5 mega ads × 2.000 COP por cada invitado que activa. */
   readonly activationBonusCOP = computed(() => {
     const tier = this.currentTier();
-    if (tier.category !== 'basic') return 0;
+    if (!tier.commissionPerStd400 && tier.category !== 'basic') return 0;
     return this.simulatedRefs() * 10_000;
   });
 
-  /** Total por invitados (básica: dinámico; superior: del tier). */
+  /** Total por invitados (dinámico si tiene commissionPerStd400; estático si no). */
   readonly referralEarningsCOP = computed(() => {
     const tier = this.currentTier();
-    if (tier.category === 'basic') {
+    if (tier.commissionPerStd400) {
       return this.std400CommissionCOP() + this.miniReferralCOP() + this.activationBonusCOP();
     }
     return tier.referralClicksCOP;
@@ -252,7 +268,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   readonly actualMonthlyCOP = computed(() => {
     const tier = this.actualTier();
     const refs = this.profile()?.total_referrals_count ?? 0;
-    if (tier.category === 'basic' && tier.commissionPerStd400) {
+    if (tier.commissionPerStd400) {
       const commission = refs * 5 * tier.commissionPerStd400 * 30;
       const mini = refs * (tier.miniSlotsPerInvitee ?? 0) * 100 * 30;
       const activation = refs * 10_000;
@@ -313,5 +329,5 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   }
 
   /** Returns the preset buttons displayed under the slider. */
-  readonly sliderPresets = [3, 6, 10, 20, 40];
+  readonly sliderPresets = [3, 10, 20, 30, 45];
 }

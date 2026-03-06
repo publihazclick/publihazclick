@@ -154,7 +154,7 @@
             <span class="text-sm font-black text-white">{{ currencyService.formatFromCOP(ownClicksEarningsCOP()) }}</span>
           </div>
 
-          @if (currentTier().category === 'basic') {
+          @if (currentTier().commissionPerStd400) {
             <!-- Comisión std_400 por invitado -->
             <div class="px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
@@ -199,7 +199,7 @@
               <span class="text-sm font-black text-amber-400">{{ currencyService.formatFromCOP(activationBonusCOP()) }}</span>
             </div>
           } @else {
-            <!-- Superior: total invitados en una fila -->
+            <!-- Tier sin desglose dinámico: total invitados en una fila -->
             <div class="px-4 py-3 flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -235,7 +235,7 @@
         } @else {
           <div class="px-4 py-3 bg-black/30 border-t border-white/5 flex items-center gap-2">
             <span class="material-symbols-outlined text-amber-400 text-base">military_tech</span>
-            <span class="text-[10px] text-amber-400 font-bold">Tier maximo alcanzado — DIAMANTE CORONA</span>
+            <span class="text-[10px] text-amber-400 font-bold">Tier maximo alcanzado — DIAMANTE CORONA (45+)</span>
           </div>
         }
       </div>
@@ -286,7 +286,7 @@
       <div class="flex items-start gap-3 bg-primary/5 border border-primary/10 rounded-xl p-4">
         <span class="material-symbols-outlined text-primary text-lg flex-shrink-0 mt-0.5">info</span>
         <div class="text-[11px] text-slate-400 leading-relaxed space-y-1">
-          <p>Ganancias propias (<strong class="text-white">$70.000 COP/mes</strong>) constantes en todos los niveles.</p>
+          <p>Ganancias propias: <strong class="text-white">$70.000 COP/mes</strong> (Básicas) o <strong class="text-white">$180.000 COP/mes</strong> (Superiores — requiere paquete Avanzado+).</p>
           <p>Cada invitado activo genera: <strong class="text-white">comisión std_400 + mini ads por invitar + bonus de activación</strong>. Todo escala con cada invitado que sumas.</p>
           <p>Haz clic en cualquier nivel para simular esa cantidad de invitados.</p>
         </div>
@@ -310,7 +310,7 @@
           <span class="material-symbols-outlined text-primary text-lg">person</span>
         </div>
         <span class="text-[9px] font-bold text-primary uppercase">Tu</span>
-        <span class="text-[9px] text-slate-600">{{ currencyService.formatFromCOP(70000) }}/mes</span>
+        <span class="text-[9px] text-slate-600">{{ currencyService.formatFromCOP(ownClicksEarningsCOP()) }}/mes</span>
       </div>
 
       <!-- Flecha -->

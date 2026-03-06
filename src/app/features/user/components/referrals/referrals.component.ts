@@ -68,10 +68,10 @@ export class UserReferralsComponent implements OnInit {
   }
 
   getTierInfo(referrals: number): { name: string; color: string } {
-    if (referrals >= 40) return { name: 'DIAMANTE CORONA', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/30' };
-    if (referrals >= 36) return { name: 'DIAMANTE NEGRO', color: 'bg-gray-500/10 text-gray-300 border border-gray-500/30' };
-    if (referrals >= 31) return { name: 'DIAMANTE AZUL', color: 'bg-blue-500/10 text-blue-400 border border-blue-500/30' };
-    if (referrals >= 26) return { name: 'DIAMANTE', color: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' };
+    if (referrals >= 45) return { name: 'DIAMANTE CORONA', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/30' };
+    if (referrals >= 40) return { name: 'DIAMANTE NEGRO', color: 'bg-gray-500/10 text-gray-300 border border-gray-500/30' };
+    if (referrals >= 35) return { name: 'DIAMANTE AZUL', color: 'bg-blue-500/10 text-blue-400 border border-blue-500/30' };
+    if (referrals >= 30) return { name: 'DIAMANTE', color: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' };
     if (referrals >= 20) return { name: 'ESMERALDA', color: 'bg-green-500/10 text-green-400 border border-green-500/30' };
     if (referrals >= 10) return { name: 'RUBY', color: 'bg-red-500/10 text-red-400 border border-red-500/30' };
     if (referrals >= 6)  return { name: 'ZAFIRO', color: 'bg-blue-900/30 text-blue-300 border border-blue-400/30' };

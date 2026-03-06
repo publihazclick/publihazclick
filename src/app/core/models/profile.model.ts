@@ -30,6 +30,11 @@ export interface Profile {
   referral_earnings: number;
   // Referidos
   total_referrals_count: number;
+  // Ubicación
+  country: string | null;
+  country_code: string | null;
+  department: string | null;
+  city: string | null;
   // Paquete
   phone: string | null;
   has_active_package: boolean;
