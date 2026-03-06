@@ -184,12 +184,24 @@ export class AdminWithdrawalService {
   }
 
   /**
-   * Rechazar retiro
+   * Rechazar retiro y devolver saldo al usuario
    */
   async rejectWithdrawal(id: string, reason: string): Promise<boolean> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
 
+      // Obtener el retiro para saber el monto y usuario
+      const { data: withdrawal, error: fetchError } = await this.supabase
+        .from('withdrawal_requests')
+        .select('user_id, amount, status')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!withdrawal) throw new Error('Retiro no encontrado');
+      if (withdrawal.status !== 'pending') throw new Error('El retiro ya fue procesado');
+
+      // Actualizar estado del retiro
       const { error } = await this.supabase
         .from('withdrawal_requests')
         .update({
@@ -201,6 +213,28 @@ export class AdminWithdrawalService {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Devolver el saldo al usuario
+      const { error: balanceError } = await this.supabase.rpc('add_to_balance', {
+        p_user_id: withdrawal.user_id,
+        p_amount: Number(withdrawal.amount)
+      });
+
+      // Si RPC falla, intentamos actualizar directamente
+      if (balanceError) {
+        const { data: profile } = await this.supabase
+          .from('profiles')
+          .select('real_balance')
+          .eq('id', withdrawal.user_id)
+          .single();
+
+        const newBalance = (profile?.real_balance || 0) + Number(withdrawal.amount);
+        
+        await this.supabase
+          .from('profiles')
+          .update({ real_balance: newBalance })
+          .eq('id', withdrawal.user_id);
+      }
 
       return true;
     } catch (error: any) {
