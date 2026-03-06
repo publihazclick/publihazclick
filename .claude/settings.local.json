@@ -22,7 +22,16 @@
       "Bash(python3 -c \" import json, sys data = json.load\\(sys.stdin\\) results = data[''result''] for r in results: msg = r.get\\(''event_message'', ''''\\) if ''500'' in msg or ''400'' in msg or ''error'' in msg.lower\\(\\) or ''rpc'' in msg.lower\\(\\): print\\(r.get\\(''timestamp''\\), ''|'', msg[:200]\\) \")",
       "Bash(python3:*)",
       "Bash(node:*)",
-      "mcp__supabase__list_migrations"
+      "mcp__supabase__list_migrations",
+      "WebSearch",
+      "WebFetch(domain:image.pollinations.ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:gen.pollinations.ai)",
+      "WebFetch(domain:lazypy.ro)",
+      "WebFetch(domain:jsr.io)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:eidosspeech.xyz)"
     ]
   },
   "enableAllProjectMcpServers": true,

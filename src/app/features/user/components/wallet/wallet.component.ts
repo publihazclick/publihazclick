@@ -575,7 +575,18 @@ export class UserWalletComponent implements OnInit {
   // ── Withdrawal modal ──
 
   openWithdrawModal(): void {
-    this.withdrawStep.set('form');
+    // Pre-fill with first saved method if available
+    const saved = this.savedMethods();
+    if (saved.length > 0) {
+      const firstMethod = saved[0];
+      this.withdrawMethod.set(firstMethod.methodId);
+      // Extract account from saved method data
+      const primaryValue = firstMethod.data['primary_value'] || firstMethod.data['phone'] || firstMethod.data['email'] || firstMethod.data['account'] || '';
+      this.withdrawAccount.set(primaryValue);
+    } else {
+      this.withdrawMethod.set(null);
+      this.withdrawAccount.set('');
+    }
     this.withdrawAmount.set(this.profile()?.real_balance ?? 0);
     this.selectedSavedMethod.set(null);
     this.withdrawError.set(null);

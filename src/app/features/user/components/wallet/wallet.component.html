@@ -456,12 +456,12 @@
 
 <!-- ═══════════ MODAL DE RETIRO ═══════════ -->
 @if (showWithdrawModal()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
     <!-- Backdrop -->
     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeWithdrawModal()"></div>
 
     <!-- Modal -->
-    <div class="relative w-full max-w-md bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+    <div class="relative w-full max-w-md bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl overflow-hidden my-8">
 
       <!-- ── STEP: FORM ── -->
       @if (withdrawStep() === 'form') {
