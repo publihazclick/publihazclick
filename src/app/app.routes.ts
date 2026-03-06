@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
 import { socialGuard } from './core/guards/social.guard';
+import { aiGuard } from './core/guards/ai.guard';
 import { authGuard, guestGuard, roleRedirectGuard, dashboardGuard } from './core/guards/auth.guard';
 
 /**
@@ -87,6 +88,13 @@ export const routes: Routes = [
           import('./features/admin/components/advertiser-ptc/advertiser-ptc.component').then(
             m => m.AdminAdvertiserPtcComponent
           )
+      },
+      {
+        path: 'withdrawals',
+        loadComponent: () =>
+          import('./features/admin/components/withdrawals/withdrawals.component').then(
+            m => m.AdminWithdrawalsComponent
+          )
       }
     ]
   },
@@ -125,6 +133,37 @@ export const routes: Routes = [
       {
         path: ':username',
         loadComponent: () => import('./features/social/components/profile/profile.component').then(m => m.SocialProfileComponent)
+      }
+    ]
+  },
+  // Herramientas IA (advertiser, admin, dev)
+  {
+    path: 'ai',
+    loadComponent: () => import('./features/ai/components/ai-layout/ai-layout.component').then(m => m.AiLayoutComponent),
+    canActivate: [aiGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
+      },
+      {
+        path: 'video',
+        loadComponent: () => import('./features/advertiser/components/ai-script/ai-script.component').then(m => m.AiScriptComponent)
+      },
+      {
+        path: 'imagen',
+        loadComponent: () => import('./features/ai/components/ai-placeholder/ai-placeholder.component').then(m => m.AiPlaceholderComponent),
+        data: { name: 'Imagen IA', icon: 'image' }
+      },
+      {
+        path: 'chatbot',
+        loadComponent: () => import('./features/ai/components/ai-placeholder/ai-placeholder.component').then(m => m.AiPlaceholderComponent),
+        data: { name: 'Chatbot IA', icon: 'chat' }
+      },
+      {
+        path: 'voz',
+        loadComponent: () => import('./features/ai/components/ai-placeholder/ai-placeholder.component').then(m => m.AiPlaceholderComponent),
+        data: { name: 'Voz IA', icon: 'mic' }
       }
     ]
   },
@@ -176,7 +215,8 @@ export const routes: Routes = [
       },
       {
         path: 'ai-script',
-        loadComponent: () => import('./features/advertiser/components/ai-script/ai-script.component').then(m => m.AiScriptComponent)
+        redirectTo: '/ai/video',
+        pathMatch: 'full'
       },
       {
         path: 'settings',

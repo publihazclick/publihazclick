@@ -277,6 +277,15 @@
             </button>
           </div>
 
+          <!-- País registrado - Mensaje informativo -->
+          <div class="mb-5 px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary" style="font-size:20px">location_on</span>
+            <div>
+              <p class="text-xs font-black text-white">Pais registrado: <span class="text-primary">{{ userCountryCategory().name }} {{ userCountryCategory().flag }}</span></p>
+              <p class="text-[10px] text-slate-400">Estos son los metodos de pago disponibles para tu pais</p>
+            </div>
+          </div>
+
           <!-- Error -->
           @if (withdrawError()) {
             <div class="mb-4 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2">
@@ -289,7 +298,7 @@
           <div class="mb-5">
             <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Metodo de retiro</label>
             <div class="grid grid-cols-2 gap-2">
-              @for (m of withdrawMethods; track m.id) {
+              @for (m of withdrawMethods(); track m.id) {
                 <button
                   (click)="withdrawMethod.set(m.id)"
                   class="flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left transition-all"

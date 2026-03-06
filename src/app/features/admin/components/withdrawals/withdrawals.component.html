@@ -1,0 +1,291 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white">Gestión de Retiros</h2>
+    <p class="text-xs text-slate-400">Administra las solicitudes de retiro de los usuarios</p>
+  </div>
+
+  <!-- Notificación -->
+  @if (notification()) {
+    <div 
+      class="fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-2xl text-sm font-bold flex items-center gap-2 animate-fade-in"
+      [class]="notification()!.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'"
+    >
+      <span class="material-symbols-outlined" style="font-size:18px">
+        {{ notification()!.type === 'success' ? 'check_circle' : 'error' }}
+      </span>
+      {{ notification()!.message }}
+    </div>
+  }
+
+  <!-- Filtros -->
+  <div class="flex flex-wrap items-center gap-4">
+    <div class="flex items-center gap-2">
+      <label class="text-xs text-slate-400 font-bold">Estado:</label>
+      <select 
+        [ngModel]="statusFilter()" 
+        (ngModelChange)="statusFilter.set($event); onStatusFilterChange()"
+        class="bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
+      >
+        <option value="">Todos</option>
+        <option value="pending">Pendientes</option>
+        <option value="approved">Aprobados</option>
+        <option value="completed">Completados</option>
+        <option value="rejected">Rechazados</option>
+      </select>
+    </div>
+    <div class="flex-1 min-w-[200px]">
+      <input 
+        type="text"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        placeholder="Buscar por usuario..."
+        class="w-full bg-zinc-800 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary/50"
+      />
+    </div>
+  </div>
+
+  <!-- Tabla de retiros -->
+  <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+    @if (loading()) {
+      <div class="flex items-center justify-center py-20">
+        <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    } @else if (withdrawals().length === 0) {
+      <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+        <span class="material-symbols-outlined text-6xl mb-4">account_balance_wallet</span>
+        <p class="text-sm font-bold">No hay solicitudes de retiro</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-white/5">
+              <th class="text-left text-[10px] uppercase font-black text-slate-500 tracking-widest px-4 py-3">Usuario</th>
+              <th class="text-left text-[10px] uppercase font-black text-slate-500 tracking-widest px-4 py-3">Monto</th>
+              <th class="text-left text-[10px] uppercase font-black text-slate-500 tracking-widest px-4 py-3">Método</th>
+              <th class="text-left text-[10px] uppercase font-black text-slate-500 tracking-widest px-4 py-3">Estado</th>
+              <th class="text-left text-[10px] uppercase font-black text-slate-500 tracking-widest px-4 py-3">Fecha</th>
+              <th class="text-right text-[10px] uppercase font-black text-slate-500 tracking-widest px-4 py-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (withdrawal of withdrawals(); track withdrawal.id) {
+              <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                <td class="px-4 py-3">
+                  <div>
+                    <p class="text-sm font-bold text-white">{{ withdrawal.username }}</p>
+                    @if (withdrawal.full_name) {
+                      <p class="text-xs text-slate-500">{{ withdrawal.full_name }}</p>
+                    }
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <p class="text-sm font-black text-emerald-400">{{ formatCOP(withdrawal.amount) }}</p>
+                </td>
+                <td class="px-4 py-3">
+                  <p class="text-sm text-white">{{ withdrawal.method || 'N/A' }}</p>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold border {{ getStatusClass(withdrawal.status) }}">
+                    {{ getStatusLabel(withdrawal.status) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <p class="text-xs text-slate-400">{{ formatDate(withdrawal.created_at) }}</p>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-end gap-2">
+                    <button 
+                      (click)="viewDetails(withdrawal)"
+                      class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+                      title="Ver detalles"
+                    >
+                      <span class="material-symbols-outlined" style="font-size:18px">visibility</span>
+                    </button>
+                    @if (withdrawal.status === 'pending') {
+                      <button 
+                        (click)="approveWithdrawal(withdrawal.id)"
+                        class="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all"
+                        title="Aprobar"
+                      >
+                        <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+                      </button>
+                      <button 
+                        (click)="openRejectModal(withdrawal)"
+                        class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all"
+                        title="Rechazar"
+                      >
+                        <span class="material-symbols-outlined" style="font-size:18px">cancel</span>
+                      </button>
+                    }
+                    @if (withdrawal.status === 'approved') {
+                      <button 
+                        (click)="completeWithdrawal(withdrawal.id)"
+                        class="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-all"
+                        title="Marcar como completado"
+                      >
+                        <span class="material-symbols-outlined" style="font-size:18px">done_all</span>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      @if (totalPages() > 1) {
+        <div class="flex items-center justify-between px-4 py-3 border-t border-white/5">
+          <p class="text-xs text-slate-400">
+            Mostrando {{ (page() - 1) * pageSize + 1 }} - {{ Math.min(page() * pageSize, totalCount()) }} de {{ totalCount() }}
+          </p>
+          <div class="flex items-center gap-2">
+            <button 
+              (click)="goToPage(page() - 1)"
+              [disabled]="page() === 1"
+              class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span>
+            </button>
+            @for (p of [].constructor(totalPages()); track $index; let i = $index) {
+              @if (i + 1 === page() || i + 1 === 1 || i + 1 === totalPages() || (i + 1 >= page() - 1 && i + 1 <= page() + 1)) {
+                <button 
+                  (click)="goToPage(i + 1)"
+                  class="w-8 h-8 rounded-lg text-sm font-bold transition-all"
+                  [class]="page() === i + 1 ? 'bg-primary text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'"
+                >
+                  {{ i + 1 }}
+                </button>
+              }
+            }
+            <button 
+              (click)="goToPage(page() + 1)"
+              [disabled]="page() === totalPages()"
+              class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <span class="material-symbols-outlined" style="font-size:18px">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+<!-- Modal de Detalles -->
+@if (showDetailModal() && selectedWithdrawal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeDetailModal()"></div>
+    <div class="relative w-full max-w-md bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-black text-white">Detalles del Retiro</h3>
+          <button (click)="closeDetailModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div class="flex items-center justify-between py-3 border-b border-white/5">
+            <span class="text-sm text-slate-400">Usuario</span>
+            <span class="text-sm font-bold text-white">{{ selectedWithdrawal()!.username }}</span>
+          </div>
+          <div class="flex items-center justify-between py-3 border-b border-white/5">
+            <span class="text-sm text-slate-400">Monto</span>
+            <span class="text-sm font-black text-emerald-400">{{ formatCOP(selectedWithdrawal()!.amount) }}</span>
+          </div>
+          <div class="flex items-center justify-between py-3 border-b border-white/5">
+            <span class="text-sm text-slate-400">Método</span>
+            <span class="text-sm font-bold text-white">{{ selectedWithdrawal()!.method || 'N/A' }}</span>
+          </div>
+          <div class="flex items-center justify-between py-3 border-b border-white/5">
+            <span class="text-sm text-slate-400">Estado</span>
+            <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold border {{ getStatusClass(selectedWithdrawal()!.status) }}">
+              {{ getStatusLabel(selectedWithdrawal()!.status) }}
+            </span>
+          </div>
+          <div class="flex items-center justify-between py-3 border-b border-white/5">
+            <span class="text-sm text-slate-400">Fecha de Solicitud</span>
+            <span class="text-sm text-white">{{ formatDate(selectedWithdrawal()!.created_at) }}</span>
+          </div>
+          
+          @if (selectedWithdrawal()!.details) {
+            <div class="py-3 border-b border-white/5">
+              <span class="text-sm text-slate-400 block mb-2">Detalles del Método</span>
+              <pre class="text-xs text-white bg-black/30 p-3 rounded-lg overflow-x-auto">{{ selectedWithdrawal()!.details | json }}</pre>
+            </div>
+          }
+
+          @if (selectedWithdrawal()!.rejection_reason) {
+            <div class="py-3 border-b border-white/5">
+              <span class="text-sm text-rose-400 block mb-2">Razón del Rechazo</span>
+              <p class="text-sm text-white">{{ selectedWithdrawal()!.rejection_reason }}</p>
+            </div>
+          }
+
+          @if (selectedWithdrawal()!.processed_at) {
+            <div class="flex items-center justify-between py-3">
+              <span class="text-sm text-slate-400">Fecha de Procesamiento</span>
+              <span class="text-sm text-white">{{ formatDate(selectedWithdrawal()!.processed_at!) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal de Rechazo -->
+@if (showRejectModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeRejectModal()"></div>
+    <div class="relative w-full max-w-md bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-black text-white">Rechazar Retiro</h3>
+          <button (click)="closeRejectModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <p class="text-sm text-slate-400">
+            ¿Estás seguro de que deseas rechazar este retiro? Esta acción no se puede deshacer.
+          </p>
+          
+          <div>
+            <label class="block text-xs text-slate-400 uppercase font-black tracking-widest mb-2">
+              Razón del rechazo
+            </label>
+            <textarea 
+              [ngModel]="rejectionReason()"
+              (ngModelChange)="rejectionReason.set($event)"
+              rows="4"
+              placeholder="Ingresa la razón del rechazo..."
+              class="w-full bg-zinc-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500/50 resize-none"
+            ></textarea>
+          </div>
+
+          <div class="flex gap-3">
+            <button 
+              (click)="closeRejectModal()"
+              class="flex-1 py-3 rounded-xl font-black text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all"
+            >
+              Cancelar
+            </button>
+            <button 
+              (click)="confirmReject()"
+              [disabled]="!rejectionReason().trim()"
+              class="flex-1 py-3 rounded-xl font-black text-sm bg-rose-500 hover:bg-rose-600 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Rechazar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}
