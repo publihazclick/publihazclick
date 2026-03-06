@@ -104,12 +104,12 @@
             </a>
           </li>
           <li>
-            <a routerLink="/advertiser/ai-script" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all"
+            <a routerLink="/ai"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent hover:border-violet-500/20"
                [class.justify-center]="sidebarCollapsed()">
               <span class="material-symbols-outlined text-violet-400">auto_awesome</span>
               @if (!sidebarCollapsed()) {
-                <span>Crear Guión IA</span>
+                <span>Herramientas IA</span>
                 <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded uppercase">IA</span>
               }
             </a>
@@ -174,6 +174,14 @@
           <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Actividad</h4>
         }
         <ul class="space-y-1">
+          <li>
+            <a routerLink="/advertiser/wallet" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">account_balance_wallet</span>
+              @if (!sidebarCollapsed()) { <span>Billetera</span> }
+            </a>
+          </li>
           <li>
             <a routerLink="/advertiser/history" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -285,6 +293,13 @@
           <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Donaciones</p>
           <p class="text-xs text-violet-400 font-black">{{ formatCOP(profile()?.total_donated ?? 0) }}</p>
         </div>
+      </a>
+
+      <!-- Billetera mobile -->
+      <a routerLink="/advertiser/wallet"
+         class="sm:hidden flex items-center gap-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded-xl px-2.5 py-2 transition-all flex-shrink-0">
+        <span class="material-symbols-outlined text-accent" style="font-size:18px">account_balance_wallet</span>
+        <span class="text-xs text-accent font-black">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
       </a>
 
       <!-- Divider -->
