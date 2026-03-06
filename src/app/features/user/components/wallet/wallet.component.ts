@@ -333,7 +333,6 @@ export class UserWalletComponent implements OnInit {
   get canWithdraw(): boolean {
     return (
       (this.profile()?.real_balance ?? 0) >= this.MIN_WITHDRAWAL &&
-      this.hasActiveAffiliate() &&
       this.savedMethods().length > 0
     );
   }
@@ -576,7 +575,7 @@ export class UserWalletComponent implements OnInit {
   // ── Withdrawal modal ──
 
   openWithdrawModal(): void {
-    this.withdrawStep.set('select-method');
+    this.withdrawStep.set('form');
     this.withdrawAmount.set(this.profile()?.real_balance ?? 0);
     this.selectedSavedMethod.set(null);
     this.withdrawError.set(null);
