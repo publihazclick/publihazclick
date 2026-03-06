@@ -583,9 +583,13 @@ export class UserWalletComponent implements OnInit {
       // Extract account from saved method data
       const primaryValue = firstMethod.data['primary_value'] || firstMethod.data['phone'] || firstMethod.data['email'] || firstMethod.data['account'] || '';
       this.withdrawAccount.set(primaryValue);
+      // Skip to form step since we have a saved method
+      this.withdrawStep.set('form');
     } else {
       this.withdrawMethod.set(null);
       this.withdrawAccount.set('');
+      // Show select-method step if no saved methods
+      this.withdrawStep.set('select-method');
     }
     this.withdrawAmount.set(this.profile()?.real_balance ?? 0);
     this.selectedSavedMethod.set(null);
