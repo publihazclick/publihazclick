@@ -51,6 +51,6 @@ Thumbs.db
 # Claude config (local settings)
 .claude/
 
-# Supabase local functions (secrets)
-supabase/functions/
+# Supabase local env secrets only
+supabase/functions/.env
 

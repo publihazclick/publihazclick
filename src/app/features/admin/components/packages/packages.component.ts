@@ -1,8 +1,9 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, OnInit, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
+import { getSupabaseClient } from '../../../../core/supabase.client';
 import type {
   Package as PackageModel,
   CreatePackageData,
@@ -24,8 +25,50 @@ type SearchedUser = Pick<UserAdmin, 'id' | 'username' | 'email' | 'role' | 'is_a
 })
 export class AdminPackagesComponent implements OnInit {
   // Servicios
-  private readonly packageService = inject(AdminPackageService);
+  private readonly packageService  = inject(AdminPackageService);
   private readonly dashboardService = inject(AdminDashboardService);
+  private readonly platformId       = inject(PLATFORM_ID);
+  private readonly supabase         = getSupabaseClient();
+
+  // ── Campaña de email ──────────────────────────────────────────────────────
+  readonly showCampaignModal  = signal(false);
+  readonly campaignSending    = signal(false);
+  readonly campaignResult     = signal<{ sent: number; errors: number; total: number } | null>(null);
+  readonly campaignError      = signal<string | null>(null);
+  readonly campaignPreviewTo  = signal('');
+
+  openCampaignModal(): void {
+    this.campaignResult.set(null);
+    this.campaignError.set(null);
+    this.campaignPreviewTo.set('');
+    this.showCampaignModal.set(true);
+  }
+
+  async sendCampaign(previewOnly = false): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.campaignSending.set(true);
+    this.campaignError.set(null);
+    this.campaignResult.set(null);
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) throw new Error('Sin sesión');
+
+      const body: Record<string, unknown> = {};
+      if (previewOnly && this.campaignPreviewTo()) {
+        body['preview_to'] = this.campaignPreviewTo();
+      }
+
+      const { data, error } = await this.supabase.functions.invoke('send-promo-email', { body });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      this.campaignResult.set({ sent: data.sent, errors: data.errors, total: data.total });
+    } catch (e: unknown) {
+      this.campaignError.set(e instanceof Error ? e.message : 'Error al enviar la campaña');
+    } finally {
+      this.campaignSending.set(false);
+    }
+  }
 
   // Estado
   readonly packages = signal<PackageModel[]>([]);
