@@ -399,60 +399,74 @@ function buildEmailHtml(username: string, packagesUrl: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Handler principal
+// Handler principal — siempre retorna 200; los errores van en el body
 // ─────────────────────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    // ── 1. Auth & rol admin ──────────────────────────────────────────────────
+    // ── 1. Auth ──────────────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'No autorizado' }, 401);
+    if (!authHeader?.startsWith('Bearer ')) {
+      return json({ success: false, error: 'No autorizado: falta token' });
+    }
 
-    const token    = authHeader.replace('Bearer ', '');
-    const payload  = decodeJwtPayload(token);
-    const callerId = payload.sub;
+    const token = authHeader.replace('Bearer ', '');
+    let callerId: string;
+    try {
+      const payload = decodeJwtPayload(token);
+      callerId = payload.sub;
+    } catch {
+      return json({ success: false, error: 'Token inválido' });
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    const { data: caller } = await supabase
+    // ── 2. Verificar rol admin ────────────────────────────────────────────────
+    const { data: caller, error: callerErr } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', callerId)
-      .single();
+      .maybeSingle();
 
-    if (!caller || !['admin', 'dev'].includes(caller.role)) {
-      return json({ error: 'Solo administradores pueden ejecutar esta acción' }, 403);
+    if (callerErr) {
+      console.error('Error al leer perfil del caller:', callerErr);
+      return json({ success: false, error: `Error al verificar rol: ${callerErr.message}` });
     }
 
-    // ── 2. Body opcional ─────────────────────────────────────────────────────
+    if (!caller || !['admin', 'dev'].includes(caller.role)) {
+      return json({ success: false, error: `Acceso denegado. Rol actual: ${caller?.role ?? 'no encontrado'}` });
+    }
+
+    // ── 3. Body opcional ─────────────────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
     const previewTo: string | null = body?.preview_to ?? null;
 
-    // ── 3. Obtener destinatarios ─────────────────────────────────────────────
+    // ── 4. Obtener destinatarios ─────────────────────────────────────────────
     let recipients: { email: string; username: string | null }[] = [];
 
     if (previewTo) {
-      // Modo preview: enviar solo a un email de prueba
       recipients = [{ email: previewTo, username: 'Amigo' }];
     } else {
       const { data: users, error: usersError } = await supabase
         .from('profiles')
         .select('email, username')
         .eq('has_active_package', false)
-        .eq('is_active', true)
         .not('email', 'is', null)
         .not('email', 'eq', '');
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('Error al obtener usuarios:', usersError);
+        return json({ success: false, error: `Error al obtener usuarios: ${usersError.message}` });
+      }
       recipients = (users ?? []) as { email: string; username: string | null }[];
     }
 
     if (!recipients.length) {
-      return json({ success: true, sent: 0, errors: 0, message: 'No hay usuarios sin paquete activo' });
+      return json({ success: true, sent: 0, errors: 0, total: 0, message: 'No hay usuarios sin paquete activo' });
     }
 
-    // ── 4. Enviar en lotes de 100 (límite de Resend batch) ───────────────────
+    // ── 5. Enviar en lotes de 100 (límite de Resend batch) ───────────────────
     const BATCH_SIZE = 100;
     const packagesUrl = `${APP_URL}/dashboard/packages`;
     let sent = 0;
@@ -481,9 +495,10 @@ Deno.serve(async (req) => {
       if (res.ok) {
         sent += batch.length;
       } else {
-        const err = await res.json().catch(() => ({}));
-        console.error('Resend batch error:', JSON.stringify(err));
-        errorDetails.push(JSON.stringify(err));
+        const errBody = await res.json().catch(() => ({}));
+        const errMsg = `HTTP ${res.status}: ${JSON.stringify(errBody)}`;
+        console.error('Resend batch error:', errMsg);
+        errorDetails.push(errMsg);
         errors += batch.length;
       }
     }
@@ -498,7 +513,8 @@ Deno.serve(async (req) => {
     });
 
   } catch (err) {
-    console.error('Error inesperado:', err);
-    return json({ error: 'Error interno del servidor' }, 500);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Error inesperado:', msg);
+    return json({ success: false, error: `Error interno: ${msg}` });
   }
 });
