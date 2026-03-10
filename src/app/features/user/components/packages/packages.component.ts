@@ -1,16 +1,18 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, computed, OnInit, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import type { Package } from '../../../../core/models/admin.model';
 import type { Profile } from '../../../../core/models/profile.model';
 
-// Estado del flujo de pago Nequi
+// Estado del flujo de pago Nequi / ePayco
 type PayStep =
   | 'idle' | 'select'
-  | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error';
+  | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error'
+  | 'epayco-loading' | 'epayco-opening';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -27,9 +29,11 @@ const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   styleUrl: './packages.component.scss'
 })
 export class UserPackagesComponent implements OnInit {
-  private readonly profileService = inject(ProfileService);
-  private readonly packageService = inject(AdminPackageService);
+  private readonly profileService  = inject(ProfileService);
+  private readonly packageService  = inject(AdminPackageService);
   private readonly currencyService = inject(CurrencyService);
+  private readonly route           = inject(ActivatedRoute);
+  private readonly platformId      = inject(PLATFORM_ID);
 
   readonly packages = signal<Package[]>([]);
   readonly profile = signal<Profile | null>(null);
@@ -62,7 +66,13 @@ export class UserPackagesComponent implements OnInit {
       this.profile.set(profile);
       this.packages.set(packages);
 
-      // (sin detección de retorno de gateway externo)
+      // Detectar retorno de ePayco
+      if (isPlatformBrowser(this.platformId)) {
+        const epaycoResult = this.route.snapshot.queryParamMap.get('epayco');
+        if (epaycoResult === 'result') {
+          this.payStep.set('epayco-opening');
+        }
+      }
     } catch {
       this.error.set('No se pudieron cargar los paquetes. Intenta de nuevo.');
     } finally {
@@ -106,8 +116,8 @@ export class UserPackagesComponent implements OnInit {
   }
 
   closePaymentModal(): void {
-    // Si fue aprobado, recargar el perfil para reflejar el paquete
-    if (this.payStep() === 'approved') {
+    // Si fue aprobado o viene de ePayco, recargar el perfil
+    if (this.payStep() === 'approved' || this.payStep() === 'epayco-opening') {
       this.reloadProfile();
     }
     this.payStep.set('idle');
@@ -164,6 +174,73 @@ export class UserPackagesComponent implements OnInit {
       const packages = await this.packageService.getPackages();
       this.packages.set(packages);
     } catch { /* silencioso */ }
+  }
+
+  // ── Pago ePayco ───────────────────────────────────────────────────────────
+
+  async startEpaycoCheckout(pkg: Package): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    this.selectedPackage.set(pkg);
+    this.payError.set(null);
+    this.payStep.set('epayco-loading');
+
+    try {
+      const params = await this.packageService.createEpaycoPayment(pkg.id);
+      this.payStep.set('epayco-opening');
+      await this.openEpaycoCheckout(params);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al iniciar pago con ePayco';
+      this.payError.set(msg);
+      this.payStep.set('error');
+    }
+  }
+
+  private loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as unknown as Record<string, unknown>)['ePayco']) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.epayco.co/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar el script de ePayco'));
+      document.head.appendChild(script);
+    });
+  }
+
+  private async openEpaycoCheckout(params: Awaited<ReturnType<AdminPackageService['createEpaycoPayment']>>): Promise<void> {
+    await this.loadEpaycoScript();
+
+    const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
+      checkout: { configure: (cfg: unknown) => { open: (params: unknown) => void } };
+    };
+
+    const handler = epayco.checkout.configure({
+      key:  params.publicKey,
+      test: params.test,
+    });
+
+    handler.open({
+      name:         params.name,
+      description:  params.description,
+      invoice:      params.invoice,
+      currency:     params.currency,
+      amount:       params.amount,
+      tax_base:     params.tax_base,
+      tax:          params.tax,
+      country:      params.country,
+      lang:         params.lang,
+      external:     'true',           // redirect (similar a dLocal)
+      confirmation: params.confirmation,
+      response:     params.response,
+      email_billing: params.email_billing,
+      name_billing:  params.name_billing,
+      extra1:        params.extra1,
+      extra2:        params.extra2,
+      extra3:        params.extra3,
+    });
   }
 
   // ── Utilidades ────────────────────────────────────────────────────────────

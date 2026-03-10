@@ -32,7 +32,14 @@ export const environment = {
   },
   // Número de WhatsApp para contacto directo (sin el +)
   whatsappNumber: '573181800264',
-  whatsappDefaultMessage: 'Hola! Me interesa conocer más sobre los servicios de publicidad digital de Publihazclick'
+  whatsappDefaultMessage: 'Hola! Me interesa conocer más sobre los servicios de publicidad digital de Publihazclick',
+  epayco: {
+    pCustIdCliente: '1575769',
+    pKey: 'a43a672655a9c6576bf5fcd52c0d03b95e5912d6',
+    publicKey: '62977a30b1a19dcd0728f6b639b33fb0',
+    privateKey: 'feb3b00cd4fe4a203cbfe00eba8c9695',
+    test: true,
+  }
 };
 
 /**

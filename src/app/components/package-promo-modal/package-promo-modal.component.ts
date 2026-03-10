@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { AdminPackageService } from '../../core/services/admin-package.service';
 import type { Package } from '../../core/models/admin.model';
 
-type PayStep = 'idle' | 'dlocal-loading' | 'error';
+type PayStep = 'idle' | 'dlocal-loading' | 'epayco-loading' | 'epayco-opening' | 'error';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -72,9 +72,54 @@ export class PackagePromoModalComponent implements OnInit {
     }
   }
 
+  /** Inicia pago con ePayco (checkout.js redirect) */
+  async startEpaycoCheckout(pkg: Package): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.selectedPackage.set(pkg);
+    this.payError.set(null);
+    this.payStep.set('epayco-loading');
+    try {
+      const params = await this.packageService.createEpaycoPayment(pkg.id);
+      this.payStep.set('epayco-opening');
+      await this.openEpaycoCheckout(params);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al iniciar pago con ePayco';
+      this.payError.set(msg);
+      this.payStep.set('error');
+    }
+  }
+
+  private loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as unknown as Record<string, unknown>)['ePayco']) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = 'https://checkout.epayco.co/checkout.js';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('No se pudo cargar el script de ePayco'));
+      document.head.appendChild(s);
+    });
+  }
+
+  private async openEpaycoCheckout(
+    params: Awaited<ReturnType<AdminPackageService['createEpaycoPayment']>>,
+  ): Promise<void> {
+    await this.loadEpaycoScript();
+    const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
+      checkout: { configure: (c: unknown) => { open: (p: unknown) => void } };
+    };
+    epayco.checkout.configure({ key: params.publicKey, test: params.test }).open({
+      name: params.name, description: params.description, invoice: params.invoice,
+      currency: params.currency, amount: params.amount, tax_base: params.tax_base,
+      tax: params.tax, country: params.country, lang: params.lang, external: 'true',
+      confirmation: params.confirmation, response: params.response,
+      email_billing: params.email_billing, name_billing: params.name_billing,
+      extra1: params.extra1, extra2: params.extra2, extra3: params.extra3,
+    });
+  }
+
   retryCheckout(): void {
     const pkg = this.selectedPackage();
-    if (pkg) this.startDlocalCheckout(pkg);
+    if (pkg) this.startEpaycoCheckout(pkg);
   }
 
   backToPackages(): void {

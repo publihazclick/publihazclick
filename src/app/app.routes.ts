@@ -152,8 +152,7 @@ export const routes: Routes = [
       },
       {
         path: 'imagen',
-        loadComponent: () => import('./features/ai/components/ai-placeholder/ai-placeholder.component').then(m => m.AiPlaceholderComponent),
-        data: { name: 'Imagen IA', icon: 'image' }
+        loadComponent: () => import('./features/ai/components/ai-imagen/ai-imagen.component').then(m => m.AiImagenComponent),
       },
       {
         path: 'chatbot',

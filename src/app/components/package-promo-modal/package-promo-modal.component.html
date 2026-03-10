@@ -98,16 +98,22 @@
                     }
                   </ul>
 
-                  <!-- Botón Pagar -->
+                  <!-- Botón Pagar con ePayco -->
                   <button
-                    (click)="startDlocalCheckout(pkg)"
-                    class="flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-wide transition-all"
+                    (click)="startEpaycoCheckout(pkg)"
+                    [disabled]="payStep() === 'epayco-loading'"
+                    class="flex items-center justify-center gap-2 py-3 rounded-xl font-black text-xs uppercase tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     [class]="isRecommended(pkg)
-                      ? 'bg-primary hover:bg-primary/80 text-black shadow-lg shadow-primary/25'
-                      : 'bg-white/10 hover:bg-white/20 text-slate-200 border border-white/10'"
+                      ? 'bg-[#00B1EA] hover:bg-[#0099cc] text-white shadow-lg shadow-[#00B1EA]/25'
+                      : 'bg-white/10 hover:bg-[#00B1EA]/20 border border-white/10 hover:border-[#00B1EA]/30 text-slate-200 hover:text-[#00B1EA]'"
                   >
-                    <span class="material-symbols-outlined text-sm">payments</span>
-                    Pagar
+                    @if (payStep() === 'epayco-loading' && selectedPackage()?.id === pkg.id) {
+                      <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                      Preparando...
+                    } @else {
+                      <span class="material-symbols-outlined text-sm">credit_card</span>
+                      Pagar con ePayco
+                    }
                   </button>
                 </div>
               </div>
@@ -141,7 +147,7 @@
 
       } @else {
 
-        <!-- ── Flujo de pago dLocal Go ── -->
+        <!-- ── Flujo de pago ePayco ── -->
 
         <!-- Header pago -->
         <div class="flex items-center gap-3 px-5 py-4 border-b border-white/8 flex-shrink-0">
@@ -153,9 +159,15 @@
               <span class="material-symbols-outlined text-slate-300 text-lg">arrow_back</span>
             </button>
           }
+          <div class="w-8 h-8 rounded-lg bg-[#00B1EA]/10 border border-[#00B1EA]/30 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-[#00B1EA]" style="font-size:18px">
+              {{ payStep() === 'error' ? 'error' : 'credit_card' }}
+            </span>
+          </div>
           <div class="flex-1 min-w-0">
             <h3 class="text-sm font-black text-white">
-              @if (payStep() === 'dlocal-loading') { Procesando pago }
+              @if (payStep() === 'epayco-loading') { Preparando pago... }
+              @else if (payStep() === 'epayco-opening') { Redirigiendo a ePayco... }
               @else if (payStep() === 'error') { Error en el pago }
             </h3>
             @if (selectedPackage()) {
@@ -164,7 +176,7 @@
               </p>
             }
           </div>
-          @if (payStep() !== 'dlocal-loading') {
+          @if (payStep() !== 'epayco-loading' && payStep() !== 'epayco-opening') {
             <button
               (click)="close()"
               class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
@@ -177,15 +189,36 @@
         <!-- Body pago -->
         <div class="overflow-y-auto flex-1 p-5">
 
-          @if (payStep() === 'dlocal-loading') {
+          @if (payStep() === 'epayco-loading') {
             <div class="flex flex-col items-center justify-center py-12 gap-4">
               <div class="relative">
-                <div class="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
-                <span class="material-symbols-outlined text-primary absolute inset-0 flex items-center justify-center" style="font-size:24px">public</span>
+                <div class="w-16 h-16 rounded-full border-4 border-[#00B1EA]/20 border-t-[#00B1EA] animate-spin"></div>
+                <span class="material-symbols-outlined text-[#00B1EA] absolute inset-0 flex items-center justify-center" style="font-size:24px">credit_card</span>
               </div>
               <div class="text-center">
-                <p class="text-white font-bold text-sm">Preparando pago...</p>
-                <p class="text-xs text-slate-500 mt-1">Serás redirigido a dLocal Go en un momento</p>
+                <p class="text-white font-bold text-sm">Preparando tu pago...</p>
+                <p class="text-xs text-slate-500 mt-1">Conectando con ePayco de forma segura</p>
+              </div>
+            </div>
+          }
+
+          @else if (payStep() === 'epayco-opening') {
+            <div class="flex flex-col items-center text-center justify-center py-10 gap-4">
+              <div class="relative">
+                <div class="w-20 h-20 rounded-2xl bg-[#00B1EA]/10 border border-[#00B1EA]/30 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[#00B1EA] animate-pulse" style="font-size:40px">open_in_new</span>
+                </div>
+                <div class="absolute -top-1 -right-1 w-5 h-5 bg-[#00B1EA] rounded-full animate-ping opacity-75"></div>
+              </div>
+              <div>
+                <p class="font-black text-white">Abriendo checkout de ePayco</p>
+                <p class="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
+                  Serás redirigido a la página segura. Tarjeta, PSE y efectivo disponibles.
+                </p>
+              </div>
+              <div class="bg-[#00B1EA]/5 border border-[#00B1EA]/15 rounded-xl px-4 py-2.5 w-full flex items-center gap-2">
+                <span class="material-symbols-outlined text-[#00B1EA]" style="font-size:16px">security</span>
+                <p class="text-xs text-[#00B1EA] font-bold">Pago 100% seguro · ePayco</p>
               </div>
             </div>
           }
@@ -208,7 +241,7 @@
                 </button>
                 <button
                   (click)="retryCheckout()"
-                  class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/80 text-black rounded-xl font-bold text-sm transition-colors"
+                  class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#00B1EA] hover:bg-[#0099cc] text-white rounded-xl font-bold text-sm transition-colors"
                 >
                   <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
                   Reintentar

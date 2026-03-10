@@ -291,11 +291,17 @@
                 </button>
               </div>
             }
-            @if (!img.error) {
-              <img [src]="img.url" [alt]="'Escena ' + (i+1)"
+            @if (!img.error && img.dataUrl) {
+              <img [src]="img.dataUrl" [alt]="'Escena ' + (i+1)"
                 class="w-full h-full object-cover" loading="lazy"
                 [class.opacity-0]="!img.loaded"
                 [class.opacity-100]="img.loaded" />
+            }
+            @if (!img.error && !img.dataUrl && !img.loaded) {
+              <div class="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-violet-400 animate-spin" style="font-size:28px">progress_activity</span>
+                <span class="text-[10px] text-slate-500">Vertex AI...</span>
+              </div>
             }
           </div>
           <div class="p-2 text-center">
@@ -377,15 +383,102 @@
 
     <!-- Continue button -->
     @if (!generatingAudio()) {
-      <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex justify-end">
-        <button (click)="finishPipeline()"
-          class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-xl text-xs font-black text-white uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition-all">
-          <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
-          Ver Resultado Final
-          <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
-        </button>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <p class="text-xs text-slate-500 flex items-center gap-2">
+          <span class="material-symbols-outlined text-violet-400" style="font-size:16px">info</span>
+          El siguiente paso genera un video corto con Vertex AI Veo 2.
+        </p>
+        <div class="flex items-center gap-3">
+          <button (click)="finishPipeline()"
+            class="flex items-center gap-1.5 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition-all">
+            Saltar
+          </button>
+          <button (click)="startVideoGeneration()"
+            class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 rounded-xl text-xs font-black text-white uppercase tracking-wider shadow-lg shadow-fuchsia-500/20 transition-all">
+            <span class="material-symbols-outlined" style="font-size:16px">smart_display</span>
+            Generar Video Veo
+            <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+          </button>
+        </div>
       </div>
     }
+  </div>
+}
+
+<!-- ═══════════ STEP: VIDEO ═══════════ -->
+@if (currentStep() === 'video') {
+  <div class="space-y-4">
+    <div class="bg-card-dark rounded-2xl border border-white/5 p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-600 to-violet-600 flex items-center justify-center">
+          <span class="material-symbols-outlined text-white" style="font-size:22px">smart_display</span>
+        </div>
+        <div>
+          <h3 class="text-sm font-black text-white">Video con Vertex AI Veo 2</h3>
+          <p class="text-xs text-slate-500">Generando un video de 8s basado en tu guión</p>
+        </div>
+      </div>
+
+      @if (videoResult().status === 'pending') {
+        <!-- Generando -->
+        <div class="flex flex-col items-center justify-center py-10 gap-4">
+          <div class="relative">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-violet-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-fuchsia-400 animate-pulse" style="font-size:32px">smart_display</span>
+            </div>
+            <div class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-fuchsia-500 animate-ping"></div>
+          </div>
+          <p class="text-sm font-bold text-white">Veo 2 está generando tu video...</p>
+          <p class="text-xs text-slate-500">Esto puede tomar entre 1 y 5 minutos.</p>
+          <div class="flex gap-2 mt-2">
+            <div class="w-2 h-2 rounded-full bg-fuchsia-500 animate-bounce" style="animation-delay:0ms"></div>
+            <div class="w-2 h-2 rounded-full bg-violet-500 animate-bounce" style="animation-delay:150ms"></div>
+            <div class="w-2 h-2 rounded-full bg-fuchsia-500 animate-bounce" style="animation-delay:300ms"></div>
+          </div>
+        </div>
+      }
+
+      @if (videoResult().status === 'completed' && videoResult().videoUrl) {
+        <!-- Video listo -->
+        <div class="space-y-4">
+          <div class="rounded-xl overflow-hidden bg-black">
+            <video [src]="videoResult().videoUrl!" controls class="w-full max-h-80 object-contain" preload="metadata"></video>
+          </div>
+          <div class="flex gap-3">
+            <a [href]="videoResult().videoUrl!" download="video-reel.mp4" target="_blank"
+              class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-fuchsia-600 to-violet-600 rounded-xl text-xs font-black text-white transition-all hover:from-fuchsia-500 hover:to-violet-500">
+              <span class="material-symbols-outlined" style="font-size:16px">download</span>
+              Descargar Video
+            </a>
+          </div>
+        </div>
+      }
+
+      @if (videoResult().status === 'failed') {
+        <!-- Error -->
+        <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-rose-400" style="font-size:18px">error</span>
+            <span class="text-sm font-bold text-rose-300">Error al generar video</span>
+          </div>
+          <p class="text-xs text-rose-300/70">{{ videoResult().error }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- Continuar -->
+    <div class="bg-card-dark rounded-2xl border border-white/5 p-5 flex justify-between items-center gap-4">
+      <p class="text-xs text-slate-500">
+        @if (videoResult().status === 'completed') { Video listo para descargar. }
+        @else if (videoResult().status === 'pending') { Generando en segundo plano... }
+        @else { Puedes continuar sin el video. }
+      </p>
+      <button (click)="finishPipeline()"
+        class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-xl text-xs font-black text-white uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition-all">
+        <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
+        Ver Resultado Final
+      </button>
+    </div>
   </div>
 }
 
@@ -407,8 +500,8 @@
           <div class="flex flex-col lg:flex-row">
             <!-- Image -->
             <div class="lg:w-44 xl:w-52 flex-shrink-0 aspect-[9/16] lg:aspect-auto lg:h-auto bg-black/30 relative overflow-hidden">
-              @if (imageResults()[i]?.loaded) {
-                <img [src]="imageResults()[i].url" [alt]="scene.visual_description"
+              @if (imageResults()[i]?.loaded && imageResults()[i]?.dataUrl) {
+                <img [src]="imageResults()[i].dataUrl!" [alt]="scene.visual_description"
                   class="w-full h-full object-cover" />
               } @else {
                 <div class="w-full h-full flex items-center justify-center min-h-[120px]">

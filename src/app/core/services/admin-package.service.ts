@@ -355,6 +355,44 @@ export class AdminPackageService {
   }
 
   /**
+   * Crear pago con ePayco (llama a Edge Function, devuelve params para checkout.js)
+   */
+  async createEpaycoPayment(packageId: string): Promise<{
+    publicKey: string;
+    test: boolean;
+    name: string;
+    description: string;
+    invoice: string;
+    currency: string;
+    amount: string;
+    tax_base: string;
+    tax: string;
+    country: string;
+    lang: string;
+    email_billing: string;
+    name_billing: string;
+    extra1: string;
+    extra2: string;
+    extra3: string;
+    confirmation: string;
+    response: string;
+    payment_db_id: string;
+  }> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) throw new Error('No autenticado');
+
+    const { data, error } = await this.supabase.functions.invoke(
+      'create-epayco-payment',
+      { body: { package_id: packageId } },
+    );
+
+    if (error || !data?.invoice) {
+      throw new Error(data?.error ?? 'Error al preparar pago con ePayco');
+    }
+    return data;
+  }
+
+  /**
    * Obtener historial de pagos del usuario autenticado
    */
   async getMyPayments(): Promise<Payment[]> {

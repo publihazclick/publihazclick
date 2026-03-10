@@ -75,11 +75,10 @@ export class AiDashboardComponent {
     },
     {
       name: 'Imagen IA',
-      description: 'Crea imágenes únicas para tus anuncios y campañas con IA generativa.',
+      description: 'Crea imágenes profesionales para tus anuncios con Vertex AI Imagen 3.',
       icon: 'image',
       route: '/ai/imagen',
-      available: false,
-      badge: 'Próximamente',
+      available: true,
       gradient: 'bg-gradient-to-br from-blue-600 to-cyan-600',
     },
     {

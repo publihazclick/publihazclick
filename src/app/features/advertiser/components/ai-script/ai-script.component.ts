@@ -31,7 +31,7 @@ interface ReelScript {
 }
 
 interface ImageResult {
-  url: string;
+  dataUrl: string | null;
   loaded: boolean;
   error: boolean;
 }
@@ -41,6 +41,13 @@ interface AudioResult {
   objectUrl: string | null;
   loaded: boolean;
   error: boolean;
+}
+
+interface VideoResult {
+  operationName: string | null;
+  videoUrl: string | null;
+  status: 'idle' | 'pending' | 'completed' | 'failed';
+  error: string | null;
 }
 
 interface PlatformOption {
@@ -80,7 +87,7 @@ type WizardStep =
   | 'seo'
   | 'generate';
 
-type GeneratePhase = 'idle' | 'script' | 'images' | 'audio' | 'done';
+type GeneratePhase = 'idle' | 'script' | 'images' | 'audio' | 'video' | 'done';
 
 @Component({
   selector: 'app-ai-script',
@@ -199,6 +206,7 @@ export class AiScriptComponent {
     { key: 'script', label: 'Revisión', icon: 'description' },
     { key: 'images', label: 'Imágenes', icon: 'image' },
     { key: 'audio', label: 'Audio', icon: 'mic' },
+    { key: 'video', label: 'Video', icon: 'smart_display' },
     { key: 'done', label: 'Listo', icon: 'check_circle' },
   ];
   readonly loading = signal(false);
@@ -215,6 +223,15 @@ export class AiScriptComponent {
   readonly audioProgress = signal(0);
   readonly audioResults = signal<AudioResult[]>([]);
   readonly generatingAudio = signal(false);
+
+  readonly videoResult = signal<VideoResult>({
+    operationName: null,
+    videoUrl: null,
+    status: 'idle',
+    error: null,
+  });
+  readonly generatingVideo = signal(false);
+  private videoPollingTimer: ReturnType<typeof setInterval> | null = null;
 
   // ─── Computed ────────────────────────────────────────────────────────
 
@@ -428,14 +445,14 @@ export class AiScriptComponent {
     this.editingNarration.set(null);
   }
 
-  // ─── Generate Images ────────────────────────────────────────────────
+  // ─── Generate Images (Vertex AI Imagen) ─────────────────────────────
 
-  getImageUrl(visualDescription: string): string {
+  getAspectRatioForPlatform(): string {
     const platform = this.selectedPlatformData();
-    const width = platform?.aspect === '9:16' ? 1080 : 1920;
-    const height = platform?.aspect === '9:16' ? 1920 : 1080;
-    const encoded = encodeURIComponent(visualDescription);
-    return `https://image.pollinations.ai/prompt/${encoded}?model=flux&width=${width}&height=${height}&nologo=true`;
+    if (!platform) return '1:1';
+    if (platform.aspect === '9:16') return '9:16';
+    if (platform.aspect === '16:9') return '16:9';
+    return '1:1';
   }
 
   async startImageGeneration() {
@@ -446,47 +463,72 @@ export class AiScriptComponent {
     this.generatingImages.set(true);
     this.imageProgress.set(0);
 
-    const results: ImageResult[] = s.scenes.map((scene) => ({
-      url: this.getImageUrl(scene.visual_description),
+    // Inicializar resultados vacíos
+    const initial: ImageResult[] = s.scenes.map(() => ({
+      dataUrl: null,
       loaded: false,
       error: false,
     }));
-    this.imageResults.set(results);
+    this.imageResults.set(initial);
 
-    for (let i = 0; i < results.length; i++) {
+    const {
+      data: { session },
+    } = await this.supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      this.showError('Sesión expirada. Recarga la página.');
+      this.generatingImages.set(false);
+      return;
+    }
+
+    const aspectRatio = this.getAspectRatioForPlatform();
+
+    for (let i = 0; i < s.scenes.length; i++) {
       this.imageProgress.set(i + 1);
-      await this.loadImage(i);
+      await this.generateImageForScene(i, s.scenes[i].visual_description, session.access_token, aspectRatio);
     }
 
     this.generatingImages.set(false);
   }
 
-  private loadImage(index: number): Promise<void> {
-    return new Promise((resolve) => {
-      if (!isPlatformBrowser(this.platformId)) {
-        resolve();
-        return;
+  private async generateImageForScene(
+    index: number,
+    visualDescription: string,
+    token: string,
+    aspectRatio: string,
+  ): Promise<void> {
+    try {
+      const res = await fetch(
+        `${environment.supabase.url}/functions/v1/generate-vertex-image`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            apikey: environment.supabase.anonKey,
+          },
+          body: JSON.stringify({
+            prompt: visualDescription,
+            aspectRatio,
+            sampleCount: 1,
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      const results = [...this.imageResults()];
+      if (res.ok && data.success && data.images?.[0]) {
+        results[index] = { dataUrl: data.images[0].dataUrl, loaded: true, error: false };
+      } else {
+        results[index] = { dataUrl: null, loaded: false, error: true };
       }
-
-      const results = this.imageResults();
-      const img = new Image();
-
-      img.onload = () => {
-        const updated = [...results];
-        updated[index] = { ...updated[index], loaded: true, error: false };
-        this.imageResults.set(updated);
-        resolve();
-      };
-
-      img.onerror = () => {
-        const updated = [...results];
-        updated[index] = { ...updated[index], loaded: false, error: true };
-        this.imageResults.set(updated);
-        resolve();
-      };
-
-      img.src = results[index].url;
-    });
+      this.imageResults.set(results);
+    } catch {
+      const results = [...this.imageResults()];
+      results[index] = { dataUrl: null, loaded: false, error: true };
+      this.imageResults.set(results);
+    }
   }
 
   async retryImage(index: number) {
@@ -494,12 +536,25 @@ export class AiScriptComponent {
     if (!s) return;
 
     const results = [...this.imageResults()];
-    const newUrl =
-      this.getImageUrl(s.scenes[index].visual_description) + `&seed=${Date.now()}`;
-    results[index] = { url: newUrl, loaded: false, error: false };
+    results[index] = { dataUrl: null, loaded: false, error: false };
     this.imageResults.set(results);
 
-    await this.loadImage(index);
+    const {
+      data: { session },
+    } = await this.supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      this.showError('Sesión expirada.');
+      return;
+    }
+
+    this.imageProgress.set(index + 1);
+    await this.generateImageForScene(
+      index,
+      s.scenes[index].visual_description,
+      session.access_token,
+      this.getAspectRatioForPlatform(),
+    );
   }
 
   // ─── Generate Audio ─────────────────────────────────────────────────
@@ -599,6 +654,144 @@ export class AiScriptComponent {
     );
   }
 
+  // ─── Generate Video (Vertex AI Veo 2) ───────────────────────────────
+
+  async startVideoGeneration() {
+    const s = this.script();
+    if (!s) return;
+
+    this.generatePhase.set('video');
+    this.generatingVideo.set(true);
+    this.videoResult.set({ operationName: null, videoUrl: null, status: 'pending', error: null });
+
+    const {
+      data: { session },
+    } = await this.supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      this.showError('Sesión expirada.');
+      this.generatingVideo.set(false);
+      return;
+    }
+
+    try {
+      // Construir prompt del video basado en el script
+      const platform = this.selectedPlatformData();
+      const aspectRatio = platform?.aspect === '9:16' ? '9:16' : '16:9';
+      const videoPrompt = [
+        s.hook,
+        ...s.scenes.slice(0, 3).map((sc) => sc.visual_description),
+      ]
+        .filter(Boolean)
+        .join('. ');
+
+      const res = await fetch(
+        `${environment.supabase.url}/functions/v1/generate-vertex-video`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            apikey: environment.supabase.anonKey,
+          },
+          body: JSON.stringify({
+            prompt: videoPrompt,
+            aspectRatio,
+            durationSeconds: 8,
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        this.videoResult.set({
+          operationName: null,
+          videoUrl: null,
+          status: 'failed',
+          error: data.error || 'Error al iniciar generación de video.',
+        });
+        this.generatingVideo.set(false);
+        return;
+      }
+
+      this.videoResult.update((v) => ({ ...v, operationName: data.operationName }));
+      this.startVideoPolling(session.access_token);
+    } catch {
+      this.videoResult.set({
+        operationName: null,
+        videoUrl: null,
+        status: 'failed',
+        error: 'Error de conexión al iniciar el video.',
+      });
+      this.generatingVideo.set(false);
+    }
+  }
+
+  private startVideoPolling(token: string) {
+    this.videoPollingTimer = setInterval(async () => {
+      await this.pollVideoStatus(token);
+    }, 15000); // cada 15 segundos
+  }
+
+  private async pollVideoStatus(token: string) {
+    const op = this.videoResult().operationName;
+    if (!op) return;
+
+    try {
+      const res = await fetch(
+        `${environment.supabase.url}/functions/v1/check-vertex-video`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            apikey: environment.supabase.anonKey,
+          },
+          body: JSON.stringify({ operationName: op }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (!data.done) return; // sigue pendiente
+
+      this.stopVideoPolling();
+      this.generatingVideo.set(false);
+
+      if (data.status === 'completed' && data.videoUrl) {
+        this.videoResult.set({
+          operationName: op,
+          videoUrl: data.videoUrl,
+          status: 'completed',
+          error: null,
+        });
+        this.showSuccess('¡Video generado exitosamente!');
+      } else {
+        this.videoResult.set({
+          operationName: op,
+          videoUrl: null,
+          status: 'failed',
+          error: data.error || 'El video no pudo generarse.',
+        });
+      }
+    } catch {
+      // No detener el polling por un error temporal
+    }
+  }
+
+  private stopVideoPolling() {
+    if (this.videoPollingTimer) {
+      clearInterval(this.videoPollingTimer);
+      this.videoPollingTimer = null;
+    }
+  }
+
+  skipVideoStep() {
+    this.stopVideoPolling();
+    this.generatePhase.set('done');
+  }
+
   // ─── Done ───────────────────────────────────────────────────────────
 
   finishPipeline() {
@@ -608,12 +801,11 @@ export class AiScriptComponent {
   downloadImage(index: number) {
     if (!isPlatformBrowser(this.platformId)) return;
     const result = this.imageResults()[index];
-    if (!result?.loaded) return;
+    if (!result?.loaded || !result.dataUrl) return;
 
     const link = document.createElement('a');
-    link.href = result.url;
-    link.download = `escena-${index + 1}.jpg`;
-    link.target = '_blank';
+    link.href = result.dataUrl;
+    link.download = `escena-${index + 1}.png`;
     link.click();
   }
 
@@ -659,6 +851,8 @@ export class AiScriptComponent {
   }
 
   startOver() {
+    this.stopVideoPolling();
+
     for (const a of this.audioResults()) {
       if (a.objectUrl) URL.revokeObjectURL(a.objectUrl);
     }
@@ -682,6 +876,8 @@ export class AiScriptComponent {
     this.audioResults.set([]);
     this.audioProgress.set(0);
     this.editingNarration.set(null);
+    this.videoResult.set({ operationName: null, videoUrl: null, status: 'idle', error: null });
+    this.generatingVideo.set(false);
   }
 
   private showError(msg: string) {
