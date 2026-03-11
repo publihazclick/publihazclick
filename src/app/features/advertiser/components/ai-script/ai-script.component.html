@@ -61,73 +61,288 @@
   </div>
 }
 
-<!-- ═══════════ STEP: FORM ═══════════ -->
-@if (currentStep() === 'form') {
-  <div class="bg-card-dark rounded-2xl border border-white/5 p-6">
-    <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-      <span class="material-symbols-outlined text-violet-400" style="font-size:18px">edit_note</span>
-      Describe tu producto o servicio
-    </h3>
+<!-- ═══════════ WIZARD ═══════════ -->
+@if (currentStep() === 'form' && !loading()) {
 
-    <div class="mb-5">
-      <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Descripción *</label>
-      <textarea
-        [ngModel]="description()"
-        (ngModelChange)="description.set($event)"
-        placeholder="Ej: Tienda de ropa juvenil con envío gratis a todo Colombia..."
-        rows="3"
-        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 resize-none transition-all"
-      ></textarea>
-      <p class="text-[10px] text-slate-600 mt-1">Mínimo 10 caracteres.</p>
+  <!-- Wizard progress bar -->
+  <div class="bg-card-dark rounded-2xl border border-white/5 p-4 mb-4">
+    <div class="flex items-center gap-1">
+      @for (step of wizardSteps; track step.key; let i = $index) {
+        <button (click)="goToStep(step.key)" class="flex items-center gap-1 flex-1 min-w-0"
+          [disabled]="!isStepAccessible(step.key)">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all text-[10px]"
+            [class]="currentWizardStep() === step.key
+              ? 'bg-violet-500 text-white'
+              : isStepAccessible(step.key)
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-white/5 text-slate-600'">
+            @if (isStepAccessible(step.key) && currentWizardStep() !== step.key) {
+              <span class="material-symbols-outlined" style="font-size:14px">check</span>
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:14px">{{ step.icon }}</span>
+            }
+          </div>
+          <span class="text-[9px] font-bold hidden md:block truncate"
+            [class]="currentWizardStep() === step.key ? 'text-violet-300' : 'text-slate-600'">
+            {{ step.label }}
+          </span>
+          @if (i < wizardSteps.length - 1) {
+            <div class="flex-1 h-px mx-1 bg-white/5"></div>
+          }
+        </button>
+      }
     </div>
+  </div>
 
-    <div class="mb-5">
-      <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Tono del video</label>
-      <div class="flex flex-wrap gap-2">
-        @for (opt of toneOptions; track opt.value) {
-          <button
-            (click)="tone.set(opt.value)"
-            class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all"
-            [class]="tone() === opt.value
-              ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
-              : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'"
-          >
-            <span class="material-symbols-outlined" style="font-size:16px">{{ opt.icon }}</span>
-            {{ opt.label }}
-          </button>
-        }
+  <!-- ── PASO 1: Plataforma + Monetización ── -->
+  @if (currentWizardStep() === 'monetization') {
+    <div class="space-y-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">¿Para qué red social?</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          @for (p of platforms; track p.id) {
+            <button (click)="selectedPlatform.set(p.id)"
+              class="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all"
+              [class]="selectedPlatform() === p.id
+                ? 'bg-violet-500/15 border-violet-500/50 text-violet-300'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'">
+              <span class="material-symbols-outlined" style="font-size:26px">{{ p.icon }}</span>
+              <span class="text-xs font-black">{{ p.name }}</span>
+              <span class="text-[9px] text-slate-500 text-center leading-tight">{{ p.specs }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Modelo de monetización</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          @for (m of monetizationTypes; track m.id) {
+            <button (click)="selectedMonetization.set(m.id)"
+              class="flex items-center gap-2 p-3 rounded-xl border transition-all text-left"
+              [class]="selectedMonetization() === m.id
+                ? 'bg-fuchsia-500/15 border-fuchsia-500/50 text-fuchsia-300'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'">
+              <span class="material-symbols-outlined" style="font-size:20px">{{ m.icon }}</span>
+              <div>
+                <p class="text-xs font-bold">{{ m.name }}</p>
+                <p class="text-[10px] text-slate-500">{{ m.subtitle }}</p>
+              </div>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <button (click)="nextStep()" [disabled]="!canAdvanceStep()"
+          class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-xs font-black text-white uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          Siguiente <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+        </button>
       </div>
     </div>
+  }
 
-    <div class="mb-6">
-      <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Audiencia objetivo (opcional)</label>
-      <input
-        type="text"
-        [ngModel]="audience()"
-        (ngModelChange)="audience.set($event)"
-        placeholder="Ej: Mujeres de 18 a 35 años, emprendedores..."
-        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all"
-      />
+  <!-- ── PASO 2: Tipo de Video ── -->
+  @if (currentWizardStep() === 'video-type') {
+    <div class="space-y-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Tipo de video</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          @for (v of videoTypes; track v.id) {
+            <button (click)="selectedVideoType.set(v.id)"
+              class="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all"
+              [class]="selectedVideoType() === v.id
+                ? 'bg-violet-500/15 border-violet-500/50 text-violet-300'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'">
+              <span class="material-symbols-outlined" style="font-size:22px">{{ v.icon }}</span>
+              <span class="text-xs font-bold">{{ v.name }}</span>
+              <span class="text-[9px] text-slate-500 text-center">{{ v.subtitle }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button (click)="prevStep()" class="flex items-center gap-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all">
+          <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span> Atrás
+        </button>
+        <button (click)="nextStep()" [disabled]="!canAdvanceStep()"
+          class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-xs font-black text-white uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          Siguiente <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+        </button>
+      </div>
     </div>
+  }
 
-    <button
-      (click)="generateScript()"
-      [disabled]="loading() || description().trim().length < 10"
-      class="w-full sm:w-auto px-8 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-500/25"
-    >
-      @if (loading()) {
-        <span class="material-symbols-outlined animate-spin" style="font-size:18px">progress_activity</span>
-        Generando guión...
-      } @else {
-        <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
-        Generar Guión
-      }
-    </button>
-  </div>
+  <!-- ── PASO 3: Nicho ── -->
+  @if (currentWizardStep() === 'niche') {
+    <div class="space-y-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Nicho de contenido</p>
+        <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
+          @for (n of nicheOptions; track n.id) {
+            <button (click)="selectedNiche.set(n.id); customNiche.set('')"
+              class="flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all"
+              [class]="selectedNiche() === n.id
+                ? 'bg-violet-500/15 border-violet-500/50 text-violet-300'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'">
+              <span class="material-symbols-outlined" style="font-size:22px">{{ n.icon }}</span>
+              <span class="text-[10px] font-bold">{{ n.name }}</span>
+            </button>
+          }
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-wider">O escribe tu nicho personalizado</label>
+          <input type="text" [ngModel]="customNiche()" (ngModelChange)="customNiche.set($event); selectedNiche.set(null)"
+            placeholder="Ej: Criptomonedas, Mascotas exóticas..."
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all" />
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button (click)="prevStep()" class="flex items-center gap-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all">
+          <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span> Atrás
+        </button>
+        <button (click)="nextStep()" [disabled]="!canAdvanceStep()"
+          class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-xs font-black text-white uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          Siguiente <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── PASO 4: Descripción + Tono ── -->
+  @if (currentWizardStep() === 'script') {
+    <div class="space-y-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+        <div class="mb-4">
+          <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Descripción del producto/servicio *</label>
+          <textarea [ngModel]="description()" (ngModelChange)="description.set($event)"
+            placeholder="Ej: Tienda de ropa juvenil con envío gratis a todo Colombia..."
+            rows="3"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 resize-none transition-all"></textarea>
+          <p class="text-[10px] text-slate-600 mt-1">Mínimo 10 caracteres.</p>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Tono del video</label>
+          <div class="flex flex-wrap gap-2">
+            @for (opt of toneOptions; track opt.value) {
+              <button (click)="tone.set(opt.value)"
+                class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all"
+                [class]="tone() === opt.value
+                  ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
+                  : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'">
+                <span class="material-symbols-outlined" style="font-size:14px">{{ opt.icon }}</span>
+                {{ opt.label }}
+              </button>
+            }
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">Audiencia objetivo (opcional)</label>
+          <input type="text" [ngModel]="audience()" (ngModelChange)="audience.set($event)"
+            placeholder="Ej: Mujeres de 18-35, emprendedores..."
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all" />
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button (click)="prevStep()" class="flex items-center gap-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all">
+          <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span> Atrás
+        </button>
+        <button (click)="nextStep()" [disabled]="!canAdvanceStep()"
+          class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-xs font-black text-white uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          Siguiente <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── PASO 5: SEO ── -->
+  @if (currentWizardStep() === 'seo') {
+    <div class="space-y-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="material-symbols-outlined text-violet-400" style="font-size:18px">tag</span>
+          <p class="text-xs font-black text-white">SEO y Hashtags <span class="text-slate-500 font-normal">(opcional — la IA los genera automáticamente)</span></p>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[10px] text-slate-500 font-bold mb-1.5 uppercase tracking-wider">Título sugerido</label>
+            <input type="text" [ngModel]="seoTitle()" (ngModelChange)="seoTitle.set($event)"
+              placeholder="Dejar vacío para que la IA lo genere"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all" />
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-500 font-bold mb-1.5 uppercase tracking-wider">Hashtags / Tags</label>
+            <input type="text" [ngModel]="seoTags()" (ngModelChange)="seoTags.set($event)"
+              placeholder="#marketing #emprendimiento"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all" />
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-500 font-bold mb-1.5 uppercase tracking-wider">Descripción / Caption</label>
+            <textarea [ngModel]="seoDescription()" (ngModelChange)="seoDescription.set($event)"
+              placeholder="Caption para publicar junto al video"
+              rows="2"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 resize-none transition-all"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-between">
+        <button (click)="prevStep()" class="flex items-center gap-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all">
+          <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span> Atrás
+        </button>
+        <button (click)="nextStep()"
+          class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl text-xs font-black text-white uppercase tracking-wider transition-all">
+          Continuar <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── PASO 6: Resumen + Generar ── -->
+  @if (currentWizardStep() === 'generate') {
+    <div class="space-y-4">
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5">
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Resumen de tu video</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <div class="bg-white/5 rounded-xl p-3">
+            <p class="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Plataforma</p>
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-violet-300" style="font-size:16px">{{ selectedPlatformData()?.icon }}</span>
+              <p class="text-xs font-bold text-white">{{ selectedPlatformData()?.name }}</p>
+            </div>
+            <p class="text-[9px] text-slate-500 mt-0.5">{{ platformDurationLabel() }} · {{ selectedPlatformData()?.aspect }}</p>
+          </div>
+          <div class="bg-white/5 rounded-xl p-3">
+            <p class="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Tipo</p>
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-fuchsia-300" style="font-size:16px">{{ selectedVideoTypeData()?.icon }}</span>
+              <p class="text-xs font-bold text-white">{{ selectedVideoTypeData()?.name }}</p>
+            </div>
+          </div>
+          <div class="bg-white/5 rounded-xl p-3">
+            <p class="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Nicho</p>
+            <p class="text-xs font-bold text-white">{{ nicheLabel() || '—' }}</p>
+          </div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-3 mb-4">
+          <p class="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Descripción</p>
+          <p class="text-xs text-white/80 leading-relaxed">{{ description() }}</p>
+        </div>
+        <div class="flex justify-between items-center">
+          <button (click)="prevStep()" class="flex items-center gap-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all">
+            <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span> Atrás
+          </button>
+          <button (click)="generateScript()" [disabled]="loading() || description().trim().length < 10"
+            class="flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-500/25">
+            <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
+            Generar Guión con IA
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
 }
 
 <!-- Loading overlay for script generation -->
-@if (loading() && currentStep() === 'form') {
+@if (loading()) {
   <div class="bg-card-dark rounded-2xl border border-white/5 p-12 flex flex-col items-center justify-center gap-4 mt-6">
     <div class="relative">
       <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
@@ -136,12 +351,15 @@
       <div class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-500 animate-ping"></div>
     </div>
     <p class="text-sm font-bold text-white">La IA está creando tu guión...</p>
-    <p class="text-xs text-slate-500">Esto puede tomar unos segundos</p>
+    <p class="text-xs text-slate-500 flex items-center gap-2">
+      <span class="material-symbols-outlined" style="font-size:14px">{{ selectedPlatformData()?.icon ?? 'smart_display' }}</span>
+      {{ selectedPlatformData()?.name ?? 'Red social' }} · {{ platformDurationLabel() }}
+    </p>
   </div>
 }
 
 <!-- ═══════════ STEP: SCRIPT REVIEW ═══════════ -->
-@if (currentStep() === 'script') {
+@if (currentStep() === 'script' && !loading()) {
   @if (script(); as s) {
     <div class="space-y-4">
       <!-- Script header -->
