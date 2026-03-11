@@ -351,14 +351,14 @@ export class AiScriptComponent {
   }
 
   nextStep() {
-    const idx = this.getStepIndex(this.currentWizardStep());
+    const idx = this.wizardSteps.findIndex((s) => s.key === this.currentWizardStep());
     if (idx < this.wizardSteps.length - 1) {
       this.currentWizardStep.set(this.wizardSteps[idx + 1].key);
     }
   }
 
   prevStep() {
-    const idx = this.getStepIndex(this.currentWizardStep());
+    const idx = this.wizardSteps.findIndex((s) => s.key === this.currentWizardStep());
     if (idx > 0) {
       this.currentWizardStep.set(this.wizardSteps[idx - 1].key);
     }
