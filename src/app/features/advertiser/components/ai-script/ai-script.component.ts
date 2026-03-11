@@ -27,7 +27,10 @@ interface ReelScript {
   hook: string;
   scenes: Scene[];
   total_duration: number;
+  cta: string;
   music_suggestion: string;
+  chapters?: { timestamp: string; title: string }[] | null;
+  seo?: { title: string; hashtags: string[]; description: string } | null;
 }
 
 interface ImageResult {
@@ -57,6 +60,18 @@ interface PlatformOption {
   specs: string;
   resolution: string;
   aspect: string;
+  duration: number;       // segundos sugeridos
+  format: 'short-form' | 'long-form';
+  color: string;          // color de la marca
+}
+
+interface PlatformConfig {
+  name: string;
+  format: 'short-form' | 'long-form';
+  duration: number;
+  aspect: string;
+  hashtag_count: number;
+  seo_label: string;
 }
 
 interface MonetizationType {
@@ -117,11 +132,31 @@ export class AiScriptComponent {
   // ─── Step 1: Monetization ────────────────────────────────────────────
 
   readonly platforms: PlatformOption[] = [
-    { id: 'youtube', name: 'YouTube', icon: 'play_circle', specs: '1080p, 16:9, Videos largos', resolution: '1920x1080', aspect: '16:9' },
-    { id: 'tiktok', name: 'TikTok', icon: 'slow_motion_video', specs: '1080p, 9:16, Max 3min', resolution: '1080x1920', aspect: '9:16' },
-    { id: 'instagram', name: 'Instagram', icon: 'photo_camera', specs: '1080p, 9:16, Reels 90s', resolution: '1080x1920', aspect: '9:16' },
-    { id: 'facebook', name: 'Facebook', icon: 'groups', specs: '1080p, 16:9, Watch', resolution: '1920x1080', aspect: '16:9' },
-    { id: 'shorts', name: 'Shorts', icon: 'movie', specs: '1080p, 9:16, Max 60s', resolution: '1080x1920', aspect: '9:16' },
+    {
+      id: 'tiktok', name: 'TikTok', icon: 'music_note',
+      specs: '9:16 · 45s · Hook 1s', resolution: '1080x1920', aspect: '9:16',
+      duration: 45, format: 'short-form', color: '#010101',
+    },
+    {
+      id: 'instagram', name: 'Instagram', icon: 'photo_camera',
+      specs: '9:16 · 30s · Reels', resolution: '1080x1920', aspect: '9:16',
+      duration: 30, format: 'short-form', color: '#E1306C',
+    },
+    {
+      id: 'facebook', name: 'Facebook', icon: 'thumb_up',
+      specs: '16:9 · 60s · Reels', resolution: '1920x1080', aspect: '16:9',
+      duration: 60, format: 'short-form', color: '#1877F2',
+    },
+    {
+      id: 'shorts', name: 'YouTube Shorts', icon: 'smart_display',
+      specs: '9:16 · 60s · Loop', resolution: '1080x1920', aspect: '9:16',
+      duration: 58, format: 'short-form', color: '#FF0000',
+    },
+    {
+      id: 'youtube', name: 'YouTube', icon: 'play_circle',
+      specs: '16:9 · 8 min · Largo', resolution: '1920x1080', aspect: '16:9',
+      duration: 480, format: 'long-form', color: '#FF0000',
+    },
   ];
 
   readonly monetizationTypes: MonetizationType[] = [
@@ -214,6 +249,7 @@ export class AiScriptComponent {
   readonly successMsg = signal<string | null>(null);
 
   readonly script = signal<ReelScript | null>(null);
+  readonly platformConfig = signal<PlatformConfig | null>(null);
   readonly editingNarration = signal<number | null>(null);
 
   readonly imageProgress = signal(0);
@@ -373,26 +409,38 @@ export class AiScriptComponent {
   // ─── Generate Script ────────────────────────────────────────────────
 
   async generateScript() {
-    const desc = this.buildPromptContext();
+    const desc = this.description().trim();
     if (desc.length < 10) {
-      this.showError('Completa los pasos anteriores primero.');
+      this.showError('Completa la descripción del producto/servicio primero.');
       return;
     }
 
     this.loading.set(true);
     this.errorMsg.set(null);
     this.script.set(null);
+    this.platformConfig.set(null);
     this.generatePhase.set('script');
 
     try {
-      const {
-        data: { session },
-      } = await this.supabase.auth.getSession();
+      const { data: { session } } = await this.supabase.auth.getSession();
 
       if (!session?.access_token) {
         this.showError('Sesion expirada. Recarga la pagina.');
         return;
       }
+
+      // Contexto completo del wizard
+      const platform = this.selectedPlatform() ?? 'shorts';
+      const niche = this.customNiche().trim() || this.nicheLabel();
+      const additionalContext = [
+        this.seoTitle().trim() ? `Título sugerido: ${this.seoTitle().trim()}` : '',
+        this.seoTags().trim() ? `Tags: ${this.seoTags().trim()}` : '',
+        this.seoDescription().trim() ? `Descripción: ${this.seoDescription().trim()}` : '',
+      ].filter(Boolean).join('\n');
+
+      const fullDescription = additionalContext
+        ? `${desc}\n\nContexto adicional:\n${additionalContext}`
+        : desc;
 
       const res = await fetch(
         `${environment.supabase.url}/functions/v1/generate-reel-script`,
@@ -404,9 +452,13 @@ export class AiScriptComponent {
             apikey: environment.supabase.anonKey,
           },
           body: JSON.stringify({
-            description: desc,
+            description: fullDescription,
             tone: this.tone(),
             audience: this.audience().trim() || undefined,
+            platform,
+            video_type: this.selectedVideoType() ?? undefined,
+            niche: niche || undefined,
+            monetization: this.selectedMonetization() ?? undefined,
           }),
         }
       );
@@ -420,6 +472,26 @@ export class AiScriptComponent {
       }
 
       this.script.set(data.script);
+
+      // Guardar config de plataforma devuelta
+      if (data.platform_config) {
+        this.platformConfig.set(data.platform_config);
+      }
+
+      // Auto-rellenar SEO con las sugerencias de la IA
+      if (data.script.seo) {
+        const seo = data.script.seo;
+        if (!this.seoTitle().trim() && seo.title) {
+          this.seoTitle.set(seo.title);
+        }
+        if (!this.seoTags().trim() && seo.hashtags?.length) {
+          this.seoTags.set(seo.hashtags.map((h: string) => h.startsWith('#') ? h : `#${h}`).join(' '));
+        }
+        if (!this.seoDescription().trim() && seo.description) {
+          this.seoDescription.set(seo.description);
+        }
+      }
+
       this.showSuccess('Guion generado exitosamente.');
     } catch {
       this.showError('Error de conexion. Intenta de nuevo.');
@@ -447,12 +519,23 @@ export class AiScriptComponent {
 
   // ─── Generate Images (Vertex AI Imagen) ─────────────────────────────
 
+  readonly isLongForm = computed(() =>
+    this.selectedPlatformData()?.format === 'long-form'
+  );
+
+  readonly platformDurationLabel = computed(() => {
+    const p = this.selectedPlatformData();
+    if (!p) return '';
+    if (p.duration >= 60) return `${Math.round(p.duration / 60)} min`;
+    return `${p.duration}s`;
+  });
+
   getAspectRatioForPlatform(): string {
+    const cfg = this.platformConfig();
+    if (cfg) return cfg.aspect;
     const platform = this.selectedPlatformData();
-    if (!platform) return '1:1';
-    if (platform.aspect === '9:16') return '9:16';
-    if (platform.aspect === '16:9') return '16:9';
-    return '1:1';
+    if (!platform) return '9:16';
+    return platform.aspect;
   }
 
   async startImageGeneration() {
@@ -871,6 +954,7 @@ export class AiScriptComponent {
     this.seoTags.set('');
     this.seoDescription.set('');
     this.script.set(null);
+    this.platformConfig.set(null);
     this.imageResults.set([]);
     this.imageProgress.set(0);
     this.audioResults.set([]);
