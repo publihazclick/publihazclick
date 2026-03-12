@@ -123,7 +123,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
         !q ||
         u.username.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
-        (u.full_name && u.full_name.toLowerCase().includes(q));
+        (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+        (u.phone && u.phone.toLowerCase().includes(q));
       const matchesRole = this.selectedRole() === 'all' || u.role === this.selectedRole();
       const matchesStatus =
         this.selectedStatus() === 'all' ||

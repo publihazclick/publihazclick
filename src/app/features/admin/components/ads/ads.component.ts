@@ -714,7 +714,7 @@ export class AdminAdsComponent implements OnInit {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, email, role')
-        .or(`username.ilike.%${sanitizePostgrestFilter(query)}%,email.ilike.%${sanitizePostgrestFilter(query)}%`)
+        .or(`username.ilike.%${sanitizePostgrestFilter(query)}%,email.ilike.%${sanitizePostgrestFilter(query)}%,phone.ilike.%${sanitizePostgrestFilter(query)}%`)
         .limit(10);
       if (error) throw error;
       this.userSearchResults.set(

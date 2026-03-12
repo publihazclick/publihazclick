@@ -616,7 +616,7 @@ export class AdminPackageService {
       const { data, error } = await this.supabase
         .from('profiles')
         .select('id, username, email, role, is_active')
-        .or(`username.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`)
+        .or(`username.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%,phone.ilike.%${safeQuery}%`)
         .eq('is_active', true)
         .order('username', { ascending: true })
         .limit(10);
