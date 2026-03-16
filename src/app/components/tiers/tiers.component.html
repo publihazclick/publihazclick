@@ -130,7 +130,7 @@
             </div>
             <h4 class="font-black text-xs sm:text-sm md:text-base {{ tier.color }} uppercase tracking-tight mb-1">{{ tier.name }}</h4>
             <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
-              {{ tier.maxReferrals ?? tier.minReferrals }}{{ !tier.maxReferrals ? '+' : '' }} invitados
+              {{ tier.maxReferrals !== null ? (tier.minReferrals + '-' + tier.maxReferrals) : (tier.minReferrals + '+') }} invitados
             </p>
             <div class="pt-2 sm:pt-3 border-t border-zinc-700/50">
               <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
@@ -174,7 +174,7 @@
             </div>
             <h4 class="font-black text-xs sm:text-sm md:text-base {{ tier.color }} uppercase tracking-tight mb-1">{{ tier.name }}</h4>
             <p class="text-[10px] sm:text-[11px] md:text-xs text-gray-500 mb-2 sm:mb-3">
-              {{ tier.maxReferrals ?? tier.minReferrals }}{{ !tier.maxReferrals ? '+' : '' }} invitados
+              {{ tier.maxReferrals !== null ? (tier.minReferrals + '-' + tier.maxReferrals) : (tier.minReferrals + '+') }} invitados
             </p>
             <div class="pt-2 sm:pt-3 border-t border-amber-500/20">
               <p class="text-[9px] sm:text-[10px] md:text-xs text-gray-500 uppercase tracking-wide mb-1">Ganancias Aprox.</p>
@@ -205,7 +205,7 @@
             <span class="text-[10px] text-rose-400/80 font-bold">EXCLUSIVO</span>
           </div>
           <div class="flex-1 h-px bg-gradient-to-r from-rose-500/20 to-transparent"></div>
-          <span class="text-[10px] text-gray-600 uppercase tracking-widest">45+ invitados DC en tu red</span>
+          <span class="text-[10px] text-gray-600 uppercase tracking-widest">40+ invitados DC en tu red</span>
         </div>
       </div>
 
@@ -213,7 +213,7 @@
       <div class="mb-5 rounded-xl border border-rose-500/20 bg-gradient-to-r from-rose-950/40 via-amber-950/30 to-yellow-950/40 px-4 py-3 flex items-start gap-3">
         <span class="material-symbols-outlined text-amber-400 text-lg flex-shrink-0 mt-0.5">info</span>
         <p class="text-xs text-gray-400 leading-relaxed">
-          <span class="text-amber-300 font-bold">¿Cómo funciona?</span> — Ya eres Diamante Corona (45+ invitados propios).
+          <span class="text-amber-300 font-bold">¿Cómo funciona?</span> — Ya eres Diamante Corona (40+ invitados propios).
           Cuando uno de tus invitados también alcanza Diamante Corona, subes a
           <span class="text-yellow-300 font-semibold">Corona ★</span> y empiezas a ganar comisión por los clicks
           de <em>su</em> red de invitados. Cada referido DC adicional suma una estrella, desbloqueando

@@ -186,7 +186,7 @@ export class TiersComponent {
     {
       name: 'ESMERALDA',
       minReferrals: 20,
-      maxReferrals: 29,
+      maxReferrals: 25,
       ownClicksCOP: 180000,
       referralClicksCOP: 2465000,    // 29×5×400×30 + 29×5×100×30 + 29×10000
       monthlyEarningsCOP: 2645000,   // 180000 + 2465000
@@ -200,11 +200,11 @@ export class TiersComponent {
     },
     {
       name: 'DIAMANTE',
-      minReferrals: 30,
-      maxReferrals: 34,
+      minReferrals: 26,
+      maxReferrals: 30,
       ownClicksCOP: 180000,
       referralClicksCOP: 2890000,    // 34×5×400×30 + 34×5×100×30 + 34×10000
-      monthlyEarningsCOP: 3070000,   // 180000 + 2890000
+      monthlyEarningsCOP: 3074000,   // 180000 + 2890000 + 4000
       color: 'text-cyan-400',
       bgGradient: 'from-cyan-400 to-cyan-600',
       icon: 'diamond',
@@ -215,8 +215,8 @@ export class TiersComponent {
     },
     {
       name: 'DIAMANTE AZUL',
-      minReferrals: 35,
-      maxReferrals: 39,
+      minReferrals: 31,
+      maxReferrals: 35,
       ownClicksCOP: 180000,
       referralClicksCOP: 3315000,    // 39×5×400×30 + 39×5×100×30 + 39×10000
       monthlyEarningsCOP: 3495000,   // 180000 + 3315000
@@ -230,8 +230,8 @@ export class TiersComponent {
     },
     {
       name: 'DIAMANTE NEGRO',
-      minReferrals: 40,
-      maxReferrals: 44,
+      minReferrals: 36,
+      maxReferrals: 39,
       ownClicksCOP: 180000,
       referralClicksCOP: 3740000,    // 44×5×400×30 + 44×5×100×30 + 44×10000
       monthlyEarningsCOP: 3920000,   // 180000 + 3740000
@@ -245,7 +245,7 @@ export class TiersComponent {
     },
     {
       name: 'DIAMANTE CORONA',
-      minReferrals: 45,
+      minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180000,
       referralClicksCOP: 3825000,    // 45×5×400×30 + 45×5×100×30 + 45×10000
@@ -263,7 +263,7 @@ export class TiersComponent {
     // Comisión extra por clicks de la red profunda (nivel 2 en adelante)
     {
       name: 'CORONA',
-      minReferrals: 45,
+      minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180000,
       referralClicksCOP: 4700000,
@@ -279,7 +279,7 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 45,
+      minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180000,
       referralClicksCOP: 6500000,
@@ -295,7 +295,7 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 45,
+      minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180000,
       referralClicksCOP: 9000000,
@@ -311,7 +311,7 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 45,
+      minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180000,
       referralClicksCOP: 12500000,
@@ -327,7 +327,7 @@ export class TiersComponent {
     },
     {
       name: 'CORONA',
-      minReferrals: 45,
+      minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180000,
       referralClicksCOP: 17000000,
