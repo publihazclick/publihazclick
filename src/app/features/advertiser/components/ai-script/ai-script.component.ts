@@ -422,13 +422,6 @@ export class AiScriptComponent {
     this.generatePhase.set('script');
 
     try {
-      const { data: { session } } = await this.supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        this.showError('Sesion expirada. Recarga la pagina.');
-        return;
-      }
-
       // Contexto completo del wizard
       const platform = this.selectedPlatform() ?? 'shorts';
       const niche = this.customNiche().trim() || this.nicheLabel();
@@ -442,16 +435,10 @@ export class AiScriptComponent {
         ? `${desc}\n\nContexto adicional:\n${additionalContext}`
         : desc;
 
-      const res = await fetch(
-        `${environment.supabase.url}/functions/v1/generate-reel-script`,
+      const { data, error: fnError } = await this.supabase.functions.invoke(
+        'generate-reel-script',
         {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-            apikey: environment.supabase.anonKey,
-          },
-          body: JSON.stringify({
+          body: {
             description: fullDescription,
             tone: this.tone(),
             audience: this.audience().trim() || undefined,
@@ -459,14 +446,12 @@ export class AiScriptComponent {
             video_type: this.selectedVideoType() ?? undefined,
             niche: niche || undefined,
             monetization: this.selectedMonetization() ?? undefined,
-          }),
+          },
         }
       );
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        this.showError(data.error || 'Error al generar el guion.');
+      if (fnError || !data?.success) {
+        this.showError(data?.error || fnError?.message || 'Error al generar el guion.');
         this.generatePhase.set('idle');
         return;
       }

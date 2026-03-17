@@ -7,7 +7,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!;
+const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -285,6 +285,10 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
     const prompt = isLongForm ? longFormPrompt : shortFormPrompt;
 
     // ── 5. Llamar a Gemini API ────────────────────────────────────────────
+    if (!GEMINI_API_KEY) {
+      return json({ error: 'Servicio de IA no configurado. Contacta al administrador.' }, 503);
+    }
+
     const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -301,6 +305,12 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
     if (!geminiRes.ok) {
       const errBody = await geminiRes.text().catch(() => '');
       console.error('Gemini error:', geminiRes.status, errBody);
+      if (geminiRes.status === 400 || geminiRes.status === 403) {
+        return json({ error: 'API Key de Gemini inválida o sin permisos.' }, 502);
+      }
+      if (geminiRes.status === 429) {
+        return json({ error: 'Límite de uso de IA alcanzado. Intenta en unos minutos.' }, 502);
+      }
       return json({ error: 'Error al generar el guión. Intenta de nuevo.' }, 502);
     }
 

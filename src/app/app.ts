@@ -51,7 +51,7 @@ export class App {
         url.includes('/callback')
     );
     this.isAdminOrDashboardRoute.set(
-      url.includes('/admin') || url.includes('/dashboard') || url.includes('/advertiser') || url.includes('/social')
+      url.includes('/admin') || url.includes('/dashboard') || url.includes('/advertiser') || url.includes('/social') || url.includes('/ai')
     );
     this.isLandingRoute.set(url === '/' || url === '');
   }
