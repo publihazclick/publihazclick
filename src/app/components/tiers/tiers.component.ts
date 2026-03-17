@@ -188,8 +188,8 @@ export class TiersComponent {
       minReferrals: 20,
       maxReferrals: 25,
       ownClicksCOP: 180000,
-      referralClicksCOP: 2465000,    // 29×5×400×30 + 29×5×100×30 + 29×10000
-      monthlyEarningsCOP: 2645000,   // 180000 + 2465000
+      referralClicksCOP: 2125000,    // 25×5×400×30 + 25×5×100×30 + 25×10000
+      monthlyEarningsCOP: 2305000,   // 180000 + 2125000
       color: 'text-green-500',
       bgGradient: 'from-green-500 to-green-700',
       icon: 'park',
@@ -203,8 +203,8 @@ export class TiersComponent {
       minReferrals: 26,
       maxReferrals: 30,
       ownClicksCOP: 180000,
-      referralClicksCOP: 2890000,    // 34×5×400×30 + 34×5×100×30 + 34×10000
-      monthlyEarningsCOP: 3074000,   // 180000 + 2890000 + 4000
+      referralClicksCOP: 2550000,    // 30×5×400×30 + 30×5×100×30 + 30×10000
+      monthlyEarningsCOP: 2730000,   // 180000 + 2550000
       color: 'text-cyan-400',
       bgGradient: 'from-cyan-400 to-cyan-600',
       icon: 'diamond',
@@ -218,8 +218,8 @@ export class TiersComponent {
       minReferrals: 31,
       maxReferrals: 35,
       ownClicksCOP: 180000,
-      referralClicksCOP: 3315000,    // 39×5×400×30 + 39×5×100×30 + 39×10000
-      monthlyEarningsCOP: 3495000,   // 180000 + 3315000
+      referralClicksCOP: 2975000,    // 35×5×400×30 + 35×5×100×30 + 35×10000
+      monthlyEarningsCOP: 3155000,   // 180000 + 2975000
       color: 'text-blue-400',
       bgGradient: 'from-blue-600 to-indigo-700',
       icon: 'water_drop',
@@ -233,8 +233,8 @@ export class TiersComponent {
       minReferrals: 36,
       maxReferrals: 39,
       ownClicksCOP: 180000,
-      referralClicksCOP: 3740000,    // 44×5×400×30 + 44×5×100×30 + 44×10000
-      monthlyEarningsCOP: 3920000,   // 180000 + 3740000
+      referralClicksCOP: 3315000,    // 39×5×400×30 + 39×5×100×30 + 39×10000
+      monthlyEarningsCOP: 3495000,   // 180000 + 3315000
       color: 'text-gray-300',
       bgGradient: 'from-gray-600 to-gray-800',
       icon: 'dark_mode',
@@ -248,8 +248,8 @@ export class TiersComponent {
       minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180000,
-      referralClicksCOP: 3825000,    // 45×5×400×30 + 45×5×100×30 + 45×10000
-      monthlyEarningsCOP: 4005000,   // 180000 + 3825000
+      referralClicksCOP: 3400000,    // 40×5×400×30 + 40×5×100×30 + 40×10000
+      monthlyEarningsCOP: 3580000,   // 180000 + 3400000
       color: 'text-amber-400',
       bgGradient: 'from-amber-400 to-yellow-500',
       icon: 'military_tech',

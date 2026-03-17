@@ -113,10 +113,10 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     {
       name: 'ESMERALDA',
       minReferrals: 20,
-      maxReferrals: 29,
+      maxReferrals: 25,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 2_465_000,    // 29×5×400×30 + 29×5×100×30 + 29×10000
-      monthlyEarningsCOP: 2_645_000,   // 180000 + 2465000
+      referralClicksCOP: 1_700_000,    // 20×5×400×30 + 20×5×100×30 + 20×10000
+      monthlyEarningsCOP: 1_880_000,   // 180000 + 1700000
       color: 'text-green-500',
       bgGradient: 'from-green-500 to-green-700',
       bgColorClass: 'bg-green-500',
@@ -128,11 +128,11 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     },
     {
       name: 'DIAMANTE',
-      minReferrals: 30,
-      maxReferrals: 34,
+      minReferrals: 26,
+      maxReferrals: 30,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 2_890_000,    // 34×5×400×30 + 34×5×100×30 + 34×10000
-      monthlyEarningsCOP: 3_070_000,   // 180000 + 2890000
+      referralClicksCOP: 2_210_000,    // 26×5×400×30 + 26×5×100×30 + 26×10000
+      monthlyEarningsCOP: 2_390_000,   // 180000 + 2210000
       color: 'text-cyan-400',
       bgGradient: 'from-cyan-400 to-cyan-600',
       bgColorClass: 'bg-cyan-400',
@@ -144,11 +144,11 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     },
     {
       name: 'DIAMANTE AZUL',
-      minReferrals: 35,
-      maxReferrals: 39,
+      minReferrals: 31,
+      maxReferrals: 35,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 3_315_000,    // 39×5×400×30 + 39×5×100×30 + 39×10000
-      monthlyEarningsCOP: 3_495_000,   // 180000 + 3315000
+      referralClicksCOP: 2_635_000,    // 31×5×400×30 + 31×5×100×30 + 31×10000
+      monthlyEarningsCOP: 2_815_000,   // 180000 + 2635000
       color: 'text-blue-400',
       bgGradient: 'from-blue-600 to-indigo-700',
       bgColorClass: 'bg-blue-600',
@@ -160,11 +160,11 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     },
     {
       name: 'DIAMANTE NEGRO',
-      minReferrals: 40,
-      maxReferrals: 44,
+      minReferrals: 36,
+      maxReferrals: 39,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 3_740_000,    // 44×5×400×30 + 44×5×100×30 + 44×10000
-      monthlyEarningsCOP: 3_920_000,   // 180000 + 3740000
+      referralClicksCOP: 3_060_000,    // 36×5×400×30 + 36×5×100×30 + 36×10000
+      monthlyEarningsCOP: 3_240_000,   // 180000 + 3060000
       color: 'text-gray-300',
       bgGradient: 'from-gray-600 to-gray-800',
       bgColorClass: 'bg-gray-600',
@@ -176,11 +176,11 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     },
     {
       name: 'DIAMANTE CORONA',
-      minReferrals: 45,
+      minReferrals: 40,
       maxReferrals: null,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 3_825_000,    // 45×5×400×30 + 45×5×100×30 + 45×10000
-      monthlyEarningsCOP: 4_005_000,   // 180000 + 3825000
+      referralClicksCOP: 3_400_000,    // 40×5×400×30 + 40×5×100×30 + 40×10000
+      monthlyEarningsCOP: 3_580_000,   // 180000 + 3400000
       color: 'text-amber-400',
       bgGradient: 'from-amber-400 to-yellow-500',
       bgColorClass: 'bg-amber-400',
@@ -329,5 +329,5 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   }
 
   /** Returns the preset buttons displayed under the slider. */
-  readonly sliderPresets = [3, 10, 20, 30, 45];
+  readonly sliderPresets = [3, 10, 20, 30, 40];
 }
