@@ -95,6 +95,10 @@ export const routes: Routes = [
           import('./features/admin/components/withdrawals/withdrawals.component').then(
             m => m.AdminWithdrawalsComponent
           )
+      },
+      {
+        path: 'calculator',
+        loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
       }
     ]
   },
@@ -220,6 +224,10 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./features/user/components/settings/settings.component').then(m => m.UserSettingsComponent)
+      },
+      {
+        path: 'calculator',
+        loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
       }
     ]
   },
@@ -260,6 +268,10 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./features/user/components/settings/settings.component').then(m => m.UserSettingsComponent)
+      },
+      {
+        path: 'calculator',
+        loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
       }
     ]
   },

@@ -1,0 +1,301 @@
+<div class="space-y-6 lg:space-y-8">
+
+  <!-- ═══ CALCULADORA DE GANANCIAS ═══ -->
+  <div class="bg-card-dark rounded-2xl border border-white/5 overflow-hidden">
+
+    <!-- Header -->
+    <div class="px-6 pt-6 pb-5 bg-gradient-to-r from-primary/10 via-transparent to-transparent border-b border-white/5">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="material-symbols-outlined text-primary text-2xl">calculate</span>
+        <h3 class="text-lg font-black text-white uppercase tracking-tight">Calculadora de Ganancias</h3>
+        <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20 uppercase tracking-wider">Potencial</span>
+      </div>
+      <p class="text-xs text-slate-400">Mueve el slider para ver las ganancias reales por tier de la plataforma</p>
+    </div>
+
+    <div class="p-6 space-y-6">
+
+      <!-- Selector de invitados -->
+      <div class="bg-black/30 rounded-xl p-5 border border-white/5">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <span class="material-symbols-outlined text-primary text-lg">group</span>
+            <span class="text-sm font-bold text-white">Invitados directos</span>
+          </div>
+
+          <select
+            [value]="simulatedRefs()"
+            (change)="setSimulatedRefs($event)"
+            class="flex-1 bg-black/50 border border-white/10 text-white text-sm font-bold rounded-xl px-4 py-2.5 cursor-pointer focus:outline-none focus:border-primary/50 appearance-none"
+            style="background-image: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%2300E5FF%22><path d=%22M7 10l5 5 5-5z%22/></svg>'); background-repeat: no-repeat; background-position: right 12px center; background-size: 20px;">
+            @for (n of numbers; track n) {
+              <option [value]="n" style="background:#121212; color:white;">{{ n }} invitado{{ n === 1 ? '' : 's' }}</option>
+            }
+          </select>
+
+          <span class="text-2xl font-black text-primary tabular-nums flex-shrink-0">{{ simulatedRefs() }}</span>
+        </div>
+      </div>
+
+      <!-- Tier activo: resumen de ganancias -->
+      <div class="rounded-xl border overflow-hidden border-white/10">
+
+        <!-- Tier badge + total -->
+        <div class="p-4 flex items-center justify-between"
+          [ngClass]="'bg-gradient-to-r ' + currentTier().bgGradient + '/10'">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br"
+              [ngClass]="currentTier().bgGradient">
+              <span class="material-symbols-outlined text-white text-xl">{{ currentTier().icon }}</span>
+            </div>
+            <div>
+              <p class="text-base font-black tracking-wide" [ngClass]="currentTier().color">
+                {{ currentTier().name }}
+              </p>
+              <p class="text-[10px] text-slate-500">
+                @if (currentTier().maxReferrals !== null) {
+                  {{ currentTier().minReferrals }}–{{ currentTier().maxReferrals }} invitados directos
+                } @else {
+                  {{ currentTier().minReferrals }}+ invitados directos
+                }
+              </p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-xl font-black" [ngClass]="currentTier().color">
+              {{ currencyService.formatFromCOP(totalMonthlyCOP()) }}
+            </p>
+            <p class="text-[10px] text-slate-500">/ mes</p>
+          </div>
+        </div>
+
+        <!-- Desglose de ganancias -->
+        <div class="bg-black/20 divide-y divide-white/5">
+
+          <!-- Propios -->
+          <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-primary text-sm">person</span>
+              </div>
+              <span class="text-[11px] text-slate-400">Tus propios clicks</span>
+            </div>
+            <span class="text-sm font-black text-white">{{ currencyService.formatFromCOP(ownClicksEarningsCOP()) }}</span>
+          </div>
+
+          @if (currentTier().commissionPerStd400) {
+            <!-- Comisión std_400 por invitado -->
+            <div class="px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  [ngClass]="currentTier().bgColorClass + '/15'">
+                  <span class="material-symbols-outlined text-sm" [ngClass]="currentTier().color">ads_click</span>
+                </div>
+                <div>
+                  <span class="text-[11px] text-slate-400 block">Comisión por anuncio</span>
+                  <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} inv × 5 anuncios × {{ currentTier().commissionPerStd400 }} COP × 30</span>
+                </div>
+              </div>
+              <span class="text-sm font-black" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(std400CommissionCOP()) }}</span>
+            </div>
+
+            <!-- Mini anuncios por invitar -->
+            <div class="px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  [ngClass]="currentTier().bgColorClass + '/15'">
+                  <span class="material-symbols-outlined text-sm" [ngClass]="currentTier().color">featured_play_list</span>
+                </div>
+                <div>
+                  <span class="text-[11px] text-slate-400 block">Mini ads por invitar</span>
+                  <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} inv × {{ currentTier().miniSlotsPerInvitee }} slots × 100 COP × 30</span>
+                </div>
+              </div>
+              <span class="text-sm font-black" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(miniReferralCOP()) }}</span>
+            </div>
+
+            <!-- Bonus activación -->
+            <div class="px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-amber-400 text-sm">bolt</span>
+                </div>
+                <div>
+                  <span class="text-[11px] text-slate-400 block">Bonus activación</span>
+                  <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} inv × 5 mega ads × 2.000 COP</span>
+                </div>
+              </div>
+              <span class="text-sm font-black text-amber-400">{{ currencyService.formatFromCOP(activationBonusCOP()) }}</span>
+            </div>
+          } @else {
+            <div class="px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  [ngClass]="currentTier().bgColorClass + '/15'">
+                  <span class="material-symbols-outlined text-sm" [ngClass]="currentTier().color">group</span>
+                </div>
+                <span class="text-[11px] text-slate-400">Ganancias por invitados</span>
+              </div>
+              <span class="text-sm font-black" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(referralEarningsCOP()) }}</span>
+            </div>
+          }
+
+        </div>
+
+        <!-- Progreso hacia el siguiente tier -->
+        @if (nextTier(); as next) {
+          <div class="px-4 py-3 bg-black/30 border-t border-white/5">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] text-slate-500">
+                Siguiente tier:
+                <span class="font-bold" [ngClass]="next.color">{{ next.name }}</span>
+                ({{ next.minReferrals }} refs)
+              </span>
+              <span class="text-[10px] font-bold text-slate-400">{{ progressToNextTier() }}%</span>
+            </div>
+            <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500 bg-gradient-to-r"
+                [ngClass]="currentTier().bgGradient"
+                [style.width.%]="progressToNextTier()">
+              </div>
+            </div>
+          </div>
+        } @else {
+          <div class="px-4 py-3 bg-black/30 border-t border-white/5 flex items-center gap-2">
+            <span class="material-symbols-outlined text-amber-400 text-base">military_tech</span>
+            <span class="text-[10px] text-amber-400 font-bold">Tier máximo alcanzado — DIAMANTE CORONA (40+)</span>
+          </div>
+        }
+      </div>
+
+      <!-- Todos los tiers: barra comparativa -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Comparativa de tiers</h4>
+        @for (tier of PLATFORM_TIERS; track tier.name) {
+          <div
+            class="group rounded-xl border transition-all duration-200 cursor-pointer"
+            [class]="tier.name === currentTier().name
+              ? 'border-white/20 bg-white/5'
+              : 'border-white/5 bg-black/20 hover:border-white/10'"
+            (click)="simulatedRefs.set(tier.minReferrals === 0 ? 1 : tier.minReferrals)">
+            <div class="flex items-center gap-3 px-3 py-2.5">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                [ngClass]="tier.bgColorClass + '/15'">
+                <span class="material-symbols-outlined text-sm" [ngClass]="tier.color">{{ tier.icon }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-bold" [ngClass]="tier.color">{{ tier.name }}</span>
+                  <span class="text-xs font-black text-white">{{ currencyService.formatFromCOP(tier.monthlyEarningsCOP) }}/mes</span>
+                </div>
+                <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full bg-gradient-to-r transition-all duration-700"
+                    [ngClass]="tier.bgGradient"
+                    [style.width.%]="tierBarWidth(tier)">
+                  </div>
+                </div>
+              </div>
+              <div class="flex-shrink-0 w-12 text-right">
+                <span class="text-[9px] text-slate-600">
+                  @if (tier.maxReferrals !== null) {
+                    {{ tier.minReferrals === 0 ? '0' : tier.minReferrals }}–{{ tier.maxReferrals }}
+                  } @else {
+                    {{ tier.minReferrals }}+
+                  }
+                  refs
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Nota explicativa -->
+      <div class="flex items-start gap-3 bg-primary/5 border border-primary/10 rounded-xl p-4">
+        <span class="material-symbols-outlined text-primary text-lg flex-shrink-0 mt-0.5">info</span>
+        <div class="text-[11px] text-slate-400 leading-relaxed space-y-1">
+          <p>Ganancias propias: <strong class="text-white">$70.000 COP/mes</strong> (Básicas) o <strong class="text-white">$180.000 COP/mes</strong> (Superiores — requiere paquete Avanzado+).</p>
+          <p>Cada invitado activo genera: <strong class="text-white">comisión std_400 + mini ads por invitar + bonus de activación</strong>. Todo escala con cada invitado que sumas.</p>
+          <p>Haz clic en cualquier nivel para simular esa cantidad de invitados.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ RED DE INVITADOS VISUAL ═══ -->
+  <div class="bg-card-dark rounded-2xl border border-white/5 p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
+      <h3 class="text-sm font-black text-white uppercase tracking-widest">Así crece tu red</h3>
+    </div>
+
+    <div class="flex items-start justify-center gap-0 overflow-x-auto pb-2">
+
+      <!-- Tu -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mb-1">
+          <span class="material-symbols-outlined text-primary text-lg">person</span>
+        </div>
+        <span class="text-[9px] font-bold text-primary uppercase">Tu</span>
+        <span class="text-[9px] text-slate-600">{{ currencyService.formatFromCOP(ownClicksEarningsCOP()) }}/mes</span>
+      </div>
+
+      <!-- Flecha -->
+      <div class="flex items-center self-center px-1 flex-shrink-0">
+        <span class="material-symbols-outlined text-slate-700 text-base">arrow_forward</span>
+      </div>
+
+      <!-- Invitados directos -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="flex gap-1 mb-1">
+          @for (n of [1,2,3]; track n) {
+            <div class="w-7 h-7 rounded-full flex items-center justify-center border"
+              [ngClass]="currentTier().bgColorClass + '/15 border-' + currentTier().bgColorClass + '/30'">
+              <span class="material-symbols-outlined text-xs" [ngClass]="currentTier().color">person</span>
+            </div>
+          }
+        </div>
+        <span class="text-[9px] font-bold uppercase" [ngClass]="currentTier().color">Tier {{ currentTier().name }}</span>
+        <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} invitados directos</span>
+      </div>
+
+      <!-- Flecha -->
+      <div class="flex items-center self-center px-1 flex-shrink-0">
+        <span class="material-symbols-outlined text-slate-700 text-base">arrow_forward</span>
+      </div>
+
+      <!-- Red expandida -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="flex gap-0.5 mb-1">
+          @for (n of [1,2,3,4,5,6,7]; track n) {
+            <div class="w-5 h-5 rounded-full bg-slate-700/30 border border-slate-600/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-slate-500 text-[9px]">person</span>
+            </div>
+          }
+        </div>
+        <span class="text-[9px] font-bold text-slate-400 uppercase">Red de invitados</span>
+        <span class="text-[9px] text-slate-600">ganancias acumuladas</span>
+      </div>
+
+      <!-- Flecha -->
+      <div class="flex items-center self-center px-1 flex-shrink-0">
+        <span class="material-symbols-outlined text-slate-700 text-base">arrow_forward</span>
+      </div>
+
+      <!-- Total mensual -->
+      <div class="flex flex-col items-center flex-shrink-0 px-2">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center mb-1 bg-gradient-to-br"
+          [ngClass]="currentTier().bgGradient">
+          <span class="material-symbols-outlined text-white text-lg">account_balance_wallet</span>
+        </div>
+        <span class="text-[9px] font-bold uppercase" [ngClass]="currentTier().color">
+          {{ currencyService.formatFromCOP(totalMonthlyCOP()) }}
+        </span>
+        <span class="text-[9px] text-slate-600">/ mes</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
