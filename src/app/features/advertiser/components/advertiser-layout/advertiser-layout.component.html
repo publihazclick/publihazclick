@@ -183,6 +183,17 @@
               @if (!sidebarCollapsed()) { <span>Calculadora Ganancias</span> }
             </a>
           </li>
+          <li>
+            <a routerLink="/advertiser/trading-bot" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-emerald-500/5 text-slate-400 hover:text-emerald-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-emerald-400">trending_up</span>
+              @if (!sidebarCollapsed()) {
+                <span>Trading Bot AI</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-emerald-500 to-cyan-500 text-black rounded uppercase">IA</span>
+              }
+            </a>
+          </li>
         </ul>
       </div>
 

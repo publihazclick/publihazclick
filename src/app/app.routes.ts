@@ -99,6 +99,10 @@ export const routes: Routes = [
       {
         path: 'calculator',
         loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
+      },
+      {
+        path: 'trading-bot',
+        loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
       }
     ]
   },
@@ -228,6 +232,10 @@ export const routes: Routes = [
       {
         path: 'calculator',
         loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
+      },
+      {
+        path: 'trading-bot',
+        loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
       }
     ]
   },
@@ -272,6 +280,10 @@ export const routes: Routes = [
       {
         path: 'calculator',
         loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
+      },
+      {
+        path: 'trading-bot',
+        loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
       }
     ]
   },
