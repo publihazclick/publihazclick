@@ -7,17 +7,17 @@
       [style.transform]="sliderTransform()"
     >
       @for (banner of banners(); track banner.id) {
-        <div class="w-full flex-shrink-0 relative">
+        <div class="w-full flex-shrink-0 relative aspect-[3/1]">
 
           <!-- Background: image or gradient fallback -->
           @if (banner.image_url) {
             <img
               [src]="banner.image_url"
               [alt]="banner.name"
-              class="w-full h-auto block"
+              class="absolute inset-0 w-full h-full object-cover block"
             >
           } @else {
-            <div class="w-full aspect-[3/1] bg-gradient-to-r from-cyan-700 to-blue-800"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-cyan-700 to-blue-800"></div>
           }
 
           <!-- Overlay -->
