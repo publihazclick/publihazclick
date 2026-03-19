@@ -44,7 +44,7 @@
         </div>
         @if (profile()) {
           <h3 class="font-bold text-center text-sm">{{ profile()!.full_name || profile()!.username }}</h3>
-          <p class="text-[10px] text-accent mt-1 font-bold uppercase tracking-widest">Anunciante</p>
+          <p class="text-[10px] text-accent mt-1 font-bold uppercase tracking-widest"><span class="lg:hidden">Panel · </span>Anunciante</p>
           @if (profile()!.has_active_package) {
             <div class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
               <span class="material-symbols-outlined text-emerald-400" style="font-size:12px">verified</span>
@@ -293,7 +293,7 @@
 
       <!-- Title -->
       <div class="flex-1 min-w-0">
-        <h1 class="text-base lg:text-lg font-black text-white tracking-tight truncate">PANEL ANUNCIANTE</h1>
+        <h1 class="hidden sm:block text-base lg:text-lg font-black text-white tracking-tight truncate">PANEL ANUNCIANTE</h1>
         <p class="text-[10px] text-slate-500 font-medium hidden sm:block uppercase tracking-widest">
           @if (profile()) { Hola, {{ profile()!.full_name || profile()!.username }} } @else { Bienvenido }
         </p>
@@ -353,13 +353,6 @@
           <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Donaciones</p>
           <p class="text-xs text-violet-400 font-black">{{ formatCOP(profile()?.total_donated ?? 0) }}</p>
         </div>
-      </a>
-
-      <!-- Billetera mobile -->
-      <a routerLink="/advertiser/wallet"
-         class="sm:hidden flex items-center gap-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded-xl px-2.5 py-2 transition-all flex-shrink-0">
-        <span class="material-symbols-outlined text-accent" style="font-size:18px">account_balance_wallet</span>
-        <span class="text-xs text-accent font-black">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
       </a>
 
       <!-- Divider -->
@@ -480,6 +473,46 @@
           </div>
         }
       </div>
+    </div>
+
+    <!-- Barra móvil: Divisas · Billetera · Donaciones (solo mobile) -->
+    <div class="sm:hidden flex items-center gap-2 px-4 py-2 border-t border-white/5">
+      <!-- Convertidor de Divisas -->
+      <div class="relative flex-1">
+        <button
+          (click)="toggleCurrencyMenuAndClose()"
+          class="w-full flex items-center justify-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 transition-all"
+        >
+          <span class="material-symbols-outlined text-slate-300" style="font-size:14px">currency_exchange</span>
+          <span class="text-xs text-white font-black">{{ selectedCurrency().code }}</span>
+        </button>
+        @if (currencyMenuOpen()) {
+          <div class="absolute top-full left-0 mt-1 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 min-w-[190px]">
+            @for (currency of currencies; track currency.code) {
+              <button
+                (click)="selectCurrency(currency)"
+                class="w-full px-4 py-2.5 text-left hover:bg-accent/10 transition-colors flex items-center justify-between"
+                [class.bg-accent/15]="selectedCurrency().code === currency.code"
+              >
+                <span class="text-xs font-black" [class.text-accent]="selectedCurrency().code === currency.code" [class.text-white]="selectedCurrency().code !== currency.code">{{ currency.code }}</span>
+                <span class="text-[10px] text-slate-500">{{ currency.name }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <!-- Billetera -->
+      <a routerLink="/advertiser/wallet"
+         class="flex-1 flex items-center justify-center gap-1.5 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 transition-all">
+        <span class="material-symbols-outlined text-accent" style="font-size:14px">account_balance_wallet</span>
+        <span class="text-xs text-accent font-black truncate">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
+      </a>
+      <!-- Donaciones -->
+      <a routerLink="/advertiser/wallet"
+         class="flex-1 flex items-center justify-center gap-1.5 bg-violet-500/10 border border-violet-500/20 rounded-lg px-2 py-1.5 transition-all">
+        <span class="material-symbols-outlined text-violet-400" style="font-size:14px">volunteer_activism</span>
+        <span class="text-xs text-violet-400 font-black truncate">{{ formatCOP(profile()?.total_donated ?? 0) }}</span>
+      </a>
     </div>
   </header>
 
