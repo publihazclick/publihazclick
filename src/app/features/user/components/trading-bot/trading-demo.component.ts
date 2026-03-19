@@ -107,18 +107,13 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
     <!-- ═══ PACKAGE BANNER ════════════════════════════════════════════════ -->
     <div class="shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/6"
          style="background:linear-gradient(90deg,rgba(0,229,255,0.04) 0%,rgba(16,185,129,0.06) 50%,rgba(0,229,255,0.04) 100%);">
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-primary" style="font-size:13px">info</span>
-          <p class="text-slate-400 text-[10px] sm:text-[11px]">
-            Paquete <span class="text-white font-black">{{ packageName }}</span>
-          </p>
-        </div>
-        <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/40 bg-primary/8 shrink-0">
-          <span class="material-symbols-outlined text-primary" style="font-size:11px">account_balance_wallet</span>
-          <span class="text-primary font-black text-[11px]">\${{ packagePrice | number:'1.0-0' }}</span>
-          <span class="text-slate-500 text-[9px]">USD activo</span>
-        </div>
+      <div class="flex items-center gap-1.5 mb-1.5">
+        <span class="material-symbols-outlined text-primary" style="font-size:13px">info</span>
+        <p class="text-slate-400 text-[10px] sm:text-[11px]">
+          Paquete <span class="text-white font-black">{{ packageName }}</span>
+          <span class="text-slate-600 mx-1">·</span>
+          <span class="text-primary font-black">\${{ packagePrice | number:'1.0-0' }} USD activo</span>
+        </p>
       </div>
       <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
         <div class="flex items-center gap-1 px-2 py-1 rounded-lg border border-[#0ecb81]/30 bg-[#0ecb81]/6 shrink-0">
@@ -135,11 +130,6 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
           <span class="material-symbols-outlined text-violet-400" style="font-size:11px">calendar_month</span>
           <span class="text-violet-400 font-black text-xs">~\${{ estimatedMonthly * 12 | number:'1.0-0' }}</span>
           <span class="text-slate-600 text-[9px]">USD/año</span>
-        </div>
-        <div class="flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 bg-white/4 shrink-0">
-          <span class="material-symbols-outlined text-slate-400" style="font-size:11px">account_balance_wallet</span>
-          <span class="text-white font-black text-xs">\${{ packagePrice | number:'1.0-0' }}</span>
-          <span class="text-slate-600 text-[9px]">USD</span>
         </div>
       </div>
     </div>
@@ -251,7 +241,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
               <div class="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
                 [ngClass]="botSignal === 'BUY' ? 'bg-[#0ecb81]' : botSignal === 'SELL' ? 'bg-[#f6465d]' : 'bg-slate-600'"></div>
               <span class="hidden sm:inline">{{ botSignal === 'BUY' ? '▲ Comprando' : botSignal === 'SELL' ? '▼ Vendiendo' : '◉ Analizando' }}</span>
-              <span class="sm:hidden">{{ botSignal === 'BUY' ? '▲ Comp.' : botSignal === 'SELL' ? '▼ Vend.' : '◉' }}</span>
+              <span class="sm:hidden">{{ botSignal === 'BUY' ? '▲ COMPRANDO' : botSignal === 'SELL' ? '▼ VENDIENDO' : '◉ Bot' }}</span>
             </div>
           </div>
         </div>
@@ -284,10 +274,12 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
 
             <!-- Background grid -->
             @for (g of gridLines; track g.y) {
-              <line [attr.x1]="0" [attr.y1]="g.y" [attr.x2]="svgW" [attr.y2]="g.y"
-                    stroke="#ffffff05" stroke-width="1"/>
-              <text [attr.x]="svgW - 4" [attr.y]="g.y - 2" fill="#ffffff22"
-                    font-size="7" text-anchor="end" font-family="monospace">{{ g.label }}</text>
+              <line [attr.x1]="0" [attr.y1]="g.y" [attr.x2]="svgW - 62" [attr.y2]="g.y"
+                    stroke="#ffffff08" stroke-width="0.8" stroke-dasharray="3,4"/>
+              <rect [attr.x]="svgW - 60" [attr.y]="g.y - 8" width="58" height="12" rx="2"
+                    fill="#0d0f18" opacity="0.85"/>
+              <text [attr.x]="svgW - 31" [attr.y]="g.y + 3" fill="#ffffffaa"
+                    font-size="8" text-anchor="middle" font-family="monospace" font-weight="700">{{ g.label }}</text>
             }
 
             <!-- MA line (simple average) -->
@@ -353,7 +345,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
             }
 
             <!-- Volume label -->
-            <text x="4" [attr.y]="svgH - 4" fill="#ffffff20" font-size="7" font-family="monospace">VOL</text>
+            <text x="4" [attr.y]="svgH - 4" fill="#ffffff55" font-size="7" font-family="monospace" font-weight="700">VOL</text>
 
           </svg>
         </div>
@@ -527,31 +519,42 @@ export class TradingDemoComponent implements OnInit, OnDestroy {
   ];
 
   activeCrypto = this.cryptos[0];
+  private cryptoRotateIdx = 0;
   private t1: ReturnType<typeof setInterval> | null = null;
   private t2: ReturnType<typeof setInterval> | null = null;
+  private t3: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
     this.buildCandles();
     this.refreshGrid();
     this.refreshPairStats();
     this.refreshOrderBook();
-    this.t1 = setInterval(() => this.tick(),       4000);
-    this.t2 = setInterval(() => this.flickerAll(),  800);
+    this.t1 = setInterval(() => this.tick(),          4000);
+    this.t2 = setInterval(() => this.flickerAll(),     800);
+    this.t3 = setInterval(() => this.rotateCrypto(),  18000);
   }
 
   ngOnDestroy(): void {
     if (this.t1) clearInterval(this.t1);
     if (this.t2) clearInterval(this.t2);
+    if (this.t3) clearInterval(this.t3);
   }
 
   selectCrypto(c: Crypto): void {
     this.activeCrypto = c;
+    this.cryptoRotateIdx = this.cryptos.findIndex(x => x.symbol === c.symbol);
     this.buildCandles();
     this.refreshGrid();
     this.refreshPairStats();
     this.refreshOrderBook();
     this.chartSignals = [];
     this.botSignal = 'IDLE';
+  }
+
+  private rotateCrypto(): void {
+    this.cryptoRotateIdx = (this.cryptoRotateIdx + 1) % this.cryptos.length;
+    this.selectCrypto(this.cryptos[this.cryptoRotateIdx]);
+    this.cdr.detectChanges();
   }
 
   /* ── Helpers SVG ──────────────────────────────────────── */
