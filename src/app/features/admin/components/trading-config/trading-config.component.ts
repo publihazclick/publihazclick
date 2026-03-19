@@ -224,57 +224,116 @@ import {
 
               <!-- Asignar nuevo paquete -->
               <div class="pt-4 border-t border-white/5">
-                <h4 class="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Asignar Nuevo Paquete</h4>
-                <div class="space-y-3">
-                  @if (loadingCatalog()) {
-                    <p class="text-slate-500 text-xs">Cargando catálogo...</p>
-                  } @else {
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto pr-1">
-                      @for (pkg of catalog(); track pkg.id) {
-                        <button
-                          (click)="selectedCatalogPkg.set(pkg)"
-                          class="text-left px-3 py-2 rounded-xl border text-xs transition-all"
-                          [class]="selectedCatalogPkg()?.id === pkg.id
-                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                            : 'bg-white/3 border-white/10 text-slate-400 hover:border-white/20 hover:text-white'"
-                        >
-                          <p class="font-black">{{ pkg.name }}</p>
-                          <p class="text-[10px] text-slate-500">\${{ pkg.price_usd | number:'1.0-0' }} · {{ pkg.monthly_return_pct }}%/mes</p>
-                        </button>
-                      }
+                <h4 class="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">
+                  Asignar Paquete Trading Bot AI
+                </h4>
+                <div class="space-y-4">
+
+                  <!-- SELECT desplegable con todos los paquetes -->
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1.5 font-bold uppercase tracking-wider">
+                      Selecciona el paquete
+                    </label>
+                    @if (loadingCatalog()) {
+                      <div class="flex items-center gap-2 text-slate-500 text-sm py-3">
+                        <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                        Cargando paquetes...
+                      </div>
+                    } @else {
+                      <select
+                        [value]="selectedCatalogPkg()?.name ?? ''"
+                        (change)="onSelectPkg($event)"
+                        class="w-full bg-[#0d0d0d] border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/60 transition-all cursor-pointer"
+                      >
+                        <option value="" style="background:#0d0d0d">— Elige un paquete —</option>
+                        @for (pkg of catalog(); track pkg.name) {
+                          <option [value]="pkg.name" style="background:#0d0d0d">
+                            {{ pkg.name }} — \${{ pkg.price_usd | number:'1.0-0' }} USD · {{ pkg.monthly_return_pct }}% / mes
+                          </option>
+                        }
+                      </select>
+                    }
+                  </div>
+
+                  <!-- Tarjeta de vista previa del paquete seleccionado -->
+                  @if (selectedCatalogPkg()) {
+                    <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-4">
+                      <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                          <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">trending_up</span>
+                        </div>
+                        <div>
+                          <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Trading Bot AI</p>
+                          <p class="text-white font-black text-base">{{ selectedCatalogPkg()!.name }}</p>
+                        </div>
+                        <div class="ml-auto text-right">
+                          <p class="text-emerald-400 font-black text-lg">{{ selectedCatalogPkg()!.monthly_return_pct }}%</p>
+                          <p class="text-[10px] text-slate-500">/ mes</p>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 bg-black/20 rounded-lg px-3 py-2">
+                        <span class="material-symbols-outlined text-slate-400" style="font-size:14px">payments</span>
+                        <span class="text-xs text-slate-400">Inversión:</span>
+                        <span class="text-white font-black text-sm ml-1">
+                          \${{ selectedCatalogPkg()!.price_usd | number:'1.0-0' }} USD
+                        </span>
+                        <span class="mx-2 text-white/10">|</span>
+                        <span class="text-xs text-slate-400">Ganancia estimada / mes:</span>
+                        <span class="text-emerald-400 font-black text-sm ml-1">
+                          \${{ (selectedCatalogPkg()!.price_usd * selectedCatalogPkg()!.monthly_return_pct / 100) | number:'1.0-0' }} USD
+                        </span>
+                      </div>
                     </div>
                   }
 
-                  <input
-                    type="text"
-                    [(ngModel)]="activationNote"
-                    placeholder="Nota interna (opcional): ej. comprobante WhatsApp"
-                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/40 transition-all"
-                  />
+                  <!-- Nota interna -->
+                  <div>
+                    <label class="block text-xs text-slate-400 mb-1.5 font-bold uppercase tracking-wider">
+                      Nota interna (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      [(ngModel)]="activationNote"
+                      placeholder="Ej: Comprobante WhatsApp enviado el 19/03/2026"
+                      class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/40 transition-all"
+                    />
+                  </div>
 
+                  <!-- Botón Activar -->
                   <button
                     (click)="assignPackage()"
                     [disabled]="!selectedCatalogPkg() || assigning()"
-                    class="w-full py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-black hover:bg-emerald-500/20 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                    class="w-full py-3.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+                    [class]="selectedCatalogPkg()
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/25'
+                      : 'bg-white/5 border border-white/10 text-slate-600'"
                   >
                     @if (assigning()) {
                       <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
                       Activando...
                     } @else {
-                      <span class="material-symbols-outlined" style="font-size:18px">add_circle</span>
-                      Activar{{ selectedCatalogPkg() ? ' · ' + selectedCatalogPkg()!.name : '' }}
+                      <span class="material-symbols-outlined" style="font-size:18px">bolt</span>
+                      @if (selectedCatalogPkg()) {
+                        Activar paquete {{ selectedCatalogPkg()!.name }} para {{ selectedUser()!.full_name || selectedUser()!.username }}
+                      } @else {
+                        Selecciona un paquete primero
+                      }
                     }
                   </button>
 
+                  <!-- Feedback -->
                   @if (feedback()) {
                     <div class="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold"
                       [class]="feedbackType() === 'ok'
                         ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                         : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'">
-                      <span class="material-symbols-outlined" style="font-size:18px">{{ feedbackType() === 'ok' ? 'check_circle' : 'error' }}</span>
+                      <span class="material-symbols-outlined" style="font-size:18px">
+                        {{ feedbackType() === 'ok' ? 'check_circle' : 'error' }}
+                      </span>
                       {{ feedback() }}
                     </div>
                   }
+
                 </div>
               </div>
             </div>
@@ -363,6 +422,12 @@ export class TradingConfigComponent implements OnInit {
   async nextPage(): Promise<void> {
     if (this.currentPage() >= this.totalPagesCount) return;
     await this.loadPage(this.currentPage() + 1);
+  }
+
+  onSelectPkg(event: Event): void {
+    const name = (event.target as HTMLSelectElement).value;
+    const pkg = this.catalog().find(p => p.name === name) ?? null;
+    this.selectedCatalogPkg.set(pkg);
   }
 
   async selectUser(u: TradingUserResult): Promise<void> {

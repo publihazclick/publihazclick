@@ -43,14 +43,30 @@ export class TradingPackageService {
     this.supabase = getSupabaseClient();
   }
 
+  // Catálogo hardcoded — siempre visible aunque la migración 039 no esté aplicada aún
+  readonly defaultPackages: TradingBotPackage[] = [
+    { id: '', name: 'JADE',            price_usd: 50,    monthly_return_pct: 2.0, description: null, is_active: true, display_order: 1, created_at: '' },
+    { id: '', name: 'PERLA',           price_usd: 100,   monthly_return_pct: 2.5, description: null, is_active: true, display_order: 2, created_at: '' },
+    { id: '', name: 'ZAFIRO',          price_usd: 200,   monthly_return_pct: 3.0, description: null, is_active: true, display_order: 3, created_at: '' },
+    { id: '', name: 'RUBY',            price_usd: 500,   monthly_return_pct: 3.5, description: null, is_active: true, display_order: 4, created_at: '' },
+    { id: '', name: 'ESMERALDA',       price_usd: 1000,  monthly_return_pct: 4.0, description: null, is_active: true, display_order: 5, created_at: '' },
+    { id: '', name: 'DIAMANTE',        price_usd: 3000,  monthly_return_pct: 4.5, description: null, is_active: true, display_order: 6, created_at: '' },
+    { id: '', name: 'DIAMANTE AZUL',   price_usd: 5000,  monthly_return_pct: 5.0, description: null, is_active: true, display_order: 7, created_at: '' },
+    { id: '', name: 'DIAMANTE NEGRO',  price_usd: 7000,  monthly_return_pct: 5.5, description: null, is_active: true, display_order: 8, created_at: '' },
+    { id: '', name: 'DIAMANTE CORONA', price_usd: 10000, monthly_return_pct: 6.0, description: null, is_active: true, display_order: 9, created_at: '' },
+  ];
+
   async getTradingPackages(): Promise<TradingBotPackage[]> {
-    const { data, error } = await this.supabase
-      .from('trading_bot_packages')
-      .select('*')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true });
-    if (error) return [];
-    return data || [];
+    try {
+      const { data, error } = await this.supabase
+        .from('trading_bot_packages')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      // Si la tabla existe y tiene datos, usarlos; si no, devolver el catálogo hardcoded
+      if (!error && data && data.length > 0) return data;
+    } catch { /* tabla no existe aún */ }
+    return this.defaultPackages;
   }
 
   async getAllUsers(page = 1, pageSize = 30): Promise<{ data: TradingUserResult[]; total: number }> {
