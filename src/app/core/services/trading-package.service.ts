@@ -54,15 +54,29 @@ export class TradingPackageService {
     return data || [];
   }
 
+  async getAllUsers(page = 1, pageSize = 30): Promise<{ data: TradingUserResult[]; total: number }> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await this.supabase
+      .from('profiles')
+      .select('id, username, email, full_name, phone, role', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (error) return { data: [], total: 0 };
+    return { data: data || [], total: count ?? 0 };
+  }
+
   async searchUsers(query: string): Promise<TradingUserResult[]> {
-    if (!query || query.trim().length < 2) return [];
     const safeQ = sanitizePostgrestFilter(query.trim());
-    if (!safeQ) return [];
-    const { data, error } = await this.supabase
+    let q = this.supabase
       .from('profiles')
       .select('id, username, email, full_name, phone, role')
-      .or(`username.ilike.%${safeQ}%,email.ilike.%${safeQ}%,phone.ilike.%${safeQ}%`)
-      .limit(15);
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (safeQ) {
+      q = q.or(`username.ilike.%${safeQ}%,email.ilike.%${safeQ}%,phone.ilike.%${safeQ}%`);
+    }
+    const { data, error } = await q;
     if (error) return [];
     return data || [];
   }
