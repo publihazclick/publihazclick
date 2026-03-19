@@ -107,11 +107,18 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
     <!-- ═══ PACKAGE BANNER ════════════════════════════════════════════════ -->
     <div class="shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/6"
          style="background:linear-gradient(90deg,rgba(0,229,255,0.04) 0%,rgba(16,185,129,0.06) 50%,rgba(0,229,255,0.04) 100%);">
-      <div class="flex items-center gap-1.5 mb-2">
-        <span class="material-symbols-outlined text-primary" style="font-size:13px">info</span>
-        <p class="text-slate-400 text-[10px] sm:text-[11px]">
-          Paquete <span class="text-white font-black">{{ packageName }}</span>
-        </p>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-primary" style="font-size:13px">info</span>
+          <p class="text-slate-400 text-[10px] sm:text-[11px]">
+            Paquete <span class="text-white font-black">{{ packageName }}</span>
+          </p>
+        </div>
+        <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/40 bg-primary/8 shrink-0">
+          <span class="material-symbols-outlined text-primary" style="font-size:11px">account_balance_wallet</span>
+          <span class="text-primary font-black text-[11px]">\${{ packagePrice | number:'1.0-0' }}</span>
+          <span class="text-slate-500 text-[9px]">USD activo</span>
+        </div>
       </div>
       <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
         <div class="flex items-center gap-1 px-2 py-1 rounded-lg border border-[#0ecb81]/30 bg-[#0ecb81]/6 shrink-0">
@@ -199,55 +206,58 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
         </div>
 
         <!-- Pair header -->
-        <div class="flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/6 shrink-0"
+        <div class="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-4 px-3 sm:px-4 border-b border-white/6 shrink-0"
              style="background:#0f1117;">
-          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <span class="text-lg sm:text-2xl leading-none">{{ activeCrypto.icon }}</span>
-            <div>
-              <div class="flex items-baseline gap-1 sm:gap-2">
-                <span class="text-white font-black text-sm sm:text-base">{{ activeCrypto.symbol }}/USDT</span>
-                <span class="hidden sm:inline text-[10px] text-slate-600">Perpetual</span>
-              </div>
-              <span class="hidden sm:block text-[10px] text-slate-600">{{ activeCrypto.name }}</span>
-            </div>
-          </div>
-
-          <!-- Price big -->
-          <div class="pl-2 sm:pl-3 border-l border-white/8 shrink-0">
-            <p class="font-black text-sm sm:text-xl leading-none transition-colors duration-200"
-              [ngClass]="priceDir === 'up' ? 'text-[#0ecb81]' : priceDir === 'down' ? 'text-[#f6465d]' : 'text-white'">
-              \${{ activeCrypto.price | number:'1.2-4' }}
-            </p>
-            <p class="text-[9px] sm:text-[10px] mt-0.5"
-              [ngClass]="activeCrypto.change >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
-              {{ activeCrypto.change >= 0 ? '▲' : '▼' }} {{ activeCrypto.change | number:'1.2-2' }}%
-            </p>
-          </div>
-
-          <!-- 24h stats - hidden on mobile -->
-          <div class="hidden md:flex items-center gap-4 pl-3 border-l border-white/8">
-            @for (s of pairStats; track s.label) {
+          <!-- Fila superior móvil: par + precio + badge -->
+          <div class="flex items-center gap-2 sm:gap-4 py-1.5 sm:py-2.5 w-full">
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span class="text-base sm:text-2xl leading-none">{{ activeCrypto.icon }}</span>
               <div>
-                <p class="text-[9px] text-slate-600 uppercase tracking-wider">{{ s.label }}</p>
-                <p class="text-white text-[11px] font-bold font-mono">{{ s.value }}</p>
+                <div class="flex items-baseline gap-1 sm:gap-2">
+                  <span class="text-white font-black text-xs sm:text-base">{{ activeCrypto.symbol }}/USDT</span>
+                  <span class="hidden sm:inline text-[10px] text-slate-600">Perpetual</span>
+                </div>
+                <span class="hidden sm:block text-[10px] text-slate-600">{{ activeCrypto.name }}</span>
               </div>
-            }
-          </div>
+            </div>
 
-          <!-- Bot signal badge -->
-          <div class="ml-auto flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border font-black text-[10px] sm:text-xs uppercase shrink-0"
-            [ngClass]="botSignal === 'BUY'  ? 'bg-[#0ecb81]/10 border-[#0ecb81]/30 text-[#0ecb81]' :
-                       botSignal === 'SELL' ? 'bg-[#f6465d]/10 border-[#f6465d]/30 text-[#f6465d]' :
-                                              'bg-white/4 border-white/10 text-slate-500'">
-            <div class="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
-              [ngClass]="botSignal === 'BUY' ? 'bg-[#0ecb81]' : botSignal === 'SELL' ? 'bg-[#f6465d]' : 'bg-slate-600'"></div>
-            <span class="hidden sm:inline">{{ botSignal === 'BUY' ? '▲ Comprando' : botSignal === 'SELL' ? '▼ Vendiendo' : '◉ Analizando' }}</span>
-            <span class="sm:hidden">{{ botSignal === 'BUY' ? '▲ BUY' : botSignal === 'SELL' ? '▼ SELL' : '◉' }}</span>
+            <!-- Price -->
+            <div class="pl-2 sm:pl-3 border-l border-white/8 shrink-0">
+              <p class="font-black text-xs sm:text-xl leading-none transition-colors duration-200"
+                [ngClass]="priceDir === 'up' ? 'text-[#0ecb81]' : priceDir === 'down' ? 'text-[#f6465d]' : 'text-white'">
+                \${{ activeCrypto.price | number:'1.2-4' }}
+              </p>
+              <p class="text-[9px] sm:text-[10px] mt-0.5"
+                [ngClass]="activeCrypto.change >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
+                {{ activeCrypto.change >= 0 ? '▲' : '▼' }} {{ activeCrypto.change | number:'1.1-2' }}%
+              </p>
+            </div>
+
+            <!-- 24h stats - hidden on mobile -->
+            <div class="hidden md:flex items-center gap-4 pl-3 border-l border-white/8">
+              @for (s of pairStats; track s.label) {
+                <div>
+                  <p class="text-[9px] text-slate-600 uppercase tracking-wider">{{ s.label }}</p>
+                  <p class="text-white text-[11px] font-bold font-mono">{{ s.value }}</p>
+                </div>
+              }
+            </div>
+
+            <!-- Bot signal badge -->
+            <div class="ml-auto flex items-center gap-1 px-1.5 sm:px-3 py-0.5 sm:py-1.5 rounded-lg border font-black text-[9px] sm:text-xs uppercase shrink-0"
+              [ngClass]="botSignal === 'BUY'  ? 'bg-[#0ecb81]/10 border-[#0ecb81]/30 text-[#0ecb81]' :
+                         botSignal === 'SELL' ? 'bg-[#f6465d]/10 border-[#f6465d]/30 text-[#f6465d]' :
+                                                'bg-white/4 border-white/10 text-slate-500'">
+              <div class="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
+                [ngClass]="botSignal === 'BUY' ? 'bg-[#0ecb81]' : botSignal === 'SELL' ? 'bg-[#f6465d]' : 'bg-slate-600'"></div>
+              <span class="hidden sm:inline">{{ botSignal === 'BUY' ? '▲ Comprando' : botSignal === 'SELL' ? '▼ Vendiendo' : '◉ Analizando' }}</span>
+              <span class="sm:hidden">{{ botSignal === 'BUY' ? '▲ Comp.' : botSignal === 'SELL' ? '▼ Vend.' : '◉' }}</span>
+            </div>
           </div>
         </div>
 
         <!-- Chart toolbar -->
-        <div class="flex items-center gap-3 px-4 py-1.5 border-b border-white/6 shrink-0"
+        <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 border-b border-white/6 shrink-0 overflow-x-auto scrollbar-hide"
              style="background:#0d0f18;">
           @for (tf of ['1m','5m','15m','1H','4H','1D']; track tf) {
             <button class="text-[10px] font-bold px-2 py-0.5 rounded transition-all"
@@ -327,7 +337,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
                       [attr.y]="s.side === 'BUY' ? py(s.price) + 36 : py(s.price) - 28"
                       text-anchor="middle" font-size="6" font-weight="900" font-family="sans-serif"
                       [attr.fill]="s.side === 'BUY' ? '#0ecb81' : '#f6465d'">
-                  {{ s.side }}
+                  {{ s.side === 'BUY' ? 'COMP' : 'VEND' }}
                 </text>
               </g>
             }
@@ -362,7 +372,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
               <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border shrink-0 text-[10px]"
                 [ngClass]="p.side === 'BUY' ? 'border-[#0ecb81]/30 bg-[#0ecb81]/5' : 'border-[#f6465d]/30 bg-[#f6465d]/5'">
                 <span class="font-black" [ngClass]="p.side === 'BUY' ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
-                  {{ p.side === 'BUY' ? '▲ LONG' : '▼ SHORT' }}
+                  {{ p.side === 'BUY' ? '▲ COMPRANDO' : '▼ VENDIENDO' }}
                 </span>
                 <span class="text-slate-400">{{ p.symbol }}</span>
                 <span class="text-white font-bold font-mono">\${{ p.price | number:'1.2-2' }}</span>
