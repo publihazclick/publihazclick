@@ -104,6 +104,19 @@ export class AdminLayoutComponent implements OnInit {
     this.sidebarCollapsed.update(v => !v);
   }
 
+  private touchStartX = 0;
+
+  onTouchStart(e: TouchEvent): void {
+    this.touchStartX = e.touches[0].clientX;
+  }
+
+  onTouchEnd(e: TouchEvent): void {
+    if (!isPlatformBrowser(this.platformId) || window.innerWidth >= 1024) return;
+    const dx = e.changedTouches[0].clientX - this.touchStartX;
+    if (dx > 60 && this.sidebarCollapsed()) this.sidebarCollapsed.set(false);
+    if (dx < -60 && !this.sidebarCollapsed()) this.sidebarCollapsed.set(true);
+  }
+
   toggleDarkMode(): void {
     this.isDarkMode = !this.isDarkMode;
     document.documentElement.classList.toggle('dark');
