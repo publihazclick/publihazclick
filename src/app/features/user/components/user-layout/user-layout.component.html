@@ -280,7 +280,7 @@
         <div class="leading-tight">
           <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Billetera</p>
           <p class="text-xs text-primary font-black">
-            {{ formatCOP(profile()?.real_balance ?? walletState.walletBalance()) }}
+            {{ formatCOP(profile()?.real_balance ?? 0) }}
           </p>
         </div>
       </a>
@@ -294,7 +294,7 @@
         <div class="leading-tight">
           <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Donaciones</p>
           <p class="text-xs text-accent font-black">
-            {{ formatCOP(profile()?.total_donated ?? walletState.donatedAmount()) }}
+            {{ formatCOP(profile()?.total_donated ?? 0) }}
           </p>
         </div>
       </a>
@@ -371,7 +371,7 @@
                   <span class="text-xs text-slate-400">Billetera</span>
                 </div>
                 <span class="text-xs font-black text-primary">
-                  {{ formatCOP(profile()?.real_balance ?? walletState.walletBalance()) }}
+                  {{ formatCOP(profile()?.real_balance ?? 0) }}
                 </span>
               </div>
               <div class="flex items-center justify-between">
@@ -387,7 +387,7 @@
                   <span class="text-xs text-slate-400">Donaciones</span>
                 </div>
                 <span class="text-xs font-black text-accent">
-                  {{ formatCOP(profile()?.total_donated ?? walletState.donatedAmount()) }}
+                  {{ formatCOP(profile()?.total_donated ?? 0) }}
                 </span>
               </div>
               @if (profile()?.has_active_package) {
@@ -463,13 +463,13 @@
       <a routerLink="/dashboard/wallet"
          class="flex-1 flex items-center justify-center gap-1.5 bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 transition-all">
         <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
-        <span class="text-xs text-primary font-black truncate">{{ formatCOP(profile()?.real_balance ?? walletState.walletBalance()) }}</span>
+        <span class="text-xs text-primary font-black truncate">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
       </a>
       <!-- Donaciones -->
       <a routerLink="/dashboard/wallet"
          class="flex-1 flex items-center justify-center gap-1.5 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 transition-all">
         <span class="material-symbols-outlined text-accent" style="font-size:14px">volunteer_activism</span>
-        <span class="text-xs text-accent font-black truncate">{{ formatCOP(profile()?.total_donated ?? walletState.donatedAmount()) }}</span>
+        <span class="text-xs text-accent font-black truncate">{{ formatCOP(profile()?.total_donated ?? 0) }}</span>
       </a>
     </div>
   </header>
