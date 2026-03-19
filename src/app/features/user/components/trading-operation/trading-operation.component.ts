@@ -5,7 +5,7 @@ import {
   signal,
   inject,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { TradingDemoComponent } from '../trading-bot/trading-demo.component';
 import { TradingPackageService, UserTradingPackage } from '../../../../core/services/trading-package.service';
@@ -25,7 +25,7 @@ interface TradingPackage {
 @Component({
   selector: 'app-trading-operation',
   standalone: true,
-  imports: [DecimalPipe, TradingDemoComponent],
+  imports: [DecimalPipe, DatePipe, TradingDemoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col items-center py-6 px-4 w-full gap-8">
