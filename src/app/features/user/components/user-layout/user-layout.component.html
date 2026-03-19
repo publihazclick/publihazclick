@@ -11,7 +11,7 @@
     }
     <button
       (click)="toggleSidebarCollapse()"
-      class="flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
+      class="hidden lg:flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
       [title]="sidebarCollapsed() ? 'Expandir menú' : 'Colapsar menú'"
     >
       <span class="material-symbols-outlined text-2xl">menu</span>
@@ -199,19 +199,24 @@
   [class.ml-0]="sidebarCollapsed()"
   [class.lg:ml-16]="sidebarCollapsed()"
   [class.ml-64]="!sidebarCollapsed()"
+  (touchstart)="onTouchStart($event)"
+  (touchend)="onTouchEnd($event)"
 >
   <!-- Header -->
   <header class="bg-card-dark/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
     <div class="flex items-center gap-3 px-4 lg:px-8 h-16">
 
-      <!-- Hamburger (mobile only) -->
-      <button
-        (click)="toggleSidebarCollapse()"
-        class="flex lg:hidden p-1.5 rounded-lg hover:bg-white/10 transition-all flex-shrink-0"
-        title="Abrir menú"
-      >
-        <span class="material-symbols-outlined text-2xl text-white">menu</span>
-      </button>
+      <!-- Hamburger (mobile only) — solo visible cuando el sidebar está cerrado -->
+      @if (sidebarCollapsed()) {
+        <button
+          (click)="toggleSidebarCollapse()"
+          class="flex lg:hidden flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-lg hover:bg-white/10 transition-all flex-shrink-0"
+          title="Abrir menú"
+        >
+          <span class="material-symbols-outlined text-2xl text-white">menu</span>
+          <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Menú</span>
+        </button>
+      }
 
       <!-- Title -->
       <div class="flex-1 min-w-0">
