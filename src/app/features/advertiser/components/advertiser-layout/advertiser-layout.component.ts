@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -61,10 +61,12 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
 
   private touchStartX = 0;
 
+  @HostListener('touchstart', ['$event'])
   onTouchStart(e: TouchEvent): void {
     this.touchStartX = e.touches[0].clientX;
   }
 
+  @HostListener('touchend', ['$event'])
   onTouchEnd(e: TouchEvent): void {
     if (!isPlatformBrowser(this.platformId) || window.innerWidth >= 1024) return;
     const dx = e.changedTouches[0].clientX - this.touchStartX;
