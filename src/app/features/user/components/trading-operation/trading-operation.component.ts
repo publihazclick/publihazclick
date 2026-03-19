@@ -335,13 +335,12 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // Suscribirse al observable de params para reaccionar cada vez que cambia el ID
     this.paramSub = this.route.paramMap.subscribe(params => {
       const packageId = params.get('packageId');
       this.currentPkg.set(null);
       this.withdrawDone.set(false);
       this.withdrawFeedback.set(null);
-      // Subir al tope de la página para mostrar el módulo de operaciones primero
-      window.scrollTo({ top: 0, behavior: 'instant' });
       this.loadPackage(packageId);
     });
   }
