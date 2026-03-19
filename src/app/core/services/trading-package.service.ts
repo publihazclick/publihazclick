@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.client';
-import { sanitizePostgrestFilter } from '../utils/sanitize';
 
 export interface TradingBotPackage {
   id: string;
@@ -67,16 +66,19 @@ export class TradingPackageService {
   }
 
   async searchUsers(query: string): Promise<TradingUserResult[]> {
-    const safeQ = sanitizePostgrestFilter(query.trim());
-    let q = this.supabase
+    const raw = query.trim();
+    if (!raw) return [];
+    // Only strip chars that break PostgREST filter structure; preserve dots so emails match
+    const safeQ = raw.replace(/[,()'";\\]/g, '').trim();
+    if (!safeQ) return [];
+    const { data, error } = await this.supabase
       .from('profiles')
       .select('id, username, email, full_name, phone, role')
+      .or(
+        `full_name.ilike.%${safeQ}%,username.ilike.%${safeQ}%,email.ilike.%${safeQ}%,phone.ilike.%${safeQ}%`
+      )
       .order('created_at', { ascending: false })
       .limit(50);
-    if (safeQ) {
-      q = q.or(`username.ilike.%${safeQ}%,email.ilike.%${safeQ}%,phone.ilike.%${safeQ}%`);
-    }
-    const { data, error } = await q;
     if (error) return [];
     return data || [];
   }
