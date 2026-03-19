@@ -103,6 +103,10 @@ export const routes: Routes = [
       {
         path: 'trading-bot',
         loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
+      },
+      {
+        path: 'trading-config',
+        loadComponent: () => import('./features/admin/components/trading-config/trading-config.component').then(m => m.TradingConfigComponent)
       }
     ]
   },
@@ -236,6 +240,10 @@ export const routes: Routes = [
       {
         path: 'trading-bot',
         loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
+      },
+      {
+        path: 'trading-operation',
+        loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
       }
     ]
   },
@@ -284,6 +292,10 @@ export const routes: Routes = [
       {
         path: 'trading-bot',
         loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
+      },
+      {
+        path: 'trading-operation',
+        loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
       }
     ]
   },

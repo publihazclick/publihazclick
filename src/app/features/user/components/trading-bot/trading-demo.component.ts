@@ -37,13 +37,17 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
     .ticker-row:hover { background: rgba(255,255,255,0.04); }
   `],
   template: `
-<div class="fixed inset-0 z-[60] flex items-center justify-center p-1 sm:p-3"
-     (click)="closed.emit()">
-  <div class="absolute inset-0 bg-black/92 backdrop-blur-lg"></div>
+<div [class]="isEmbedded ? 'w-full' : 'fixed inset-0 z-[60] flex items-center justify-center p-1 sm:p-3'"
+     (click)="!isEmbedded && closed.emit()">
+  @if (!isEmbedded) {
+    <div class="absolute inset-0 bg-black/92 backdrop-blur-lg"></div>
+  }
 
   <!-- Terminal window -->
-  <div class="relative z-10 w-full max-w-[1200px] flex flex-col rounded-xl overflow-hidden border border-white/8 shadow-[0_32px_80px_rgba(0,0,0,0.8)]"
-       style="background:#0b0d14; height:94vh; max-height:94vh;"
+  <div [class]="isEmbedded
+      ? 'w-full max-w-[1200px] flex flex-col rounded-xl overflow-hidden border border-white/8 shadow-[0_32px_80px_rgba(0,0,0,0.8)]'
+      : 'relative z-10 w-full max-w-[1200px] flex flex-col rounded-xl overflow-hidden border border-white/8 shadow-[0_32px_80px_rgba(0,0,0,0.8)]'"
+       [style]="isEmbedded ? 'background:#0b0d14; height:620px; max-height:80vh;' : 'background:#0b0d14; height:94vh; max-height:94vh;'"
        (click)="$event.stopPropagation()">
 
     <!-- ═══ TOP BAR ═══════════════════════════════════════════════════════ -->
@@ -473,6 +477,7 @@ export class TradingDemoComponent implements OnInit, OnDestroy {
   @Input() packageName   = '';
   @Input() packagePrice  = 0;
   @Input() monthlyReturn = 0;
+  @Input() isEmbedded    = false;
 
   get estimatedMonthly(): number { return this.packagePrice * (this.monthlyReturn / 100); }
 

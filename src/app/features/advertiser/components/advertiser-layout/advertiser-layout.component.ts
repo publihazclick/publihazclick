@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
+import { TradingPackageService, UserTradingPackage } from '../../../../core/services/trading-package.service';
 import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
 
 @Component({
@@ -15,9 +16,12 @@ import { BannerSliderComponent } from '../../../../components/banner-slider/bann
 export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
+  private readonly tradingPkgSvc = inject(TradingPackageService);
   private readonly router = inject(Router);
   readonly currencyService = inject(CurrencyService);
   private readonly platformId = inject(PLATFORM_ID);
+
+  readonly activeTrading = signal<UserTradingPackage[]>([]);
 
   isDarkMode = true;
 
@@ -48,6 +52,8 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
       this.profileService.startRealtimeProfileWatch(userId);
       // Sincronizar con DB en background sin bloquear la UI
       this.profileService.getCurrentProfile().catch(() => {});
+      // Cargar paquetes de trading activos
+      this.tradingPkgSvc.getMyActivePackages().then(pkgs => this.activeTrading.set(pkgs)).catch(() => {});
     }
   }
 

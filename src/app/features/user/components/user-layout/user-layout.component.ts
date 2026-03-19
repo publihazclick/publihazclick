@@ -5,6 +5,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { WalletStateService } from '../../../../core/services/wallet-state.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
+import { TradingPackageService, UserTradingPackage } from '../../../../core/services/trading-package.service';
 import { UserReferralModalComponent } from '../user-referral-modal/user-referral-modal.component';
 import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
 
@@ -20,8 +21,11 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
   private readonly profileService = inject(ProfileService);
   readonly walletState = inject(WalletStateService);
   readonly currencyService = inject(CurrencyService);
+  private readonly tradingPkgSvc = inject(TradingPackageService);
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
+
+  readonly activeTrading = signal<UserTradingPackage[]>([]);
 
   isDarkMode = true;
 
@@ -74,6 +78,8 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
         this.profileService.startRealtimeProfileWatch(userId);
         // Sincronizar con DB en background sin bloquear la UI
         this.profileService.getCurrentProfile().catch(() => {});
+        // Cargar paquetes de trading activos
+        this.tradingPkgSvc.getMyActivePackages().then(pkgs => this.activeTrading.set(pkgs)).catch(() => {});
       }
     });
   }
