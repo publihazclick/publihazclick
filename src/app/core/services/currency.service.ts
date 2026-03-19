@@ -224,7 +224,12 @@ export class CurrencyService {
   // Format amount in COP to selected currency
   formatFromCOP(amountInCOP: number, decimals: number = 0): string {
     const converted = this.convertFromCOP(amountInCOP);
-    return this.formatValue(converted, decimals);
+    // Para monedas no-COP con montos pequeños, usar al menos 2 decimales para evitar redondeos engañosos
+    const code = this._selectedCurrency().code;
+    const effectiveDecimals = (code !== 'COP' && code !== 'CLP' && code !== 'ARS' && converted < 100)
+      ? Math.max(decimals, 2)
+      : decimals;
+    return this.formatValue(converted, effectiveDecimals);
   }
 
   // Format amount in USD to selected currency
