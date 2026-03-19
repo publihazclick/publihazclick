@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, inject, PLATFORM_ID, HostListener } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -32,6 +32,10 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
   readonly currencies = this.currencyService.currencies;
 
   async ngOnInit(): Promise<void> {
+    if (isPlatformBrowser(this.platformId)) {
+      document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+      document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+    }
     // Si el perfil ya fue cargado (ej. desde el flujo de login), reutilizarlo
     // para evitar que un getUser() con timing incorrecto borre el balance.
     let p = this.profileService.profile();
@@ -49,6 +53,10 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.profileService.stopRealtimeProfileWatch();
+    if (isPlatformBrowser(this.platformId)) {
+      document.removeEventListener('touchstart', this.handleTouchStart);
+      document.removeEventListener('touchend', this.handleTouchEnd);
+    }
   }
 
   formatCOP(amount: number): string {
@@ -61,18 +69,16 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
 
   private touchStartX = 0;
 
-  @HostListener('touchstart', ['$event'])
-  onTouchStart(e: TouchEvent): void {
+  private readonly handleTouchStart = (e: TouchEvent): void => {
     this.touchStartX = e.touches[0].clientX;
-  }
+  };
 
-  @HostListener('touchend', ['$event'])
-  onTouchEnd(e: TouchEvent): void {
-    if (!isPlatformBrowser(this.platformId) || window.innerWidth >= 1024) return;
+  private readonly handleTouchEnd = (e: TouchEvent): void => {
+    if (window.innerWidth >= 1024) return;
     const dx = e.changedTouches[0].clientX - this.touchStartX;
     if (dx > 60 && this.sidebarCollapsed()) this.sidebarCollapsed.set(false);
     if (dx < -60 && !this.sidebarCollapsed()) this.sidebarCollapsed.set(true);
-  }
+  };
 
   toggleCurrencyMenu(): void {
     this.currencyMenuOpen.update((v) => !v);

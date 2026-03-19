@@ -1,4 +1,4 @@
-import { Component, signal, ViewChild, OnInit, OnDestroy, inject, PLATFORM_ID, effect, HostListener } from '@angular/core';
+import { Component, signal, ViewChild, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -61,6 +61,10 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+      document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+    }
     this.loadProfile().then(() => {
       this.initialRole = this.profile()?.role ?? null;
       this.roleWatchReady = true;
@@ -76,6 +80,10 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.profileService.stopRealtimeProfileWatch();
+    if (isPlatformBrowser(this.platformId)) {
+      document.removeEventListener('touchstart', this.handleTouchStart);
+      document.removeEventListener('touchend', this.handleTouchEnd);
+    }
   }
 
   private async loadProfile(): Promise<void> {
@@ -112,18 +120,16 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
 
   private touchStartX = 0;
 
-  @HostListener('touchstart', ['$event'])
-  onTouchStart(e: TouchEvent): void {
+  private readonly handleTouchStart = (e: TouchEvent): void => {
     this.touchStartX = e.touches[0].clientX;
-  }
+  };
 
-  @HostListener('touchend', ['$event'])
-  onTouchEnd(e: TouchEvent): void {
-    if (!isPlatformBrowser(this.platformId) || window.innerWidth >= 1024) return;
+  private readonly handleTouchEnd = (e: TouchEvent): void => {
+    if (window.innerWidth >= 1024) return;
     const dx = e.changedTouches[0].clientX - this.touchStartX;
     if (dx > 60 && this.sidebarCollapsed()) this.sidebarCollapsed.set(false);
     if (dx < -60 && !this.sidebarCollapsed()) this.sidebarCollapsed.set(true);
-  }
+  };
 
   toggleCurrencyMenu(): void {
     this.currencyMenuOpen.update((v) => !v);

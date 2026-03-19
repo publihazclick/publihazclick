@@ -1,4 +1,4 @@
-import { Component, signal, Inject, PLATFORM_ID, OnInit, inject, ViewChild, HostListener } from '@angular/core';
+import { Component, signal, Inject, PLATFORM_ID, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -15,7 +15,7 @@ import { getSupabaseClient } from '../../../../core/supabase.client';
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss'
 })
-export class AdminLayoutComponent implements OnInit {
+export class AdminLayoutComponent implements OnInit, OnDestroy {
   isDarkMode = true;
   serverLoad = 42;
   private readonly dashboardService = inject(AdminDashboardService);
@@ -51,6 +51,10 @@ export class AdminLayoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+      document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+    }
     this.loadPendingCount();
     this.loadPendingPaymentsCount();
     this.loadHighRiskFraudCount();
@@ -106,17 +110,22 @@ export class AdminLayoutComponent implements OnInit {
 
   private touchStartX = 0;
 
-  @HostListener('touchstart', ['$event'])
-  onTouchStart(e: TouchEvent): void {
+  private readonly handleTouchStart = (e: TouchEvent): void => {
     this.touchStartX = e.touches[0].clientX;
-  }
+  };
 
-  @HostListener('touchend', ['$event'])
-  onTouchEnd(e: TouchEvent): void {
-    if (!isPlatformBrowser(this.platformId) || window.innerWidth >= 1024) return;
+  private readonly handleTouchEnd = (e: TouchEvent): void => {
+    if (window.innerWidth >= 1024) return;
     const dx = e.changedTouches[0].clientX - this.touchStartX;
     if (dx > 60 && this.sidebarCollapsed()) this.sidebarCollapsed.set(false);
     if (dx < -60 && !this.sidebarCollapsed()) this.sidebarCollapsed.set(true);
+  };
+
+  ngOnDestroy(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      document.removeEventListener('touchstart', this.handleTouchStart);
+      document.removeEventListener('touchend', this.handleTouchEnd);
+    }
   }
 
   toggleDarkMode(): void {
