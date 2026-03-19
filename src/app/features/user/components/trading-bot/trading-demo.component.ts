@@ -47,26 +47,40 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
        (click)="$event.stopPropagation()">
 
     <!-- ═══ TOP BAR ═══════════════════════════════════════════════════════ -->
-    <div class="flex items-center justify-between px-4 py-2 shrink-0 border-b border-white/6"
+    <div class="flex items-center justify-between px-3 sm:px-4 py-2 shrink-0 border-b border-white/6"
          style="background:#0f1117;">
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
         <!-- Logo area -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div class="w-6 h-6 rounded bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shadow-lg shadow-primary/30">
             <span class="material-symbols-outlined text-black" style="font-size:13px;font-weight:900">smart_toy</span>
           </div>
-          <span class="text-white font-black text-sm tracking-tight">Trading<span class="text-primary">Bot</span> AI</span>
+          <span class="text-white font-black text-xs sm:text-sm tracking-tight">Trading<span class="text-primary">Bot</span> AI</span>
         </div>
-        <div class="w-px h-4 bg-white/10"></div>
+        <div class="w-px h-4 bg-white/10 shrink-0"></div>
         <!-- Bot status -->
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/8">
-          <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-          <span class="text-emerald-400 font-black text-[10px] uppercase tracking-widest">Bot Activo</span>
+        <div class="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/8">
+          <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></div>
+          <span class="text-emerald-400 font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Activo</span>
         </div>
-        <span class="px-2 py-0.5 rounded text-[10px] font-black border border-primary/40 bg-primary/8 text-primary uppercase tracking-wider">DEMO</span>
+        <span class="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black border border-primary/40 bg-primary/8 text-primary uppercase tracking-wider shrink-0">DEMO</span>
       </div>
 
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 sm:gap-4 shrink-0">
+        <!-- Mobile: balance + pnl compact -->
+        <div class="flex sm:hidden items-center gap-2">
+          <div class="text-right">
+            <p class="text-[8px] text-slate-600 uppercase">P&L</p>
+            <p class="font-black text-[11px]" [ngClass]="totalPnl >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
+              {{ totalPnl >= 0 ? '+' : '' }}\${{ totalPnl | number:'1.2-2' }}
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="text-[8px] text-slate-600 uppercase">Win</p>
+            <p class="text-[#0ecb81] font-black text-[11px]">{{ winRate }}%</p>
+          </div>
+        </div>
+        <!-- Desktop stats -->
         <div class="hidden sm:flex items-center gap-4">
           <div class="text-right">
             <p class="text-[9px] text-slate-600 uppercase tracking-wider">Balance</p>
@@ -84,42 +98,41 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
           </div>
         </div>
         <button (click)="closed.emit()"
-          class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-all">
+          class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-all shrink-0">
           <span class="material-symbols-outlined" style="font-size:14px">close</span>
         </button>
       </div>
     </div>
 
     <!-- ═══ PACKAGE BANNER ════════════════════════════════════════════════ -->
-    <div class="shrink-0 px-4 py-2.5 border-b border-white/6 flex flex-wrap items-center gap-3 sm:gap-4"
+    <div class="shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/6"
          style="background:linear-gradient(90deg,rgba(0,229,255,0.04) 0%,rgba(16,185,129,0.06) 50%,rgba(0,229,255,0.04) 100%);">
-      <div class="flex items-center gap-1.5 shrink-0">
-        <span class="material-symbols-outlined text-primary" style="font-size:15px">info</span>
-        <p class="text-slate-400 text-[11px]">
-          Así funcionaría el sistema con el paquete
-          <span class="text-white font-black">{{ packageName }}</span>
+      <div class="flex items-center gap-1.5 mb-2">
+        <span class="material-symbols-outlined text-primary" style="font-size:13px">info</span>
+        <p class="text-slate-400 text-[10px] sm:text-[11px]">
+          Paquete <span class="text-white font-black">{{ packageName }}</span>
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-2 ml-auto">
-        <div class="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-[#0ecb81]/30 bg-[#0ecb81]/6">
-          <span class="material-symbols-outlined text-[#0ecb81]" style="font-size:13px">trending_up</span>
-          <span class="text-[#0ecb81] font-black text-sm">{{ monthlyReturn }}%</span>
-          <span class="text-slate-600 text-[10px]">mensual</span>
+      <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+        <div class="flex items-center gap-1 px-2 py-1 rounded-lg border border-[#0ecb81]/30 bg-[#0ecb81]/6 shrink-0">
+          <span class="material-symbols-outlined text-[#0ecb81]" style="font-size:11px">trending_up</span>
+          <span class="text-[#0ecb81] font-black text-xs">{{ monthlyReturn }}%</span>
+          <span class="text-slate-600 text-[9px]">/mes</span>
         </div>
-        <div class="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-primary/30 bg-primary/6">
-          <span class="material-symbols-outlined text-primary" style="font-size:13px">payments</span>
-          <span class="text-primary font-black text-sm">~\${{ estimatedMonthly | number:'1.0-0' }}</span>
-          <span class="text-slate-600 text-[10px]">USD/mes</span>
+        <div class="flex items-center gap-1 px-2 py-1 rounded-lg border border-primary/30 bg-primary/6 shrink-0">
+          <span class="material-symbols-outlined text-primary" style="font-size:11px">payments</span>
+          <span class="text-primary font-black text-xs">~\${{ estimatedMonthly | number:'1.0-0' }}</span>
+          <span class="text-slate-600 text-[9px]">USD/mes</span>
         </div>
-        <div class="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-violet-500/30 bg-violet-500/6">
-          <span class="material-symbols-outlined text-violet-400" style="font-size:13px">calendar_month</span>
-          <span class="text-violet-400 font-black text-sm">~\${{ estimatedMonthly * 12 | number:'1.0-0' }}</span>
-          <span class="text-slate-600 text-[10px]">USD/año</span>
+        <div class="flex items-center gap-1 px-2 py-1 rounded-lg border border-violet-500/30 bg-violet-500/6 shrink-0">
+          <span class="material-symbols-outlined text-violet-400" style="font-size:11px">calendar_month</span>
+          <span class="text-violet-400 font-black text-xs">~\${{ estimatedMonthly * 12 | number:'1.0-0' }}</span>
+          <span class="text-slate-600 text-[9px]">USD/año</span>
         </div>
-        <div class="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-white/10 bg-white/4">
-          <span class="material-symbols-outlined text-slate-400" style="font-size:13px">account_balance_wallet</span>
-          <span class="text-white font-black text-sm">\${{ packagePrice | number:'1.0-0' }}</span>
-          <span class="text-slate-600 text-[10px]">USD</span>
+        <div class="flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 bg-white/4 shrink-0">
+          <span class="material-symbols-outlined text-slate-400" style="font-size:11px">account_balance_wallet</span>
+          <span class="text-white font-black text-xs">\${{ packagePrice | number:'1.0-0' }}</span>
+          <span class="text-slate-600 text-[9px]">USD</span>
         </div>
       </div>
     </div>
@@ -128,7 +141,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
     <div class="flex flex-1 overflow-hidden min-h-0">
 
       <!-- ── WATCHLIST ─────────────────────────────────────── -->
-      <div class="w-[120px] sm:w-[148px] border-r border-white/6 flex flex-col shrink-0 overflow-hidden"
+      <div class="hidden sm:flex w-[148px] border-r border-white/6 flex-col shrink-0 overflow-hidden"
            style="background:#0f1117;">
         <div class="px-2.5 py-2 border-b border-white/6">
           <p class="text-[9px] font-black text-slate-600 uppercase tracking-[0.15em]">Mercados</p>
@@ -165,33 +178,53 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
       <!-- ── CENTER: Chart ──────────────────────────────────── -->
       <div class="flex-1 flex flex-col overflow-hidden min-w-0">
 
-        <!-- Pair header -->
-        <div class="flex items-center gap-4 px-4 py-2.5 border-b border-white/6 shrink-0"
+        <!-- Mobile crypto selector -->
+        <div class="sm:hidden border-b border-white/6 overflow-x-auto scrollbar-hide shrink-0"
              style="background:#0f1117;">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl leading-none">{{ activeCrypto.icon }}</span>
+          <div class="flex items-center gap-0 w-max">
+            @for (c of cryptos; track c.symbol) {
+              <button (click)="selectCrypto(c)"
+                class="flex flex-col items-center px-3 py-2 border-r border-white/6 shrink-0 min-w-[64px] transition-all"
+                [style.borderBottom]="activeCrypto.symbol === c.symbol ? '2px solid #00e5ff' : '2px solid transparent'"
+                [style.background]="activeCrypto.symbol === c.symbol ? 'rgba(0,229,255,0.07)' : ''">
+                <span class="text-sm leading-none mb-0.5">{{ c.icon }}</span>
+                <span class="text-[9px] font-black text-white">{{ c.symbol }}</span>
+                <span class="text-[8px] font-bold"
+                  [ngClass]="c.change >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
+                  {{ c.change >= 0 ? '+' : '' }}{{ c.change | number:'1.1-1' }}%
+                </span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Pair header -->
+        <div class="flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/6 shrink-0"
+             style="background:#0f1117;">
+          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span class="text-lg sm:text-2xl leading-none">{{ activeCrypto.icon }}</span>
             <div>
-              <div class="flex items-baseline gap-2">
-                <span class="text-white font-black text-base">{{ activeCrypto.symbol }}/USDT</span>
-                <span class="text-[10px] text-slate-600">Perpetual</span>
+              <div class="flex items-baseline gap-1 sm:gap-2">
+                <span class="text-white font-black text-sm sm:text-base">{{ activeCrypto.symbol }}/USDT</span>
+                <span class="hidden sm:inline text-[10px] text-slate-600">Perpetual</span>
               </div>
-              <span class="text-[10px] text-slate-600">{{ activeCrypto.name }}</span>
+              <span class="hidden sm:block text-[10px] text-slate-600">{{ activeCrypto.name }}</span>
             </div>
           </div>
 
           <!-- Price big -->
-          <div class="pl-3 border-l border-white/8">
-            <p class="font-black text-xl leading-none transition-colors duration-200"
+          <div class="pl-2 sm:pl-3 border-l border-white/8 shrink-0">
+            <p class="font-black text-sm sm:text-xl leading-none transition-colors duration-200"
               [ngClass]="priceDir === 'up' ? 'text-[#0ecb81]' : priceDir === 'down' ? 'text-[#f6465d]' : 'text-white'">
               \${{ activeCrypto.price | number:'1.2-4' }}
             </p>
-            <p class="text-[10px] mt-0.5"
+            <p class="text-[9px] sm:text-[10px] mt-0.5"
               [ngClass]="activeCrypto.change >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
               {{ activeCrypto.change >= 0 ? '▲' : '▼' }} {{ activeCrypto.change | number:'1.2-2' }}%
             </p>
           </div>
 
-          <!-- 24h stats -->
+          <!-- 24h stats - hidden on mobile -->
           <div class="hidden md:flex items-center gap-4 pl-3 border-l border-white/8">
             @for (s of pairStats; track s.label) {
               <div>
@@ -202,13 +235,14 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
           </div>
 
           <!-- Bot signal badge -->
-          <div class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-black text-xs uppercase"
+          <div class="ml-auto flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border font-black text-[10px] sm:text-xs uppercase shrink-0"
             [ngClass]="botSignal === 'BUY'  ? 'bg-[#0ecb81]/10 border-[#0ecb81]/30 text-[#0ecb81]' :
                        botSignal === 'SELL' ? 'bg-[#f6465d]/10 border-[#f6465d]/30 text-[#f6465d]' :
                                               'bg-white/4 border-white/10 text-slate-500'">
-            <div class="w-1.5 h-1.5 rounded-full animate-pulse"
+            <div class="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
               [ngClass]="botSignal === 'BUY' ? 'bg-[#0ecb81]' : botSignal === 'SELL' ? 'bg-[#f6465d]' : 'bg-slate-600'"></div>
-            {{ botSignal === 'BUY' ? '▲ Comprando' : botSignal === 'SELL' ? '▼ Vendiendo' : '◉ Analizando' }}
+            <span class="hidden sm:inline">{{ botSignal === 'BUY' ? '▲ Comprando' : botSignal === 'SELL' ? '▼ Vendiendo' : '◉ Analizando' }}</span>
+            <span class="sm:hidden">{{ botSignal === 'BUY' ? '▲ BUY' : botSignal === 'SELL' ? '▼ SELL' : '◉' }}</span>
           </div>
         </div>
 
@@ -316,11 +350,11 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
 
         <!-- Positions bar -->
         <div class="border-t border-white/6 shrink-0" style="background:#0f1117;">
-          <div class="flex items-center gap-4 px-4 py-1.5 border-b border-white/4">
+          <div class="flex items-center gap-4 px-3 sm:px-4 py-1.5 border-b border-white/4">
             <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Posiciones Abiertas</span>
             <span class="text-[9px] text-primary font-bold">{{ openPositions.length }} activa(s)</span>
           </div>
-          <div class="flex items-center gap-3 px-4 py-2 overflow-x-auto scrollbar-hide">
+          <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 overflow-x-auto scrollbar-hide">
             @if (openPositions.length === 0) {
               <span class="text-slate-700 text-[10px]">Esperando señal del bot…</span>
             }
@@ -342,7 +376,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
       </div>
 
       <!-- ── RIGHT: Order book + trades ────────────────────── -->
-      <div class="w-[140px] sm:w-[160px] border-l border-white/6 flex flex-col overflow-hidden shrink-0"
+      <div class="hidden sm:flex w-[160px] border-l border-white/6 flex-col overflow-hidden shrink-0"
            style="background:#0f1117;">
 
         <!-- Order book -->

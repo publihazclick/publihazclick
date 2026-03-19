@@ -46,7 +46,7 @@ interface TradingPackage {
         </p>
         <p class="text-slate-300 text-xs leading-relaxed">
           Sabemos que algunos sistemas venden humo y te ofrecen más del 100%… pero luego pierdes tu dinero.
-          <span class="text-white font-bold">Creemos firmemente que es mejor tener porcentajes reales, pero sostenibles en el tiempo.</span>
+          <span class="text-white font-bold">Creemos firmemente en ofrecer resultados sostenibles en el tiempo. Nuestro enfoque prioriza la estabilidad y el crecimiento constante por encima de promesas poco realistas. No es casualidad: llevamos más de 9 años operando como empresa, construyendo resultados sólidos y relaciones de confianza a largo plazo.</span>
         </p>
       </div>
 
@@ -67,7 +67,7 @@ interface TradingPackage {
       <div class="w-full max-w-6xl">
         <h3 class="text-white font-black text-lg mb-5 text-center uppercase tracking-widest">
           Paquetes de Trading Automático —
-          <span class="text-primary">El Sistema en que Jamás Pierdes</span>
+          <span class="text-primary">El Sistema que Todos los Meses te Permite Retirar tu Rentabilidad</span>
         </h3>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -138,7 +138,7 @@ interface TradingPackage {
     ═══════════════════════════════════════════════════════ -->
     @if (selectedPackage()) {
       <div
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
         (click)="closeModal()">
 
         <!-- Backdrop -->
@@ -146,45 +146,45 @@ interface TradingPackage {
 
         <!-- Modal card -->
         <div
-          class="relative z-10 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl shadow-black/60"
+          class="relative z-10 w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl shadow-black/60 mx-auto max-h-[92vh] overflow-y-auto"
           (click)="$event.stopPropagation()">
 
           <!-- Header degradado -->
-          <div class="bg-gradient-to-br from-[#0a0a0a] via-[#111827] to-[#0a0a0a] border border-white/10 px-6 pt-6 pb-4">
+          <div class="bg-gradient-to-br from-[#0a0a0a] via-[#111827] to-[#0a0a0a] border border-white/10 px-4 sm:px-6 pt-5 sm:pt-6 pb-4">
 
             <!-- Cerrar -->
             <button
               (click)="closeModal()"
-              class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+              class="absolute top-3 right-3 sm:top-4 sm:right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all z-10">
               <span class="material-symbols-outlined" style="font-size:16px">close</span>
             </button>
 
             <!-- Título con ícono -->
-            <div class="flex items-center gap-3 mb-4">
-              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">trending_up</span>
+            <div class="flex items-center gap-3 mb-4 pr-8">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">trending_up</span>
               </div>
               <div>
-                <p class="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Trading Bot AI</p>
-                <h3 class="text-white font-black text-lg leading-tight">
+                <p class="text-[10px] sm:text-[11px] text-slate-500 uppercase tracking-widest font-bold">Trading Bot AI</p>
+                <h3 class="text-white font-black text-base sm:text-lg leading-tight">
                   Paquete {{ selectedPackage()!.name }}
                 </h3>
               </div>
             </div>
 
             <!-- Info del paquete seleccionado -->
-            <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-2">
-              <div class="flex-1">
+            <div class="flex items-center gap-2 sm:gap-3 bg-white/5 border border-white/10 rounded-xl px-3 sm:px-4 py-3 mb-2">
+              <div class="flex-1 min-w-0">
                 <p class="text-slate-400 text-xs">Inversión</p>
-                <p class="text-white font-black text-xl">
+                <p class="text-white font-black text-lg sm:text-xl truncate">
                   \${{ selectedPackage()!.price | number:'1.0-0' }}
                   <span class="text-xs font-bold text-slate-500">USD</span>
                 </p>
               </div>
-              <div class="w-px h-8 bg-white/10"></div>
-              <div class="flex-1 text-right">
+              <div class="w-px h-8 bg-white/10 shrink-0"></div>
+              <div class="flex-1 text-right min-w-0">
                 <p class="text-slate-400 text-xs">Rentabilidad</p>
-                <p class="text-emerald-400 font-black text-xl">{{ selectedPackage()!.monthlyReturn }}%
+                <p class="text-emerald-400 font-black text-lg sm:text-xl">{{ selectedPackage()!.monthlyReturn }}%
                   <span class="text-xs font-bold text-slate-500">/ mes</span>
                 </p>
               </div>
@@ -192,49 +192,49 @@ interface TradingPackage {
           </div>
 
           <!-- Cuerpo del modal -->
-          <div class="bg-[#0d0d0d] border-x border-white/10 px-6 py-5 space-y-4">
+          <div class="bg-[#0d0d0d] border-x border-white/10 px-4 sm:px-6 py-4 sm:py-5 space-y-3 sm:space-y-4">
 
             <!-- Instrucción principal -->
-            <p class="text-slate-300 text-sm text-center leading-relaxed">
+            <p class="text-slate-300 text-xs sm:text-sm text-center leading-relaxed">
               Realiza tu pago a través de cualquiera de los siguientes métodos:
             </p>
 
             <!-- Método: Nequi -->
-            <div class="rounded-xl border border-[#8B5CF6]/40 bg-[#8B5CF6]/5 px-4 py-4">
-              <div class="flex items-center gap-3 mb-3">
-                <div class="w-9 h-9 rounded-lg bg-[#8B5CF6]/20 border border-[#8B5CF6]/40 flex items-center justify-center shrink-0">
-                  <span class="material-symbols-outlined text-[#8B5CF6]" style="font-size:18px">smartphone</span>
+            <div class="rounded-xl border border-[#8B5CF6]/40 bg-[#8B5CF6]/5 px-3 sm:px-4 py-3 sm:py-4">
+              <div class="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#8B5CF6]/20 border border-[#8B5CF6]/40 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[#8B5CF6]" style="font-size:16px">smartphone</span>
                 </div>
-                <span class="text-white font-black text-base tracking-wide">Nequi</span>
+                <span class="text-white font-black text-sm sm:text-base tracking-wide">Nequi</span>
               </div>
               <div class="space-y-1.5 pl-1">
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-[#8B5CF6]" style="font-size:14px">call</span>
-                  <span class="text-white font-black text-lg tracking-widest">313 445 3649</span>
+                  <span class="text-white font-black text-base sm:text-lg tracking-widest">313 445 3649</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-slate-500" style="font-size:14px">person</span>
-                  <span class="text-slate-300 font-bold text-sm">VICTOR VERA</span>
+                  <span class="text-slate-300 font-bold text-xs sm:text-sm">VICTOR VERA</span>
                 </div>
               </div>
             </div>
 
             <!-- Método: Daviplata -->
-            <div class="rounded-xl border border-[#E63946]/40 bg-[#E63946]/5 px-4 py-4">
-              <div class="flex items-center gap-3 mb-3">
-                <div class="w-9 h-9 rounded-lg bg-[#E63946]/20 border border-[#E63946]/40 flex items-center justify-center shrink-0">
-                  <span class="material-symbols-outlined text-[#E63946]" style="font-size:18px">account_balance_wallet</span>
+            <div class="rounded-xl border border-[#E63946]/40 bg-[#E63946]/5 px-3 sm:px-4 py-3 sm:py-4">
+              <div class="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#E63946]/20 border border-[#E63946]/40 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[#E63946]" style="font-size:16px">account_balance_wallet</span>
                 </div>
-                <span class="text-white font-black text-base tracking-wide">Daviplata</span>
+                <span class="text-white font-black text-sm sm:text-base tracking-wide">Daviplata</span>
               </div>
               <div class="space-y-1.5 pl-1">
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-[#E63946]" style="font-size:14px">call</span>
-                  <span class="text-white font-black text-lg tracking-widest">313 445 3649</span>
+                  <span class="text-white font-black text-base sm:text-lg tracking-widest">313 445 3649</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-slate-500" style="font-size:14px">person</span>
-                  <span class="text-slate-300 font-bold text-sm">VICTOR VERA</span>
+                  <span class="text-slate-300 font-bold text-xs sm:text-sm">VICTOR VERA</span>
                 </div>
               </div>
             </div>
@@ -242,14 +242,14 @@ interface TradingPackage {
           </div>
 
           <!-- Footer: WhatsApp -->
-          <div class="bg-[#0d0d0d] border border-white/10 rounded-b-2xl px-6 pb-6 pt-2">
-            <div class="rounded-xl border border-[#25D366]/40 bg-[#25D366]/5 px-4 py-4">
-              <div class="flex items-start gap-3">
-                <div class="w-9 h-9 rounded-lg bg-[#25D366]/20 border border-[#25D366]/40 flex items-center justify-center shrink-0 mt-0.5">
-                  <span class="material-symbols-outlined text-[#25D366]" style="font-size:18px">chat</span>
+          <div class="bg-[#0d0d0d] border border-white/10 rounded-b-2xl px-4 sm:px-6 pb-5 sm:pb-6 pt-2">
+            <div class="rounded-xl border border-[#25D366]/40 bg-[#25D366]/5 px-3 sm:px-4 py-3 sm:py-4">
+              <div class="flex items-start gap-2 sm:gap-3">
+                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#25D366]/20 border border-[#25D366]/40 flex items-center justify-center shrink-0 mt-0.5">
+                  <span class="material-symbols-outlined text-[#25D366]" style="font-size:16px">chat</span>
                 </div>
-                <div class="flex-1">
-                  <p class="text-white font-black text-sm mb-1">Envía tu comprobante de pago</p>
+                <div class="flex-1 min-w-0">
+                  <p class="text-white font-black text-xs sm:text-sm mb-1">Envía tu comprobante de pago</p>
                   <p class="text-slate-400 text-xs leading-relaxed mb-3">
                     Una vez realizada la compra de alguno de nuestros servicios de <span class="text-white font-bold">Trading Bot AI</span>,
                     envía tu comprobante de pago vía WhatsApp al número:
@@ -258,7 +258,7 @@ interface TradingPackage {
                     href="https://wa.me/573181800264"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] transition-all text-black font-black text-sm shadow-lg shadow-[#25D366]/20">
+                    class="flex items-center justify-center gap-2 w-full py-3 sm:py-2.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] transition-all text-black font-black text-sm shadow-lg shadow-[#25D366]/20">
                     <span class="material-symbols-outlined" style="font-size:18px">whatsapp</span>
                     318 180 0264
                   </a>
