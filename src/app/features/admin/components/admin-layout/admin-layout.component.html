@@ -9,6 +9,16 @@
     @if (!sidebarCollapsed()) {
       <img src="/logo.webp" alt="PublihazClik" class="h-12 lg:h-14 w-auto" width="200" height="56">
     }
+    <!-- Botón cerrar — solo mobile, solo cuando está abierto -->
+    @if (!sidebarCollapsed()) {
+      <button
+        (click)="toggleSidebarCollapse()"
+        class="flex lg:hidden flex-col items-center justify-center gap-0.5 ml-auto px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/30 transition-all"
+      >
+        <span class="material-symbols-outlined text-primary" style="font-size:32px">arrow_back</span>
+        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Cerrar menú</span>
+      </button>
+    }
     <!-- Botón colapsar (solo desktop) -->
     <button
       (click)="toggleSidebarCollapse()"
