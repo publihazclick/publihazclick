@@ -56,12 +56,12 @@ interface TradingPackage {
             </div>
             <div class="text-right">
               <p class="text-white font-black text-base">\${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} <span class="text-xs text-slate-500">USD</span></p>
-              <p class="text-emerald-400 font-black text-sm">{{ currentPkg()!.package?.monthly_return_pct }}% <span class="text-[10px] text-slate-500">/ mes</span></p>
+              <p class="text-emerald-400 font-black text-sm">2.5% - 6% <span class="text-[10px] text-slate-500">/ mes</span></p>
             </div>
             <div class="text-right border-l border-white/10 pl-4">
               <p class="text-[10px] text-slate-500">Ganancia est. / mes</p>
               <p class="text-cyan-400 font-black text-base">
-                \${{ estimatedEarnings() | number:'1.0-0' }}
+                \${{ earningsMin() | number:'1.0-0' }} - \${{ earningsMax() | number:'1.0-0' }}
                 <span class="text-[10px] text-slate-500">USD</span>
               </p>
             </div>
@@ -82,11 +82,11 @@ interface TradingPackage {
                     Rentabilidad disponible para retiro
                   </p>
                   <p class="text-white font-black text-2xl">
-                    \${{ estimatedEarnings() | number:'1.2-2' }}
+                    \${{ earningsMin() | number:'1.2-2' }} — \${{ earningsMax() | number:'1.2-2' }}
                     <span class="text-sm font-bold text-slate-400">USD</span>
                   </p>
                   <p class="text-[10px] text-slate-500 mt-0.5">
-                    {{ daysActive() }} días activo · {{ currentPkg()!.package?.monthly_return_pct }}% sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD
+                    {{ daysActive() }} días activo · rentabilidad entre 2.5% y 6% sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD
                   </p>
                 </div>
 
@@ -137,8 +137,8 @@ interface TradingPackage {
                   </p>
                 </div>
                 <div class="text-right flex-shrink-0">
-                  <p class="text-[10px] text-slate-500">Ganancia acumulada</p>
-                  <p class="text-slate-400 font-black text-base">\${{ estimatedEarnings() | number:'1.2-2' }} <span class="text-[10px]">USD</span></p>
+                  <p class="text-[10px] text-slate-500">Ganancia estimada / mes</p>
+                  <p class="text-slate-400 font-black text-base">\${{ earningsMin() | number:'1.0-0' }} - \${{ earningsMax() | number:'1.0-0' }} <span class="text-[10px]">USD</span></p>
                 </div>
               </div>
 
@@ -320,10 +320,17 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
 
   readonly progressPct = computed(() => Math.min(100, (this.daysActive() / 30) * 100));
 
-  readonly estimatedEarnings = computed(() => {
+  // Rango de ganancias: entre 2.5% y 6% del capital
+  readonly earningsMin = computed(() => {
     const pkg = this.currentPkg();
     if (!pkg?.package) return 0;
-    return pkg.package.price_usd * (pkg.package.monthly_return_pct / 100);
+    return pkg.package.price_usd * 0.025;
+  });
+
+  readonly earningsMax = computed(() => {
+    const pkg = this.currentPkg();
+    if (!pkg?.package) return 0;
+    return pkg.package.price_usd * 0.06;
   });
 
   readonly withdrawAvailableDate = computed(() => {
@@ -384,10 +391,11 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) { this.withdrawing.set(false); return; }
 
-    const amount = this.estimatedEarnings();
+    const minAmount = this.earningsMin();
+    const maxAmount = this.earningsMax();
     const { error } = await this.supabase.from('withdrawal_requests').insert({
       user_id: user.id,
-      amount,
+      amount: minAmount,
       method: 'trading_profit',
       details: {
         type: 'trading_profit',
@@ -395,7 +403,9 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
         package_id: pkg.package_id,
         user_trading_package_id: pkg.id,
         price_usd: pkg.package?.price_usd,
-        monthly_return_pct: pkg.package?.monthly_return_pct,
+        earnings_min_usd: minAmount,
+        earnings_max_usd: maxAmount,
+        return_range: '2.5% - 6%',
         activated_at: pkg.activated_at,
         days_active: this.daysActive(),
       },
@@ -407,7 +417,7 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     } else {
       this.withdrawDone.set(true);
       this.withdrawFeedback.set(
-        `✓ Solicitud de retiro por $${amount.toFixed(2)} USD enviada. El administrador la procesará pronto.`
+        `✓ Solicitud de retiro enviada (entre $${minAmount.toFixed(2)} y $${maxAmount.toFixed(2)} USD). El administrador la procesará pronto.`
       );
       this.withdrawFeedbackType.set('ok');
     }
