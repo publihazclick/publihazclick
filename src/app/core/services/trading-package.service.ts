@@ -174,6 +174,19 @@ export class TradingPackageService {
     return !error;
   }
 
+  async getMyPackageById(userPkgId: string): Promise<UserTradingPackage | null> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await this.supabase
+      .from('user_trading_packages')
+      .select('*, package:package_id(id, name, price_usd, monthly_return_pct, display_order)')
+      .eq('id', userPkgId)
+      .eq('user_id', user.id)
+      .single();
+    if (error) return null;
+    return data;
+  }
+
   async getMyActivePackages(): Promise<UserTradingPackage[]> {
     const {
       data: { user },

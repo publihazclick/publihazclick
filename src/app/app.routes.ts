@@ -244,6 +244,10 @@ export const routes: Routes = [
       {
         path: 'trading-operation',
         loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
+      },
+      {
+        path: 'trading-operation/:packageId',
+        loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
       }
     ]
   },
@@ -295,6 +299,10 @@ export const routes: Routes = [
       },
       {
         path: 'trading-operation',
+        loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
+      },
+      {
+        path: 'trading-operation/:packageId',
         loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
       }
     ]

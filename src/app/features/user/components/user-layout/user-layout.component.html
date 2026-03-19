@@ -153,15 +153,15 @@
           </li>
           @for (tp of activeTrading(); track tp.id) {
             <li>
-              <a routerLink="/dashboard/trading-operation"
+              <a [routerLink]="['/dashboard/trading-operation', tp.id]"
                  routerLinkActive="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
                  class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-cyan-500/5 text-slate-400 hover:text-cyan-300 transition-all border border-transparent"
                  [class.justify-center]="sidebarCollapsed()">
                 <span class="material-symbols-outlined text-cyan-400">bar_chart_4_bars</span>
                 @if (!sidebarCollapsed()) {
                   <div class="flex-1 min-w-0">
-                    <span class="block truncate">Tu Operación</span>
-                    <span class="block text-[10px] text-slate-600 truncate">{{ tp.package?.name }}</span>
+                    <span class="block font-bold truncate">{{ tp.package?.name }}</span>
+                    <span class="block text-[10px] text-slate-600 truncate">\${{ tp.package?.price_usd | number:'1.0-0' }} · {{ tp.package?.monthly_return_pct }}%/mes</span>
                   </div>
                   <span class="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse flex-shrink-0"></span>
                 }
