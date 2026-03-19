@@ -258,9 +258,9 @@ interface TradingPackage {
                     href="https://wa.me/573181800264"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="flex items-center justify-center gap-2 w-full py-3 sm:py-2.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] transition-all text-black font-black text-sm shadow-lg shadow-[#25D366]/20">
-                    <span class="material-symbols-outlined" style="font-size:18px">whatsapp</span>
-                    318 180 0264
+                    class="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] transition-all text-black font-black shadow-lg shadow-[#25D366]/20">
+                    <span class="material-symbols-outlined shrink-0" style="font-size:20px">whatsapp</span>
+                    <span class="text-base sm:text-lg tracking-widest">318 180 0264</span>
                   </a>
                 </div>
               </div>
