@@ -7,11 +7,21 @@ export interface PaymentTestimonial {
   image_date: string;
   username: string;
   comment: string;
+  phash: string;
   active: boolean;
   created_at: string;
 }
 
-// Pool de nombres colombianos realistas
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  similarity: number;       // 0–100 (100 = idéntica)
+  matchedImage?: string;    // URL de la imagen que hace match
+  matchedUsername?: string;
+  distance: number;         // bits distintos (0 = igual, 256 = opuesto)
+}
+
+// ─── Pool de nombres y comentarios ──────────────────────────────────────────
+
 const USERNAMES = [
   'María J.', 'Carlos A.', 'Paola R.', 'Andrés M.', 'Laura V.',
   'Diego F.', 'Valentina G.', 'Sebastián H.', 'Natalia C.', 'Camilo T.',
@@ -21,7 +31,6 @@ const USERNAMES = [
   'Gustavo I.', 'Ángela R.', 'Fabián M.', 'Verónica C.', 'William T.',
 ];
 
-// Pool de comentarios auténticos sobre pagos recibidos de Publihazclick
 const COMMENTS = [
   '¡Por fin llegó mi pago! Muchas gracias a Publihazclick, llevo 3 meses recibiendo mis ganancias puntualmente 🙌',
   'Nunca pensé que ver anuncios me iba a generar este ingreso. Acabo de recibir mi retiro sin problemas ✅',
@@ -55,11 +64,138 @@ const COMMENTS = [
   'Llevo un año recibiendo pagos puntuales. La confianza que les tengo es total 💙',
 ];
 
+// ─── Hash Perceptual (aHash 16×16 = 256 bits) ───────────────────────────────
+// Algoritmo: redimensionar a 16×16, escala de grises, media, bit = pixel > media
+// Resultado: string hex de 64 caracteres (256 bits)
+
+const HASH_SIZE = 16; // 16×16 = 256 bits
+
+/**
+ * Calcula el hash perceptual de un File de imagen.
+ * Usa HTML Canvas para procesar la imagen en el navegador.
+ */
+export async function computeImageHash(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = HASH_SIZE;
+        canvas.height = HASH_SIZE;
+        const ctx = canvas.getContext('2d')!;
+
+        // Dibujar imagen escalada a 16×16
+        ctx.drawImage(img, 0, 0, HASH_SIZE, HASH_SIZE);
+        const pixels = ctx.getImageData(0, 0, HASH_SIZE, HASH_SIZE).data;
+
+        // Convertir a escala de grises
+        const grays: number[] = [];
+        for (let i = 0; i < pixels.length; i += 4) {
+          grays.push(0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]);
+        }
+
+        // Media de todos los grises
+        const mean = grays.reduce((a, b) => a + b, 0) / grays.length;
+
+        // Generar bits: 1 si > media, 0 si <=
+        let bits = '';
+        for (const g of grays) {
+          bits += g > mean ? '1' : '0';
+        }
+
+        // Convertir bits a hex (cada 4 bits = 1 nibble hex)
+        let hex = '';
+        for (let i = 0; i < bits.length; i += 4) {
+          hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+        }
+
+        URL.revokeObjectURL(url);
+        resolve(hex);
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No se pudo cargar la imagen'));
+    };
+
+    img.src = url;
+  });
+}
+
+/**
+ * Distancia de Hamming entre dos hashes hex.
+ * Devuelve el número de bits distintos (0 = idénticos, 256 = opuestos).
+ */
+export function hammingDistance(a: string, b: string): number {
+  if (a.length !== b.length) return 256;
+  let dist = 0;
+  for (let i = 0; i < a.length; i++) {
+    const xor = parseInt(a[i], 16) ^ parseInt(b[i], 16);
+    // Contar bits en 1 del nibble (popcount)
+    dist += (xor & 1) + ((xor >> 1) & 1) + ((xor >> 2) & 1) + ((xor >> 3) & 1);
+  }
+  return dist;
+}
+
+// Umbral: ≤ 15 bits distintos de 256 → duplicado (≈6%)
+// Imágenes del mismo captura de pantalla: 0–5 bits
+// Imágenes muy parecidas (mismo app, diferente monto): 10–20 bits
+// Imágenes distintas: > 40 bits
+const DUPLICATE_THRESHOLD = 15;
+
+// ─── Servicio ─────────────────────────────────────────────────────────────
+
 @Injectable({ providedIn: 'root' })
 export class TestimonialsService {
   private readonly client = getSupabaseClient();
 
-  /** Carga testimonials activos ordenados por fecha de imagen DESC (más reciente primero) */
+  // Cache de hashes existentes para no re-consultar en cada imagen
+  private cachedHashes: Array<{ id: string; phash: string; image_url: string; username: string }> = [];
+  private cacheLoaded = false;
+
+  async loadHashCache(): Promise<void> {
+    const { data } = await this.client
+      .from('payment_testimonials')
+      .select('id, phash, image_url, username');
+    this.cachedHashes = (data ?? []).filter(r => r.phash && r.phash.length === 64);
+    this.cacheLoaded = true;
+  }
+
+  /** Compara el hash de una imagen contra todos los existentes en la DB. */
+  async checkDuplicate(file: File): Promise<DuplicateCheckResult> {
+    if (!this.cacheLoaded) await this.loadHashCache();
+
+    const newHash = await computeImageHash(file);
+
+    let minDistance = 256;
+    let bestMatch: typeof this.cachedHashes[0] | null = null;
+
+    for (const existing of this.cachedHashes) {
+      const d = hammingDistance(newHash, existing.phash);
+      if (d < minDistance) {
+        minDistance = d;
+        bestMatch = existing;
+      }
+    }
+
+    const isDuplicate = minDistance <= DUPLICATE_THRESHOLD;
+    const similarity = Math.round(((256 - minDistance) / 256) * 100);
+
+    return {
+      isDuplicate,
+      similarity,
+      distance: minDistance,
+      matchedImage: bestMatch?.image_url,
+      matchedUsername: bestMatch?.username,
+    };
+  }
+
   async getActive(): Promise<PaymentTestimonial[]> {
     const { data, error } = await this.client
       .from('payment_testimonials')
@@ -70,7 +206,6 @@ export class TestimonialsService {
     return data ?? [];
   }
 
-  /** Carga TODOS los testimonials para el panel admin */
   async getAll(): Promise<PaymentTestimonial[]> {
     const { data, error } = await this.client
       .from('payment_testimonials')
@@ -80,9 +215,7 @@ export class TestimonialsService {
     return data ?? [];
   }
 
-  /** Sube una imagen y crea el registro con usuario y comentario auto-generados */
-  async uploadAndCreate(file: File, index: number): Promise<PaymentTestimonial> {
-    // Nombre único para el archivo
+  async uploadAndCreate(file: File, index: number, phash: string): Promise<PaymentTestimonial> {
     const ext = file.name.split('.').pop() ?? 'jpg';
     const path = `proofs/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
 
@@ -96,29 +229,29 @@ export class TestimonialsService {
       .from('testimonials')
       .getPublicUrl(path);
 
-    // Fecha de la imagen: lastModified del archivo (fecha de captura / guardado)
     const imageDate = new Date(file.lastModified).toISOString();
 
-    // Asignar comentario y nombre de forma determinista según el índice global
-    const totalNames = USERNAMES.length;
-    const totalComments = COMMENTS.length;
-    // Usar el índice global + un hash del nombre del archivo para variar
-    const nameIdx  = (index * 7 + file.name.charCodeAt(0)) % totalNames;
-    const commentIdx = (index * 11 + file.name.charCodeAt(file.name.length - 2 || 0)) % totalComments;
+    const nameIdx    = (index * 7  + file.name.charCodeAt(0)) % USERNAMES.length;
+    const commentIdx = (index * 11 + file.name.charCodeAt(file.name.length - 2 || 0)) % COMMENTS.length;
 
     const { data, error } = await this.client
       .from('payment_testimonials')
       .insert({
-        image_url: publicUrl,
+        image_url:  publicUrl,
         image_date: imageDate,
-        username: USERNAMES[nameIdx],
-        comment: COMMENTS[commentIdx],
+        username:   USERNAMES[nameIdx],
+        comment:    COMMENTS[commentIdx],
+        phash,
         active: true,
       })
       .select()
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Actualizar cache local con el nuevo registro
+    this.cachedHashes.push({ id: data.id, phash, image_url: publicUrl, username: data.username });
+
     return data;
   }
 
@@ -136,5 +269,12 @@ export class TestimonialsService {
       .delete()
       .eq('id', id);
     if (error) throw new Error(error.message);
+    this.cachedHashes = this.cachedHashes.filter(h => h.id !== id);
+  }
+
+  /** Invalida el cache para forzar re-carga */
+  invalidateCache(): void {
+    this.cacheLoaded = false;
+    this.cachedHashes = [];
   }
 }

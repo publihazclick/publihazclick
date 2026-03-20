@@ -3,117 +3,202 @@
   <!-- Header -->
   <div>
     <h2 class="text-2xl font-black text-white tracking-tight">Subir Testimonios</h2>
-    <p class="text-sm text-slate-400 mt-1">Sube imágenes de comprobantes de pago. Se ordenarán automáticamente por la fecha del archivo y aparecerán en la sección "Pagos y Testimonios" de la landing.</p>
+    <p class="text-sm text-slate-400 mt-1">
+      Cada imagen es analizada automáticamente antes de subirse. Las imágenes duplicadas o muy similares a las ya existentes son bloqueadas.
+    </p>
   </div>
 
   <!-- Upload Zone -->
   <div class="bg-card-dark border border-white/10 rounded-2xl p-6 space-y-5">
 
-    <!-- Drag & Drop Area -->
+    <!-- Drag & Drop -->
     <div
-      class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer"
+      class="border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer"
       [class.border-primary]="isDragging()"
       [class.bg-primary/5]="isDragging()"
       [class.border-white/20]="!isDragging()"
-      [class.hover:border-primary/40]="!isDragging()"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave()"
       (drop)="onDrop($event)"
       (click)="fileInput.click()"
     >
-      <span class="material-symbols-outlined text-5xl mb-3 block" [class.text-primary]="isDragging()" [class.text-slate-500]="!isDragging()">upload_file</span>
-      <p class="text-sm font-bold text-slate-300 mb-1">Arrastra las imágenes aquí o haz clic para seleccionar</p>
+      <span class="material-symbols-outlined text-5xl mb-3 block"
+        [class.text-primary]="isDragging()"
+        [class.text-slate-500]="!isDragging()">upload_file</span>
+      <p class="text-sm font-bold text-slate-300 mb-1">Arrastra imágenes aquí o haz clic para seleccionar</p>
       <p class="text-xs text-slate-500">JPG, PNG, WEBP — múltiples archivos a la vez</p>
     </div>
     <input #fileInput type="file" accept="image/*" multiple class="hidden" (change)="onFileSelected($event)" />
 
-    <!-- Queue -->
+    <!-- Leyenda de estados -->
     @if (queue.length > 0) {
-      <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">
-            En cola: {{ queue.length }} imagen(es)
-            @if (doneCount > 0) { · <span class="text-emerald-400">{{ doneCount }} listas</span> }
-            @if (uploadingCount > 0) { · <span class="text-primary">{{ uploadingCount }} subiendo...</span> }
-          </p>
-          <button (click)="clearDone()" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors">Limpiar completadas</button>
-        </div>
+      <div class="flex flex-wrap gap-3 text-[11px]">
+        <span class="flex items-center gap-1.5 text-primary"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span> Analizando</span>
+        <span class="flex items-center gap-1.5 text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Aprobada</span>
+        <span class="flex items-center gap-1.5 text-rose-400"><span class="w-2 h-2 rounded-full bg-rose-400"></span> Duplicada — bloqueada</span>
+        <span class="flex items-center gap-1.5 text-amber-400"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Subiendo</span>
+      </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-          @for (item of queue; track item.file.name + $index; let i = $index) {
-            <div class="relative rounded-xl overflow-hidden aspect-square bg-zinc-900 border"
-              [class.border-white/10]="item.status === 'pending'"
-              [class.border-primary/60]="item.status === 'uploading'"
-              [class.border-emerald-500/60]="item.status === 'done'"
-              [class.border-rose-500/60]="item.status === 'error'"
-            >
+      <!-- Resumen -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-white/5 rounded-xl px-4 py-3 text-center">
+          <p class="text-xl font-black text-white">{{ queue.length }}</p>
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Total</p>
+        </div>
+        <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-center">
+          <p class="text-xl font-black text-emerald-400">{{ pendingOk }}</p>
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Aprobadas</p>
+        </div>
+        <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-center">
+          <p class="text-xl font-black text-rose-400">{{ pendingDup }}</p>
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Duplicadas</p>
+        </div>
+        <div class="bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 text-center">
+          <p class="text-xl font-black text-primary">{{ pendingAnalyze }}</p>
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Analizando</p>
+        </div>
+      </div>
+
+      <!-- Grid de imágenes -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+        @for (item of queue; track item.file.name + $index; let i = $index) {
+          <div class="relative rounded-xl overflow-hidden bg-zinc-900 border transition-all"
+            [class.border-primary/40]="item.status === 'analyzing'"
+            [class.border-emerald-500/50]="item.status === 'ok'"
+            [class.border-rose-500/60]="item.status === 'duplicate'"
+            [class.border-amber-400/60]="item.status === 'uploading'"
+            [class.border-emerald-400/80]="item.status === 'done'"
+            [class.border-red-600/60]="item.status === 'error'"
+          >
+            <!-- Preview -->
+            <div class="aspect-square overflow-hidden">
               <img [src]="item.preview" [alt]="item.file.name" class="w-full h-full object-cover" />
-
-              <!-- Status overlay -->
-              @if (item.status === 'uploading') {
-                <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-primary animate-spin text-3xl">progress_activity</span>
-                </div>
-              }
-              @if (item.status === 'done') {
-                <div class="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-emerald-400 text-3xl">check_circle</span>
-                </div>
-              }
-              @if (item.status === 'error') {
-                <div class="absolute inset-0 bg-rose-500/20 flex flex-col items-center justify-center p-1">
-                  <span class="material-symbols-outlined text-rose-400 text-2xl">error</span>
-                  <span class="text-[9px] text-rose-300 text-center mt-0.5">{{ item.errorMsg }}</span>
-                </div>
-              }
-
-              <!-- Remove button (only pending) -->
-              @if (item.status === 'pending') {
-                <button (click)="removeFromQueue(i)"
-                  class="absolute top-1 right-1 w-5 h-5 bg-black/70 hover:bg-rose-500 rounded-full flex items-center justify-center transition-colors">
-                  <span class="material-symbols-outlined text-white" style="font-size:12px">close</span>
-                </button>
-              }
-
-              <!-- File name -->
-              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 px-1.5 pb-1 pt-3">
-                <p class="text-[9px] text-white truncate">{{ item.file.name }}</p>
-              </div>
             </div>
-          }
-        </div>
 
-        <!-- Upload button -->
-        @if (pendingCount > 0) {
+            <!-- Overlay de estado -->
+            @if (item.status === 'analyzing') {
+              <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-primary animate-spin text-3xl">manage_search</span>
+                <span class="text-[10px] text-primary font-bold">Analizando...</span>
+              </div>
+            }
+            @if (item.status === 'uploading') {
+              <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span class="material-symbols-outlined text-amber-400 animate-spin text-3xl">progress_activity</span>
+              </div>
+            }
+            @if (item.status === 'done') {
+              <div class="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-emerald-400 text-4xl">check_circle</span>
+              </div>
+            }
+            @if (item.status === 'error') {
+              <div class="absolute inset-0 bg-red-900/60 flex flex-col items-center justify-center p-2">
+                <span class="material-symbols-outlined text-red-400 text-2xl">error</span>
+                <span class="text-[9px] text-red-300 text-center mt-1">{{ item.errorMsg }}</span>
+              </div>
+            }
+
+            <!-- Badge de estado -->
+            <div class="absolute top-1.5 left-1.5">
+              @if (item.status === 'ok') {
+                <span class="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">✓ OK</span>
+              }
+              @if (item.status === 'duplicate') {
+                <span class="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">✗ DUPLICADA</span>
+              }
+              @if (item.status === 'duplicate' && item.dupCheck) {
+                <span class="block bg-black/70 text-rose-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-0.5">
+                  {{ item.dupCheck.similarity }}% similar
+                </span>
+              }
+            </div>
+
+            <!-- Botón eliminar (pending y duplicadas) -->
+            @if (item.status === 'ok' || item.status === 'duplicate' || item.status === 'error') {
+              <button (click)="removeFromQueue(i)"
+                class="absolute top-1.5 right-1.5 w-5 h-5 bg-black/70 hover:bg-rose-500 rounded-full flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-white" style="font-size:12px">close</span>
+              </button>
+            }
+
+            <!-- Panel de duplicado: muestra con qué imagen coincide -->
+            @if (item.status === 'duplicate' && item.dupCheck?.matchedImage) {
+              <div class="absolute inset-x-0 bottom-0 bg-black/90 p-2 space-y-1.5">
+                <p class="text-[9px] text-rose-300 font-bold leading-tight">
+                  Similar a: {{ item.dupCheck!.matchedUsername }}
+                </p>
+                <div class="flex gap-1.5 items-center">
+                  <img [src]="item.dupCheck!.matchedImage" alt="match"
+                    class="w-10 h-10 rounded object-cover border border-rose-500/50 flex-shrink-0" />
+                  <button (click)="forceApprove(item)"
+                    class="flex-1 text-[9px] font-black bg-white/10 hover:bg-white/20 text-white py-1 rounded transition-all">
+                    Aprobar de todas formas
+                  </button>
+                </div>
+              </div>
+            }
+            @if (item.status === 'duplicate' && item.dupCheck?.matchedUsername === '(otra imagen de esta misma selección)') {
+              <div class="absolute inset-x-0 bottom-0 bg-black/90 p-2">
+                <p class="text-[9px] text-rose-300 font-bold leading-tight">Igual a otra imagen en esta selección</p>
+                <button (click)="forceApprove(item)"
+                  class="mt-1 w-full text-[9px] font-black bg-white/10 hover:bg-white/20 text-white py-1 rounded transition-all">
+                  Aprobar igual
+                </button>
+              </div>
+            }
+
+            <!-- Nombre del archivo -->
+            <div class="px-1.5 pb-1 pt-1 bg-black/60">
+              <p class="text-[9px] text-slate-400 truncate">{{ item.file.name }}</p>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="flex flex-col sm:flex-row gap-3">
+        @if (pendingOk > 0 && pendingAnalyze === 0) {
           <button
             (click)="uploadAll()"
             [disabled]="uploading()"
-            class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-sm py-3 rounded-xl transition-all"
+            class="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-sm py-3 rounded-xl transition-all"
           >
             @if (uploading()) {
               <span class="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-              <span>Subiendo {{ uploadingCount }} de {{ pendingCount + uploadingCount }}...</span>
+              <span>Subiendo {{ uploadingCount }} imagen(es)...</span>
             } @else {
               <span class="material-symbols-outlined text-lg">cloud_upload</span>
-              <span>Subir {{ pendingCount }} imagen(es) a la landing</span>
+              <span>Subir {{ pendingOk }} imagen(es) aprobadas</span>
             }
+          </button>
+        }
+        @if (pendingAnalyze > 0) {
+          <div class="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-slate-400 text-sm py-3 rounded-xl">
+            <span class="material-symbols-outlined animate-spin text-primary text-lg">manage_search</span>
+            <span>Analizando {{ pendingAnalyze }} imagen(es)...</span>
+          </div>
+        }
+        @if (pendingDup > 0) {
+          <button (click)="removeDuplicates()"
+            class="flex items-center justify-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold text-sm py-3 px-5 rounded-xl transition-all">
+            <span class="material-symbols-outlined text-lg">delete_sweep</span>
+            Quitar {{ pendingDup }} duplicada(s)
           </button>
         }
       </div>
     }
   </div>
 
-  <!-- Testimonials List -->
+  <!-- Lista de testimonios en DB -->
   <div class="bg-card-dark border border-white/10 rounded-2xl p-6 space-y-5">
-    <div class="flex items-center justify-between pb-3 border-b border-white/10">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 bg-emerald-500/10 rounded-xl flex items-center justify-center">
-          <span class="material-symbols-outlined text-emerald-400">photo_library</span>
-        </div>
-        <div>
-          <h3 class="font-bold text-white text-sm">Testimonios cargados</h3>
-          <p class="text-xs text-slate-500">{{ testimonials().length }} imágenes · ordenados por fecha del archivo</p>
-        </div>
+    <div class="flex items-center gap-3 pb-3 border-b border-white/10">
+      <div class="w-9 h-9 bg-emerald-500/10 rounded-xl flex items-center justify-center">
+        <span class="material-symbols-outlined text-emerald-400">photo_library</span>
+      </div>
+      <div>
+        <h3 class="font-bold text-white text-sm">Testimonios guardados</h3>
+        <p class="text-xs text-slate-500">{{ testimonials().length }} imágenes · ordenados por fecha del archivo</p>
       </div>
     </div>
 
@@ -135,28 +220,22 @@
             [class.border-white/5]="!t.active"
             [class.opacity-50]="!t.active"
           >
-            <!-- Image -->
             <div class="aspect-square overflow-hidden bg-zinc-900">
               <img [src]="t.image_url" [alt]="t.username" class="w-full h-full object-cover" loading="lazy" />
             </div>
-
-            <!-- Info -->
             <div class="p-3 space-y-1.5">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-black text-white">{{ t.username }}</span>
                 <span class="text-[10px] text-slate-500">{{ formatDate(t.image_date) }}</span>
               </div>
               <p class="text-[11px] text-slate-400 leading-relaxed line-clamp-2">{{ t.comment }}</p>
-
-              <!-- Actions -->
               <div class="flex gap-2 pt-1">
                 <button (click)="toggleActive(t)"
                   class="flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all"
                   [class.bg-emerald-500/10]="t.active"
                   [class.text-emerald-400]="t.active"
                   [class.bg-white/5]="!t.active"
-                  [class.text-slate-400]="!t.active"
-                >
+                  [class.text-slate-400]="!t.active">
                   {{ t.active ? '✓ Visible' : '○ Oculto' }}
                 </button>
                 <button (click)="deleteTestimonial(t.id)"
