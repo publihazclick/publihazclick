@@ -639,7 +639,7 @@ type AgScreen =
                 {{ offeredPrice() === p.toString()
                   ? 'border-orange-500/60 bg-orange-500/15 text-orange-400'
                   : 'border-white/10 bg-white/[0.02] text-slate-400 hover:border-orange-500/30 hover:text-orange-300' }}">
-              ${{ p | number }}
+              ${'$'}{{ p | number }}
             </button>
           }
         </div>
@@ -696,7 +696,7 @@ type AgScreen =
         </div>
         <div class="flex items-center gap-2 text-sm border-t border-white/10 pt-3 mt-1">
           <span class="material-symbols-outlined text-amber-400 shrink-0" style="font-size:16px">payments</span>
-          <span class="text-white font-black">Tu oferta: ${{ activeRideRequest()?.offered_price | number }} COP</span>
+          <span class="text-white font-black">Tu oferta: ${'$'}{{ activeRideRequest()?.offered_price | number }} COP</span>
         </div>
       </div>
 
@@ -741,7 +741,7 @@ type AgScreen =
           </p>
         </div>
         <div class="flex flex-col items-end gap-1 shrink-0">
-          <span class="text-emerald-400 font-black text-xl">${{ activeRideRequest()?.offered_price | number }}</span>
+          <span class="text-emerald-400 font-black text-xl">${'$'}{{ activeRideRequest()?.offered_price | number }}</span>
           <span class="text-[10px] text-slate-500">COP · efectivo</span>
         </div>
       </div>

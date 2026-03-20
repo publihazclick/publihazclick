@@ -43,6 +43,7 @@ export interface AgDriver {
   soat_expiry?: string;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
+  is_available?: boolean;
   created_at: string;
   ag_user?: AgUser;
 }
