@@ -14,9 +14,8 @@ export class AboutComponent {
 
   readonly stats = [
     { value: '12.000+', label: 'Usuarios activos',   icon: 'group',              color: 'cyan'    },
-    { value: '$45M+',   label: 'COP pagados',         icon: 'payments',           color: 'emerald' },
     { value: '500+',    label: 'Anuncios activos',    icon: 'ads_click',          color: 'purple'  },
-    { value: '98%',     label: 'Pagos exitosos',      icon: 'verified',           color: 'amber'   },
+    { value: '100%',    label: 'Pagos exitosos',      icon: 'verified',           color: 'emerald' },
   ];
 
   readonly steps = [
@@ -24,21 +23,21 @@ export class AboutComponent {
       num: '01',
       icon: 'person_add',
       title: 'Regístrate',
-      desc: 'Crea tu cuenta gratis con un enlace de referido de un miembro activo. Solo necesitas tu correo y datos básicos.',
+      desc: 'Crea tu cuenta gratis con un enlace de invitado de un miembro activo. Solo necesitas tu correo y datos básicos.',
       color: 'cyan',
     },
     {
       num: '02',
-      icon: 'ads_click',
-      title: 'Ve anuncios',
-      desc: 'Accede al panel de anuncios y mira videos de marcas colombianas e internacionales. Cada anuncio tiene un contador que valida tu atención.',
+      icon: 'storefront',
+      title: 'Activa tu cuenta',
+      desc: 'Conviértete en anunciante dentro de la plataforma y accede a todas las herramientas para posicionar tu negocio.',
       color: 'purple',
     },
     {
       num: '03',
-      icon: 'account_balance_wallet',
-      title: 'Acumula saldo',
-      desc: 'Cada anuncio visto suma dólares reales a tu billetera. Puedes ver tu saldo crecer en tiempo real dentro del dashboard.',
+      icon: 'upload',
+      title: 'Sube tu anuncio',
+      desc: 'Sube tu anuncio para que sea visto por cientos de personas registradas en la plataforma.',
       color: 'blue',
     },
     {
