@@ -27,7 +27,7 @@ export const environment = {
   },
   redirect: {
     loginSuccess: '/dashboard',
-    logoutSuccess: '/login',
+    logoutSuccess: '/',
     unauthorized: '/login'
   },
   // Número de WhatsApp para contacto directo (sin el +)

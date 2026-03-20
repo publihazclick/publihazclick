@@ -14,7 +14,7 @@ export const environment = {
   },
   redirect: {
     loginSuccess: '/dashboard',
-    logoutSuccess: '/login',
+    logoutSuccess: '/',
     unauthorized: '/login'
   },
   whatsappNumber: '573181800264',
