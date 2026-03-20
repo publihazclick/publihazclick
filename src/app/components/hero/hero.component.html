@@ -1,66 +1,209 @@
-<!-- Main Hero Section -->
-<section class="relative bg-black overflow-hidden text-white px-4 md:px-6">
-  <!-- Background Glow -->
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
+<section class="relative bg-black overflow-hidden text-white">
 
-  <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 text-center relative z-10">
+  <!-- Fondos decorativos -->
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_65%_70%_at_20%_50%,rgba(0,229,255,0.07),transparent)] pointer-events-none"></div>
+  <div class="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(ellipse_55%_75%_at_85%_25%,rgba(0,229,255,0.04),transparent)] pointer-events-none"></div>
+  <div class="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
 
-    <!-- Floating Images -->
-    <div class="relative pt-6 sm:pt-8 lg:min-h-[450px] lg:py-0 flex items-center justify-center">
-      <!-- Product Image 1 -->
-      <div class="absolute top-20 -left-4 md:-left-12 w-24 md:w-36 h-24 md:h-36 animate-float hidden lg:block">
-        <img 
-          alt="Product" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] rotate-12 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2RWuxdN5hyuEP7KMGu55VJWKBi_9LXMmpdJPiCTvKE5h57afgm-EAs_NdT7nn-rxG6c-T5OOdkoJBv1KTYm0Zza-I1bz8qutiJeCeV0Xue93aP_IiPEoOnKH4VzKWvD1VGrlgXbE25kFP_yB8zNBFIkUCbJkjazLUMduxnwHh6aCnxKWrfF6tFjRCuMVIlvqdQBSHNKL5XOnOsYknRnjMiFlUDrKoqnbTXz3DFUOYIuKxSc78ZbZSjX_IpLDhA9XPv75XSdH7X5vk"
-        />
-      </div>
+  <div class="relative z-10 max-w-7xl mx-auto px-4 md:px-6 pt-12 pb-10 md:pt-18 md:pb-12">
+    <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
-      <!-- Apparel Image -->
-      <div class="absolute bottom-6 md:bottom-10 -left-4 md:-left-8 w-28 md:w-44 h-28 md:h-44 animate-float-delayed hidden lg:block">
-        <img 
-          alt="Apparel" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] -rotate-12 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBQ-EUBNbvxxuqMcq-HUfpaSBbmaT9zKyYzNZsrUyI8W7RNEjfeyAlOAlqt2hKJ9nkHbMMy2_H-H6D6541ImlrN0bP02MVbI4AGuUYy-woI4Ay6IXlYTBjAJXVpJtlgXmN1AGNMW08gxoFNUOLlrxvoeSycyhJm4to3etXrFCZJmD1XbJ5Du-HWAWneWg3E150e6q-D23Hbr-mISVnOzV3p4my4MWsSs3j-cQBi1tZzQIFm2iwSynatkSteSBCRBfmzE00pc26XY0A"
-        />
-      </div>
+      <!-- ── COLUMNA IZQUIERDA: copy ── -->
+      <div>
 
-      <!-- Tech Image -->
-      <div class="absolute bottom-10 md:top-20 -right-4 md:-right-12 w-28 md:w-48 h-28 md:h-48 animate-float-delayed hidden lg:block">
-        <img 
-          alt="Tech" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] rotate-6 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkq_bmAVXZ2gGuaOOd_GLugkoAnEmWkclabP1a6Cp4EZkmUkqQwv14fohJPJbRbrcpzzEIngSaZ85qtAJpmiYt_amuZlQCCNOJNx94oOcNu_uA_Sbj-E6AkuVGkH_3A4meYzDCUj_VxOvSIVIStp8UDT3LhelzeHVOiF_8mxH7shfzlXPyrpUOiWArMvWk5-u2gIjDM5T5oVKHm7hxozGk494NAc3xJd9PcVYMwDxlP64hyCEEPr7Xcso7Eghmt2fHLAmce5ZhkFkn"
-        />
-      </div>
+        <!-- Badge de confianza -->
+        <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-1.5 mb-6">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
+          <span class="text-emerald-400 text-xs font-bold tracking-wide">Plataforma verificada · Pagos en 24h</span>
+        </div>
 
-      <!-- Package Image -->
-      <div class="absolute bottom-1 -right-4 md:-right-8 w-28 md:w-44 h-28 md:h-44 animate-float hidden lg:block">
-        <img 
-          alt="Package" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] -rotate-6 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoNAZCWCjyBSJ2WBiR2Mcqe3sidstlACmycVRBJQhlhMnnWClyGrHKqvwhVr5IPyTlzwYWOiVTn6hb8BGBOoO5ajURDDPUl6ZSHBsqavZgAwrZ-jR59GwyIzN-yaI_5wM4rAKRubmUP8PJQWLpf4-lk93n664_qmN2lQoa-RrOh5Df8dPHXNvmDKQe5VctMuMUM7jG5Aj-nIf5o2gcNspl2jMDuevqJfVUf0mN6RR0P5Net3MgEVJ2m0uoo4jp7GY2p1uBKm_AbYe5"
-        />
-      </div>
-      
-      <!-- Main Text -->
-      <div class="text-center z-10">
-        <h2 class="text-4xl sm:text-5xl md:text-5xl lg:text-8xl xl:text-8xl font-black tracking-[-0.05em] text-primary leading-none mb-2 md:mb-4 uppercase font-display text-glow-cyan">
-          Gana Dinero
-        </h2>
-        <p class="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-black mb-4 md:mb-8 text-white uppercase tracking-tighter">
-          Viendo Anuncios
+        <!-- Titular principal -->
+        <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-none mb-5">
+          <span class="text-white">Gana dinero</span><br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">viendo anuncios</span>
+        </h1>
+
+        <!-- Descripción -->
+        <p class="text-base md:text-lg text-slate-400 mb-8 max-w-lg leading-relaxed">
+          Miles de colombianos reciben pagos semanales por ver anuncios de marcas reales.
+          Simple, transparente y sin inversión mínima para empezar.
         </p>
-        <div>
-          <p class="text-sm sm:text-base md:text-2xl font-black mb-0 md:mb-4 text-white tracking-tight inline-block px-3 sm:px-4 md:px-8 py-1 md:py-2 border-y-2 border-primary/30 max-w-4xl">
-            El mejor sistema que existe para posicionar sitios en internet. Las empresas pagan, tú ganas, todos crecemos.
-          </p>
+
+        <!-- Beneficios clave -->
+        <ul class="space-y-3 mb-10">
+          <li class="flex items-center gap-3 text-sm text-slate-300">
+            <span class="w-5 h-5 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-cyan-400" style="font-size:12px">check</span>
+            </span>
+            Regístrate una vez y comienza a ganar de inmediato
+          </li>
+          <li class="flex items-center gap-3 text-sm text-slate-300">
+            <span class="w-5 h-5 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-cyan-400" style="font-size:12px">check</span>
+            </span>
+            Anuncios de marcas colombianas e internacionales reales
+          </li>
+          <li class="flex items-center gap-3 text-sm text-slate-300">
+            <span class="w-5 h-5 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-cyan-400" style="font-size:12px">check</span>
+            </span>
+            Multiplica ganancias invitando referidos a tu red
+          </li>
+          <li class="flex items-center gap-3 text-sm text-slate-300">
+            <span class="w-5 h-5 rounded-full bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-cyan-400" style="font-size:12px">check</span>
+            </span>
+            Retira tus ganancias cuando quieras, sin restricciones
+          </li>
+        </ul>
+
+        <!-- CTAs -->
+        <div class="flex flex-wrap gap-3">
+          <a routerLink="/register"
+             class="inline-flex items-center gap-2 bg-cyan-400 hover:bg-cyan-300 text-black font-black text-sm py-3.5 px-7 rounded-2xl transition-all hover:-translate-y-0.5 shadow-lg shadow-cyan-500/25">
+            <span class="material-symbols-outlined text-lg">rocket_launch</span>
+            Comenzar ahora — es gratis
+          </a>
+          <a routerLink="/login"
+             class="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-sm py-3.5 px-7 rounded-2xl transition-all hover:-translate-y-0.5">
+            <span class="material-symbols-outlined text-lg">login</span>
+            Iniciar sesión
+          </a>
+        </div>
+
+      </div>
+
+      <!-- ── COLUMNA DERECHA: dashboard card ── -->
+      <div class="flex justify-center lg:justify-end">
+
+        <!-- Resplandor detrás de la card -->
+        <div class="absolute w-72 h-72 bg-cyan-500/8 blur-3xl rounded-full pointer-events-none"></div>
+
+        <div class="relative w-full max-w-sm bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl shadow-black/60">
+
+          <!-- Header de la card -->
+          <div class="px-5 pt-4 pb-3.5 border-b border-white/5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <img src="/logo.webp" alt="Publihazclick" class="h-6 w-auto">
+              <span class="text-slate-500 text-xs">Mi panel</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-emerald-400 text-[10px] font-bold">En línea</span>
+            </div>
+          </div>
+
+          <!-- Balance -->
+          <div class="px-5 py-4 border-b border-white/5">
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Balance disponible</p>
+            <div class="flex items-end gap-2">
+              <span class="text-3xl font-black text-white">$47.80</span>
+              <span class="text-emerald-400 text-sm font-bold mb-0.5">USD</span>
+            </div>
+            <div class="flex items-center gap-1.5 mt-1.5">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:13px">trending_up</span>
+              <span class="text-emerald-400 text-xs font-bold">+$3.20 hoy</span>
+              <span class="text-slate-600 text-[10px]">· 8 anuncios vistos</span>
+            </div>
+          </div>
+
+          <!-- Tipos de anuncio -->
+          <div class="px-5 py-4 space-y-2">
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-2.5">Tipos de anuncio disponibles</p>
+
+            <!-- Mega -->
+            <div class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-purple-500/8 border border-purple-500/15">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-purple-400" style="font-size:14px">star</span>
+                </span>
+                <div>
+                  <p class="text-white text-xs font-black">Mega Anuncio</p>
+                  <p class="text-slate-500 text-[10px]">60 seg · mayor recompensa</p>
+                </div>
+              </div>
+              <span class="text-purple-400 font-black text-sm">+$2.00</span>
+            </div>
+
+            <!-- 600 -->
+            <div class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-cyan-500/8 border border-cyan-500/15">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-cyan-400" style="font-size:14px">ads_click</span>
+                </span>
+                <div>
+                  <p class="text-white text-xs font-black">Anuncio 600</p>
+                  <p class="text-slate-500 text-[10px]">60 seg</p>
+                </div>
+              </div>
+              <span class="text-cyan-400 font-black text-sm">+$0.60</span>
+            </div>
+
+            <!-- 400 -->
+            <div class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-blue-500/8 border border-blue-500/15">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-blue-400" style="font-size:14px">play_circle</span>
+                </span>
+                <div>
+                  <p class="text-white text-xs font-black">Anuncio 400</p>
+                  <p class="text-slate-500 text-[10px]">60 seg</p>
+                </div>
+              </div>
+              <span class="text-blue-400 font-black text-sm">+$0.40</span>
+            </div>
+
+            <!-- Mini -->
+            <div class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-emerald-500/8 border border-emerald-500/15">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-emerald-400" style="font-size:14px">bolt</span>
+                </span>
+                <div>
+                  <p class="text-white text-xs font-black">Mini Anuncio</p>
+                  <p class="text-slate-500 text-[10px]">30 seg · rápido</p>
+                </div>
+              </div>
+              <span class="text-emerald-400 font-black text-sm">+$0.08</span>
+            </div>
+          </div>
+
+          <!-- CTA dentro de la card -->
+          <div class="px-5 pb-5">
+            <a routerLink="/register"
+               class="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-sm py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/20">
+              <span class="material-symbols-outlined text-base">account_balance_wallet</span>
+              Quiero ganar esto
+            </a>
+          </div>
+
         </div>
       </div>
     </div>
+
+    <!-- ── Stats ── -->
+    <div class="mt-10 md:mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-8">
+      <div class="text-center">
+        <p class="text-2xl md:text-3xl font-black text-white">12K+</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Usuarios activos</p>
+      </div>
+      <div class="text-center">
+        <p class="text-2xl md:text-3xl font-black text-cyan-400">$45M+</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">COP pagados</p>
+      </div>
+      <div class="text-center">
+        <p class="text-2xl md:text-3xl font-black text-white">500+</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Anuncios activos</p>
+      </div>
+      <div class="text-center">
+        <p class="text-2xl md:text-3xl font-black text-emerald-400">98%</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Pagos exitosos</p>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Ticker de empresas colombianas -->
+  <!-- ── Ticker de empresas colombianas ── -->
   <div class="overflow-hidden border-y border-white/5 bg-zinc-950/60 backdrop-blur-sm py-2.5">
     <div class="animate-scroll flex gap-3 w-max">
       @for (c of tickerCompanies; track c.name) {
@@ -87,4 +230,5 @@
       }
     </div>
   </div>
+
 </section>
