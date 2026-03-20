@@ -265,7 +265,7 @@ interface TradingPackage {
               </div>
               <div>
                 <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Política de Capital</p>
-                <h3 class="text-white font-black text-base">Retiro de Capital</h3>
+                <h3 class="text-white font-black text-base">Retiro de Valor de tu compra de servicio</h3>
               </div>
             </div>
             <div class="bg-amber-500/8 border border-amber-500/20 rounded-xl px-4 py-4">
