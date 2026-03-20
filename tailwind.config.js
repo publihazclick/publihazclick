@@ -21,7 +21,7 @@ module.exports = {
       animation: {
         'float': 'float 6s ease-in-out infinite',
         'float-delayed': 'float 6s ease-in-out 3s infinite',
-        'scroll': 'scroll 30s linear infinite',
+        'scroll': 'scroll 90s linear infinite',
         'glow': 'glow 2s ease-in-out infinite alternate',
       },
       keyframes: {
