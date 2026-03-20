@@ -115,6 +115,10 @@ export const routes: Routes = [
       {
         path: 'video-landing',
         loadComponent: () => import('./features/admin/components/video-landing/video-landing.component').then(m => m.AdminVideoLandingComponent)
+      },
+      {
+        path: 'social-links',
+        loadComponent: () => import('./features/admin/components/social-links/social-links.component').then(m => m.AdminSocialLinksComponent)
       }
     ]
   },

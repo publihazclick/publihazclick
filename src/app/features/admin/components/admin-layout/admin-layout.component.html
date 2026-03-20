@@ -132,6 +132,14 @@
             </a>
           </li>
           <li>
+            <a routerLink="/admin/social-links" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">share</span>
+              @if (!sidebarCollapsed()) {
+                <span>Redes Sociales</span>
+              }
+            </a>
+          </li>
+          <li>
             <a routerLink="/admin/withdrawals" routerLinkActive="bg-primary/10 text-primary border border-primary/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
               <span class="material-symbols-outlined">payments</span>
               @if (!sidebarCollapsed()) {

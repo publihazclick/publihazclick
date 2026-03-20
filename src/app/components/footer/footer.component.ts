@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { environment } from '../../../environments/environment';
+import { SocialLinksService } from '../../core/services/social-links.service';
 
 @Component({
   selector: 'app-footer',
@@ -12,5 +12,5 @@ import { environment } from '../../../environments/environment';
 })
 export class FooterComponent {
   protected readonly currentYear = new Date().getFullYear();
-  protected readonly whatsappLink = `https://wa.me/${environment.whatsappNumber}?text=${encodeURIComponent('¡Hola! Quiero más información sobre Publihazclick.')}`;
+  protected readonly social = inject(SocialLinksService);
 }
