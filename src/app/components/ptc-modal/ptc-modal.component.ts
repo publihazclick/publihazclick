@@ -77,7 +77,19 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
           }
 
           <!-- Video / Imagen -->
-          @if (isFacebookReel()) {
+          @if (videoError()) {
+            <!-- Fallback: video con error — se muestra imagen o placeholder, timer sigue corriendo -->
+            <div class="relative w-full bg-zinc-950 shrink-0 flex flex-col items-center justify-center gap-3 py-8" style="min-height:180px">
+              @if (ad().imageUrl) {
+                <img [src]="ad().imageUrl" [alt]="ad().title" class="w-full h-full object-cover absolute inset-0 opacity-20">
+              }
+              <div class="relative z-10 text-center px-6">
+                <span class="material-symbols-outlined text-slate-600 text-5xl block mb-2">videocam_off</span>
+                <p class="text-slate-400 text-sm font-bold">Video temporalmente no disponible</p>
+                <p class="text-slate-600 text-xs mt-1">El contador sigue activo — recibirás tu recompensa normalmente</p>
+              </div>
+            </div>
+          } @else if (isFacebookReel()) {
             <!-- Facebook Reel (vertical) -->
             <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
               <div class="relative h-full" style="aspect-ratio:9/16">
@@ -106,7 +118,7 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
               ></iframe>
             </div>
           } @else if (isTikTokVideo()) {
-            <!-- TikTok (vertical, sin autoplay) -->
+            <!-- TikTok (vertical) -->
             <div class="w-full bg-black shrink-0 flex justify-center" style="height:52vh">
               <div class="relative h-full" style="aspect-ratio:9/16">
                 <iframe
@@ -131,7 +143,6 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
                   allowfullscreen
                   class="absolute inset-0 w-full h-full"
                 ></iframe>
-                <!-- Overlay: bloquea controles -->
                 <div class="absolute inset-0 z-10" style="cursor:default"></div>
               </div>
             </div>
@@ -146,7 +157,6 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
                   allowfullscreen
                   class="absolute inset-0 w-full h-full"
                 ></iframe>
-                <!-- Overlay: bloquea controles -->
                 <div class="absolute inset-0 z-10" style="cursor:default"></div>
               } @else if (ad().imageUrl) {
                 <img [src]="ad().imageUrl" [alt]="ad().title" class="w-full h-full object-cover">
@@ -155,6 +165,15 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
                   <span class="material-symbols-outlined text-slate-800 text-7xl">campaign</span>
                 </div>
               }
+            </div>
+          }
+
+          <!-- Aviso: el contador corre aunque el video tenga problemas -->
+          @if (!videoError() && ad().videoUrl) {
+            <div class="px-4 py-1.5 bg-zinc-900 shrink-0 border-t border-white/[0.04]">
+              <p class="text-slate-600 text-[10px] text-center">
+                Si el video no carga, el contador sigue activo y recibirás tu recompensa igualmente
+              </p>
             </div>
           }
 
@@ -207,13 +226,6 @@ export type RewardStatus = 'idle' | 'crediting' | 'credited' | 'failed';
                 <button (click)="onClose()" class="mt-3 px-6 py-2 bg-white/5 hover:bg-white/10 text-slate-400 font-bold rounded-xl text-xs uppercase tracking-wider">
                   Cerrar
                 </button>
-              </div>
-            } @else if (waitingForFbPlay() && !captchaCompleted()) {
-              <!-- Esperando play en video (Facebook / TikTok) -->
-              <div class="bg-blue-500/5 border border-blue-500/15 rounded-xl p-4 text-center">
-                <span class="material-symbols-outlined text-blue-400 text-3xl mb-2 block">play_circle</span>
-                <p class="text-blue-300 font-black text-sm">Reproduce el video para iniciar</p>
-                <p class="text-slate-500 text-xs mt-1">El contador comenzará cuando se reproduzca el video</p>
               </div>
             } @else if (!captchaCompleted()) {
               <!-- Contador circular -->
@@ -394,12 +406,15 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     { id: 'heart', name: 'Corazón', color: '#F43F5E' },
   ];
 
+  protected videoError = signal(false);
+
   private countdownInterval: any;
   private fbFocusInterval: any;
   private countdownStartTime: number = 0;
   private cachedVideoUrl: SafeResourceUrl | null = null;
   private cachedVideoUrlSource: string | null = null;
   private visibilityHandler = this.onVisibilityChange.bind(this);
+  private youtubeMessageHandler: ((e: MessageEvent) => void) | null = null;
 
   protected isFacebookVideo = computed(() => {
     const url = this.ad().videoUrl;
@@ -431,13 +446,27 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
     document.addEventListener('visibilitychange', this.visibilityHandler);
 
+    // El contador SIEMPRE arranca inmediatamente, sin importar el estado del video.
+    // Así el usuario recibe su recompensa aunque el video tenga problemas.
+    this.startCountdown();
+
+    // Para Facebook/TikTok: seguimos detectando el play, pero ya no bloquea el contador.
     if (this.requiresManualPlay()) {
-      // Facebook / TikTok no hacen autoplay: esperar a que el usuario dé play
-      this.waitingForFbPlay.set(true);
       this.startFbFocusDetection();
-    } else {
-      // YouTube: autoplay, contador inicia de inmediato
-      this.startCountdown();
+    }
+
+    // Escuchar errores del YouTube IFrame API (video no disponible, geo-bloqueado, etc.)
+    this.youtubeMessageHandler = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        // YouTube envía onError con codes: 2=ID inválido, 5=HTML5, 100=no encontrado, 101/150=no embeds
+        if (data?.event === 'onError' || data?.info === 100 || data?.info === 101 || data?.info === 150) {
+          this.videoError.set(true);
+        }
+      } catch { /* ignora mensajes no JSON */ }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('message', this.youtubeMessageHandler);
     }
   }
 
@@ -445,6 +474,9 @@ export class PtcModalComponent implements OnInit, OnDestroy {
     this.stopCountdown();
     this.stopFbFocusDetection();
     document.removeEventListener('visibilitychange', this.visibilityHandler);
+    if (this.youtubeMessageHandler && typeof window !== 'undefined') {
+      window.removeEventListener('message', this.youtubeMessageHandler);
+    }
   }
 
   // ── Visibilidad de pestaña ──────────────────────────────────────────────
@@ -613,15 +645,15 @@ export class PtcModalComponent implements OnInit, OnDestroy {
       // YouTube Shorts (vertical): sin controles, autoplay, con sonido, loop
       const match = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
       if (!match) return null;
-      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&mute=0&controls=0&rel=0&loop=1&playlist=${match[1]}&modestbranding=1&fs=0&iv_load_policy=3&disablekb=1`;
+      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&mute=0&controls=0&rel=0&loop=1&playlist=${match[1]}&modestbranding=1&fs=0&iv_load_policy=3&disablekb=1&enablejsapi=1`;
     } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
       // YouTube regular: sin controles, autoplay, con sonido
       const match = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
       if (!match) return null;
-      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&fs=0&iv_load_policy=3&disablekb=1`;
+      embedUrl = `https://www.youtube.com/embed/${match[1]}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&fs=0&iv_load_policy=3&disablekb=1&enablejsapi=1`;
     } else if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
       // ID bare de YouTube (legacy)
-      embedUrl = `https://www.youtube.com/embed/${url}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&fs=0&disablekb=1`;
+      embedUrl = `https://www.youtube.com/embed/${url}?autoplay=1&mute=0&controls=0&rel=0&modestbranding=1&fs=0&disablekb=1&enablejsapi=1`;
     } else {
       return null;
     }
