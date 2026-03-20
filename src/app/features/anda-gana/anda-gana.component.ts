@@ -493,44 +493,32 @@ type AgScreen =
   }
 
   <!-- ═══════════════════ PASSENGER: PICK ORIGIN ═══════════════════ -->
+  <!-- ═══════════════════ PASSENGER: PICK ORIGIN ═══════════════════ -->
   @if (screen() === 'passenger-pick-origin') {
-    <div class="w-full max-w-2xl flex flex-col gap-4">
-      <!-- Steps -->
-      <div class="flex items-center gap-2 justify-center">
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/20 border border-orange-500/40">
-          <span class="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-black font-black text-[10px]">1</span>
-          <span class="text-orange-400 font-black text-xs">Origen</span>
-        </div>
-        <div class="flex-1 h-px bg-white/10 max-w-8"></div>
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 opacity-40">
-          <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-white font-black text-[10px]">2</span>
-          <span class="text-slate-400 font-black text-xs">Destino</span>
-        </div>
-        <div class="flex-1 h-px bg-white/10 max-w-8"></div>
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 opacity-40">
-          <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-white font-black text-[10px]">3</span>
-          <span class="text-slate-400 font-black text-xs">Precio</span>
-        </div>
-      </div>
+    <div class="fixed inset-0 z-50 bg-black flex flex-col" style="padding:0;margin:0;max-width:none;width:100vw;left:0;right:0;top:0;bottom:0">
+      <!-- Map fills everything -->
+      <div id="ag-map-origin" class="absolute inset-0" style="z-index:1"></div>
 
-      <div class="text-center">
-        <h2 class="text-xl font-black text-white">¿Desde dónde sales?</h2>
-        <p class="text-slate-500 text-sm mt-1">Toca el mapa o arrastra el pin para elegir el origen</p>
-      </div>
-
-      <!-- Address search autocomplete -->
-      <div class="relative">
-        <div class="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 focus-within:border-orange-500/40 transition-all">
-          <span class="material-symbols-outlined text-slate-500" style="font-size:18px">search</span>
-          <input type="text" [value]="placeSearchQuery()" (input)="onPlaceSearch($event, 'origin')"
-            placeholder="Buscar dirección de origen..."
-            class="flex-1 bg-transparent text-white text-sm placeholder:text-slate-600 focus:outline-none" />
-          @if (placesLoading()) {
-            <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:16px">autorenew</span>
-          }
+      <!-- Top overlay: back + search -->
+      <div class="absolute top-0 left-0 right-0 z-10 px-4 pt-12 pb-3 flex flex-col gap-3"
+           style="background:linear-gradient(to bottom,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0) 100%)">
+        <div class="flex items-center gap-3">
+          <button (click)="screen.set('passenger-home')" class="w-10 h-10 rounded-full bg-black/70 border border-white/15 flex items-center justify-center backdrop-blur-xl shrink-0">
+            <span class="material-symbols-outlined text-white" style="font-size:20px">arrow_back</span>
+          </button>
+          <div class="flex-1 flex items-center gap-2 bg-black/70 border border-white/15 rounded-2xl px-4 py-2.5 backdrop-blur-xl">
+            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">search</span>
+            <input type="text" [value]="placeSearchQuery()" (input)="onPlaceSearch($event, 'origin')"
+              placeholder="Buscar dirección de origen..."
+              class="flex-1 bg-transparent text-white text-sm placeholder:text-slate-500 focus:outline-none" />
+            @if (placesLoading()) {
+              <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:16px">autorenew</span>
+            }
+          </div>
         </div>
+        <!-- Autocomplete dropdown -->
         @if (placeSuggestions().length > 0) {
-          <div class="absolute top-full left-0 right-0 z-20 mt-1 bg-[#111111] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+          <div class="bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl mx-1">
             @for (s of placeSuggestions(); track s.id) {
               <button (click)="selectPlace(s, 'origin')"
                 class="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-all text-left border-b border-white/[0.05] last:border-0">
@@ -545,74 +533,84 @@ type AgScreen =
         }
       </div>
 
-      <div id="ag-map-origin" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:280px"></div>
-
-      @if (mapPickingAddress()) {
-        <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-          <span class="material-symbols-outlined text-emerald-400 animate-pulse shrink-0" style="font-size:16px">location_on</span>
-          <span class="text-slate-300 text-sm truncate">{{ mapPickingAddress() }}</span>
+      <!-- Center pin (stationary) -->
+      <div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none" style="padding-bottom:160px">
+        <div class="flex flex-col items-center">
+          <svg width="42" height="56" viewBox="0 0 42 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 4px 12px rgba(249,115,22,0.5))">
+            <path d="M21 1C10.51 1 2 9.51 2 20c0 15.75 19 35 19 35s19-19.25 19-35C40 9.51 31.49 1 21 1z" fill="#f97316" stroke="white" stroke-width="2"/>
+            <circle cx="21" cy="20" r="8" fill="white" opacity="0.95"/>
+          </svg>
+          <div style="width:10px;height:5px;background:rgba(0,0,0,0.35);border-radius:50%;margin-top:-2px"></div>
         </div>
-      }
+      </div>
 
-      <button (click)="useCurrentLocationOrigin()" [disabled]="mapLoading()"
-        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-cyan-500/30 bg-cyan-500/5 text-cyan-400 font-black text-sm hover:bg-cyan-500/10 transition-all disabled:opacity-40">
-        <span class="material-symbols-outlined" style="font-size:16px">my_location</span>
-        Usar mi ubicación actual
-      </button>
+      <!-- Bottom card -->
+      <div class="absolute bottom-0 left-0 right-0 z-10 bg-black/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl px-5 pt-5 pb-8">
+        <!-- Drag handle -->
+        <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4"></div>
 
-      <div class="flex gap-3">
-        <button (click)="screen.set('passenger-home')"
-          class="flex-1 py-3 rounded-xl border border-white/10 text-slate-400 font-black text-sm hover:bg-white/5 transition-all">
-          ← Volver
-        </button>
+        <div class="flex items-start gap-3 mb-4">
+          <div class="w-3 h-3 rounded-full bg-orange-500 mt-1 shrink-0 ring-2 ring-orange-500/30"></div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Punto de Origen</p>
+            @if (mapPickingAddress()) {
+              <p class="text-white font-bold text-sm leading-snug">{{ mapPickingAddress() }}</p>
+            } @else {
+              <div class="flex flex-col gap-1.5">
+                <div class="h-3.5 bg-white/10 rounded-lg animate-pulse w-4/5"></div>
+                <div class="h-3 bg-white/5 rounded-lg animate-pulse w-3/5"></div>
+              </div>
+            }
+          </div>
+        </div>
+
         <button (click)="confirmOrigin()" [disabled]="!rideOrigin()"
-          class="flex-[2] py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all
-            bg-gradient-to-r from-orange-500 to-amber-500 text-black hover:from-orange-400 hover:to-amber-400 disabled:opacity-40">
-          Confirmar origen →
+          class="w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider transition-all
+            bg-gradient-to-r from-orange-500 to-amber-500 text-black hover:from-orange-400 hover:to-amber-400 disabled:opacity-40
+            shadow-lg shadow-orange-500/25">
+          <span class="flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:20px">trip_origin</span>
+            Confirmar Origen
+          </span>
+        </button>
+
+        <button (click)="useCurrentLocationOrigin()" [disabled]="mapLoading()"
+          class="w-full mt-3 flex items-center justify-center gap-2 py-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/5 text-cyan-400 font-black text-sm hover:bg-cyan-500/10 transition-all disabled:opacity-40">
+          @if (mapLoading()) {
+            <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Detectando...
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:16px">my_location</span> Usar mi ubicación GPS
+          }
         </button>
       </div>
     </div>
   }
 
-  <!-- ═══════════════════ PASSENGER: PICK DESTINATION ═══════════════════ -->
+  <!-- ═══════════════════ PASSENGER: PICK DEST ═══════════════════ -->
   @if (screen() === 'passenger-pick-dest') {
-    <div class="w-full max-w-2xl flex flex-col gap-4">
-      <!-- Steps -->
-      <div class="flex items-center gap-2 justify-center">
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40">
-          <span class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black text-[10px]">✓</span>
-          <span class="text-emerald-400 font-black text-xs">Origen</span>
-        </div>
-        <div class="flex-1 h-px bg-white/10 max-w-8"></div>
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/20 border border-orange-500/40">
-          <span class="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-black font-black text-[10px]">2</span>
-          <span class="text-orange-400 font-black text-xs">Destino</span>
-        </div>
-        <div class="flex-1 h-px bg-white/10 max-w-8"></div>
-        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 opacity-40">
-          <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-white font-black text-[10px]">3</span>
-          <span class="text-slate-400 font-black text-xs">Precio</span>
-        </div>
-      </div>
+    <div class="fixed inset-0 z-50 bg-black flex flex-col" style="padding:0;margin:0;max-width:none;width:100vw;left:0;right:0;top:0;bottom:0">
+      <!-- Map -->
+      <div id="ag-map-dest" class="absolute inset-0" style="z-index:1"></div>
 
-      <div class="text-center">
-        <h2 class="text-xl font-black text-white">¿A dónde vas?</h2>
-        <p class="text-slate-500 text-sm mt-1">Toca el mapa para marcar tu destino</p>
-      </div>
-
-      <!-- Address search autocomplete -->
-      <div class="relative">
-        <div class="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 focus-within:border-orange-500/40 transition-all">
-          <span class="material-symbols-outlined text-slate-500" style="font-size:18px">search</span>
-          <input type="text" [value]="placeSearchQuery()" (input)="onPlaceSearch($event, 'dest')"
-            placeholder="Buscar dirección de destino..."
-            class="flex-1 bg-transparent text-white text-sm placeholder:text-slate-600 focus:outline-none" />
-          @if (placesLoading()) {
-            <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:16px">autorenew</span>
-          }
+      <!-- Top overlay -->
+      <div class="absolute top-0 left-0 right-0 z-10 px-4 pt-12 pb-3 flex flex-col gap-3"
+           style="background:linear-gradient(to bottom,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0) 100%)">
+        <div class="flex items-center gap-3">
+          <button (click)="goBackToOrigin()" class="w-10 h-10 rounded-full bg-black/70 border border-white/15 flex items-center justify-center backdrop-blur-xl shrink-0">
+            <span class="material-symbols-outlined text-white" style="font-size:20px">arrow_back</span>
+          </button>
+          <div class="flex-1 flex items-center gap-2 bg-black/70 border border-white/15 rounded-2xl px-4 py-2.5 backdrop-blur-xl">
+            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">search</span>
+            <input type="text" [value]="placeSearchQuery()" (input)="onPlaceSearch($event, 'dest')"
+              placeholder="¿A dónde vas?"
+              class="flex-1 bg-transparent text-white text-sm placeholder:text-slate-500 focus:outline-none" />
+            @if (placesLoading()) {
+              <span class="material-symbols-outlined text-rose-400 animate-spin" style="font-size:16px">autorenew</span>
+            }
+          </div>
         </div>
         @if (placeSuggestions().length > 0) {
-          <div class="absolute top-full left-0 right-0 z-20 mt-1 bg-[#111111] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+          <div class="bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl mx-1">
             @for (s of placeSuggestions(); track s.id) {
               <button (click)="selectPlace(s, 'dest')"
                 class="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-all text-left border-b border-white/[0.05] last:border-0">
@@ -627,24 +625,49 @@ type AgScreen =
         }
       </div>
 
-      <div id="ag-map-dest" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:280px"></div>
-
-      @if (mapPickingAddress()) {
-        <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-          <span class="material-symbols-outlined text-rose-400 shrink-0" style="font-size:16px">location_on</span>
-          <span class="text-slate-300 text-sm truncate">{{ mapPickingAddress() }}</span>
+      <!-- Center pin (rose/red for destination) -->
+      <div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none" style="padding-bottom:160px">
+        <div class="flex flex-col items-center">
+          <svg width="42" height="56" viewBox="0 0 42 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 4px 12px rgba(239,68,68,0.5))">
+            <path d="M21 1C10.51 1 2 9.51 2 20c0 15.75 19 35 19 35s19-19.25 19-35C40 9.51 31.49 1 21 1z" fill="#ef4444" stroke="white" stroke-width="2"/>
+            <circle cx="21" cy="20" r="8" fill="white" opacity="0.95"/>
+          </svg>
+          <div style="width:10px;height:5px;background:rgba(0,0,0,0.35);border-radius:50%;margin-top:-2px"></div>
         </div>
-      }
+      </div>
 
-      <div class="flex gap-3">
-        <button (click)="goBackToOrigin()"
-          class="flex-1 py-3 rounded-xl border border-white/10 text-slate-400 font-black text-sm hover:bg-white/5 transition-all">
-          ← Volver
-        </button>
+      <!-- Bottom card -->
+      <div class="absolute bottom-0 left-0 right-0 z-10 bg-black/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl px-5 pt-5 pb-8">
+        <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4"></div>
+
+        <!-- Route mini-summary -->
+        @if (rideOrigin()) {
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 mb-4">
+            <div class="flex flex-col items-center gap-1">
+              <div class="w-2 h-2 rounded-full bg-orange-500"></div>
+              <div class="w-px h-6 bg-white/15"></div>
+              <div class="w-2 h-2 rounded-full bg-rose-500"></div>
+            </div>
+            <div class="flex-1 min-w-0 flex flex-col gap-2">
+              <p class="text-slate-400 text-xs truncate">{{ rideOrigin()?.address }}</p>
+              <div class="h-px bg-white/5"></div>
+              @if (mapPickingAddress()) {
+                <p class="text-white font-bold text-sm truncate">{{ mapPickingAddress() }}</p>
+              } @else {
+                <div class="h-3.5 bg-white/10 rounded-lg animate-pulse w-4/5"></div>
+              }
+            </div>
+          </div>
+        }
+
         <button (click)="confirmDest()" [disabled]="!rideDest()"
-          class="flex-[2] py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all
-            bg-gradient-to-r from-orange-500 to-amber-500 text-black hover:from-orange-400 hover:to-amber-400 disabled:opacity-40">
-          Confirmar destino →
+          class="w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider transition-all
+            bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:from-rose-400 hover:to-pink-400 disabled:opacity-40
+            shadow-lg shadow-rose-500/25">
+          <span class="flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:20px">flag</span>
+            Confirmar Destino
+          </span>
         </button>
       </div>
     </div>
@@ -867,7 +890,7 @@ type AgScreen =
 
       <!-- Mapa del viaje -->
       @if (tripTab() === 'map') {
-        <div id="ag-map-trip" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:320px"></div>
+        <div id="ag-map-trip" class="overflow-hidden border border-white/5 bg-zinc-900 w-full" style="height:420px;border-radius:20px"></div>
 
         <!-- Real-time GPS indicator -->
         <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/5">
@@ -1557,7 +1580,7 @@ type AgScreen =
       </div>
 
       <!-- Mapa con pines -->
-      <div id="ag-map-driver-requests" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:280px"></div>
+      <div id="ag-map-driver-requests" class="overflow-hidden border border-white/5 bg-zinc-900 w-full" style="height:380px;border-radius:20px"></div>
 
       <!-- Lista de solicitudes -->
       @if (requestsLoading()) {
@@ -1693,7 +1716,7 @@ type AgScreen =
 
       <!-- Mapa -->
       @if (driverTripTab() === 'map') {
-        <div id="ag-map-driver-trip" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:300px"></div>
+        <div id="ag-map-driver-trip" class="overflow-hidden border border-white/5 bg-zinc-900 w-full" style="height:420px;border-radius:20px"></div>
 
         <!-- GPS tracking status -->
         <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all"
@@ -2311,6 +2334,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   placeSuggestions  = signal<PlaceSuggestion[]>([]);
   placesLoading     = signal(false);
   routeInfo         = signal<RouteInfo | null>(null);
+  routeGeometry     = signal<any>(null);
   private _placeSearchTimer: any = null;
 
   // GPS Tracking
@@ -2605,7 +2629,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.offeredPrice.set('');
     this.error.set('');
     this.screen.set('passenger-pick-origin');
-    setTimeout(() => this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng)), 50);
+    setTimeout(() => {
+      if (isPlatformBrowser(this.platformId) && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => this.zone.run(() => this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng))),
+          () => this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng)),
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+        );
+      } else {
+        this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
+      }
+    }, 50);
   }
 
   goBackToOrigin() {
@@ -2751,6 +2785,78 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ── Dark tile layer (CartoDB Dark Matter, free, no API key) ──
+  private addDarkTiles(map: any, L: any) {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(map);
+  }
+
+  // ── Origin pin (orange) for map ──
+  private originIcon(L: any) {
+    return L.divIcon({
+      className: '',
+      html: `<div style="display:flex;flex-direction:column;align-items:center">
+               <div style="width:18px;height:18px;border-radius:50%;background:#f97316;border:3px solid white;box-shadow:0 0 0 4px rgba(249,115,22,0.3),0 4px 12px rgba(0,0,0,0.5)"></div>
+             </div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+  }
+
+  // ── Destination pin (red) ──
+  private destIcon(L: any) {
+    return L.divIcon({
+      className: '',
+      html: `<div style="display:flex;flex-direction:column;align-items:center">
+               <div style="width:18px;height:18px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 0 0 4px rgba(239,68,68,0.3),0 4px 12px rgba(0,0,0,0.5)"></div>
+             </div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+  }
+
+  // ── Animated car icon for driver ──
+  private carIcon(L: any, color = '#22c55e') {
+    return L.divIcon({
+      className: '',
+      html: `<div style="width:44px;height:44px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 0 6px ${color}33,0 4px 16px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;transition:all 0.5s ease">
+               <span class="material-symbols-outlined" style="font-size:22px;color:white;font-variation-settings:'FILL' 1">directions_car</span>
+             </div>`,
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+    });
+  }
+
+  // ── Draw GeoJSON route on map ──
+  private drawRoute(map: any, L: any, geometry: any) {
+    if (!geometry) return;
+    try {
+      L.geoJSON(geometry, {
+        style: {
+          color: '#f97316',
+          weight: 6,
+          opacity: 0.9,
+          lineCap: 'round',
+          lineJoin: 'round',
+        },
+      }).addTo(map);
+      // White outline below for contrast
+      L.geoJSON(geometry, {
+        style: {
+          color: 'rgba(255,255,255,0.15)',
+          weight: 10,
+          opacity: 1,
+          lineCap: 'round',
+          lineJoin: 'round',
+        },
+      }).addTo(map);
+    } catch {}
+  }
+
+  // ── Pick map: center-pin approach, auto-GPS ──
   private async initPickMap(elementId: string, lat: number, lng: number, onPick: (lat: number, lng: number) => void) {
     const L = await this.loadLeaflet();
     if (!L) return;
@@ -2758,33 +2864,38 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const el = document.getElementById(elementId);
     if (!el) return;
     this.mapLoading.set(true);
-    const map = L.map(el).setView([lat, lng], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-    }).addTo(map);
-    const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-    const handleLatLng = (newLat: number, newLng: number) => {
+
+    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], 16);
+    this.addDarkTiles(map, L);
+
+    // Zoom control bottom-right
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Attribution bottom-left minimal
+    L.control.attribution({ position: 'bottomright', prefix: '' }).addTo(map);
+
+    // On map move end: pick center coordinates and reverse geocode
+    const handleCenter = () => {
+      const center = map.getCenter();
       this.zone.run(async () => {
         this.mapPickingAddress.set('Obteniendo dirección...');
-        const addr = await this.svc.reverseGeocode(newLat, newLng);
-        this.mapPickingAddress.set(addr);
-        onPick(newLat, newLng);
+        const addr = await this.svc.reverseGeocode(center.lat, center.lng);
+        this.zone.run(() => {
+          this.mapPickingAddress.set(addr);
+          onPick(center.lat, center.lng);
+        });
       });
     };
-    marker.on('dragend', (e: any) => {
-      const pos = e.target.getLatLng();
-      handleLatLng(pos.lat, pos.lng);
-    });
-    map.on('click', (e: any) => {
-      marker.setLatLng(e.latlng);
-      handleLatLng(e.latlng.lat, e.latlng.lng);
-    });
+
+    map.on('moveend', handleCenter);
     this._map = map;
     this.mapLoading.set(false);
-    // Trigger initial geocode
-    handleLatLng(lat, lng);
+
+    // Trigger initial geocode for current center
+    setTimeout(() => handleCenter(), 300);
   }
 
+  // ── Trip map (passenger): origin + dest + route + driver marker ──
   private async initTripMap() {
     const req = this.activeRideRequest();
     if (!req) return;
@@ -2793,20 +2904,39 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.destroyMap();
     const el = document.getElementById('ag-map-trip');
     if (!el) return;
-    const map = L.map(el).setView([req.origin_lat, req.origin_lng], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-    }).addTo(map);
-    const greenIcon = L.divIcon({ className: '', html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(34,197,94,0.8)"></div>', iconSize: [14, 14] });
-    const redIcon   = L.divIcon({ className: '', html: '<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(239,68,68,0.8)"></div>',   iconSize: [14, 14] });
-    L.marker([req.origin_lat, req.origin_lng], { icon: greenIcon }).addTo(map).bindPopup('Origen');
-    L.marker([req.dest_lat,   req.dest_lng],   { icon: redIcon   }).addTo(map).bindPopup('Destino');
-    L.polyline([[req.origin_lat, req.origin_lng], [req.dest_lat, req.dest_lng]], { color: '#f97316', weight: 3, dashArray: '6,6' }).addTo(map);
-    map.fitBounds([[req.origin_lat, req.origin_lng], [req.dest_lat, req.dest_lng]], { padding: [40, 40] });
+
+    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([req.origin_lat, req.origin_lng], 14);
+    this.addDarkTiles(map, L);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Origin and dest markers
+    L.marker([req.origin_lat, req.origin_lng], { icon: this.originIcon(L) }).addTo(map)
+      .bindPopup('<b style="color:#f97316">Origen</b>');
+    L.marker([req.dest_lat, req.dest_lng], { icon: this.destIcon(L) }).addTo(map)
+      .bindPopup('<b style="color:#ef4444">Destino</b>');
+
+    // Route from geometry if available, fallback to straight dashed line
+    const geo = this.routeGeometry();
+    if (geo) {
+      this.drawRoute(map, L, geo);
+    } else {
+      L.polyline([[req.origin_lat, req.origin_lng], [req.dest_lat, req.dest_lng]], {
+        color: '#f97316', weight: 5, opacity: 0.8, dashArray: '10,8',
+      }).addTo(map);
+    }
+
+    // Driver marker if we have location
+    const dloc = this.driverLatLng();
+    if (dloc) {
+      this._driverMarker = L.marker([dloc.lat, dloc.lng], { icon: this.carIcon(L) }).addTo(map);
+    }
+
+    map.fitBounds([[req.origin_lat, req.origin_lng], [req.dest_lat, req.dest_lng]], { padding: [60, 60] });
     this._map = map;
   }
 
   private destroyMap() {
+    if (this._driverMarker) { try { this._map?.removeLayer(this._driverMarker); } catch {} this._driverMarker = null; }
     if (this._map) {
       try { this._map.remove(); } catch {}
       this._map = null;
@@ -2831,10 +2961,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       pos => {
         this.zone.run(() => {
           this.mapLoading.set(false);
-          this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
+          if (this._map) {
+            this._map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+          } else {
+            this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
+          }
         });
       },
-      () => { this.zone.run(() => this.mapLoading.set(false)); }
+      () => { this.zone.run(() => this.mapLoading.set(false)); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   }
 
@@ -3084,21 +3219,43 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const el = document.getElementById('ag-map-driver-requests');
     if (!el) return;
     const reqs = this.pendingRequests();
-    const center = reqs.length > 0
-      ? [reqs[0].origin_lat, reqs[0].origin_lng]
-      : [4.711, -74.0721];
-    const map = L.map(el).setView(center as any, 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+    // Center: user's GPS if available, else first request, else Bogotá
+    const getCenter = (): [number, number] => {
+      if (reqs.length > 0) return [reqs[0].origin_lat, reqs[0].origin_lng];
+      return [4.711, -74.0721];
+    };
+
+    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView(getCenter(), 13);
+    this.addDarkTiles(map, L);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Try to show driver's own position
+    if (isPlatformBrowser(this.platformId) && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        this.zone.run(() => {
+          if (this._map) {
+            L.marker([pos.coords.latitude, pos.coords.longitude], { icon: this.carIcon(L, '#f59e0b') })
+              .addTo(this._map)
+              .bindPopup('<b style="color:#f59e0b">Tu posición</b>');
+            if (reqs.length === 0) this._map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+          }
+        });
+      }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
+    }
+
+    // Request markers with price badge
     reqs.forEach(req => {
       const icon = L.divIcon({
         className: '',
-        html: `<div style="background:#f59e0b;color:#000;font-weight:900;font-size:10px;padding:3px 6px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 8px rgba(245,158,11,0.5)">$${Math.round(req.offered_price / 1000)}k</div>`,
-        iconAnchor: [20, 10],
+        html: `<div style="background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 12px rgba(245,158,11,0.6);border:2px solid rgba(255,255,255,0.3)">$${(req.offered_price / 1000).toFixed(0)}k</div>`,
+        iconAnchor: [24, 12],
       });
       L.marker([req.origin_lat, req.origin_lng], { icon })
         .addTo(map)
-        .bindPopup(`<b>$${req.offered_price.toLocaleString('es-CO')} COP</b><br>${req.origin_address}`);
+        .bindPopup(`<b style="color:#f59e0b">$${req.offered_price.toLocaleString('es-CO')} COP</b><br><span style="color:#ccc;font-size:12px">${req.origin_address}</span>`);
     });
+
     this._map = map;
   }
 
@@ -3116,28 +3273,57 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.destroyMap();
     const el = document.getElementById('ag-map-driver-trip');
     if (!el) return;
-    const isPickup = ride.status === 'accepted';
-    const destLat = isPickup ? ride.origin_lat : ride.dest_lat;
-    const destLng = isPickup ? ride.origin_lng : ride.dest_lng;
-    const map = L.map(el).setView([destLat, destLng], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-    const destIcon = L.divIcon({
-      className: '',
-      html: `<div style="background:${isPickup ? '#22c55e' : '#ef4444'};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(0,0,0,0.5)"></div>`,
-      iconSize: [16, 16],
-    });
-    L.marker([destLat, destLng], { icon: destIcon }).addTo(map)
-      .bindPopup(isPickup ? 'Recoger pasajero aquí' : 'Destino del pasajero').openPopup();
-    if (!isPickup) {
-      const originIcon = L.divIcon({
-        className: '',
-        html: '<div style="background:#22c55e;width:12px;height:12px;border-radius:50%;border:2px solid white"></div>',
-        iconSize: [12, 12],
-      });
-      L.marker([ride.origin_lat, ride.origin_lng], { icon: originIcon }).addTo(map).bindPopup('Origen');
-      L.polyline([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], { color: '#f59e0b', weight: 3, dashArray: '6,6' }).addTo(map);
-      map.fitBounds([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], { padding: [40, 40] });
+
+    const isPickup = ride.status === 'accepted'; // going to pick up passenger
+    const targetLat = isPickup ? ride.origin_lat : ride.dest_lat;
+    const targetLng = isPickup ? ride.origin_lng : ride.dest_lng;
+
+    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([targetLat, targetLng], 14);
+    this.addDarkTiles(map, L);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Origin marker (passenger pickup point)
+    L.marker([ride.origin_lat, ride.origin_lng], { icon: this.originIcon(L) }).addTo(map)
+      .bindPopup('<b style="color:#22c55e">Recoger pasajero</b>');
+
+    // Destination marker
+    L.marker([ride.dest_lat, ride.dest_lng], { icon: this.destIcon(L) }).addTo(map)
+      .bindPopup('<b style="color:#ef4444">Destino del pasajero</b>');
+
+    // Route from stored geometry or dashed fallback
+    const geo = this.routeGeometry();
+    if (geo) {
+      this.drawRoute(map, L, geo);
+    } else {
+      L.polyline([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], {
+        color: '#f59e0b', weight: 5, opacity: 0.85, dashArray: '10,8',
+      }).addTo(map);
     }
+
+    // Try to show driver's current GPS position
+    if (isPlatformBrowser(this.platformId) && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        this.zone.run(() => {
+          if (this._map) {
+            const { latitude, longitude } = pos.coords;
+            this._driverMarker = L.marker([latitude, longitude], { icon: this.carIcon(L, '#f59e0b') })
+              .addTo(this._map);
+            // Fit bounds to show driver + destination
+            const bounds = L.latLngBounds([
+              [latitude, longitude],
+              [targetLat, targetLng],
+            ]);
+            this._map.fitBounds(bounds, { padding: [60, 60] });
+          }
+        });
+      }, () => {
+        // No GPS: just fit origin to dest
+        map.fitBounds([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], { padding: [60, 60] });
+      }, { enableHighAccuracy: true, timeout: 5000 });
+    } else {
+      map.fitBounds([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], { padding: [60, 60] });
+    }
+
     this._map = map;
   }
 
@@ -3194,6 +3380,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (info?.suggested_price && !this.offeredPrice()) {
         this.offeredPrice.set(info.suggested_price.toString());
       }
+      if (info?.geometry) this.routeGeometry.set(info.geometry);
     });
   }
 
@@ -3214,18 +3401,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!this._driverMarker) {
       if (isPlatformBrowser(this.platformId) && (window as any).L) {
         const L = (window as any).L;
-        const icon = L.divIcon({
-          html: `<div style="width:36px;height:36px;background:#22c55e;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">
-                   <span class="material-symbols-outlined" style="font-size:18px;color:#fff">directions_car</span>
-                 </div>`,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-          className: ''
-        });
-        this._driverMarker = L.marker([lat, lng], { icon }).addTo(this._map);
+        this._driverMarker = L.marker([lat, lng], { icon: this.carIcon(L) }).addTo(this._map);
       }
     } else {
       this._driverMarker.setLatLng([lat, lng]);
+      // Smooth pan to keep driver visible
+      if (!this._map.getBounds().contains([lat, lng])) {
+        this._map.panTo([lat, lng], { animate: true, duration: 1 });
+      }
     }
   }
 
