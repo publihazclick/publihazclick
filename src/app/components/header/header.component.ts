@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CurrencyService, Currency } from '../../core/services/currency.service';
 import { WalletStateService } from '../../core/services/wallet-state.service';
 import { environment } from '../../../environments/environment';
@@ -25,6 +25,7 @@ export class HeaderComponent implements OnInit {
 
   protected readonly currencyService = inject(CurrencyService);
   protected readonly walletService = inject(WalletStateService);
+  private readonly router = inject(Router);
 
   // Expose signals for template
   readonly selectedCurrency = this.currencyService.selectedCurrency;
@@ -46,6 +47,24 @@ export class HeaderComponent implements OnInit {
     { label: 'Marcas', href: '#brands' },
     { label: 'Youtube', href: '#youtube' }
   ];
+
+  async goToTestimonials(): Promise<void> {
+    if (this.router.url !== '/') {
+      await this.router.navigate(['/']);
+      // Esperar a que el DOM se renderice tras la navegación
+      setTimeout(() => this.scrollToSection(), 300);
+    } else {
+      this.scrollToSection();
+    }
+    this.mobileMenuOpen.set(false);
+  }
+
+  private scrollToSection(): void {
+    const el = document.getElementById('pagos-testimonios');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
 
   toggleMenu(): void {
     this.isMenuOpen.update(v => !v);

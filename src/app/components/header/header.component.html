@@ -28,7 +28,7 @@
     <nav class="hidden md:flex items-center space-x-6 lg:space-x-10 text-[11px] font-extrabold uppercase tracking-[0.2em] text-white/70">
       <a class="hover:text-primary transition-colors cursor-pointer" routerLink="/">Inicio</a>
       <a class="hover:text-primary transition-colors cursor-pointer" routerLink="/quienes-somos">¿Qué es Publihazclick?</a>
-      <a class="hover:text-primary transition-colors cursor-pointer">Pagos y Testimonios</a>
+      <a class="hover:text-primary transition-colors cursor-pointer" (click)="goToTestimonials()">Pagos y Testimonios</a>
     </nav>
 
     <!-- Desktop: Divisa + Billetera + Donaciones + Login -->
@@ -163,7 +163,7 @@
       <nav class="flex flex-col space-y-1 pt-3">
         <a class="hover:text-primary hover:bg-white/5 transition-colors cursor-pointer py-2.5 px-3 rounded-lg text-sm font-extrabold uppercase tracking-[0.15em] text-white/70" routerLink="/" (click)="toggleMobileMenu()">Inicio</a>
         <a class="hover:text-primary hover:bg-white/5 transition-colors cursor-pointer py-2.5 px-3 rounded-lg text-sm font-extrabold uppercase tracking-[0.15em] text-white/70" routerLink="/quienes-somos" (click)="toggleMobileMenu()">¿Qué es Publihazclick?</a>
-        <a class="hover:text-primary hover:bg-white/5 transition-colors cursor-pointer py-2.5 px-3 rounded-lg text-sm font-extrabold uppercase tracking-[0.15em] text-white/70" (click)="toggleMobileMenu()">Pagos y Testimonios</a>
+        <a class="hover:text-primary hover:bg-white/5 transition-colors cursor-pointer py-2.5 px-3 rounded-lg text-sm font-extrabold uppercase tracking-[0.15em] text-white/70" (click)="goToTestimonials()">Pagos y Testimonios</a>
       </nav>
 
       <!-- Login button -->
