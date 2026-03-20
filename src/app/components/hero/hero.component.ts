@@ -1,6 +1,5 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
 import { environment } from '../../../environments/environment';
 
 interface FloatingImage {
@@ -12,7 +11,7 @@ interface FloatingImage {
 @Component({
   selector: 'app-hero',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule],
   templateUrl: './hero.component.html',
   styleUrl: './hero.component.scss'
 })
