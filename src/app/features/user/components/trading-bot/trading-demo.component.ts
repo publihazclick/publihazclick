@@ -67,7 +67,11 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
           <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></div>
           <span class="text-emerald-400 font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Activo</span>
         </div>
-        <span class="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black border border-primary/40 bg-primary/8 text-primary uppercase tracking-wider shrink-0">DEMO</span>
+        @if (isLive) {
+          <span class="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black border border-rose-500/60 bg-rose-500/15 text-rose-400 uppercase tracking-wider shrink-0 animate-pulse">EN VIVO</span>
+        } @else {
+          <span class="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black border border-primary/40 bg-primary/8 text-primary uppercase tracking-wider shrink-0">DEMO</span>
+        }
       </div>
 
       <div class="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -478,6 +482,7 @@ export class TradingDemoComponent implements OnInit, OnDestroy {
   @Input() packagePrice  = 0;
   @Input() monthlyReturn = 0;
   @Input() isEmbedded    = false;
+  @Input() isLive        = false;
 
   get estimatedMonthly(): number { return this.packagePrice * (this.monthlyReturn / 100); }
 

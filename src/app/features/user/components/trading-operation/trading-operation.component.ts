@@ -54,63 +54,109 @@ interface TradingPackage {
               <p class="text-sm font-black text-emerald-300">{{ currentPkg()!.package?.name }}</p>
               <p class="text-[10px] text-slate-500">Activado el {{ currentPkg()!.activated_at | date:'d MMM yyyy' }}</p>
             </div>
-            <div class="text-right">
-              <p class="text-white font-black text-base">\${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} <span class="text-xs text-slate-500">USD</span></p>
+            <!-- Inversión: botón clickeable con mensaje 180 días -->
+            <button (click)="showCapitalModal.set(true)" class="text-right cursor-pointer hover:opacity-80 transition-opacity group">
+              <p class="text-white font-black text-base group-hover:text-cyan-300 transition-colors">
+                \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} <span class="text-xs text-slate-500">USD</span>
+              </p>
               <p class="text-emerald-400 font-black text-sm">2.5% - 6% <span class="text-[10px] text-slate-500">/ mes</span></p>
-            </div>
-            <div class="text-right border-l border-white/10 pl-4">
+            </button>
+            <!-- Rentabilidad: botón clickeable que abre formulario -->
+            <button (click)="onEarningsClick()" class="text-right border-l border-white/10 pl-4 cursor-pointer hover:opacity-80 transition-opacity group">
               <p class="text-[10px] text-slate-500">Ganancia est. / mes</p>
-              <p class="text-cyan-400 font-black text-base">
-                \${{ earningsMin() | number:'1.0-0' }} - \${{ earningsMax() | number:'1.0-0' }}
+              <p class="text-cyan-400 font-black text-base group-hover:text-cyan-300 transition-colors">
+                \${{ earningsMin() | number:'1.2-2' }} - \${{ earningsMax() | number:'1.2-2' }}
                 <span class="text-[10px] text-slate-500">USD</span>
               </p>
-            </div>
+            </button>
           </div>
 
-          <!-- ── SECCIÓN DE RETIRO ─────────────────────────────────────── -->
-          <div class="mt-4 rounded-xl border px-4 py-4"
-            [class]="canWithdraw()
-              ? 'border-cyan-500/30 bg-cyan-500/5'
-              : 'border-white/10 bg-white/[0.02]'">
-
-            @if (canWithdraw()) {
-              <!-- Puede retirar -->
-              <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div class="flex-1">
-                  <p class="text-xs font-black text-cyan-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                    <span class="material-symbols-outlined" style="font-size:14px">payments</span>
-                    Rentabilidad disponible para retiro
-                  </p>
-                  <p class="text-white font-black text-2xl">
-                    \${{ earningsMin() | number:'1.2-2' }} — \${{ earningsMax() | number:'1.2-2' }}
-                    <span class="text-sm font-bold text-slate-400">USD</span>
-                  </p>
-                  <p class="text-[10px] text-slate-500 mt-0.5">
-                    {{ daysActive() }} días activo · rentabilidad entre 2.5% y 6% sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD
-                  </p>
-                </div>
-
-                @if (!withdrawDone()) {
-                  <button
-                    (click)="requestWithdrawal()"
-                    [disabled]="withdrawing()"
-                    class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg
-                      bg-gradient-to-r from-cyan-500 to-emerald-500 text-black hover:from-cyan-400 hover:to-emerald-400 disabled:opacity-50 shadow-cyan-500/20 whitespace-nowrap">
-                    @if (withdrawing()) {
-                      <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
-                      Solicitando...
-                    } @else {
-                      <span class="material-symbols-outlined" style="font-size:18px">account_balance_wallet</span>
-                      Solicitar Retiro
-                    }
-                  </button>
-                } @else {
-                  <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span>
-                    <span class="text-emerald-400 font-black text-sm">Solicitud enviada</span>
-                  </div>
-                }
+          <!-- Mensaje de elegibilidad (cuando no cumple los 30 días) -->
+          @if (eligibilityMsg()) {
+            <div class="mt-3 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <span class="material-symbols-outlined text-amber-400 shrink-0" style="font-size:20px">schedule</span>
+              <div>
+                <p class="text-amber-400 font-black text-sm mb-1">Retiro no disponible aún</p>
+                <p class="text-slate-400 text-xs leading-relaxed">{{ eligibilityMsg() }}</p>
               </div>
+              <button (click)="eligibilityMsg.set('')" class="ml-auto text-slate-500 hover:text-white shrink-0">
+                <span class="material-symbols-outlined" style="font-size:16px">close</span>
+              </button>
+            </div>
+          }
+
+          <!-- Formulario de retiro -->
+          @if (showWithdrawForm()) {
+            <div class="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 py-4">
+              <div class="flex items-center justify-between mb-4">
+                <p class="text-sm font-black text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <span class="material-symbols-outlined" style="font-size:16px">payments</span>
+                  Solicitar Retiro de Rentabilidad
+                </p>
+                <button (click)="closeWithdrawForm()" class="text-slate-500 hover:text-white">
+                  <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-500 mb-4">
+                Rentabilidad estimada: <strong class="text-cyan-400">\${{ earningsMin() | number:'1.2-2' }} — \${{ earningsMax() | number:'1.2-2' }} USD</strong>
+                (entre 2.5% y 6% sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD)
+              </p>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Nombres y Apellidos</label>
+                  <input type="text"
+                    [value]="withdrawFullName()"
+                    (input)="withdrawFullName.set($any($event.target).value)"
+                    placeholder="Tu nombre completo"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:bg-white/8 transition-all" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Número de Cuenta</label>
+                  <input type="text"
+                    [value]="withdrawAccountNumber()"
+                    (input)="withdrawAccountNumber.set($any($event.target).value)"
+                    placeholder="Número de cuenta bancaria"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:bg-white/8 transition-all" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Tipo de Cuenta</label>
+                  <div class="flex gap-3">
+                    <button (click)="withdrawAccountType.set('ahorros')"
+                      [class]="withdrawAccountType() === 'ahorros'
+                        ? 'flex-1 py-2.5 rounded-lg text-sm font-black border border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
+                        : 'flex-1 py-2.5 rounded-lg text-sm font-bold border border-white/10 bg-white/5 text-slate-400 hover:border-white/20'">
+                      Ahorros
+                    </button>
+                    <button (click)="withdrawAccountType.set('corriente')"
+                      [class]="withdrawAccountType() === 'corriente'
+                        ? 'flex-1 py-2.5 rounded-lg text-sm font-black border border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
+                        : 'flex-1 py-2.5 rounded-lg text-sm font-bold border border-white/10 bg-white/5 text-slate-400 hover:border-white/20'">
+                      Corriente
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              @if (!withdrawDone()) {
+                <button
+                  (click)="requestWithdrawal()"
+                  [disabled]="withdrawing() || !withdrawFullName().trim() || !withdrawAccountNumber().trim()"
+                  class="mt-4 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg
+                    bg-gradient-to-r from-cyan-500 to-emerald-500 text-black hover:from-cyan-400 hover:to-emerald-400 disabled:opacity-40 shadow-cyan-500/20">
+                  @if (withdrawing()) {
+                    <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
+                    Solicitando...
+                  } @else {
+                    <span class="material-symbols-outlined" style="font-size:18px">account_balance_wallet</span>
+                    Enviar Solicitud
+                  }
+                </button>
+              } @else {
+                <div class="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span>
+                  <span class="text-emerald-400 font-black text-sm">Solicitud enviada correctamente</span>
+                </div>
+              }
 
               @if (withdrawFeedback()) {
                 <div class="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
@@ -123,26 +169,22 @@ interface TradingPackage {
                   {{ withdrawFeedback() }}
                 </div>
               }
+            </div>
+          }
 
-            } @else {
-              <!-- Aún no puede retirar -->
+          <!-- Barra de progreso (30 días) -->
+          @if (!canWithdraw()) {
+            <div class="mt-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4">
               <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-slate-500" style="font-size:22px">schedule</span>
                 <div class="flex-1">
-                  <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Retiro disponible en</p>
+                  <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Retiro habilitado en</p>
                   <p class="text-white font-black text-lg">{{ 30 - daysActive() }} días</p>
                   <p class="text-[10px] text-slate-600 mt-0.5">
-                    El retiro de rentabilidad se habilita a los 30 días calendario de activado el paquete.
                     Disponible el {{ withdrawAvailableDate() | date:'d MMM yyyy' }}.
                   </p>
                 </div>
-                <div class="text-right flex-shrink-0">
-                  <p class="text-[10px] text-slate-500">Ganancia estimada / mes</p>
-                  <p class="text-slate-400 font-black text-base">\${{ earningsMin() | number:'1.0-0' }} - \${{ earningsMax() | number:'1.0-0' }} <span class="text-[10px]">USD</span></p>
-                </div>
               </div>
-
-              <!-- Barra de progreso -->
               <div class="mt-3">
                 <div class="flex justify-between text-[9px] text-slate-600 mb-1">
                   <span>Día {{ daysActive() }}</span>
@@ -153,8 +195,8 @@ interface TradingPackage {
                     [style.width.%]="progressPct()"></div>
                 </div>
               </div>
-            }
-          </div>
+            </div>
+          }
         }
       </div>
 
@@ -165,6 +207,7 @@ interface TradingPackage {
           [packagePrice]="demoPackage().price"
           [monthlyReturn]="demoPackage().monthlyReturn"
           [isEmbedded]="true"
+          [isLive]="true"
         />
       </div>
 
@@ -189,7 +232,7 @@ interface TradingPackage {
               </div>
               <div class="flex items-center gap-1 bg-black/20 rounded-lg px-2 py-1">
                 <span class="material-symbols-outlined text-emerald-400" style="font-size:13px">trending_up</span>
-                <span class="text-emerald-400 font-black text-xs">{{ pkg.monthlyReturn }}%</span>
+                <span class="text-emerald-400 font-black text-xs">2.5% - 6%</span>
                 <span class="text-slate-500 text-[10px]">/ mes</span>
               </div>
               <button (click)="selectedPackage.set(pkg)"
@@ -203,6 +246,45 @@ interface TradingPackage {
         </div>
       </div>
     </div>
+
+    <!-- MODAL 180 DÍAS (capital) -->
+    @if (showCapitalModal()) {
+      <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        (click)="showCapitalModal.set(false)">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="relative z-10 w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl mx-auto"
+          (click)="$event.stopPropagation()">
+          <div class="bg-gradient-to-br from-[#0a0a0a] via-[#111827] to-[#0a0a0a] border border-white/10 p-6">
+            <button (click)="showCapitalModal.set(false)"
+              class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+              <span class="material-symbols-outlined" style="font-size:16px">close</span>
+            </button>
+            <div class="flex items-center gap-3 mb-4 pr-8">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-amber-400" style="font-size:20px">info</span>
+              </div>
+              <div>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Política de Capital</p>
+                <h3 class="text-white font-black text-base">Retiro de Capital</h3>
+              </div>
+            </div>
+            <div class="bg-amber-500/8 border border-amber-500/20 rounded-xl px-4 py-4">
+              <p class="text-slate-300 text-sm leading-relaxed">
+                Recuerda que puedes retirar mes a mes las rentabilidades generadas en cada uno de tus paquetes,
+                pero para solicitar el dinero de tu paquete adquirido deben pasar
+                <strong class="text-amber-400">180 días calendario</strong> desde la fecha de adquisición de servicio,
+                ya que hemos realizado una inversión muy costosa en la integración de tu bot,
+                por lo tanto no nos es rentable la solicitud antes de 6 meses.
+              </p>
+            </div>
+            <button (click)="showCapitalModal.set(false)"
+              class="mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-all">
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- MODAL DE PAGO -->
     @if (selectedPackage()) {
@@ -231,7 +313,7 @@ interface TradingPackage {
               </div>
               <div class="w-px h-8 bg-white/10 shrink-0"></div>
               <div class="flex-1 text-right"><p class="text-slate-400 text-xs">Rentabilidad</p>
-                <p class="text-emerald-400 font-black text-xl">{{ selectedPackage()!.monthlyReturn }}% <span class="text-xs font-bold text-slate-500">/ mes</span></p>
+                <p class="text-emerald-400 font-black text-xl">2.5% - 6% <span class="text-xs font-bold text-slate-500">/ mes</span></p>
               </div>
             </div>
           </div>
@@ -295,12 +377,21 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
   private readonly supabase = getSupabaseClient();
   private paramSub?: Subscription;
 
-  readonly currentPkg    = signal<UserTradingPackage | null>(null);
+  readonly currentPkg      = signal<UserTradingPackage | null>(null);
   readonly selectedPackage = signal<TradingPackage | null>(null);
-  readonly withdrawing   = signal(false);
-  readonly withdrawDone  = signal(false);
-  readonly withdrawFeedback     = signal<string | null>(null);
-  readonly withdrawFeedbackType = signal<'ok' | 'err'>('ok');
+  readonly showCapitalModal = signal(false);
+  readonly showWithdrawForm = signal(false);
+  readonly eligibilityMsg   = signal('');
+  readonly withdrawing      = signal(false);
+  readonly withdrawDone     = signal(false);
+  readonly withdrawFeedback      = signal<string | null>(null);
+  readonly withdrawFeedbackType  = signal<'ok' | 'err'>('ok');
+  readonly withdrawFullName      = signal('');
+  readonly withdrawAccountNumber = signal('');
+  readonly withdrawAccountType   = signal<'ahorros' | 'corriente'>('ahorros');
+
+  // Fecha del último retiro aprobado para este paquete
+  private lastWithdrawalDate = signal<Date | null>(null);
 
   readonly demoPackage = signal<TradingPackage>({
     name: 'Semilla', price: 100, monthlyReturn: 2.0,
@@ -308,7 +399,6 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     text: 'text-emerald-400', shadow: '', badge: 'bg-emerald-500/20 text-emerald-400', level: 'Activo'
   });
 
-  // Días transcurridos desde la activación
   readonly daysActive = computed(() => {
     const pkg = this.currentPkg();
     if (!pkg?.activated_at) return 0;
@@ -316,11 +406,19 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     return Math.floor(ms / (1000 * 60 * 60 * 24));
   });
 
-  readonly canWithdraw = computed(() => this.daysActive() >= 30);
+  readonly daysSinceLastWithdrawal = computed(() => {
+    const d = this.lastWithdrawalDate();
+    if (!d) return 999;
+    const ms = Date.now() - d.getTime();
+    return Math.floor(ms / (1000 * 60 * 60 * 24));
+  });
+
+  readonly canWithdraw = computed(() =>
+    this.daysActive() >= 30 && this.daysSinceLastWithdrawal() >= 30
+  );
 
   readonly progressPct = computed(() => Math.min(100, (this.daysActive() / 30) * 100));
 
-  // Rango de ganancias: entre 2.5% y 6% del capital
   readonly earningsMin = computed(() => {
     const pkg = this.currentPkg();
     if (!pkg?.package) return 0;
@@ -342,12 +440,14 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    // Suscribirse al observable de params para reaccionar cada vez que cambia el ID
     this.paramSub = this.route.paramMap.subscribe(params => {
       const packageId = params.get('packageId');
       this.currentPkg.set(null);
       this.withdrawDone.set(false);
       this.withdrawFeedback.set(null);
+      this.showWithdrawForm.set(false);
+      this.eligibilityMsg.set('');
+      this.lastWithdrawalDate.set(null);
       this.loadPackage(packageId);
     });
   }
@@ -367,6 +467,7 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
           bg: 'bg-emerald-500/5', border: 'border-emerald-500/30',
           text: 'text-emerald-400', shadow: '', badge: 'bg-emerald-500/20 text-emerald-400', level: 'Activo'
         });
+        await this.loadLastWithdrawal(pkg.id);
       }
     } else {
       const pkgs = await this.svc.getMyActivePackages();
@@ -378,13 +479,70 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
           bg: 'bg-emerald-500/5', border: 'border-emerald-500/30',
           text: 'text-emerald-400', shadow: '', badge: 'bg-emerald-500/20 text-emerald-400', level: 'Activo'
         });
+        await this.loadLastWithdrawal(pkgs[0].id);
       }
     }
+  }
+
+  private async loadLastWithdrawal(userPkgId: string): Promise<void> {
+    const { data } = await this.supabase
+      .from('withdrawal_requests')
+      .select('created_at')
+      .eq('method', 'trading_profit')
+      .contains('details', { user_trading_package_id: userPkgId })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (data?.created_at) {
+      this.lastWithdrawalDate.set(new Date(data.created_at));
+    }
+  }
+
+  onEarningsClick(): void {
+    if (this.showWithdrawForm()) {
+      this.closeWithdrawForm();
+      return;
+    }
+
+    if (this.daysActive() < 30) {
+      const available = this.withdrawAvailableDate();
+      const dateStr = available
+        ? available.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
+      this.eligibilityMsg.set(
+        `Debes esperar 30 días calendario desde la activación de tu paquete para solicitar el retiro de rentabilidad. ` +
+        `Tu paquete lleva ${this.daysActive()} día(s) activo. Fecha disponible: ${dateStr}.`
+      );
+      return;
+    }
+
+    if (this.daysSinceLastWithdrawal() < 30) {
+      const daysLeft = 30 - this.daysSinceLastWithdrawal();
+      this.eligibilityMsg.set(
+        `Ya realizaste una solicitud de retiro recientemente. Debes esperar 30 días calendario entre cada solicitud. ` +
+        `Podrás hacer una nueva solicitud en ${daysLeft} día(s).`
+      );
+      return;
+    }
+
+    this.eligibilityMsg.set('');
+    this.showWithdrawForm.set(true);
+  }
+
+  closeWithdrawForm(): void {
+    this.showWithdrawForm.set(false);
+    this.withdrawFeedback.set(null);
+    this.withdrawFullName.set('');
+    this.withdrawAccountNumber.set('');
+    this.withdrawAccountType.set('ahorros');
   }
 
   async requestWithdrawal(): Promise<void> {
     const pkg = this.currentPkg();
     if (!pkg || this.withdrawing()) return;
+    if (!this.withdrawFullName().trim() || !this.withdrawAccountNumber().trim()) return;
+
     this.withdrawing.set(true);
     this.withdrawFeedback.set(null);
 
@@ -408,6 +566,9 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
         return_range: '2.5% - 6%',
         activated_at: pkg.activated_at,
         days_active: this.daysActive(),
+        full_name: this.withdrawFullName().trim(),
+        account_number: this.withdrawAccountNumber().trim(),
+        account_type: this.withdrawAccountType(),
       },
     });
 
@@ -416,8 +577,9 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
       this.withdrawFeedbackType.set('err');
     } else {
       this.withdrawDone.set(true);
+      this.lastWithdrawalDate.set(new Date());
       this.withdrawFeedback.set(
-        `✓ Solicitud de retiro enviada (entre $${minAmount.toFixed(2)} y $${maxAmount.toFixed(2)} USD). El administrador la procesará pronto.`
+        `✓ Solicitud enviada. El administrador procesará tu retiro (entre $${minAmount.toFixed(2)} y $${maxAmount.toFixed(2)} USD).`
       );
       this.withdrawFeedbackType.set('ok');
     }
