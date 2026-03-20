@@ -47,6 +47,34 @@ export interface AgDriver {
   ag_user?: AgUser;
 }
 
+export interface AgRideRequest {
+  id: string;
+  passenger_id: string;
+  origin_address: string;
+  origin_lat: number;
+  origin_lng: number;
+  dest_address: string;
+  dest_lat: number;
+  dest_lng: number;
+  offered_price: number;
+  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  driver_id?: string;
+  driver?: AgDriver & { ag_user?: AgUser };
+  passenger?: AgUser;
+  accepted_at?: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgChatMessage {
+  id: string;
+  request_id: string;
+  sender_ag_user_id: string;
+  message: string;
+  created_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AndaGanaService {
   private readonly supabase = getSupabaseClient();
@@ -234,5 +262,381 @@ export class AndaGanaService {
       rejected: drivers.filter(d => d.status === 'rejected').length,
       total: drivers.length,
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PASSENGER FLOW
+  // ─────────────────────────────────────────────────────────────
+
+  async createRideRequest(passengerId: string, data: {
+    originAddress: string;
+    originLat: number;
+    originLng: number;
+    destAddress: string;
+    destLat: number;
+    destLng: number;
+    offeredPrice: number;
+  }): Promise<AgRideRequest | null> {
+    const { data: req, error } = await this.supabase
+      .from('ag_ride_requests')
+      .insert({
+        passenger_id: passengerId,
+        origin_address: data.originAddress,
+        origin_lat: data.originLat,
+        origin_lng: data.originLng,
+        dest_address: data.destAddress,
+        dest_lat: data.destLat,
+        dest_lng: data.destLng,
+        offered_price: data.offeredPrice,
+        status: 'pending',
+      })
+      .select()
+      .single();
+    return error ? null : req as AgRideRequest;
+  }
+
+  async cancelRideRequest(id: string): Promise<void> {
+    await this.supabase
+      .from('ag_ride_requests')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .eq('id', id);
+  }
+
+  async getActiveRideRequest(passengerId: string): Promise<AgRideRequest | null> {
+    const { data } = await this.supabase
+      .from('ag_ride_requests')
+      .select('*, driver:ag_drivers(*, ag_user:ag_users(*))')
+      .eq('passenger_id', passengerId)
+      .in('status', ['pending', 'accepted', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data as AgRideRequest | null;
+  }
+
+  subscribeToRideRequest(id: string, cb: (req: AgRideRequest) => void): any {
+    const channel = this.supabase
+      .channel(`ride_request_${id}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ag_ride_requests',
+          filter: `id=eq.${id}`,
+        },
+        async (payload: any) => {
+          // Re-fetch with driver join on every change
+          const { data } = await this.supabase
+            .from('ag_ride_requests')
+            .select('*, driver:ag_drivers(*, ag_user:ag_users(*))')
+            .eq('id', id)
+            .maybeSingle();
+          if (data) cb(data as AgRideRequest);
+        }
+      )
+      .subscribe();
+    return channel;
+  }
+
+  async getChatMessages(requestId: string): Promise<AgChatMessage[]> {
+    const { data } = await this.supabase
+      .from('ag_chat_messages')
+      .select('*')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: true });
+    return (data || []) as AgChatMessage[];
+  }
+
+  async sendChatMessage(requestId: string, senderAgUserId: string, message: string): Promise<void> {
+    await this.supabase.from('ag_chat_messages').insert({
+      request_id: requestId,
+      sender_ag_user_id: senderAgUserId,
+      message,
+    });
+  }
+
+  subscribeToChat(requestId: string, cb: (msg: AgChatMessage) => void): any {
+    const channel = this.supabase
+      .channel(`chat_${requestId}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ag_chat_messages',
+          filter: `request_id=eq.${requestId}`,
+        },
+        (payload: any) => {
+          if (payload.new) cb(payload.new as AgChatMessage);
+        }
+      )
+      .subscribe();
+    return channel;
+  }
+
+  async submitRating(
+    requestId: string,
+    passengerId: string,
+    driverId: string,
+    stars: number,
+    comment: string
+  ): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_ratings')
+      .upsert({
+        request_id: requestId,
+        passenger_id: passengerId,
+        driver_id: driverId,
+        stars,
+        comment: comment || null,
+      }, { onConflict: 'request_id' });
+    return !error;
+  }
+
+  async getDriverAverageRating(driverId: string): Promise<number> {
+    const { data } = await this.supabase
+      .from('ag_ratings')
+      .select('stars')
+      .eq('driver_id', driverId);
+    const rows = data || [];
+    if (rows.length === 0) return 0;
+    const avg = rows.reduce((s, r) => s + Number(r.stars), 0) / rows.length;
+    return Math.round(avg * 10) / 10;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // DRIVER FLOW
+  // ─────────────────────────────────────────────────────────────
+
+  async setDriverAvailability(driverId: string, available: boolean): Promise<void> {
+    await this.supabase
+      .from('ag_drivers')
+      .update({ is_available: available })
+      .eq('id', driverId);
+  }
+
+  async getPendingRideRequests(): Promise<AgRideRequest[]> {
+    const { data } = await this.supabase
+      .from('ag_ride_requests')
+      .select('*, passenger:ag_users!ag_ride_requests_passenger_id_fkey(*)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    return (data || []) as AgRideRequest[];
+  }
+
+  async acceptRideRequest(requestId: string, driverId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_ride_requests')
+      .update({
+        status: 'accepted',
+        driver_id: driverId,
+        accepted_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .eq('status', 'pending');
+    return !error;
+  }
+
+  async startTrip(requestId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_ride_requests')
+      .update({ status: 'in_progress' })
+      .eq('id', requestId)
+      .eq('status', 'accepted');
+    return !error;
+  }
+
+  async completeRideRequest(requestId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_ride_requests')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', requestId)
+      .in('status', ['accepted', 'in_progress']);
+    return !error;
+  }
+
+  async getDriverActiveRideRequest(driverId: string): Promise<AgRideRequest | null> {
+    const { data } = await this.supabase
+      .from('ag_ride_requests')
+      .select('*, passenger:ag_users!ag_ride_requests_passenger_id_fkey(*)')
+      .eq('driver_id', driverId)
+      .in('status', ['accepted', 'in_progress'])
+      .order('accepted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data as AgRideRequest | null;
+  }
+
+  subscribeToNewRequests(cb: (req: AgRideRequest) => void): any {
+    const channel = this.supabase
+      .channel('ag_new_pending_requests')
+      .on(
+        'postgres_changes' as any,
+        { event: 'INSERT', schema: 'public', table: 'ag_ride_requests' },
+        async (payload: any) => {
+          if (payload.new?.status !== 'pending') return;
+          const { data } = await this.supabase
+            .from('ag_ride_requests')
+            .select('*, passenger:ag_users!ag_ride_requests_passenger_id_fkey(*)')
+            .eq('id', payload.new.id)
+            .maybeSingle();
+          if (data) cb(data as AgRideRequest);
+        }
+      )
+      .subscribe();
+    return channel;
+  }
+
+  subscribeToDriverRide(requestId: string, cb: (req: AgRideRequest) => void): any {
+    const channel = this.supabase
+      .channel(`driver_ride_${requestId}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ag_ride_requests',
+          filter: `id=eq.${requestId}`,
+        },
+        async () => {
+          const { data } = await this.supabase
+            .from('ag_ride_requests')
+            .select('*, passenger:ag_users!ag_ride_requests_passenger_id_fkey(*)')
+            .eq('id', requestId)
+            .maybeSingle();
+          if (data) cb(data as AgRideRequest);
+        }
+      )
+      .subscribe();
+    return channel;
+  }
+
+  async submitPassengerRating(
+    requestId: string,
+    driverId: string,
+    passengerId: string,
+    stars: number,
+    comment: string
+  ): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_passenger_ratings')
+      .upsert(
+        { request_id: requestId, driver_id: driverId, passenger_id: passengerId, stars, comment: comment || null },
+        { onConflict: 'request_id' }
+      );
+    return !error;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // ADMIN PANEL
+  // ─────────────────────────────────────────────────────────────
+
+  async getAgAdminStats(): Promise<{
+    tripsToday: number; revenueToday: number; revenueWeek: number; revenueMonth: number;
+    totalDrivers: number; availableDrivers: number; pendingDrivers: number;
+    totalPassengers: number; activeRides: number;
+  }> {
+    const now  = new Date();
+    const tod  = new Date(now); tod.setHours(0, 0, 0, 0);
+    const week = new Date(now); week.setDate(now.getDate() - 7);
+    const mon  = new Date(now); mon.setDate(now.getDate() - 30);
+
+    const [tripsRes, driversRes, passRes, activeRes] = await Promise.all([
+      this.supabase.from('ag_trips').select('total_amount,trip_date').eq('status', 'completed'),
+      this.supabase.from('ag_drivers').select('status,is_available'),
+      this.supabase.from('ag_users').select('id').eq('role', 'passenger'),
+      this.supabase.from('ag_ride_requests').select('id').in('status', ['pending', 'accepted', 'in_progress']),
+    ]);
+
+    const trips    = tripsRes.data || [];
+    const drivers  = driversRes.data || [];
+    const todIso   = tod.toISOString();
+    const weekIso  = week.toISOString();
+    const monIso   = mon.toISOString();
+
+    return {
+      tripsToday:       trips.filter(t => t.trip_date >= todIso).length,
+      revenueToday:     trips.filter(t => t.trip_date >= todIso).reduce((s, t) => s + Number(t.total_amount), 0),
+      revenueWeek:      trips.filter(t => t.trip_date >= weekIso).reduce((s, t) => s + Number(t.total_amount), 0),
+      revenueMonth:     trips.filter(t => t.trip_date >= monIso).reduce((s, t) => s + Number(t.total_amount), 0),
+      totalDrivers:     drivers.length,
+      availableDrivers: drivers.filter(d => d.is_available).length,
+      pendingDrivers:   drivers.filter(d => d.status === 'pending').length,
+      totalPassengers:  (passRes.data || []).length,
+      activeRides:      (activeRes.data || []).length,
+    };
+  }
+
+  async getAgAllTrips(period: 'today' | 'week' | 'month' | 'all' = 'all'): Promise<any[]> {
+    const now  = new Date();
+    let   from = '';
+    if (period === 'today') { const d = new Date(now); d.setHours(0,0,0,0); from = d.toISOString(); }
+    if (period === 'week')  { const d = new Date(now); d.setDate(now.getDate()-7); from = d.toISOString(); }
+    if (period === 'month') { const d = new Date(now); d.setDate(now.getDate()-30); from = d.toISOString(); }
+
+    let q = this.supabase
+      .from('ag_trips')
+      .select('*, driver:ag_drivers(vehicle_plate,vehicle_brand,vehicle_model,ag_user:ag_users(full_name))')
+      .eq('status', 'completed')
+      .order('trip_date', { ascending: false });
+    if (from) q = q.gte('trip_date', from);
+    const { data } = await q;
+    return data || [];
+  }
+
+  async getActiveRideRequests(): Promise<AgRideRequest[]> {
+    const { data } = await this.supabase
+      .from('ag_ride_requests')
+      .select('*, passenger:ag_users!ag_ride_requests_passenger_id_fkey(*), driver:ag_drivers(vehicle_plate,vehicle_brand,ag_user:ag_users(full_name))')
+      .in('status', ['pending', 'accepted', 'in_progress'])
+      .order('created_at', { ascending: false });
+    return (data || []) as AgRideRequest[];
+  }
+
+  async getAllAgUsers(): Promise<(AgUser & { is_blocked?: boolean; blocked_reason?: string })[]> {
+    const { data } = await this.supabase
+      .from('ag_users')
+      .select('*, driver:ag_drivers(status,vehicle_plate,is_available)')
+      .order('created_at', { ascending: false });
+    return (data || []) as any[];
+  }
+
+  async blockAgUser(agUserId: string, blocked: boolean, reason?: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_users')
+      .update({ is_blocked: blocked, blocked_reason: reason || null })
+      .eq('id', agUserId);
+    return !error;
+  }
+
+  async getCommissionRate(): Promise<number> {
+    const { data } = await this.supabase
+      .from('ag_config')
+      .select('value')
+      .eq('key', 'commission_rate')
+      .maybeSingle();
+    return data ? parseFloat(data.value) : 15;
+  }
+
+  async setCommissionRate(rate: number): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_config')
+      .upsert({ key: 'commission_rate', value: rate.toString(), updated_at: new Date().toISOString() });
+    return !error;
+  }
+
+  async reverseGeocode(lat: number, lng: number): Promise<string> {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lng=${lng}`;
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'es', 'User-Agent': 'AndaYGana/1.0' },
+      });
+      if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const json = await res.json();
+      return json.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    } catch {
+      return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
   }
 }
