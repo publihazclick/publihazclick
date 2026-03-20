@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, OnInit, signal, inject, computed } 
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { AndaGanaService, AgDriver, AgUser, AgRideRequest } from '../../../anda-gana/anda-gana.service';
 
-type AdminTab = 'dashboard' | 'drivers' | 'trips' | 'users' | 'config';
+type AdminTab = 'dashboard' | 'drivers' | 'trips' | 'users' | 'config' | 'selfies';
 type DriversFilter = 'pending' | 'approved' | 'rejected' | 'all';
 type TripsFilter = 'today' | 'week' | 'month' | 'all';
 
@@ -529,6 +529,71 @@ type TripsFilter = 'today' | 'week' | 'month' | 'all';
   }
 
   <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: SELFIES / VERIFICACIONES                      -->
+  <!-- ══════════════════════════════════════════════════ -->
+  @if (activeTab() === 'selfies') {
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-black text-white">Verificación de Identidad</h2>
+          <p class="text-slate-500 text-xs mt-0.5">Aprueba o rechaza las fotos de verificación de pasajeros</p>
+        </div>
+        <span class="px-3 py-1 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-400 font-black text-sm">
+          {{ pendingSelfies().length }} pendiente{{ pendingSelfies().length !== 1 ? 's' : '' }}
+        </span>
+      </div>
+
+      @if (selfiesLoading()) {
+        <div class="flex items-center justify-center py-12">
+          <span class="material-symbols-outlined text-slate-500 animate-spin" style="font-size:32px">autorenew</span>
+        </div>
+      } @else if (pendingSelfies().length === 0) {
+        <div class="flex flex-col items-center py-16 gap-3">
+          <span class="material-symbols-outlined text-slate-600" style="font-size:48px">verified_user</span>
+          <p class="text-slate-500 text-sm">No hay verificaciones pendientes</p>
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (user of pendingSelfies(); track user.id) {
+            <div class="rounded-2xl border border-violet-500/20 bg-violet-500/[0.03] p-4 flex flex-col gap-4">
+              <!-- Selfie -->
+              <div class="flex flex-col items-center gap-2">
+                @if (user.selfie_url) {
+                  <img [src]="user.selfie_url" alt="Selfie" class="w-28 h-28 rounded-2xl object-cover border-2 border-violet-500/40" />
+                }
+                <div class="text-center">
+                  <p class="text-white font-black text-sm">{{ user.full_name }}</p>
+                  <p class="text-slate-500 text-xs">+57 {{ user.phone }}</p>
+                  <p class="text-slate-600 text-[10px] mt-1">{{ user.created_at | date:'d MMM yyyy' }}</p>
+                </div>
+              </div>
+              <!-- Acciones -->
+              <div class="flex gap-2">
+                <button (click)="approveSelfie(user.id)"
+                  class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all">
+                  <span class="material-symbols-outlined" style="font-size:14px">check</span> Aprobar
+                </button>
+                <button (click)="rejectSelfie(user.id)"
+                  class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-400 font-black text-xs uppercase tracking-wider transition-all">
+                  <span class="material-symbols-outlined" style="font-size:14px">close</span> Rechazar
+                </button>
+              </div>
+              <!-- Ver selfie en nuevo tab -->
+              @if (user.selfie_url) {
+                <a [href]="user.selfie_url" target="_blank"
+                  class="flex items-center justify-center gap-1.5 text-violet-400 text-[10px] font-bold hover:text-violet-300 transition-colors">
+                  <span class="material-symbols-outlined" style="font-size:12px">open_in_new</span>
+                  Ver foto completa
+                </a>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════ -->
   <!-- TAB: CONFIGURACIÓN                                 -->
   <!-- ══════════════════════════════════════════════════ -->
   @if (activeTab() === 'config') {
@@ -614,6 +679,7 @@ export class AndaGanaAdminComponent implements OnInit {
     { key: 'trips',     label: 'Viajes',      icon: 'route' },
     { key: 'users',     label: 'Usuarios',    icon: 'group' },
     { key: 'config',    label: 'Config',      icon: 'settings' },
+    { key: 'selfies',   label: 'Verificac.',  icon: 'face', badge: () => this.pendingSelfies().length },
   ];
 
   // Dashboard
@@ -680,6 +746,10 @@ export class AndaGanaAdminComponent implements OnInit {
     return u.filter(u => u.full_name?.toLowerCase().includes(q) || u.phone?.includes(q));
   });
 
+  // Selfies
+  pendingSelfies     = signal<any[]>([]);
+  selfiesLoading     = signal(false);
+
   // Config
   currentCommission  = signal(15);
   commissionInput    = signal(15);
@@ -698,6 +768,7 @@ export class AndaGanaAdminComponent implements OnInit {
       this.loadTrips(),
       this.loadUsers(),
       this.loadCommission(),
+      this.loadSelfies(),
     ]);
     this.loading.set(false);
   }
@@ -732,6 +803,11 @@ export class AndaGanaAdminComponent implements OnInit {
     const users = await this.svc.getAllAgUsers();
     this.allUsers.set(users);
     this.usersLoading.set(false);
+  }
+
+  private async loadSelfies() {
+    const data = await this.svc.getPendingSelfieVerifications();
+    this.pendingSelfies.set(data);
   }
 
   private async loadCommission() {
@@ -780,6 +856,16 @@ export class AndaGanaAdminComponent implements OnInit {
   async unblockUser(agUserId: string) {
     await this.svc.blockAgUser(agUserId, false);
     await this.loadUsers();
+  }
+
+  async approveSelfie(agUserId: string) {
+    await this.svc.approveSelfie(agUserId);
+    await this.loadSelfies();
+  }
+
+  async rejectSelfie(agUserId: string) {
+    await this.svc.rejectSelfie(agUserId);
+    await this.loadSelfies();
   }
 
   // Config

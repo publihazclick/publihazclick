@@ -25,6 +25,11 @@ export interface AgUser {
   phone_verified: boolean;
   role: 'passenger' | 'driver';
   avatar_url?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  selfie_url?: string;
+  selfie_verified?: boolean;
+  selfie_verified_at?: string;
   created_at: string;
   driver?: AgDriver;
 }
@@ -639,5 +644,89 @@ export class AndaGanaService {
     } catch {
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     }
+  }
+
+  async updateEmergencyContact(agUserId: string, name: string, phone: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_users')
+      .update({ emergency_contact_name: name, emergency_contact_phone: phone })
+      .eq('id', agUserId);
+    return !error;
+  }
+
+  async uploadSelfie(agUserId: string, file: File): Promise<string | null> {
+    const ext  = file.name.split('.').pop() || 'jpg';
+    const path = `${agUserId}/selfie-${Date.now()}.${ext}`;
+    const { data, error } = await this.supabase.storage
+      .from('ag-selfies')
+      .upload(path, file, { upsert: true });
+    if (error) return null;
+    const { data: urlData } = this.supabase.storage.from('ag-selfies').getPublicUrl(data.path);
+    const url = urlData.publicUrl;
+    await this.supabase.from('ag_users').update({ selfie_url: url, selfie_verified: false }).eq('id', agUserId);
+    return url;
+  }
+
+  async triggerPanic(requestId: string, passengerId: string, driverId?: string, lat?: number, lng?: number): Promise<boolean> {
+    const { error } = await this.supabase.from('ag_panic_alerts').insert({
+      request_id:   requestId,
+      passenger_id: passengerId,
+      driver_id:    driverId || null,
+      location_lat: lat || null,
+      location_lng: lng || null,
+    });
+    return !error;
+  }
+
+  buildShareTripMessage(request: AgRideRequest): string {
+    const driverName  = request.driver?.ag_user?.full_name ?? 'conductor';
+    const plate       = request.driver?.vehicle_plate ?? '';
+    const origin      = request.origin_address;
+    const dest        = request.dest_address;
+    const mapsLink    = `https://maps.google.com/?q=${request.dest_lat},${request.dest_lng}`;
+    return encodeURIComponent(
+      `🚗 Estoy en un viaje de Anda y Gana con ${driverName} (placa ${plate}).\n` +
+      `📍 Origen: ${origin}\n` +
+      `🏁 Destino: ${dest}\n` +
+      `Mapa: ${mapsLink}`
+    );
+  }
+
+  buildPanicMessage(request: AgRideRequest, passengerName: string): string {
+    const driverName = request.driver?.ag_user?.full_name ?? 'desconocido';
+    const plate      = request.driver?.vehicle_plate ?? '';
+    const mapsLink   = `https://maps.google.com/?q=${request.dest_lat},${request.dest_lng}`;
+    return encodeURIComponent(
+      `🚨 ALERTA DE EMERGENCIA\n${passengerName} activó el botón de pánico.\n` +
+      `Conductor: ${driverName} · Placa: ${plate}\n` +
+      `Destino: ${request.dest_address}\n` +
+      `📍 ${mapsLink}`
+    );
+  }
+
+  async getPendingSelfieVerifications(): Promise<AgUser[]> {
+    const { data } = await this.supabase
+      .from('ag_users')
+      .select('*')
+      .not('selfie_url', 'is', null)
+      .eq('selfie_verified', false)
+      .order('created_at', { ascending: true });
+    return (data || []) as AgUser[];
+  }
+
+  async approveSelfie(agUserId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_users')
+      .update({ selfie_verified: true, selfie_verified_at: new Date().toISOString() })
+      .eq('id', agUserId);
+    return !error;
+  }
+
+  async rejectSelfie(agUserId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('ag_users')
+      .update({ selfie_url: null, selfie_verified: false })
+      .eq('id', agUserId);
+    return !error;
   }
 }

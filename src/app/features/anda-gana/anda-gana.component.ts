@@ -8,7 +8,8 @@ type AgScreen =
   | 'rejected' | 'passenger-home' | 'driver-home' | 'admin-panel'
   | 'passenger-pick-origin' | 'passenger-pick-dest' | 'passenger-offer'
   | 'passenger-searching' | 'passenger-trip' | 'passenger-rating'
-  | 'driver-requests' | 'driver-trip-active' | 'driver-rate-passenger' | 'driver-earnings';
+  | 'driver-requests' | 'driver-trip-active' | 'driver-rate-passenger' | 'driver-earnings'
+  | 'security-settings';
 
 @Component({
   selector: 'app-anda-gana',
@@ -436,6 +437,26 @@ type AgScreen =
             <p class="text-white font-bold text-xs">Conductores verificados</p>
           </div>
         </div>
+
+        <!-- Seguridad -->
+        <button (click)="openSecuritySettings()"
+          class="flex items-center gap-4 px-5 py-4 rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] hover:bg-rose-500/10 transition-all group w-full">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <span class="material-symbols-outlined text-rose-400" style="font-size:20px">shield_person</span>
+          </div>
+          <div class="flex-1 text-left">
+            <p class="text-white font-black text-sm">Seguridad del viaje</p>
+            <p class="text-slate-500 text-xs">Contacto de emergencia · Foto de verificación · Pánico</p>
+          </div>
+          @if (agUser()?.selfie_verified) {
+            <span class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-black uppercase tracking-wider shrink-0">
+              <span class="material-symbols-outlined" style="font-size:12px">verified</span> ID OK
+            </span>
+          } @else {
+            <span class="text-[9px] text-rose-400 font-black uppercase tracking-wider shrink-0 px-2 py-1 rounded-full bg-rose-500/10 border border-rose-500/20">Configura</span>
+          }
+          <span class="material-symbols-outlined text-slate-600 shrink-0" style="font-size:18px">chevron_right</span>
+        </button>
       }
 
       @if (activeRideRequest()) {
@@ -781,6 +802,40 @@ type AgScreen =
             Llamar
           </a>
         </div>
+
+        <!-- Compartir viaje (WhatsApp) -->
+        <button (click)="shareTrip()"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#25d366]/10 border border-[#25d366]/30 hover:bg-[#25d366]/20 transition-all w-full">
+          <span class="material-symbols-outlined text-[#25d366]" style="font-size:20px">share</span>
+          <div class="flex-1 text-left">
+            <p class="text-white font-bold text-sm">Compartir viaje</p>
+            <p class="text-slate-500 text-xs">Envía tu recorrido por WhatsApp</p>
+          </div>
+          <span class="text-[#25d366] font-black text-xs">WhatsApp</span>
+        </button>
+
+        <!-- Botón de pánico -->
+        <button (click)="triggerPanic()"
+          [disabled]="panicSent()"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl border transition-all w-full
+            {{ panicSent()
+              ? 'bg-emerald-500/10 border-emerald-500/20 cursor-default'
+              : 'bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20 active:scale-95' }}">
+          @if (panicSent()) {
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span>
+            <div class="flex-1 text-left">
+              <p class="text-emerald-400 font-black text-sm">Alerta enviada</p>
+              <p class="text-slate-500 text-xs">Tu contacto de emergencia fue notificado</p>
+            </div>
+          } @else {
+            <span class="material-symbols-outlined text-rose-400 animate-pulse" style="font-size:20px">emergency</span>
+            <div class="flex-1 text-left">
+              <p class="text-rose-400 font-black text-sm">Botón de Pánico</p>
+              <p class="text-slate-500 text-xs">Alerta inmediata a tu contacto de emergencia</p>
+            </div>
+            <span class="text-rose-400 font-black text-xs uppercase tracking-wider px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/20">SOS</span>
+          }
+        </button>
       }
 
       <!-- Chat -->
@@ -1722,6 +1777,128 @@ type AgScreen =
     </div>
   }
 
+  <!-- ═══════════════════ SECURITY SETTINGS ═══════════════════ -->
+  @if (screen() === 'security-settings') {
+    <div class="w-full max-w-md flex flex-col gap-5">
+      <div class="flex items-center gap-3">
+        <button (click)="screen.set('passenger-home')" class="w-10 h-10 rounded-xl border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all shrink-0">
+          <span class="material-symbols-outlined" style="font-size:20px">arrow_back</span>
+        </button>
+        <div>
+          <h2 class="text-lg font-black text-white">Seguridad del Viaje</h2>
+          <p class="text-slate-500 text-xs">Configura tu perfil de seguridad</p>
+        </div>
+      </div>
+
+      <!-- Verificación de identidad -->
+      <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-5 flex flex-col gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-violet-400" style="font-size:20px">face</span>
+          </div>
+          <div class="flex-1">
+            <p class="text-white font-black text-sm">Verificación de Identidad</p>
+            <p class="text-slate-500 text-xs">Sube una foto de tu rostro para generar confianza</p>
+          </div>
+          @if (agUser()?.selfie_verified) {
+            <span class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[9px] font-black uppercase">
+              <span class="material-symbols-outlined" style="font-size:12px">verified</span> Verificado
+            </span>
+          } @else if (agUser()?.selfie_url) {
+            <span class="px-2 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] font-black uppercase">En revisión</span>
+          }
+        </div>
+
+        @if (selfiePreviewUrl()) {
+          <img [src]="selfiePreviewUrl()" alt="Selfie" class="w-24 h-24 rounded-2xl object-cover border-2 border-violet-500/40 mx-auto" />
+        } @else if (agUser()?.selfie_url) {
+          <img [src]="agUser()!.selfie_url" alt="Selfie" class="w-24 h-24 rounded-2xl object-cover border-2 border-violet-500/40 mx-auto" />
+        }
+
+        @if (!agUser()?.selfie_verified) {
+          <label class="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-400 font-black text-sm hover:bg-violet-500/20 transition-all cursor-pointer">
+            @if (selfieUploading()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
+              Subiendo...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:18px">add_a_photo</span>
+              {{ agUser()?.selfie_url ? 'Cambiar foto' : 'Subir selfie' }}
+            }
+            <input type="file" accept="image/*" capture="user" class="hidden" (change)="onSelfieFile($event)" />
+          </label>
+        }
+      </div>
+
+      <!-- Contacto de emergencia -->
+      <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-5 flex flex-col gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-rose-400" style="font-size:20px">emergency</span>
+          </div>
+          <div>
+            <p class="text-white font-black text-sm">Contacto de Emergencia</p>
+            <p class="text-slate-500 text-xs">Se notifica cuando activas el botón de pánico</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <div>
+            <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Nombre</label>
+            <input type="text" [value]="emergencyContactName()" (input)="emergencyContactName.set($any($event.target).value)"
+              placeholder="Nombre completo"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-rose-500/50 transition-all" />
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Teléfono (WhatsApp)</label>
+            <div class="flex gap-2">
+              <div class="flex items-center px-3 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-sm font-bold shrink-0">+57</div>
+              <input type="tel" [value]="emergencyContactPhone()" (input)="emergencyContactPhone.set($any($event.target).value)"
+                placeholder="3001234567" maxlength="10"
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-rose-500/50 transition-all" />
+            </div>
+          </div>
+        </div>
+
+        @if (contactSaved()) {
+          <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span>
+            <p class="text-emerald-400 font-black text-sm">Contacto guardado correctamente</p>
+          </div>
+        }
+
+        <button (click)="saveEmergencyContact()"
+          [disabled]="savingContact() || !emergencyContactName().trim() || emergencyContactPhone().length < 10"
+          class="w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all
+            bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:from-rose-400 hover:to-pink-400 disabled:opacity-40">
+          @if (savingContact()) {
+            <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+          } @else {
+            Guardar contacto
+          }
+        </button>
+      </div>
+
+      <!-- Cómo funciona el pánico -->
+      <div class="rounded-2xl border border-rose-500/10 bg-rose-500/[0.02] p-4 flex flex-col gap-3">
+        <p class="text-rose-400 font-black text-xs uppercase tracking-widest">¿Cómo funciona el botón de pánico?</p>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-start gap-3">
+            <span class="w-5 h-5 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 font-black text-[10px] shrink-0 mt-0.5">1</span>
+            <p class="text-slate-400 text-xs">Durante el viaje, presiona el botón rojo "SOS"</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="w-5 h-5 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 font-black text-[10px] shrink-0 mt-0.5">2</span>
+            <p class="text-slate-400 text-xs">Se registra la alerta en el sistema y se abre WhatsApp con tu contacto de emergencia</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="w-5 h-5 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 font-black text-[10px] shrink-0 mt-0.5">3</span>
+            <p class="text-slate-400 text-xs">El mensaje incluye los datos del conductor, placa y enlace de Google Maps</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════════════ ADMIN PANEL ═══════════════════ -->
   @if (screen() === 'admin-panel') {
     <div class="w-full max-w-4xl flex flex-col gap-6">
@@ -2023,6 +2200,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { key: 'month', label: 'Mes' },
     { key: 'all',   label: 'Total' },
   ];
+
+  // Security
+  emergencyContactName  = signal('');
+  emergencyContactPhone = signal('');
+  savingContact         = signal(false);
+  contactSaved          = signal(false);
+  selfiePreviewUrl      = signal('');
+  selfieUploading       = signal(false);
+  panicSent             = signal(false);
 
   // Passenger flow
   rideOrigin          = signal<{ lat: number; lng: number; address: string } | null>(null);
@@ -2833,6 +3019,65 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._driverChatChannel) { try { this._driverChatChannel.unsubscribe(); } catch {} this._driverChatChannel = null; }
     this.destroyMap();
     this.driverChatMessages.set([]);
+  }
+
+  openSecuritySettings() {
+    const u = this.agUser();
+    if (u) {
+      this.emergencyContactName.set(u.emergency_contact_name || '');
+      this.emergencyContactPhone.set(u.emergency_contact_phone ? u.emergency_contact_phone.replace('+57', '') : '');
+    }
+    this.contactSaved.set(false);
+    this.screen.set('security-settings');
+  }
+
+  async saveEmergencyContact() {
+    const u = this.agUser();
+    if (!u) return;
+    this.savingContact.set(true);
+    const ok = await this.svc.updateEmergencyContact(u.id, this.emergencyContactName().trim(), '+57' + this.emergencyContactPhone().trim());
+    if (ok) {
+      this.agUser.set({ ...u, emergency_contact_name: this.emergencyContactName().trim(), emergency_contact_phone: '+57' + this.emergencyContactPhone().trim() });
+      this.contactSaved.set(true);
+      setTimeout(() => this.contactSaved.set(false), 3000);
+    }
+    this.savingContact.set(false);
+  }
+
+  async onSelfieFile(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.agUser()) return;
+    const reader = new FileReader();
+    reader.onload = e => this.zone.run(() => this.selfiePreviewUrl.set(e.target?.result as string));
+    reader.readAsDataURL(file);
+    this.selfieUploading.set(true);
+    const url = await this.svc.uploadSelfie(this.agUser()!.id, file);
+    if (url) {
+      this.agUser.set({ ...this.agUser()!, selfie_url: url, selfie_verified: false });
+    }
+    this.selfieUploading.set(false);
+  }
+
+  async triggerPanic() {
+    const req = this.activeRideRequest();
+    const u   = this.agUser();
+    if (!req || !u) return;
+    await this.svc.triggerPanic(req.id, u.id, req.driver_id);
+    this.panicSent.set(true);
+    const emergencyPhone = u.emergency_contact_phone;
+    const msg = this.svc.buildPanicMessage(req, u.full_name);
+    const waUrl = emergencyPhone
+      ? `https://wa.me/${emergencyPhone.replace('+', '')}?text=${msg}`
+      : `https://wa.me/?text=${msg}`;
+    if (isPlatformBrowser(this.platformId)) window.open(waUrl, '_blank');
+  }
+
+  shareTrip() {
+    const req = this.activeRideRequest();
+    if (!req) return;
+    const msg = this.svc.buildShareTripMessage(req);
+    const waUrl = `https://wa.me/?text=${msg}`;
+    if (isPlatformBrowser(this.platformId)) window.open(waUrl, '_blank');
   }
 
   ngOnDestroy() {
