@@ -9,6 +9,7 @@ import { VideoSectionComponent } from './components/video-section/video-section.
 import { FooterComponent } from './components/footer/footer.component';
 import { BannerSliderComponent } from './components/banner-slider/banner-slider.component';
 import { TiersComponent } from './components/tiers/tiers.component';
+import { PaymentTestimonialsComponent } from './components/payment-testimonials/payment-testimonials.component';
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -21,6 +22,7 @@ import { TiersComponent } from './components/tiers/tiers.component';
     PricingComponent,
     PtcAdsComponent,
     VideoSectionComponent,
+    PaymentTestimonialsComponent,
     FooterComponent,
   ],
   templateUrl: './app.html',

@@ -119,6 +119,10 @@ export const routes: Routes = [
       {
         path: 'social-links',
         loadComponent: () => import('./features/admin/components/social-links/social-links.component').then(m => m.AdminSocialLinksComponent)
+      },
+      {
+        path: 'subir-test',
+        loadComponent: () => import('./features/admin/components/subir-test/subir-test.component').then(m => m.AdminSubirTestComponent)
       }
     ]
   },
