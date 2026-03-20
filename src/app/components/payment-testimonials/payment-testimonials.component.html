@@ -15,13 +15,24 @@
 
       <!-- Grid de tarjetas estilo Instagram -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        @for (item of items(); track item.id) {
+        @for (item of visibleItems(); track item.id) {
           <div class="bg-white rounded-2xl overflow-hidden shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col group hover:-translate-y-1 transition-transform duration-300">
 
             <!-- Card header: avatar + username + date -->
             <div class="px-4 py-3 flex items-center gap-3 border-b border-gray-50">
-              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-                <span class="text-white font-black text-xs">{{ item.username.charAt(0) }}</span>
+              <!-- Avatar foto real -->
+              <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
+                <img
+                  [src]="avatarUrl(item)"
+                  [alt]="item.username"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                />
+                <!-- Fallback si la imagen de avatar falla -->
+                <div class="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-600 items-center justify-center hidden">
+                  <span class="text-white font-black text-xs">{{ item.username.charAt(0).toUpperCase() }}</span>
+                </div>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-black text-gray-800 truncate">{{ item.username }}</p>
@@ -33,7 +44,7 @@
               </div>
             </div>
 
-            <!-- Image -->
+            <!-- Image (comprobante de pago) -->
             <div class="relative overflow-hidden bg-gray-50" style="aspect-ratio: 4/5;">
               <img
                 [src]="item.image_url"
@@ -58,6 +69,22 @@
           </div>
         }
       </div>
+
+      <!-- Ver más / contador -->
+      @if (hasMore()) {
+        <div class="text-center mt-10">
+          <p class="text-xs text-gray-400 mb-4">
+            Mostrando {{ visibleItems().length }} de {{ items().length }} comprobantes
+          </p>
+          <button
+            (click)="loadMore()"
+            class="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-cyan-400 text-gray-700 hover:text-cyan-600 font-bold text-sm py-3 px-8 rounded-2xl transition-all hover:-translate-y-0.5 shadow-sm hover:shadow-md"
+          >
+            <span class="material-symbols-outlined text-lg">expand_more</span>
+            Ver más comprobantes
+          </button>
+        </div>
+      }
 
       <!-- CTA -->
       <div class="text-center mt-12 md:mt-16">

@@ -23,45 +23,91 @@ export interface DuplicateCheckResult {
 // ─── Pool de nombres y comentarios ──────────────────────────────────────────
 
 const USERNAMES = [
-  'María J.', 'Carlos A.', 'Paola R.', 'Andrés M.', 'Laura V.',
-  'Diego F.', 'Valentina G.', 'Sebastián H.', 'Natalia C.', 'Camilo T.',
-  'Juliana O.', 'Felipe S.', 'Daniela B.', 'Mauricio L.', 'Catalina P.',
-  'Jorge E.', 'Alejandra N.', 'Iván D.', 'Luisa Q.', 'Esteban W.',
-  'Adriana K.', 'Hernán Z.', 'Pilar X.', 'Ricardo U.', 'Marcela Y.',
-  'Gustavo I.', 'Ángela R.', 'Fabián M.', 'Verónica C.', 'William T.',
+  // Nombres completos estilo colombiano
+  'Andrea Marcela Torres', 'Luis Felipe García', 'Tatiana Ospina', 'Brayan Morales',
+  'Yessica Ramírez', 'Jonatan Herrera', 'Paola Andrea Ríos', 'Steeven Muñoz',
+  'Leidy Johana Cruz', 'Dairo Castellanos', 'Xiomara Pedraza', 'Wilmar Acevedo',
+  'Nathaly Bermúdez', 'Jhon Jairo López', 'Karen Sofía Vega', 'Elkin Patiño',
+  // Nombre + inicial apellido
+  'Camilo V.', 'Juli R.', 'Pipe F.', 'Santi G.', 'Mafe L.', 'Dani B.',
+  'Caro M.', 'Fer T.', 'Ale C.', 'Nata P.', 'Sebas H.', 'Vale O.',
+  // Estilo usuario/apodo
+  'juanchi_bogota', 'andres.movil', 'pipe_cali09', 'mary_oficial',
+  'carlos2024col', 'laura_emprende', 'yessi.pays', 'miguelito_ptc',
+  'sofi.trabaja', 'tato_gana', 'kikeguerrero', 'isabelitacol',
+  'jota_retiros', 'cami_cash', 'natalia_real', 'dairo_inversiones',
+  // Solo nombre (común en redes)
+  'Yurany', 'Bladimir', 'Karent', 'Ferney', 'Yadira', 'Duvan',
+  'Marisol', 'Kleiver', 'Lorena', 'Sneider', 'Vanessa', 'Robinsón',
 ];
 
 const COMMENTS = [
-  '¡Por fin llegó mi pago! Muchas gracias a Publihazclick, llevo 3 meses recibiendo mis ganancias puntualmente 🙌',
-  'Nunca pensé que ver anuncios me iba a generar este ingreso. Acabo de recibir mi retiro sin problemas ✅',
-  'Excelente plataforma, segundo mes consecutivo recibiendo mi pago. Lo recomiendo al 100% 💸',
-  'Hoy me llegó el pago y quiero que todos vean que esto sí funciona. ¡Inscríbanse! 🎉',
-  'Llevo 6 meses en Publihazclick y siempre me pagan a tiempo. Esta semana fue mi mejor retiro 💰',
-  'No lo podía creer pero aquí está mi comprobante. Gracias por el pago puntual como siempre 🙏',
-  '¡Woooo! Ya recibí mi pago de esta semana. Esto es real, no hay trampa 🔥',
-  'Tercer retiro del mes y todo perfecto. Publihazclick cumple siempre sus compromisos 😊',
-  'Empecé con dudas pero los resultados hablan solos. Pago recibido y muy contento/a 👏',
-  'Si estás pensando en unirte, este es el comprobante de que sí pagan. ¡Vale la pena! 💯',
-  'Mi familia no me creía pero ya le mostré este comprobante. Publihazclick es legítimo ❤️',
-  'Cuarto mes seguido recibiendo mi dinero sin retrasos. La mejor plataforma que he encontrado 🌟',
-  'Gracias al equipo de Publihazclick por el pago de hoy. Siempre tan puntuales 🤝',
-  'Esto cambia la vida, en serio. Ver anuncios y generar ingresos reales. ¡Acabo de cobrar! 🎊',
-  'Mi segundo retiro ya en cuenta. Los que no se han inscrito se están perdiendo de algo bueno 💎',
-  'Pago confirmado. Llevo más de 4 meses y nunca me han fallado. Totalmente recomendado ✨',
-  '¡Listo! Llegó mi retiro. Cada semana es una alegría ver ese dinero llegar a mi cuenta 😄',
-  'Ya suman varios pagos recibidos. Publihazclick es lo mejor que me ha pasado este año 🏆',
-  'Comprobante de pago directo. Sin mentiras, sin trucos. Esto sí funciona de verdad 👍',
-  'Hoy celebro porque recibí mi pago más alto hasta ahora. Gracias Publihazclick por todo 🥳',
-  'Me recomendaron esta plataforma y pensé que era cuento, pero aquí está mi pago real 😮',
-  'Cinco meses en la plataforma y mi pago siempre llega a tiempo. Sigan así 💪',
-  'Les comparto mi pago de esta semana para que vean que Publihazclick sí paga 🎯',
-  'Increíble cómo un pequeño esfuerzo diario genera estos resultados. ¡Pago recibido! 🌈',
-  'Gracias infinitas. Este ingreso extra me ha ayudado muchísimo. Pago puntual como siempre 🙌',
-  'Mi tercera semana cobrando y cada vez mejor. No paren de crecer Publihazclick 🚀',
-  'Aquí el comprobante para los incrédulos. La plataforma paga, sin excusas ✔️',
-  'Inicio de semana con buen pie gracias a mi pago de Publihazclick. Así da gusto trabajar 😎',
-  '¡Ya llegó! Comprobante de retiro exitoso. Esta comunidad es lo mejor 🤩',
-  'Llevo un año recibiendo pagos puntuales. La confianza que les tengo es total 💙',
+  // Cortos / directos
+  'Llegó. Sin más que decir. ✅',
+  'Pago recibido. Primera vez y funcionó perfecto.',
+  'Real. Sin trucos. Aquí está el comprobante 🔥',
+  'Cobré hoy. No lo podía creer hasta que vi la notificación.',
+  'Mi retiro en cuenta. Esto sí paga.',
+  // Con contexto de tiempo
+  'Llevo 3 semanas y ya van 2 retiros exitosos. Esto es constante 💸',
+  'Primer mes completo y el pago llegó puntual. Seguiré así 💪',
+  'Seis meses activa en la plataforma y jamás me han fallado. Récord personal este retiro 🏆',
+  'Cuatro pagos recibidos desde que me uní. Cada vez mejor.',
+  'Un año en Publihazclick. Doce meses, doce pagos. Eso lo dice todo 💯',
+  // Reacción emocional / familiar
+  'Mi mamá no me creía, le mostré esto y ya me está preguntando cómo se registra 😂',
+  'Le dije a mi novio que esto era real y hoy le demostré con el comprobante. Jajaja 🎉',
+  'Dudé mucho antes de unirme. Hoy me arrepiento de no haberlo hecho antes.',
+  'Mi hermano me recomendó esto hace 2 meses. Ya recuperé lo que invertí y sigo sumando.',
+  'Pensé que era una de tantas páginas falsas. Error mío. Esto paga y punto.',
+  // Factual / frío
+  'Retiro procesado. Sin retrasos.',
+  'Comprobante verificado. Plataforma confiable.',
+  'Pago #7. Todo correcto como siempre.',
+  'Tercer retiro del mes. Proceso rápido.',
+  'Acreditado hoy. Sin problema alguno.',
+  // Recomendación activa
+  'Si estás dudando, este screenshot es tu respuesta. Únete ya 👆',
+  'Los que no están en Publihazclick se están perdiendo ingresos reales. Aquí la prueba.',
+  'Comparto esto para que vean que sí funciona. No hay excusa para no intentarlo.',
+  'Para los que preguntan si pagan: sí. Aquí está mi comprobante de hoy.',
+  'Recomendado al 100%. No es cuento. Este es mi pago de esta semana 🙌',
+  // Detalle de experiencia
+  'Empecé solo viendo 3 o 4 anuncios al día y ya genero un ingreso extra que me ayuda bastante.',
+  'Lo bueno de Publihazclick es que no te piden nada raro. Ves anuncios, acumulas, retiras.',
+  'El proceso de retiro es rapidísimo. Lo solicité ayer y hoy ya estaba en mi cuenta.',
+  'Me gustó que desde el primer día vi resultados. Sin esperas absurdas.',
+  'Fácil de usar, pagos rápidos y sin letras pequeñas. Eso es lo que más valoro.',
+  // Cantidad / logro
+  'Este fue mi retiro más alto hasta ahora. Voy creciendo cada semana 📈',
+  'Primer retiro pequeño pero importante. La constancia va sumando.',
+  'Ya superé lo que ganaba haciendo cosas extra los fines de semana. Impresionante.',
+  'No es para hacerse millonario, pero como ingreso complementario es excelente.',
+  // Tono motivacional
+  '¿Ves este comprobante? Tú también puedes tenerlo. Solo necesitas constancia.',
+  'Cada día que no te unes es un día de ingresos perdidos. Así de simple.',
+  'Empecé con cero experiencia y aquí estoy, retirando. Todo el mundo puede.',
+  'La clave es ser constante. El pago llega solo.',
+  // Tono casual / cotidiano
+  'Che, llegó mi pago. Justo a tiempo para el mercado de la semana 😄',
+  'Usé las ganancias de este mes para pagar el internet. Auto sostenible casi 😅',
+  'Aburrida en casa y encontré Publihazclick. Ahora el aburrimiento me paga 😂',
+  'Este dinero lo uso para los gusticos sin afectar el presupuesto familiar 🙏',
+  // Específico de plataforma
+  'El sistema de referidos también suma bastante. Ya tengo 4 amigos activos.',
+  'Mis referidos me están generando ingresos pasivos. Esto escala bien.',
+  'Aparte del pago por anuncios, los bonos por referidos son un extra nada despreciable.',
+  // Sin emojis (más formal)
+  'Comprobante de pago recibido satisfactoriamente. Plataforma seria y confiable.',
+  'Segundo mes consecutivo recibiendo mi retiro sin inconvenientes. Muy conforme.',
+  'Proceso transparente desde el inicio. El dinero llega cuando dicen que llega.',
+  'Cuatro meses usando la plataforma. Ningún problema hasta la fecha.',
+  'Recomendable para quienes buscan un ingreso adicional sin mayor complicación.',
+  // Entusiasmo alto
+  '¡LLEGÓÓÓ! 🎊🎊 No puedo creer que esto sea real. Gracias Publihazclick 🙌🙌',
+  'PAGO RECIBIDO 🔥🔥 Esto sí funciona amigos, no pierdan tiempo y únanse ya!',
+  '¡Woooo! Tercer pago del mes y subiendo. Alguien que me diga cómo parar 🚀😂',
+  '¡Esto es una locura! Empecé sin creer y ahora no puedo parar de recibir pagos 🤩',
 ];
 
 // ─── Hash Perceptual (aHash 16×16 = 256 bits) ───────────────────────────────
