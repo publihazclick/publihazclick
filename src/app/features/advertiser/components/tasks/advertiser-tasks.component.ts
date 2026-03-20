@@ -18,12 +18,13 @@ const DAILY_SLOTS = {
   max_affiliates: 40,
 };
 
-/** Slots de mini_referral por afiliado activo según nivel básico */
+/** Slots de mini_referral por afiliado activo según nivel (debe coincidir con get_mini_referral_slots_per_affiliate en DB) */
 function miniReferralSlotsPerAffiliate(affiliates: number): number {
-  if (affiliates >= 10) return 4;
-  if (affiliates >= 6)  return 3;
-  if (affiliates >= 3)  return 2;
-  if (affiliates >= 1)  return 1;
+  if (affiliates >= 20) return 5;  // ESMERALDA+
+  if (affiliates >= 10) return 4;  // RUBY
+  if (affiliates >= 6)  return 3;  // ZAFIRO
+  if (affiliates >= 3)  return 2;  // PERLA
+  if (affiliates >= 1)  return 1;  // JADE
   return 0;
 }
 
@@ -99,12 +100,20 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   };
 
   // ── Tracking ─────────────────────────────────────────────────────────────
-  // Clave diaria incluye la fecha de hoy → se resetea sola cada nuevo día
-  private get dailyKey(): string {
-    return `ptc_daily_${new Date().toISOString().split('T')[0]}`;
+  // Clave diaria en fecha Colombia (UTC-5) → se resetea sola cada medianoche Colombia
+  private get todayKeyColombia(): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
   }
-  // Clave mega es permanente → acumula hasta que se complete
-  private readonly megaKey = 'ptc_mega_done';
+  private get dailyKey(): string {
+    return `ptc_daily_${this.todayKeyColombia}`;
+  }
+  // Mega también es diario (el RPC hace dedup por día Colombia)
+  private get megaKey(): string {
+    return `ptc_mega_${this.todayKeyColombia}`;
+  }
 
   private getDailyDone(): Set<string> {
     if (typeof window === 'undefined') return new Set();

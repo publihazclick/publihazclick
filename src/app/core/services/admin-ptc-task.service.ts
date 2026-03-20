@@ -547,10 +547,6 @@ export class AdminPtcTaskService {
         }
       }
 
-      if (filters.location) {
-        query = query.eq('location', filters.location);
-      }
-
       const { data, error, count } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
