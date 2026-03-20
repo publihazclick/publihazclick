@@ -1,63 +1,113 @@
-<!-- Main Hero Section -->
-<section class="relative bg-black overflow-hidden text-white px-4 md:px-6">
-  <!-- Background Glow -->
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
+<section class="relative bg-black overflow-hidden text-white">
 
-  <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 text-center relative z-10">
+  <!-- Fondos decorativos -->
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_30%,rgba(0,229,255,0.08),transparent)] pointer-events-none"></div>
+  <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent"></div>
 
-    <!-- Floating Images -->
-    <div class="relative pt-6 sm:pt-8 lg:min-h-[450px] lg:py-0 flex items-center justify-center">
-      <!-- Product Image 1 -->
-      <div class="absolute top-20 -left-4 md:-left-12 w-24 md:w-36 h-24 md:h-36 animate-float hidden lg:block">
-        <img 
-          alt="Product" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] rotate-12 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2RWuxdN5hyuEP7KMGu55VJWKBi_9LXMmpdJPiCTvKE5h57afgm-EAs_NdT7nn-rxG6c-T5OOdkoJBv1KTYm0Zza-I1bz8qutiJeCeV0Xue93aP_IiPEoOnKH4VzKWvD1VGrlgXbE25kFP_yB8zNBFIkUCbJkjazLUMduxnwHh6aCnxKWrfF6tFjRCuMVIlvqdQBSHNKL5XOnOsYknRnjMiFlUDrKoqnbTXz3DFUOYIuKxSc78ZbZSjX_IpLDhA9XPv75XSdH7X5vk"
-        />
+  <div class="relative z-10 max-w-7xl mx-auto px-4 md:px-6 pt-10 pb-8 md:pt-16 md:pb-12 text-center">
+
+    <!-- Badge de plataforma verificada -->
+    <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-1.5 mb-6">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
+      <span class="text-emerald-400 text-xs font-bold tracking-wide">Plataforma verificada · Pagos en 24h</span>
+    </div>
+
+    <!-- Titular principal -->
+    <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black tracking-[-0.04em] leading-none mb-4 uppercase">
+      <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-primary to-blue-400">Gana Dinero</span>
+    </h1>
+    <p class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black uppercase tracking-tighter text-white mb-6">
+      Viendo Anuncios
+    </p>
+
+    <!-- Descripción -->
+    <p class="text-sm sm:text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
+      Publihazclick conecta marcas reales con miles de colombianos que ganan dinero cada semana
+      por ver sus anuncios. Simple, transparente y sin inversión mínima para empezar.
+    </p>
+
+    <!-- Beneficios clave en pills -->
+    <div class="flex flex-wrap justify-center gap-2 mb-10">
+      <span class="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs text-slate-300 font-medium">
+        <span class="material-symbols-outlined text-cyan-400" style="font-size:14px">check_circle</span>
+        Regístrate una vez y gana de inmediato
+      </span>
+      <span class="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs text-slate-300 font-medium">
+        <span class="material-symbols-outlined text-cyan-400" style="font-size:14px">check_circle</span>
+        Anuncios de marcas colombianas e internacionales
+      </span>
+      <span class="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs text-slate-300 font-medium">
+        <span class="material-symbols-outlined text-cyan-400" style="font-size:14px">check_circle</span>
+        Multiplica ganancias con referidos
+      </span>
+      <span class="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs text-slate-300 font-medium">
+        <span class="material-symbols-outlined text-cyan-400" style="font-size:14px">check_circle</span>
+        Retira cuando quieras, sin restricciones
+      </span>
+    </div>
+
+    <!-- CTAs -->
+    <div class="flex flex-wrap justify-center gap-3 mb-12">
+      <a routerLink="/register"
+         class="inline-flex items-center gap-2 bg-cyan-400 hover:bg-cyan-300 text-black font-black text-sm py-3.5 px-8 rounded-2xl transition-all hover:-translate-y-0.5 shadow-lg shadow-cyan-500/30">
+        <span class="material-symbols-outlined text-lg">rocket_launch</span>
+        Comenzar ahora — es gratis
+      </a>
+      <a routerLink="/login"
+         class="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-sm py-3.5 px-8 rounded-2xl transition-all hover:-translate-y-0.5">
+        <span class="material-symbols-outlined text-lg">login</span>
+        Iniciar sesión
+      </a>
+    </div>
+
+    <!-- Tipos de anuncio (cards horizontales) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto mb-12">
+      <div class="bg-purple-500/8 border border-purple-500/20 rounded-2xl px-4 py-3 text-center">
+        <span class="material-symbols-outlined text-purple-400 mb-1 block" style="font-size:20px">star</span>
+        <p class="text-white font-black text-xs">Mega Anuncio</p>
+        <p class="text-purple-400 font-black text-lg">+$2.00</p>
+        <p class="text-slate-600 text-[10px]">60 seg</p>
       </div>
-
-      <!-- Apparel Image -->
-      <div class="absolute bottom-6 md:bottom-10 -left-4 md:-left-8 w-28 md:w-44 h-28 md:h-44 animate-float-delayed hidden lg:block">
-        <img 
-          alt="Apparel" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] -rotate-12 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBQ-EUBNbvxxuqMcq-HUfpaSBbmaT9zKyYzNZsrUyI8W7RNEjfeyAlOAlqt2hKJ9nkHbMMy2_H-H6D6541ImlrN0bP02MVbI4AGuUYy-woI4Ay6IXlYTBjAJXVpJtlgXmN1AGNMW08gxoFNUOLlrxvoeSycyhJm4to3etXrFCZJmD1XbJ5Du-HWAWneWg3E150e6q-D23Hbr-mISVnOzV3p4my4MWsSs3j-cQBi1tZzQIFm2iwSynatkSteSBCRBfmzE00pc26XY0A"
-        />
+      <div class="bg-cyan-500/8 border border-cyan-500/20 rounded-2xl px-4 py-3 text-center">
+        <span class="material-symbols-outlined text-cyan-400 mb-1 block" style="font-size:20px">ads_click</span>
+        <p class="text-white font-black text-xs">Anuncio 600</p>
+        <p class="text-cyan-400 font-black text-lg">+$0.60</p>
+        <p class="text-slate-600 text-[10px]">60 seg</p>
       </div>
-
-      <!-- Tech Image -->
-      <div class="absolute bottom-10 md:top-20 -right-4 md:-right-12 w-28 md:w-48 h-28 md:h-48 animate-float-delayed hidden lg:block">
-        <img 
-          alt="Tech" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] rotate-6 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkq_bmAVXZ2gGuaOOd_GLugkoAnEmWkclabP1a6Cp4EZkmUkqQwv14fohJPJbRbrcpzzEIngSaZ85qtAJpmiYt_amuZlQCCNOJNx94oOcNu_uA_Sbj-E6AkuVGkH_3A4meYzDCUj_VxOvSIVIStp8UDT3LhelzeHVOiF_8mxH7shfzlXPyrpUOiWArMvWk5-u2gIjDM5T5oVKHm7hxozGk494NAc3xJd9PcVYMwDxlP64hyCEEPr7Xcso7Eghmt2fHLAmce5ZhkFkn"
-        />
+      <div class="bg-blue-500/8 border border-blue-500/20 rounded-2xl px-4 py-3 text-center">
+        <span class="material-symbols-outlined text-blue-400 mb-1 block" style="font-size:20px">play_circle</span>
+        <p class="text-white font-black text-xs">Anuncio 400</p>
+        <p class="text-blue-400 font-black text-lg">+$0.40</p>
+        <p class="text-slate-600 text-[10px]">60 seg</p>
       </div>
-
-      <!-- Package Image -->
-      <div class="absolute bottom-1 -right-4 md:-right-8 w-28 md:w-44 h-28 md:h-44 animate-float hidden lg:block">
-        <img 
-          alt="Package" 
-          class="rounded-2xl md:rounded-3xl shadow-[0_0_20px_rgba(0,229,255,0.4)] -rotate-6 w-full h-full object-cover border border-primary/30" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoNAZCWCjyBSJ2WBiR2Mcqe3sidstlACmycVRBJQhlhMnnWClyGrHKqvwhVr5IPyTlzwYWOiVTn6hb8BGBOoO5ajURDDPUl6ZSHBsqavZgAwrZ-jR59GwyIzN-yaI_5wM4rAKRubmUP8PJQWLpf4-lk93n664_qmN2lQoa-RrOh5Df8dPHXNvmDKQe5VctMuMUM7jG5Aj-nIf5o2gcNspl2jMDuevqJfVUf0mN6RR0P5Net3MgEVJ2m0uoo4jp7GY2p1uBKm_AbYe5"
-        />
-      </div>
-      
-      <!-- Main Text -->
-      <div class="text-center z-10">
-        <h2 class="text-4xl sm:text-5xl md:text-5xl lg:text-8xl xl:text-8xl font-black tracking-[-0.05em] text-primary leading-none mb-2 md:mb-4 uppercase font-display text-glow-cyan">
-          Gana Dinero
-        </h2>
-        <p class="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-black mb-4 md:mb-8 text-white uppercase tracking-tighter">
-          Viendo Anuncios
-        </p>
-        <div>
-          <p class="text-sm sm:text-base md:text-2xl font-black mb-0 md:mb-4 text-white tracking-tight inline-block px-3 sm:px-4 md:px-8 py-1 md:py-2 border-y-2 border-primary/30 max-w-4xl">
-            El mejor sistema que existe para posicionar sitios en internet. Las empresas pagan, tú ganas, todos crecemos.
-          </p>
-        </div>
+      <div class="bg-emerald-500/8 border border-emerald-500/20 rounded-2xl px-4 py-3 text-center">
+        <span class="material-symbols-outlined text-emerald-400 mb-1 block" style="font-size:20px">bolt</span>
+        <p class="text-white font-black text-xs">Mini Anuncio</p>
+        <p class="text-emerald-400 font-black text-lg">+$0.08</p>
+        <p class="text-slate-600 text-[10px]">30 seg</p>
       </div>
     </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-8 max-w-4xl mx-auto">
+      <div>
+        <p class="text-2xl md:text-3xl font-black text-white">12K+</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Usuarios activos</p>
+      </div>
+      <div>
+        <p class="text-2xl md:text-3xl font-black text-cyan-400">$45M+</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">COP pagados</p>
+      </div>
+      <div>
+        <p class="text-2xl md:text-3xl font-black text-white">500+</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Anuncios activos</p>
+      </div>
+      <div>
+        <p class="text-2xl md:text-3xl font-black text-emerald-400">98%</p>
+        <p class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Pagos exitosos</p>
+      </div>
+    </div>
+
   </div>
 
   <!-- Ticker de empresas colombianas -->
@@ -87,4 +137,5 @@
       }
     </div>
   </div>
+
 </section>
