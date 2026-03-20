@@ -3,9 +3,16 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TestimonialsService, PaymentTestimonial } from '../../core/services/testimonials.service';
 
-// Fotos de avatar reales (pravatar.cc — 70 fotos disponibles, índice 1-70)
-// Asignamos de forma determinista según el id de la imagen para que sea siempre la misma.
-const AVATAR_COUNT = 70;
+// Indicadores de nombre femenino (minúsculas, se busca como substring del username)
+const FEMALE = ['andrea','tatiana','yessica','paola','leidy','xiomara','nathaly',
+  'karen','mafe','dani','caro','nata','vale','mary','laura','yessi','sofi',
+  'isabelita','cami','natalia','yurany','karent','yadira','marisol','lorena','vanessa'];
+
+// Indicadores de nombre masculino
+const MALE = ['luis','brayan','jonatan','steeven','dairo','wilmar','jhon','elkin',
+  'camilo','pipe','santi','fer','ale','sebas','juanchi','andres','carlos',
+  'miguelito','tato','kike','jota','bladimir','ferney','duvan','kleiver',
+  'sneider','robinson','robinsón'];
 
 @Component({
   selector: 'app-payment-testimonials',
@@ -17,10 +24,8 @@ const AVATAR_COUNT = 70;
 export class PaymentTestimonialsComponent implements OnInit {
   private readonly svc = inject(TestimonialsService);
 
-  readonly items   = signal<PaymentTestimonial[]>([]);
-  readonly loading = signal(true);
-
-  /** Cuántas tarjetas se muestran actualmente */
+  readonly items        = signal<PaymentTestimonial[]>([]);
+  readonly loading      = signal(true);
   readonly visibleCount = signal(8);
 
   readonly visibleItems = computed(() => this.items().slice(0, this.visibleCount()));
@@ -41,11 +46,31 @@ export class PaymentTestimonialsComponent implements OnInit {
     this.visibleCount.update(n => n + 8);
   }
 
-  /** URL de avatar determinista basada en el id del registro */
+  /**
+   * ~30% de los perfiles no muestran foto (solo iniciales) para mayor realismo.
+   * La decisión es determinista basada en el ID.
+   */
+  showAvatar(item: PaymentTestimonial): boolean {
+    const n = parseInt(item.id.replace(/-/g, '').slice(8, 12), 16);
+    return (n % 10) >= 3; // 70% muestran foto, 30% solo iniciales
+  }
+
+  /**
+   * Devuelve la URL de foto según el género detectado en el nombre de usuario.
+   * randomuser.me/portraits garantiza fotos claramente femeninas o masculinas.
+   */
   avatarUrl(item: PaymentTestimonial): string {
-    // Convertimos los primeros 8 chars del UUID a número y mapeamos al rango 1-70
-    const n = parseInt(item.id.replace(/-/g, '').slice(0, 8), 16);
-    const idx = (n % AVATAR_COUNT) + 1;
+    const n    = parseInt(item.id.replace(/-/g, '').slice(0, 8), 16);
+    const idx  = (n % 70) + 1; // 1-70
+    const lower = item.username.toLowerCase();
+
+    if (FEMALE.some(f => lower.includes(f))) {
+      return `https://randomuser.me/api/portraits/women/${idx}.jpg`;
+    }
+    if (MALE.some(m => lower.includes(m))) {
+      return `https://randomuser.me/api/portraits/men/${idx}.jpg`;
+    }
+    // Handles ambiguos: usa pravatar (mezcla natural)
     return `https://i.pravatar.cc/80?img=${idx}`;
   }
 

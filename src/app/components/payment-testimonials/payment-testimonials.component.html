@@ -9,7 +9,7 @@
           Pagos y <span class="text-cyan-500 italic">Testimonios</span>
         </h2>
         <p class="text-sm md:text-base text-gray-500 max-w-xl mx-auto">
-          Comprobantes reales de pagos recibidos por nuestra comunidad. Sin trucos, sin edición.
+          Estos son algunos de los pagos realizados a los usuarios que han decidido confiar en publihazclick.com
         </p>
       </div>
 
@@ -20,19 +20,21 @@
 
             <!-- Card header: avatar + username + date -->
             <div class="px-4 py-3 flex items-center gap-3 border-b border-gray-50">
-              <!-- Avatar foto real -->
-              <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
-                <img
-                  [src]="avatarUrl(item)"
-                  [alt]="item.username"
-                  class="w-full h-full object-cover"
-                  loading="lazy"
-                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
-                />
-                <!-- Fallback si la imagen de avatar falla -->
-                <div class="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-600 items-center justify-center hidden">
-                  <span class="text-white font-black text-xs">{{ item.username.charAt(0).toUpperCase() }}</span>
-                </div>
+              <!-- Avatar: foto real o solo iniciales según el usuario -->
+              <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center">
+                @if (showAvatar(item)) {
+                  <img
+                    [src]="avatarUrl(item)"
+                    [alt]="item.username"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    onerror="this.style.display='none';this.parentElement.classList.add('bg-gradient-to-br','from-cyan-400','to-blue-600');this.parentElement.innerHTML='<span class=\'text-white font-black text-xs\'>' + this.alt.charAt(0).toUpperCase() + '</span>'"
+                  />
+                } @else {
+                  <div class="w-full h-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center">
+                    <span class="text-white font-black text-xs">{{ item.username.charAt(0).toUpperCase() }}</span>
+                  </div>
+                }
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-black text-gray-800 truncate">{{ item.username }}</p>

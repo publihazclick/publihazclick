@@ -53,7 +53,7 @@ const COMMENTS = [
   'Primer mes completo y el pago llegó puntual. Seguiré así 💪',
   'Seis meses activa en la plataforma y jamás me han fallado. Récord personal este retiro 🏆',
   'Cuatro pagos recibidos desde que me uní. Cada vez mejor.',
-  'Un año en Publihazclick. Doce meses, doce pagos. Eso lo dice todo 💯',
+  'Un año en Publihazclick. Doce meses, doce pagos. Eso lo dice todo.',
   // Reacción emocional / familiar
   'Mi mamá no me creía, le mostré esto y ya me está preguntando cómo se registra 😂',
   'Le dije a mi novio que esto era real y hoy le demostré con el comprobante. Jajaja 🎉',
