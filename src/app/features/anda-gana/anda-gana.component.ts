@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
-import { AndaGanaService, AgUser, AgDriver } from './anda-gana.service';
-import { DatePipe } from '@angular/common';
+import { Component, ChangeDetectionStrategy, OnInit, signal, inject, computed } from '@angular/core';
+import { AndaGanaService, AgUser, AgDriver, AgTrip } from './anda-gana.service';
+import { DatePipe, DecimalPipe } from '@angular/common';
 
 type AgScreen =
   | 'loading' | 'welcome' | 'enter-phone' | 'verify-code'
@@ -10,7 +10,7 @@ type AgScreen =
 @Component({
   selector: 'app-anda-gana',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, DecimalPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4">
@@ -434,63 +434,240 @@ type AgScreen =
 
   <!-- ═══════════════════ DRIVER HOME ═══════════════════ -->
   @if (screen() === 'driver-home') {
-    <div class="w-full max-w-2xl flex flex-col gap-6">
-      <!-- Header -->
+    <div class="w-full max-w-3xl flex flex-col gap-5">
+
+      <!-- Header conductor -->
       <div class="flex items-center gap-4 px-5 py-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/20">
         <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
           <span class="material-symbols-outlined text-amber-400" style="font-size:24px">directions_car</span>
         </div>
-        <div>
+        <div class="flex-1 min-w-0">
           <p class="text-[10px] text-amber-400 uppercase tracking-widest font-black">Conductor Verificado</p>
-          <p class="text-white font-black text-base">{{ agUser()?.full_name }}</p>
-          <p class="text-slate-500 text-xs">{{ agUser()?.driver?.vehicle_brand }} {{ agUser()?.driver?.vehicle_model }} · {{ agUser()?.driver?.vehicle_plate }}</p>
+          <p class="text-white font-black text-base truncate">{{ agUser()?.full_name }}</p>
+          <p class="text-slate-500 text-xs truncate">{{ agUser()?.driver?.vehicle_brand }} {{ agUser()?.driver?.vehicle_model }} · {{ agUser()?.driver?.vehicle_plate }}</p>
         </div>
-        <span class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="text-[10px] text-emerald-400 font-black uppercase">Aprobado</span>
-        </span>
+        <button (click)="showTripForm.set(true)"
+          class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs uppercase tracking-wider hover:from-amber-400 hover:to-orange-400 transition-all shrink-0">
+          <span class="material-symbols-outlined" style="font-size:16px">add</span>
+          Nuevo Viaje
+        </button>
       </div>
 
-      <!-- Documentos del conductor -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        @if (agUser()?.driver?.license_photo_url) {
-          <div class="rounded-xl overflow-hidden border border-white/10 aspect-video relative">
-            <img [src]="agUser()!.driver!.license_photo_url" alt="Licencia" class="w-full h-full object-cover">
-            <div class="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1">
-              <p class="text-[9px] text-white font-bold uppercase">Licencia</p>
-            </div>
-          </div>
-        }
-        @if (agUser()?.driver?.vehicle_photo_url) {
-          <div class="rounded-xl overflow-hidden border border-white/10 aspect-video relative">
-            <img [src]="agUser()!.driver!.vehicle_photo_url" alt="Vehículo" class="w-full h-full object-cover">
-            <div class="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1">
-              <p class="text-[9px] text-white font-bold uppercase">Vehículo</p>
-            </div>
-          </div>
-        }
-        @if (agUser()?.driver?.soat_photo_url) {
-          <div class="rounded-xl overflow-hidden border border-white/10 aspect-video relative">
-            <img [src]="agUser()!.driver!.soat_photo_url" alt="SOAT" class="w-full h-full object-cover">
-            <div class="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1">
-              <p class="text-[9px] text-white font-bold uppercase">SOAT</p>
-            </div>
-          </div>
+      <!-- Filtro de período -->
+      <div class="flex gap-2 bg-white/[0.02] border border-white/10 rounded-xl p-1">
+        @for (f of tripFilters; track f.key) {
+          <button (click)="tripsFilter.set(f.key); loadTrips()"
+            [class]="tripsFilter() === f.key
+              ? 'flex-1 py-2 rounded-lg text-xs font-black bg-amber-500 text-black transition-all'
+              : 'flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all'">
+            {{ f.label }}
+          </button>
         }
       </div>
 
-      <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center">
-        <span class="material-symbols-outlined text-amber-400 mb-3" style="font-size:48px">monetization_on</span>
-        <h3 class="text-white font-black text-lg mb-2">¡Listo para recibir viajes!</h3>
-        <p class="text-slate-500 text-sm leading-relaxed mb-4">
-          Tu cuenta está aprobada. Pronto podrás activarte en línea, recibir solicitudes de viaje y aceptar las que más te convengan.
-        </p>
-        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20">
-          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-          <span class="text-amber-400 font-black text-xs uppercase tracking-widest">Módulo de viajes próximamente</span>
-        </span>
+      <!-- Stats de ganancias -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="rounded-xl p-4 border border-white/10 bg-white/[0.02] flex flex-col gap-1">
+          <p class="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Viajes</p>
+          <p class="text-2xl font-black text-white">{{ filteredTrips().length }}</p>
+        </div>
+        <div class="rounded-xl p-4 border border-white/10 bg-white/[0.02] flex flex-col gap-1">
+          <p class="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Total Cobrado</p>
+          <p class="text-xl font-black text-white">\${{ totalCharged() | number:'1.0-0' }}</p>
+          <p class="text-[9px] text-slate-600">COP</p>
+        </div>
+        <div class="rounded-xl p-4 border border-rose-500/20 bg-rose-500/5 flex flex-col gap-1">
+          <p class="text-[9px] text-rose-400 uppercase tracking-widest font-bold">Comisión 15%</p>
+          <p class="text-xl font-black text-rose-400">-\${{ totalCommission() | number:'1.0-0' }}</p>
+          <p class="text-[9px] text-rose-700">Plataforma</p>
+        </div>
+        <div class="rounded-xl p-4 border border-emerald-500/20 bg-emerald-500/5 flex flex-col gap-1">
+          <p class="text-[9px] text-emerald-400 uppercase tracking-widest font-bold">Tu Ganancia</p>
+          <p class="text-xl font-black text-emerald-400">\${{ totalEarnings() | number:'1.0-0' }}</p>
+          <p class="text-[9px] text-emerald-700">85% del cobro</p>
+        </div>
+      </div>
+
+      <!-- Botón retiro (próximamente) -->
+      <div class="flex items-center gap-3 px-5 py-4 rounded-xl border border-white/10 bg-white/[0.02]">
+        <span class="material-symbols-outlined text-slate-500" style="font-size:22px">account_balance_wallet</span>
+        <div class="flex-1">
+          <p class="text-white font-black text-sm">Retirar Ganancias</p>
+          <p class="text-slate-500 text-xs">Podrás solicitar el retiro de tus ganancias muy pronto</p>
+        </div>
+        <span class="px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-500 text-[9px] font-black uppercase tracking-widest">Próximamente</span>
+      </div>
+
+      <!-- Historial de viajes -->
+      <div>
+        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-3">Historial de Viajes</p>
+
+        @if (tripsLoading()) {
+          <div class="flex items-center justify-center py-10">
+            <span class="material-symbols-outlined text-slate-600 animate-spin" style="font-size:28px">autorenew</span>
+          </div>
+        } @else if (filteredTrips().length === 0) {
+          <div class="flex flex-col items-center py-10 gap-2 text-center border border-white/10 rounded-xl bg-white/[0.02]">
+            <span class="material-symbols-outlined text-slate-600" style="font-size:36px">route</span>
+            <p class="text-slate-500 text-sm">No hay viajes registrados en este período</p>
+            <button (click)="showTripForm.set(true)"
+              class="mt-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-black uppercase tracking-wider hover:bg-amber-500/20 transition-all">
+              Registrar primer viaje
+            </button>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-2">
+            @for (trip of filteredTrips(); track trip.id) {
+              <div class="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all">
+                <!-- Ruta -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="material-symbols-outlined text-emerald-400" style="font-size:14px">trip_origin</span>
+                    <p class="text-white font-bold text-sm truncate">{{ trip.origin }}</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-rose-400" style="font-size:14px">location_on</span>
+                    <p class="text-slate-400 text-sm truncate">{{ trip.destination }}</p>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                    @if (trip.passenger_name) {
+                      <span class="text-[10px] text-slate-500 flex items-center gap-0.5">
+                        <span class="material-symbols-outlined" style="font-size:11px">person</span> {{ trip.passenger_name }}
+                      </span>
+                    }
+                    @if (trip.distance_km) {
+                      <span class="text-[10px] text-slate-500">{{ trip.distance_km }} km</span>
+                    }
+                    @if (trip.duration_minutes) {
+                      <span class="text-[10px] text-slate-500">{{ trip.duration_minutes }} min</span>
+                    }
+                    <span class="text-[10px] text-slate-600">{{ trip.trip_date | date:'d MMM · h:mm a' }}</span>
+                  </div>
+                </div>
+
+                <!-- Montos -->
+                <div class="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-0.5 shrink-0">
+                  <div class="text-right">
+                    <p class="text-[9px] text-slate-500 uppercase">Cobrado</p>
+                    <p class="text-white font-black text-base">\${{ trip.total_amount | number:'1.0-0' }}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-[9px] text-rose-500 uppercase">Comisión</p>
+                    <p class="text-rose-400 font-bold text-sm">-\${{ trip.platform_commission | number:'1.0-0' }}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-[9px] text-emerald-500 uppercase">Ganancia</p>
+                    <p class="text-emerald-400 font-black text-base">\${{ trip.driver_earnings | number:'1.0-0' }}</p>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
       </div>
     </div>
+
+    <!-- Modal Nuevo Viaje -->
+    @if (showTripForm()) {
+      <div class="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4" (click)="showTripForm.set(false)">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="relative z-10 w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-[#0d0d0d] border border-amber-500/20 overflow-hidden" (click)="$event.stopPropagation()">
+
+          <!-- Header modal -->
+          <div class="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-amber-400" style="font-size:18px">add_road</span>
+              </div>
+              <p class="text-white font-black text-sm">Registrar Viaje</p>
+            </div>
+            <button (click)="showTripForm.set(false)" class="text-slate-500 hover:text-white transition-colors">
+              <span class="material-symbols-outlined" style="font-size:20px">close</span>
+            </button>
+          </div>
+
+          <!-- Formulario -->
+          <div class="px-5 py-5 flex flex-col gap-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Origen</label>
+                <input type="text" [value]="tripOrigin()" (input)="tripOrigin.set($any($event.target).value)"
+                  placeholder="Barrio / Dirección"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50 transition-all" />
+              </div>
+              <div>
+                <label class="block text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Destino</label>
+                <input type="text" [value]="tripDestination()" (input)="tripDestination.set($any($event.target).value)"
+                  placeholder="Barrio / Dirección"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-rose-500/50 transition-all" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Total Cobrado al Pasajero (COP)</label>
+              <input type="number" [value]="tripAmount()" (input)="tripAmount.set($any($event.target).value)"
+                placeholder="Ej: 15000" min="0"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+            </div>
+
+            <!-- Preview de comisión en tiempo real -->
+            @if (tripAmount() && +tripAmount() > 0) {
+              <div class="grid grid-cols-3 gap-2">
+                <div class="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-center">
+                  <p class="text-[9px] text-slate-500 uppercase">Cobrado</p>
+                  <p class="text-white font-black text-sm">\${{ +tripAmount() | number:'1.0-0' }}</p>
+                </div>
+                <div class="rounded-lg bg-rose-500/8 border border-rose-500/20 px-3 py-2 text-center">
+                  <p class="text-[9px] text-rose-500 uppercase">Comisión 15%</p>
+                  <p class="text-rose-400 font-black text-sm">-\${{ +tripAmount() * 0.15 | number:'1.0-0' }}</p>
+                </div>
+                <div class="rounded-lg bg-emerald-500/8 border border-emerald-500/20 px-3 py-2 text-center">
+                  <p class="text-[9px] text-emerald-500 uppercase">Tu ganancia</p>
+                  <p class="text-emerald-400 font-black text-sm">\${{ +tripAmount() * 0.85 | number:'1.0-0' }}</p>
+                </div>
+              </div>
+            }
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Pasajero</label>
+                <input type="text" [value]="tripPassengerName()" (input)="tripPassengerName.set($any($event.target).value)"
+                  placeholder="Nombre (opcional)"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-white/20 transition-all" />
+              </div>
+              <div>
+                <label class="block text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Km</label>
+                <input type="number" [value]="tripDistanceKm()" (input)="tripDistanceKm.set($any($event.target).value)"
+                  placeholder="0" min="0"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-white/20 transition-all" />
+              </div>
+              <div>
+                <label class="block text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Minutos</label>
+                <input type="number" [value]="tripDuration()" (input)="tripDuration.set($any($event.target).value)"
+                  placeholder="0" min="0"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-white/20 transition-all" />
+              </div>
+            </div>
+
+            @if (tripError()) {
+              <p class="text-rose-400 text-xs flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:14px">error</span> {{ tripError() }}
+              </p>
+            }
+
+            <button (click)="saveTrip()" [disabled]="savingTrip() || !tripOrigin().trim() || !tripDestination().trim() || !tripAmount() || +tripAmount() <= 0"
+              class="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all
+                bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 disabled:opacity-40">
+              @if (savingTrip()) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+              } @else {
+                Registrar Viaje
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   }
 
   <!-- ═══════════════════ ADMIN PANEL ═══════════════════ -->
@@ -685,6 +862,46 @@ export class AndaGanaComponent implements OnInit {
   uploadingVehicle = signal(false);
   uploadingSoat    = signal(false);
 
+  // Viajes
+  trips           = signal<AgTrip[]>([]);
+  tripsFilter     = signal<'today' | 'week' | 'month' | 'all'>('month');
+  tripsLoading    = signal(false);
+  showTripForm    = signal(false);
+  tripOrigin      = signal('');
+  tripDestination = signal('');
+  tripAmount      = signal('');
+  tripPassengerName = signal('');
+  tripDistanceKm  = signal('');
+  tripDuration    = signal('');
+  tripError       = signal('');
+  savingTrip      = signal(false);
+
+  readonly tripFilters = [
+    { key: 'today' as const, label: 'Hoy' },
+    { key: 'week'  as const, label: 'Semana' },
+    { key: 'month' as const, label: 'Mes' },
+    { key: 'all'   as const, label: 'Todo' },
+  ];
+
+  filteredTrips = computed(() => {
+    const all = this.trips();
+    const f = this.tripsFilter();
+    const now = new Date();
+    if (f === 'all') return all;
+    return all.filter(t => {
+      const d = new Date(t.trip_date);
+      if (f === 'today') return d.toDateString() === now.toDateString();
+      if (f === 'week') {
+        const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7); return d >= weekAgo;
+      }
+      const monthAgo = new Date(now); monthAgo.setDate(now.getDate() - 30); return d >= monthAgo;
+    });
+  });
+
+  totalCharged    = computed(() => this.filteredTrips().reduce((s, t) => s + Number(t.total_amount), 0));
+  totalCommission = computed(() => this.filteredTrips().reduce((s, t) => s + Number(t.platform_commission), 0));
+  totalEarnings   = computed(() => this.filteredTrips().reduce((s, t) => s + Number(t.driver_earnings), 0));
+
   // Admin
   adminTab        = signal<'pending' | 'all'>('pending');
   adminLoading    = signal(false);
@@ -721,6 +938,7 @@ export class AndaGanaComponent implements OnInit {
     } else {
       const status = agUser.driver?.status;
       this.screen.set(status === 'approved' ? 'driver-home' : status === 'rejected' ? 'rejected' : 'pending');
+      if (status === 'approved') await this.loadTrips();
     }
   }
 
@@ -813,6 +1031,37 @@ export class AndaGanaComponent implements OnInit {
     if (type === 'license') { this.uploadingLicense.set(false); if (url) this.licensePhotoUrl.set(url); }
     else if (type === 'vehicle') { this.uploadingVehicle.set(false); if (url) this.vehiclePhotoUrl.set(url); }
     else { this.uploadingSoat.set(false); if (url) this.soatPhotoUrl.set(url); }
+  }
+
+  async loadTrips() {
+    const driver = this.agUser()?.driver;
+    if (!driver) return;
+    this.tripsLoading.set(true);
+    const all = await this.svc.getMyTrips(driver.id);
+    this.trips.set(all);
+    this.tripsLoading.set(false);
+  }
+
+  async saveTrip() {
+    const driver = this.agUser()?.driver;
+    if (!driver || !this.tripOrigin().trim() || !this.tripDestination().trim() || +this.tripAmount() <= 0) return;
+    this.savingTrip.set(true);
+    this.tripError.set('');
+    const trip = await this.svc.registerTrip(driver.id, {
+      origin: this.tripOrigin().trim(),
+      destination: this.tripDestination().trim(),
+      totalAmount: +this.tripAmount(),
+      passengerName: this.tripPassengerName().trim() || undefined,
+      distanceKm: this.tripDistanceKm() ? +this.tripDistanceKm() : undefined,
+      durationMinutes: this.tripDuration() ? +this.tripDuration() : undefined,
+    });
+    this.savingTrip.set(false);
+    if (!trip) { this.tripError.set('Error al registrar el viaje. Intenta de nuevo.'); return; }
+    // Limpiar formulario y recargar
+    this.tripOrigin.set(''); this.tripDestination.set(''); this.tripAmount.set('');
+    this.tripPassengerName.set(''); this.tripDistanceKm.set(''); this.tripDuration.set('');
+    this.showTripForm.set(false);
+    await this.loadTrips();
   }
 
   async loadAdminData() {

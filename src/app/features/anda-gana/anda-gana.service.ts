@@ -1,6 +1,22 @@
 import { Injectable } from '@angular/core';
 import { getSupabaseClient } from '../../core/supabase.client';
 
+export interface AgTrip {
+  id: string;
+  driver_id: string;
+  passenger_name?: string;
+  origin: string;
+  destination: string;
+  distance_km?: number;
+  duration_minutes?: number;
+  total_amount: number;
+  platform_commission: number;
+  driver_earnings: number;
+  status: 'completed' | 'cancelled';
+  trip_date: string;
+  created_at: string;
+}
+
 export interface AgUser {
   id: string;
   auth_user_id: string;
@@ -161,6 +177,52 @@ export class AndaGanaService {
       reviewed_by: user.id,
     }).eq('id', driverId);
     return !error;
+  }
+
+  /** Registra un viaje completado con comisión del 15% */
+  async registerTrip(driverId: string, data: {
+    origin: string; destination: string; totalAmount: number;
+    passengerName?: string; distanceKm?: number; durationMinutes?: number;
+  }): Promise<AgTrip | null> {
+    const commission = parseFloat((data.totalAmount * 0.15).toFixed(2));
+    const earnings   = parseFloat((data.totalAmount * 0.85).toFixed(2));
+    const { data: trip, error } = await this.supabase.from('ag_trips').insert({
+      driver_id: driverId,
+      origin: data.origin,
+      destination: data.destination,
+      total_amount: data.totalAmount,
+      platform_commission: commission,
+      driver_earnings: earnings,
+      passenger_name: data.passengerName || null,
+      distance_km: data.distanceKm || null,
+      duration_minutes: data.durationMinutes || null,
+      status: 'completed',
+    }).select().single();
+    return error ? null : trip as AgTrip;
+  }
+
+  async getMyTrips(driverId: string, from?: string): Promise<AgTrip[]> {
+    let q = this.supabase.from('ag_trips').select('*')
+      .eq('driver_id', driverId)
+      .eq('status', 'completed')
+      .order('trip_date', { ascending: false });
+    if (from) q = q.gte('trip_date', from);
+    const { data } = await q;
+    return (data || []) as AgTrip[];
+  }
+
+  async getAdminTripStats(): Promise<{
+    totalTrips: number; totalCharged: number;
+    totalCommission: number; totalDriverEarnings: number;
+  }> {
+    const { data } = await this.supabase.from('ag_trips').select('total_amount,platform_commission,driver_earnings').eq('status','completed');
+    const trips = data || [];
+    return {
+      totalTrips: trips.length,
+      totalCharged: trips.reduce((s, t) => s + Number(t.total_amount), 0),
+      totalCommission: trips.reduce((s, t) => s + Number(t.platform_commission), 0),
+      totalDriverEarnings: trips.reduce((s, t) => s + Number(t.driver_earnings), 0),
+    };
   }
 
   async getDriverStats(): Promise<{ pending: number; approved: number; rejected: number; total: number }> {
