@@ -9,7 +9,7 @@ import { PlatformSettingsService } from '../../core/services/platform-settings.s
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section class="py-16 md:py-24 bg-gray-50 px-4 md:px-6">
+    <section class="pt-6 pb-10 md:pt-8 md:pb-14 bg-gray-50 px-4 md:px-6">
       <div class="max-w-7xl mx-auto px-4">
         <!-- Section Header -->
         <div class="text-center mb-10 md:mb-16">
