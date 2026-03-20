@@ -111,6 +111,10 @@ export const routes: Routes = [
       {
         path: 'anda-gana',
         loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
+      },
+      {
+        path: 'video-landing',
+        loadComponent: () => import('./features/admin/components/video-landing/video-landing.component').then(m => m.AdminVideoLandingComponent)
       }
     ]
   },
