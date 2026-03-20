@@ -1320,7 +1320,7 @@ type AgScreen =
         <div class="flex items-center gap-4 px-5 py-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
           <span class="material-symbols-outlined text-emerald-400" style="font-size:24px">today</span>
           <div class="flex-1">
-            <p class="text-white font-black text-sm">{{ earningsByDay()[0].dateTs | date:'EEEE d \'de\' MMMM' }}</p>
+            <p class="text-white font-black text-sm">{{ earningsByDay()[0].dateTs | date:"EEEE d 'de' MMMM" }}</p>
             <p class="text-slate-500 text-xs">{{ earningsByDay()[0].count }} viaje{{ earningsByDay()[0].count !== 1 ? 's' : '' }} · \${{ earningsByDay()[0].charged | number:'1.0-0' }} cobrado</p>
           </div>
           <p class="text-emerald-400 font-black text-xl">\${{ earningsByDay()[0].earnings | number:'1.0-0' }}</p>
