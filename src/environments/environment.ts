@@ -39,7 +39,11 @@ export const environment = {
     publicKey: '62977a30b1a19dcd0728f6b639b33fb0',
     privateKey: 'feb3b00cd4fe4a203cbfe00eba8c9695',
     test: true,
-  }
+  },
+  andaGana: {
+    mapboxToken:      'pk.YOUR_MAPBOX_TOKEN_HERE',
+    functionsBaseUrl: 'https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1',
+  },
 };
 
 /**

@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, NgZone, PLATFORM_ID } from '@angular/core';
-import { AndaGanaService, AgUser, AgDriver, AgTrip, AgRideRequest, AgChatMessage } from './anda-gana.service';
+import { AndaGanaService, AgUser, AgDriver, AgTrip, AgRideRequest, AgChatMessage, PlaceSuggestion, RouteInfo } from './anda-gana.service';
 import { DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
 
 type AgScreen =
@@ -518,7 +518,34 @@ type AgScreen =
         <p class="text-slate-500 text-sm mt-1">Toca el mapa o arrastra el pin para elegir el origen</p>
       </div>
 
-      <div id="ag-map-origin" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:320px"></div>
+      <!-- Address search autocomplete -->
+      <div class="relative">
+        <div class="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 focus-within:border-orange-500/40 transition-all">
+          <span class="material-symbols-outlined text-slate-500" style="font-size:18px">search</span>
+          <input type="text" [value]="placeSearchQuery()" (input)="onPlaceSearch($event, 'origin')"
+            placeholder="Buscar dirección de origen..."
+            class="flex-1 bg-transparent text-white text-sm placeholder:text-slate-600 focus:outline-none" />
+          @if (placesLoading()) {
+            <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:16px">autorenew</span>
+          }
+        </div>
+        @if (placeSuggestions().length > 0) {
+          <div class="absolute top-full left-0 right-0 z-20 mt-1 bg-[#111111] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+            @for (s of placeSuggestions(); track s.id) {
+              <button (click)="selectPlace(s, 'origin')"
+                class="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-all text-left border-b border-white/[0.05] last:border-0">
+                <span class="material-symbols-outlined text-orange-400 shrink-0 mt-0.5" style="font-size:16px">location_on</span>
+                <div class="min-w-0">
+                  <p class="text-white text-sm font-bold truncate">{{ s.name }}</p>
+                  <p class="text-slate-500 text-xs truncate">{{ s.address }}</p>
+                </div>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div id="ag-map-origin" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:280px"></div>
 
       @if (mapPickingAddress()) {
         <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
@@ -573,7 +600,34 @@ type AgScreen =
         <p class="text-slate-500 text-sm mt-1">Toca el mapa para marcar tu destino</p>
       </div>
 
-      <div id="ag-map-dest" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:320px"></div>
+      <!-- Address search autocomplete -->
+      <div class="relative">
+        <div class="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 focus-within:border-orange-500/40 transition-all">
+          <span class="material-symbols-outlined text-slate-500" style="font-size:18px">search</span>
+          <input type="text" [value]="placeSearchQuery()" (input)="onPlaceSearch($event, 'dest')"
+            placeholder="Buscar dirección de destino..."
+            class="flex-1 bg-transparent text-white text-sm placeholder:text-slate-600 focus:outline-none" />
+          @if (placesLoading()) {
+            <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:16px">autorenew</span>
+          }
+        </div>
+        @if (placeSuggestions().length > 0) {
+          <div class="absolute top-full left-0 right-0 z-20 mt-1 bg-[#111111] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+            @for (s of placeSuggestions(); track s.id) {
+              <button (click)="selectPlace(s, 'dest')"
+                class="w-full flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-all text-left border-b border-white/[0.05] last:border-0">
+                <span class="material-symbols-outlined text-rose-400 shrink-0 mt-0.5" style="font-size:16px">location_on</span>
+                <div class="min-w-0">
+                  <p class="text-white text-sm font-bold truncate">{{ s.name }}</p>
+                  <p class="text-slate-500 text-xs truncate">{{ s.address }}</p>
+                </div>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div id="ag-map-dest" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:280px"></div>
 
       @if (mapPickingAddress()) {
         <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
@@ -642,6 +696,32 @@ type AgScreen =
           </div>
         </div>
       </div>
+
+      <!-- Route info from Mapbox -->
+      @if (routeInfo()) {
+        <div class="flex items-center gap-0 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.03] overflow-hidden">
+          <div class="flex-1 flex flex-col items-center gap-1 py-3 px-4 border-r border-cyan-500/10">
+            <span class="material-symbols-outlined text-cyan-400" style="font-size:20px">route</span>
+            <p class="text-white font-black text-base">{{ routeInfo()!.distance_km | number:'1.1-1' }} km</p>
+            <p class="text-slate-500 text-[10px] uppercase tracking-widest">Distancia</p>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1 py-3 px-4 border-r border-cyan-500/10">
+            <span class="material-symbols-outlined text-amber-400" style="font-size:20px">schedule</span>
+            <p class="text-white font-black text-base">~{{ routeInfo()!.duration_min }} min</p>
+            <p class="text-slate-500 text-[10px] uppercase tracking-widest">Estimado</p>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1 py-3 px-4">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">price_check</span>
+            <p class="text-emerald-400 font-black text-base">\${{ routeInfo()!.suggested_price | number:'1.0-0' }}</p>
+            <p class="text-slate-500 text-[10px] uppercase tracking-widest">Sugerido</p>
+          </div>
+        </div>
+      } @else {
+        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5">
+          <span class="material-symbols-outlined text-slate-600 animate-spin" style="font-size:16px">autorenew</span>
+          <p class="text-slate-600 text-xs">Calculando ruta y precio sugerido...</p>
+        </div>
+      }
 
       <!-- Precio -->
       <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
@@ -788,6 +868,18 @@ type AgScreen =
       <!-- Mapa del viaje -->
       @if (tripTab() === 'map') {
         <div id="ag-map-trip" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:320px"></div>
+
+        <!-- Real-time GPS indicator -->
+        <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+          @if (driverLatLng()) {
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+            <p class="text-emerald-400 text-xs font-bold">Conductor en movimiento · GPS activo</p>
+            <span class="ml-auto text-slate-600 text-[10px] font-mono">{{ driverLatLng()!.lat | number:'1.4-4' }}, {{ driverLatLng()!.lng | number:'1.4-4' }}</span>
+          } @else {
+            <span class="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span>
+            <p class="text-slate-600 text-xs">Esperando señal GPS del conductor...</p>
+          }
+        </div>
 
         <!-- Llamada protegida -->
         <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/10">
@@ -1603,6 +1695,19 @@ type AgScreen =
       @if (driverTripTab() === 'map') {
         <div id="ag-map-driver-trip" class="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 w-full" style="height:300px"></div>
 
+        <!-- GPS tracking status -->
+        <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all"
+          [class]="gpsTracking() ? 'bg-emerald-500/[0.03] border-emerald-500/20' : 'bg-white/[0.02] border-white/5'">
+          @if (gpsTracking()) {
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+            <p class="text-emerald-400 text-xs font-bold">Tu posición se comparte en tiempo real</p>
+            <span class="ml-auto text-emerald-600 text-[10px]">WebSocket</span>
+          } @else {
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+            <p class="text-amber-400 text-xs font-bold">Activando GPS...</p>
+          }
+        </div>
+
         <!-- Navegar con Google Maps / Waze -->
         <div class="grid grid-cols-2 gap-3">
           <a [href]="driverNavUrl('google')" target="_blank"
@@ -2201,6 +2306,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { key: 'all',   label: 'Total' },
   ];
 
+  // Autocomplete + Route
+  placeSearchQuery  = signal('');
+  placeSuggestions  = signal<PlaceSuggestion[]>([]);
+  placesLoading     = signal(false);
+  routeInfo         = signal<RouteInfo | null>(null);
+  private _placeSearchTimer: any = null;
+
+  // GPS Tracking
+  driverLatLng      = signal<{ lat: number; lng: number } | null>(null);
+  gpsTracking       = signal(false);
+  private _driverMarker:    any   = null;
+  private _gpsWatchId:      number | null = null;
+  private _locationChannel: any   = null;
+  private _gpsBroadcastChannel: any = null;
+
   // Security
   emergencyContactName  = signal('');
   emergencyContactPhone = signal('');
@@ -2296,6 +2416,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         } else if (active.status === 'accepted' || active.status === 'in_progress') {
           this.subscribeToRide(active.id);
           this.screen.set('passenger-trip');
+          if (active.driver_id) this.subscribeToDriverGps(active.driver_id);
         } else {
           this.screen.set('passenger-home');
         }
@@ -2312,6 +2433,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           this.subscribeToDriverRide(activeRide.id);
           this.screen.set('driver-trip-active');
           setTimeout(() => this.initDriverTripMap(), 50);
+          setTimeout(() => this.startGpsBroadcasting(), 200);
         } else {
           this.screen.set('driver-home');
           await this.loadTrips();
@@ -2496,6 +2618,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   confirmOrigin() {
     if (!this.rideOrigin()) return;
+    this.placeSuggestions.set([]); this.placeSearchQuery.set('');
     this.screen.set('passenger-pick-dest');
     setTimeout(() => {
       const o = this.rideOrigin()!;
@@ -2505,8 +2628,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   confirmDest() {
     if (!this.rideDest()) return;
+    this.placeSuggestions.set([]); this.placeSearchQuery.set('');
     this.destroyMap();
     this.screen.set('passenger-offer');
+    this.loadRoute();
   }
 
   async sendRideRequest() {
@@ -2723,6 +2848,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           clearInterval(this._timerInterval);
           this.screen.set('passenger-trip');
           setTimeout(() => this.initTripMap(), 50);
+          if (req.driver_id) this.subscribeToDriverGps(req.driver_id);
         } else if (req.status === 'cancelled' || req.status === 'completed') {
           this.cleanupRide();
           this.screen.set('passenger-home');
@@ -2845,6 +2971,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.destroyMap();
     this.screen.set('driver-trip-active');
     setTimeout(() => this.initDriverTripMap(), 50);
+    setTimeout(() => this.startGpsBroadcasting(), 200);
   }
 
   async driverStartTrip() {
@@ -3015,10 +3142,126 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private cleanupDriverRide() {
+    this.stopGpsBroadcasting();
     if (this._driverRideChannel) { try { this._driverRideChannel.unsubscribe(); } catch {} this._driverRideChannel = null; }
     if (this._driverChatChannel) { try { this._driverChatChannel.unsubscribe(); } catch {} this._driverChatChannel = null; }
     this.destroyMap();
     this.driverChatMessages.set([]);
+  }
+
+  // ── Address autocomplete ──────────────────────────────────────
+
+  onPlaceSearch(event: Event, type: 'origin' | 'dest') {
+    const q = (event.target as HTMLInputElement).value;
+    this.placeSearchQuery.set(q);
+    clearTimeout(this._placeSearchTimer);
+    if (q.trim().length < 3) { this.placeSuggestions.set([]); return; }
+    this._placeSearchTimer = setTimeout(async () => {
+      this.placesLoading.set(true);
+      const origin = this.rideOrigin();
+      const suggestions = await this.svc.searchPlaces(q, origin?.lat, origin?.lng);
+      this.zone.run(() => {
+        this.placeSuggestions.set(suggestions);
+        this.placesLoading.set(false);
+      });
+    }, 350);
+  }
+
+  selectPlace(s: PlaceSuggestion, type: 'origin' | 'dest') {
+    this.placeSuggestions.set([]);
+    this.placeSearchQuery.set('');
+    if (type === 'origin') {
+      this.rideOrigin.set({ lat: s.lat, lng: s.lng, address: s.address });
+      this.mapPickingAddress.set(s.address);
+      if (this._map) this._map.setView([s.lat, s.lng], 15);
+    } else {
+      this.rideDest.set({ lat: s.lat, lng: s.lng, address: s.address });
+      this.mapPickingAddress.set(s.address);
+      if (this._map) this._map.setView([s.lat, s.lng], 15);
+    }
+  }
+
+  // ── Route calculation ─────────────────────────────────────────
+
+  async loadRoute() {
+    const origin = this.rideOrigin();
+    const dest   = this.rideDest();
+    if (!origin || !dest) return;
+    this.routeInfo.set(null);
+    const info = await this.svc.calculateRoute(origin, dest);
+    this.zone.run(() => {
+      this.routeInfo.set(info);
+      if (info?.suggested_price && !this.offeredPrice()) {
+        this.offeredPrice.set(info.suggested_price.toString());
+      }
+    });
+  }
+
+  // ── Passenger: subscribe to driver GPS ───────────────────────
+
+  private subscribeToDriverGps(driverId: string) {
+    if (this._locationChannel) return;
+    this._locationChannel = this.svc.subscribeToDriverLocationChannel(driverId, (lat, lng) => {
+      this.zone.run(() => {
+        this.driverLatLng.set({ lat, lng });
+        this.updateDriverMarkerOnMap(lat, lng);
+      });
+    });
+  }
+
+  private updateDriverMarkerOnMap(lat: number, lng: number) {
+    if (!this._map) return;
+    if (!this._driverMarker) {
+      if (isPlatformBrowser(this.platformId) && (window as any).L) {
+        const L = (window as any).L;
+        const icon = L.divIcon({
+          html: `<div style="width:36px;height:36px;background:#22c55e;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">
+                   <span class="material-symbols-outlined" style="font-size:18px;color:#fff">directions_car</span>
+                 </div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          className: ''
+        });
+        this._driverMarker = L.marker([lat, lng], { icon }).addTo(this._map);
+      }
+    } else {
+      this._driverMarker.setLatLng([lat, lng]);
+    }
+  }
+
+  // ── Driver: start/stop GPS broadcasting ──────────────────────
+
+  startGpsBroadcasting() {
+    const driver = this.agUser()?.driver;
+    if (!driver || !isPlatformBrowser(this.platformId) || !navigator.geolocation) return;
+    this.gpsTracking.set(false);
+    this._gpsBroadcastChannel = this.svc.createDriverBroadcastChannel(driver.id);
+
+    this._gpsWatchId = navigator.geolocation.watchPosition(
+      pos => {
+        this.zone.run(() => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          this.gpsTracking.set(true);
+          this.svc.broadcastDriverLocation(this._gpsBroadcastChannel, lat, lng);
+          const ride = this.activeDriverRide();
+          this.svc.upsertDriverLocation(driver.id, lat, lng, ride?.id);
+        });
+      },
+      () => { this.zone.run(() => this.gpsTracking.set(false)); },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    );
+  }
+
+  stopGpsBroadcasting() {
+    if (this._gpsWatchId != null) {
+      navigator.geolocation.clearWatch(this._gpsWatchId);
+      this._gpsWatchId = null;
+    }
+    if (this._gpsBroadcastChannel) {
+      try { this._gpsBroadcastChannel.unsubscribe(); } catch {}
+      this._gpsBroadcastChannel = null;
+    }
+    this.gpsTracking.set(false);
   }
 
   openSecuritySettings() {
@@ -3081,6 +3324,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.stopGpsBroadcasting();
+    if (this._locationChannel) { try { this._locationChannel.unsubscribe(); } catch {} this._locationChannel = null; }
+    if (this._placeSearchTimer) clearTimeout(this._placeSearchTimer);
     this.cleanupRide();
     this.cleanupDriverRide();
     if (this._newRequestsChannel) { try { this._newRequestsChannel.unsubscribe(); } catch {} }

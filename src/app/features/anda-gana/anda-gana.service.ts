@@ -81,6 +81,21 @@ export interface AgChatMessage {
   created_at: string;
 }
 
+export interface PlaceSuggestion {
+  id:      string;
+  name:    string;
+  address: string;
+  lat:     number;
+  lng:     number;
+}
+
+export interface RouteInfo {
+  distance_km:     number;
+  duration_min:    number;
+  suggested_price: number;
+  geometry?:       any;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AndaGanaService {
   private readonly supabase = getSupabaseClient();
@@ -107,11 +122,13 @@ export class AndaGanaService {
     return data;
   }
 
-  /** Genera código de 6 dígitos y lo guarda en BD. Retorna el código para mostrarlo en pantalla. */
+  /** Genera código de 6 dígitos, lo guarda en BD y envía SMS via Twilio. Retorna el código. */
   async sendVerificationCode(phone: string): Promise<string> {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     await this.supabase.from('ag_phone_verifications').insert({ phone, code, expires_at: expiresAt });
+    // Send real SMS via Twilio (fire and forget — code is always stored in DB as backup)
+    this.sendSmsCode(phone, code);
     return code;
   }
 
@@ -728,5 +745,102 @@ export class AndaGanaService {
       .update({ selfie_url: null, selfie_verified: false })
       .eq('id', agUserId);
     return !error;
+  }
+
+  // ── Mapbox Places API (via Edge Function) ──
+  async searchPlaces(query: string, lat?: number, lng?: number): Promise<PlaceSuggestion[]> {
+    if (!query.trim() || query.trim().length < 3) return [];
+    try {
+      const env = (await import('../../../environments/environment')).environment;
+      const base = env.andaGana?.functionsBaseUrl ?? '';
+      let url = `${base}/ag-api?action=places&q=${encodeURIComponent(query)}`;
+      if (lat != null && lng != null) url += `&lat=${lat}&lng=${lng}`;
+      const resp = await fetch(url, {
+        headers: {
+          'apikey':        env.supabase.anonKey,
+          'Authorization': `Bearer ${env.supabase.anonKey}`,
+        },
+      });
+      if (!resp.ok) return [];
+      const { features } = await resp.json();
+      return (features || []) as PlaceSuggestion[];
+    } catch {
+      return [];
+    }
+  }
+
+  // ── Mapbox Directions API (via Edge Function) ──
+  async calculateRoute(
+    origin: { lat: number; lng: number },
+    dest:   { lat: number; lng: number }
+  ): Promise<RouteInfo | null> {
+    try {
+      const env = (await import('../../../environments/environment')).environment;
+      const base = env.andaGana?.functionsBaseUrl ?? '';
+      const resp = await fetch(`${base}/ag-api?action=route`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        env.supabase.anonKey,
+          'Authorization': `Bearer ${env.supabase.anonKey}`,
+        },
+        body: JSON.stringify({ origin, dest }),
+      });
+      if (!resp.ok) return null;
+      return await resp.json() as RouteInfo;
+    } catch {
+      return null;
+    }
+  }
+
+  // ── Twilio SMS (via Edge Function) ──
+  async sendSmsCode(phone: string, code: string): Promise<void> {
+    try {
+      const env = (await import('../../../environments/environment')).environment;
+      const base = env.andaGana?.functionsBaseUrl ?? '';
+      await fetch(`${base}/ag-sms`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        env.supabase.anonKey,
+          'Authorization': `Bearer ${env.supabase.anonKey}`,
+        },
+        body: JSON.stringify({ phone, code }),
+      });
+    } catch {
+      // Fail silently — code is still stored in DB
+    }
+  }
+
+  // ── Real-time GPS tracking via Supabase Realtime Broadcast ──
+  async upsertDriverLocation(driverId: string, lat: number, lng: number, requestId?: string): Promise<void> {
+    await this.supabase.from('ag_driver_locations').upsert({
+      driver_id:  driverId,
+      request_id: requestId || null,
+      lat,
+      lng,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'driver_id' });
+  }
+
+  broadcastDriverLocation(channel: any, lat: number, lng: number): void {
+    channel.send({ type: 'broadcast', event: 'location', payload: { lat, lng } });
+  }
+
+  subscribeToDriverLocationChannel(
+    driverId: string,
+    onLocation: (lat: number, lng: number) => void
+  ): any {
+    const channel = this.supabase
+      .channel(`driver-loc:${driverId}`)
+      .on('broadcast', { event: 'location' }, ({ payload }: any) => {
+        onLocation(payload.lat, payload.lng);
+      })
+      .subscribe();
+    return channel;
+  }
+
+  createDriverBroadcastChannel(driverId: string): any {
+    return this.supabase.channel(`driver-loc:${driverId}`).subscribe();
   }
 }
