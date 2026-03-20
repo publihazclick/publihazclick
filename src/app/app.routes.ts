@@ -107,6 +107,10 @@ export const routes: Routes = [
       {
         path: 'trading-config',
         loadComponent: () => import('./features/admin/components/trading-config/trading-config.component').then(m => m.TradingConfigComponent)
+      },
+      {
+        path: 'anda-gana',
+        loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
       }
     ]
   },
@@ -248,6 +252,10 @@ export const routes: Routes = [
       {
         path: 'trading-operation/:packageId',
         loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
+      },
+      {
+        path: 'anda-gana',
+        loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
       }
     ]
   },
@@ -304,6 +312,10 @@ export const routes: Routes = [
       {
         path: 'trading-operation/:packageId',
         loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
+      },
+      {
+        path: 'anda-gana',
+        loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
       }
     ]
   },

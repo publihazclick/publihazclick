@@ -168,6 +168,17 @@
               </a>
             </li>
           }
+          <li>
+            <a routerLink="/dashboard/anda-gana" routerLinkActive="bg-orange-500/10 text-orange-400 border border-orange-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-orange-500/5 text-slate-400 hover:text-orange-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-orange-400">directions_car</span>
+              @if (!sidebarCollapsed()) {
+                <span>Anda y Gana</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-orange-500 to-amber-500 text-black rounded uppercase">NEW</span>
+              }
+            </a>
+          </li>
         </ul>
       </div>
       <div>
