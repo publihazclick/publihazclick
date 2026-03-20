@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, Injector, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -43,6 +43,7 @@ export class UserAdsComponent implements OnInit, OnDestroy {
   private readonly profileService = inject(ProfileService);
   private readonly sessionService = inject(SupabaseSessionService);
   private readonly authService = inject(AuthService);
+  private readonly injector = inject(Injector);
 
   readonly profile = this.profileService.profile;
   readonly isAdvertiser = signal(false);
@@ -60,6 +61,7 @@ export class UserAdsComponent implements OnInit, OnDestroy {
   private pendingRewardTaskId: string | null = null;
   private pendingRewardDuration = 0;
   private destroyed = false;
+  private adsInitialized = false;
 
   // Create PTC modal
   readonly showPtcModal = signal(false);
@@ -82,14 +84,21 @@ export class UserAdsComponent implements OnInit, OnDestroy {
     mini: 83.33,
   };
 
-  async ngOnInit(): Promise<void> {
-    const role = this.profile()?.role;
-    this.isAdvertiser.set(role === 'advertiser' || role === 'admin' || role === 'dev');
-    if (this.isAdvertiser()) {
-      await this.loadAds();
-    } else {
-      this.loading.set(false);
-    }
+  ngOnInit(): void {
+    // El perfil puede no estar cargado aún si el usuario llegó directo a esta URL.
+    // Usamos un efecto reactivo para inicializar cuando el signal de perfil esté disponible.
+    effect(() => {
+      const role = this.profile()?.role;
+      if (role == null || this.adsInitialized) return;
+      this.adsInitialized = true;
+      const isAdv = role === 'advertiser' || role === 'admin' || role === 'dev';
+      this.isAdvertiser.set(isAdv);
+      if (isAdv) {
+        this.loadAds();
+      } else {
+        this.loading.set(false);
+      }
+    }, { injector: this.injector });
   }
 
   ngOnDestroy(): void {
@@ -211,7 +220,7 @@ export class UserAdsComponent implements OnInit, OnDestroy {
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
       const fingerprint = await this.userTracking.getSessionFingerprint() || null;
 
-      const data = await this.sessionService.callRpc<{ success: boolean; reward?: number; error?: string }>(
+      const data = await this.sessionService.callRpc<{ success: boolean; reward?: number; donation?: number; error?: string }>(
         'record_ptc_click',
         {
           p_user_id: userId,
@@ -226,7 +235,8 @@ export class UserAdsComponent implements OnInit, OnDestroy {
       if (data?.success) {
         this.userTracking.recordAdView(taskId);
         const reward = data.reward ?? this.adTypeRewards[this.ads().find(a => a.id === taskId)?.adType || 'mini'] ?? 0;
-        this.profileService.patchBalance(reward);
+        const donation = data.donation ?? 0;
+        this.profileService.patchBalance(reward, donation);
         this.profileService.getCurrentProfile().catch(() => {});
         if (!this.destroyed) this.rewardStatus.set('credited');
       } else if (data && !data.success) {

@@ -33,6 +33,8 @@ export class UserTrackingService {
 
   // Cache del fingerprint de sesión (no cambia durante la sesión)
   private cachedFingerprint: string | null = null;
+  // Indica si la IP se obtuvo exitosamente de la API externa
+  private ipFetchSuccess = false;
 
   constructor() {
     this.initializeSession();
@@ -84,7 +86,11 @@ export class UserTrackingService {
     // Cargar datos de sesión del localStorage
     const storedData = this.getStoredSession();
 
-    if (storedData && storedData.ip === this.currentIp()) {
+    // Si la IP no se pudo obtener (error de red), conservar la sesión guardada
+    // para no borrar los anuncios vistos del día por un fallo de conectividad.
+    const ipMatchesOrUnknown = !this.ipFetchSuccess || (storedData && storedData.ip === this.currentIp());
+
+    if (storedData && ipMatchesOrUnknown) {
       // Purgar anuncios de días anteriores antes de usar la sesión guardada
       const cleanSession = this.purgeStaleDailyViews(storedData);
       this.sessionData.set(cleanSession);
@@ -112,8 +118,11 @@ export class UserTrackingService {
       const response = await fetch(this.IP_API_URL);
       const data = await response.json();
       this.currentIp.set(data.ip);
+      this.ipFetchSuccess = true;
     } catch {
-      this.currentIp.set('127.0.0.1');
+      // No usar una IP falsa; dejar vacía para que la sesión guardada se conserve
+      this.currentIp.set('');
+      this.ipFetchSuccess = false;
     }
   }
 
