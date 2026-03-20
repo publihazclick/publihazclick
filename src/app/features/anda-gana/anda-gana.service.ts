@@ -747,57 +747,60 @@ export class AndaGanaService {
     return !error;
   }
 
-  // ── Mapbox Places API (via Edge Function) ──
+  // ── Geocodificación directa con Nominatim (OpenStreetMap) — 100% gratis, sin token ──
   async searchPlaces(query: string, lat?: number, lng?: number): Promise<PlaceSuggestion[]> {
     if (!query.trim() || query.trim().length < 3) return [];
     try {
-      const env = (await import('../../../environments/environment')).environment;
-      const base = env.andaGana?.functionsBaseUrl ?? '';
-      let url = `${base}/ag-api?action=places&q=${encodeURIComponent(query)}`;
-      if (lat != null && lng != null) url += `&lat=${lat}&lng=${lng}`;
+      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&countrycodes=co&accept-language=es`;
+      if (lat != null && lng != null) {
+        const d = 0.5;
+        url += `&viewbox=${lng - d},${lat + d},${lng + d},${lat - d}&bounded=0`;
+      }
       const resp = await fetch(url, {
-        headers: {
-          'apikey':        env.supabase.anonKey,
-          'Authorization': `Bearer ${env.supabase.anonKey}`,
-        },
+        headers: { 'User-Agent': 'AndaGana/1.0 publihazclick@gmail.com' },
       });
       if (!resp.ok) return [];
-      const { features } = await resp.json();
-      return (features || []) as PlaceSuggestion[];
+      const data = await resp.json();
+      return (data || []).map((f: any, i: number) => ({
+        id:      `nom-${i}`,
+        name:    f.name || f.display_name.split(',')[0],
+        address: f.display_name,
+        lat:     parseFloat(f.lat),
+        lng:     parseFloat(f.lon),
+      })) as PlaceSuggestion[];
     } catch {
       return [];
     }
   }
 
-  // ── Mapbox Directions API (via Edge Function) ──
+  // ── Cálculo de ruta con OSRM (Open Source Routing Machine) — 100% gratis, sin token ──
   async calculateRoute(
     origin: { lat: number; lng: number },
     dest:   { lat: number; lng: number }
   ): Promise<RouteInfo | null> {
     try {
-      const env = (await import('../../../environments/environment')).environment;
-      const base = env.andaGana?.functionsBaseUrl ?? '';
-      const resp = await fetch(`${base}/ag-api?action=route`, {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'apikey':        env.supabase.anonKey,
-          'Authorization': `Bearer ${env.supabase.anonKey}`,
-        },
-        body: JSON.stringify({ origin, dest }),
-      });
+      const coords = `${origin.lng},${origin.lat};${dest.lng},${dest.lat}`;
+      const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+      const resp = await fetch(url);
       if (!resp.ok) return null;
-      return await resp.json() as RouteInfo;
+      const data = await resp.json();
+      const route = data.routes?.[0];
+      if (!route) return null;
+      const distance_km   = Math.round((route.distance / 1000) * 10) / 10;
+      const duration_min  = Math.round(route.duration / 60);
+      const suggested_price = Math.max(5000, Math.round(distance_km * 1500 / 1000) * 1000);
+      return { distance_km, duration_min, suggested_price, geometry: route.geometry };
     } catch {
       return null;
     }
   }
 
-  // ── Twilio SMS (via Edge Function) ──
+  // ── SMS via Edge Function (opcional) ──
   async sendSmsCode(phone: string, code: string): Promise<void> {
     try {
       const env = (await import('../../../environments/environment')).environment;
       const base = env.andaGana?.functionsBaseUrl ?? '';
+      if (!base) return;
       await fetch(`${base}/ag-sms`, {
         method: 'POST',
         headers: {
