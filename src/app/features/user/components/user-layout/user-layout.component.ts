@@ -177,6 +177,10 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
     return this.router.url.includes('/settings');
   }
 
+  isAndaGanaRoute(): boolean {
+    return this.router.url.includes('/anda-gana');
+  }
+
   getTierInfo(referrals: number, hasActivePackage: boolean): { name: string; color: string } | null {
     if (!hasActivePackage) return null;
     if (referrals >= 40) return { name: 'DIAMANTE CORONA', color: 'text-amber-400' };

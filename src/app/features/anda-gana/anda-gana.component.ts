@@ -125,7 +125,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             style="background:#f1f5f9;border-top:1px solid #cbd5e1">
 
             <!-- Fila de servicios -->
-            <div class="flex gap-1 px-3 pt-3 pb-1 overflow-x-auto" style="scrollbar-width:none">
+            <div class="flex items-center gap-1 pt-3 pb-1">
+              <button (click)="scrollIcons(-120)"
+                class="flex-shrink-0 w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center ml-2 active:scale-90 transition-all">
+                <span class="material-symbols-outlined text-slate-500" style="font-size:16px">chevron_left</span>
+              </button>
+            <div id="ag-icons-scroll" class="flex gap-1 flex-1 overflow-x-auto" style="scrollbar-width:none">
               <button (click)="tripService.set('viaje')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='viaje' ? 'bg-orange-50 border border-orange-200' : 'hover:bg-slate-200'">
@@ -160,6 +165,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">local_shipping</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">Fletes</span>
+              </button>
+            </div>
+              <button (click)="scrollIcons(120)"
+                class="flex-shrink-0 w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center mr-2 active:scale-90 transition-all">
+                <span class="material-symbols-outlined text-slate-500" style="font-size:16px">chevron_right</span>
               </button>
             </div>
 
@@ -229,17 +239,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </button>
               </div>
 
-              <div class="flex items-center gap-3 px-4 py-2 border-b border-slate-200">
-                <div class="flex-1">
+              <div class="flex items-center justify-between px-4 py-2 border-b border-slate-200">
+                <button (click)="adjustTripPrice(-500)"
+                  class="w-11 h-11 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0">−</button>
+                <div class="text-center">
                   <p class="text-slate-400 text-[10px] uppercase tracking-wider">Valor sugerido</p>
                   <p class="text-slate-800 font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
                 </div>
-                <div class="flex items-center gap-2">
-                  <button (click)="adjustTripPrice(-500)"
-                    class="w-10 h-10 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-xl flex items-center justify-center active:scale-95 transition-all">−</button>
-                  <button (click)="adjustTripPrice(500)"
-                    class="w-10 h-10 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-xl flex items-center justify-center active:scale-95 transition-all">+</button>
-                </div>
+                <button (click)="adjustTripPrice(500)"
+                  class="w-11 h-11 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0">+</button>
               </div>
 
               <div class="px-4 py-3">
@@ -1503,6 +1511,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Trip request ──────────────────────────────────────────────
   formatCOP(n: number): string {
     return '$\u00a0' + n.toLocaleString('es-CO');
+  }
+
+  scrollIcons(px: number) {
+    document.getElementById('ag-icons-scroll')?.scrollBy({ left: px, behavior: 'smooth' });
   }
 
   openTripSearch() { this.tripOpen.set(true); }
