@@ -1117,8 +1117,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (!path || path.length < 2) continue;
 
       // Distribuir puntos de inicio a lo largo de los caminos
-      const startFrac = (i * 0.11) % 1;
-      const segIdx    = Math.min(Math.floor(startFrac * (path.length - 1)), path.length - 2);
+      // Evitar puntos muy cercanos al usuario (radio ~150 m ≈ 0.0014°)
+      let segIdx = Math.min(Math.floor(((i * 0.11) % 1) * (path.length - 1)), path.length - 2);
+      for (let s = 0; s < path.length - 1; s++) {
+        const [cx, cy] = path[segIdx];
+        if (Math.abs(cx - lng) > 0.0014 || Math.abs(cy - lat) > 0.0014) break;
+        segIdx = (segIdx + 1) % (path.length - 1);
+      }
       const [lng0, lat0] = path[segIdx];
       const h0 = this._segHeading(path, segIdx);
 
@@ -1229,7 +1234,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const rawH = Math.atan2(cx1 - cx0, cy1 - cy0) * 180 / Math.PI;
         const heading = vs.forward ? rawH : rawH + 180;
 
-        vs.marker.setLngLat([curLng, curLat]);
+        // No colocar vehículo encima del marcador del usuario
+        const uLng = this._currentLng, uLat = this._currentLat;
+        if (Math.abs(curLng - uLng) > 0.0006 || Math.abs(curLat - uLat) > 0.0006) {
+          vs.marker.setLngLat([curLng, curLat]);
+        }
         (vs.marker.getElement() as HTMLElement).style.transform = `rotate(${heading}deg)`;
       }
 
