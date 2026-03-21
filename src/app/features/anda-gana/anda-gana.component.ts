@@ -50,8 +50,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
 
         <!-- Mapa -->
-        <div id="ag-map-user" class="absolute inset-0"
-          [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+        <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
         <!-- Barra de dirección (flotante arriba) -->
         @if (gpsStatus() !== 'requesting') {
@@ -1172,7 +1171,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     // Asegurar dimensiones explícitas antes de crear el mapa
     if (!container.offsetHeight) {
-      container.style.height = '300px';
+      container.style.height = '520px';
+    }
+    if (!container.offsetWidth) {
+      container.style.width = '100%';
     }
 
     this._destroyMap();
