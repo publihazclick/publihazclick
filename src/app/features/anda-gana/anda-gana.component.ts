@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, signal, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SlicePipe, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import { AndaGanaService, AgUser } from './anda-gana.service';
 import { environment } from '../../../environments/environment';
 
@@ -10,7 +10,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 @Component({
   selector: 'app-anda-gana',
   standalone: true,
-  imports: [FormsModule, SlicePipe],
+  imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4">
@@ -24,58 +24,55 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ PASAJERO DASHBOARD ═══════════ -->
   @if (screen() === 'passenger-home') {
-    <div class="w-full max-w-lg flex flex-col gap-5">
-      <div class="flex flex-col items-center gap-3 text-center pt-4 pb-2">
-        <div class="w-16 h-16 rounded-2xl bg-orange-500/10 border-2 border-orange-500/20 flex items-center justify-center">
-          <span class="material-symbols-outlined text-orange-400" style="font-size:32px">person</span>
-        </div>
+    <div class="w-full max-w-lg flex flex-col gap-3">
+
+      <!-- Compact header -->
+      <div class="flex items-center justify-between px-1 pt-2">
         <div>
-          <h1 class="text-white font-black text-xl">¡Hola, {{ firstName() }}!</h1>
-          <p class="text-slate-400 text-sm">Tu cuenta de pasajero está activa</p>
+          <h1 class="text-white font-black text-lg leading-tight">¡Hola, {{ firstName() }}!</h1>
+          <p class="text-slate-500 text-xs">Pasajero activo</p>
         </div>
         <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-          <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Activo
+          <span class="material-symbols-outlined" style="font-size:13px">check_circle</span> Activo
         </span>
       </div>
 
-      <!-- Info card -->
-      <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-5 flex flex-col gap-3">
-        <h3 class="text-white font-black text-sm uppercase tracking-widest">Tu perfil</h3>
-        <div class="grid grid-cols-2 gap-3">
-          <div><p class="text-slate-500 text-[10px] uppercase">Ciudad</p><p class="text-white text-sm font-bold">{{ agProfile()?.city }}</p></div>
-          <div><p class="text-slate-500 text-[10px] uppercase">Teléfono</p><p class="text-white text-sm font-bold">{{ agProfile()?.phone }}</p></div>
-          <div><p class="text-slate-500 text-[10px] uppercase">Correo</p><p class="text-slate-300 text-xs">{{ agProfile()?.email }}</p></div>
-          <div><p class="text-slate-500 text-[10px] uppercase">Miembro desde</p><p class="text-slate-300 text-xs">{{ agProfile()?.created_at | slice:0:10 }}</p></div>
-        </div>
-      </div>
+      <!-- Mapa con overlays flotantes -->
+      <div class="relative rounded-2xl overflow-hidden" style="height:520px;border:1px solid rgba(255,255,255,0.08)">
 
-      <!-- Mapa + dirección -->
-      <div class="flex flex-col gap-2">
+        <!-- GPS loading state -->
+        @if (gpsStatus() === 'requesting') {
+          <div class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3" style="background:#0d111a">
+            <span class="material-symbols-outlined text-orange-400 animate-pulse" style="font-size:38px">my_location</span>
+            <p class="text-slate-400 text-sm font-bold">Obteniendo tu ubicación...</p>
+            <p class="text-slate-600 text-xs">Acepta el permiso en tu dispositivo</p>
+          </div>
+        }
 
-        <!-- Barra de dirección -->
+        <!-- Mapa -->
+        <div id="ag-map-user" class="absolute inset-0"
+          [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+
+        <!-- Barra de dirección (flotante arriba) -->
         @if (gpsStatus() !== 'requesting') {
-          <div class="relative">
+          <div class="absolute top-3 left-3 right-3 z-20">
             @if (!addressEditMode()) {
-              <!-- Pill clickeable -->
               <button (click)="openAddressEdit()"
-                class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-lg shadow-black/20 text-left transition-all hover:shadow-xl active:scale-[0.98]">
-                <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:22px">location_on</span>
+                class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-2.5 shadow-xl shadow-black/40 text-left transition-all active:scale-[0.98]">
+                <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">location_on</span>
                 <div class="flex-1 min-w-0">
                   @if (addressLoading()) {
                     <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
                   } @else if (currentAddress()) {
                     <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
-                    <p class="text-slate-400 text-xs mt-0.5">Toca para cambiar tu ubicación</p>
                   } @else {
                     <p class="text-slate-500 text-sm">Dirección no disponible</p>
-                    <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu ubicación</p>
                   }
                 </div>
-                <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:18px">edit</span>
+                <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:16px">edit</span>
               </button>
             } @else {
-              <!-- Input de búsqueda -->
-              <div class="flex flex-col bg-white rounded-2xl shadow-xl shadow-black/20 overflow-hidden">
+              <div class="flex flex-col bg-white rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
                 <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
                   <span class="material-symbols-outlined text-orange-500" style="font-size:20px">search</span>
                   <input #addressInput
@@ -92,9 +89,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                   </button>
                 </div>
-                <!-- Sugerencias -->
                 @if (addressSuggestions().length > 0) {
-                  <div class="flex flex-col max-h-60 overflow-y-auto">
+                  <div class="flex flex-col max-h-56 overflow-y-auto">
                     @for (s of addressSuggestions(); track s.id) {
                       <button (mousedown)="$event.preventDefault(); selectAddress(s)"
                         class="flex items-start gap-3 px-4 py-3 hover:bg-orange-50 active:bg-orange-100 transition-colors text-left border-b border-slate-50 last:border-0">
@@ -111,173 +107,190 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
               </div>
             }
+
+            <!-- GPS denied badge -->
+            @if (gpsStatus() === 'denied') {
+              <div class="mt-2 flex justify-end">
+                <button (click)="retryGps('ag-map-user')"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur text-orange-400 text-xs font-bold border border-orange-500/20">
+                  <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Reintentar GPS
+                </button>
+              </div>
+            }
           </div>
         }
 
-        <!-- Estado GPS -->
-        @if (gpsStatus() === 'requesting') {
-          <div class="rounded-2xl bg-white/[0.03] border border-white/8 h-60 flex flex-col items-center justify-center gap-3">
-            <span class="material-symbols-outlined text-orange-400 animate-pulse" style="font-size:38px">my_location</span>
-            <p class="text-slate-400 text-sm font-bold">Obteniendo tu ubicación...</p>
-            <p class="text-slate-600 text-xs">Acepta el permiso en tu dispositivo</p>
-          </div>
-        }
+        <!-- Panel de viaje (flotante abajo) -->
+        @if (gpsStatus() !== 'requesting') {
+          <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl overflow-hidden"
+            style="background:rgba(8,10,16,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.08)">
 
-        <!-- Contenedor del mapa -->
-        <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
-          [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
-
-        @if (gpsStatus() === 'denied') {
-          <div class="flex items-center justify-between">
-            <p class="text-slate-600 text-xs">Sin ubicación exacta</p>
-            <button (click)="retryGps('ag-map-user')"
-              class="text-xs text-orange-400 font-bold flex items-center gap-1">
-              <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Reintentar
-            </button>
-          </div>
-        }
-      </div>
-
-      <!-- ══════════ PANEL DE VIAJE ══════════ -->
-      @if (gpsStatus() !== 'requesting') {
-        <div class="rounded-2xl overflow-hidden border border-white/8 shadow-xl shadow-black/30" style="background:#0d1117">
-
-          @if (!tripDest()) {
-            <!-- Estado: sin destino seleccionado -->
-            @if (!tripOpen()) {
-              <!-- Barra colapsada -->
-              <button (click)="openTripSearch()"
-                class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white/[0.03] transition-colors text-left">
-                <div class="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center flex-shrink-0">
-                  <span class="material-symbols-outlined text-orange-400" style="font-size:22px">search</span>
-                </div>
-                <div class="flex-1">
-                  <p class="text-white font-black text-sm">¿A dónde vas y por cuánto?</p>
-                  <p class="text-slate-500 text-xs mt-0.5">Toca para buscar tu destino</p>
-                </div>
-                <span class="material-symbols-outlined text-slate-600" style="font-size:20px">chevron_right</span>
+            <!-- Fila de servicios -->
+            <div class="flex gap-1 px-3 pt-3 pb-1 overflow-x-auto" style="scrollbar-width:none">
+              <button (click)="tripService.set('viaje')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
+                [class]="tripService()==='viaje' ? 'bg-orange-500/15 border border-orange-500/30' : 'hover:bg-white/5'">
+                <span class="material-symbols-outlined" style="font-size:26px"
+                  [style.color]="tripService()==='viaje' ? '#f97316' : '#64748b'">directions_car</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='viaje' ? '#f97316' : '#64748b'">Viaje</span>
               </button>
-            } @else {
-              <!-- Búsqueda expandida -->
-              <div class="flex flex-col">
-                <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
-                  <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">search</span>
-                  <input #tripInput
-                    [value]="tripQuery()"
-                    (input)="onTripQueryInput($any($event.target).value)"
-                    (keydown.escape)="closeTripSearch()"
-                    placeholder="Busca tu destino..."
-                    class="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-500"/>
-                  <button (click)="closeTripSearch()">
-                    <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
-                  </button>
+              <button (click)="tripService.set('moto')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
+                [class]="tripService()==='moto' ? 'bg-cyan-500/15 border border-cyan-500/30' : 'hover:bg-white/5'">
+                <span class="material-symbols-outlined" style="font-size:26px"
+                  [style.color]="tripService()==='moto' ? '#06b6d4' : '#64748b'">two_wheeler</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='moto' ? '#06b6d4' : '#64748b'">Moto</span>
+              </button>
+              <button (click)="tripService.set('ciudad')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
+                [class]="tripService()==='ciudad' ? 'bg-purple-500/15 border border-purple-500/30' : 'hover:bg-white/5'">
+                <span class="material-symbols-outlined" style="font-size:26px"
+                  [style.color]="tripService()==='ciudad' ? '#a855f7' : '#64748b'">commute</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='ciudad' ? '#a855f7' : '#64748b'">Ciudad a ciudad</span>
+              </button>
+              <button (click)="tripService.set('domicilio')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
+                [class]="tripService()==='domicilio' ? 'bg-emerald-500/15 border border-emerald-500/30' : 'hover:bg-white/5'">
+                <span class="material-symbols-outlined" style="font-size:26px"
+                  [style.color]="tripService()==='domicilio' ? '#10b981' : '#64748b'">delivery_dining</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='domicilio' ? '#10b981' : '#64748b'">Domicilio</span>
+              </button>
+              <button (click)="tripService.set('fletes')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
+                [class]="tripService()==='fletes' ? 'bg-amber-500/15 border border-amber-500/30' : 'hover:bg-white/5'">
+                <span class="material-symbols-outlined" style="font-size:26px"
+                  [style.color]="tripService()==='fletes' ? '#f59e0b' : '#64748b'">local_shipping</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#64748b'">Fletes</span>
+              </button>
+            </div>
+
+            <!-- Divider -->
+            <div class="mx-4 h-px bg-white/6 my-1"></div>
+
+            <!-- Contenido del panel según estado -->
+            @if (!tripDest()) {
+              @if (!tripOpen()) {
+                <button (click)="openTripSearch()"
+                  class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors text-left">
+                  <div class="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-orange-400" style="font-size:22px">search</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-white font-black text-sm">¿A dónde vas y por cuánto?</p>
+                    <p class="text-slate-500 text-xs mt-0.5">Toca para buscar tu destino</p>
+                  </div>
+                  <span class="material-symbols-outlined text-slate-600" style="font-size:20px">chevron_right</span>
+                </button>
+              } @else {
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
+                    <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">search</span>
+                    <input #tripInput
+                      [value]="tripQuery()"
+                      (input)="onTripQueryInput($any($event.target).value)"
+                      (keydown.escape)="closeTripSearch()"
+                      placeholder="Busca tu destino..."
+                      class="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-500"/>
+                    <button (click)="closeTripSearch()">
+                      <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
+                    </button>
+                  </div>
+                  @if (tripSuggestions().length > 0) {
+                    <div class="flex flex-col max-h-48 overflow-y-auto">
+                      @for (s of tripSuggestions(); track s.id) {
+                        <button (mousedown)="$event.preventDefault(); selectTripDest(s)"
+                          class="flex items-center gap-3 px-4 py-3 border-b border-white/4 last:border-0 hover:bg-white/[0.05] active:bg-white/[0.08] text-left transition-colors">
+                          <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-white text-sm font-semibold truncate">{{ s.text }}</p>
+                            <p class="text-slate-500 text-xs truncate">{{ s.place_name }}</p>
+                          </div>
+                          <span class="text-orange-400 text-xs font-black flex-shrink-0">{{ s.distKm }} km</span>
+                        </button>
+                      }
+                    </div>
+                  } @else if (tripQuery().length > 1) {
+                    <div class="px-4 py-4 text-slate-500 text-sm text-center flex items-center justify-center gap-2">
+                      <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                      Buscando lugares...
+                    </div>
+                  }
                 </div>
-                <!-- Resultados -->
-                @if (tripSuggestions().length > 0) {
-                  <div class="flex flex-col max-h-56 overflow-y-auto">
-                    @for (s of tripSuggestions(); track s.id) {
-                      <button (mousedown)="$event.preventDefault(); selectTripDest(s)"
-                        class="flex items-center gap-3 px-4 py-3 border-b border-white/4 last:border-0 hover:bg-white/[0.05] active:bg-white/[0.08] text-left transition-colors">
-                        <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
-                        <div class="flex-1 min-w-0">
-                          <p class="text-white text-sm font-semibold truncate">{{ s.text }}</p>
-                          <p class="text-slate-500 text-xs truncate">{{ s.place_name }}</p>
-                        </div>
-                        <span class="text-orange-400 text-xs font-black flex-shrink-0">{{ s.distKm }} km</span>
-                      </button>
-                    }
-                  </div>
-                } @else if (tripQuery().length > 1) {
-                  <div class="px-4 py-5 text-slate-500 text-sm text-center flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
-                    Buscando lugares...
-                  </div>
-                }
+              }
+
+            } @else if (!tripSent()) {
+              <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
+                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">place</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-slate-400 text-[10px] uppercase tracking-wider">Destino · {{ tripDistKm() }} km</p>
+                  <p class="text-white text-sm font-bold truncate">{{ tripDest()!.name }}</p>
+                </div>
+                <button (click)="cancelTrip()">
+                  <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
+                </button>
+              </div>
+
+              <div class="flex gap-2 px-4 py-2 border-b border-white/6">
+                <button (click)="setTripVehicle('carro')"
+                  class="flex-1 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
+                  [class]="tripVehicle()==='carro' ? 'bg-orange-500 text-black' : 'bg-white/5 border border-white/10 text-slate-400'">
+                  <span class="material-symbols-outlined" style="font-size:18px">directions_car</span> Carro
+                </button>
+                <button (click)="setTripVehicle('moto')"
+                  class="flex-1 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
+                  [class]="tripVehicle()==='moto' ? 'bg-cyan-500 text-black' : 'bg-white/5 border border-white/10 text-slate-400'">
+                  <span class="material-symbols-outlined" style="font-size:18px">two_wheeler</span> Moto
+                </button>
+              </div>
+
+              <div class="flex items-center gap-3 px-4 py-2 border-b border-white/6">
+                <div class="flex-1">
+                  <p class="text-slate-500 text-[10px] uppercase tracking-wider">Valor sugerido</p>
+                  <p class="text-white font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button (click)="adjustTripPrice(-500)"
+                    class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center active:scale-95 transition-all">−</button>
+                  <button (click)="adjustTripPrice(500)"
+                    class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center active:scale-95 transition-all">+</button>
+                </div>
+              </div>
+
+              <div class="px-4 py-3">
+                <button (click)="findOffers()" [disabled]="tripSending()"
+                  class="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-60 active:scale-[0.98]"
+                  [class]="tripVehicle()==='carro' ? 'bg-orange-500 text-black' : 'bg-cyan-500 text-black'">
+                  @if (tripSending()) {
+                    <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Buscando...
+                  } @else {
+                    <span class="material-symbols-outlined" style="font-size:18px">local_taxi</span> Encontrar ofertas
+                  }
+                </button>
+              </div>
+
+            } @else {
+              <div class="px-4 py-6 flex flex-col items-center gap-3 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-emerald-400" style="font-size:28px">check_circle</span>
+                </div>
+                <p class="text-white font-black text-base">¡Solicitud enviada!</p>
+                <p class="text-slate-400 text-sm">Buscando conductores disponibles…</p>
+                <p class="text-slate-600 text-xs">{{ tripDest()!.name }} · {{ formatCOP(tripPrice()) }} · {{ tripDistKm() }} km</p>
+                <button (click)="cancelTrip()"
+                  class="mt-2 px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-xs font-bold">
+                  Cancelar solicitud
+                </button>
               </div>
             }
 
-          } @else if (!tripSent()) {
-            <!-- Estado: destino seleccionado → precio + tipo + botón -->
+          </div>
+        }
 
-            <!-- Destino -->
-            <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
-              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">place</span>
-              <div class="flex-1 min-w-0">
-                <p class="text-slate-400 text-[10px] uppercase tracking-wider">Destino · {{ tripDistKm() }} km</p>
-                <p class="text-white text-sm font-bold truncate">{{ tripDest()!.name }}</p>
-              </div>
-              <button (click)="cancelTrip()">
-                <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
-              </button>
-            </div>
-
-            <!-- Tipo de vehículo -->
-            <div class="flex gap-2 px-4 py-3 border-b border-white/6">
-              <button (click)="setTripVehicle('carro')"
-                class="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
-                [class]="tripVehicle()==='carro'
-                  ? 'bg-orange-500 text-black'
-                  : 'bg-white/5 border border-white/10 text-slate-400'">
-                <span class="material-symbols-outlined" style="font-size:20px">directions_car</span> Carro
-              </button>
-              <button (click)="setTripVehicle('moto')"
-                class="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
-                [class]="tripVehicle()==='moto'
-                  ? 'bg-cyan-500 text-black'
-                  : 'bg-white/5 border border-white/10 text-slate-400'">
-                <span class="material-symbols-outlined" style="font-size:20px">two_wheeler</span> Moto
-              </button>
-            </div>
-
-            <!-- Precio -->
-            <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
-              <div class="flex-1">
-                <p class="text-slate-500 text-[10px] uppercase tracking-wider">Valor sugerido</p>
-                <p class="text-white font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
-              </div>
-              <div class="flex items-center gap-2">
-                <button (click)="adjustTripPrice(-500)"
-                  class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center hover:bg-white/12 active:scale-95 transition-all">−</button>
-                <button (click)="adjustTripPrice(500)"
-                  class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center hover:bg-white/12 active:scale-95 transition-all">+</button>
-              </div>
-            </div>
-
-            <!-- Botón encontrar ofertas -->
-            <div class="px-4 py-3">
-              <button (click)="findOffers()" [disabled]="tripSending()"
-                class="w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-60 active:scale-[0.98]"
-                [class]="tripVehicle()==='carro' ? 'bg-orange-500 text-black' : 'bg-cyan-500 text-black'">
-                @if (tripSending()) {
-                  <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Buscando...
-                } @else {
-                  <span class="material-symbols-outlined" style="font-size:18px">local_taxi</span> Encontrar ofertas
-                }
-              </button>
-            </div>
-
-          } @else {
-            <!-- Estado: solicitud enviada -->
-            <div class="px-4 py-8 flex flex-col items-center gap-3 text-center">
-              <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <span class="material-symbols-outlined text-emerald-400" style="font-size:32px">check_circle</span>
-              </div>
-              <p class="text-white font-black text-base">¡Solicitud enviada!</p>
-              <p class="text-slate-400 text-sm">Buscando conductores disponibles cerca de ti…</p>
-              <p class="text-slate-600 text-xs">{{ tripDest()!.name }} · {{ formatCOP(tripPrice()) }} · {{ tripDistKm() }} km</p>
-              <button (click)="cancelTrip()"
-                class="mt-3 px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-xs font-bold hover:bg-white/10 transition-colors">
-                Cancelar solicitud
-              </button>
-            </div>
-          }
-
-        </div>
-      }
+      </div><!-- /map container -->
     </div>
   }
 
-  <!-- ═══════════ CONDUCTOR DASHBOARD ═══════════ -->
+    <!-- ═══════════ CONDUCTOR DASHBOARD ═══════════ -->
   @if (screen() === 'driver-home') {
     <div class="w-full max-w-lg flex flex-col gap-5">
       <div class="flex flex-col items-center gap-3 text-center pt-4 pb-2">
@@ -936,6 +949,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripDistKm      = signal(0);
   tripSending     = signal(false);
   tripSent        = signal(false);
+  tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
 
   private _map:             any    = null;
   private _userMarker:      any    = null;
