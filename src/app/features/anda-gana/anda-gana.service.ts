@@ -172,6 +172,29 @@ export class AndaGanaService {
     }
   }
 
+  // ── Mapa — vehículos cercanos ─────────────────────────────────
+  async getNearbyVehicles(lat: number, lng: number): Promise<
+    { id: string; lat: number; lng: number; heading: number; vehicle_type: string }[]
+  > {
+    // Busca conductores aprobados y disponibles con ubicación registrada
+    const { data } = await this.supabase
+      .from('ag_driver_locations')
+      .select('driver_id, lat, lng, heading, ag_drivers!inner(vehicle_type, status, is_available)')
+      .eq('ag_drivers.status', 'approved')
+      .eq('ag_drivers.is_available', true);
+
+    if (data && data.length > 0) {
+      return data.map((d: any) => ({
+        id:           d.driver_id,
+        lat:          d.lat,
+        lng:          d.lng,
+        heading:      d.heading ?? 0,
+        vehicle_type: d.ag_drivers?.vehicle_type ?? 'carro',
+      }));
+    }
+    return [];
+  }
+
   // ── Admin ─────────────────────────────────────────────────────
   async getPassengers(): Promise<AgUser[]> {
     const { data } = await this.supabase

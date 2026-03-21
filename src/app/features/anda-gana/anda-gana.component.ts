@@ -795,10 +795,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   addressQuery       = signal('');
   addressSuggestions = signal<any[]>([]);
 
-  private _map:           any    = null;
-  private _userMarker:    any    = null;
-  private _mapboxPromise: Promise<void> | null = null;
-  private _searchDebounce: ReturnType<typeof setTimeout> | null = null;
+  private _map:             any    = null;
+  private _userMarker:      any    = null;
+  private _vehicleMarkers:  any[]  = [];
+  private _mapboxPromise:   Promise<void> | null = null;
+  private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _currentLat = 4.6097;
   private _currentLng = -74.0817;
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
@@ -1026,6 +1027,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
     this._map.once('load', () => {
+      // Cargar vehículos cercanos
+      this._loadVehicleMarkers(lat, lng);
+
       // Marcador de posición del usuario
       const el = document.createElement('div');
       el.style.cssText = `
@@ -1061,7 +1065,95 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ── Vehículos en el mapa ───────────────────────────────────────
+  private async _loadVehicleMarkers(lat: number, lng: number) {
+    if (!this._map) return;
+    const mapboxgl = (window as any).mapboxgl;
+    if (!mapboxgl) return;
+
+    // Limpiar marcadores anteriores
+    this._vehicleMarkers.forEach(m => m.remove());
+    this._vehicleMarkers = [];
+
+    // Intentar cargar conductores reales
+    let vehicles = await this.agService.getNearbyVehicles(lat, lng);
+
+    // Si no hay conductores reales, mostrar demos visuales
+    if (vehicles.length === 0) {
+      const R = 0.0035; // ~350m
+      vehicles = [
+        { id: 'd1', lat: lat + R * 0.8,  lng: lng + R * 0.5,  heading: 45,  vehicle_type: 'carro' },
+        { id: 'd2', lat: lat - R * 0.6,  lng: lng + R * 1.0,  heading: 180, vehicle_type: 'carro' },
+        { id: 'd3', lat: lat + R * 0.3,  lng: lng - R * 0.9,  heading: 90,  vehicle_type: 'moto'  },
+        { id: 'd4', lat: lat + R * 1.1,  lng: lng - R * 0.3,  heading: 270, vehicle_type: 'moto'  },
+        { id: 'd5', lat: lat - R * 0.9,  lng: lng - R * 0.6,  heading: 135, vehicle_type: 'carro' },
+        { id: 'd6', lat: lat - R * 0.2,  lng: lng + R * 1.3,  heading: 310, vehicle_type: 'moto'  },
+      ];
+    }
+
+    vehicles.forEach(v => {
+      const isMoto = v.vehicle_type?.toLowerCase().includes('moto');
+      const el = isMoto ? this._motoElement(v.heading) : this._carElement(v.heading);
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([v.lng, v.lat])
+        .addTo(this._map);
+      this._vehicleMarkers.push(marker);
+    });
+  }
+
+  private _carElement(heading: number): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `transform:rotate(${heading}deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35));`;
+    wrap.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="44" height="28" viewBox="0 0 44 28">
+        <!-- sombra -->
+        <ellipse cx="22" cy="25" rx="14" ry="3" fill="rgba(0,0,0,0.18)"/>
+        <!-- carrocería -->
+        <rect x="4" y="10" width="36" height="12" rx="4" fill="#F59E0B"/>
+        <!-- techo -->
+        <rect x="10" y="5" width="24" height="10" rx="3" fill="#FBBF24"/>
+        <!-- parabrisas delantero -->
+        <rect x="11" y="6" width="10" height="7" rx="1.5" fill="rgba(186,230,253,0.85)"/>
+        <!-- parabrisas trasero -->
+        <rect x="23" y="6" width="10" height="7" rx="1.5" fill="rgba(186,230,253,0.85)"/>
+        <!-- ruedas -->
+        <rect x="2"  y="9"  width="6" height="5" rx="2" fill="#1f2937"/>
+        <rect x="36" y="9"  width="6" height="5" rx="2" fill="#1f2937"/>
+        <rect x="2"  y="16" width="6" height="5" rx="2" fill="#1f2937"/>
+        <rect x="36" y="16" width="6" height="5" rx="2" fill="#1f2937"/>
+        <!-- faros -->
+        <rect x="38" y="11" width="4" height="2" rx="1" fill="#FEF08A"/>
+        <rect x="38" y="17" width="4" height="2" rx="1" fill="#FEF08A"/>
+      </svg>`;
+    return wrap;
+  }
+
+  private _motoElement(heading: number): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `transform:rotate(${heading}deg);filter:drop-shadow(0 3px 5px rgba(0,0,0,0.35));`;
+    wrap.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="22" viewBox="0 0 36 22">
+        <!-- sombra -->
+        <ellipse cx="18" cy="20" rx="9" ry="2" fill="rgba(0,0,0,0.18)"/>
+        <!-- cuerpo -->
+        <ellipse cx="18" cy="11" rx="12" ry="5" fill="#06B6D4"/>
+        <!-- asiento -->
+        <rect x="11" y="7" width="14" height="5" rx="2" fill="#0891B2"/>
+        <!-- rueda delantera -->
+        <ellipse cx="5"  cy="11" rx="4" ry="4" fill="#0f172a" stroke="#475569" stroke-width="1.5"/>
+        <ellipse cx="5"  cy="11" rx="2" ry="2" fill="#334155"/>
+        <!-- rueda trasera -->
+        <ellipse cx="31" cy="11" rx="4" ry="4" fill="#0f172a" stroke="#475569" stroke-width="1.5"/>
+        <ellipse cx="31" cy="11" rx="2" ry="2" fill="#334155"/>
+        <!-- faro -->
+        <ellipse cx="3" cy="11" rx="1.5" ry="1.5" fill="#FEF08A"/>
+      </svg>`;
+    return wrap;
+  }
+
   private _destroyMap() {
+    this._vehicleMarkers.forEach(m => { try { m.remove(); } catch { /**/ } });
+    this._vehicleMarkers = [];
     this._userMarker = null;
     if (this._map) {
       try { this._map.remove(); } catch { /* ignore */ }
