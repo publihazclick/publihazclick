@@ -49,19 +49,68 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       </div>
 
-      <!-- Mapa -->
+      <!-- Mapa + dirección -->
       <div class="flex flex-col gap-2">
-        <div class="flex items-center justify-between">
-          <h3 class="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
-            <span class="material-symbols-outlined text-orange-400" style="font-size:16px">location_on</span>Tu ubicación
-          </h3>
-          @if (gpsStatus() === 'denied') {
-            <button (click)="retryGps('ag-map-user')"
-              class="text-xs text-orange-400 font-bold flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20">
-              <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Permitir ubicación
-            </button>
-          }
-        </div>
+
+        <!-- Barra de dirección -->
+        @if (gpsStatus() !== 'requesting') {
+          <div class="relative">
+            @if (!addressEditMode()) {
+              <!-- Pill clickeable -->
+              <button (click)="openAddressEdit()"
+                class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-lg shadow-black/20 text-left transition-all hover:shadow-xl active:scale-[0.98]">
+                <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:22px">location_on</span>
+                <div class="flex-1 min-w-0">
+                  @if (addressLoading()) {
+                    <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
+                  } @else if (currentAddress()) {
+                    <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Toca para cambiar tu ubicación</p>
+                  } @else {
+                    <p class="text-slate-500 text-sm">Dirección no disponible</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu ubicación</p>
+                  }
+                </div>
+                <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:18px">edit</span>
+              </button>
+            } @else {
+              <!-- Input de búsqueda -->
+              <div class="flex flex-col bg-white rounded-2xl shadow-xl shadow-black/20 overflow-hidden">
+                <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+                  <span class="material-symbols-outlined text-orange-500" style="font-size:20px">search</span>
+                  <input #addressInput
+                    [value]="addressQuery()"
+                    (input)="onAddressInput($any($event.target).value)"
+                    (keydown.escape)="closeAddressEdit()"
+                    placeholder="Busca tu dirección o lugar..."
+                    class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                  <button (click)="closeAddressEdit()" class="flex-shrink-0">
+                    <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                  </button>
+                </div>
+                <!-- Sugerencias -->
+                @if (addressSuggestions().length > 0) {
+                  <div class="flex flex-col max-h-60 overflow-y-auto">
+                    @for (s of addressSuggestions(); track s.id) {
+                      <button (click)="selectAddress(s)"
+                        class="flex items-start gap-3 px-4 py-3 hover:bg-orange-50 active:bg-orange-100 transition-colors text-left border-b border-slate-50 last:border-0">
+                        <span class="material-symbols-outlined text-orange-400 mt-0.5 flex-shrink-0" style="font-size:16px">location_on</span>
+                        <div class="min-w-0">
+                          <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                          <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
+                        </div>
+                      </button>
+                    }
+                  </div>
+                } @else if (addressQuery().length > 1) {
+                  <div class="px-4 py-4 text-slate-400 text-sm text-center">Buscando...</div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Estado GPS -->
         @if (gpsStatus() === 'requesting') {
           <div class="rounded-2xl bg-white/[0.03] border border-white/8 h-60 flex flex-col items-center justify-center gap-3">
             <span class="material-symbols-outlined text-orange-400 animate-pulse" style="font-size:38px">my_location</span>
@@ -69,10 +118,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <p class="text-slate-600 text-xs">Acepta el permiso en tu dispositivo</p>
           </div>
         }
+
+        <!-- Contenedor del mapa -->
         <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
           [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+
         @if (gpsStatus() === 'denied') {
-          <p class="text-slate-600 text-xs text-center">Se muestra el mapa sin tu ubicación exacta. Activa el permiso para verte en el mapa.</p>
+          <div class="flex items-center justify-between">
+            <p class="text-slate-600 text-xs">Sin ubicación exacta</p>
+            <button (click)="retryGps('ag-map-user')"
+              class="text-xs text-orange-400 font-bold flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Reintentar
+            </button>
+          </div>
         }
       </div>
 
@@ -145,19 +203,62 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       </div>
 
-      <!-- Mapa -->
+      <!-- Mapa + dirección -->
       <div class="flex flex-col gap-2">
-        <div class="flex items-center justify-between">
-          <h3 class="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
-            <span class="material-symbols-outlined text-cyan-400" style="font-size:16px">location_on</span>Tu ubicación
-          </h3>
-          @if (gpsStatus() === 'denied') {
-            <button (click)="retryGps('ag-map-user')"
-              class="text-xs text-cyan-400 font-bold flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-              <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Permitir ubicación
-            </button>
-          }
-        </div>
+
+        @if (gpsStatus() !== 'requesting') {
+          <div class="relative">
+            @if (!addressEditMode()) {
+              <button (click)="openAddressEdit()"
+                class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-lg shadow-black/20 text-left transition-all hover:shadow-xl active:scale-[0.98]">
+                <span class="material-symbols-outlined text-cyan-500 flex-shrink-0" style="font-size:22px">location_on</span>
+                <div class="flex-1 min-w-0">
+                  @if (addressLoading()) {
+                    <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
+                  } @else if (currentAddress()) {
+                    <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Toca para cambiar tu ubicación</p>
+                  } @else {
+                    <p class="text-slate-500 text-sm">Dirección no disponible</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu ubicación</p>
+                  }
+                </div>
+                <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:18px">edit</span>
+              </button>
+            } @else {
+              <div class="flex flex-col bg-white rounded-2xl shadow-xl shadow-black/20 overflow-hidden">
+                <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+                  <span class="material-symbols-outlined text-cyan-500" style="font-size:20px">search</span>
+                  <input [value]="addressQuery()"
+                    (input)="onAddressInput($any($event.target).value)"
+                    (keydown.escape)="closeAddressEdit()"
+                    placeholder="Busca tu dirección o lugar..."
+                    class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                  <button (click)="closeAddressEdit()">
+                    <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                  </button>
+                </div>
+                @if (addressSuggestions().length > 0) {
+                  <div class="flex flex-col max-h-60 overflow-y-auto">
+                    @for (s of addressSuggestions(); track s.id) {
+                      <button (click)="selectAddress(s)"
+                        class="flex items-start gap-3 px-4 py-3 hover:bg-cyan-50 active:bg-cyan-100 transition-colors text-left border-b border-slate-50 last:border-0">
+                        <span class="material-symbols-outlined text-cyan-400 mt-0.5 flex-shrink-0" style="font-size:16px">location_on</span>
+                        <div class="min-w-0">
+                          <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                          <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
+                        </div>
+                      </button>
+                    }
+                  </div>
+                } @else if (addressQuery().length > 1) {
+                  <div class="px-4 py-4 text-slate-400 text-sm text-center">Buscando...</div>
+                }
+              </div>
+            }
+          </div>
+        }
+
         @if (gpsStatus() === 'requesting') {
           <div class="rounded-2xl bg-white/[0.03] border border-white/8 h-60 flex flex-col items-center justify-center gap-3">
             <span class="material-symbols-outlined text-cyan-400 animate-pulse" style="font-size:38px">my_location</span>
@@ -165,10 +266,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <p class="text-slate-600 text-xs">Acepta el permiso en tu dispositivo</p>
           </div>
         }
+
         <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
           [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+
         @if (gpsStatus() === 'denied') {
-          <p class="text-slate-600 text-xs text-center">Se muestra el mapa sin tu ubicación exacta. Activa el permiso para verte en el mapa.</p>
+          <div class="flex items-center justify-between">
+            <p class="text-slate-600 text-xs">Sin ubicación exacta</p>
+            <button (click)="retryGps('ag-map-user')"
+              class="text-xs text-cyan-400 font-bold flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Reintentar
+            </button>
+          </div>
         }
       </div>
     </div>
@@ -671,14 +780,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverRejectionReason = signal<string | null>(null);
 
   // Mapa / GPS
-  gpsStatus = signal<GpsStatus>('idle');
+  gpsStatus      = signal<GpsStatus>('idle');
+  currentAddress = signal('');
+  addressLoading = signal(false);
+  addressEditMode    = signal(false);
+  addressQuery       = signal('');
+  addressSuggestions = signal<any[]>([]);
 
   private _map:           any    = null;
+  private _userMarker:    any    = null;
   private _mapboxPromise: Promise<void> | null = null;
+  private _searchDebounce: ReturnType<typeof setTimeout> | null = null;
+  private _currentLat = 4.6097;
+  private _currentLng = -74.0817;
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
-  // Default: Bogotá
-  private readonly DEFAULT_LAT = 4.6097;
-  private readonly DEFAULT_LNG = -74.0817;
+  private readonly DEFAULT_LAT  = 4.6097;
+  private readonly DEFAULT_LNG  = -74.0817;
 
   firstName() { return this.agProfile()?.full_name?.split(' ')[0] ?? ''; }
 
@@ -754,18 +871,85 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.gpsStatus.set('granted');
     } catch {
       this.gpsStatus.set('denied');
-      // Continuar con ubicación por defecto — el mapa se muestra igual
     }
 
+    this._currentLat = lat;
+    this._currentLng = lng;
+
+    // Geocodificación inversa en paralelo con la carga del mapa
+    this._reverseGeocode(lat, lng);
+
     await this.loadMapbox();
-    // Doble rAF para asegurar que el div esté en el DOM y tenga dimensiones
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
     this._createMap(containerId, lat, lng);
   }
 
   retryGps(containerId: string) {
     this._destroyMap();
+    this.currentAddress.set('');
     this.initGpsAndMap(containerId);
+  }
+
+  // ── Dirección ──────────────────────────────────────────────────
+  openAddressEdit() {
+    this.addressQuery.set('');
+    this.addressSuggestions.set([]);
+    this.addressEditMode.set(true);
+    // Focus input after render
+    setTimeout(() => {
+      const el = document.querySelector<HTMLInputElement>('[placeholder="Busca tu dirección o lugar..."]');
+      el?.focus();
+    }, 50);
+  }
+
+  closeAddressEdit() {
+    this.addressEditMode.set(false);
+    this.addressQuery.set('');
+    this.addressSuggestions.set([]);
+    if (this._searchDebounce) clearTimeout(this._searchDebounce);
+  }
+
+  onAddressInput(query: string) {
+    this.addressQuery.set(query);
+    if (this._searchDebounce) clearTimeout(this._searchDebounce);
+    if (!query.trim() || query.length < 2) { this.addressSuggestions.set([]); return; }
+    this._searchDebounce = setTimeout(() => this._searchPlaces(query), 350);
+  }
+
+  private async _searchPlaces(query: string) {
+    try {
+      const prox = `${this._currentLng},${this._currentLat}`;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+        + `?access_token=${this.MAPBOX_TOKEN}&language=es&types=address,poi,place&proximity=${prox}&limit=5`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      this.addressSuggestions.set(data.features ?? []);
+    } catch { this.addressSuggestions.set([]); }
+  }
+
+  selectAddress(feature: any) {
+    const [lng, lat] = feature.center as [number, number];
+    this.currentAddress.set(feature.place_name);
+    this._currentLat = lat;
+    this._currentLng = lng;
+    this.closeAddressEdit();
+    // Mover marcador y volar al lugar
+    if (this._map) {
+      this._map.flyTo({ center: [lng, lat], zoom: 16, speed: 1.8 });
+      if (this._userMarker) this._userMarker.setLngLat([lng, lat]);
+    }
+  }
+
+  private async _reverseGeocode(lat: number, lng: number) {
+    this.addressLoading.set(true);
+    try {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json`
+        + `?access_token=${this.MAPBOX_TOKEN}&language=es&types=address,poi,place&limit=1`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      this.currentAddress.set(data.features?.[0]?.place_name ?? '');
+    } catch { this.currentAddress.set(''); }
+    this.addressLoading.set(false);
   }
 
   private _createMap(containerId: string, lat: number, lng: number) {
@@ -823,7 +1007,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         document.head.appendChild(style);
       }
 
-      new mapboxgl.Marker({ element: el, anchor: 'center' })
+      this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat])
         .addTo(this._map);
 
@@ -832,6 +1016,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private _destroyMap() {
+    this._userMarker = null;
     if (this._map) {
       try { this._map.remove(); } catch { /* ignore */ }
       this._map = null;
