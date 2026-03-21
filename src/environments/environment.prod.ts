@@ -27,7 +27,7 @@ export const environment = {
     test: false,
   },
   andaGana: {
-    mapboxToken:      'pk.YOUR_MAPBOX_TOKEN_HERE',
+    mapboxToken:      'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w',
     functionsBaseUrl: 'https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1',
   },
 };
