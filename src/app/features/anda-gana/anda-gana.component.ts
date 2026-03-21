@@ -82,8 +82,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     [value]="addressQuery()"
                     (input)="onAddressInput($any($event.target).value)"
                     (keydown.escape)="closeAddressEdit()"
+                    (keydown.enter)="confirmTypedAddress()"
                     placeholder="Busca tu dirección o lugar..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                  <button (mousedown)="$event.preventDefault(); confirmTypedAddress()" class="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
+                  </button>
                   <button (click)="closeAddressEdit()" class="flex-shrink-0">
                     <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                   </button>
@@ -232,8 +236,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input [value]="addressQuery()"
                     (input)="onAddressInput($any($event.target).value)"
                     (keydown.escape)="closeAddressEdit()"
+                    (keydown.enter)="confirmTypedAddress()"
                     placeholder="Busca tu dirección o lugar..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                  <button (mousedown)="$event.preventDefault(); confirmTypedAddress()" class="flex-shrink-0 w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
+                  </button>
                   <button (click)="closeAddressEdit()">
                     <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                   </button>
@@ -937,15 +945,44 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   selectAddress(feature: any) {
-    const [lng, lat] = feature.center as [number, number];
-    this.currentAddress.set(feature.place_name);
+    const coords: [number, number] = feature.center ?? feature.geometry?.coordinates;
+    if (!coords) return;
+    const [lng, lat] = coords;
+    this.currentAddress.set(feature.place_name ?? feature.text ?? '');
     this._currentLat = lat;
     this._currentLng = lng;
     this.closeAddressEdit();
-    // Mover marcador y volar al lugar
-    if (this._map) {
-      this._map.flyTo({ center: [lng, lat], zoom: 16, speed: 1.8 });
-      if (this._userMarker) this._userMarker.setLngLat([lng, lat]);
+
+    if (!this._map) return;
+
+    // Volar al lugar seleccionado
+    this._map.flyTo({ center: [lng, lat], zoom: 16, speed: 1.5, essential: true });
+
+    // Mover marcador existente o crear uno nuevo
+    if (this._userMarker) {
+      this._userMarker.setLngLat([lng, lat]);
+    } else {
+      const mapboxgl = (window as any).mapboxgl;
+      if (mapboxgl) {
+        const el = document.createElement('div');
+        el.style.cssText = 'width:20px;height:20px;border-radius:50%;background:#FF6600;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+        this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([lng, lat])
+          .addTo(this._map);
+      }
+    }
+  }
+
+  async confirmTypedAddress() {
+    const q = this.addressQuery().trim();
+    if (!q) return;
+    // Buscar y seleccionar el primer resultado
+    if (this.addressSuggestions().length > 0) {
+      this.selectAddress(this.addressSuggestions()[0]);
+    } else {
+      await this._searchPlaces(q);
+      const first = this.addressSuggestions()[0];
+      if (first) this.selectAddress(first);
     }
   }
 
