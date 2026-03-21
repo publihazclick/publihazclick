@@ -747,6 +747,16 @@ export class AndaGanaService {
     return !error;
   }
 
+  /** Conductores disponibles que tienen GPS registrado — para mostrar en el mapa del pasajero */
+  async getAvailableDriversWithLocation(): Promise<{ lat: number; lng: number; plate: string }[]> {
+    const { data } = await this.supabase
+      .from('ag_driver_locations')
+      .select('lat, lng, driver:ag_drivers!inner(vehicle_plate, status, is_available)');
+    return (data || [])
+      .filter((d: any) => d.driver?.status === 'approved' && d.driver?.is_available)
+      .map((d: any) => ({ lat: d.lat, lng: d.lng, plate: d.driver?.vehicle_plate || '' }));
+  }
+
   // ── Geocodificación directa con Nominatim (OpenStreetMap) — 100% gratis, sin token ──
   async searchPlaces(query: string, lat?: number, lng?: number): Promise<PlaceSuggestion[]> {
     if (!query.trim() || query.trim().length < 3) return [];

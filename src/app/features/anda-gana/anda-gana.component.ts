@@ -582,6 +582,12 @@ type AgScreen =
             <span class="material-symbols-outlined" style="font-size:16px">my_location</span> Usar mi ubicación GPS
           }
         </button>
+        @if (gpsError()) {
+          <div class="mt-2 flex items-start gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3">
+            <span class="material-symbols-outlined text-rose-400 shrink-0 mt-0.5" style="font-size:15px">warning</span>
+            <p class="text-rose-300 text-xs leading-relaxed">{{ gpsError() }}</p>
+          </div>
+        }
       </div>
     </div>
   }
@@ -2367,6 +2373,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ratingComment       = signal('');
   mapPickingAddress   = signal('');
   mapLoading          = signal(false);
+  gpsError            = signal('');
 
   readonly quickPrices = [5000, 8000, 10000, 12000, 15000, 20000];
 
@@ -2628,18 +2635,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.rideDest.set(null);
     this.offeredPrice.set('');
     this.error.set('');
+    this.gpsError.set('');
     this.screen.set('passenger-pick-origin');
+    // Show map immediately with Bogotá as default — GPS update arrives async
     setTimeout(() => {
+      this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
+      // Try GPS and pan map when it arrives (non-blocking)
       if (isPlatformBrowser(this.platformId) && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          pos => this.zone.run(() => this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng))),
-          () => this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng)),
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+          pos => this.zone.run(() => {
+            if (this._map) this._map.setView([pos.coords.latitude, pos.coords.longitude], 17, { animate: true });
+          }),
+          () => {}, // Silent fall back to default — map already showing
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
         );
-      } else {
-        this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
       }
-    }, 50);
+    }, 200);
   }
 
   goBackToOrigin() {
@@ -2785,11 +2796,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Dark tile layer (CartoDB Dark Matter, free, no API key) ──
-  private addDarkTiles(map: any, L: any) {
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap © CARTO',
-      subdomains: 'abcd',
+  // ── Light tile layer (OpenStreetMap standard, free, no API key) ──
+  private addTiles(map: any, L: any) {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map);
   }
@@ -2856,7 +2866,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  // ── Pick map: center-pin approach, auto-GPS ──
+  // ── Pick map: center-pin approach, instant GPS ──
   private async initPickMap(elementId: string, lat: number, lng: number, onPick: (lat: number, lng: number) => void) {
     const L = await this.loadLeaflet();
     if (!L) return;
@@ -2865,18 +2875,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!el) return;
     this.mapLoading.set(true);
 
+    // Set position IMMEDIATELY so confirm button is enabled right away
+    onPick(lat, lng);
+    this.mapPickingAddress.set('Detectando dirección...');
+
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], 16);
-    this.addDarkTiles(map, L);
+    this.addTiles(map, L);
 
-    // Zoom control bottom-right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    // Attribution bottom-left minimal
     L.control.attribution({ position: 'bottomright', prefix: '' }).addTo(map);
 
-    // On map move end: pick center coordinates and reverse geocode
+    // On map move: update position immediately, geocode asynchronously
     const handleCenter = () => {
       const center = map.getCenter();
+      onPick(center.lat, center.lng); // enable confirm button instantly
       this.zone.run(async () => {
         this.mapPickingAddress.set('Obteniendo dirección...');
         const addr = await this.svc.reverseGeocode(center.lat, center.lng);
@@ -2891,8 +2903,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map = map;
     this.mapLoading.set(false);
 
-    // Trigger initial geocode for current center
-    setTimeout(() => handleCenter(), 300);
+    // Geocode initial center after map renders
+    setTimeout(() => handleCenter(), 400);
+
+    // Show available drivers on map (those with real GPS location in DB)
+    this.showDriversOnMap(map, L);
   }
 
   // ── Trip map (passenger): origin + dest + route + driver marker ──
@@ -2906,7 +2921,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!el) return;
 
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([req.origin_lat, req.origin_lng], 14);
-    this.addDarkTiles(map, L);
+    this.addTiles(map, L);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Origin and dest markers
@@ -2935,6 +2950,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map = map;
   }
 
+  // ── Show available drivers with real GPS position on map ──
+  private async showDriversOnMap(map: any, L: any) {
+    try {
+      const drivers = await this.svc.getAvailableDriversWithLocation();
+      this.zone.run(() => {
+        drivers.forEach(d => {
+          if (!map) return;
+          L.marker([d.lat, d.lng], { icon: this.carIcon(L, '#f59e0b') })
+            .addTo(map)
+            .bindPopup(`<div style="font-weight:900;color:#d97706;font-size:13px">🚗 ${d.plate || 'Conductor disponible'}</div>`);
+        });
+      });
+    } catch {}
+  }
+
   private destroyMap() {
     if (this._driverMarker) { try { this._map?.removeLayer(this._driverMarker); } catch {} this._driverMarker = null; }
     if (this._map) {
@@ -2955,21 +2985,38 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   async useCurrentLocationOrigin() {
-    if (!isPlatformBrowser(this.platformId) || !navigator.geolocation) return;
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (!navigator.geolocation) {
+      this.gpsError.set('Tu navegador no soporta GPS. Escribe la dirección manualmente.');
+      return;
+    }
     this.mapLoading.set(true);
+    this.gpsError.set('');
     navigator.geolocation.getCurrentPosition(
       pos => {
         this.zone.run(() => {
           this.mapLoading.set(false);
+          this.gpsError.set('');
           if (this._map) {
-            this._map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+            this._map.setView([pos.coords.latitude, pos.coords.longitude], 17, { animate: true });
           } else {
             this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
           }
         });
       },
-      () => { this.zone.run(() => this.mapLoading.set(false)); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      err => {
+        this.zone.run(() => {
+          this.mapLoading.set(false);
+          if (err.code === 1) {
+            this.gpsError.set('GPS denegado. Activa la ubicación en tu navegador y vuelve a intentar, o escribe la dirección en el buscador.');
+          } else if (err.code === 2) {
+            this.gpsError.set('No se pudo obtener tu posición. Verifica tu conexión o escribe la dirección.');
+          } else {
+            this.gpsError.set('GPS tardó demasiado. Escribe la dirección manualmente o intenta de nuevo.');
+          }
+        });
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   }
 
@@ -3227,7 +3274,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     };
 
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView(getCenter(), 13);
-    this.addDarkTiles(map, L);
+    this.addTiles(map, L);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Try to show driver's own position
@@ -3279,7 +3326,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const targetLng = isPickup ? ride.origin_lng : ride.dest_lng;
 
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([targetLat, targetLng], 14);
-    this.addDarkTiles(map, L);
+    this.addTiles(map, L);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Origin marker (passenger pickup point)
