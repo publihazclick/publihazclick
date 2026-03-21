@@ -3556,6 +3556,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const el = await this.waitForDomElement(elementId);
     if (!el || token !== this._mapToken) return;
 
+    // Esperar 2 frames para garantizar que el layout CSS esté calculado
+    // (crítico en móvil con OnPush: el elemento existe pero puede tener tamaño 0)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (token !== this._mapToken) return;
+
+    // Asegurar dimensiones explícitas antes de crear el mapa
+    if (!el.clientWidth || !el.clientHeight) {
+      el.style.width  = window.innerWidth  + 'px';
+      el.style.height = window.innerHeight + 'px';
+    }
+
     this.mapLoading.set(true);
 
     const map = new mapboxgl.Map({
@@ -3564,6 +3575,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       center: [lng, lat],
       zoom: 15,
       attributionControl: false,
+      failIfMajorPerformanceCaveat: false, // permitir renderizado aunque WebGL sea lento
     });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
@@ -3589,14 +3601,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map = map;
     this.mapLoading.set(false);
 
-    [100, 400, 800].forEach(delay =>
-      setTimeout(() => { if (this._map === map) map.resize(); }, delay)
-    );
-    // Geocodificar posición inicial cuando el estilo cargue
     map.once('load', () => {
-      if (this._map === map) handleCenter();
+      if (this._map !== map) return;
+      map.resize();
+      handleCenter();
       this.showDriversOnMap(map, mapboxgl);
     });
+    [200, 600, 1200].forEach(delay =>
+      setTimeout(() => { if (this._map === map) map.resize(); }, delay)
+    );
   }
 
   // ── Trip map (passenger): origin + dest + route + driver marker (Mapbox GL JS) ──
