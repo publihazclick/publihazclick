@@ -1524,10 +1524,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
       + `?access_token=${this.MAPBOX_TOKEN}`
       + `&autocomplete=true`
-      + `&fuzzyMatch=true`
       + `&language=es`
-      + `&limit=7`
-      + `&types=address,place,poi,neighborhood,locality,district,region`
+      + `&country=co`
+      + `&limit=8`
+      + `&types=poi,place,address,neighborhood,locality,district`
       + `&proximity=${lng},${lat}`;
     try {
       const res  = await fetch(url, { signal: this._tripAbort.signal });
