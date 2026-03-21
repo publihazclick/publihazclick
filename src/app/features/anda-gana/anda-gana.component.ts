@@ -2447,6 +2447,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // Private refs for cleanup
   private _map: any = null;
+  private _skipNextMoveEnd = false; // evita que moveend sobreescriba un lugar seleccionado del buscador
   private _rideChannel: any = null;
   private _chatChannel: any = null;
   private _timerInterval: any = null;
@@ -2888,10 +2889,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Light tile layer (OpenStreetMap standard, free, no API key) ──
+  // ── Light tile layer (CARTO Voyager — claro, sin API key, mismo CDN que ya funciona) ──
   private addTiles(map: any, L: any) {
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
       maxZoom: 19,
     }).addTo(map);
   }
@@ -2979,8 +2981,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     // On map move: update position immediately, geocode asynchronously
     const handleCenter = () => {
+      // Si el usuario seleccionó un lugar del buscador, ignorar este moveend
+      if (this._skipNextMoveEnd) { this._skipNextMoveEnd = false; return; }
       const center = map.getCenter();
-      onPick(center.lat, center.lng); // enable confirm button instantly
+      onPick(center.lat, center.lng); // habilita el botón confirmar al instante
       this.zone.run(async () => {
         this.mapPickingAddress.set('Obteniendo dirección...');
         const addr = await this.svc.reverseGeocode(center.lat, center.lng);
@@ -3495,14 +3499,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   selectPlace(s: PlaceSuggestion, type: 'origin' | 'dest') {
     this.placeSuggestions.set([]);
     this.placeSearchQuery.set('');
+
+    // Guardar datos del lugar antes de que moveend los pueda sobreescribir
+    const name = s.name || s.address.split(',')[0];
+    const address = s.address;
+
     if (type === 'origin') {
-      this.rideOrigin.set({ lat: s.lat, lng: s.lng, address: s.address });
-      this.mapPickingAddress.set(s.address);
-      if (this._map) this._map.setView([s.lat, s.lng], 15);
+      this.rideOrigin.set({ lat: s.lat, lng: s.lng, address });
+      this.mapPickingAddress.set(name);
     } else {
-      this.rideDest.set({ lat: s.lat, lng: s.lng, address: s.address });
-      this.mapPickingAddress.set(s.address);
-      if (this._map) this._map.setView([s.lat, s.lng], 15);
+      this.rideDest.set({ lat: s.lat, lng: s.lng, address });
+      this.mapPickingAddress.set(name);
+    }
+
+    if (this._map) {
+      // Poner bandera para que moveend no sobreescriba el lugar seleccionado
+      this._skipNextMoveEnd = true;
+      this._map.setView([s.lat, s.lng], 15, { animate: true });
+      // Forzar redibujado de tiles en la nueva posición
+      setTimeout(() => { if (this._map) this._map.invalidateSize(); }, 300);
     }
   }
 
