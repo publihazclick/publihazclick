@@ -88,29 +88,32 @@ type AgScreen =
         <p class="text-slate-500 text-sm mt-2">Plataforma de transporte inteligente · Precios justos · Sin intermediarios</p>
       </div>
 
-      <!-- Cards de rol -->
-      <p class="text-slate-400 text-sm font-bold uppercase tracking-widest">¿Cómo quieres usar la plataforma?</p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+      <!-- Botones de registro -->
+      <div class="flex flex-col gap-4 w-full">
         <button (click)="chooseRole('passenger')"
-          class="flex flex-col items-center gap-3 p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group">
-          <div class="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <span class="material-symbols-outlined text-orange-400" style="font-size:28px">person_pin_circle</span>
+          class="w-full flex items-center gap-4 px-6 py-5 rounded-2xl font-black text-base uppercase tracking-wider transition-all
+            bg-gradient-to-r from-orange-500 to-amber-500 text-black hover:from-orange-400 hover:to-amber-400 shadow-lg shadow-orange-500/30 active:scale-[0.98]">
+          <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined" style="font-size:28px">person_pin_circle</span>
           </div>
-          <div class="text-center">
-            <p class="text-white font-black text-base">Soy Pasajero</p>
-            <p class="text-slate-500 text-xs mt-1">Solicita viajes y llega a tu destino</p>
+          <div class="text-left">
+            <p class="text-base font-black leading-tight">Crear cuenta de pasajero</p>
+            <p class="text-xs font-normal normal-case tracking-normal opacity-80 mt-0.5">Solicita viajes y llega a tu destino</p>
           </div>
+          <span class="material-symbols-outlined ml-auto" style="font-size:22px">arrow_forward</span>
         </button>
 
         <button (click)="chooseRole('driver')"
-          class="flex flex-col items-center gap-3 p-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-amber-500/40 hover:bg-amber-500/5 transition-all group">
-          <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+          class="w-full flex items-center gap-4 px-6 py-5 rounded-2xl font-black text-base uppercase tracking-wider transition-all
+            bg-gradient-to-r from-slate-700 to-slate-600 text-white hover:from-slate-600 hover:to-slate-500 border border-white/10 shadow-lg active:scale-[0.98]">
+          <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-amber-400" style="font-size:28px">directions_car</span>
           </div>
-          <div class="text-center">
-            <p class="text-white font-black text-base">Soy Conductor</p>
-            <p class="text-slate-500 text-xs mt-1">Acepta viajes y genera ingresos</p>
+          <div class="text-left">
+            <p class="text-base font-black leading-tight">Crear cuenta de conductor</p>
+            <p class="text-xs font-normal normal-case tracking-normal opacity-60 mt-0.5">Acepta viajes y genera ingresos</p>
           </div>
+          <span class="material-symbols-outlined ml-auto opacity-60" style="font-size:22px">arrow_forward</span>
         </button>
       </div>
 
