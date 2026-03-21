@@ -138,11 +138,142 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
       </div>
 
-      <div class="bg-orange-500/5 border border-orange-500/15 rounded-2xl p-5 text-center">
-        <span class="material-symbols-outlined text-orange-400 mb-2 block" style="font-size:36px">directions_car</span>
-        <p class="text-white font-bold text-sm mb-1">Pronto podrás solicitar viajes</p>
-        <p class="text-slate-500 text-xs">Estamos activando los conductores en tu ciudad. Te notificaremos cuando esté disponible.</p>
-      </div>
+      <!-- ══════════ PANEL DE VIAJE ══════════ -->
+      @if (gpsStatus() !== 'requesting') {
+        <div class="rounded-2xl overflow-hidden border border-white/8 shadow-xl shadow-black/30" style="background:#0d1117">
+
+          @if (!tripDest()) {
+            <!-- Estado: sin destino seleccionado -->
+            @if (!tripOpen()) {
+              <!-- Barra colapsada -->
+              <button (click)="openTripSearch()"
+                class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white/[0.03] transition-colors text-left">
+                <div class="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-orange-400" style="font-size:22px">search</span>
+                </div>
+                <div class="flex-1">
+                  <p class="text-white font-black text-sm">¿A dónde vas y por cuánto?</p>
+                  <p class="text-slate-500 text-xs mt-0.5">Toca para buscar tu destino</p>
+                </div>
+                <span class="material-symbols-outlined text-slate-600" style="font-size:20px">chevron_right</span>
+              </button>
+            } @else {
+              <!-- Búsqueda expandida -->
+              <div class="flex flex-col">
+                <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
+                  <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">search</span>
+                  <input #tripInput
+                    [value]="tripQuery()"
+                    (input)="onTripQueryInput($any($event.target).value)"
+                    (keydown.escape)="closeTripSearch()"
+                    placeholder="Busca tu destino..."
+                    class="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-500"/>
+                  <button (click)="closeTripSearch()">
+                    <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
+                  </button>
+                </div>
+                <!-- Resultados -->
+                @if (tripSuggestions().length > 0) {
+                  <div class="flex flex-col max-h-56 overflow-y-auto">
+                    @for (s of tripSuggestions(); track s.id) {
+                      <button (mousedown)="$event.preventDefault(); selectTripDest(s)"
+                        class="flex items-center gap-3 px-4 py-3 border-b border-white/4 last:border-0 hover:bg-white/[0.05] active:bg-white/[0.08] text-left transition-colors">
+                        <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-white text-sm font-semibold truncate">{{ s.text }}</p>
+                          <p class="text-slate-500 text-xs truncate">{{ s.place_name }}</p>
+                        </div>
+                        <span class="text-orange-400 text-xs font-black flex-shrink-0">{{ s.distKm }} km</span>
+                      </button>
+                    }
+                  </div>
+                } @else if (tripQuery().length > 1) {
+                  <div class="px-4 py-5 text-slate-500 text-sm text-center flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                    Buscando lugares...
+                  </div>
+                }
+              </div>
+            }
+
+          } @else if (!tripSent()) {
+            <!-- Estado: destino seleccionado → precio + tipo + botón -->
+
+            <!-- Destino -->
+            <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
+              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">place</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-slate-400 text-[10px] uppercase tracking-wider">Destino · {{ tripDistKm() }} km</p>
+                <p class="text-white text-sm font-bold truncate">{{ tripDest()!.name }}</p>
+              </div>
+              <button (click)="cancelTrip()">
+                <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
+              </button>
+            </div>
+
+            <!-- Tipo de vehículo -->
+            <div class="flex gap-2 px-4 py-3 border-b border-white/6">
+              <button (click)="setTripVehicle('carro')"
+                class="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
+                [class]="tripVehicle()==='carro'
+                  ? 'bg-orange-500 text-black'
+                  : 'bg-white/5 border border-white/10 text-slate-400'">
+                <span class="material-symbols-outlined" style="font-size:20px">directions_car</span> Carro
+              </button>
+              <button (click)="setTripVehicle('moto')"
+                class="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
+                [class]="tripVehicle()==='moto'
+                  ? 'bg-cyan-500 text-black'
+                  : 'bg-white/5 border border-white/10 text-slate-400'">
+                <span class="material-symbols-outlined" style="font-size:20px">two_wheeler</span> Moto
+              </button>
+            </div>
+
+            <!-- Precio -->
+            <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
+              <div class="flex-1">
+                <p class="text-slate-500 text-[10px] uppercase tracking-wider">Valor sugerido</p>
+                <p class="text-white font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button (click)="adjustTripPrice(-500)"
+                  class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center hover:bg-white/12 active:scale-95 transition-all">−</button>
+                <button (click)="adjustTripPrice(500)"
+                  class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center hover:bg-white/12 active:scale-95 transition-all">+</button>
+              </div>
+            </div>
+
+            <!-- Botón encontrar ofertas -->
+            <div class="px-4 py-3">
+              <button (click)="findOffers()" [disabled]="tripSending()"
+                class="w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-60 active:scale-[0.98]"
+                [class]="tripVehicle()==='carro' ? 'bg-orange-500 text-black' : 'bg-cyan-500 text-black'">
+                @if (tripSending()) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Buscando...
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:18px">local_taxi</span> Encontrar ofertas
+                }
+              </button>
+            </div>
+
+          } @else {
+            <!-- Estado: solicitud enviada -->
+            <div class="px-4 py-8 flex flex-col items-center gap-3 text-center">
+              <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:32px">check_circle</span>
+              </div>
+              <p class="text-white font-black text-base">¡Solicitud enviada!</p>
+              <p class="text-slate-400 text-sm">Buscando conductores disponibles cerca de ti…</p>
+              <p class="text-slate-600 text-xs">{{ tripDest()!.name }} · {{ formatCOP(tripPrice()) }} · {{ tripDistKm() }} km</p>
+              <button (click)="cancelTrip()"
+                class="mt-3 px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-xs font-bold hover:bg-white/10 transition-colors">
+                Cancelar solicitud
+              </button>
+            </div>
+          }
+
+        </div>
+      }
     </div>
   }
 
@@ -795,6 +926,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   addressQuery       = signal('');
   addressSuggestions = signal<any[]>([]);
 
+  // Trip request
+  tripOpen        = signal(false);
+  tripQuery       = signal('');
+  tripSuggestions = signal<any[]>([]);
+  tripDest        = signal<{ name: string; lat: number; lng: number } | null>(null);
+  tripVehicle     = signal<'carro' | 'moto'>('carro');
+  tripPrice       = signal(0);
+  tripDistKm      = signal(0);
+  tripSending     = signal(false);
+  tripSent        = signal(false);
+
   private _map:             any    = null;
   private _userMarker:      any    = null;
   private _vehicleMarkers:  any[]  = [];
@@ -806,6 +948,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _lastTs:    number | null = null;
   private _mapboxPromise:   Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
+  private _tripDebounce:    ReturnType<typeof setTimeout> | null = null;
+  private _destMarker:      any = null;
   private _currentLat = 4.6097;
   private _currentLng = -74.0817;
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
@@ -1344,6 +1488,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private _destroyMap() {
     this._stopAnimation();
+    this._clearRoute();
     this._vehicleMarkers.forEach(m => { try { m.remove(); } catch { /**/ } });
     this._vehicleMarkers = [];
     this._userMarker = null;
@@ -1351,6 +1496,143 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       try { this._map.remove(); } catch { /* ignore */ }
       this._map = null;
     }
+  }
+
+  // ── Trip request ──────────────────────────────────────────────
+  formatCOP(n: number): string {
+    return '$\u00a0' + n.toLocaleString('es-CO');
+  }
+
+  openTripSearch() { this.tripOpen.set(true); }
+  closeTripSearch() { this.tripOpen.set(false); this.tripQuery.set(''); this.tripSuggestions.set([]); }
+
+  onTripQueryInput(val: string) {
+    this.tripQuery.set(val);
+    if (this._tripDebounce) clearTimeout(this._tripDebounce);
+    if (val.length < 2) { this.tripSuggestions.set([]); return; }
+    this._tripDebounce = setTimeout(() => this._searchTripPlaces(val), 350);
+  }
+
+  private async _searchTripPlaces(query: string) {
+    const lat = this._currentLat, lng = this._currentLng;
+    const bbox = [lng - 0.22, lat - 0.22, lng + 0.22, lat + 0.22].join(',');
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+      + `?access_token=${this.MAPBOX_TOKEN}&language=es&limit=6`
+      + `&proximity=${lng},${lat}&bbox=${bbox}`;
+    try {
+      const res  = await fetch(url);
+      const json = await res.json();
+      const features = (json.features ?? []).map((f: any) => {
+        const [fLng, fLat] = f.center ?? [lng, lat];
+        return { ...f, distKm: this._distKm(lat, lng, fLat, fLng) };
+      });
+      this.tripSuggestions.set(features);
+    } catch { /* ignore */ }
+  }
+
+  selectTripDest(s: any) {
+    const [dLng, dLat] = s.center ?? s.geometry?.coordinates ?? [this._currentLng, this._currentLat];
+    const name = s.text ?? s.place_name ?? 'Destino';
+    this.tripDest.set({ name, lat: dLat, lng: dLng });
+    this.tripOpen.set(false);
+    this.tripQuery.set('');
+    this.tripSuggestions.set([]);
+    this._drawRoute(dLng, dLat);
+  }
+
+  setTripVehicle(type: 'carro' | 'moto') {
+    this.tripVehicle.set(type);
+    this.tripPrice.set(this._calcPrice(this.tripDistKm(), type));
+  }
+
+  adjustTripPrice(delta: number) {
+    this.tripPrice.set(Math.max(2000, this.tripPrice() + delta));
+  }
+
+  async findOffers() {
+    const dest = this.tripDest();
+    if (!dest) return;
+    this.tripSending.set(true);
+    const profile = this.agProfile();
+    if (profile) {
+      await this.agService.requestTrip({
+        passengerUserId: profile.id,
+        originLat: this._currentLat, originLng: this._currentLng,
+        destName: dest.name, destLat: dest.lat, destLng: dest.lng,
+        distanceKm: this.tripDistKm(),
+        vehicleType: this.tripVehicle(),
+        offeredPrice: this.tripPrice(),
+      });
+    }
+    this.tripSending.set(false);
+    this.tripSent.set(true);
+  }
+
+  cancelTrip() {
+    this.tripDest.set(null);
+    this.tripSent.set(false);
+    this.tripOpen.set(false);
+    this.tripQuery.set('');
+    this.tripSuggestions.set([]);
+    this.tripDistKm.set(0);
+    this.tripPrice.set(0);
+    this._clearRoute();
+  }
+
+  private _calcPrice(km: number, vehicle: 'carro' | 'moto'): number {
+    const raw = vehicle === 'carro'
+      ? Math.max(8000, 8000 + km * 2000)
+      : Math.max(5000, 5000 + km * 1300);
+    return Math.round(raw / 500) * 500;
+  }
+
+  private _distKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+  }
+
+  private async _drawRoute(destLng: number, destLat: number) {
+    if (!this._map) return;
+    const mapboxgl = (window as any).mapboxgl;
+    if (!mapboxgl) return;
+    this._clearRoute();
+    try {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${this._currentLng},${this._currentLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
+      const json = await (await fetch(url)).json();
+      const route = json.routes?.[0];
+      if (!route) return;
+
+      const km = Math.round(route.distance / 100) / 10;
+      this.tripDistKm.set(km);
+      this.tripSuggestions.set([]);
+      this.tripPrice.set(this._calcPrice(km, this.tripVehicle()));
+
+      this._map.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+      this._map.addLayer({ id: 'trip-route-bg',   type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
+      this._map.addLayer({ id: 'trip-route-line', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#FF6600', 'line-width': 5,  'line-opacity': 0.92 } });
+      this._map.addLayer({ id: 'trip-route-dash', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.5, 'line-dasharray': [0, 4] } });
+
+      // Marcador de destino
+      const pin = document.createElement('div');
+      pin.innerHTML = `<div style="position:relative;width:32px;height:44px"><div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:32px;height:40px;background:#FF6600;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center"><span class='material-symbols-outlined' style='color:#fff;font-size:16px'>place</span></div><div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:6px;height:6px;background:#FF6600;border-radius:50%;margin-bottom:-3px"></div></div>`;
+      this._destMarker = new mapboxgl.Marker({ element: pin, anchor: 'bottom' }).setLngLat([destLng, destLat]).addTo(this._map);
+
+      // Ajustar vista para mostrar toda la ruta
+      const coords = route.geometry.coordinates as [number, number][];
+      const bounds = coords.reduce((b: any, c: [number, number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+      this._map.fitBounds(bounds, { padding: { top: 80, bottom: 220, left: 40, right: 40 }, duration: 800 });
+    } catch { /* ignore network errors */ }
+  }
+
+  private _clearRoute() {
+    if (this._map) {
+      ['trip-route-dash','trip-route-line','trip-route-bg'].forEach(id => {
+        try { if (this._map.getLayer(id)) this._map.removeLayer(id); } catch { /**/ }
+      });
+      try { if (this._map.getSource('trip-route')) this._map.removeSource('trip-route'); } catch { /**/ }
+    }
+    if (this._destMarker) { try { this._destMarker.remove(); } catch { /**/ } this._destMarker = null; }
   }
 
   // ── Passenger form state ──

@@ -231,6 +231,21 @@ export class AndaGanaService {
     return !error;
   }
 
+  async requestTrip(data: {
+    passengerUserId: string; originLat: number; originLng: number;
+    destName: string; destLat: number; destLng: number;
+    distanceKm: number; vehicleType: string; offeredPrice: number;
+  }): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_trip_requests').insert({
+      passenger_user_id: data.passengerUserId,
+      origin_lat: data.originLat, origin_lng: data.originLng,
+      dest_name: data.destName, dest_lat: data.destLat, dest_lng: data.destLng,
+      distance_km: data.distanceKm, vehicle_type: data.vehicleType,
+      offered_price: data.offeredPrice, status: 'searching',
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
   async getStats(): Promise<{ passengers: number; pending: number; approved: number; rejected: number }> {
     const [p, pend, appr, rej] = await Promise.all([
       this.supabase.from('ag_users').select('id', { count: 'exact', head: true }).eq('role', 'passenger'),
