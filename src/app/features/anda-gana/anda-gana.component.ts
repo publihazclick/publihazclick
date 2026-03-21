@@ -2678,7 +2678,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // PASSENGER FLOW METHODS
   // ─────────────────────────────────────────────────────────────
 
-  startRideRequest() {
+  async startRideRequest() {
     this.rideOrigin.set(null);
     this.rideDest.set(null);
     this.offeredPrice.set('');
@@ -2686,37 +2686,36 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.gpsError.set('');
 
     if (!isPlatformBrowser(this.platformId) || !navigator.geolocation) {
-      // SSR o sin GPS — abrir mapa directo con Bogotá
       this.screen.set('passenger-pick-origin');
       this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
       return;
     }
 
-    // Mostrar pantalla de espera GPS
     this.screen.set('passenger-gps-wait');
     this.mapLoading.set(true);
 
-    navigator.geolocation.getCurrentPosition(
-      pos => this.zone.run(() => {
-        // GPS obtenido — abrir mapa en posición real
-        this.mapLoading.set(false);
-        this.screen.set('passenger-pick-origin');
-        this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
-      }),
-      err => this.zone.run(() => {
-        this.mapLoading.set(false);
-        if (err.code === 1) {
-          this.gpsError.set('Permiso de GPS denegado. Activa la ubicación en la configuración de tu navegador y vuelve a intentar.');
-        } else if (err.code === 2) {
-          this.gpsError.set('No se pudo detectar tu posición. Verifica que el GPS de tu dispositivo esté activado.');
-        } else {
-          this.gpsError.set('El GPS tardó demasiado. Puedes continuar buscando tu dirección manualmente.');
-          // Timeout — abrimos mapa automáticamente para no bloquear al usuario
-          this.openMapWithDefault();
-        }
-      }),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-    );
+    let lat = 4.711, lng = -74.0721;
+    try {
+      const pos = await this.getGpsPosition(true);
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch (err: any) {
+      this.mapLoading.set(false);
+      if (err?.code === 1) {
+        // Permiso denegado — mostrar error y esperar que el usuario reintente
+        this.gpsError.set('Permiso de GPS denegado. Activa la ubicación en la configuración de tu navegador y vuelve a intentar.');
+        return;
+      } else if (err?.code === 2) {
+        this.gpsError.set('No se pudo detectar tu posición. Verifica que el GPS de tu dispositivo esté activado.');
+        return;
+      }
+      // Timeout u otro error — abrimos con Bogotá para no bloquear al usuario
+      this.gpsError.set('El GPS tardó demasiado. Puedes buscar tu dirección en el mapa manualmente.');
+    }
+
+    this.mapLoading.set(false);
+    this.screen.set('passenger-pick-origin');
+    this.initPickMap('ag-map-origin', lat, lng, (lt, ln) => this.onOriginPick(lt, ln));
   }
 
   openMapWithDefault() {
@@ -2724,26 +2723,28 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
   }
 
-  retryGps() {
+  async retryGps() {
     this.gpsError.set('');
     this.mapLoading.set(true);
     if (!navigator.geolocation) { this.mapLoading.set(false); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => this.zone.run(() => {
-        this.mapLoading.set(false);
-        this.screen.set('passenger-pick-origin');
-        this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
-      }),
-      err => this.zone.run(() => {
-        this.mapLoading.set(false);
-        if (err.code === 1) {
-          this.gpsError.set('GPS sigue denegado. Ve a la configuración de tu navegador, busca "Ubicación" y permite el acceso a este sitio.');
-        } else {
-          this.gpsError.set('No se pudo obtener GPS. Continúa sin él y escribe tu dirección en el buscador del mapa.');
-        }
-      }),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
+
+    let lat = 4.711, lng = -74.0721;
+    try {
+      const pos = await this.getGpsPosition(true);
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch (err: any) {
+      this.mapLoading.set(false);
+      if (err?.code === 1) {
+        this.gpsError.set('GPS sigue denegado. Ve a la configuración de tu navegador, busca "Ubicación" y permite el acceso a este sitio.');
+        return;
+      }
+      this.gpsError.set('No se pudo obtener GPS. Continúa sin él y escribe tu dirección en el buscador del mapa.');
+    }
+
+    this.mapLoading.set(false);
+    this.screen.set('passenger-pick-origin');
+    this.initPickMap('ag-map-origin', lat, lng, (lt, ln) => this.onOriginPick(lt, ln));
   }
 
   goBackToOrigin() {
@@ -2956,18 +2957,28 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  /** Espera hasta que el elemento esté en el DOM con dimensiones reales (OnPush puede demorar) */
-  private waitForDomElement(id: string, maxMs = 3000): Promise<HTMLElement | null> {
+  /** Espera hasta que el elemento exista en el DOM (OnPush puede demorar varios frames) */
+  private waitForDomElement(id: string): Promise<HTMLElement | null> {
     return new Promise(resolve => {
-      const start = Date.now();
-      const check = () => {
+      const attempt = (tries: number) => {
         const el = document.getElementById(id);
-        if (el && el.offsetWidth > 0 && el.offsetHeight > 0) { resolve(el); return; }
-        if (Date.now() - start > maxMs) { resolve(document.getElementById(id)); return; }
-        requestAnimationFrame(check);
+        if (el) { resolve(el); return; }
+        if (tries <= 0) { resolve(null); return; }
+        requestAnimationFrame(() => attempt(tries - 1));
       };
-      check();
+      attempt(60); // hasta ~1 segundo a 60fps
     });
+  }
+
+  /** Promesa para obtener GPS — envuelve el callback en zona Angular */
+  private getGpsPosition(highAccuracy = true): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(
+        pos => this.zone.run(() => resolve(pos)),
+        err => this.zone.run(() => reject(err)),
+        { enableHighAccuracy: highAccuracy, timeout: 15000, maximumAge: 30000 }
+      )
+    );
   }
 
   // ── Pick map: center-pin approach, instant GPS ──
