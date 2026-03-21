@@ -1521,14 +1521,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._tripAbort = new AbortController();
 
     const lat = this._currentLat, lng = this._currentLng;
+    // bbox ±0.35° ≈ radio de ~38 km — restringe resultados a la ciudad del usuario
+    const d = 0.35;
+    const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
       + `?access_token=${this.MAPBOX_TOKEN}`
       + `&autocomplete=true`
       + `&language=es`
       + `&country=co`
       + `&limit=8`
-      + `&types=poi,place,address,neighborhood,locality,district`
-      + `&proximity=${lng},${lat}`;
+      + `&types=poi,place,address,neighborhood,locality`
+      + `&proximity=${lng},${lat}`
+      + `&bbox=${bbox}`;
     try {
       const res  = await fetch(url, { signal: this._tripAbort.signal });
       const json = await res.json();
