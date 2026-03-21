@@ -1027,8 +1027,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
     this._map.once('load', () => {
-      // Cargar vehículos cercanos
-      this._loadVehicleMarkers(lat, lng);
+      // Cargar vehículos cuando el mapa esté completamente renderizado (tiles listos)
+      this._map!.once('idle', () => this._loadVehicleMarkers(lat, lng));
 
       // Marcador de posición del usuario
       const el = document.createElement('div');
@@ -1075,33 +1075,71 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._vehicleMarkers = [];
 
     let vehicles = await this.agService.getNearbyVehicles(lat, lng);
-
-    if (vehicles.length === 0) {
-      const R = 0.003;
-      // 5 carros + 4 motos en distintas posiciones y colores
-      const demos: any[] = [
-        { id:'c1', lat: lat+R*0.9,  lng: lng+R*0.6,  heading:  45, vehicle_type:'carro', color:'#F59E0B' },
-        { id:'c2', lat: lat-R*0.7,  lng: lng+R*1.1,  heading: 200, vehicle_type:'carro', color:'#FFFFFF' },
-        { id:'c3', lat: lat+R*1.2,  lng: lng-R*0.4,  heading: 290, vehicle_type:'carro', color:'#3B82F6' },
-        { id:'c4', lat: lat-R*1.0,  lng: lng-R*0.8,  heading: 130, vehicle_type:'carro', color:'#EF4444' },
-        { id:'c5', lat: lat+R*0.2,  lng: lng+R*1.4,  heading: 350, vehicle_type:'carro', color:'#1e293b' },
-        { id:'m1', lat: lat+R*0.5,  lng: lng-R*1.0,  heading:  90, vehicle_type:'moto',  color:'#06B6D4' },
-        { id:'m2', lat: lat-R*0.4,  lng: lng+R*0.3,  heading: 160, vehicle_type:'moto',  color:'#F97316' },
-        { id:'m3', lat: lat+R*1.4,  lng: lng+R*0.9,  heading: 250, vehicle_type:'moto',  color:'#22C55E' },
-        { id:'m4', lat: lat-R*1.1,  lng: lng+R*0.5,  heading:  20, vehicle_type:'moto',  color:'#A855F7' },
-      ];
-      vehicles = demos;
-    }
+    if (vehicles.length === 0) vehicles = this._demoVehiclesOnRoads(lat, lng);
 
     vehicles.forEach((v: any) => {
       const isMoto = v.vehicle_type?.toLowerCase().includes('moto');
       const color  = v.color ?? (isMoto ? '#06B6D4' : '#F59E0B');
       const el     = isMoto ? this._motoElement(v.heading, color) : this._carElement(v.heading, color);
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+      new mapboxgl.Marker({ element: el, anchor: 'center' })
         .setLngLat([v.lng, v.lat])
         .addTo(this._map);
-      this._vehicleMarkers.push(marker);
     });
+  }
+
+  /** Extrae puntos de calles renderizadas y coloca demos en ellas */
+  private _demoVehiclesOnRoads(lat: number, lng: number): any[] {
+    const roadLayers = [
+      'road-street', 'road-secondary-tertiary', 'road-primary',
+      'road-minor', 'road-minor-low', 'road-street-low',
+    ];
+    const features = (this._map as any)?.queryRenderedFeatures(undefined, { layers: roadLayers }) ?? [];
+    const pts: { lat: number; lng: number; heading: number }[] = [];
+
+    for (const f of features) {
+      if (pts.length >= 14) break;
+      if (f?.geometry?.type !== 'LineString') continue;
+      const coords = f.geometry.coordinates as [number, number][];
+      for (let i = 0; i < coords.length - 1 && pts.length < 14; i++) {
+        const mx = (coords[i][0] + coords[i + 1][0]) / 2;
+        const my = (coords[i][1] + coords[i + 1][1]) / 2;
+        // Solo puntos cerca del usuario (~350 m)
+        if (Math.abs(mx - lng) > 0.004 || Math.abs(my - lat) > 0.004) continue;
+        const heading = Math.atan2(coords[i + 1][0] - coords[i][0], coords[i + 1][1] - coords[i][1]) * 180 / Math.PI;
+        pts.push({ lat: my, lng: mx, heading });
+      }
+    }
+
+    const configs = [
+      { vehicle_type: 'carro', color: '#F59E0B' },
+      { vehicle_type: 'carro', color: '#FFFFFF' },
+      { vehicle_type: 'carro', color: '#3B82F6' },
+      { vehicle_type: 'carro', color: '#EF4444' },
+      { vehicle_type: 'carro', color: '#1e293b' },
+      { vehicle_type: 'moto',  color: '#06B6D4' },
+      { vehicle_type: 'moto',  color: '#F97316' },
+      { vehicle_type: 'moto',  color: '#22C55E' },
+      { vehicle_type: 'moto',  color: '#A855F7' },
+    ];
+
+    // Si hay suficientes puntos en calles, úsalos; si no, usa offsets
+    const base = pts.length >= 9 ? pts : this._fallbackPts(lat, lng);
+    return base.slice(0, 9).map((pt, i) => ({ id: `d${i}`, ...pt, ...configs[i] }));
+  }
+
+  private _fallbackPts(lat: number, lng: number): { lat: number; lng: number; heading: number }[] {
+    const R = 0.003;
+    return [
+      { lat: lat+R*0.9, lng: lng+R*0.6,  heading:  45 },
+      { lat: lat-R*0.7, lng: lng+R*1.1,  heading: 200 },
+      { lat: lat+R*1.2, lng: lng-R*0.4,  heading: 290 },
+      { lat: lat-R*1.0, lng: lng-R*0.8,  heading: 130 },
+      { lat: lat+R*0.2, lng: lng+R*1.4,  heading: 350 },
+      { lat: lat+R*0.5, lng: lng-R*1.0,  heading:  90 },
+      { lat: lat-R*0.4, lng: lng+R*0.3,  heading: 160 },
+      { lat: lat+R*1.4, lng: lng+R*0.9,  heading: 250 },
+      { lat: lat-R*1.1, lng: lng+R*0.5,  heading:  20 },
+    ];
   }
 
   private _carElement(heading: number, color: string): HTMLElement {
@@ -1142,42 +1180,53 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return wrap;
   }
 
-  private _motoElement(heading: number, _color: string): HTMLElement {
+  private _motoElement(heading: number, color: string): HTMLElement {
+    const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:20px;height:56px;transform:rotate(${heading}deg);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55));`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 56" width="20" height="56">
+    wrap.style.cssText = `width:22px;height:56px;transform:rotate(${heading}deg);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55));`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 56" width="22" height="56">
+      <defs>
+        <linearGradient id="mg${uid}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stop-color="rgba(0,0,0,0.22)"/>
+          <stop offset="50%"  stop-color="rgba(255,255,255,0.15)"/>
+          <stop offset="100%" stop-color="rgba(0,0,0,0.20)"/>
+        </linearGradient>
+      </defs>
       <!-- shadow -->
-      <ellipse cx="10" cy="54" rx="7" ry="2" fill="rgba(0,0,0,0.25)"/>
+      <ellipse cx="11" cy="54" rx="8" ry="2" fill="rgba(0,0,0,0.25)"/>
       <!-- rear wheel -->
-      <circle cx="10" cy="47" r="7" fill="#0f172a"/>
-      <circle cx="10" cy="47" r="4.5" fill="#1e293b"/>
-      <circle cx="10" cy="47" r="1.8" fill="#475569"/>
-      <line x1="10" y1="41" x2="10" y2="53" stroke="#374151" stroke-width="0.7"/>
-      <line x1="4"  y1="47" x2="16" y2="47" stroke="#374151" stroke-width="0.7"/>
+      <circle cx="11" cy="47" r="7" fill="#0f172a"/>
+      <circle cx="11" cy="47" r="4.5" fill="#1e293b"/>
+      <circle cx="11" cy="47" r="1.8" fill="#475569"/>
+      <line x1="11" y1="41" x2="11" y2="53" stroke="#374151" stroke-width="0.7"/>
+      <line x1="5"  y1="47" x2="17" y2="47" stroke="#374151" stroke-width="0.7"/>
       <!-- body -->
-      <rect x="7" y="17" width="6" height="24" rx="3" fill="#06B6D4"/>
-      <rect x="7.5" y="17.5" width="5" height="10" rx="2" fill="rgba(255,255,255,0.20)"/>
-      <rect x="7.5" y="28" width="5" height="11" rx="2" fill="rgba(0,0,0,0.22)"/>
+      <path d="M8,18 C8,14 9,12 11,12 C13,12 14,14 14,18 L14,40 C14,43 13,44 11,44 C9,44 8,43 8,40 Z" fill="${color}"/>
+      <path d="M8,18 C8,14 9,12 11,12 C13,12 14,14 14,18 L14,40 C14,43 13,44 11,44 C9,44 8,43 8,40 Z" fill="url(#mg${uid})"/>
+      <!-- tank highlight -->
+      <path d="M8.5,18 C8.5,15 9.5,13 11,13 L10.5,22 C9.5,21.5 8.5,20.5 8.5,19 Z" fill="rgba(255,255,255,0.22)"/>
+      <!-- seat -->
+      <rect x="8.5" y="26" width="5" height="12" rx="2" fill="rgba(0,0,0,0.28)"/>
       <!-- handlebars -->
-      <rect x="1" y="19" width="18" height="2.5" rx="1.2" fill="#94a3b8"/>
-      <rect x="1"  y="19" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
-      <rect x="15.5" y="19" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
+      <rect x="2" y="20" width="18" height="2.5" rx="1.2" fill="#94a3b8"/>
+      <rect x="2"   y="20" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
+      <rect x="16.5" y="20" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
       <!-- fork -->
-      <rect x="8.5" y="12" width="3" height="9" rx="1.5" fill="#0891B2"/>
+      <rect x="9.5" y="13" width="3" height="9" rx="1.5" fill="${color}" opacity="0.65"/>
       <!-- front wheel -->
-      <circle cx="10" cy="9"  r="7" fill="#0f172a"/>
-      <circle cx="10" cy="9"  r="4.5" fill="#1e293b"/>
-      <circle cx="10" cy="9"  r="1.8" fill="#475569"/>
-      <line x1="10" y1="3"  x2="10" y2="15" stroke="#374151" stroke-width="0.7"/>
-      <line x1="4"  y1="9"  x2="16" y2="9"  stroke="#374151" stroke-width="0.7"/>
+      <circle cx="11" cy="9"  r="7" fill="#0f172a"/>
+      <circle cx="11" cy="9"  r="4.5" fill="#1e293b"/>
+      <circle cx="11" cy="9"  r="1.8" fill="#475569"/>
+      <line x1="11" y1="3"  x2="11" y2="15" stroke="#374151" stroke-width="0.7"/>
+      <line x1="5"  y1="9"  x2="17" y2="9"  stroke="#374151" stroke-width="0.7"/>
       <!-- headlight -->
-      <circle cx="10" cy="4"  r="3"   fill="#FEF9C3"/>
-      <circle cx="10" cy="4"  r="1.6" fill="#FDE047"/>
+      <circle cx="11" cy="4"  r="3.2" fill="#FEF9C3"/>
+      <circle cx="11" cy="4"  r="1.7" fill="#FDE047"/>
       <!-- direction chevron -->
-      <path d="M10,1 L8,4 L10,3.3 L12,4 Z" fill="rgba(255,255,255,0.75)"/>
+      <path d="M11,1 L9,4 L11,3.3 L13,4 Z" fill="rgba(255,255,255,0.75)"/>
       <!-- taillight -->
-      <circle cx="10" cy="51" r="2.5" fill="#EF4444"/>
-      <circle cx="10" cy="51" r="1.2" fill="#FCA5A5"/>
+      <circle cx="11" cy="51" r="2.5" fill="#EF4444"/>
+      <circle cx="11" cy="51" r="1.2" fill="#FCA5A5"/>
     </svg>`;
     return wrap;
   }
