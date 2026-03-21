@@ -1,9 +1,11 @@
-import { Component, ChangeDetectionStrategy, signal, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SlicePipe } from '@angular/common';
+import { SlicePipe, isPlatformBrowser } from '@angular/common';
 import { AndaGanaService, AgUser } from './anda-gana.service';
+import { environment } from '../../../environments/environment';
 
 type AgScreen = 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
+type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
 @Component({
   selector: 'app-anda-gana',
@@ -45,6 +47,33 @@ type AgScreen = 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passeng
           <div><p class="text-slate-500 text-[10px] uppercase">Correo</p><p class="text-slate-300 text-xs">{{ agProfile()?.email }}</p></div>
           <div><p class="text-slate-500 text-[10px] uppercase">Miembro desde</p><p class="text-slate-300 text-xs">{{ agProfile()?.created_at | slice:0:10 }}</p></div>
         </div>
+      </div>
+
+      <!-- Mapa -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
+            <span class="material-symbols-outlined text-orange-400" style="font-size:16px">location_on</span>Tu ubicación
+          </h3>
+          @if (gpsStatus() === 'denied') {
+            <button (click)="retryGps('ag-map-user')"
+              class="text-xs text-orange-400 font-bold flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Permitir ubicación
+            </button>
+          }
+        </div>
+        @if (gpsStatus() === 'requesting') {
+          <div class="rounded-2xl bg-white/[0.03] border border-white/8 h-60 flex flex-col items-center justify-center gap-3">
+            <span class="material-symbols-outlined text-orange-400 animate-pulse" style="font-size:38px">my_location</span>
+            <p class="text-slate-400 text-sm font-bold">Obteniendo tu ubicación...</p>
+            <p class="text-slate-600 text-xs">Acepta el permiso en tu dispositivo</p>
+          </div>
+        }
+        <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
+          [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+        @if (gpsStatus() === 'denied') {
+          <p class="text-slate-600 text-xs text-center">Se muestra el mapa sin tu ubicación exacta. Activa el permiso para verte en el mapa.</p>
+        }
       </div>
 
       <div class="bg-orange-500/5 border border-orange-500/15 rounded-2xl p-5 text-center">
@@ -114,6 +143,33 @@ type AgScreen = 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passeng
           <div><p class="text-slate-500 text-[10px] uppercase">Marca / Modelo</p><p class="text-slate-300 text-xs">{{ driverData()?.vehicle_brand }} {{ driverData()?.vehicle_model }}</p></div>
           <div><p class="text-slate-500 text-[10px] uppercase">Año</p><p class="text-slate-300 text-xs">{{ driverData()?.vehicle_year }}</p></div>
         </div>
+      </div>
+
+      <!-- Mapa -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
+            <span class="material-symbols-outlined text-cyan-400" style="font-size:16px">location_on</span>Tu ubicación
+          </h3>
+          @if (gpsStatus() === 'denied') {
+            <button (click)="retryGps('ag-map-user')"
+              class="text-xs text-cyan-400 font-bold flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+              <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Permitir ubicación
+            </button>
+          }
+        </div>
+        @if (gpsStatus() === 'requesting') {
+          <div class="rounded-2xl bg-white/[0.03] border border-white/8 h-60 flex flex-col items-center justify-center gap-3">
+            <span class="material-symbols-outlined text-cyan-400 animate-pulse" style="font-size:38px">my_location</span>
+            <p class="text-slate-400 text-sm font-bold">Obteniendo tu ubicación...</p>
+            <p class="text-slate-600 text-xs">Acepta el permiso en tu dispositivo</p>
+          </div>
+        }
+        <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
+          [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+        @if (gpsStatus() === 'denied') {
+          <p class="text-slate-600 text-xs text-center">Se muestra el mapa sin tu ubicación exacta. Activa el permiso para verte en el mapa.</p>
+        }
       </div>
     </div>
   }
@@ -600,40 +656,185 @@ type AgScreen = 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passeng
 </div>
   `,
 })
-export class AndaGanaComponent implements OnInit {
+export class AndaGanaComponent implements OnInit, OnDestroy {
 
-  private readonly agService = inject(AndaGanaService);
+  private readonly agService  = inject(AndaGanaService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   screen     = signal<AgScreen>('loading');
   driverStep = signal<number>(1);
 
   // Perfil actual
-  agProfile       = signal<AgUser | null>(null);
-  driverData      = signal<any>(null);
-  driverStatus    = signal<string>('');
+  agProfile             = signal<AgUser | null>(null);
+  driverData            = signal<any>(null);
+  driverStatus          = signal<string>('');
   driverRejectionReason = signal<string | null>(null);
+
+  // Mapa / GPS
+  gpsStatus = signal<GpsStatus>('idle');
+
+  private _map:           any    = null;
+  private _mapboxPromise: Promise<void> | null = null;
+  private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
+  // Default: Bogotá
+  private readonly DEFAULT_LAT = 4.6097;
+  private readonly DEFAULT_LNG = -74.0817;
 
   firstName() { return this.agProfile()?.full_name?.split(' ')[0] ?? ''; }
 
+  // ── Lifecycle ──────────────────────────────────────────────────
   async ngOnInit() {
     const profile = await this.agService.getMyAgProfile();
     this.agProfile.set(profile);
 
-    if (!profile) {
-      this.screen.set('home');
-      return;
-    }
+    if (!profile) { this.screen.set('home'); return; }
 
     if (profile.role === 'passenger') {
       this.screen.set('passenger-home');
     } else {
-      // Load driver data
       const drivers = await this.agService.getDrivers();
       const mine = drivers.find(d => d.ag_user_id === profile.id) ?? null;
       this.driverData.set(mine);
       this.driverStatus.set(mine?.status ?? 'pending');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
+    }
+
+    // Iniciar mapa después de que Angular renderice el DOM
+    setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
+  }
+
+  ngOnDestroy() { this._destroyMap(); }
+
+  // ── Mapbox loader (CDN con caché) ──────────────────────────────
+  private loadMapbox(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+    const w = window as any;
+    if (w.mapboxgl) return Promise.resolve();
+    if (this._mapboxPromise) return this._mapboxPromise;
+
+    this._mapboxPromise = new Promise<void>((resolve, reject) => {
+      // CSS
+      if (!document.querySelector('link[href*="mapbox-gl.css"]')) {
+        const link = document.createElement('link');
+        link.rel  = 'stylesheet';
+        link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
+        document.head.appendChild(link);
+      }
+      // JS
+      const script = document.createElement('script');
+      script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
+      script.onload = () => resolve();
+      script.onerror = () => {
+        this._mapboxPromise = null;
+        reject(new Error('No se pudo cargar Mapbox'));
+      };
+      document.head.appendChild(script);
+    });
+    return this._mapboxPromise;
+  }
+
+  // ── GPS + mapa ─────────────────────────────────────────────────
+  async initGpsAndMap(containerId: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    this.gpsStatus.set('requesting');
+
+    let lat = this.DEFAULT_LAT;
+    let lng = this.DEFAULT_LNG;
+
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true, timeout: 15000, maximumAge: 30000,
+        })
+      );
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+      this.gpsStatus.set('granted');
+    } catch {
+      this.gpsStatus.set('denied');
+      // Continuar con ubicación por defecto — el mapa se muestra igual
+    }
+
+    await this.loadMapbox();
+    // Doble rAF para asegurar que el div esté en el DOM y tenga dimensiones
+    await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    this._createMap(containerId, lat, lng);
+  }
+
+  retryGps(containerId: string) {
+    this._destroyMap();
+    this.initGpsAndMap(containerId);
+  }
+
+  private _createMap(containerId: string, lat: number, lng: number) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const mapboxgl = (window as any).mapboxgl;
+    if (!mapboxgl) return;
+
+    // Asegurar dimensiones explícitas antes de crear el mapa
+    if (!container.offsetHeight) {
+      container.style.height = '300px';
+    }
+
+    this._destroyMap();
+
+    mapboxgl.accessToken = this.MAPBOX_TOKEN;
+    this._map = new mapboxgl.Map({
+      container,
+      style:   'mapbox://styles/mapbox/streets-v12',  // mapa claro con calles
+      center:  [lng, lat],
+      zoom:    15,
+      attributionControl: false,
+      failIfMajorPerformanceCaveat: false,
+    });
+
+    this._map.addControl(new mapboxgl.AttributionControl({ compact: true }));
+    this._map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+    this._map.once('load', () => {
+      // Marcador de posición del usuario
+      const el = document.createElement('div');
+      el.style.cssText = `
+        width:48px; height:48px; border-radius:50%;
+        background: radial-gradient(circle, #FF6600 0%, rgba(255,102,0,0.3) 60%, transparent 70%);
+        border: 3px solid #FF6600;
+        box-shadow: 0 0 0 6px rgba(255,102,0,0.2);
+        display:flex; align-items:center; justify-content:center;
+        animation: pulse-ring 1.5s ease-out infinite;
+      `;
+      const dot = document.createElement('div');
+      dot.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#FF6600;border:2px solid #fff;';
+      el.appendChild(dot);
+
+      // Inyectar keyframes una sola vez
+      if (!document.getElementById('ag-map-styles')) {
+        const style = document.createElement('style');
+        style.id = 'ag-map-styles';
+        style.textContent = `
+          @keyframes pulse-ring {
+            0%   { box-shadow: 0 0 0 0px rgba(255,102,0,0.4); }
+            100% { box-shadow: 0 0 0 20px rgba(255,102,0,0); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng, lat])
+        .addTo(this._map);
+
+      this._map.resize();
+    });
+  }
+
+  private _destroyMap() {
+    if (this._map) {
+      try { this._map.remove(); } catch { /* ignore */ }
+      this._map = null;
     }
   }
 
