@@ -3427,22 +3427,42 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Cargar Mapbox GL JS desde CDN (con caché de promesa para evitar doble carga) ──
   private loadMapbox(): Promise<any> {
     if (!isPlatformBrowser(this.platformId)) return Promise.resolve(null);
-    if ((window as any).mapboxgl) return Promise.resolve((window as any).mapboxgl);
+    const win = window as any;
+    // Ya cargado
+    if (win.mapboxgl) {
+      win.mapboxgl.accessToken = environment.andaGana.mapboxToken;
+      return Promise.resolve(win.mapboxgl);
+    }
+    // Ya en curso
     if (this._mapboxPromise) return this._mapboxPromise;
+
     if (!document.getElementById('mapbox-css')) {
       const link = document.createElement('link');
       link.id = 'mapbox-css';
       link.rel = 'stylesheet';
-      link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+      link.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
       document.head.appendChild(link);
     }
+
     this._mapboxPromise = new Promise(resolve => {
       const script = document.createElement('script');
-      script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+      script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
       script.onload = () => {
-        const mapboxgl = (window as any).mapboxgl;
+        const mapboxgl = win.mapboxgl;
+        if (!mapboxgl) { resolve(null); return; }
+        // Verificar soporte WebGL antes de intentar crear mapas
+        if (!mapboxgl.supported()) {
+          this.zone.run(() => this.gpsError.set('Tu navegador no soporta WebGL. Intenta con Chrome o Firefox actualizados.'));
+          resolve(null);
+          return;
+        }
         mapboxgl.accessToken = environment.andaGana.mapboxToken;
         resolve(mapboxgl);
+      };
+      script.onerror = () => {
+        this._mapboxPromise = null; // permitir reintento
+        this.zone.run(() => this.gpsError.set('No se pudo cargar el mapa. Verifica tu conexión e intenta de nuevo.'));
+        resolve(null);
       };
       document.head.appendChild(script);
     });
@@ -3563,6 +3583,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     };
 
     map.on('moveend', handleCenter);
+    map.on('error', (e: any) => {
+      console.error('[Mapbox]', e?.error?.message || e);
+    });
     this._map = map;
     this.mapLoading.set(false);
 
