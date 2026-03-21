@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AndaGanaService } from './anda-gana.service';
 
 type AgScreen = 'home' | 'passenger-form' | 'driver-form';
 
@@ -123,9 +124,9 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
               <label class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-white/10 rounded-xl py-6 cursor-pointer hover:border-orange-500/40 transition-colors">
                 <span class="material-symbols-outlined text-slate-500" style="font-size:32px">add_a_photo</span>
                 <span class="text-slate-500 text-xs">Toca para subir tu foto</span>
-                <input type="file" accept="image/*" capture="user" class="hidden" (change)="pf.selfie = $any($event.target).files[0]?.name || ''"/>
+                <input type="file" accept="image/*" capture="user" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
               </label>
-              @if (pf.selfie) { <p class="text-emerald-400 text-xs">✓ {{ pf.selfie }}</p> }
+              @if (pf.selfie) { <p class="text-emerald-400 text-xs mt-1">✓ {{ pf.selfie }}</p> }
             </div>
           </div>
 
@@ -289,7 +290,7 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
                     <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
                     <span class="text-slate-500 text-xs flex-1">{{ dfr[f.key] || 'Toca para subir foto' }}</span>
                     @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
-                    <input type="file" accept="image/*" class="hidden" (change)="onFileChange($event, f.key)"/>
+                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                   </label>
                 </div>
               }
@@ -305,7 +306,7 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
                   <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
                   <span class="text-slate-500 text-xs flex-1">{{ df.criminalRecord || 'Toca para subir documento' }}</span>
                   @if (df.criminalRecord) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
-                  <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onFileChange($event, 'criminalRecord')"/>
+                  <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, 'criminalRecord')"/>
                 </label>
                 <p class="text-slate-600 text-[10px]">Emitido en los últimos 30 días</p>
               </div>
@@ -358,7 +359,7 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
                   <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
                   <span class="text-slate-500 text-xs flex-1">{{ df.licensePhoto || 'Toca para subir foto' }}</span>
                   @if (df.licensePhoto) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
-                  <input type="file" accept="image/*" class="hidden" (change)="onFileChange($event, 'licensePhoto')"/>
+                  <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licensePhoto')"/>
                 </label>
               </div>
               <div class="flex flex-col gap-1">
@@ -367,7 +368,7 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
                   <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
                   <span class="text-slate-500 text-xs flex-1">{{ df.licenseBack || 'Toca para subir foto' }}</span>
                   @if (df.licenseBack) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
-                  <input type="file" accept="image/*" class="hidden" (change)="onFileChange($event, 'licenseBack')"/>
+                  <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licenseBack')"/>
                 </label>
               </div>
             </div>
@@ -439,7 +440,7 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
                     <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
                     <span class="text-slate-500 text-xs flex-1">{{ dfr[f.key] || 'Toca para subir foto' }}</span>
                     @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
-                    <input type="file" accept="image/*" class="hidden" (change)="onFileChange($event, f.key)"/>
+                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                   </label>
                 </div>
               }
@@ -460,7 +461,7 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
                     <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
                     <span class="text-slate-500 text-xs flex-1">{{ dfr[f.key] || 'Subir foto / documento' }}</span>
                     @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
-                    <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onFileChange($event, f.key)"/>
+                    <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                   </label>
                 </div>
               }
@@ -495,7 +496,9 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
 })
 export class AndaGanaComponent {
 
-  screen   = signal<AgScreen>('home');
+  private readonly agService = inject(AndaGanaService);
+
+  screen     = signal<AgScreen>('home');
   driverStep = signal<number>(1);
 
   // ── Passenger form state ──
@@ -508,6 +511,7 @@ export class AndaGanaComponent {
     phone: '', email: '', password: '', selfie: '',
     emergencyName: '', emergencyPhone: '', terms: false,
   };
+  private _pfFiles: Record<string, File> = {};
 
   // ── Driver form state ──
   driverLoading = signal(false);
@@ -528,6 +532,7 @@ export class AndaGanaComponent {
     civilLiability: '', civilLiabilityExpiry: '',
     terms: false,
   };
+  private _dfFiles: Record<string, File> = {};
 
   // ── Field definitions ──
   idPhotoFields = [
@@ -551,28 +556,39 @@ export class AndaGanaComponent {
 
   get dfr(): Record<string, unknown> { return this.df as Record<string, unknown>; }
 
-  onFileChange(event: Event, field: string) {
+  onPassengerFileChange(event: Event, field: string) {
     const file = (event.target as HTMLInputElement).files?.[0];
-    if (file) (this.df as Record<string, unknown>)[field] = file.name;
+    if (file) {
+      (this.pf as Record<string, unknown>)[field] = file.name;
+      this._pfFiles[field] = file;
+    }
+  }
+
+  onDriverFileChange(event: Event, field: string) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) {
+      (this.df as Record<string, unknown>)[field] = file.name;
+      this._dfFiles[field] = file;
+    }
   }
 
   nextDriverStep(current: number) {
     this.driverError.set('');
     if (current === 1) {
-      if (!this.df['fullName'] || !this.df['birthDate'] || !this.df['city'] || !this.df['idNumber'] ||
-          !this.df['phone'] || !this.df['email'] || !this.df['password'] || !this.df['emergencyName'] || !this.df['emergencyPhone']) {
+      if (!this.df.fullName || !this.df.birthDate || !this.df.city || !this.df.idNumber ||
+          !this.df.phone || !this.df.email || !this.df.password || !this.df.emergencyName || !this.df.emergencyPhone) {
         this.driverError.set('Por favor completa todos los campos obligatorios antes de continuar.');
         return;
       }
     }
     if (current === 2) {
-      if (!this.df['idFront'] || !this.df['idBack'] || !this.df['selfieWithId'] || !this.df['criminalRecord']) {
+      if (!this.df.idFront || !this.df.idBack || !this.df.selfieWithId || !this.df.criminalRecord) {
         this.driverError.set('Debes subir todos los documentos de identidad requeridos.');
         return;
       }
     }
     if (current === 3) {
-      if (!this.df['licenseNumber'] || !this.df['licenseCategory'] || !this.df['licenseExpiry'] || !this.df['licensePhoto'] || !this.df['licenseBack']) {
+      if (!this.df.licenseNumber || !this.df.licenseCategory || !this.df.licenseExpiry || !this.df.licensePhoto || !this.df.licenseBack) {
         this.driverError.set('Completa todos los datos y fotos de tu licencia de conducción.');
         return;
       }
@@ -581,42 +597,77 @@ export class AndaGanaComponent {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  submitPassenger() {
+  async submitPassenger() {
     this.passengerError.set('');
     const p = this.pf;
-    if (!p['fullName'] || !p['birthDate'] || !p['city'] || !p['idNumber'] ||
-        !p['phone'] || !p['email'] || !p['password'] || !p['emergencyName'] || !p['emergencyPhone']) {
+    if (!p.fullName || !p.birthDate || !p.city || !p.idNumber ||
+        !p.phone || !p.email || !p.password || !p.emergencyName || !p.emergencyPhone) {
       this.passengerError.set('Por favor completa todos los campos obligatorios.');
       return;
     }
-    if (!p['terms']) {
+    if (!p.terms) {
       this.passengerError.set('Debes aceptar los términos y condiciones.');
       return;
     }
     this.passengerLoading.set(true);
-    // TODO: conectar con backend
-    setTimeout(() => {
-      this.passengerLoading.set(false);
+    const result = await this.agService.registerPassenger({
+      fullName: p.fullName,
+      birthDate: p.birthDate,
+      city: p.city,
+      idNumber: p.idNumber,
+      phone: p.phone,
+      email: p.email,
+      password: p.password,
+      emergencyName: p.emergencyName,
+      emergencyPhone: p.emergencyPhone,
+      selfieFile: this._pfFiles['selfie'],
+    });
+    this.passengerLoading.set(false);
+    if (result.success) {
       this.passengerSuccess.set(true);
-    }, 1500);
+    } else {
+      this.passengerError.set(result.error ?? 'Error al registrarse.');
+    }
   }
 
-  submitDriver() {
+  async submitDriver() {
     this.driverError.set('');
-    if (!this.df['plate'] || !this.df['vehicleType'] || !this.df['vehicleBrand'] ||
-        !this.df['vehicleModel'] || !this.df['vehicleYear'] || !this.df['vehicleColor']) {
+    if (!this.df.plate || !this.df.vehicleType || !this.df.vehicleBrand ||
+        !this.df.vehicleModel || !this.df.vehicleYear || !this.df.vehicleColor) {
       this.driverError.set('Completa todos los datos del vehículo.');
       return;
     }
-    if (!this.df['terms']) {
+    if (!this.df.terms) {
       this.driverError.set('Debes aceptar los términos y condiciones.');
       return;
     }
     this.driverLoading.set(true);
-    // TODO: conectar con backend
-    setTimeout(() => {
-      this.driverLoading.set(false);
+    const result = await this.agService.registerDriver({
+      fullName: this.df.fullName,
+      birthDate: this.df.birthDate,
+      city: this.df.city,
+      idNumber: this.df.idNumber,
+      phone: this.df.phone,
+      email: this.df.email,
+      password: this.df.password,
+      emergencyName: this.df.emergencyName,
+      emergencyPhone: this.df.emergencyPhone,
+      licenseNumber: this.df.licenseNumber,
+      licenseCategory: this.df.licenseCategory,
+      licenseExpiry: this.df.licenseExpiry,
+      plate: this.df.plate,
+      vehicleType: this.df.vehicleType,
+      vehicleBrand: this.df.vehicleBrand,
+      vehicleModel: this.df.vehicleModel,
+      vehicleYear: this.df.vehicleYear,
+      vehicleColor: this.df.vehicleColor,
+      files: this._dfFiles,
+    });
+    this.driverLoading.set(false);
+    if (result.success) {
       this.driverSuccess.set(true);
-    }, 1500);
+    } else {
+      this.driverError.set(result.error ?? 'Error al registrarse.');
+    }
   }
 }
