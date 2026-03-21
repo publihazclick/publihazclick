@@ -1131,7 +1131,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.0000034 : 0.0000028, // ~35–40 km/h ciudad
+        speed:   isMoto ? 0.000035 : 0.000028, // velocidad visible en mapa
         forward: i % 3 !== 0,                     // la mayoría en sentido original
         marker,
       });
