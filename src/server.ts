@@ -37,7 +37,7 @@ app.use((req, res, next) => {
   // Permissions policy - restrict browser features
   res.setHeader(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=()'
+    'camera=(), microphone=(), payment=()'
   );
 
   // HSTS - enforce HTTPS (1 year, include subdomains)
@@ -51,11 +51,12 @@ app.use((req, res, next) => {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.nequi.wompi.co",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://via.placeholder.com https://*.googleusercontent.com https://i.ytimg.com https://*.ytimg.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.freecurrencyapi.com https://countriesnow.space",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.nequi.wompi.co https://api.mapbox.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com",
+      "font-src 'self' https://fonts.gstatic.com https://api.mapbox.com",
+      "worker-src blob:",
+      "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://via.placeholder.com https://*.googleusercontent.com https://i.ytimg.com https://*.ytimg.com https://*.mapbox.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.ipify.org https://api.freecurrencyapi.com https://countriesnow.space https://api.mapbox.com https://events.mapbox.com",
       "frame-src 'self' https://checkout.nequi.wompi.co https://www.youtube.com https://www.facebook.com https://www.tiktok.com",
       "frame-ancestors 'self'",
       "base-uri 'self'",
