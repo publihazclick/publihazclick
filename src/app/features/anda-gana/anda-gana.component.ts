@@ -918,9 +918,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private async _searchPlaces(query: string) {
     try {
-      const prox = `${this._currentLng},${this._currentLat}`;
+      const lat  = this._currentLat;
+      const lng  = this._currentLng;
+      const prox = `${lng},${lat}`;
+      // Bounding box de ~25 km alrededor del usuario → solo resultados locales
+      const delta = 0.22;
+      const bbox  = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-        + `?access_token=${this.MAPBOX_TOKEN}&language=es&types=address,poi,place&proximity=${prox}&limit=5`;
+        + `?access_token=${this.MAPBOX_TOKEN}&language=es`
+        + `&types=address,poi,neighborhood,locality,place`
+        + `&proximity=${prox}`
+        + `&bbox=${bbox}`
+        + `&limit=6`;
       const res  = await fetch(url);
       const data = await res.json();
       this.addressSuggestions.set(data.features ?? []);
