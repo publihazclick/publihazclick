@@ -1105,167 +1105,79 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private _carElement(heading: number, color: string): HTMLElement {
-    const uid = Math.random().toString(36).slice(2, 7);
+    const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:44px;height:76px;transform:rotate(${heading}deg);filter:drop-shadow(0 5px 12px rgba(0,0,0,0.55)) drop-shadow(0 2px 5px rgba(0,0,0,0.3));`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 76" width="44" height="76">
+    wrap.style.cssText = `width:34px;height:56px;transform:rotate(${heading}deg);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55));`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 56" width="34" height="56">
       <defs>
-        <linearGradient id="cb${uid}" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stop-color="rgba(0,0,0,0.30)"/>
-          <stop offset="38%"  stop-color="rgba(255,255,255,0)"/>
-          <stop offset="62%"  stop-color="rgba(255,255,255,0.18)"/>
-          <stop offset="100%" stop-color="rgba(0,0,0,0.24)"/>
-        </linearGradient>
-        <linearGradient id="cr${uid}" x1="0" y1="0" x2="1" y2="0">
+        <linearGradient id="cg${uid}" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%"   stop-color="rgba(0,0,0,0.20)"/>
-          <stop offset="50%"  stop-color="rgba(255,255,255,0.22)"/>
-          <stop offset="100%" stop-color="rgba(0,0,0,0.20)"/>
+          <stop offset="45%"  stop-color="rgba(255,255,255,0.12)"/>
+          <stop offset="100%" stop-color="rgba(0,0,0,0.18)"/>
         </linearGradient>
-        <radialGradient id="chl${uid}" cx="50%" cy="30%" r="70%">
-          <stop offset="0%"   stop-color="#FFFDE7" stop-opacity="1"/>
-          <stop offset="100%" stop-color="#FFF176" stop-opacity="0"/>
-        </radialGradient>
       </defs>
-      <!-- ground shadow -->
-      <ellipse cx="22" cy="73" rx="15" ry="3.5" fill="rgba(0,0,0,0.18)"/>
-      <!-- rear wheels -->
-      <rect x="0"  y="53" width="10" height="17" rx="3.5" fill="#0f172a"/>
-      <rect x="34" y="53" width="10" height="17" rx="3.5" fill="#0f172a"/>
-      <rect x="1.5"  y="54.5" width="7" height="14" rx="2.5" fill="#1e293b"/>
-      <circle cx="5"  cy="61.5" r="2.4" fill="#374151"/><circle cx="5"  cy="61.5" r="1.1" fill="#6b7280"/>
-      <line x1="5" y1="56.5" x2="5" y2="66.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="2" y1="61.5" x2="8" y2="61.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="2.5" y1="57" x2="7.5" y2="66" stroke="#4b5563" stroke-width="0.5"/>
-      <line x1="7.5" y1="57" x2="2.5" y2="66" stroke="#4b5563" stroke-width="0.5"/>
-      <rect x="35.5" y="54.5" width="7" height="14" rx="2.5" fill="#1e293b"/>
-      <circle cx="39" cy="61.5" r="2.4" fill="#374151"/><circle cx="39" cy="61.5" r="1.1" fill="#6b7280"/>
-      <line x1="39" y1="56.5" x2="39" y2="66.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="36" y1="61.5" x2="42" y2="61.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="36.5" y1="57" x2="41.5" y2="66" stroke="#4b5563" stroke-width="0.5"/>
-      <line x1="41.5" y1="57" x2="36.5" y2="66" stroke="#4b5563" stroke-width="0.5"/>
-      <!-- BODY -->
-      <path d="M8,18 C8,10 14,6 22,6 C30,6 36,10 36,18 L37,57 C37,64 31,69 22,69 C13,69 7,64 7,57 Z" fill="${color}"/>
-      <path d="M8,18 C8,10 14,6 22,6 C30,6 36,10 36,18 L37,57 C37,64 31,69 22,69 C13,69 7,64 7,57 Z" fill="url(#cb${uid})"/>
-      <!-- hood crease -->
-      <path d="M14,8 L22,6 L30,8 L22,12 Z" fill="rgba(255,255,255,0.06)"/>
-      <!-- door line -->
-      <line x1="7.5" y1="41" x2="36.5" y2="41" stroke="rgba(0,0,0,0.18)" stroke-width="1"/>
-      <line x1="7.5" y1="41.8" x2="36.5" y2="41.8" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
-      <!-- ROOF -->
-      <path d="M12,22 C12,15 16,12 22,12 C28,12 32,15 32,22 L32,49 C32,54 28,56 22,56 C16,56 12,54 12,49 Z" fill="${color}"/>
-      <path d="M12,22 C12,15 16,12 22,12 C28,12 32,15 32,22 L32,49 C32,54 28,56 22,56 C16,56 12,54 12,49 Z" fill="url(#cr${uid})"/>
-      <!-- front windshield -->
-      <path d="M13.5,23 C13.5,17 17,14.5 22,14.5 C27,14.5 30.5,17 30.5,23 L29.5,33 C27,35.5 17,35.5 14.5,33 Z" fill="rgba(186,230,253,0.88)"/>
-      <path d="M15.5,16 C17.5,14.5 20,14.5 22,15.5 L21.5,26 C19.5,25 16.5,24 15.5,22 Z" fill="rgba(255,255,255,0.30)"/>
-      <path d="M15,31 Q22,29.5 29,31" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" fill="none"/>
-      <!-- side windows -->
-      <path d="M12,35 L14.5,34 L14.5,50 L12,49 Z" fill="rgba(186,230,253,0.62)"/>
-      <path d="M32,35 L29.5,34 L29.5,50 L32,49 Z" fill="rgba(186,230,253,0.62)"/>
+      <!-- shadow -->
+      <ellipse cx="17" cy="54" rx="11" ry="2" fill="rgba(0,0,0,0.25)"/>
+      <!-- body -->
+      <path d="M5,12 C5,5 10,2 17,2 C24,2 29,5 29,12 L29,46 C29,52 24,54 17,54 C10,54 5,52 5,46 Z" fill="${color}"/>
+      <path d="M5,12 C5,5 10,2 17,2 C24,2 29,5 29,12 L29,46 C29,52 24,54 17,54 C10,54 5,52 5,46 Z" fill="url(#cg${uid})"/>
+      <!-- windshield -->
+      <path d="M9,13 C9,8 12,6 17,6 C22,6 25,8 25,13 L24,22 C21,24 13,24 10,22 Z" fill="rgba(186,230,253,0.78)"/>
+      <path d="M11,7.5 C13,6.5 16,6.5 18,7.5 L17.5,17 C15.5,16.5 12.5,16 11,14 Z" fill="rgba(255,255,255,0.28)"/>
       <!-- rear window -->
-      <path d="M14.5,51.5 C17,54 27,54 29.5,51.5 L29.5,56 C27,58 17,58 14.5,56 Z" fill="rgba(186,230,253,0.78)"/>
-      <path d="M17,52 C19,51.5 23,51.5 25,52 L24,55 C22,55 19,55 18,55 Z" fill="rgba(255,255,255,0.18)"/>
-      <!-- front wheels -->
-      <rect x="0"  y="10" width="10" height="17" rx="3.5" fill="#0f172a"/>
-      <rect x="34" y="10" width="10" height="17" rx="3.5" fill="#0f172a"/>
-      <rect x="1.5"  y="11.5" width="7" height="14" rx="2.5" fill="#1e293b"/>
-      <circle cx="5"  cy="18.5" r="2.4" fill="#374151"/><circle cx="5"  cy="18.5" r="1.1" fill="#6b7280"/>
-      <line x1="5" y1="13.5" x2="5" y2="23.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="2" y1="18.5" x2="8" y2="18.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="2.5" y1="14" x2="7.5" y2="23" stroke="#4b5563" stroke-width="0.5"/>
-      <line x1="7.5" y1="14" x2="2.5" y2="23" stroke="#4b5563" stroke-width="0.5"/>
-      <rect x="35.5" y="11.5" width="7" height="14" rx="2.5" fill="#1e293b"/>
-      <circle cx="39" cy="18.5" r="2.4" fill="#374151"/><circle cx="39" cy="18.5" r="1.1" fill="#6b7280"/>
-      <line x1="39" y1="13.5" x2="39" y2="23.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="36" y1="18.5" x2="42" y2="18.5" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="36.5" y1="14" x2="41.5" y2="23" stroke="#4b5563" stroke-width="0.5"/>
-      <line x1="41.5" y1="14" x2="36.5" y2="23" stroke="#4b5563" stroke-width="0.5"/>
-      <!-- headlight glow -->
-      <ellipse cx="8"  cy="10" rx="7" ry="4.5" fill="url(#chl${uid})" opacity="0.75"/>
-      <ellipse cx="36" cy="10" rx="7" ry="4.5" fill="url(#chl${uid})" opacity="0.75"/>
-      <path d="M3.5,7.5 L10,7 L11,10.5 L8,12.5 L3.5,11.5 Z" fill="#FEFCE8"/>
-      <path d="M33.5,7 L40.5,7.5 L40.5,11.5 L36,12.5 L33,10.5 Z" fill="#FEFCE8"/>
-      <!-- DRL -->
-      <path d="M4,13 Q7,11.5 10.5,12.5" stroke="#FFFBEB" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-      <path d="M33.5,13 Q37,11.5 40,12.5" stroke="#FFFBEB" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-      <!-- grille -->
-      <rect x="14" y="7.5" width="16" height="3.5" rx="1.5" fill="rgba(0,0,0,0.55)"/>
-      <line x1="17" y1="7.5" x2="17" y2="11" stroke="rgba(255,255,255,0.13)" stroke-width="0.8"/>
-      <line x1="20" y1="7.5" x2="20" y2="11" stroke="rgba(255,255,255,0.13)" stroke-width="0.8"/>
-      <line x1="23" y1="7.5" x2="23" y2="11" stroke="rgba(255,255,255,0.13)" stroke-width="0.8"/>
-      <line x1="26" y1="7.5" x2="26" y2="11" stroke="rgba(255,255,255,0.13)" stroke-width="0.8"/>
+      <path d="M10,36 C13,38.5 21,38.5 24,36 L24,43 C21,44.5 13,44.5 10,43 Z" fill="rgba(186,230,253,0.55)"/>
+      <!-- headlights -->
+      <circle cx="9"  cy="7"  r="5" fill="#FEF9C3"/>
+      <circle cx="9"  cy="7"  r="2.8" fill="#FDE047"/>
+      <circle cx="25" cy="7"  r="5" fill="#FEF9C3"/>
+      <circle cx="25" cy="7"  r="2.8" fill="#FDE047"/>
+      <!-- direction chevron -->
+      <path d="M17,1 L14,5 L17,4 L20,5 Z" fill="rgba(255,255,255,0.75)"/>
       <!-- taillights -->
-      <path d="M3.5,65 L10,64 L10,69 L4,69 Z" fill="#EF4444" opacity="0.92"/>
-      <path d="M34,64 L40.5,65 L40,69 L34,69 Z" fill="#EF4444" opacity="0.92"/>
-      <rect x="10" y="67" width="24" height="2" rx="1" fill="#EF4444" opacity="0.45"/>
+      <circle cx="9"  cy="50" r="4.5" fill="#EF4444"/>
+      <circle cx="9"  cy="50" r="2.4" fill="#FCA5A5"/>
+      <circle cx="25" cy="50" r="4.5" fill="#EF4444"/>
+      <circle cx="25" cy="50" r="2.4" fill="#FCA5A5"/>
     </svg>`;
     return wrap;
   }
 
-  private _motoElement(heading: number, color: string): HTMLElement {
-    const uid = Math.random().toString(36).slice(2, 7);
+  private _motoElement(heading: number, _color: string): HTMLElement {
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:30px;height:64px;transform:rotate(${heading}deg);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55)) drop-shadow(0 2px 4px rgba(0,0,0,0.28));`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 64" width="30" height="64">
-      <defs>
-        <linearGradient id="mb${uid}" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stop-color="rgba(0,0,0,0.32)"/>
-          <stop offset="50%"  stop-color="rgba(255,255,255,0.20)"/>
-          <stop offset="100%" stop-color="rgba(0,0,0,0.28)"/>
-        </linearGradient>
-        <radialGradient id="mhl${uid}" cx="50%" cy="30%" r="70%">
-          <stop offset="0%"   stop-color="#FFFDE7" stop-opacity="1"/>
-          <stop offset="100%" stop-color="#FFF176" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
+    wrap.style.cssText = `width:20px;height:56px;transform:rotate(${heading}deg);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55));`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 56" width="20" height="56">
       <!-- shadow -->
-      <ellipse cx="15" cy="62" rx="8" ry="2.5" fill="rgba(0,0,0,0.18)"/>
+      <ellipse cx="10" cy="54" rx="7" ry="2" fill="rgba(0,0,0,0.25)"/>
       <!-- rear wheel -->
-      <ellipse cx="15" cy="54" rx="7" ry="8" fill="#0f172a"/>
-      <ellipse cx="15" cy="54" rx="5" ry="6" fill="#1e293b"/>
-      <circle cx="15" cy="54" r="2.5" fill="#374151"/><circle cx="15" cy="54" r="1.1" fill="#6b7280"/>
-      <line x1="15" y1="48" x2="15" y2="60" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="9"  y1="54" x2="21" y2="54" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="10.5" y1="49.5" x2="19.5" y2="58.5" stroke="#4b5563" stroke-width="0.5"/>
-      <line x1="19.5" y1="49.5" x2="10.5" y2="58.5" stroke="#4b5563" stroke-width="0.5"/>
-      <!-- swingarm -->
-      <path d="M13,44 L12.5,47 M17,44 L17.5,47" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
-      <!-- BODY / FRAME -->
-      <path d="M11,20 C11,14 13,11 15,11 C17,11 19,14 19,20 L19,42 C19,46 17,47 15,47 C13,47 11,46 11,42 Z" fill="${color}"/>
-      <path d="M11,20 C11,14 13,11 15,11 C17,11 19,14 19,20 L19,42 C19,46 17,47 15,47 C13,47 11,46 11,42 Z" fill="url(#mb${uid})"/>
-      <!-- fuel tank -->
-      <path d="M11,20 C11,16 13,13.5 15,13.5 C17,13.5 19,16 19,20 L19,29 C17,31 13,31 11,29 Z" fill="${color}"/>
-      <path d="M11,20 C11,16 13,13.5 15,13.5 C17,13.5 19,16 19,20 L19,29 C17,31 13,31 11,29 Z" fill="rgba(255,255,255,0.15)"/>
-      <!-- tank shine -->
-      <path d="M12,15.5 C13,13.5 15.5,13.5 16,14.5 L15.5,21 C14,20.5 12.5,20 12,18.5 Z" fill="rgba(255,255,255,0.26)"/>
-      <!-- seat -->
-      <rect x="12" y="29" width="6" height="12" rx="2.5" fill="rgba(0,0,0,0.55)"/>
-      <rect x="12.5" y="29.5" width="5" height="3" rx="1.5" fill="rgba(255,255,255,0.07)"/>
-      <!-- exhaust -->
-      <path d="M19,36 Q22.5,37 22.5,40 L20.5,41.5" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-      <ellipse cx="21" cy="41.5" rx="1.5" ry="1" fill="#4b5563"/>
+      <circle cx="10" cy="47" r="7" fill="#0f172a"/>
+      <circle cx="10" cy="47" r="4.5" fill="#1e293b"/>
+      <circle cx="10" cy="47" r="1.8" fill="#475569"/>
+      <line x1="10" y1="41" x2="10" y2="53" stroke="#374151" stroke-width="0.7"/>
+      <line x1="4"  y1="47" x2="16" y2="47" stroke="#374151" stroke-width="0.7"/>
+      <!-- body -->
+      <rect x="7" y="17" width="6" height="24" rx="3" fill="#06B6D4"/>
+      <rect x="7.5" y="17.5" width="5" height="10" rx="2" fill="rgba(255,255,255,0.20)"/>
+      <rect x="7.5" y="28" width="5" height="11" rx="2" fill="rgba(0,0,0,0.22)"/>
       <!-- handlebars -->
-      <path d="M5,22 Q10,19.5 15,19.5 Q20,19.5 25,22" stroke="#94a3b8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <rect x="3" y="21" width="3" height="2.5" rx="1.2" fill="#64748b"/>
-      <rect x="24" y="21" width="3" height="2.5" rx="1.2" fill="#64748b"/>
-      <!-- mirrors -->
-      <rect x="1" y="19.5" width="3.5" height="1.5" rx="0.7" fill="#475569"/>
-      <rect x="25.5" y="19.5" width="3.5" height="1.5" rx="0.7" fill="#475569"/>
-      <!-- fork tubes -->
-      <path d="M13.5,20 L13,11 M16.5,20 L17,11" stroke="${color}" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/>
+      <rect x="1" y="19" width="18" height="2.5" rx="1.2" fill="#94a3b8"/>
+      <rect x="1"  y="19" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
+      <rect x="15.5" y="19" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
+      <!-- fork -->
+      <rect x="8.5" y="12" width="3" height="9" rx="1.5" fill="#0891B2"/>
       <!-- front wheel -->
-      <ellipse cx="15" cy="8" rx="7" ry="8" fill="#0f172a"/>
-      <ellipse cx="15" cy="8" rx="5" ry="6" fill="#1e293b"/>
-      <circle cx="15" cy="8" r="2.5" fill="#374151"/><circle cx="15" cy="8" r="1.1" fill="#6b7280"/>
-      <line x1="15" y1="2"  x2="15" y2="14" stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="9"  y1="8"  x2="21" y2="8"  stroke="#4b5563" stroke-width="0.7"/>
-      <line x1="10.5" y1="3.5" x2="19.5" y2="12.5" stroke="#4b5563" stroke-width="0.5"/>
-      <line x1="19.5" y1="3.5" x2="10.5" y2="12.5" stroke="#4b5563" stroke-width="0.5"/>
-      <!-- headlight glow -->
-      <ellipse cx="15" cy="2" rx="6" ry="3.5" fill="url(#mhl${uid})" opacity="0.80"/>
-      <path d="M10.5,1 L19.5,1 L20,3.5 L10,3.5 Z" fill="#FEFCE8"/>
-      <line x1="11" y1="4.5" x2="19" y2="4.5" stroke="rgba(255,255,255,0.35)" stroke-width="0.8" stroke-linecap="round"/>
+      <circle cx="10" cy="9"  r="7" fill="#0f172a"/>
+      <circle cx="10" cy="9"  r="4.5" fill="#1e293b"/>
+      <circle cx="10" cy="9"  r="1.8" fill="#475569"/>
+      <line x1="10" y1="3"  x2="10" y2="15" stroke="#374151" stroke-width="0.7"/>
+      <line x1="4"  y1="9"  x2="16" y2="9"  stroke="#374151" stroke-width="0.7"/>
+      <!-- headlight -->
+      <circle cx="10" cy="4"  r="3"   fill="#FEF9C3"/>
+      <circle cx="10" cy="4"  r="1.6" fill="#FDE047"/>
+      <!-- direction chevron -->
+      <path d="M10,1 L8,4 L10,3.3 L12,4 Z" fill="rgba(255,255,255,0.75)"/>
       <!-- taillight -->
-      <rect x="12" y="44" width="6" height="2.5" rx="1" fill="#EF4444" opacity="0.88"/>
+      <circle cx="10" cy="51" r="2.5" fill="#EF4444"/>
+      <circle cx="10" cy="51" r="1.2" fill="#FCA5A5"/>
     </svg>`;
     return wrap;
   }
