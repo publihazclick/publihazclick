@@ -3508,13 +3508,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return new Promise(resolve => {
       const attempt = (tries: number) => {
         const el = document.getElementById(id);
-        // Fix: también verificar que el elemento tenga dimensiones (importante en OnPush + SSR)
-        if (el && el.offsetWidth > 0 && el.offsetHeight > 0) { resolve(el); return; }
-        if (el && tries <= 0) { resolve(el); return; } // último recurso: retornar aunque sin dimensiones
+        if (el) { resolve(el); return; } // basta con que exista — no exigir dimensiones
         if (tries <= 0) { resolve(null); return; }
         requestAnimationFrame(() => attempt(tries - 1));
       };
-      attempt(150); // Fix: 150 frames (~2.5s) para dispositivos lentos
+      attempt(120); // ~2s a 60fps
     });
   }
 
@@ -3531,6 +3529,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Pick map: center-pin approach, instant GPS ──
   private async initPickMap(elementId: string, lat: number, lng: number, onPick: (lat: number, lng: number) => void) {
+    // Habilitar el botón "Confirmar" INMEDIATAMENTE con la posición recibida,
+    // ANTES de cualquier await — así rideOrigin/rideDest siempre tienen valor
+    // aunque el mapa tarde en cargar o falle.
+    onPick(lat, lng);
+    this.mapPickingAddress.set('Detectando dirección...');
+
     // Token de cancelación: si llega una nueva llamada mientras esta espera, el token cambia
     // y esta ejecución se abandona limpiamente en cualquier punto async.
     const token = ++this._mapToken;
@@ -3545,10 +3549,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!el || token !== this._mapToken) return; // cancelada o DOM no disponible
 
     this.mapLoading.set(true);
-
-    // Habilitar el botón "Confirmar" inmediatamente con la posición inicial
-    onPick(lat, lng);
-    this.mapPickingAddress.set('Detectando dirección...');
 
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], 16);
     this.addTiles(map, L);
@@ -3678,10 +3678,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.zone.run(() => {
           this.mapLoading.set(false);
           this.gpsError.set('');
+          const { latitude: lat, longitude: lng } = pos.coords;
           if (this._map) {
-            this._map.setView([pos.coords.latitude, pos.coords.longitude], 17, { animate: true });
+            // Mapa ya existe: solo moverlo a la posición GPS
+            this._map.setView([lat, lng], 17, { animate: true });
+            this.onOriginPick(lat, lng);
           } else {
-            this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
+            // Mapa aún no existe: inicializarlo centrado en GPS
+            this.initPickMap('ag-map-origin', lat, lng, (la, ln) => this.onOriginPick(la, ln));
           }
         });
       },
@@ -3689,15 +3693,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.zone.run(() => {
           this.mapLoading.set(false);
           if (err.code === 1) {
-            this.gpsError.set('GPS denegado. Activa la ubicación en tu navegador y vuelve a intentar, o escribe la dirección en el buscador.');
+            this.gpsError.set('GPS denegado. Activa la ubicación en Configuración del navegador → Privacidad → Ubicación.');
           } else if (err.code === 2) {
-            this.gpsError.set('No se pudo obtener tu posición. Verifica tu conexión o escribe la dirección.');
+            this.gpsError.set('No se pudo obtener tu posición. Activa el GPS del dispositivo e intenta de nuevo.');
           } else {
-            this.gpsError.set('GPS tardó demasiado. Escribe la dirección manualmente o intenta de nuevo.');
+            this.gpsError.set('GPS tardó demasiado. Mueve el mapa manualmente a tu ubicación o escribe tu dirección arriba.');
           }
         });
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   }
 
