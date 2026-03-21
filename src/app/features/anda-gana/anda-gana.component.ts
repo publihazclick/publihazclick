@@ -2688,7 +2688,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!isPlatformBrowser(this.platformId) || !navigator.geolocation) {
       // SSR o sin GPS — abrir mapa directo con Bogotá
       this.screen.set('passenger-pick-origin');
-      setTimeout(() => this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+      this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
       return;
     }
 
@@ -2701,7 +2701,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         // GPS obtenido — abrir mapa en posición real
         this.mapLoading.set(false);
         this.screen.set('passenger-pick-origin');
-        setTimeout(() => this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+        this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
       }),
       err => this.zone.run(() => {
         this.mapLoading.set(false);
@@ -2721,7 +2721,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   openMapWithDefault() {
     this.screen.set('passenger-pick-origin');
-    setTimeout(() => this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+    this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
   }
 
   retryGps() {
@@ -2732,7 +2732,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       pos => this.zone.run(() => {
         this.mapLoading.set(false);
         this.screen.set('passenger-pick-origin');
-        setTimeout(() => this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+        this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng));
       }),
       err => this.zone.run(() => {
         this.mapLoading.set(false);
@@ -2748,20 +2748,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   goBackToOrigin() {
     this.screen.set('passenger-pick-origin');
-    setTimeout(() => {
-      const o = this.rideOrigin();
-      this.initPickMap('ag-map-origin', o?.lat ?? 4.711, o?.lng ?? -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
-    }, 50);
+    const o = this.rideOrigin();
+    this.initPickMap('ag-map-origin', o?.lat ?? 4.711, o?.lng ?? -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
   }
 
   confirmOrigin() {
     if (!this.rideOrigin()) return;
     this.placeSuggestions.set([]); this.placeSearchQuery.set('');
     this.screen.set('passenger-pick-dest');
-    setTimeout(() => {
-      const o = this.rideOrigin()!;
-      this.initPickMap('ag-map-dest', o.lat, o.lng, (lat, lng) => this.onDestPick(lat, lng));
-    }, 50);
+    const o = this.rideOrigin()!;
+    this.initPickMap('ag-map-dest', o.lat, o.lng, (lat, lng) => this.onDestPick(lat, lng));
   }
 
   confirmDest() {
@@ -2960,12 +2956,27 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
+  /** Espera hasta que el elemento esté en el DOM con dimensiones reales (OnPush puede demorar) */
+  private waitForDomElement(id: string, maxMs = 3000): Promise<HTMLElement | null> {
+    return new Promise(resolve => {
+      const start = Date.now();
+      const check = () => {
+        const el = document.getElementById(id);
+        if (el && el.offsetWidth > 0 && el.offsetHeight > 0) { resolve(el); return; }
+        if (Date.now() - start > maxMs) { resolve(document.getElementById(id)); return; }
+        requestAnimationFrame(check);
+      };
+      check();
+    });
+  }
+
   // ── Pick map: center-pin approach, instant GPS ──
   private async initPickMap(elementId: string, lat: number, lng: number, onPick: (lat: number, lng: number) => void) {
     const L = await this.loadLeaflet();
     if (!L) return;
     this.destroyMap();
-    const el = document.getElementById(elementId);
+    // Espera real a que Angular renderice el div (OnPush puede demorar más que setTimeout fijo)
+    const el = await this.waitForDomElement(elementId);
     if (!el) return;
     this.mapLoading.set(true);
 
@@ -2999,8 +3010,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map = map;
     this.mapLoading.set(false);
 
-    // Geocode initial center after map renders
-    setTimeout(() => handleCenter(), 400);
+    // Forzar redibujado de tiles (esencial cuando el contenedor acababa de aparecer en DOM)
+    setTimeout(() => { if (this._map) { this._map.invalidateSize(); handleCenter(); } }, 200);
 
     // Show available drivers on map (those with real GPS location in DB)
     this.showDriversOnMap(map, L);
@@ -3013,7 +3024,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const L = await this.loadLeaflet();
     if (!L) return;
     this.destroyMap();
-    const el = document.getElementById('ag-map-trip');
+    const el = await this.waitForDomElement('ag-map-trip');
     if (!el) return;
 
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([req.origin_lat, req.origin_lng], 14);
@@ -3359,7 +3370,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const L = await this.loadLeaflet();
     if (!L) return;
     this.destroyMap();
-    const el = document.getElementById('ag-map-driver-requests');
+    const el = await this.waitForDomElement('ag-map-driver-requests');
     if (!el) return;
     const reqs = this.pendingRequests();
 
@@ -3414,7 +3425,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const L = await this.loadLeaflet();
     if (!L) return;
     this.destroyMap();
-    const el = document.getElementById('ag-map-driver-trip');
+    const el = await this.waitForDomElement('ag-map-driver-trip');
     if (!el) return;
 
     const isPickup = ride.status === 'accepted'; // going to pick up passenger
