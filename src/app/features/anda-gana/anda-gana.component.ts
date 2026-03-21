@@ -121,95 +121,95 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
-          <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl overflow-hidden"
-            style="background:rgba(8,10,16,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,0.08)">
+          <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl overflow-hidden bg-white"
+            style="border-top:1px solid #e2e8f0">
 
             <!-- Fila de servicios -->
             <div class="flex gap-1 px-3 pt-3 pb-1 overflow-x-auto" style="scrollbar-width:none">
               <button (click)="tripService.set('viaje')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
-                [class]="tripService()==='viaje' ? 'bg-orange-500/15 border border-orange-500/30' : 'hover:bg-white/5'">
+                [class]="tripService()==='viaje' ? 'bg-orange-50 border border-orange-200' : 'hover:bg-slate-50'">
                 <span class="material-symbols-outlined" style="font-size:26px"
-                  [style.color]="tripService()==='viaje' ? '#f97316' : '#64748b'">directions_car</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='viaje' ? '#f97316' : '#64748b'">Viaje</span>
+                  [style.color]="tripService()==='viaje' ? '#f97316' : '#94a3b8'">directions_car</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='viaje' ? '#f97316' : '#94a3b8'">Viaje</span>
               </button>
               <button (click)="tripService.set('moto')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
-                [class]="tripService()==='moto' ? 'bg-cyan-500/15 border border-cyan-500/30' : 'hover:bg-white/5'">
+                [class]="tripService()==='moto' ? 'bg-cyan-50 border border-cyan-200' : 'hover:bg-slate-50'">
                 <span class="material-symbols-outlined" style="font-size:26px"
-                  [style.color]="tripService()==='moto' ? '#06b6d4' : '#64748b'">two_wheeler</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='moto' ? '#06b6d4' : '#64748b'">Moto</span>
+                  [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">two_wheeler</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">Moto</span>
               </button>
               <button (click)="tripService.set('ciudad')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
-                [class]="tripService()==='ciudad' ? 'bg-purple-500/15 border border-purple-500/30' : 'hover:bg-white/5'">
+                [class]="tripService()==='ciudad' ? 'bg-purple-50 border border-purple-200' : 'hover:bg-slate-50'">
                 <span class="material-symbols-outlined" style="font-size:26px"
-                  [style.color]="tripService()==='ciudad' ? '#a855f7' : '#64748b'">commute</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='ciudad' ? '#a855f7' : '#64748b'">Ciudad a ciudad</span>
+                  [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">commute</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">Ciudad a ciudad</span>
               </button>
               <button (click)="tripService.set('domicilio')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
-                [class]="tripService()==='domicilio' ? 'bg-emerald-500/15 border border-emerald-500/30' : 'hover:bg-white/5'">
+                [class]="tripService()==='domicilio' ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-50'">
                 <span class="material-symbols-outlined" style="font-size:26px"
-                  [style.color]="tripService()==='domicilio' ? '#10b981' : '#64748b'">delivery_dining</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='domicilio' ? '#10b981' : '#64748b'">Domicilio</span>
+                  [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">delivery_dining</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">Domicilio</span>
               </button>
               <button (click)="tripService.set('fletes')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
-                [class]="tripService()==='fletes' ? 'bg-amber-500/15 border border-amber-500/30' : 'hover:bg-white/5'">
+                [class]="tripService()==='fletes' ? 'bg-amber-50 border border-amber-200' : 'hover:bg-slate-50'">
                 <span class="material-symbols-outlined" style="font-size:26px"
-                  [style.color]="tripService()==='fletes' ? '#f59e0b' : '#64748b'">local_shipping</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#64748b'">Fletes</span>
+                  [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">local_shipping</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">Fletes</span>
               </button>
             </div>
 
             <!-- Divider -->
-            <div class="mx-4 h-px bg-white/6 my-1"></div>
+            <div class="mx-4 h-px bg-slate-100 my-1"></div>
 
             <!-- Contenido del panel según estado -->
             @if (!tripDest()) {
               @if (!tripOpen()) {
                 <button (click)="openTripSearch()"
-                  class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors text-left">
-                  <div class="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-orange-400" style="font-size:22px">search</span>
+                  class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
+                  <div class="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-orange-500" style="font-size:22px">search</span>
                   </div>
                   <div class="flex-1">
-                    <p class="text-white font-black text-sm">¿A dónde vas y por cuánto?</p>
-                    <p class="text-slate-500 text-xs mt-0.5">Toca para buscar tu destino</p>
+                    <p class="text-slate-800 font-black text-sm">¿A dónde vas y por cuánto?</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu destino</p>
                   </div>
-                  <span class="material-symbols-outlined text-slate-600" style="font-size:20px">chevron_right</span>
+                  <span class="material-symbols-outlined text-slate-300" style="font-size:20px">chevron_right</span>
                 </button>
               } @else {
                 <div class="flex flex-col">
-                  <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
-                    <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">search</span>
+                  <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+                    <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">search</span>
                     <input #tripInput
                       [value]="tripQuery()"
                       (input)="onTripQueryInput($any($event.target).value)"
                       (keydown.escape)="closeTripSearch()"
                       placeholder="Busca tu destino..."
-                      class="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-500"/>
+                      class="flex-1 bg-transparent text-slate-800 text-sm outline-none placeholder-slate-400"/>
                     <button (click)="closeTripSearch()">
-                      <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
+                      <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                     </button>
                   </div>
                   @if (tripSuggestions().length > 0) {
                     <div class="flex flex-col max-h-48 overflow-y-auto">
                       @for (s of tripSuggestions(); track s.id) {
                         <button (mousedown)="$event.preventDefault(); selectTripDest(s)"
-                          class="flex items-center gap-3 px-4 py-3 border-b border-white/4 last:border-0 hover:bg-white/[0.05] active:bg-white/[0.08] text-left transition-colors">
+                          class="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
                           <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
                           <div class="flex-1 min-w-0">
-                            <p class="text-white text-sm font-semibold truncate">{{ s.text }}</p>
-                            <p class="text-slate-500 text-xs truncate">{{ s.place_name }}</p>
+                            <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                            <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
                           </div>
-                          <span class="text-orange-400 text-xs font-black flex-shrink-0">{{ s.distKm }} km</span>
+                          <span class="text-orange-500 text-xs font-black flex-shrink-0">{{ s.distKm }} km</span>
                         </button>
                       }
                     </div>
                   } @else if (tripQuery().length > 1) {
-                    <div class="px-4 py-4 text-slate-500 text-sm text-center flex items-center justify-center gap-2">
+                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-2">
                       <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
                       Buscando lugares...
                     </div>
@@ -218,47 +218,33 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
 
             } @else if (!tripSent()) {
-              <div class="flex items-center gap-3 px-4 py-3 border-b border-white/6">
-                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">place</span>
+              <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+                <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">place</span>
                 <div class="flex-1 min-w-0">
                   <p class="text-slate-400 text-[10px] uppercase tracking-wider">Destino · {{ tripDistKm() }} km</p>
-                  <p class="text-white text-sm font-bold truncate">{{ tripDest()!.name }}</p>
+                  <p class="text-slate-800 text-sm font-bold truncate">{{ tripDest()!.name }}</p>
                 </div>
                 <button (click)="cancelTrip()">
-                  <span class="material-symbols-outlined text-slate-500" style="font-size:20px">close</span>
+                  <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                 </button>
               </div>
 
-              <div class="flex gap-2 px-4 py-2 border-b border-white/6">
-                <button (click)="setTripVehicle('carro')"
-                  class="flex-1 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
-                  [class]="tripVehicle()==='carro' ? 'bg-orange-500 text-black' : 'bg-white/5 border border-white/10 text-slate-400'">
-                  <span class="material-symbols-outlined" style="font-size:18px">directions_car</span> Carro
-                </button>
-                <button (click)="setTripVehicle('moto')"
-                  class="flex-1 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all"
-                  [class]="tripVehicle()==='moto' ? 'bg-cyan-500 text-black' : 'bg-white/5 border border-white/10 text-slate-400'">
-                  <span class="material-symbols-outlined" style="font-size:18px">two_wheeler</span> Moto
-                </button>
-              </div>
-
-              <div class="flex items-center gap-3 px-4 py-2 border-b border-white/6">
+              <div class="flex items-center gap-3 px-4 py-2 border-b border-slate-100">
                 <div class="flex-1">
-                  <p class="text-slate-500 text-[10px] uppercase tracking-wider">Valor sugerido</p>
-                  <p class="text-white font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
+                  <p class="text-slate-400 text-[10px] uppercase tracking-wider">Valor sugerido</p>
+                  <p class="text-slate-800 font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                   <button (click)="adjustTripPrice(-500)"
-                    class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center active:scale-95 transition-all">−</button>
+                    class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-black text-xl flex items-center justify-center active:scale-95 transition-all">−</button>
                   <button (click)="adjustTripPrice(500)"
-                    class="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-black text-xl flex items-center justify-center active:scale-95 transition-all">+</button>
+                    class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-black text-xl flex items-center justify-center active:scale-95 transition-all">+</button>
                 </div>
               </div>
 
               <div class="px-4 py-3">
                 <button (click)="findOffers()" [disabled]="tripSending()"
-                  class="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-60 active:scale-[0.98]"
-                  [class]="tripVehicle()==='carro' ? 'bg-orange-500 text-black' : 'bg-cyan-500 text-black'">
+                  class="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-60 active:scale-[0.98] bg-orange-500 text-white">
                   @if (tripSending()) {
                     <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Buscando...
                   } @else {
@@ -269,14 +255,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             } @else {
               <div class="px-4 py-6 flex flex-col items-center gap-3 text-center">
-                <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-emerald-400" style="font-size:28px">check_circle</span>
+                <div class="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-emerald-500" style="font-size:28px">check_circle</span>
                 </div>
-                <p class="text-white font-black text-base">¡Solicitud enviada!</p>
-                <p class="text-slate-400 text-sm">Buscando conductores disponibles…</p>
-                <p class="text-slate-600 text-xs">{{ tripDest()!.name }} · {{ formatCOP(tripPrice()) }} · {{ tripDistKm() }} km</p>
+                <p class="text-slate-800 font-black text-base">¡Solicitud enviada!</p>
+                <p class="text-slate-500 text-sm">Buscando conductores disponibles…</p>
+                <p class="text-slate-400 text-xs">{{ tripDest()!.name }} · {{ formatCOP(tripPrice()) }} · {{ tripDistKm() }} km</p>
                 <button (click)="cancelTrip()"
-                  class="mt-2 px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-xs font-bold">
+                  class="mt-2 px-5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-bold">
                   Cancelar solicitud
                 </button>
               </div>
