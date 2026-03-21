@@ -905,7 +905,7 @@ type AgScreen =
       <div class="absolute top-0 left-0 right-0 z-10 px-4 pt-12 pb-3 flex flex-col gap-3"
            style="background:linear-gradient(to bottom,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0) 100%)">
         <div class="flex items-center gap-3">
-          <button (click)="screen.set('passenger-home')" class="w-10 h-10 rounded-full bg-black/70 border border-white/15 flex items-center justify-center backdrop-blur-xl shrink-0">
+          <button (click)="cancelPickOrigin()" class="w-10 h-10 rounded-full bg-black/70 border border-white/15 flex items-center justify-center backdrop-blur-xl shrink-0">
             <span class="material-symbols-outlined text-white" style="font-size:20px">arrow_back</span>
           </button>
           <div class="flex-1 flex items-center gap-2 bg-black/70 border border-white/15 rounded-2xl px-4 py-2.5 backdrop-blur-xl">
@@ -2861,6 +2861,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _chatChannel: any = null;
   private _timerInterval: any = null;
   private _leafletLoaded = false;
+  private _leafletPromise: Promise<any> | null = null; // evita race condition al cargar Leaflet dos veces simultáneamente
+  private _mapToken = 0;                               // token de cancelación: cada nueva initPickMap lo incrementa; pasos async comprueban que sigue vigente
+  private _requestMarkers: any[] = [];                 // markers del mapa de conductor para actualizar sin recrear el mapa
 
   // Admin
   adminTab        = signal<'pending' | 'all'>('pending');
@@ -3250,6 +3253,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.initPickMap('ag-map-origin', lat, lng, (lt, ln) => this.onOriginPick(lt, ln));
   }
 
+  cancelPickOrigin() {
+    // Invalida cualquier initPickMap en curso (token cambia → pasos async se abortan)
+    this._mapToken++;
+    this.destroyMap();
+    this.screen.set('passenger-home');
+  }
+
   openMapWithDefault() {
     this.screen.set('passenger-pick-origin');
     this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
@@ -3400,9 +3410,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Map helpers ──
 
-  private async loadLeaflet(): Promise<any> {
-    if (!isPlatformBrowser(this.platformId)) return null;
-    if ((window as any).L) return (window as any).L;
+  private loadLeaflet(): Promise<any> {
+    if (!isPlatformBrowser(this.platformId)) return Promise.resolve(null);
+    if ((window as any).L) return Promise.resolve((window as any).L);
+    // Fix: reusar la misma promesa si ya está cargando (evita doble <script>)
+    if (this._leafletPromise) return this._leafletPromise;
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
       link.id = 'leaflet-css';
@@ -3410,12 +3422,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       document.head.appendChild(link);
     }
-    return new Promise(resolve => {
+    this._leafletPromise = new Promise(resolve => {
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       script.onload = () => { this._leafletLoaded = true; resolve((window as any).L); };
       document.head.appendChild(script);
     });
+    return this._leafletPromise;
   }
 
   // ── Light tile layer (CARTO Voyager — claro, sin API key, mismo CDN que ya funciona) ──
@@ -3467,21 +3480,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private drawRoute(map: any, L: any, geometry: any) {
     if (!geometry) return;
     try {
+      // Fix: el outline blanco debe dibujarse PRIMERO (z-order = orden de inserción en Leaflet)
+      // así la ruta naranja queda encima y visible
+      L.geoJSON(geometry, {
+        style: {
+          color: 'rgba(255,255,255,0.25)',
+          weight: 10,
+          opacity: 1,
+          lineCap: 'round',
+          lineJoin: 'round',
+        },
+      }).addTo(map);
       L.geoJSON(geometry, {
         style: {
           color: '#f97316',
           weight: 6,
           opacity: 0.9,
-          lineCap: 'round',
-          lineJoin: 'round',
-        },
-      }).addTo(map);
-      // White outline below for contrast
-      L.geoJSON(geometry, {
-        style: {
-          color: 'rgba(255,255,255,0.15)',
-          weight: 10,
-          opacity: 1,
           lineCap: 'round',
           lineJoin: 'round',
         },
@@ -3494,11 +3508,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return new Promise(resolve => {
       const attempt = (tries: number) => {
         const el = document.getElementById(id);
-        if (el) { resolve(el); return; }
+        // Fix: también verificar que el elemento tenga dimensiones (importante en OnPush + SSR)
+        if (el && el.offsetWidth > 0 && el.offsetHeight > 0) { resolve(el); return; }
+        if (el && tries <= 0) { resolve(el); return; } // último recurso: retornar aunque sin dimensiones
         if (tries <= 0) { resolve(null); return; }
         requestAnimationFrame(() => attempt(tries - 1));
       };
-      attempt(60); // hasta ~1 segundo a 60fps
+      attempt(150); // Fix: 150 frames (~2.5s) para dispositivos lentos
     });
   }
 
@@ -3515,30 +3531,35 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Pick map: center-pin approach, instant GPS ──
   private async initPickMap(elementId: string, lat: number, lng: number, onPick: (lat: number, lng: number) => void) {
+    // Token de cancelación: si llega una nueva llamada mientras esta espera, el token cambia
+    // y esta ejecución se abandona limpiamente en cualquier punto async.
+    const token = ++this._mapToken;
+
     const L = await this.loadLeaflet();
-    if (!L) return;
-    this.destroyMap();
-    // Espera real a que Angular renderice el div (OnPush puede demorar más que setTimeout fijo)
+    if (!L || token !== this._mapToken) return; // cancelada por llamada posterior
+
+    this.destroyMap(); // destruye mapa anterior (NO modifica _mapToken)
+
+    // Espera a que Angular renderice el div (OnPush puede demorar varios frames)
     const el = await this.waitForDomElement(elementId);
-    if (!el) return;
+    if (!el || token !== this._mapToken) return; // cancelada o DOM no disponible
+
     this.mapLoading.set(true);
 
-    // Set position IMMEDIATELY so confirm button is enabled right away
+    // Habilitar el botón "Confirmar" inmediatamente con la posición inicial
     onPick(lat, lng);
     this.mapPickingAddress.set('Detectando dirección...');
 
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], 16);
     this.addTiles(map, L);
-
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     L.control.attribution({ position: 'bottomright', prefix: '' }).addTo(map);
 
-    // On map move: update position immediately, geocode asynchronously
+    // Al mover el mapa: actualizar posición al instante y geocodificar en background
     const handleCenter = () => {
-      // Si el usuario seleccionó un lugar del buscador, ignorar este moveend
       if (this._skipNextMoveEnd) { this._skipNextMoveEnd = false; return; }
       const center = map.getCenter();
-      onPick(center.lat, center.lng); // habilita el botón confirmar al instante
+      onPick(center.lat, center.lng);
       this.zone.run(async () => {
         this.mapPickingAddress.set('Obteniendo dirección...');
         const addr = await this.svc.reverseGeocode(center.lat, center.lng);
@@ -3553,10 +3574,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map = map;
     this.mapLoading.set(false);
 
-    // Forzar redibujado de tiles (esencial cuando el contenedor acababa de aparecer en DOM)
-    setTimeout(() => { if (this._map) { this._map.invalidateSize(); handleCenter(); } }, 200);
+    // invalidateSize múltiple: garantiza tiles correctos aunque el layout tarde en estabilizarse
+    [100, 400, 800].forEach(delay =>
+      setTimeout(() => { if (this._map === map) this._map.invalidateSize(); }, delay)
+    );
+    // Geocodificar la posición inicial
+    setTimeout(() => { if (this._map === map) handleCenter(); }, 150);
 
-    // Show available drivers on map (those with real GPS location in DB)
+    // Mostrar conductores disponibles con GPS real
     this.showDriversOnMap(map, L);
   }
 
@@ -3564,11 +3589,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async initTripMap() {
     const req = this.activeRideRequest();
     if (!req) return;
+    const token = ++this._mapToken;
     const L = await this.loadLeaflet();
-    if (!L) return;
+    if (!L || token !== this._mapToken) return;
     this.destroyMap();
     const el = await this.waitForDomElement('ag-map-trip');
-    if (!el) return;
+    if (!el || token !== this._mapToken) return;
 
     const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([req.origin_lat, req.origin_lng], 14);
     this.addTiles(map, L);
@@ -3598,6 +3624,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     map.fitBounds([[req.origin_lat, req.origin_lng], [req.dest_lat, req.dest_lng]], { padding: [60, 60] });
     this._map = map;
+    // Fix: invalidateSize para tiles del mapa de viaje
+    [100, 400].forEach(delay => setTimeout(() => { if (this._map) this._map.invalidateSize(); }, delay));
   }
 
   // ── Show available drivers with real GPS position on map ──
@@ -3617,6 +3645,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private destroyMap() {
     if (this._driverMarker) { try { this._map?.removeLayer(this._driverMarker); } catch {} this._driverMarker = null; }
+    // Limpiar markers de requests
+    this._requestMarkers.forEach(m => { try { this._map?.removeLayer(m); } catch {} });
+    this._requestMarkers = [];
     if (this._map) {
       try { this._map.remove(); } catch {}
       this._map = null;
@@ -3910,11 +3941,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Driver map helpers ──
 
   private async initDriverRequestsMap() {
+    const token = ++this._mapToken;
     const L = await this.loadLeaflet();
-    if (!L) return;
+    if (!L || token !== this._mapToken) return;
     this.destroyMap();
     const el = await this.waitForDomElement('ag-map-driver-requests');
-    if (!el) return;
+    if (!el || token !== this._mapToken) return;
     const reqs = this.pendingRequests();
 
     // Center: user's GPS if available, else first request, else Bogotá
@@ -3942,22 +3974,46 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
 
     // Request markers with price badge
+    this._requestMarkers = [];
     reqs.forEach(req => {
       const icon = L.divIcon({
         className: '',
         html: `<div style="background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 12px rgba(245,158,11,0.6);border:2px solid rgba(255,255,255,0.3)">$${(req.offered_price / 1000).toFixed(0)}k</div>`,
         iconAnchor: [24, 12],
       });
-      L.marker([req.origin_lat, req.origin_lng], { icon })
+      const marker = L.marker([req.origin_lat, req.origin_lng], { icon })
         .addTo(map)
         .bindPopup(`<b style="color:#f59e0b">$${req.offered_price.toLocaleString('es-CO')} COP</b><br><span style="color:#ccc;font-size:12px">${req.origin_address}</span>`);
+      this._requestMarkers.push(marker);
     });
 
     this._map = map;
+    // Fix: invalidateSize para garantizar tiles correctos en el mapa del conductor
+    [100, 400].forEach(delay => setTimeout(() => { if (this._map) this._map.invalidateSize(); }, delay));
   }
 
   private refreshDriverRequestsMap() {
-    if (this._map && this.screen() === 'driver-requests') {
+    if (!this._map || this.screen() !== 'driver-requests') return;
+    if ((window as any).L) {
+      // Fix: actualizar solo los markers de requests sin destruir/recrear el mapa
+      // Esto elimina el parpadeo que había al llegar cada nueva solicitud
+      const L = (window as any).L;
+      this._requestMarkers.forEach(m => { try { this._map.removeLayer(m); } catch {} });
+      this._requestMarkers = [];
+      const reqs = this.pendingRequests();
+      reqs.forEach(req => {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 12px rgba(245,158,11,0.6);border:2px solid rgba(255,255,255,0.3)">$${(req.offered_price / 1000).toFixed(0)}k</div>`,
+          iconAnchor: [24, 12],
+        });
+        const marker = L.marker([req.origin_lat, req.origin_lng], { icon })
+          .addTo(this._map)
+          .bindPopup(`<b style="color:#f59e0b">$${req.offered_price.toLocaleString('es-CO')} COP</b><br><span style="color:#ccc;font-size:12px">${req.origin_address}</span>`);
+        this._requestMarkers.push(marker);
+      });
+    } else {
+      // Leaflet aún no cargado: recrear mapa completo
       setTimeout(() => this.initDriverRequestsMap(), 50);
     }
   }
@@ -3965,11 +4021,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async initDriverTripMap() {
     const ride = this.activeDriverRide();
     if (!ride) return;
+    const token = ++this._mapToken;
     const L = await this.loadLeaflet();
-    if (!L) return;
+    if (!L || token !== this._mapToken) return;
     this.destroyMap();
     const el = await this.waitForDomElement('ag-map-driver-trip');
-    if (!el) return;
+    if (!el || token !== this._mapToken) return;
 
     const isPickup = ride.status === 'accepted'; // going to pick up passenger
     const targetLat = isPickup ? ride.origin_lat : ride.dest_lat;
@@ -4022,6 +4079,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
 
     this._map = map;
+    // Fix: invalidateSize para tiles del mapa del conductor en viaje activo
+    [100, 400].forEach(delay => setTimeout(() => { if (this._map) this._map.invalidateSize(); }, delay));
   }
 
   private cleanupDriverRide() {
