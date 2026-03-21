@@ -1,16 +1,122 @@
-import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AndaGanaService } from './anda-gana.service';
+import { SlicePipe } from '@angular/common';
+import { AndaGanaService, AgUser } from './anda-gana.service';
 
-type AgScreen = 'home' | 'passenger-form' | 'driver-form';
+type AgScreen = 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
 
 @Component({
   selector: 'app-anda-gana',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, SlicePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4">
+
+  <!-- ═══════════ LOADING ═══════════ -->
+  @if (screen() === 'loading') {
+    <div class="flex-1 flex items-center justify-center">
+      <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:40px">autorenew</span>
+    </div>
+  }
+
+  <!-- ═══════════ PASAJERO DASHBOARD ═══════════ -->
+  @if (screen() === 'passenger-home') {
+    <div class="w-full max-w-lg flex flex-col gap-5">
+      <div class="flex flex-col items-center gap-3 text-center pt-4 pb-2">
+        <div class="w-16 h-16 rounded-2xl bg-orange-500/10 border-2 border-orange-500/20 flex items-center justify-center">
+          <span class="material-symbols-outlined text-orange-400" style="font-size:32px">person</span>
+        </div>
+        <div>
+          <h1 class="text-white font-black text-xl">¡Hola, {{ firstName() }}!</h1>
+          <p class="text-slate-400 text-sm">Tu cuenta de pasajero está activa</p>
+        </div>
+        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+          <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Activo
+        </span>
+      </div>
+
+      <!-- Info card -->
+      <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-5 flex flex-col gap-3">
+        <h3 class="text-white font-black text-sm uppercase tracking-widest">Tu perfil</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <div><p class="text-slate-500 text-[10px] uppercase">Ciudad</p><p class="text-white text-sm font-bold">{{ agProfile()?.city }}</p></div>
+          <div><p class="text-slate-500 text-[10px] uppercase">Teléfono</p><p class="text-white text-sm font-bold">{{ agProfile()?.phone }}</p></div>
+          <div><p class="text-slate-500 text-[10px] uppercase">Correo</p><p class="text-slate-300 text-xs">{{ agProfile()?.email }}</p></div>
+          <div><p class="text-slate-500 text-[10px] uppercase">Miembro desde</p><p class="text-slate-300 text-xs">{{ agProfile()?.created_at | slice:0:10 }}</p></div>
+        </div>
+      </div>
+
+      <div class="bg-orange-500/5 border border-orange-500/15 rounded-2xl p-5 text-center">
+        <span class="material-symbols-outlined text-orange-400 mb-2 block" style="font-size:36px">directions_car</span>
+        <p class="text-white font-bold text-sm mb-1">Pronto podrás solicitar viajes</p>
+        <p class="text-slate-500 text-xs">Estamos activando los conductores en tu ciudad. Te notificaremos cuando esté disponible.</p>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ CONDUCTOR DASHBOARD ═══════════ -->
+  @if (screen() === 'driver-home') {
+    <div class="w-full max-w-lg flex flex-col gap-5">
+      <div class="flex flex-col items-center gap-3 text-center pt-4 pb-2">
+        <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center">
+          <span class="material-symbols-outlined text-cyan-400" style="font-size:32px">directions_car</span>
+        </div>
+        <div>
+          <h1 class="text-white font-black text-xl">¡Hola, {{ firstName() }}!</h1>
+          <p class="text-slate-400 text-sm">Tu cuenta de conductor</p>
+        </div>
+        @if (driverStatus() === 'pending') {
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
+            <span class="material-symbols-outlined" style="font-size:14px">schedule</span> En revisión
+          </span>
+        } @else if (driverStatus() === 'approved') {
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+            <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Aprobado
+          </span>
+        } @else if (driverStatus() === 'rejected') {
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">
+            <span class="material-symbols-outlined" style="font-size:14px">cancel</span> Rechazado
+          </span>
+        }
+      </div>
+
+      @if (driverStatus() === 'pending') {
+        <div class="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-5 text-center flex flex-col items-center gap-2">
+          <span class="material-symbols-outlined text-amber-400" style="font-size:36px">hourglass_top</span>
+          <p class="text-white font-bold text-sm">Tu solicitud está siendo revisada</p>
+          <p class="text-slate-400 text-xs leading-relaxed">Nuestro equipo verificará tus documentos en las próximas 24–48 horas. Te notificaremos por correo cuando sea aprobada.</p>
+        </div>
+      }
+      @if (driverStatus() === 'approved') {
+        <div class="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-5 text-center flex flex-col items-center gap-2">
+          <span class="material-symbols-outlined text-emerald-400" style="font-size:36px">verified</span>
+          <p class="text-white font-bold text-sm">¡Estás aprobado como conductor!</p>
+          <p class="text-slate-400 text-xs">Ya puedes recibir solicitudes de viaje. La app estará disponible muy pronto.</p>
+        </div>
+      }
+      @if (driverStatus() === 'rejected') {
+        <div class="bg-rose-500/5 border border-rose-500/15 rounded-2xl p-5 flex flex-col gap-2">
+          <p class="text-white font-bold text-sm">Tu solicitud fue rechazada</p>
+          @if (driverRejectionReason()) {
+            <p class="text-slate-400 text-xs leading-relaxed"><span class="text-rose-400 font-bold">Motivo:</span> {{ driverRejectionReason() }}</p>
+          }
+          <p class="text-slate-500 text-xs">Puedes contactar al soporte para más información.</p>
+        </div>
+      }
+
+      <!-- Info card -->
+      <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-5 flex flex-col gap-3">
+        <h3 class="text-white font-black text-sm uppercase tracking-widest">Tu vehículo</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <div><p class="text-slate-500 text-[10px] uppercase">Placa</p><p class="text-white text-sm font-black">{{ driverData()?.plate }}</p></div>
+          <div><p class="text-slate-500 text-[10px] uppercase">Tipo</p><p class="text-white text-sm font-bold">{{ driverData()?.vehicle_type }}</p></div>
+          <div><p class="text-slate-500 text-[10px] uppercase">Marca / Modelo</p><p class="text-slate-300 text-xs">{{ driverData()?.vehicle_brand }} {{ driverData()?.vehicle_model }}</p></div>
+          <div><p class="text-slate-500 text-[10px] uppercase">Año</p><p class="text-slate-300 text-xs">{{ driverData()?.vehicle_year }}</p></div>
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- ═══════════ HOME ═══════════ -->
   @if (screen() === 'home') {
@@ -494,12 +600,42 @@ type AgScreen = 'home' | 'passenger-form' | 'driver-form';
 </div>
   `,
 })
-export class AndaGanaComponent {
+export class AndaGanaComponent implements OnInit {
 
   private readonly agService = inject(AndaGanaService);
 
-  screen     = signal<AgScreen>('home');
+  screen     = signal<AgScreen>('loading');
   driverStep = signal<number>(1);
+
+  // Perfil actual
+  agProfile       = signal<AgUser | null>(null);
+  driverData      = signal<any>(null);
+  driverStatus    = signal<string>('');
+  driverRejectionReason = signal<string | null>(null);
+
+  firstName() { return this.agProfile()?.full_name?.split(' ')[0] ?? ''; }
+
+  async ngOnInit() {
+    const profile = await this.agService.getMyAgProfile();
+    this.agProfile.set(profile);
+
+    if (!profile) {
+      this.screen.set('home');
+      return;
+    }
+
+    if (profile.role === 'passenger') {
+      this.screen.set('passenger-home');
+    } else {
+      // Load driver data
+      const drivers = await this.agService.getDrivers();
+      const mine = drivers.find(d => d.ag_user_id === profile.id) ?? null;
+      this.driverData.set(mine);
+      this.driverStatus.set(mine?.status ?? 'pending');
+      this.driverRejectionReason.set(mine?.rejection_reason ?? null);
+      this.screen.set('driver-home');
+    }
+  }
 
   // ── Passenger form state ──
   passengerLoading = signal(false);
@@ -625,6 +761,9 @@ export class AndaGanaComponent {
     this.passengerLoading.set(false);
     if (result.success) {
       this.passengerSuccess.set(true);
+      setTimeout(async () => {
+        await this.ngOnInit();
+      }, 2000);
     } else {
       this.passengerError.set(result.error ?? 'Error al registrarse.');
     }
@@ -666,6 +805,9 @@ export class AndaGanaComponent {
     this.driverLoading.set(false);
     if (result.success) {
       this.driverSuccess.set(true);
+      setTimeout(async () => {
+        await this.ngOnInit();
+      }, 2000);
     } else {
       this.driverError.set(result.error ?? 'Error al registrarse.');
     }
