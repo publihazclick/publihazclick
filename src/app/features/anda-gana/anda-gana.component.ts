@@ -1509,25 +1509,35 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   onTripQueryInput(val: string) {
     this.tripQuery.set(val);
     if (this._tripDebounce) clearTimeout(this._tripDebounce);
-    if (val.length < 2) { this.tripSuggestions.set([]); return; }
-    this._tripDebounce = setTimeout(() => this._searchTripPlaces(val), 350);
+    if (!val.trim()) { this.tripSuggestions.set([]); return; }
+    this._tripDebounce = setTimeout(() => this._searchTripPlaces(val), 120);
   }
 
+  private _tripAbort: AbortController | null = null;
+
   private async _searchTripPlaces(query: string) {
+    // Cancelar petición anterior
+    if (this._tripAbort) this._tripAbort.abort();
+    this._tripAbort = new AbortController();
+
     const lat = this._currentLat, lng = this._currentLng;
-    const bbox = [lng - 0.22, lat - 0.22, lng + 0.22, lat + 0.22].join(',');
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-      + `?access_token=${this.MAPBOX_TOKEN}&language=es&limit=6`
-      + `&proximity=${lng},${lat}&bbox=${bbox}`;
+      + `?access_token=${this.MAPBOX_TOKEN}`
+      + `&autocomplete=true`
+      + `&fuzzyMatch=true`
+      + `&language=es`
+      + `&limit=7`
+      + `&types=address,place,poi,neighborhood,locality,district,region`
+      + `&proximity=${lng},${lat}`;
     try {
-      const res  = await fetch(url);
+      const res  = await fetch(url, { signal: this._tripAbort.signal });
       const json = await res.json();
       const features = (json.features ?? []).map((f: any) => {
         const [fLng, fLat] = f.center ?? [lng, lat];
         return { ...f, distKm: this._distKm(lat, lng, fLat, fLng) };
       });
       this.tripSuggestions.set(features);
-    } catch { /* ignore */ }
+    } catch { /* aborted o sin red */ }
   }
 
   selectTripDest(s: any) {
