@@ -900,7 +900,7 @@ type AgScreen =
   @if (screen() === 'passenger-pick-origin') {
     <div class="fixed inset-0 z-50 bg-black flex flex-col" style="padding:0;margin:0;max-width:none;width:100vw;left:0;right:0;top:0;bottom:0">
       <!-- Map fills everything -->
-      <div id="ag-map-origin" class="absolute inset-0" style="z-index:1"></div>
+      <div id="ag-map-origin" class="absolute inset-0" style="z-index:1;background:#f0f0f0"></div>
 
       <!-- Top overlay: back + search -->
       <div class="absolute top-0 left-0 right-0 z-10 px-4 pt-12 pb-3 flex flex-col gap-3"
@@ -999,7 +999,7 @@ type AgScreen =
   @if (screen() === 'passenger-pick-dest') {
     <div class="fixed inset-0 z-50 bg-black flex flex-col" style="padding:0;margin:0;max-width:none;width:100vw;left:0;right:0;top:0;bottom:0">
       <!-- Map -->
-      <div id="ag-map-dest" class="absolute inset-0" style="z-index:1"></div>
+      <div id="ag-map-dest" class="absolute inset-0" style="z-index:1;background:#f0f0f0"></div>
 
       <!-- Top overlay -->
       <div class="absolute top-0 left-0 right-0 z-10 px-4 pt-12 pb-3 flex flex-col gap-3"
@@ -1299,7 +1299,7 @@ type AgScreen =
 
       <!-- Mapa del viaje -->
       @if (tripTab() === 'map') {
-        <div id="ag-map-trip" class="overflow-hidden border border-white/5 bg-zinc-900 w-full" style="height:420px;border-radius:20px"></div>
+        <div id="ag-map-trip" class="overflow-hidden border border-white/5 w-full" style="height:420px;border-radius:20px;background:#f0f0f0"></div>
 
         <!-- Real-time GPS indicator -->
         <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/5">
@@ -1989,7 +1989,7 @@ type AgScreen =
       </div>
 
       <!-- Mapa con pines -->
-      <div id="ag-map-driver-requests" class="overflow-hidden border border-white/5 bg-zinc-900 w-full" style="height:380px;border-radius:20px"></div>
+      <div id="ag-map-driver-requests" class="overflow-hidden border border-white/5 w-full" style="height:380px;border-radius:20px;background:#f0f0f0"></div>
 
       <!-- Lista de solicitudes -->
       @if (requestsLoading()) {
@@ -2125,7 +2125,7 @@ type AgScreen =
 
       <!-- Mapa -->
       @if (driverTripTab() === 'map') {
-        <div id="ag-map-driver-trip" class="overflow-hidden border border-white/5 bg-zinc-900 w-full" style="height:420px;border-radius:20px"></div>
+        <div id="ag-map-driver-trip" class="overflow-hidden border border-white/5 w-full" style="height:420px;border-radius:20px;background:#f0f0f0"></div>
 
         <!-- GPS tracking status -->
         <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all"
@@ -3571,7 +3571,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     const map = new mapboxgl.Map({
       container: el,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/mapbox/light-v11',
       center: [lng, lat],
       zoom: 15,
       attributionControl: false,
@@ -3625,7 +3625,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     const map = new mapboxgl.Map({
       container: el,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/mapbox/light-v11',
       center: [req.origin_lng, req.origin_lat],
       zoom: 13,
       attributionControl: false,
@@ -3996,7 +3996,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     const map = new mapboxgl.Map({
       container: el,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/mapbox/light-v11',
       center,
       zoom: 13,
       attributionControl: false,
@@ -4080,7 +4080,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     const map = new mapboxgl.Map({
       container: el,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/mapbox/light-v11',
       center: [targetLng, targetLat],
       zoom: 14,
       attributionControl: false,
