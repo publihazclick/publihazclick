@@ -69,7 +69,7 @@ type AgScreen =
           </span>
         </button>
       }
-      <button (click)="screen.set('passenger-home')"
+      <button (click)="cancelGpsWait()"
         class="text-slate-500 text-sm hover:text-slate-300 transition-colors">
         ← Volver al inicio
       </button>
@@ -2863,6 +2863,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _leafletLoaded = false;
   private _leafletPromise: Promise<any> | null = null; // evita race condition al cargar Leaflet dos veces simultáneamente
   private _mapToken = 0;                               // token de cancelación: cada nueva initPickMap lo incrementa; pasos async comprueban que sigue vigente
+  private _gpsToken = 0;                               // token de cancelación para el flujo GPS (startRideRequest / retryGps)
   private _requestMarkers: any[] = [];                 // markers del mapa de conductor para actualizar sin recrear el mapa
 
   // Admin
@@ -3228,6 +3229,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     this.screen.set('passenger-gps-wait');
     this.mapLoading.set(true);
+    const gpsToken = ++this._gpsToken;
 
     let lat = 4.711, lng = -74.0721;
     try {
@@ -3235,6 +3237,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
     } catch (err: any) {
+      if (gpsToken !== this._gpsToken) return; // usuario navegó hacia atrás
       this.mapLoading.set(false);
       if (err?.code === 1) {
         // Permiso denegado — mostrar error y esperar que el usuario reintente
@@ -3248,9 +3251,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.gpsError.set('El GPS tardó demasiado. Puedes buscar tu dirección en el mapa manualmente.');
     }
 
+    if (gpsToken !== this._gpsToken) return; // usuario navegó hacia atrás
     this.mapLoading.set(false);
     this.screen.set('passenger-pick-origin');
     this.initPickMap('ag-map-origin', lat, lng, (lt, ln) => this.onOriginPick(lt, ln));
+  }
+
+  cancelGpsWait() {
+    // Cancela el flujo GPS en curso (startRideRequest / retryGps seguirán corriendo pero no harán nada)
+    this._gpsToken++;
+    this.mapLoading.set(false);
+    this.screen.set('passenger-home');
   }
 
   cancelPickOrigin() {
@@ -3269,6 +3280,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.gpsError.set('');
     this.mapLoading.set(true);
     if (!navigator.geolocation) { this.mapLoading.set(false); return; }
+    const gpsToken = ++this._gpsToken;
 
     let lat = 4.711, lng = -74.0721;
     try {
@@ -3276,6 +3288,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
     } catch (err: any) {
+      if (gpsToken !== this._gpsToken) return;
       this.mapLoading.set(false);
       if (err?.code === 1) {
         this.gpsError.set('GPS sigue denegado. Ve a la configuración de tu navegador, busca "Ubicación" y permite el acceso a este sitio.');
@@ -3284,6 +3297,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.gpsError.set('No se pudo obtener GPS. Continúa sin él y escribe tu dirección en el buscador del mapa.');
     }
 
+    if (gpsToken !== this._gpsToken) return;
     this.mapLoading.set(false);
     this.screen.set('passenger-pick-origin');
     this.initPickMap('ag-map-origin', lat, lng, (lt, ln) => this.onOriginPick(lt, ln));
