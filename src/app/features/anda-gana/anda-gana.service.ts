@@ -39,15 +39,39 @@ export interface AgUser {
 export interface AgDriver {
   id: string;
   ag_user_id: string;
+  // Personal
+  id_number?: string;
+  birth_date?: string;
+  id_front_url?: string;
+  id_back_url?: string;
+  selfie_with_id_url?: string;
+  // License
   license_number: string;
+  license_category?: string;
+  license_expiry?: string;
   license_photo_url?: string;
+  license_back_url?: string;
+  // Vehicle
   vehicle_plate: string;
+  vehicle_type?: string;
   vehicle_brand: string;
   vehicle_model: string;
   vehicle_year?: number;
+  vehicle_color?: string;
+  vehicle_vin?: string;
   vehicle_photo_url?: string;
+  vehicle_side_photo_url?: string;
+  // Documents
   soat_photo_url?: string;
   soat_expiry?: string;
+  property_card_front_url?: string;
+  property_card_back_url?: string;
+  tecno_expiry?: string;
+  tecno_photo_url?: string;
+  civil_liability_url?: string;
+  civil_liability_expiry?: string;
+  criminal_record_url?: string;
+  // Status
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
   is_available?: boolean;
@@ -197,22 +221,58 @@ export class AndaGanaService {
   }
 
   async saveDriverData(agUserId: string, d: {
-    licenseNumber: string; vehiclePlate: string; vehicleBrand: string;
-    vehicleModel: string; vehicleYear?: number; soatExpiry?: string;
-    licensePhotoUrl?: string; vehiclePhotoUrl?: string; soatPhotoUrl?: string;
+    // Personal
+    idNumber?: string; birthDate?: string;
+    idFrontUrl?: string; idBackUrl?: string; selfieWithIdUrl?: string;
+    // License
+    licenseNumber: string; licenseCategory?: string; licenseExpiry?: string;
+    licensePhotoUrl?: string; licenseBackUrl?: string;
+    // Vehicle
+    vehiclePlate: string; vehicleType?: string;
+    vehicleBrand: string; vehicleModel: string; vehicleYear?: number;
+    vehicleColor?: string; vehicleVin?: string;
+    vehiclePhotoUrl?: string; vehicleSidePhotoUrl?: string;
+    // Documents
+    soatExpiry?: string; soatPhotoUrl?: string;
+    propertyCardFrontUrl?: string; propertyCardBackUrl?: string;
+    tecnoExpiry?: string; tecnoPhotoUrl?: string;
+    civilLiabilityUrl?: string; civilLiabilityExpiry?: string;
+    criminalRecordUrl?: string;
   }): Promise<boolean> {
-    const { error } = await this.supabase.from('ag_drivers').insert({
-      ag_user_id: agUserId,
+    const row: Record<string, any> = {
+      ag_user_id:    agUserId,
       license_number: d.licenseNumber,
-      vehicle_plate: d.vehiclePlate,
-      vehicle_brand: d.vehicleBrand,
-      vehicle_model: d.vehicleModel,
-      vehicle_year: d.vehicleYear || null,
-      soat_expiry: d.soatExpiry || null,
-      license_photo_url: d.licensePhotoUrl || null,
-      vehicle_photo_url: d.vehiclePhotoUrl || null,
-      soat_photo_url: d.soatPhotoUrl || null,
-    });
+      vehicle_plate:  d.vehiclePlate,
+      vehicle_brand:  d.vehicleBrand,
+      vehicle_model:  d.vehicleModel,
+    };
+    const opt = (key: string, val: any) => { if (val) row[key] = val; };
+    opt('id_number',               d.idNumber);
+    opt('birth_date',              d.birthDate);
+    opt('id_front_url',            d.idFrontUrl);
+    opt('id_back_url',             d.idBackUrl);
+    opt('selfie_with_id_url',      d.selfieWithIdUrl);
+    opt('license_category',        d.licenseCategory);
+    opt('license_expiry',          d.licenseExpiry);
+    opt('license_photo_url',       d.licensePhotoUrl);
+    opt('license_back_url',        d.licenseBackUrl);
+    opt('vehicle_type',            d.vehicleType);
+    opt('vehicle_year',            d.vehicleYear);
+    opt('vehicle_color',           d.vehicleColor);
+    opt('vehicle_vin',             d.vehicleVin);
+    opt('vehicle_photo_url',       d.vehiclePhotoUrl);
+    opt('vehicle_side_photo_url',  d.vehicleSidePhotoUrl);
+    opt('soat_expiry',             d.soatExpiry);
+    opt('soat_photo_url',          d.soatPhotoUrl);
+    opt('property_card_front_url', d.propertyCardFrontUrl);
+    opt('property_card_back_url',  d.propertyCardBackUrl);
+    opt('tecno_expiry',            d.tecnoExpiry);
+    opt('tecno_photo_url',         d.tecnoPhotoUrl);
+    opt('civil_liability_url',     d.civilLiabilityUrl);
+    opt('civil_liability_expiry',  d.civilLiabilityExpiry);
+    opt('criminal_record_url',     d.criminalRecordUrl);
+
+    const { error } = await this.supabase.from('ag_drivers').insert(row);
     return !error;
   }
 

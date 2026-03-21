@@ -362,126 +362,373 @@ type AgScreen =
 
   <!-- ═══════════════════ REGISTER DRIVER ═══════════════════ -->
   @if (screen() === 'register-driver') {
-    <div class="w-full max-w-xl flex flex-col gap-6">
+    <div class="w-full max-w-xl flex flex-col gap-5">
+      <!-- Header -->
       <div class="text-center">
-        <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3">
-          <span class="material-symbols-outlined text-amber-400" style="font-size:26px">badge</span>
+        <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3">
+          <span class="material-symbols-outlined text-amber-400" style="font-size:30px">badge</span>
         </div>
         <h2 class="text-xl font-black text-white">Registro de Conductor</h2>
-        <p class="text-slate-500 text-sm mt-1">Completa tus datos · Tu solicitud será revisada por nuestro equipo</p>
+        <p class="text-slate-500 text-xs mt-1">Número verificado: <span class="text-amber-400 font-bold">+57 {{ phone() }}</span></p>
+        <p class="text-slate-600 text-[10px] mt-1">Tu solicitud será revisada por nuestro equipo en 24–48 horas</p>
       </div>
 
-      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-5">
+      <!-- ─── SECCIÓN 1: Datos Personales ─── -->
+      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+        <p class="text-[11px] text-amber-400 uppercase tracking-widest font-black flex items-center gap-1.5">
+          <span class="material-symbols-outlined" style="font-size:15px">person</span> 1. Datos Personales
+        </p>
 
-        <!-- Datos personales -->
+        <!-- Foto de perfil -->
         <div>
-          <p class="text-[10px] text-orange-400 uppercase tracking-widest font-black mb-3 flex items-center gap-1.5">
-            <span class="material-symbols-outlined" style="font-size:14px">person</span> Datos Personales
-          </p>
-          <input type="text" [value]="fullName()" (input)="fullName.set($any($event.target).value)"
-            placeholder="Nombres y Apellidos"
-            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+          <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">Foto de perfil <span class="text-slate-500 font-normal normal-case">(Opcional)</span></label>
+          <label class="flex items-center gap-4 cursor-pointer group w-fit">
+            <input type="file" accept="image/*" class="hidden" (change)="uploadFile($event, 'driver-avatar')" />
+            <div class="w-16 h-16 rounded-2xl border-2 border-dashed border-white/20 bg-white/[0.02] flex items-center justify-center overflow-hidden shrink-0 group-hover:border-amber-500/40 transition-all">
+              @if (uploadingDriverAvatar()) {
+                <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:24px">autorenew</span>
+              } @else if (driverAvatarUrl()) {
+                <img [src]="driverAvatarUrl()" class="w-full h-full object-cover" />
+              } @else {
+                <span class="material-symbols-outlined text-slate-500" style="font-size:28px">add_a_photo</span>
+              }
+            </div>
+            <div>
+              @if (driverAvatarUrl()) {
+                <p class="text-emerald-400 text-xs font-bold flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:13px">check_circle</span> Foto cargada</p>
+              } @else {
+                <p class="text-slate-300 text-xs font-bold">Agregar foto</p>
+                <p class="text-slate-500 text-[10px] mt-0.5">Foto visible para pasajeros</p>
+              }
+            </div>
+          </label>
         </div>
 
-        <!-- Licencia -->
-        <div>
-          <p class="text-[10px] text-orange-400 uppercase tracking-widest font-black mb-3 flex items-center gap-1.5">
-            <span class="material-symbols-outlined" style="font-size:14px">id_card</span> Licencia de Conducción
-          </p>
+        <!-- Nombres y apellidos + cédula + fecha nacimiento -->
+        <input type="text" [value]="fullName()" (input)="fullName.set($any($event.target).value)"
+          placeholder="Nombres y Apellidos *"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+
+        <div class="grid grid-cols-2 gap-3">
+          <input type="text" [value]="driverIdNumber()" (input)="driverIdNumber.set($any($event.target).value)"
+            placeholder="Nº Cédula *"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+          <div>
+            <label class="text-[9px] text-slate-500 uppercase tracking-widest font-bold block mb-1 ml-1">Fecha nacimiento *</label>
+            <input type="date" [value]="driverBirthDate()" (input)="driverBirthDate.set($any($event.target).value)"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-all" />
+          </div>
+        </div>
+
+        <input type="email" [value]="driverEmail()" (input)="driverEmail.set($any($event.target).value)"
+          placeholder="Correo electrónico *"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+
+        <input type="text" [value]="driverCity()" (input)="driverCity.set($any($event.target).value)"
+          placeholder="Ciudad donde operarás *"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+
+        <!-- Cédula frente + reverso -->
+        <div class="grid grid-cols-2 gap-3">
+          <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'id-front')" />
+            @if (uploadingIdFront()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+            @else if (idFrontUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+            @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">badge</span> }
+            <span class="text-[10px] font-bold text-center" [class]="idFrontUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ idFrontUrl() ? 'Cédula frente ✓' : 'Cédula frente' }}</span>
+          </label>
+          <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'id-back')" />
+            @if (uploadingIdBack()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+            @else if (idBackUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+            @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">flip</span> }
+            <span class="text-[10px] font-bold text-center" [class]="idBackUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ idBackUrl() ? 'Cédula reverso ✓' : 'Cédula reverso' }}</span>
+          </label>
+        </div>
+
+        <!-- Selfie con cédula -->
+        <label class="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+          <input type="file" accept="image/*" class="hidden" (change)="uploadFile($event, 'selfie-id')" />
+          <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+            @if (uploadingSelfieId()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+            @else if (selfieWithIdUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+            @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">face</span> }
+          </div>
+          <div>
+            <p class="text-xs font-bold" [class]="selfieWithIdUrl() ? 'text-emerald-400' : 'text-slate-300'">{{ selfieWithIdUrl() ? 'Selfie con cédula ✓' : 'Selfie sosteniendo tu cédula' }}</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">Foto tuya con el documento en mano visible</p>
+          </div>
+        </label>
+      </div>
+
+      <!-- ─── SECCIÓN 2: Licencia de Conducción ─── -->
+      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+        <p class="text-[11px] text-amber-400 uppercase tracking-widest font-black flex items-center gap-1.5">
+          <span class="material-symbols-outlined" style="font-size:15px">id_card</span> 2. Licencia de Conducción
+        </p>
+
+        <div class="grid grid-cols-2 gap-3">
           <input type="text" [value]="licenseNumber()" (input)="licenseNumber.set($any($event.target).value)"
-            placeholder="Número de licencia"
-            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all mb-3" />
-
-          <!-- Upload licencia -->
-          <label class="flex flex-col items-center gap-2 p-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 hover:bg-amber-500/5 transition-all">
-            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'license')" />
-            @if (uploadingLicense()) {
-              <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:24px">autorenew</span>
-              <span class="text-amber-400 text-xs font-bold">Subiendo...</span>
-            } @else if (licensePhotoUrl()) {
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:24px">check_circle</span>
-              <span class="text-emerald-400 text-xs font-bold">Foto de licencia cargada ✓</span>
-            } @else {
-              <span class="material-symbols-outlined text-slate-500" style="font-size:24px">upload_file</span>
-              <span class="text-slate-500 text-xs">Foto de licencia (JPG, PNG, PDF)</span>
-            }
-          </label>
+            placeholder="Número de licencia *"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+          <select [value]="licenseCategory()" (change)="licenseCategory.set($any($event.target).value)"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-all">
+            <option value="B1" class="bg-slate-900">B1 · Automóvil</option>
+            <option value="B2" class="bg-slate-900">B2 · Camioneta</option>
+            <option value="B3" class="bg-slate-900">B3 · Moto hasta 125cc</option>
+            <option value="A1" class="bg-slate-900">A1 · Moto +125cc</option>
+            <option value="A2" class="bg-slate-900">A2 · Moto especial</option>
+            <option value="C1" class="bg-slate-900">C1 · Camión</option>
+            <option value="C2" class="bg-slate-900">C2 · Camión articulado</option>
+          </select>
         </div>
 
-        <!-- Vehículo -->
         <div>
-          <p class="text-[10px] text-orange-400 uppercase tracking-widest font-black mb-3 flex items-center gap-1.5">
-            <span class="material-symbols-outlined" style="font-size:14px">directions_car</span> Datos del Vehículo
-          </p>
-          <div class="grid grid-cols-2 gap-3 mb-3">
-            <input type="text" [value]="vehiclePlate()" (input)="vehiclePlate.set($any($event.target).value)"
-              placeholder="Placa (AAA-000)"
-              class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all uppercase" />
-            <input type="number" [value]="vehicleYear()" (input)="vehicleYear.set($any($event.target).value)"
-              placeholder="Año" min="2000" max="2030"
-              class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
-          </div>
-          <div class="grid grid-cols-2 gap-3 mb-3">
-            <input type="text" [value]="vehicleBrand()" (input)="vehicleBrand.set($any($event.target).value)"
-              placeholder="Marca (Toyota...)"
-              class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
-            <input type="text" [value]="vehicleModel()" (input)="vehicleModel.set($any($event.target).value)"
-              placeholder="Modelo (Corolla...)"
-              class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
-          </div>
+          <label class="text-[9px] text-slate-500 uppercase tracking-widest font-bold block mb-1 ml-1">Fecha de vencimiento *</label>
+          <input type="date" [value]="licenseExpiry()" (input)="licenseExpiry.set($any($event.target).value)"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-all" />
+        </div>
 
-          <!-- Upload foto vehículo -->
-          <label class="flex flex-col items-center gap-2 p-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 hover:bg-amber-500/5 transition-all">
-            <input type="file" accept="image/*" class="hidden" (change)="uploadFile($event, 'vehicle')" />
-            @if (uploadingVehicle()) {
-              <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:24px">autorenew</span>
-              <span class="text-amber-400 text-xs font-bold">Subiendo...</span>
-            } @else if (vehiclePhotoUrl()) {
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:24px">check_circle</span>
-              <span class="text-emerald-400 text-xs font-bold">Foto del vehículo cargada ✓</span>
-            } @else {
-              <span class="material-symbols-outlined text-slate-500" style="font-size:24px">add_a_photo</span>
-              <span class="text-slate-500 text-xs">Foto del vehículo</span>
-            }
+        <!-- Fotos licencia frente y reverso -->
+        <div class="grid grid-cols-2 gap-3">
+          <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'license')" />
+            @if (uploadingLicense()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+            @else if (licensePhotoUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+            @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload_file</span> }
+            <span class="text-[10px] font-bold text-center" [class]="licensePhotoUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ licensePhotoUrl() ? 'Licencia frente ✓' : 'Licencia frente' }}</span>
+          </label>
+          <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'license-back')" />
+            @if (uploadingLicenseBack()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+            @else if (licenseBackUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+            @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">flip</span> }
+            <span class="text-[10px] font-bold text-center" [class]="licenseBackUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ licenseBackUrl() ? 'Licencia reverso ✓' : 'Licencia reverso' }}</span>
           </label>
         </div>
+      </div>
+
+      <!-- ─── SECCIÓN 3: Datos del Vehículo ─── -->
+      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+        <p class="text-[11px] text-amber-400 uppercase tracking-widest font-black flex items-center gap-1.5">
+          <span class="material-symbols-outlined" style="font-size:15px">directions_car</span> 3. Datos del Vehículo
+        </p>
+
+        <!-- Tipo de vehículo -->
+        <div>
+          <label class="text-[9px] text-slate-500 uppercase tracking-widest font-bold block mb-2 ml-1">Tipo de vehículo *</label>
+          <div class="grid grid-cols-4 gap-2">
+            @for (vt of vehicleTypes; track vt.value) {
+              <button type="button" (click)="vehicleType.set(vt.value)"
+                class="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-bold transition-all"
+                [class]="vehicleType() === vt.value
+                  ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                  : 'border-white/10 bg-white/[0.02] text-slate-400 hover:border-amber-500/40'">
+                <span class="material-symbols-outlined" style="font-size:18px">{{ vt.icon }}</span>
+                {{ vt.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <input type="text" [value]="vehiclePlate()" (input)="vehiclePlate.set($any($event.target).value)"
+            placeholder="Placa * (AAA-000)" maxlength="7"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all uppercase" />
+          <input type="number" [value]="vehicleYear()" (input)="vehicleYear.set($any($event.target).value)"
+            placeholder="Año *" min="2000" max="2030"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <input type="text" [value]="vehicleBrand()" (input)="vehicleBrand.set($any($event.target).value)"
+            placeholder="Marca * (Toyota...)"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+          <input type="text" [value]="vehicleModel()" (input)="vehicleModel.set($any($event.target).value)"
+            placeholder="Modelo * (Corolla...)"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <input type="text" [value]="vehicleColor()" (input)="vehicleColor.set($any($event.target).value)"
+            placeholder="Color del vehículo"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+          <input type="text" [value]="vehicleVin()" (input)="vehicleVin.set($any($event.target).value)"
+            placeholder="Nº Chasis / VIN"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+        </div>
+
+        <!-- Fotos vehículo -->
+        <div class="grid grid-cols-2 gap-3">
+          <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*" class="hidden" (change)="uploadFile($event, 'vehicle')" />
+            @if (uploadingVehicle()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+            @else if (vehiclePhotoUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+            @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">directions_car</span> }
+            <span class="text-[10px] font-bold text-center" [class]="vehiclePhotoUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ vehiclePhotoUrl() ? 'Foto frontal ✓' : 'Foto frontal' }}</span>
+          </label>
+          <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*" class="hidden" (change)="uploadFile($event, 'vehicle-side')" />
+            @if (uploadingVehicleSide()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+            @else if (vehicleSidePhotoUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+            @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">photo_camera</span> }
+            <span class="text-[10px] font-bold text-center" [class]="vehicleSidePhotoUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ vehicleSidePhotoUrl() ? 'Foto lateral ✓' : 'Foto lateral' }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ─── SECCIÓN 4: Documentos Legales del Vehículo ─── -->
+      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-5">
+        <p class="text-[11px] text-amber-400 uppercase tracking-widest font-black flex items-center gap-1.5">
+          <span class="material-symbols-outlined" style="font-size:15px">folder_open</span> 4. Documentos Legales del Vehículo
+        </p>
 
         <!-- SOAT -->
         <div>
-          <p class="text-[10px] text-orange-400 uppercase tracking-widest font-black mb-3 flex items-center gap-1.5">
-            <span class="material-symbols-outlined" style="font-size:14px">verified_user</span> SOAT Vigente
+          <p class="text-[10px] text-slate-300 font-black uppercase tracking-wider mb-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:14px">health_and_safety</span> SOAT Vigente *
           </p>
-          <input type="date" [value]="soatExpiry()" (input)="soatExpiry.set($any($event.target).value)"
-            placeholder="Fecha de vencimiento"
-            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-all mb-3" />
-          <label class="flex flex-col items-center gap-2 p-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 hover:bg-amber-500/5 transition-all">
+          <div>
+            <label class="text-[9px] text-slate-500 uppercase tracking-widest font-bold block mb-1 ml-1">Fecha de vencimiento *</label>
+            <input type="date" [value]="soatExpiry()" (input)="soatExpiry.set($any($event.target).value)"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-all mb-2" />
+          </div>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
             <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'soat')" />
-            @if (uploadingSoat()) {
-              <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:24px">autorenew</span>
-              <span class="text-amber-400 text-xs font-bold">Subiendo...</span>
-            } @else if (soatPhotoUrl()) {
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:24px">check_circle</span>
-              <span class="text-emerald-400 text-xs font-bold">Foto del SOAT cargada ✓</span>
-            } @else {
-              <span class="material-symbols-outlined text-slate-500" style="font-size:24px">upload_file</span>
-              <span class="text-slate-500 text-xs">Foto del SOAT (JPG, PNG, PDF)</span>
-            }
+            <div class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+              @if (uploadingSoat()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:18px">autorenew</span> }
+              @else if (soatPhotoUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
+              @else { <span class="material-symbols-outlined text-slate-500" style="font-size:18px">upload_file</span> }
+            </div>
+            <span class="text-xs font-bold" [class]="soatPhotoUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ soatPhotoUrl() ? 'SOAT cargado ✓' : 'Subir foto / PDF del SOAT' }}</span>
           </label>
         </div>
 
-        @if (error()) {
-          <p class="text-rose-400 text-xs flex items-center gap-1">
-            <span class="material-symbols-outlined" style="font-size:14px">error</span> {{ error() }}
+        <!-- Tarjeta de Propiedad -->
+        <div>
+          <p class="text-[10px] text-slate-300 font-black uppercase tracking-wider mb-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-blue-400" style="font-size:14px">article</span> Tarjeta de Propiedad
           </p>
-        }
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+              <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'property-front')" />
+              @if (uploadingPropertyFront()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+              @else if (propertyCardFrontUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+              @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload_file</span> }
+              <span class="text-[10px] font-bold text-center" [class]="propertyCardFrontUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ propertyCardFrontUrl() ? 'Tarjeta frente ✓' : 'Tarjeta frente' }}</span>
+            </label>
+            <label class="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+              <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'property-back')" />
+              @if (uploadingPropertyBack()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:20px">autorenew</span> }
+              @else if (propertyCardBackUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">check_circle</span> }
+              @else { <span class="material-symbols-outlined text-slate-500" style="font-size:20px">flip</span> }
+              <span class="text-[10px] font-bold text-center" [class]="propertyCardBackUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ propertyCardBackUrl() ? 'Tarjeta reverso ✓' : 'Tarjeta reverso' }}</span>
+            </label>
+          </div>
+        </div>
 
-        <button (click)="registerDriver()" [disabled]="loading() || !driverFormValid()"
-          class="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all
-            bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 disabled:opacity-40">
-          @if (loading()) { <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> }
-          @else { Enviar Solicitud }
-        </button>
+        <!-- Revisión Técnico Mecánica -->
+        <div>
+          <p class="text-[10px] text-slate-300 font-black uppercase tracking-wider mb-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-cyan-400" style="font-size:14px">build</span> Revisión Técnico Mecánica (RTM)
+          </p>
+          <div>
+            <label class="text-[9px] text-slate-500 uppercase tracking-widest font-bold block mb-1 ml-1">Fecha de vencimiento</label>
+            <input type="date" [value]="tecnoExpiry()" (input)="tecnoExpiry.set($any($event.target).value)"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-all mb-2" />
+          </div>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'tecno')" />
+            <div class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+              @if (uploadingTecno()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:18px">autorenew</span> }
+              @else if (tecnoPhotoUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
+              @else { <span class="material-symbols-outlined text-slate-500" style="font-size:18px">upload_file</span> }
+            </div>
+            <span class="text-xs font-bold" [class]="tecnoPhotoUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ tecnoPhotoUrl() ? 'RTM cargada ✓' : 'Subir foto / PDF de la RTM' }}</span>
+          </label>
+        </div>
+
+        <!-- Póliza Responsabilidad Civil -->
+        <div>
+          <p class="text-[10px] text-slate-300 font-black uppercase tracking-wider mb-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-purple-400" style="font-size:14px">policy</span> Póliza Responsabilidad Civil Extracontractual
+          </p>
+          <div>
+            <label class="text-[9px] text-slate-500 uppercase tracking-widest font-bold block mb-1 ml-1">Fecha de vencimiento</label>
+            <input type="date" [value]="civilLiabilityExpiry()" (input)="civilLiabilityExpiry.set($any($event.target).value)"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-all mb-2" />
+          </div>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'civil')" />
+            <div class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+              @if (uploadingCivil()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:18px">autorenew</span> }
+              @else if (civilLiabilityUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
+              @else { <span class="material-symbols-outlined text-slate-500" style="font-size:18px">upload_file</span> }
+            </div>
+            <span class="text-xs font-bold" [class]="civilLiabilityUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ civilLiabilityUrl() ? 'Póliza cargada ✓' : 'Subir foto / PDF de la póliza' }}</span>
+          </label>
+        </div>
       </div>
+
+      <!-- ─── SECCIÓN 5: Verificación ─── -->
+      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+        <p class="text-[11px] text-amber-400 uppercase tracking-widest font-black flex items-center gap-1.5">
+          <span class="material-symbols-outlined" style="font-size:15px">verified_user</span> 5. Verificación y Antecedentes
+        </p>
+
+        <!-- Antecedentes judiciales -->
+        <div>
+          <p class="text-xs text-slate-300 font-bold mb-1">Certificado de Antecedentes Judiciales</p>
+          <p class="text-[10px] text-slate-500 mb-2">Descárgalo gratis en <span class="text-amber-400">policia.gov.co</span> — vigencia 30 días</p>
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer hover:border-amber-500/40 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadFile($event, 'criminal')" />
+            <div class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+              @if (uploadingCriminal()) { <span class="material-symbols-outlined text-amber-400 animate-spin" style="font-size:18px">autorenew</span> }
+              @else if (criminalRecordUrl()) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
+              @else { <span class="material-symbols-outlined text-slate-500" style="font-size:18px">upload_file</span> }
+            </div>
+            <span class="text-xs font-bold" [class]="criminalRecordUrl() ? 'text-emerald-400' : 'text-slate-400'">{{ criminalRecordUrl() ? 'Antecedentes cargados ✓' : 'Subir certificado de antecedentes' }}</span>
+          </label>
+        </div>
+
+        <!-- Términos y condiciones -->
+        <label class="flex items-start gap-3 cursor-pointer group">
+          <div class="w-5 h-5 rounded-md border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all"
+            [class]="driverTermsAccepted() ? 'border-amber-500 bg-amber-500' : 'border-white/30 group-hover:border-amber-500/60'">
+            @if (driverTermsAccepted()) {
+              <span class="material-symbols-outlined text-black" style="font-size:14px">check</span>
+            }
+          </div>
+          <input type="checkbox" class="hidden" [checked]="driverTermsAccepted()" (change)="driverTermsAccepted.set($any($event.target).checked)" />
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Acepto los <span class="text-amber-400 font-bold">Términos y Condiciones</span> de Anda y Gana, autorizo el tratamiento de mis datos personales y confirmo que toda la información suministrada es verídica. <span class="text-rose-400 font-bold">*</span>
+          </p>
+        </label>
+      </div>
+
+      @if (error()) {
+        <p class="text-rose-400 text-xs flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2">
+          <span class="material-symbols-outlined shrink-0" style="font-size:14px">error</span> {{ error() }}
+        </p>
+      }
+
+      <button (click)="registerDriver()" [disabled]="loading() || !driverFormValid()"
+        class="w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all
+          bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 disabled:opacity-40">
+        @if (loading()) {
+          <span class="flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Enviando solicitud...
+          </span>
+        } @else {
+          <span class="flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:16px">send</span> Enviar Solicitud de Conductor
+          </span>
+        }
+      </button>
+
+      <button (click)="screen.set('welcome')" class="text-slate-500 text-xs text-center hover:text-slate-300 transition-colors pb-4">
+        ← Volver
+      </button>
     </div>
   }
 
@@ -2365,22 +2612,60 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   pendingCode       = signal('');
   selectedRole      = signal<'passenger' | 'driver'>('passenger');
   fullName          = signal('');
+  // Driver registration — personal
+  driverEmail       = signal('');
+  driverCity        = signal('');
+  driverIdNumber    = signal('');
+  driverBirthDate   = signal('');
+  driverAvatarUrl   = signal('');
+  idFrontUrl        = signal('');
+  idBackUrl         = signal('');
+  selfieWithIdUrl   = signal('');
+  // Driver registration — license
   licenseNumber     = signal('');
+  licenseCategory   = signal('B1');
+  licenseExpiry     = signal('');
+  licensePhotoUrl   = signal('');
+  licenseBackUrl    = signal('');
+  // Driver registration — vehicle
   vehiclePlate      = signal('');
+  vehicleType       = signal('auto');
   vehicleBrand      = signal('');
   vehicleModel      = signal('');
   vehicleYear       = signal('');
-  soatExpiry        = signal('');
-  licensePhotoUrl   = signal('');
+  vehicleColor      = signal('');
+  vehicleVin        = signal('');
   vehiclePhotoUrl   = signal('');
+  vehicleSidePhotoUrl = signal('');
+  // Driver registration — documents
+  soatExpiry        = signal('');
   soatPhotoUrl      = signal('');
+  propertyCardFrontUrl = signal('');
+  propertyCardBackUrl  = signal('');
+  tecnoExpiry       = signal('');
+  tecnoPhotoUrl     = signal('');
+  civilLiabilityUrl    = signal('');
+  civilLiabilityExpiry = signal('');
+  criminalRecordUrl = signal('');
+  driverTermsAccepted = signal(false);
 
   // UI
   loading        = signal(false);
   error          = signal('');
-  uploadingLicense = signal(false);
-  uploadingVehicle = signal(false);
-  uploadingSoat    = signal(false);
+  uploadingLicense      = signal(false);
+  uploadingLicenseBack  = signal(false);
+  uploadingVehicle      = signal(false);
+  uploadingVehicleSide  = signal(false);
+  uploadingSoat         = signal(false);
+  uploadingPropertyFront = signal(false);
+  uploadingPropertyBack  = signal(false);
+  uploadingTecno        = signal(false);
+  uploadingCivil        = signal(false);
+  uploadingCriminal     = signal(false);
+  uploadingIdFront      = signal(false);
+  uploadingIdBack       = signal(false);
+  uploadingSelfieId     = signal(false);
+  uploadingDriverAvatar = signal(false);
 
   // Viajes
   trips           = signal<AgTrip[]>([]);
@@ -2541,6 +2826,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   readonly quickPrices = [5000, 8000, 10000, 12000, 15000, 20000];
 
+  readonly vehicleTypes = [
+    { value: 'auto',      label: 'Auto',      icon: 'directions_car' },
+    { value: 'moto',      label: 'Moto',      icon: 'two_wheeler' },
+    { value: 'camioneta', label: 'Camioneta', icon: 'airport_shuttle' },
+    { value: 'van',       label: 'Van',       icon: 'local_shipping' },
+  ];
+
   // Driver flow
   driverAvailable       = signal(false);
   pendingRequests       = signal<AgRideRequest[]>([]);
@@ -2591,8 +2883,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.passengerEmergencyPhone().replace(/\D/g, '').length >= 10;
 
   driverFormValid = () =>
-    !!this.fullName().trim() && !!this.licenseNumber().trim() &&
-    !!this.vehiclePlate().trim() && !!this.vehicleBrand().trim() && !!this.vehicleModel().trim();
+    !!this.fullName().trim() &&
+    !!this.driverEmail().trim() && this.driverEmail().includes('@') &&
+    !!this.driverCity().trim() &&
+    !!this.driverIdNumber().trim() &&
+    !!this.driverBirthDate() &&
+    !!this.licenseNumber().trim() &&
+    !!this.licenseExpiry() &&
+    !!this.vehiclePlate().trim() &&
+    !!this.vehicleBrand().trim() &&
+    !!this.vehicleModel().trim() &&
+    !!this.soatExpiry() &&
+    this.driverTermsAccepted();
 
   async ngOnInit() {
     const [profile, agUser] = await Promise.all([
@@ -2745,47 +3047,103 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!this.driverFormValid()) return;
     this.loading.set(true);
     this.error.set('');
-    const user = await this.svc.registerUser('driver', this.fullName().trim(), '+57' + this.phone());
+    const user = await this.svc.registerUser(
+      'driver',
+      this.fullName().trim(),
+      '+57' + this.phone(),
+      {
+        email:      this.driverEmail().trim(),
+        city:       this.driverCity().trim(),
+        avatarUrl:  this.driverAvatarUrl() || undefined,
+      }
+    );
     if (!user) {
       this.error.set('Error al crear cuenta. Intenta de nuevo.');
       this.loading.set(false);
       return;
     }
     const ok = await this.svc.saveDriverData(user.id, {
-      licenseNumber: this.licenseNumber().trim(),
-      vehiclePlate: this.vehiclePlate().trim().toUpperCase(),
-      vehicleBrand: this.vehicleBrand().trim(),
-      vehicleModel: this.vehicleModel().trim(),
-      vehicleYear: this.vehicleYear() ? parseInt(this.vehicleYear()) : undefined,
-      soatExpiry: this.soatExpiry() || undefined,
-      licensePhotoUrl: this.licensePhotoUrl() || undefined,
-      vehiclePhotoUrl: this.vehiclePhotoUrl() || undefined,
-      soatPhotoUrl: this.soatPhotoUrl() || undefined,
+      idNumber:              this.driverIdNumber().trim(),
+      birthDate:             this.driverBirthDate() || undefined,
+      idFrontUrl:            this.idFrontUrl() || undefined,
+      idBackUrl:             this.idBackUrl() || undefined,
+      selfieWithIdUrl:       this.selfieWithIdUrl() || undefined,
+      licenseNumber:         this.licenseNumber().trim(),
+      licenseCategory:       this.licenseCategory(),
+      licenseExpiry:         this.licenseExpiry() || undefined,
+      licensePhotoUrl:       this.licensePhotoUrl() || undefined,
+      licenseBackUrl:        this.licenseBackUrl() || undefined,
+      vehiclePlate:          this.vehiclePlate().trim().toUpperCase(),
+      vehicleType:           this.vehicleType(),
+      vehicleBrand:          this.vehicleBrand().trim(),
+      vehicleModel:          this.vehicleModel().trim(),
+      vehicleYear:           this.vehicleYear() ? parseInt(this.vehicleYear()) : undefined,
+      vehicleColor:          this.vehicleColor().trim(),
+      vehicleVin:            this.vehicleVin().trim() || undefined,
+      vehiclePhotoUrl:       this.vehiclePhotoUrl() || undefined,
+      vehicleSidePhotoUrl:   this.vehicleSidePhotoUrl() || undefined,
+      soatExpiry:            this.soatExpiry() || undefined,
+      soatPhotoUrl:          this.soatPhotoUrl() || undefined,
+      propertyCardFrontUrl:  this.propertyCardFrontUrl() || undefined,
+      propertyCardBackUrl:   this.propertyCardBackUrl() || undefined,
+      tecnoExpiry:           this.tecnoExpiry() || undefined,
+      tecnoPhotoUrl:         this.tecnoPhotoUrl() || undefined,
+      civilLiabilityUrl:     this.civilLiabilityUrl() || undefined,
+      civilLiabilityExpiry:  this.civilLiabilityExpiry() || undefined,
+      criminalRecordUrl:     this.criminalRecordUrl() || undefined,
     });
     this.loading.set(false);
     if (ok) {
       this.agUser.set({ ...user });
       this.screen.set('pending');
     } else {
-      this.error.set('Error al guardar datos del vehículo. Intenta de nuevo.');
+      this.error.set('Error al guardar datos. Intenta de nuevo.');
     }
   }
 
-  async uploadFile(event: Event, type: 'license' | 'vehicle' | 'soat') {
+  async uploadFile(event: Event, type: string) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const { data: { user } } = await (this.svc as any).supabase.auth.getUser().catch(() => ({ data: { user: null } }));
     const userId = user?.id || 'unknown';
 
-    if (type === 'license') this.uploadingLicense.set(true);
-    else if (type === 'vehicle') this.uploadingVehicle.set(true);
-    else this.uploadingSoat.set(true);
+    const uploading: Record<string, any> = {
+      'license':          this.uploadingLicense,
+      'license-back':     this.uploadingLicenseBack,
+      'vehicle':          this.uploadingVehicle,
+      'vehicle-side':     this.uploadingVehicleSide,
+      'soat':             this.uploadingSoat,
+      'property-front':   this.uploadingPropertyFront,
+      'property-back':    this.uploadingPropertyBack,
+      'tecno':            this.uploadingTecno,
+      'civil':            this.uploadingCivil,
+      'criminal':         this.uploadingCriminal,
+      'id-front':         this.uploadingIdFront,
+      'id-back':          this.uploadingIdBack,
+      'selfie-id':        this.uploadingSelfieId,
+      'driver-avatar':    this.uploadingDriverAvatar,
+    };
+    const urlSignals: Record<string, any> = {
+      'license':          this.licensePhotoUrl,
+      'license-back':     this.licenseBackUrl,
+      'vehicle':          this.vehiclePhotoUrl,
+      'vehicle-side':     this.vehicleSidePhotoUrl,
+      'soat':             this.soatPhotoUrl,
+      'property-front':   this.propertyCardFrontUrl,
+      'property-back':    this.propertyCardBackUrl,
+      'tecno':            this.tecnoPhotoUrl,
+      'civil':            this.civilLiabilityUrl,
+      'criminal':         this.criminalRecordUrl,
+      'id-front':         this.idFrontUrl,
+      'id-back':          this.idBackUrl,
+      'selfie-id':        this.selfieWithIdUrl,
+      'driver-avatar':    this.driverAvatarUrl,
+    };
 
+    uploading[type]?.set(true);
     const url = await this.svc.uploadDriverDoc(file, userId, type);
-
-    if (type === 'license') { this.uploadingLicense.set(false); if (url) this.licensePhotoUrl.set(url); }
-    else if (type === 'vehicle') { this.uploadingVehicle.set(false); if (url) this.vehiclePhotoUrl.set(url); }
-    else { this.uploadingSoat.set(false); if (url) this.soatPhotoUrl.set(url); }
+    uploading[type]?.set(false);
+    if (url) urlSignals[type]?.set(url);
   }
 
   async loadTrips() {
