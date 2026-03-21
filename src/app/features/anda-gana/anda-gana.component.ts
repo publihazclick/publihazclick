@@ -3221,40 +3221,34 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.error.set('');
     this.gpsError.set('');
 
-    if (!isPlatformBrowser(this.platformId) || !navigator.geolocation) {
-      this.screen.set('passenger-pick-origin');
-      this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
-      return;
-    }
-
-    this.screen.set('passenger-gps-wait');
-    this.mapLoading.set(true);
     const gpsToken = ++this._gpsToken;
 
-    let lat = 4.711, lng = -74.0721;
+    // Abrir el mapa INMEDIATAMENTE en posición por defecto — sin pantalla de espera
+    this.screen.set('passenger-pick-origin');
+    this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
+
+    // Pedir permiso GPS en paralelo — el navegador muestra el diálogo nativo
+    if (!isPlatformBrowser(this.platformId) || !navigator.geolocation) return;
+
     try {
       const pos = await this.getGpsPosition(true);
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
-    } catch (err: any) {
-      if (gpsToken !== this._gpsToken) return; // usuario navegó hacia atrás
-      this.mapLoading.set(false);
-      if (err?.code === 1) {
-        // Permiso denegado — mostrar error y esperar que el usuario reintente
-        this.gpsError.set('Permiso de GPS denegado. Activa la ubicación en la configuración de tu navegador y vuelve a intentar.');
-        return;
-      } else if (err?.code === 2) {
-        this.gpsError.set('No se pudo detectar tu posición. Verifica que el GPS de tu dispositivo esté activado.');
-        return;
-      }
-      // Timeout u otro error — abrimos con Bogotá para no bloquear al usuario
-      this.gpsError.set('El GPS tardó demasiado. Puedes buscar tu dirección en el mapa manualmente.');
+      if (gpsToken !== this._gpsToken) return;
+      const { latitude: lat, longitude: lng } = pos.coords;
+      this.zone.run(() => {
+        if (gpsToken !== this._gpsToken) return;
+        if (this._map) {
+          // Mapa ya listo: volar a la ubicación real del usuario
+          this._map.flyTo({ center: [lng, lat], zoom: 16 });
+          this.onOriginPick(lat, lng);
+        } else {
+          // Mapa aún cargando: reiniciar centrado en GPS real
+          this._mapToken++;
+          this.initPickMap('ag-map-origin', lat, lng, (la, ln) => this.onOriginPick(la, ln));
+        }
+      });
+    } catch {
+      // GPS denegado o timeout — el mapa ya está abierto, el usuario puede moverlo manualmente
     }
-
-    if (gpsToken !== this._gpsToken) return; // usuario navegó hacia atrás
-    this.mapLoading.set(false);
-    this.screen.set('passenger-pick-origin');
-    this.initPickMap('ag-map-origin', lat, lng, (lt, ln) => this.onOriginPick(lt, ln));
   }
 
   cancelGpsWait() {
@@ -3277,30 +3271,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   async retryGps() {
+    // Ir al mapa inmediatamente y pedir GPS de nuevo en paralelo
     this.gpsError.set('');
-    this.mapLoading.set(true);
-    if (!navigator.geolocation) { this.mapLoading.set(false); return; }
     const gpsToken = ++this._gpsToken;
-
-    let lat = 4.711, lng = -74.0721;
+    this.screen.set('passenger-pick-origin');
+    this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
+    if (!isPlatformBrowser(this.platformId) || !navigator.geolocation) return;
     try {
       const pos = await this.getGpsPosition(true);
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
-    } catch (err: any) {
       if (gpsToken !== this._gpsToken) return;
-      this.mapLoading.set(false);
-      if (err?.code === 1) {
-        this.gpsError.set('GPS sigue denegado. Ve a la configuración de tu navegador, busca "Ubicación" y permite el acceso a este sitio.');
-        return;
-      }
-      this.gpsError.set('No se pudo obtener GPS. Continúa sin él y escribe tu dirección en el buscador del mapa.');
-    }
-
-    if (gpsToken !== this._gpsToken) return;
-    this.mapLoading.set(false);
-    this.screen.set('passenger-pick-origin');
-    this.initPickMap('ag-map-origin', lat, lng, (lt, ln) => this.onOriginPick(lt, ln));
+      const { latitude: lat, longitude: lng } = pos.coords;
+      this.zone.run(() => {
+        if (gpsToken !== this._gpsToken) return;
+        if (this._map) { this._map.flyTo({ center: [lng, lat], zoom: 16 }); this.onOriginPick(lat, lng); }
+        else { this._mapToken++; this.initPickMap('ag-map-origin', lat, lng, (la, ln) => this.onOriginPick(la, ln)); }
+      });
+    } catch { /* GPS denegado — mapa ya abierto en posición por defecto */ }
   }
 
   goBackToOrigin() {
