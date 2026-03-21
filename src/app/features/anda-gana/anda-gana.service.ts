@@ -759,20 +759,21 @@ export class AndaGanaService {
 
   // ── Geocodificación directa con Nominatim (OpenStreetMap) — 100% gratis, sin token ──
   async searchPlaces(query: string, lat?: number, lng?: number): Promise<PlaceSuggestion[]> {
-    if (!query.trim() || query.trim().length < 3) return [];
+    if (!query.trim() || query.trim().length < 2) return [];
     try {
-      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&countrycodes=co&accept-language=es`;
+      // Sin countrycodes para permitir búsqueda global (país, ciudad, dirección)
+      // Con viewbox+bounded=0 priorizamos resultados cercanos pero no excluimos nada
+      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=8&accept-language=es`;
       if (lat != null && lng != null) {
-        const d = 0.5;
+        const d = 2; // grados de proximidad
         url += `&viewbox=${lng - d},${lat + d},${lng + d},${lat - d}&bounded=0`;
       }
-      const resp = await fetch(url, {
-        headers: { 'User-Agent': 'AndaGana/1.0 publihazclick@gmail.com' },
-      });
+      // NOTA: No incluir 'User-Agent' custom — es cabecera prohibida en browsers
+      const resp = await fetch(url);
       if (!resp.ok) return [];
       const data = await resp.json();
       return (data || []).map((f: any, i: number) => ({
-        id:      `nom-${i}`,
+        id:      `nom-${i}-${Date.now()}`,
         name:    f.name || f.display_name.split(',')[0],
         address: f.display_name,
         lat:     parseFloat(f.lat),

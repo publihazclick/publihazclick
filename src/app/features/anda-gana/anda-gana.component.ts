@@ -6,6 +6,7 @@ type AgScreen =
   | 'loading' | 'welcome' | 'enter-phone' | 'verify-code'
   | 'register-passenger' | 'register-driver' | 'pending'
   | 'rejected' | 'passenger-home' | 'driver-home' | 'admin-panel'
+  | 'passenger-gps-wait'
   | 'passenger-pick-origin' | 'passenger-pick-dest' | 'passenger-offer'
   | 'passenger-searching' | 'passenger-trip' | 'passenger-rating'
   | 'driver-requests' | 'driver-trip-active' | 'driver-rate-passenger' | 'driver-earnings'
@@ -26,6 +27,52 @@ type AgScreen =
         <span class="material-symbols-outlined text-orange-400 animate-pulse" style="font-size:32px">directions_car</span>
       </div>
       <p class="text-slate-500 text-sm">Cargando Anda y Gana...</p>
+    </div>
+  }
+
+  <!-- ═══════════════════ GPS WAIT ═══════════════════ -->
+  @if (screen() === 'passenger-gps-wait') {
+    <div class="w-full max-w-sm flex flex-col items-center gap-6 py-10">
+      <div class="w-24 h-24 rounded-3xl bg-orange-500/10 border-2 border-orange-500/30 flex items-center justify-center">
+        @if (mapLoading()) {
+          <span class="material-symbols-outlined text-orange-400 animate-pulse" style="font-size:48px">my_location</span>
+        } @else {
+          <span class="material-symbols-outlined text-rose-400" style="font-size:48px">location_off</span>
+        }
+      </div>
+      @if (mapLoading()) {
+        <div class="text-center">
+          <h2 class="text-white font-black text-xl mb-2">Detectando tu ubicación</h2>
+          <p class="text-slate-400 text-sm leading-relaxed">Por favor <strong class="text-orange-400">permite el acceso al GPS</strong> cuando tu navegador lo solicite.<br>Solo así podemos mostrarte en el mapa tu posición real.</p>
+        </div>
+        <div class="flex items-center gap-3 bg-orange-500/10 border border-orange-500/20 rounded-2xl px-5 py-4">
+          <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:20px">autorenew</span>
+          <p class="text-orange-300 text-sm font-bold">Esperando permiso GPS...</p>
+        </div>
+      } @else {
+        <div class="text-center">
+          <h2 class="text-white font-black text-xl mb-2">GPS no disponible</h2>
+          <p class="text-slate-400 text-sm leading-relaxed">{{ gpsError() || 'No se pudo obtener tu ubicación.' }}<br><br>Puedes continuar buscando tu dirección de origen manualmente en el mapa.</p>
+        </div>
+        <button (click)="openMapWithDefault()"
+          class="w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider bg-gradient-to-r from-orange-500 to-amber-500 text-black">
+          <span class="flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:20px">map</span>
+            Continuar sin GPS
+          </span>
+        </button>
+        <button (click)="retryGps()"
+          class="w-full py-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/5 text-cyan-400 font-black text-sm">
+          <span class="flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+            Intentar GPS de nuevo
+          </span>
+        </button>
+      }
+      <button (click)="screen.set('passenger-home')"
+        class="text-slate-500 text-sm hover:text-slate-300 transition-colors">
+        ← Volver al inicio
+      </button>
     </div>
   }
 
@@ -2636,21 +2683,66 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.offeredPrice.set('');
     this.error.set('');
     this.gpsError.set('');
+
+    if (!isPlatformBrowser(this.platformId) || !navigator.geolocation) {
+      // SSR o sin GPS — abrir mapa directo con Bogotá
+      this.screen.set('passenger-pick-origin');
+      setTimeout(() => this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+      return;
+    }
+
+    // Mostrar pantalla de espera GPS
+    this.screen.set('passenger-gps-wait');
+    this.mapLoading.set(true);
+
+    navigator.geolocation.getCurrentPosition(
+      pos => this.zone.run(() => {
+        // GPS obtenido — abrir mapa en posición real
+        this.mapLoading.set(false);
+        this.screen.set('passenger-pick-origin');
+        setTimeout(() => this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+      }),
+      err => this.zone.run(() => {
+        this.mapLoading.set(false);
+        if (err.code === 1) {
+          this.gpsError.set('Permiso de GPS denegado. Activa la ubicación en la configuración de tu navegador y vuelve a intentar.');
+        } else if (err.code === 2) {
+          this.gpsError.set('No se pudo detectar tu posición. Verifica que el GPS de tu dispositivo esté activado.');
+        } else {
+          this.gpsError.set('El GPS tardó demasiado. Puedes continuar buscando tu dirección manualmente.');
+          // Timeout — abrimos mapa automáticamente para no bloquear al usuario
+          this.openMapWithDefault();
+        }
+      }),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+  }
+
+  openMapWithDefault() {
     this.screen.set('passenger-pick-origin');
-    // Show map immediately with Bogotá as default — GPS update arrives async
-    setTimeout(() => {
-      this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng));
-      // Try GPS and pan map when it arrives (non-blocking)
-      if (isPlatformBrowser(this.platformId) && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => this.zone.run(() => {
-            if (this._map) this._map.setView([pos.coords.latitude, pos.coords.longitude], 17, { animate: true });
-          }),
-          () => {}, // Silent fall back to default — map already showing
-          { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
-        );
-      }
-    }, 200);
+    setTimeout(() => this.initPickMap('ag-map-origin', 4.711, -74.0721, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+  }
+
+  retryGps() {
+    this.gpsError.set('');
+    this.mapLoading.set(true);
+    if (!navigator.geolocation) { this.mapLoading.set(false); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => this.zone.run(() => {
+        this.mapLoading.set(false);
+        this.screen.set('passenger-pick-origin');
+        setTimeout(() => this.initPickMap('ag-map-origin', pos.coords.latitude, pos.coords.longitude, (lat, lng) => this.onOriginPick(lat, lng)), 200);
+      }),
+      err => this.zone.run(() => {
+        this.mapLoading.set(false);
+        if (err.code === 1) {
+          this.gpsError.set('GPS sigue denegado. Ve a la configuración de tu navegador, busca "Ubicación" y permite el acceso a este sitio.');
+        } else {
+          this.gpsError.set('No se pudo obtener GPS. Continúa sin él y escribe tu dirección en el buscador del mapa.');
+        }
+      }),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
   }
 
   goBackToOrigin() {
@@ -3388,16 +3480,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const q = (event.target as HTMLInputElement).value;
     this.placeSearchQuery.set(q);
     clearTimeout(this._placeSearchTimer);
-    if (q.trim().length < 3) { this.placeSuggestions.set([]); return; }
+    if (q.trim().length < 2) { this.placeSuggestions.set([]); return; }
+    this.placesLoading.set(true);
     this._placeSearchTimer = setTimeout(async () => {
-      this.placesLoading.set(true);
-      const origin = this.rideOrigin();
-      const suggestions = await this.svc.searchPlaces(q, origin?.lat, origin?.lng);
+      const center = this._map?.getCenter();
+      const suggestions = await this.svc.searchPlaces(q, center?.lat, center?.lng);
       this.zone.run(() => {
         this.placeSuggestions.set(suggestions);
         this.placesLoading.set(false);
       });
-    }, 350);
+    }, 400);
   }
 
   selectPlace(s: PlaceSuggestion, type: 'origin' | 'dest') {
