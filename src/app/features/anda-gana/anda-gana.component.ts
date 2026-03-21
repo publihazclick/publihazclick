@@ -222,34 +222,139 @@ type AgScreen =
 
   <!-- ═══════════════════ REGISTER PASSENGER ═══════════════════ -->
   @if (screen() === 'register-passenger') {
-    <div class="w-full max-w-sm flex flex-col gap-6">
+    <div class="w-full max-w-md flex flex-col gap-5">
+      <!-- Header -->
       <div class="text-center">
-        <div class="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-3">
-          <span class="material-symbols-outlined text-orange-400" style="font-size:26px">person_add</span>
+        <div class="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-3">
+          <span class="material-symbols-outlined text-orange-400" style="font-size:30px">person_add</span>
         </div>
-        <h2 class="text-xl font-black text-white">Completa tu perfil</h2>
-        <p class="text-slate-500 text-sm mt-1">Solo necesitamos tu nombre para empezar</p>
+        <h2 class="text-xl font-black text-white">Crea tu cuenta de pasajero</h2>
+        <p class="text-slate-500 text-xs mt-1">Número verificado: <span class="text-orange-400 font-bold">+57 {{ phone() }}</span></p>
       </div>
 
-      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+      <div class="bg-white/[0.02] border border-white/10 rounded-2xl p-5 flex flex-col gap-5">
+
+        <!-- ── Foto de perfil (Opcional) ── -->
         <div>
-          <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Nombres y Apellidos</label>
+          <p class="text-[10px] text-orange-400 uppercase tracking-widest font-black mb-3 flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size:14px">photo_camera</span> Foto de perfil <span class="text-slate-500 font-normal normal-case tracking-normal">(Opcional)</span>
+          </p>
+          <label class="flex items-center gap-4 cursor-pointer group">
+            <input type="file" accept="image/*" class="hidden" (change)="uploadPassengerAvatar($event)" />
+            <div class="w-16 h-16 rounded-2xl border-2 border-dashed border-white/20 bg-white/[0.02] flex items-center justify-center overflow-hidden shrink-0
+              group-hover:border-orange-500/40 transition-all">
+              @if (uploadingAvatar()) {
+                <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:24px">autorenew</span>
+              } @else if (passengerAvatarUrl()) {
+                <img [src]="passengerAvatarUrl()" class="w-full h-full object-cover" />
+              } @else {
+                <span class="material-symbols-outlined text-slate-500" style="font-size:28px">add_a_photo</span>
+              }
+            </div>
+            <div>
+              @if (passengerAvatarUrl()) {
+                <p class="text-emerald-400 text-xs font-bold flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Foto cargada</p>
+                <p class="text-slate-500 text-[10px] mt-0.5">Toca para cambiarla</p>
+              } @else {
+                <p class="text-slate-300 text-xs font-bold">Agregar foto de perfil</p>
+                <p class="text-slate-500 text-[10px] mt-0.5">Ayuda a los conductores a reconocerte</p>
+              }
+            </div>
+          </label>
+        </div>
+
+        <!-- ── Nombres y Apellidos ── -->
+        <div>
+          <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:12px">person</span> Nombres y Apellidos <span class="text-rose-400">*</span></span>
+          </label>
           <input type="text" [value]="fullName()" (input)="fullName.set($any($event.target).value)"
             placeholder="Tu nombre completo"
             class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-all" />
         </div>
 
+        <!-- ── Correo electrónico ── -->
+        <div>
+          <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:12px">email</span> Correo electrónico <span class="text-rose-400">*</span></span>
+          </label>
+          <input type="email" [value]="passengerEmail()" (input)="passengerEmail.set($any($event.target).value)"
+            placeholder="tucorreo@ejemplo.com"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-all" />
+        </div>
+
+        <!-- ── Ciudad de ubicación ── -->
+        <div>
+          <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:12px">location_city</span> Ciudad de ubicación <span class="text-rose-400">*</span></span>
+          </label>
+          <input type="text" [value]="passengerCity()" (input)="passengerCity.set($any($event.target).value)"
+            placeholder="Ej: Bogotá, Medellín, Cali..."
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-all" />
+        </div>
+
+        <!-- ── Teléfono de contacto de emergencia ── -->
+        <div>
+          <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined" style="font-size:12px">emergency</span> Contacto de emergencia <span class="text-rose-400">*</span></span>
+          </label>
+          <p class="text-slate-500 text-[10px] mb-2">Número de un familiar o amigo para usar en caso de incidentes durante el viaje</p>
+          <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-3 focus-within:border-orange-500/50 transition-all">
+            <span class="text-slate-400 font-bold text-sm shrink-0">+57</span>
+            <div class="w-px h-4 bg-white/10 shrink-0"></div>
+            <input type="tel" [value]="passengerEmergencyPhone()" (input)="passengerEmergencyPhone.set($any($event.target).value)"
+              placeholder="300 000 0000" maxlength="10"
+              class="flex-1 bg-transparent text-white text-sm placeholder:text-slate-600 focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- ── Verificación de identidad (opcional/regional) ── -->
+        <div>
+          <p class="text-[10px] text-orange-400 uppercase tracking-widest font-black mb-1 flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size:14px">verified_user</span> Verificación de identidad
+            <span class="text-slate-500 font-normal normal-case tracking-normal">(En ciertas regiones)</span>
+          </p>
+          <p class="text-slate-500 text-[10px] mb-3">Foto de tu cédula o documento de identidad. Aumenta tu confianza en la plataforma.</p>
+          <label class="flex flex-col items-center gap-2 p-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] cursor-pointer
+            hover:border-orange-500/40 hover:bg-orange-500/5 transition-all">
+            <input type="file" accept="image/*,.pdf" class="hidden" (change)="uploadPassengerIdentity($event)" />
+            @if (uploadingIdentity()) {
+              <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:28px">autorenew</span>
+              <span class="text-orange-400 text-xs font-bold">Subiendo documento...</span>
+            } @else if (passengerIdentityUrl()) {
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:28px">check_circle</span>
+              <span class="text-emerald-400 text-xs font-bold">Documento cargado ✓</span>
+              <span class="text-slate-500 text-[10px]">Toca para cambiar</span>
+            } @else {
+              <span class="material-symbols-outlined text-slate-500" style="font-size:28px">upload_file</span>
+              <span class="text-slate-400 text-xs font-bold">Subir cédula o documento</span>
+              <span class="text-slate-600 text-[10px]">JPG, PNG o PDF</span>
+            }
+          </label>
+        </div>
+
         @if (error()) {
-          <p class="text-rose-400 text-xs flex items-center gap-1">
-            <span class="material-symbols-outlined" style="font-size:14px">error</span> {{ error() }}
+          <p class="text-rose-400 text-xs flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2">
+            <span class="material-symbols-outlined shrink-0" style="font-size:14px">error</span> {{ error() }}
           </p>
         }
 
-        <button (click)="registerPassenger()" [disabled]="loading() || !fullName().trim()"
-          class="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all
+        <button (click)="registerPassenger()" [disabled]="loading() || !passengerFormValid()"
+          class="w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all
             bg-gradient-to-r from-orange-500 to-amber-500 text-black hover:from-orange-400 hover:to-amber-400 disabled:opacity-40">
-          @if (loading()) { <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> }
-          @else { Crear mi cuenta }
+          @if (loading()) {
+            <span class="flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Creando cuenta...
+            </span>
+          } @else {
+            <span class="flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined" style="font-size:16px">check_circle</span> Crear mi cuenta de pasajero
+            </span>
+          }
+        </button>
+
+        <button (click)="screen.set('welcome')" class="text-slate-500 text-xs text-center hover:text-slate-300 transition-colors">
+          ← Volver
         </button>
       </div>
     </div>
@@ -2425,6 +2530,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   mapLoading          = signal(false);
   gpsError            = signal('');
 
+  // Passenger registration extra fields
+  passengerEmail          = signal('');
+  passengerCity           = signal('');
+  passengerEmergencyPhone = signal('');
+  passengerAvatarUrl      = signal('');
+  passengerIdentityUrl    = signal('');
+  uploadingAvatar         = signal(false);
+  uploadingIdentity       = signal(false);
+
   readonly quickPrices = [5000, 8000, 10000, 12000, 15000, 20000];
 
   // Driver flow
@@ -2469,6 +2583,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const drivers = this.allDrivers();
     return tab === 'pending' ? drivers.filter(d => d.status === 'pending') : drivers;
   };
+
+  passengerFormValid = () =>
+    !!this.fullName().trim() &&
+    !!this.passengerEmail().trim() && this.passengerEmail().includes('@') &&
+    !!this.passengerCity().trim() &&
+    this.passengerEmergencyPhone().replace(/\D/g, '').length >= 10;
 
   driverFormValid = () =>
     !!this.fullName().trim() && !!this.licenseNumber().trim() &&
@@ -2572,11 +2692,45 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.screen.set(this.selectedRole() === 'passenger' ? 'register-passenger' : 'register-driver');
   }
 
+  async uploadPassengerAvatar(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.uploadingAvatar.set(true);
+    // Upload to a temp path using auth user id if possible; fallback to timestamp
+    const { data: { user } } = await (this.svc as any).supabase.auth.getUser();
+    const uid = user?.id ?? 'tmp';
+    const url = await this.svc.uploadPassengerDoc(file, uid, 'avatar');
+    if (url) this.passengerAvatarUrl.set(url);
+    this.uploadingAvatar.set(false);
+  }
+
+  async uploadPassengerIdentity(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.uploadingIdentity.set(true);
+    const { data: { user } } = await (this.svc as any).supabase.auth.getUser();
+    const uid = user?.id ?? 'tmp';
+    const url = await this.svc.uploadPassengerDoc(file, uid, 'identity');
+    if (url) this.passengerIdentityUrl.set(url);
+    this.uploadingIdentity.set(false);
+  }
+
   async registerPassenger() {
-    if (!this.fullName().trim()) return;
+    if (!this.passengerFormValid()) return;
     this.loading.set(true);
     this.error.set('');
-    const user = await this.svc.registerUser('passenger', this.fullName().trim(), '+57' + this.phone());
+    const user = await this.svc.registerUser(
+      'passenger',
+      this.fullName().trim(),
+      '+57' + this.phone(),
+      {
+        email:          this.passengerEmail().trim(),
+        city:           this.passengerCity().trim(),
+        emergencyPhone: '+57' + this.passengerEmergencyPhone().replace(/\D/g, '').slice(-10),
+        avatarUrl:      this.passengerAvatarUrl() || undefined,
+        identityDocUrl: this.passengerIdentityUrl() || undefined,
+      }
+    );
     if (!user) {
       this.error.set('Error al crear cuenta. Intenta de nuevo.');
       this.loading.set(false);

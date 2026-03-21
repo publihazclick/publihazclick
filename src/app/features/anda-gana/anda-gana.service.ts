@@ -24,6 +24,8 @@ export interface AgUser {
   phone: string;
   phone_verified: boolean;
   role: 'passenger' | 'driver';
+  email?: string;
+  city?: string;
   avatar_url?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
@@ -98,7 +100,7 @@ export interface RouteInfo {
 
 @Injectable({ providedIn: 'root' })
 export class AndaGanaService {
-  private readonly supabase = getSupabaseClient();
+  readonly supabase = getSupabaseClient();
 
   async getMyAgUser(): Promise<AgUser | null> {
     const { data: { user } } = await this.supabase.auth.getUser();
@@ -148,15 +150,50 @@ export class AndaGanaService {
     return true;
   }
 
-  async registerUser(role: 'passenger' | 'driver', fullName: string, phone: string): Promise<AgUser | null> {
+  async registerUser(
+    role: 'passenger' | 'driver',
+    fullName: string,
+    phone: string,
+    extra?: {
+      email?: string;
+      city?: string;
+      avatarUrl?: string;
+      emergencyPhone?: string;
+      identityDocUrl?: string;
+    }
+  ): Promise<AgUser | null> {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return null;
+    const row: Record<string, any> = {
+      auth_user_id: user.id,
+      full_name: fullName,
+      phone,
+      phone_verified: true,
+      role,
+    };
+    if (extra?.email)         row['email']                   = extra.email;
+    if (extra?.city)          row['city']                    = extra.city;
+    if (extra?.avatarUrl)     row['avatar_url']              = extra.avatarUrl;
+    if (extra?.emergencyPhone) row['emergency_contact_phone'] = extra.emergencyPhone;
+    if (extra?.identityDocUrl) row['selfie_url']             = extra.identityDocUrl;
+
     const { data, error } = await this.supabase
       .from('ag_users')
-      .insert({ auth_user_id: user.id, full_name: fullName, phone, phone_verified: true, role })
+      .insert(row)
       .select()
       .single();
     return error ? null : data as AgUser;
+  }
+
+  async uploadPassengerDoc(file: File, userId: string, docType: 'avatar' | 'identity'): Promise<string | null> {
+    const ext = file.name.split('.').pop();
+    const path = `${userId}/${docType}-${Date.now()}.${ext}`;
+    const { data, error } = await this.supabase.storage
+      .from('ag-drivers')
+      .upload(path, file, { upsert: true });
+    if (error) return null;
+    const { data: urlData } = this.supabase.storage.from('ag-drivers').getPublicUrl(data.path);
+    return urlData.publicUrl;
   }
 
   async saveDriverData(agUserId: string, d: {
