@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { getSupabaseClient } from '../../core/supabase.client';
+import { environment } from '../../../environments/environment';
 
 export interface AgTrip {
   id: string;
@@ -748,13 +749,12 @@ export class AndaGanaService {
 
   async reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lng=${lng}`;
-      const res = await fetch(url, {
-        headers: { 'Accept-Language': 'es', 'User-Agent': 'AndaYGana/1.0' },
-      });
+      const token = environment.andaGana.mapboxToken;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=es&types=address,place`;
+      const res = await fetch(url);
       if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       const json = await res.json();
-      return json.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      return json.features?.[0]?.place_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     } catch {
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     }
@@ -854,41 +854,39 @@ export class AndaGanaService {
       .map((d: any) => ({ lat: d.lat, lng: d.lng, plate: d.driver?.vehicle_plate || '' }));
   }
 
-  // ── Geocodificación directa con Nominatim (OpenStreetMap) — 100% gratis, sin token ──
+  // ── Geocodificación con Mapbox Geocoding API ──
   async searchPlaces(query: string, lat?: number, lng?: number): Promise<PlaceSuggestion[]> {
     if (!query.trim() || query.trim().length < 2) return [];
     try {
-      // Sin countrycodes para permitir búsqueda global (país, ciudad, dirección)
-      // Con viewbox+bounded=0 priorizamos resultados cercanos pero no excluimos nada
-      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=8&accept-language=es`;
+      const token = environment.andaGana.mapboxToken;
+      let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&language=es&limit=8`;
       if (lat != null && lng != null) {
-        const d = 2; // grados de proximidad
-        url += `&viewbox=${lng - d},${lat + d},${lng + d},${lat - d}&bounded=0`;
+        url += `&proximity=${lng},${lat}`;
       }
-      // NOTA: No incluir 'User-Agent' custom — es cabecera prohibida en browsers
       const resp = await fetch(url);
       if (!resp.ok) return [];
       const data = await resp.json();
-      return (data || []).map((f: any, i: number) => ({
-        id:      `nom-${i}-${Date.now()}`,
-        name:    f.name || f.display_name.split(',')[0],
-        address: f.display_name,
-        lat:     parseFloat(f.lat),
-        lng:     parseFloat(f.lon),
+      return (data.features || []).map((f: any, i: number) => ({
+        id:      `mbx-${i}-${Date.now()}`,
+        name:    f.text || f.place_name.split(',')[0],
+        address: f.place_name,
+        lat:     f.center[1],
+        lng:     f.center[0],
       })) as PlaceSuggestion[];
     } catch {
       return [];
     }
   }
 
-  // ── Cálculo de ruta con OSRM (Open Source Routing Machine) — 100% gratis, sin token ──
+  // ── Cálculo de ruta con Mapbox Directions API ──
   async calculateRoute(
     origin: { lat: number; lng: number },
     dest:   { lat: number; lng: number }
   ): Promise<RouteInfo | null> {
     try {
+      const token = environment.andaGana.mapboxToken;
       const coords = `${origin.lng},${origin.lat};${dest.lng},${dest.lat}`;
-      const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?access_token=${token}&geometries=geojson&overview=full`;
       const resp = await fetch(url);
       if (!resp.ok) return null;
       const data = await resp.json();

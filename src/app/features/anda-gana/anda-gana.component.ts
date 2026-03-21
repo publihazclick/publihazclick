@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, NgZone, PLATFORM_ID } from '@angular/core';
 import { AndaGanaService, AgUser, AgDriver, AgTrip, AgRideRequest, AgChatMessage, PlaceSuggestion, RouteInfo } from './anda-gana.service';
 import { DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
+import { environment } from '../../../environments/environment';
 
 type AgScreen =
   | 'loading' | 'welcome' | 'enter-phone' | 'verify-code'
@@ -2860,8 +2861,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _rideChannel: any = null;
   private _chatChannel: any = null;
   private _timerInterval: any = null;
-  private _leafletLoaded = false;
-  private _leafletPromise: Promise<any> | null = null; // evita race condition al cargar Leaflet dos veces simultáneamente
+  private _mapboxPromise: Promise<any> | null = null; // evita race condition al cargar Mapbox GL dos veces simultáneamente
   private _mapToken = 0;                               // token de cancelación: cada nueva initPickMap lo incrementa; pasos async comprueban que sigue vigente
   private _gpsToken = 0;                               // token de cancelación para el flujo GPS (startRideRequest / retryGps)
   private _requestMarkers: any[] = [];                 // markers del mapa de conductor para actualizar sin recrear el mapa
@@ -3424,97 +3424,75 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Map helpers ──
 
-  private loadLeaflet(): Promise<any> {
+  // ── Cargar Mapbox GL JS desde CDN (con caché de promesa para evitar doble carga) ──
+  private loadMapbox(): Promise<any> {
     if (!isPlatformBrowser(this.platformId)) return Promise.resolve(null);
-    if ((window as any).L) return Promise.resolve((window as any).L);
-    // Fix: reusar la misma promesa si ya está cargando (evita doble <script>)
-    if (this._leafletPromise) return this._leafletPromise;
-    if (!document.getElementById('leaflet-css')) {
+    if ((window as any).mapboxgl) return Promise.resolve((window as any).mapboxgl);
+    if (this._mapboxPromise) return this._mapboxPromise;
+    if (!document.getElementById('mapbox-css')) {
       const link = document.createElement('link');
-      link.id = 'leaflet-css';
+      link.id = 'mapbox-css';
       link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
       document.head.appendChild(link);
     }
-    this._leafletPromise = new Promise(resolve => {
+    this._mapboxPromise = new Promise(resolve => {
       const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => { this._leafletLoaded = true; resolve((window as any).L); };
+      script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+      script.onload = () => {
+        const mapboxgl = (window as any).mapboxgl;
+        mapboxgl.accessToken = environment.andaGana.mapboxToken;
+        resolve(mapboxgl);
+      };
       document.head.appendChild(script);
     });
-    return this._leafletPromise;
+    return this._mapboxPromise;
   }
 
-  // ── Light tile layer (CARTO Voyager — claro, sin API key, mismo CDN que ya funciona) ──
-  private addTiles(map: any, L: any) {
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map);
+  // ── Marker DOM elements ──
+  private originEl(): HTMLElement {
+    const el = document.createElement('div');
+    el.innerHTML = `<div style="width:18px;height:18px;border-radius:50%;background:#f97316;border:3px solid white;box-shadow:0 0 0 4px rgba(249,115,22,0.3),0 4px 12px rgba(0,0,0,0.5)"></div>`;
+    el.style.cssText = 'display:flex;align-items:center;justify-content:center';
+    return el;
   }
 
-  // ── Origin pin (orange) for map ──
-  private originIcon(L: any) {
-    return L.divIcon({
-      className: '',
-      html: `<div style="display:flex;flex-direction:column;align-items:center">
-               <div style="width:18px;height:18px;border-radius:50%;background:#f97316;border:3px solid white;box-shadow:0 0 0 4px rgba(249,115,22,0.3),0 4px 12px rgba(0,0,0,0.5)"></div>
-             </div>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
-    });
+  private destEl(): HTMLElement {
+    const el = document.createElement('div');
+    el.innerHTML = `<div style="width:18px;height:18px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 0 0 4px rgba(239,68,68,0.3),0 4px 12px rgba(0,0,0,0.5)"></div>`;
+    el.style.cssText = 'display:flex;align-items:center;justify-content:center';
+    return el;
   }
 
-  // ── Destination pin (red) ──
-  private destIcon(L: any) {
-    return L.divIcon({
-      className: '',
-      html: `<div style="display:flex;flex-direction:column;align-items:center">
-               <div style="width:18px;height:18px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 0 0 4px rgba(239,68,68,0.3),0 4px 12px rgba(0,0,0,0.5)"></div>
-             </div>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
-    });
+  private carEl(color = '#22c55e'): HTMLElement {
+    const el = document.createElement('div');
+    el.style.cssText = `width:44px;height:44px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 0 6px ${color}33,0 4px 16px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;transition:all 0.5s ease`;
+    el.innerHTML = `<span class="material-symbols-outlined" style="font-size:22px;color:white;font-variation-settings:'FILL' 1">directions_car</span>`;
+    return el;
   }
 
-  // ── Animated car icon for driver ──
-  private carIcon(L: any, color = '#22c55e') {
-    return L.divIcon({
-      className: '',
-      html: `<div style="width:44px;height:44px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 0 6px ${color}33,0 4px 16px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;transition:all 0.5s ease">
-               <span class="material-symbols-outlined" style="font-size:22px;color:white;font-variation-settings:'FILL' 1">directions_car</span>
-             </div>`,
-      iconSize: [44, 44],
-      iconAnchor: [22, 22],
-    });
-  }
-
-  // ── Draw GeoJSON route on map ──
-  private drawRoute(map: any, L: any, geometry: any) {
+  // ── Añadir ruta GeoJSON al mapa (Mapbox sources + layers) ──
+  private drawRoute(map: any, geometry: any, dashed = false) {
     if (!geometry) return;
-    try {
-      // Fix: el outline blanco debe dibujarse PRIMERO (z-order = orden de inserción en Leaflet)
-      // así la ruta naranja queda encima y visible
-      L.geoJSON(geometry, {
-        style: {
-          color: 'rgba(255,255,255,0.25)',
-          weight: 10,
-          opacity: 1,
-          lineCap: 'round',
-          lineJoin: 'round',
-        },
-      }).addTo(map);
-      L.geoJSON(geometry, {
-        style: {
-          color: '#f97316',
-          weight: 6,
-          opacity: 0.9,
-          lineCap: 'round',
-          lineJoin: 'round',
-        },
-      }).addTo(map);
-    } catch {}
+    const doAdd = () => {
+      try {
+        if (!map.getSource('ag-route')) {
+          map.addSource('ag-route', { type: 'geojson', data: geometry });
+          map.addLayer({ id: 'ag-route-outline', type: 'line', source: 'ag-route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': 'rgba(255,255,255,0.25)', 'line-width': 10 } });
+          map.addLayer({ id: 'ag-route-line', type: 'line', source: 'ag-route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': '#f97316', 'line-width': 6, 'line-opacity': 0.9,
+              ...(dashed ? { 'line-dasharray': [2, 2] } : {}),
+            } });
+        } else {
+          (map.getSource('ag-route') as any).setData(geometry);
+        }
+      } catch {}
+    };
+    if (map.isStyleLoaded()) { doAdd(); } else { map.once('load', doAdd); }
   }
 
   /** Espera hasta que el elemento exista en el DOM (OnPush puede demorar varios frames) */
@@ -3541,35 +3519,35 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ── Pick map: center-pin approach, instant GPS ──
+  // ── Pick map: center-pin approach, instant GPS (Mapbox GL JS) ──
   private async initPickMap(elementId: string, lat: number, lng: number, onPick: (lat: number, lng: number) => void) {
     // Habilitar el botón "Confirmar" INMEDIATAMENTE con la posición recibida,
-    // ANTES de cualquier await — así rideOrigin/rideDest siempre tienen valor
-    // aunque el mapa tarde en cargar o falle.
+    // ANTES de cualquier await — así rideOrigin/rideDest siempre tienen valor.
     onPick(lat, lng);
     this.mapPickingAddress.set('Detectando dirección...');
 
-    // Token de cancelación: si llega una nueva llamada mientras esta espera, el token cambia
-    // y esta ejecución se abandona limpiamente en cualquier punto async.
     const token = ++this._mapToken;
 
-    const L = await this.loadLeaflet();
-    if (!L || token !== this._mapToken) return; // cancelada por llamada posterior
+    const mapboxgl = await this.loadMapbox();
+    if (!mapboxgl || token !== this._mapToken) return;
 
-    this.destroyMap(); // destruye mapa anterior (NO modifica _mapToken)
+    this.destroyMap();
 
-    // Espera a que Angular renderice el div (OnPush puede demorar varios frames)
     const el = await this.waitForDomElement(elementId);
-    if (!el || token !== this._mapToken) return; // cancelada o DOM no disponible
+    if (!el || token !== this._mapToken) return;
 
     this.mapLoading.set(true);
 
-    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], 16);
-    this.addTiles(map, L);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.control.attribution({ position: 'bottomright', prefix: '' }).addTo(map);
+    const map = new mapboxgl.Map({
+      container: el,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [lng, lat],
+      zoom: 15,
+      attributionControl: false,
+    });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
-    // Al mover el mapa: actualizar posición al instante y geocodificar en background
     const handleCenter = () => {
       if (this._skipNextMoveEnd) { this._skipNextMoveEnd = false; return; }
       const center = map.getCenter();
@@ -3588,79 +3566,88 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._map = map;
     this.mapLoading.set(false);
 
-    // invalidateSize múltiple: garantiza tiles correctos aunque el layout tarde en estabilizarse
     [100, 400, 800].forEach(delay =>
-      setTimeout(() => { if (this._map === map) this._map.invalidateSize(); }, delay)
+      setTimeout(() => { if (this._map === map) map.resize(); }, delay)
     );
-    // Geocodificar la posición inicial
-    setTimeout(() => { if (this._map === map) handleCenter(); }, 150);
-
-    // Mostrar conductores disponibles con GPS real
-    this.showDriversOnMap(map, L);
+    // Geocodificar posición inicial cuando el estilo cargue
+    map.once('load', () => {
+      if (this._map === map) handleCenter();
+      this.showDriversOnMap(map, mapboxgl);
+    });
   }
 
-  // ── Trip map (passenger): origin + dest + route + driver marker ──
+  // ── Trip map (passenger): origin + dest + route + driver marker (Mapbox GL JS) ──
   private async initTripMap() {
     const req = this.activeRideRequest();
     if (!req) return;
     const token = ++this._mapToken;
-    const L = await this.loadLeaflet();
-    if (!L || token !== this._mapToken) return;
+    const mapboxgl = await this.loadMapbox();
+    if (!mapboxgl || token !== this._mapToken) return;
     this.destroyMap();
     const el = await this.waitForDomElement('ag-map-trip');
     if (!el || token !== this._mapToken) return;
 
-    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([req.origin_lat, req.origin_lng], 14);
-    this.addTiles(map, L);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    const map = new mapboxgl.Map({
+      container: el,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [req.origin_lng, req.origin_lat],
+      zoom: 13,
+      attributionControl: false,
+    });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
     // Origin and dest markers
-    L.marker([req.origin_lat, req.origin_lng], { icon: this.originIcon(L) }).addTo(map)
-      .bindPopup('<b style="color:#f97316">Origen</b>');
-    L.marker([req.dest_lat, req.dest_lng], { icon: this.destIcon(L) }).addTo(map)
-      .bindPopup('<b style="color:#ef4444">Destino</b>');
-
-    // Route from geometry if available, fallback to straight dashed line
-    const geo = this.routeGeometry();
-    if (geo) {
-      this.drawRoute(map, L, geo);
-    } else {
-      L.polyline([[req.origin_lat, req.origin_lng], [req.dest_lat, req.dest_lng]], {
-        color: '#f97316', weight: 5, opacity: 0.8, dashArray: '10,8',
-      }).addTo(map);
-    }
+    new mapboxgl.Marker({ element: this.originEl() })
+      .setLngLat([req.origin_lng, req.origin_lat])
+      .setPopup(new mapboxgl.Popup().setHTML('<b style="color:#f97316">Origen</b>'))
+      .addTo(map);
+    new mapboxgl.Marker({ element: this.destEl() })
+      .setLngLat([req.dest_lng, req.dest_lat])
+      .setPopup(new mapboxgl.Popup().setHTML('<b style="color:#ef4444">Destino</b>'))
+      .addTo(map);
 
     // Driver marker if we have location
     const dloc = this.driverLatLng();
     if (dloc) {
-      this._driverMarker = L.marker([dloc.lat, dloc.lng], { icon: this.carIcon(L) }).addTo(map);
+      this._driverMarker = new mapboxgl.Marker({ element: this.carEl() })
+        .setLngLat([dloc.lng, dloc.lat])
+        .addTo(map);
     }
 
-    map.fitBounds([[req.origin_lat, req.origin_lng], [req.dest_lat, req.dest_lng]], { padding: [60, 60] });
+    // Route (must wait for style load)
+    const geo = this.routeGeometry();
+    this.drawRoute(map, geo || {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[req.origin_lng, req.origin_lat], [req.dest_lng, req.dest_lat]] },
+    }, !geo);
+
+    map.fitBounds([[req.origin_lng, req.origin_lat], [req.dest_lng, req.dest_lat]], { padding: 60 });
     this._map = map;
-    // Fix: invalidateSize para tiles del mapa de viaje
-    [100, 400].forEach(delay => setTimeout(() => { if (this._map) this._map.invalidateSize(); }, delay));
+    [100, 400].forEach(delay => setTimeout(() => { if (this._map === map) map.resize(); }, delay));
   }
 
-  // ── Show available drivers with real GPS position on map ──
-  private async showDriversOnMap(map: any, L: any) {
+  // ── Show available drivers with real GPS position on map (Mapbox) ──
+  private async showDriversOnMap(map: any, mapboxgl: any) {
     try {
       const drivers = await this.svc.getAvailableDriversWithLocation();
       this.zone.run(() => {
         drivers.forEach(d => {
           if (!map) return;
-          L.marker([d.lat, d.lng], { icon: this.carIcon(L, '#f59e0b') })
-            .addTo(map)
-            .bindPopup(`<div style="font-weight:900;color:#d97706;font-size:13px">🚗 ${d.plate || 'Conductor disponible'}</div>`);
+          const popup = new mapboxgl.Popup({ offset: 25 })
+            .setHTML(`<div style="font-weight:900;color:#d97706;font-size:13px">🚗 ${d.plate || 'Conductor disponible'}</div>`);
+          new mapboxgl.Marker({ element: this.carEl('#f59e0b') })
+            .setLngLat([d.lng, d.lat])
+            .setPopup(popup)
+            .addTo(map);
         });
       });
     } catch {}
   }
 
   private destroyMap() {
-    if (this._driverMarker) { try { this._map?.removeLayer(this._driverMarker); } catch {} this._driverMarker = null; }
-    // Limpiar markers de requests
-    this._requestMarkers.forEach(m => { try { this._map?.removeLayer(m); } catch {} });
+    // En Mapbox los markers se remueven con marker.remove(), no con map.removeLayer()
+    if (this._driverMarker) { try { this._driverMarker.remove(); } catch {} this._driverMarker = null; }
+    this._requestMarkers.forEach(m => { try { m.remove(); } catch {} });
     this._requestMarkers = [];
     if (this._map) {
       try { this._map.remove(); } catch {}
@@ -3695,7 +3682,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           const { latitude: lat, longitude: lng } = pos.coords;
           if (this._map) {
             // Mapa ya existe: solo moverlo a la posición GPS
-            this._map.setView([lat, lng], 17, { animate: true });
+            this._map.flyTo({ center: [lng, lat], zoom: 17 });
             this.onOriginPick(lat, lng);
           } else {
             // Mapa aún no existe: inicializarlo centrado en GPS
@@ -3960,32 +3947,38 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private async initDriverRequestsMap() {
     const token = ++this._mapToken;
-    const L = await this.loadLeaflet();
-    if (!L || token !== this._mapToken) return;
+    const mapboxgl = await this.loadMapbox();
+    if (!mapboxgl || token !== this._mapToken) return;
     this.destroyMap();
     const el = await this.waitForDomElement('ag-map-driver-requests');
     if (!el || token !== this._mapToken) return;
     const reqs = this.pendingRequests();
 
-    // Center: user's GPS if available, else first request, else Bogotá
-    const getCenter = (): [number, number] => {
-      if (reqs.length > 0) return [reqs[0].origin_lat, reqs[0].origin_lng];
-      return [4.711, -74.0721];
-    };
+    const center: [number, number] = reqs.length > 0
+      ? [reqs[0].origin_lng, reqs[0].origin_lat]
+      : [-74.0721, 4.711];
 
-    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView(getCenter(), 13);
-    this.addTiles(map, L);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    const map = new mapboxgl.Map({
+      container: el,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center,
+      zoom: 13,
+      attributionControl: false,
+    });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
     // Try to show driver's own position
     if (isPlatformBrowser(this.platformId) && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
         this.zone.run(() => {
-          if (this._map) {
-            L.marker([pos.coords.latitude, pos.coords.longitude], { icon: this.carIcon(L, '#f59e0b') })
-              .addTo(this._map)
-              .bindPopup('<b style="color:#f59e0b">Tu posición</b>');
-            if (reqs.length === 0) this._map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+          if (this._map === map) {
+            const popup = new mapboxgl.Popup({ offset: 25 })
+              .setHTML('<b style="color:#f59e0b">Tu posición</b>');
+            new mapboxgl.Marker({ element: this.carEl('#f59e0b') })
+              .setLngLat([pos.coords.longitude, pos.coords.latitude])
+              .setPopup(popup)
+              .addTo(map);
+            if (reqs.length === 0) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 14 });
           }
         });
       }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
@@ -3994,44 +3987,43 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Request markers with price badge
     this._requestMarkers = [];
     reqs.forEach(req => {
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 12px rgba(245,158,11,0.6);border:2px solid rgba(255,255,255,0.3)">$${(req.offered_price / 1000).toFixed(0)}k</div>`,
-        iconAnchor: [24, 12],
-      });
-      const marker = L.marker([req.origin_lat, req.origin_lng], { icon })
-        .addTo(map)
-        .bindPopup(`<b style="color:#f59e0b">$${req.offered_price.toLocaleString('es-CO')} COP</b><br><span style="color:#ccc;font-size:12px">${req.origin_address}</span>`);
+      const badgeEl = document.createElement('div');
+      badgeEl.style.cssText = 'background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 12px rgba(245,158,11,0.6);border:2px solid rgba(255,255,255,0.3);cursor:pointer';
+      badgeEl.textContent = `$${(req.offered_price / 1000).toFixed(0)}k`;
+      const popup = new mapboxgl.Popup({ offset: 25 })
+        .setHTML(`<b style="color:#f59e0b">$${req.offered_price.toLocaleString('es-CO')} COP</b><br><span style="color:#ccc;font-size:12px">${req.origin_address}</span>`);
+      const marker = new mapboxgl.Marker({ element: badgeEl })
+        .setLngLat([req.origin_lng, req.origin_lat])
+        .setPopup(popup)
+        .addTo(map);
       this._requestMarkers.push(marker);
     });
 
     this._map = map;
-    // Fix: invalidateSize para garantizar tiles correctos en el mapa del conductor
-    [100, 400].forEach(delay => setTimeout(() => { if (this._map) this._map.invalidateSize(); }, delay));
+    [100, 400].forEach(delay => setTimeout(() => { if (this._map === map) map.resize(); }, delay));
   }
 
   private refreshDriverRequestsMap() {
     if (!this._map || this.screen() !== 'driver-requests') return;
-    if ((window as any).L) {
-      // Fix: actualizar solo los markers de requests sin destruir/recrear el mapa
-      // Esto elimina el parpadeo que había al llegar cada nueva solicitud
-      const L = (window as any).L;
-      this._requestMarkers.forEach(m => { try { this._map.removeLayer(m); } catch {} });
+    const mapboxgl = (window as any).mapboxgl;
+    if (mapboxgl) {
+      // Actualizar solo los markers sin destruir el mapa (evita parpadeo)
+      this._requestMarkers.forEach(m => { try { m.remove(); } catch {} });
       this._requestMarkers = [];
       const reqs = this.pendingRequests();
       reqs.forEach(req => {
-        const icon = L.divIcon({
-          className: '',
-          html: `<div style="background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 12px rgba(245,158,11,0.6);border:2px solid rgba(255,255,255,0.3)">$${(req.offered_price / 1000).toFixed(0)}k</div>`,
-          iconAnchor: [24, 12],
-        });
-        const marker = L.marker([req.origin_lat, req.origin_lng], { icon })
-          .addTo(this._map)
-          .bindPopup(`<b style="color:#f59e0b">$${req.offered_price.toLocaleString('es-CO')} COP</b><br><span style="color:#ccc;font-size:12px">${req.origin_address}</span>`);
+        const badgeEl = document.createElement('div');
+        badgeEl.style.cssText = 'background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 12px rgba(245,158,11,0.6);border:2px solid rgba(255,255,255,0.3);cursor:pointer';
+        badgeEl.textContent = `$${(req.offered_price / 1000).toFixed(0)}k`;
+        const popup = new mapboxgl.Popup({ offset: 25 })
+          .setHTML(`<b style="color:#f59e0b">$${req.offered_price.toLocaleString('es-CO')} COP</b><br><span style="color:#ccc;font-size:12px">${req.origin_address}</span>`);
+        const marker = new mapboxgl.Marker({ element: badgeEl })
+          .setLngLat([req.origin_lng, req.origin_lat])
+          .setPopup(popup)
+          .addTo(this._map);
         this._requestMarkers.push(marker);
       });
     } else {
-      // Leaflet aún no cargado: recrear mapa completo
       setTimeout(() => this.initDriverRequestsMap(), 50);
     }
   }
@@ -4040,65 +4032,65 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const ride = this.activeDriverRide();
     if (!ride) return;
     const token = ++this._mapToken;
-    const L = await this.loadLeaflet();
-    if (!L || token !== this._mapToken) return;
+    const mapboxgl = await this.loadMapbox();
+    if (!mapboxgl || token !== this._mapToken) return;
     this.destroyMap();
     const el = await this.waitForDomElement('ag-map-driver-trip');
     if (!el || token !== this._mapToken) return;
 
-    const isPickup = ride.status === 'accepted'; // going to pick up passenger
-    const targetLat = isPickup ? ride.origin_lat : ride.dest_lat;
+    const isPickup = ride.status === 'accepted';
     const targetLng = isPickup ? ride.origin_lng : ride.dest_lng;
+    const targetLat = isPickup ? ride.origin_lat : ride.dest_lat;
 
-    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([targetLat, targetLng], 14);
-    this.addTiles(map, L);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    const map = new mapboxgl.Map({
+      container: el,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [targetLng, targetLat],
+      zoom: 14,
+      attributionControl: false,
+    });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
     // Origin marker (passenger pickup point)
-    L.marker([ride.origin_lat, ride.origin_lng], { icon: this.originIcon(L) }).addTo(map)
-      .bindPopup('<b style="color:#22c55e">Recoger pasajero</b>');
+    new mapboxgl.Marker({ element: this.originEl() })
+      .setLngLat([ride.origin_lng, ride.origin_lat])
+      .setPopup(new mapboxgl.Popup().setHTML('<b style="color:#22c55e">Recoger pasajero</b>'))
+      .addTo(map);
 
     // Destination marker
-    L.marker([ride.dest_lat, ride.dest_lng], { icon: this.destIcon(L) }).addTo(map)
-      .bindPopup('<b style="color:#ef4444">Destino del pasajero</b>');
+    new mapboxgl.Marker({ element: this.destEl() })
+      .setLngLat([ride.dest_lng, ride.dest_lat])
+      .setPopup(new mapboxgl.Popup().setHTML('<b style="color:#ef4444">Destino del pasajero</b>'))
+      .addTo(map);
 
-    // Route from stored geometry or dashed fallback
+    // Route
     const geo = this.routeGeometry();
-    if (geo) {
-      this.drawRoute(map, L, geo);
-    } else {
-      L.polyline([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], {
-        color: '#f59e0b', weight: 5, opacity: 0.85, dashArray: '10,8',
-      }).addTo(map);
-    }
+    this.drawRoute(map, geo || {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[ride.origin_lng, ride.origin_lat], [ride.dest_lng, ride.dest_lat]] },
+    }, !geo);
 
     // Try to show driver's current GPS position
     if (isPlatformBrowser(this.platformId) && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
         this.zone.run(() => {
-          if (this._map) {
-            const { latitude, longitude } = pos.coords;
-            this._driverMarker = L.marker([latitude, longitude], { icon: this.carIcon(L, '#f59e0b') })
-              .addTo(this._map);
-            // Fit bounds to show driver + destination
-            const bounds = L.latLngBounds([
-              [latitude, longitude],
-              [targetLat, targetLng],
-            ]);
-            this._map.fitBounds(bounds, { padding: [60, 60] });
+          if (this._map === map) {
+            const { latitude: dLat, longitude: dLng } = pos.coords;
+            this._driverMarker = new mapboxgl.Marker({ element: this.carEl('#f59e0b') })
+              .setLngLat([dLng, dLat])
+              .addTo(map);
+            map.fitBounds([[dLng, dLat], [targetLng, targetLat]], { padding: 60 });
           }
         });
       }, () => {
-        // No GPS: just fit origin to dest
-        map.fitBounds([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], { padding: [60, 60] });
+        map.fitBounds([[ride.origin_lng, ride.origin_lat], [ride.dest_lng, ride.dest_lat]], { padding: 60 });
       }, { enableHighAccuracy: true, timeout: 5000 });
     } else {
-      map.fitBounds([[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]], { padding: [60, 60] });
+      map.fitBounds([[ride.origin_lng, ride.origin_lat], [ride.dest_lng, ride.dest_lat]], { padding: 60 });
     }
 
     this._map = map;
-    // Fix: invalidateSize para tiles del mapa del conductor en viaje activo
-    [100, 400].forEach(delay => setTimeout(() => { if (this._map) this._map.invalidateSize(); }, delay));
+    [100, 400].forEach(delay => setTimeout(() => { if (this._map === map) map.resize(); }, delay));
   }
 
   private cleanupDriverRide() {
@@ -4146,9 +4138,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._map) {
       // Poner bandera para que moveend no sobreescriba el lugar seleccionado
       this._skipNextMoveEnd = true;
-      this._map.setView([s.lat, s.lng], 15, { animate: true });
-      // Forzar redibujado de tiles en la nueva posición
-      setTimeout(() => { if (this._map) this._map.invalidateSize(); }, 300);
+      this._map.flyTo({ center: [s.lng, s.lat], zoom: 15 });
     }
   }
 
@@ -4184,15 +4174,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private updateDriverMarkerOnMap(lat: number, lng: number) {
     if (!this._map) return;
     if (!this._driverMarker) {
-      if (isPlatformBrowser(this.platformId) && (window as any).L) {
-        const L = (window as any).L;
-        this._driverMarker = L.marker([lat, lng], { icon: this.carIcon(L) }).addTo(this._map);
+      if (isPlatformBrowser(this.platformId) && (window as any).mapboxgl) {
+        const mapboxgl = (window as any).mapboxgl;
+        this._driverMarker = new mapboxgl.Marker({ element: this.carEl() })
+          .setLngLat([lng, lat])
+          .addTo(this._map);
       }
     } else {
-      this._driverMarker.setLatLng([lat, lng]);
+      this._driverMarker.setLngLat([lng, lat]);
       // Smooth pan to keep driver visible
-      if (!this._map.getBounds().contains([lat, lng])) {
-        this._map.panTo([lat, lng], { animate: true, duration: 1 });
+      if (!this._map.getBounds().contains([lng, lat])) {
+        this._map.panTo([lng, lat]);
       }
     }
   }
