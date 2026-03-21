@@ -1103,51 +1103,152 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private _carElement(heading: number): HTMLElement {
     const wrap = document.createElement('div');
-    wrap.style.cssText = `transform:rotate(${heading}deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35));`;
+    wrap.style.cssText = `
+      width:42px;height:72px;position:relative;
+      transform:rotate(${heading}deg);
+      filter:drop-shadow(0 4px 8px rgba(0,0,0,0.45));
+    `;
     wrap.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="44" height="28" viewBox="0 0 44 28">
-        <!-- sombra -->
-        <ellipse cx="22" cy="25" rx="14" ry="3" fill="rgba(0,0,0,0.18)"/>
-        <!-- carrocería -->
-        <rect x="4" y="10" width="36" height="12" rx="4" fill="#F59E0B"/>
-        <!-- techo -->
-        <rect x="10" y="5" width="24" height="10" rx="3" fill="#FBBF24"/>
-        <!-- parabrisas delantero -->
-        <rect x="11" y="6" width="10" height="7" rx="1.5" fill="rgba(186,230,253,0.85)"/>
-        <!-- parabrisas trasero -->
-        <rect x="23" y="6" width="10" height="7" rx="1.5" fill="rgba(186,230,253,0.85)"/>
-        <!-- ruedas -->
-        <rect x="2"  y="9"  width="6" height="5" rx="2" fill="#1f2937"/>
-        <rect x="36" y="9"  width="6" height="5" rx="2" fill="#1f2937"/>
-        <rect x="2"  y="16" width="6" height="5" rx="2" fill="#1f2937"/>
-        <rect x="36" y="16" width="6" height="5" rx="2" fill="#1f2937"/>
-        <!-- faros -->
-        <rect x="38" y="11" width="4" height="2" rx="1" fill="#FEF08A"/>
-        <rect x="38" y="17" width="4" height="2" rx="1" fill="#FEF08A"/>
-      </svg>`;
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 42 72" width="42" height="72">
+      <defs>
+        <linearGradient id="cg" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stop-color="#D97706"/>
+          <stop offset="50%"  stop-color="#F59E0B"/>
+          <stop offset="100%" stop-color="#D97706"/>
+        </linearGradient>
+        <linearGradient id="roof" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stop-color="#FCD34D"/>
+          <stop offset="50%"  stop-color="#FDE68A"/>
+          <stop offset="100%" stop-color="#FCD34D"/>
+        </linearGradient>
+        <radialGradient id="hl" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"  stop-color="#FEF9C3" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#FEF08A" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <!-- sombra suave -->
+      <ellipse cx="21" cy="68" rx="13" ry="3.5" fill="rgba(0,0,0,0.22)"/>
+
+      <!-- ruedas traseras -->
+      <rect x="1"  y="50" width="9" height="15" rx="3" fill="#0f172a"/>
+      <rect x="32" y="50" width="9" height="15" rx="3" fill="#0f172a"/>
+      <rect x="2.5"  y="51.5" width="6" height="12" rx="2" fill="#1e3a5f"/>
+      <rect x="33.5" y="51.5" width="6" height="12" rx="2" fill="#1e3a5f"/>
+      <circle cx="5.5"  cy="57.5" r="2.2" fill="#334155"/>
+      <circle cx="36.5" cy="57.5" r="2.2" fill="#334155"/>
+
+      <!-- carrocería principal -->
+      <path d="M7,16 C7,10 13,6 21,6 C29,6 35,10 35,16 L36,54 C36,60 30,65 21,65 C12,65 6,60 6,54 Z"
+            fill="url(#cg)"/>
+
+      <!-- techo / cabina -->
+      <path d="M11,20 C11,14 15,11 21,11 C27,11 31,14 31,20 L31,44 C31,49 27,51 21,51 C15,51 11,49 11,44 Z"
+            fill="url(#roof)"/>
+
+      <!-- parabrisas delantero -->
+      <path d="M13,20 C13,15 17,13 21,13 C25,13 29,15 29,20 L28,30 C25,32 17,32 14,30 Z"
+            fill="rgba(186,230,253,0.88)"/>
+      <!-- reflejo parabrisas -->
+      <path d="M15,14 C17,13 19,13 21,14 L20,22 C18,21 16,21 15,20 Z"
+            fill="rgba(255,255,255,0.35)"/>
+
+      <!-- ventanas laterales -->
+      <path d="M11,32 L14,31 L14,44 C13,44 11,43 11,42 Z" fill="rgba(186,230,253,0.65)"/>
+      <path d="M31,32 L28,31 L28,44 C29,44 31,43 31,42 Z" fill="rgba(186,230,253,0.65)"/>
+
+      <!-- línea de puerta -->
+      <line x1="11" y1="38" x2="31" y2="38" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+
+      <!-- luneta trasera -->
+      <path d="M14,45 C17,47 25,47 28,45 L28,50 C25,52 17,52 14,50 Z"
+            fill="rgba(186,230,253,0.7)"/>
+
+      <!-- ruedas delanteras -->
+      <rect x="1"  y="8" width="9" height="15" rx="3" fill="#0f172a"/>
+      <rect x="32" y="8" width="9" height="15" rx="3" fill="#0f172a"/>
+      <rect x="2.5"  y="9.5" width="6" height="12" rx="2" fill="#1e3a5f"/>
+      <rect x="33.5" y="9.5" width="6" height="12" rx="2" fill="#1e3a5f"/>
+      <circle cx="5.5"  cy="15.5" r="2.2" fill="#334155"/>
+      <circle cx="36.5" cy="15.5" r="2.2" fill="#334155"/>
+
+      <!-- faros delanteros (glow) -->
+      <ellipse cx="7"  cy="9" rx="5" ry="3" fill="url(#hl)" opacity="0.85"/>
+      <ellipse cx="35" cy="9" rx="5" ry="3" fill="url(#hl)" opacity="0.85"/>
+      <rect x="4"  y="7" width="6" height="3" rx="1.5" fill="#FEF08A"/>
+      <rect x="32" y="7" width="6" height="3" rx="1.5" fill="#FEF08A"/>
+
+      <!-- luces traseras -->
+      <rect x="4"  y="62" width="6" height="3" rx="1.5" fill="#EF4444" opacity="0.9"/>
+      <rect x="32" y="62" width="6" height="3" rx="1.5" fill="#EF4444" opacity="0.9"/>
+    </svg>`;
     return wrap;
   }
 
   private _motoElement(heading: number): HTMLElement {
     const wrap = document.createElement('div');
-    wrap.style.cssText = `transform:rotate(${heading}deg);filter:drop-shadow(0 3px 5px rgba(0,0,0,0.35));`;
+    wrap.style.cssText = `
+      width:28px;height:60px;position:relative;
+      transform:rotate(${heading}deg);
+      filter:drop-shadow(0 4px 7px rgba(0,0,0,0.45));
+    `;
     wrap.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="22" viewBox="0 0 36 22">
-        <!-- sombra -->
-        <ellipse cx="18" cy="20" rx="9" ry="2" fill="rgba(0,0,0,0.18)"/>
-        <!-- cuerpo -->
-        <ellipse cx="18" cy="11" rx="12" ry="5" fill="#06B6D4"/>
-        <!-- asiento -->
-        <rect x="11" y="7" width="14" height="5" rx="2" fill="#0891B2"/>
-        <!-- rueda delantera -->
-        <ellipse cx="5"  cy="11" rx="4" ry="4" fill="#0f172a" stroke="#475569" stroke-width="1.5"/>
-        <ellipse cx="5"  cy="11" rx="2" ry="2" fill="#334155"/>
-        <!-- rueda trasera -->
-        <ellipse cx="31" cy="11" rx="4" ry="4" fill="#0f172a" stroke="#475569" stroke-width="1.5"/>
-        <ellipse cx="31" cy="11" rx="2" ry="2" fill="#334155"/>
-        <!-- faro -->
-        <ellipse cx="3" cy="11" rx="1.5" ry="1.5" fill="#FEF08A"/>
-      </svg>`;
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 60" width="28" height="60">
+      <defs>
+        <linearGradient id="mg" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stop-color="#0891B2"/>
+          <stop offset="50%"  stop-color="#06B6D4"/>
+          <stop offset="100%" stop-color="#0891B2"/>
+        </linearGradient>
+      </defs>
+
+      <!-- sombra -->
+      <ellipse cx="14" cy="57" rx="7" ry="2.5" fill="rgba(0,0,0,0.22)"/>
+
+      <!-- rueda trasera -->
+      <ellipse cx="14" cy="50" rx="6" ry="7" fill="#0f172a"/>
+      <ellipse cx="14" cy="50" rx="4" ry="5" fill="#1e3a5f"/>
+      <ellipse cx="14" cy="50" rx="1.8" ry="2.2" fill="#334155"/>
+      <!-- radio rueda trasera -->
+      <line x1="14" y1="45" x2="14" y2="55" stroke="#475569" stroke-width="0.8"/>
+      <line x1="9"  y1="50" x2="19" y2="50" stroke="#475569" stroke-width="0.8"/>
+
+      <!-- horquilla trasera -->
+      <path d="M11,42 L12,25 M17,42 L16,25" stroke="#0891B2" stroke-width="1.5" stroke-linecap="round"/>
+
+      <!-- cuerpo / chasis -->
+      <path d="M10,18 C10,13 12,10 14,10 C16,10 18,13 18,18 L18,38 C18,42 16,44 14,44 C12,44 10,42 10,38 Z"
+            fill="url(#mg)"/>
+
+      <!-- depósito / tanque -->
+      <path d="M10,20 C10,16 12,14 14,14 C16,14 18,16 18,20 L18,28 C16,30 12,30 10,28 Z"
+            fill="#22D3EE"/>
+      <!-- brillo tanque -->
+      <path d="M11,16 C12,15 14,15 15,16 L14,22 C13,21 11,21 11,20 Z"
+            fill="rgba(255,255,255,0.28)"/>
+
+      <!-- asiento -->
+      <rect x="11" y="28" width="6" height="10" rx="2" fill="#0369A1"/>
+
+      <!-- manillar -->
+      <path d="M6,20 Q10,18 14,18 Q18,18 22,20" stroke="#94A3B8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="6"  cy="20" r="2" fill="#64748B"/>
+      <circle cx="22" cy="20" r="2" fill="#64748B"/>
+
+      <!-- horquilla delantera -->
+      <path d="M11,18 L12,10 M17,18 L16,10" stroke="#0891B2" stroke-width="1.5" stroke-linecap="round"/>
+
+      <!-- rueda delantera -->
+      <ellipse cx="14" cy="7"  rx="6" ry="7" fill="#0f172a"/>
+      <ellipse cx="14" cy="7"  rx="4" ry="5" fill="#1e3a5f"/>
+      <ellipse cx="14" cy="7"  rx="1.8" ry="2.2" fill="#334155"/>
+      <line x1="14" y1="2"  x2="14" y2="12" stroke="#475569" stroke-width="0.8"/>
+      <line x1="9"  y1="7"  x2="19" y2="7"  stroke="#475569" stroke-width="0.8"/>
+
+      <!-- faro delantero -->
+      <ellipse cx="14" cy="2" rx="4" ry="2" fill="rgba(254,240,138,0.5)"/>
+      <rect x="11" y="1" width="6" height="2" rx="1" fill="#FEF08A"/>
+    </svg>`;
     return wrap;
   }
 
