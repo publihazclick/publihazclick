@@ -92,7 +92,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 @if (addressSuggestions().length > 0) {
                   <div class="flex flex-col max-h-60 overflow-y-auto">
                     @for (s of addressSuggestions(); track s.id) {
-                      <button (click)="selectAddress(s)"
+                      <button (mousedown)="$event.preventDefault(); selectAddress(s)"
                         class="flex items-start gap-3 px-4 py-3 hover:bg-orange-50 active:bg-orange-100 transition-colors text-left border-b border-slate-50 last:border-0">
                         <span class="material-symbols-outlined text-orange-400 mt-0.5 flex-shrink-0" style="font-size:16px">location_on</span>
                         <div class="min-w-0">
@@ -241,7 +241,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 @if (addressSuggestions().length > 0) {
                   <div class="flex flex-col max-h-60 overflow-y-auto">
                     @for (s of addressSuggestions(); track s.id) {
-                      <button (click)="selectAddress(s)"
+                      <button (mousedown)="$event.preventDefault(); selectAddress(s)"
                         class="flex items-start gap-3 px-4 py-3 hover:bg-cyan-50 active:bg-cyan-100 transition-colors text-left border-b border-slate-50 last:border-0">
                         <span class="material-symbols-outlined text-cyan-400 mt-0.5 flex-shrink-0" style="font-size:16px">location_on</span>
                         <div class="min-w-0">
