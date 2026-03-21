@@ -1516,32 +1516,61 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _tripAbort: AbortController | null = null;
 
   private async _searchTripPlaces(query: string) {
-    // Cancelar petición anterior
     if (this._tripAbort) this._tripAbort.abort();
     this._tripAbort = new AbortController();
+    const sig = this._tripAbort.signal;
 
     const lat = this._currentLat, lng = this._currentLng;
-    // bbox ±0.35° ≈ radio de ~38 km — restringe resultados a la ciudad del usuario
-    const d = 0.35;
-    const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-      + `?access_token=${this.MAPBOX_TOKEN}`
-      + `&autocomplete=true`
-      + `&language=es`
-      + `&country=co`
-      + `&limit=8`
-      + `&types=poi,place,address,neighborhood,locality`
-      + `&proximity=${lng},${lat}`
-      + `&bbox=${bbox}`;
+    const d = 0.4; // ~44 km
+
+    // ── Nominatim (OpenStreetMap) — mejor cobertura de POIs en Colombia
+    const viewbox = `${lng - d},${lat + d},${lng + d},${lat - d}`;
+    const nomUrl  = `https://nominatim.openstreetmap.org/search`
+      + `?q=${encodeURIComponent(query)}&format=jsonv2&limit=8`
+      + `&countrycodes=co&viewbox=${viewbox}&bounded=1&addressdetails=1`;
+
+    // ── Mapbox — buena cobertura de direcciones
+    const bbox   = `${lng - d},${lat - d},${lng + d},${lat + d}`;
+    const mbxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+      + `?access_token=${this.MAPBOX_TOKEN}&autocomplete=true&language=es`
+      + `&country=co&limit=5&types=poi,place,address,neighborhood,locality`
+      + `&proximity=${lng},${lat}&bbox=${bbox}`;
+
     try {
-      const res  = await fetch(url, { signal: this._tripAbort.signal });
-      const json = await res.json();
-      const features = (json.features ?? []).map((f: any) => {
-        const [fLng, fLat] = f.center ?? [lng, lat];
-        return { ...f, distKm: this._distKm(lat, lng, fLat, fLng) };
+      const [nomRes, mbxRes] = await Promise.all([
+        fetch(nomUrl, { signal: sig, headers: { 'Accept-Language': 'es' } }),
+        fetch(mbxUrl, { signal: sig }),
+      ]);
+
+      const nomJson = await nomRes.json() as any[];
+      const mbxJson = await mbxRes.json();
+
+      // Convertir Nominatim al formato interno
+      const nomFeatures = nomJson.map((f: any) => {
+        const fLat = parseFloat(f.lat), fLng = parseFloat(f.lon);
+        const name = f.name || f.display_name.split(',')[0];
+        const addr = f.display_name;
+        return { id: `nom-${f.place_id}`, text: name, place_name: addr,
+                 center: [fLng, fLat] as [number, number],
+                 distKm: this._distKm(lat, lng, fLat, fLng) };
       });
-      this.tripSuggestions.set(features);
-    } catch { /* aborted o sin red */ }
+
+      // Convertir Mapbox al formato interno
+      const mbxFeatures = (mbxJson.features ?? []).map((f: any) => {
+        const [fLng, fLat] = f.center ?? [lng, lat];
+        return { ...f, id: `mbx-${f.id}`, distKm: this._distKm(lat, lng, fLat, fLng) };
+      });
+
+      // Unir: Nominatim primero (mejores POIs), luego Mapbox sin duplicados
+      const seen  = new Set<string>();
+      const merged: any[] = [];
+      for (const f of [...nomFeatures, ...mbxFeatures]) {
+        const key = `${(+f.center[0]).toFixed(3)},${(+f.center[1]).toFixed(3)}`;
+        if (!seen.has(key)) { seen.add(key); merged.push(f); }
+      }
+
+      this.tripSuggestions.set(merged.slice(0, 8));
+    } catch { /* abortado o sin red */ }
   }
 
   selectTripDest(s: any) {
