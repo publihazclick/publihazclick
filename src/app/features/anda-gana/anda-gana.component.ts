@@ -798,6 +798,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _map:             any    = null;
   private _userMarker:      any    = null;
   private _vehicleMarkers:  any[]  = [];
+  private _vehicleStates: Array<{
+    path: [number, number][]; segIdx: number; t: number;
+    speed: number; forward: boolean; marker: any;
+  }> = [];
+  private _animFrame: number | null = null;
+  private _lastTs:    number | null = null;
   private _mapboxPromise:   Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _currentLat = 4.6097;
@@ -1071,75 +1077,171 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const mapboxgl = (window as any).mapboxgl;
     if (!mapboxgl) return;
 
-    this._vehicleMarkers.forEach(m => m.remove());
+    this._stopAnimation();
+    this._vehicleMarkers.forEach(m => { try { m.remove(); } catch { /**/ } });
     this._vehicleMarkers = [];
 
-    let vehicles = await this.agService.getNearbyVehicles(lat, lng);
-    if (vehicles.length === 0) vehicles = this._demoVehiclesOnRoads(lat, lng);
+    const realVehicles = await this.agService.getNearbyVehicles(lat, lng);
 
-    vehicles.forEach((v: any) => {
-      const isMoto = v.vehicle_type?.toLowerCase().includes('moto');
-      const color  = v.color ?? (isMoto ? '#06B6D4' : '#F59E0B');
-      const el     = isMoto ? this._motoElement(v.heading, color) : this._carElement(v.heading, color);
-      new mapboxgl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([v.lng, v.lat])
-        .addTo(this._map);
-    });
-  }
-
-  /** Extrae puntos de calles renderizadas y coloca demos en ellas */
-  private _demoVehiclesOnRoads(lat: number, lng: number): any[] {
-    const roadLayers = [
-      'road-street', 'road-secondary-tertiary', 'road-primary',
-      'road-minor', 'road-minor-low', 'road-street-low',
-    ];
-    const features = (this._map as any)?.queryRenderedFeatures(undefined, { layers: roadLayers }) ?? [];
-    const pts: { lat: number; lng: number; heading: number }[] = [];
-
-    for (const f of features) {
-      if (pts.length >= 14) break;
-      if (f?.geometry?.type !== 'LineString') continue;
-      const coords = f.geometry.coordinates as [number, number][];
-      for (let i = 0; i < coords.length - 1 && pts.length < 14; i++) {
-        const mx = (coords[i][0] + coords[i + 1][0]) / 2;
-        const my = (coords[i][1] + coords[i + 1][1]) / 2;
-        // Solo puntos cerca del usuario (~350 m)
-        if (Math.abs(mx - lng) > 0.004 || Math.abs(my - lat) > 0.004) continue;
-        const heading = Math.atan2(coords[i + 1][0] - coords[i][0], coords[i + 1][1] - coords[i][1]) * 180 / Math.PI;
-        pts.push({ lat: my, lng: mx, heading });
-      }
+    if (realVehicles.length > 0) {
+      // Conductores reales — marcadores estáticos
+      realVehicles.forEach((v: any) => {
+        const isMoto = v.vehicle_type?.toLowerCase().includes('moto');
+        const color  = v.color ?? (isMoto ? '#06B6D4' : '#F59E0B');
+        const el     = isMoto ? this._motoElement(v.heading, color) : this._carElement(v.heading, color);
+        const m = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([v.lng, v.lat]).addTo(this._map);
+        this._vehicleMarkers.push(m);
+      });
+      return;
     }
 
+    // ── Demo animado ──────────────────────────────────────────────
     const configs = [
-      { vehicle_type: 'carro', color: '#F59E0B' },
-      { vehicle_type: 'carro', color: '#FFFFFF' },
-      { vehicle_type: 'carro', color: '#3B82F6' },
-      { vehicle_type: 'carro', color: '#EF4444' },
-      { vehicle_type: 'carro', color: '#1e293b' },
-      { vehicle_type: 'moto',  color: '#06B6D4' },
-      { vehicle_type: 'moto',  color: '#F97316' },
-      { vehicle_type: 'moto',  color: '#22C55E' },
-      { vehicle_type: 'moto',  color: '#A855F7' },
+      { isMoto: false, color: '#F59E0B' },
+      { isMoto: false, color: '#FFFFFF'  },
+      { isMoto: false, color: '#3B82F6'  },
+      { isMoto: false, color: '#EF4444'  },
+      { isMoto: false, color: '#1e293b'  },
+      { isMoto: true,  color: '#06B6D4'  },
+      { isMoto: true,  color: '#F97316'  },
+      { isMoto: true,  color: '#22C55E'  },
+      { isMoto: true,  color: '#A855F7'  },
     ];
 
-    // Si hay suficientes puntos en calles, úsalos; si no, usa offsets
-    const base = pts.length >= 9 ? pts : this._fallbackPts(lat, lng);
-    return base.slice(0, 9).map((pt, i) => ({ id: `d${i}`, ...pt, ...configs[i] }));
+    const paths = this._extractRoadPaths(lat, lng);
+
+    for (let i = 0; i < configs.length; i++) {
+      const { isMoto, color } = configs[i];
+      const path = paths[i % paths.length];
+      if (!path || path.length < 2) continue;
+
+      // Distribuir puntos de inicio a lo largo de los caminos
+      const startFrac = (i * 0.11) % 1;
+      const segIdx    = Math.min(Math.floor(startFrac * (path.length - 1)), path.length - 2);
+      const [lng0, lat0] = path[segIdx];
+      const h0 = this._segHeading(path, segIdx);
+
+      const el = isMoto ? this._motoElement(h0, color) : this._carElement(h0, color);
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng0, lat0]).addTo(this._map);
+
+      this._vehicleMarkers.push(marker);
+      this._vehicleStates.push({
+        path,
+        segIdx,
+        t:       0,
+        speed:   isMoto ? 0.0000034 : 0.0000028, // ~35–40 km/h ciudad
+        forward: i % 3 !== 0,                     // la mayoría en sentido original
+        marker,
+      });
+    }
+
+    this._startAnimation();
   }
 
-  private _fallbackPts(lat: number, lng: number): { lat: number; lng: number; heading: number }[] {
-    const R = 0.003;
-    return [
-      { lat: lat+R*0.9, lng: lng+R*0.6,  heading:  45 },
-      { lat: lat-R*0.7, lng: lng+R*1.1,  heading: 200 },
-      { lat: lat+R*1.2, lng: lng-R*0.4,  heading: 290 },
-      { lat: lat-R*1.0, lng: lng-R*0.8,  heading: 130 },
-      { lat: lat+R*0.2, lng: lng+R*1.4,  heading: 350 },
-      { lat: lat+R*0.5, lng: lng-R*1.0,  heading:  90 },
-      { lat: lat-R*0.4, lng: lng+R*0.3,  heading: 160 },
-      { lat: lat+R*1.4, lng: lng+R*0.9,  heading: 250 },
-      { lat: lat-R*1.1, lng: lng+R*0.5,  heading:  20 },
+  /** Extrae LineStrings de calles renderizadas como rutas de animación */
+  private _extractRoadPaths(lat: number, lng: number): [number, number][][] {
+    const layers = [
+      'road-street', 'road-secondary-tertiary', 'road-primary',
+      'road-minor',  'road-minor-low',           'road-street-low',
     ];
+    const features = (this._map as any)?.queryRenderedFeatures(undefined, { layers }) ?? [];
+    const paths:  [number, number][][] = [];
+    const seen = new Set<string>();
+
+    for (const f of features) {
+      if (paths.length >= 12) break;
+      if (f?.geometry?.type !== 'LineString') continue;
+      const coords = f.geometry.coordinates as [number, number][];
+      if (coords.length < 3) continue;
+      const mid = coords[Math.floor(coords.length / 2)];
+      if (Math.abs(mid[0] - lng) > 0.006 || Math.abs(mid[1] - lat) > 0.006) continue;
+      const key = `${coords[0][0].toFixed(5)},${coords[0][1].toFixed(5)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      paths.push(coords);
+    }
+
+    // Fallback con trayectorias en cuadrícula si no hay tiles
+    if (paths.length < 9) {
+      const R = 0.003;
+      const fb: [number, number][][] = [
+        [[lng,lat],[lng+R,lat],[lng+R*2,lat+R*0.5],[lng+R*2.5,lat+R*1.5]],
+        [[lng-R,lat+R],[lng,lat+R],[lng+R,lat+R],[lng+R*2,lat+R]],
+        [[lng+R,lat-R],[lng+R,lat],[lng+R,lat+R],[lng+R,lat+R*2]],
+        [[lng-R*2,lat],[lng-R,lat+R*0.5],[lng,lat],[lng+R,lat-R*0.5]],
+        [[lng,lat+R*1.5],[lng+R*0.8,lat+R],[lng+R*1.2,lat+R*0.3],[lng+R*2,lat]],
+        [[lng-R*1.5,lat-R],[lng-R,lat-R*0.5],[lng,lat-R],[lng+R,lat-R]],
+        [[lng+R*0.5,lat+R*2],[lng+R,lat+R*1.5],[lng+R*1.5,lat+R],[lng+R*2,lat]],
+        [[lng-R,lat-R*1.5],[lng-R*0.5,lat-R],[lng,lat-R*0.5],[lng+R*0.5,lat]],
+        [[lng+R*2,lat+R*2],[lng+R,lat+R],[lng,lat],[lng-R,lat-R]],
+      ];
+      for (const p of fb) { if (paths.length < 9) paths.push(p); }
+    }
+    return paths;
+  }
+
+  private _segHeading(path: [number, number][], segIdx: number): number {
+    const i = Math.min(segIdx, path.length - 2);
+    return Math.atan2(path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1]) * 180 / Math.PI;
+  }
+
+  private _startAnimation() {
+    this._stopAnimation();
+    const loop = (ts: number) => {
+      if (!this._map) return;
+      const dt = this._lastTs === null ? 16 : Math.min(ts - this._lastTs, 50);
+      this._lastTs = ts;
+
+      for (const vs of this._vehicleStates) {
+        if (vs.path.length < 2) continue;
+
+        // Longitud del segmento actual
+        const [x0, y0] = vs.path[vs.segIdx];
+        const nx = Math.min(vs.segIdx + 1, vs.path.length - 1);
+        const [x1, y1] = vs.path[nx];
+        const segLen = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2) || 1e-9;
+
+        vs.t += (vs.speed * dt) / segLen * (vs.forward ? 1 : -1);
+
+        // Avanzar o retroceder segmentos (ping-pong al llegar a extremos)
+        while (vs.t >= 1 && vs.forward) {
+          vs.t -= 1;
+          vs.segIdx = Math.min(vs.segIdx + 1, vs.path.length - 2);
+          if (vs.segIdx >= vs.path.length - 2 && vs.t > 0) { vs.forward = false; break; }
+        }
+        while (vs.t < 0 && !vs.forward) {
+          vs.t += 1;
+          vs.segIdx = Math.max(vs.segIdx - 1, 0);
+          if (vs.segIdx <= 0 && vs.t < 1) { vs.forward = true; break; }
+        }
+        vs.t = Math.max(0, Math.min(1, vs.t));
+
+        // Posición interpolada
+        const [cx0, cy0] = vs.path[vs.segIdx];
+        const ni = Math.min(vs.segIdx + 1, vs.path.length - 1);
+        const [cx1, cy1] = vs.path[ni];
+        const curLng = cx0 + vs.t * (cx1 - cx0);
+        const curLat = cy0 + vs.t * (cy1 - cy0);
+
+        // Heading del segmento actual
+        const rawH = Math.atan2(cx1 - cx0, cy1 - cy0) * 180 / Math.PI;
+        const heading = vs.forward ? rawH : rawH + 180;
+
+        vs.marker.setLngLat([curLng, curLat]);
+        (vs.marker.getElement() as HTMLElement).style.transform = `rotate(${heading}deg)`;
+      }
+
+      this._animFrame = requestAnimationFrame(loop);
+    };
+    this._animFrame = requestAnimationFrame(loop);
+  }
+
+  private _stopAnimation() {
+    if (this._animFrame !== null) { cancelAnimationFrame(this._animFrame); this._animFrame = null; }
+    this._lastTs       = null;
+    this._vehicleStates = [];
   }
 
   private _carElement(heading: number, color: string): HTMLElement {
@@ -1232,6 +1334,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private _destroyMap() {
+    this._stopAnimation();
     this._vehicleMarkers.forEach(m => { try { m.remove(); } catch { /**/ } });
     this._vehicleMarkers = [];
     this._userMarker = null;
