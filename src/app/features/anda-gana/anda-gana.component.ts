@@ -2482,30 +2482,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.isAdmin.set(profile?.role === 'admin' || profile?.role === 'dev');
     this.agUser.set(agUser);
 
-    if (this.isAdmin() && !agUser) {
-      this.screen.set('admin-panel');
-      await this.loadAdminData();
-    } else if (!agUser) {
-      this.screen.set('welcome');
-    } else if (agUser.role === 'passenger') {
+    // Si hay un viaje ACTIVO en progreso, redirigir directo sin pasar por welcome
+    if (agUser?.role === 'passenger') {
       const active = await this.svc.getActiveRideRequest(agUser.id);
       this.activeRideRequest.set(active);
-      if (active) {
+      if (active && (active.status === 'pending' || active.status === 'accepted' || active.status === 'in_progress')) {
         if (active.status === 'pending') {
           this.startSearchTimer();
           this.subscribeToRide(active.id);
           this.screen.set('passenger-searching');
-        } else if (active.status === 'accepted' || active.status === 'in_progress') {
+        } else {
           this.subscribeToRide(active.id);
           this.screen.set('passenger-trip');
           if (active.driver_id) this.subscribeToDriverGps(active.driver_id);
-        } else {
-          this.screen.set('passenger-home');
         }
-      } else {
-        this.screen.set('passenger-home');
+        return;
       }
-    } else {
+    } else if (agUser?.role === 'driver') {
       const status = agUser.driver?.status;
       if (status === 'approved') {
         this.driverAvailable.set(agUser.driver?.is_available ?? false);
@@ -2516,17 +2509,41 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           this.screen.set('driver-trip-active');
           setTimeout(() => this.initDriverTripMap(), 50);
           setTimeout(() => this.startGpsBroadcasting(), 200);
-        } else {
-          this.screen.set('driver-home');
-          await this.loadTrips();
+          return;
         }
-      } else {
-        this.screen.set(status === 'rejected' ? 'rejected' : 'pending');
       }
+    }
+
+    // Siempre mostrar welcome con los 2 botones al entrar
+    this.screen.set('welcome');
+    if (this.isAdmin() && !agUser) {
+      // Admin sin cuenta AG puede ir al panel desde welcome
     }
   }
 
-  chooseRole(role: 'passenger' | 'driver') {
+  /** Navega al home correcto si el usuario ya tiene cuenta, o inicia registro si no */
+  async chooseRole(role: 'passenger' | 'driver') {
+    const agUser = this.agUser();
+
+    if (agUser) {
+      // Usuario ya tiene cuenta — llevar directo a su panel
+      if (agUser.role === 'passenger' && role === 'passenger') {
+        this.screen.set('passenger-home');
+        return;
+      }
+      if (agUser.role === 'driver' && role === 'driver') {
+        const status = agUser.driver?.status;
+        if (status === 'approved') {
+          this.screen.set('driver-home');
+          await this.loadTrips();
+        } else {
+          this.screen.set(status === 'rejected' ? 'rejected' : 'pending');
+        }
+        return;
+      }
+    }
+
+    // Sin cuenta — iniciar registro
     this.selectedRole.set(role);
     this.screen.set('enter-phone');
     this.error.set('');
