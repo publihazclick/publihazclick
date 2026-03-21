@@ -1521,19 +1521,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const sig = this._tripAbort.signal;
 
     const lat = this._currentLat, lng = this._currentLng;
-    const d = 0.4; // ~44 km
+    const d = 0.8; // ~88 km — cubre toda el área metropolitana
 
-    // ── Nominatim (OpenStreetMap) — mejor cobertura de POIs en Colombia
+    // ── Nominatim (OpenStreetMap) — mejor cobertura de POIs, barrios y conjuntos
+    // viewbox sin bounded=1 para que busque en toda Colombia pero priorice la zona
     const viewbox = `${lng - d},${lat + d},${lng + d},${lat - d}`;
     const nomUrl  = `https://nominatim.openstreetmap.org/search`
-      + `?q=${encodeURIComponent(query)}&format=jsonv2&limit=8`
-      + `&countrycodes=co&viewbox=${viewbox}&bounded=1&addressdetails=1`;
+      + `?q=${encodeURIComponent(query)}&format=jsonv2&limit=10`
+      + `&countrycodes=co&viewbox=${viewbox}&addressdetails=1`;
 
-    // ── Mapbox — buena cobertura de direcciones
+    // ── Mapbox — complementa con direcciones y lugares adicionales
     const bbox   = `${lng - d},${lat - d},${lng + d},${lat + d}`;
     const mbxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
       + `?access_token=${this.MAPBOX_TOKEN}&autocomplete=true&language=es`
-      + `&country=co&limit=5&types=poi,place,address,neighborhood,locality`
+      + `&country=co&limit=6&types=poi,place,address,neighborhood,locality,district`
       + `&proximity=${lng},${lat}&bbox=${bbox}`;
 
     try {
