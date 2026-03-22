@@ -1251,12 +1251,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
 
     // ── Demo animado ──────────────────────────────────────────────
-    // 1. Intentar extraer calles del mapa ya renderizado
-    let paths = this._extractRoadPaths(lat, lng);
+    // 1. Directions API primero — garantiza rutas sobre calles reales
+    let paths = await this._fetchRoadPathsViaDirections(lat, lng);
 
-    // 2. Fallback real: rutas desde Mapbox Directions API (garantiza calles)
-    if (paths.length < 3) {
-      paths = await this._fetchRoadPathsViaDirections(lat, lng);
+    // 2. Fallback: calles del mapa ya renderizado
+    if (paths.length < 2) {
+      paths = this._extractRoadPaths(lat, lng);
     }
 
     // 3. Sin calles → no mostrar vehículos demo
@@ -1298,7 +1298,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.00000018 : 0.00000012,
+        speed:   isMoto ? 0.0000022 : 0.0000015,
         forward: i % 3 !== 0,
         marker,
         heading: h0,
@@ -1308,13 +1308,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._startAnimation();
   }
 
-  /** Extrae LineStrings de calles renderizadas como rutas de animación */
+  /** Extrae LineStrings de cualquier capa renderizada como rutas de animación */
   private _extractRoadPaths(lat: number, lng: number): [number, number][][] {
-    const layers = [
-      'road-street', 'road-secondary-tertiary', 'road-primary',
-      'road-minor',  'road-minor-low',           'road-street-low',
-    ];
-    const features = (this._map as any)?.queryRenderedFeatures(undefined, { layers }) ?? [];
+    // Sin filtro de capas → funciona con cualquier estilo de Mapbox
+    const features = (this._map as any)?.queryRenderedFeatures(undefined) ?? [];
     const paths:  [number, number][][] = [];
     const seen = new Set<string>();
 
