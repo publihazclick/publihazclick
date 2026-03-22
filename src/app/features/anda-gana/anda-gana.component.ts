@@ -1298,7 +1298,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.000018 : 0.000014,
+        speed:   isMoto ? 0.000054 : 0.000042,
         forward: i % 3 !== 0,
         marker,
         heading: h0,
