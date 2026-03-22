@@ -1251,6 +1251,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
 
     // ── Demo animado ──────────────────────────────────────────────
+    // 1. Intentar extraer calles del mapa ya renderizado
+    let paths = this._extractRoadPaths(lat, lng);
+
+    // 2. Fallback real: rutas desde Mapbox Directions API (garantiza calles)
+    if (paths.length < 3) {
+      paths = await this._fetchRoadPathsViaDirections(lat, lng);
+    }
+
+    // 3. Sin calles → no mostrar vehículos demo
+    if (paths.length < 2) return;
+
     const configs = [
       { isMoto: false, color: '#F59E0B' },
       { isMoto: false, color: '#FFFFFF'  },
@@ -1263,15 +1274,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       { isMoto: true,  color: '#A855F7'  },
     ];
 
-    const paths = this._extractRoadPaths(lat, lng);
-
     for (let i = 0; i < configs.length; i++) {
       const { isMoto, color } = configs[i];
       const path = paths[i % paths.length];
       if (!path || path.length < 2) continue;
 
       // Distribuir puntos de inicio a lo largo de los caminos
-      // Evitar puntos muy cercanos al usuario (radio ~150 m ≈ 0.0014°)
       let segIdx = Math.min(Math.floor(((i * 0.11) % 1) * (path.length - 1)), path.length - 2);
       for (let s = 0; s < path.length - 1; s++) {
         const [cx, cy] = path[segIdx];
@@ -1323,22 +1331,39 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       paths.push(coords);
     }
 
-    // Fallback con trayectorias en cuadrícula si no hay tiles
-    if (paths.length < 9) {
-      const R = 0.003;
-      const fb: [number, number][][] = [
-        [[lng,lat],[lng+R,lat],[lng+R*2,lat+R*0.5],[lng+R*2.5,lat+R*1.5]],
-        [[lng-R,lat+R],[lng,lat+R],[lng+R,lat+R],[lng+R*2,lat+R]],
-        [[lng+R,lat-R],[lng+R,lat],[lng+R,lat+R],[lng+R,lat+R*2]],
-        [[lng-R*2,lat],[lng-R,lat+R*0.5],[lng,lat],[lng+R,lat-R*0.5]],
-        [[lng,lat+R*1.5],[lng+R*0.8,lat+R],[lng+R*1.2,lat+R*0.3],[lng+R*2,lat]],
-        [[lng-R*1.5,lat-R],[lng-R,lat-R*0.5],[lng,lat-R],[lng+R,lat-R]],
-        [[lng+R*0.5,lat+R*2],[lng+R,lat+R*1.5],[lng+R*1.5,lat+R],[lng+R*2,lat]],
-        [[lng-R,lat-R*1.5],[lng-R*0.5,lat-R],[lng,lat-R*0.5],[lng+R*0.5,lat]],
-        [[lng+R*2,lat+R*2],[lng+R,lat+R],[lng,lat],[lng-R,lat-R]],
-      ];
-      for (const p of fb) { if (paths.length < 9) paths.push(p); }
-    }
+    return paths;
+  }
+
+  /** Obtiene rutas reales sobre calles vía Mapbox Directions API */
+  private async _fetchRoadPathsViaDirections(lat: number, lng: number): Promise<[number, number][][]> {
+    // Genera 8 destinos radiales alrededor del punto actual (~300m cada uno)
+    const R = 0.003;
+    const offsets: [number, number][] = [
+      [lng + R,     lat],
+      [lng - R,     lat],
+      [lng,         lat + R],
+      [lng,         lat - R],
+      [lng + R,     lat + R],
+      [lng - R,     lat + R],
+      [lng + R,     lat - R],
+      [lng - R,     lat - R],
+    ];
+
+    const paths: [number, number][][] = [];
+    const token = this.MAPBOX_TOKEN;
+
+    await Promise.all(offsets.map(async ([dLng, dLat]) => {
+      try {
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${lng},${lat};${dLng},${dLat}`
+          + `?geometries=geojson&overview=full&access_token=${token}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const json = await res.json();
+        const coords = json?.routes?.[0]?.geometry?.coordinates as [number, number][] | undefined;
+        if (coords && coords.length >= 3) paths.push(coords);
+      } catch { /* ignorar errores de red */ }
+    }));
+
     return paths;
   }
 
