@@ -1178,7 +1178,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       container,
       style:   'mapbox://styles/mapbox/streets-v12',  // mapa claro con calles
       center:  [lng, lat],
-      zoom:    15,
+      zoom:    16,
       attributionControl: false,
       failIfMajorPerformanceCaveat: false,
     });
@@ -1290,7 +1290,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.000035 : 0.000028,
+        speed:   isMoto ? 0.000018 : 0.000014,
         forward: i % 3 !== 0,
         marker,
         heading: h0,
@@ -1417,8 +1417,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _carElement(heading: number, color: string): HTMLElement {
     const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:34px;height:56px;transform:rotate(${heading}deg);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55));`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 56" width="34" height="56">
+    wrap.style.cssText = `width:18px;height:30px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55));`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 56" width="18" height="30">
       <defs>
         <linearGradient id="cg${uid}" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%"   stop-color="rgba(0,0,0,0.20)"/>
@@ -1455,8 +1455,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _motoElement(heading: number, color: string): HTMLElement {
     const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:22px;height:56px;transform:rotate(${heading}deg);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55));`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 56" width="22" height="56">
+    wrap.style.cssText = `width:11px;height:26px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55));`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 56" width="11" height="26">
       <defs>
         <linearGradient id="mg${uid}" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%"   stop-color="rgba(0,0,0,0.22)"/>
