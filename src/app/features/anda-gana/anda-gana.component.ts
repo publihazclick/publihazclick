@@ -949,7 +949,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _vehicleMarkers:  any[]  = [];
   private _vehicleStates: Array<{
     path: [number, number][]; segIdx: number; t: number;
-    speed: number; forward: boolean; marker: any;
+    speed: number; forward: boolean; marker: any; heading: number;
   }> = [];
   private _animFrame: number | null = null;
   private _lastTs:    number | null = null;
@@ -1290,9 +1290,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.000035 : 0.000028, // velocidad visible en mapa
-        forward: i % 3 !== 0,                     // la mayoría en sentido original
+        speed:   isMoto ? 0.000035 : 0.000028,
+        forward: i % 3 !== 0,
         marker,
+        heading: h0,
       });
     }
 
@@ -1384,16 +1385,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const curLng = cx0 + vs.t * (cx1 - cx0);
         const curLat = cy0 + vs.t * (cy1 - cy0);
 
-        // Heading del segmento actual
+        // Heading objetivo del segmento actual
         const rawH = Math.atan2(cx1 - cx0, cy1 - cy0) * 180 / Math.PI;
-        const heading = vs.forward ? rawH : rawH + 180;
+        const targetH = vs.forward ? rawH : rawH + 180;
+
+        // Interpolación suave del ángulo (maneja cruce por ±180°)
+        let dH = targetH - vs.heading;
+        if (dH > 180)  dH -= 360;
+        if (dH < -180) dH += 360;
+        vs.heading += dH * Math.min(1, dt * 0.012);
 
         // No colocar vehículo encima del marcador del usuario
         const uLng = this._currentLng, uLat = this._currentLat;
         if (Math.abs(curLng - uLng) > 0.0006 || Math.abs(curLat - uLat) > 0.0006) {
           vs.marker.setLngLat([curLng, curLat]);
         }
-        (vs.marker.getElement() as HTMLElement).style.transform = `rotate(${heading}deg)`;
+        (vs.marker.getElement() as HTMLElement).style.transform = `rotate(${vs.heading}deg)`;
       }
 
       this._animFrame = requestAnimationFrame(loop);
