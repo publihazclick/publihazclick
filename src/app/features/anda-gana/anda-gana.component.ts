@@ -38,11 +38,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </span>
           <!-- Botón hamburguesa -->
           <button (click)="agMenuOpen.set(true)"
-            class="w-9 h-9 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all active:scale-90"
+            class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 px-2 py-1.5 rounded-xl"
             style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">
-            <span class="block w-4.5 h-0.5 rounded-full bg-white" style="width:18px;height:2px"></span>
-            <span class="block w-4.5 h-0.5 rounded-full bg-white" style="width:18px;height:2px"></span>
-            <span class="block w-4.5 h-0.5 rounded-full bg-white" style="width:14px;height:2px"></span>
+            <div class="flex flex-col items-center gap-1">
+              <span class="block rounded-full bg-white" style="width:18px;height:2px"></span>
+              <span class="block rounded-full bg-white" style="width:18px;height:2px"></span>
+              <span class="block rounded-full bg-white" style="width:14px;height:2px"></span>
+            </div>
+            <span class="text-white font-bold" style="font-size:9px;letter-spacing:0.08em">MENÚ</span>
           </button>
         </div>
       </div>
@@ -68,7 +71,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div>
                 <p class="text-white font-black text-sm">Anda y Gana</p>
-                <p class="text-slate-500 text-xs">{{ firstName() }}</p>
+                <p class="text-slate-400 text-xs font-medium">{{ agProfile()?.full_name }}</p>
               </div>
             </div>
             <button (click)="agMenuOpen.set(false)"
