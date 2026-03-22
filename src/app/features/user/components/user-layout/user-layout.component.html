@@ -395,15 +395,17 @@
 
             <!-- Stats -->
             <div class="px-4 py-3 border-b border-white/5 space-y-2">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
-                  <span class="text-xs text-slate-400">Billetera</span>
+              @if (!isAndaGanaRoute()) {
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
+                    <span class="text-xs text-slate-400">Billetera</span>
+                  </div>
+                  <span class="text-xs font-black text-primary">
+                    {{ formatCOP(profile()?.real_balance ?? 0) }}
+                  </span>
                 </div>
-                <span class="text-xs font-black text-primary">
-                  {{ formatCOP(profile()?.real_balance ?? 0) }}
-                </span>
-              </div>
+              }
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-violet-400" style="font-size:14px">group</span>
@@ -411,15 +413,17 @@
                 </div>
                 <span class="text-xs font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</span>
               </div>
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-accent" style="font-size:14px">volunteer_activism</span>
-                  <span class="text-xs text-slate-400">Donaciones</span>
+              @if (!isAndaGanaRoute()) {
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-accent" style="font-size:14px">volunteer_activism</span>
+                    <span class="text-xs text-slate-400">Donaciones</span>
+                  </div>
+                  <span class="text-xs font-black text-accent">
+                    {{ formatCOP(profile()?.total_donated ?? 0) }}
+                  </span>
                 </div>
-                <span class="text-xs font-black text-accent">
-                  {{ formatCOP(profile()?.total_donated ?? 0) }}
-                </span>
-              </div>
+              }
               @if (profile()?.has_active_package) {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5">
