@@ -32,10 +32,83 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <h1 class="text-white font-black text-lg leading-tight">¡Hola, {{ firstName() }}!</h1>
           <p class="text-slate-500 text-xs">Pasajero activo</p>
         </div>
-        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-          <span class="material-symbols-outlined" style="font-size:13px">check_circle</span> Activo
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+            <span class="material-symbols-outlined" style="font-size:13px">check_circle</span> Activo
+          </span>
+          <!-- Botón hamburguesa -->
+          <button (click)="agMenuOpen.set(true)"
+            class="w-9 h-9 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all active:scale-90"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">
+            <span class="block w-4.5 h-0.5 rounded-full bg-white" style="width:18px;height:2px"></span>
+            <span class="block w-4.5 h-0.5 rounded-full bg-white" style="width:18px;height:2px"></span>
+            <span class="block w-4.5 h-0.5 rounded-full bg-white" style="width:14px;height:2px"></span>
+          </button>
+        </div>
       </div>
+
+      <!-- ══ Drawer menú Anda y Gana ══ -->
+      @if (agMenuOpen()) {
+        <!-- Overlay oscuro -->
+        <div (click)="agMenuOpen.set(false)"
+          class="fixed inset-0 z-50 transition-opacity"
+          style="background:rgba(0,0,0,0.55);backdrop-filter:blur(2px)"></div>
+
+        <!-- Panel lateral derecho -->
+        <div class="fixed top-0 right-0 bottom-0 z-50 flex flex-col"
+          style="width:280px;background:#0f1421;border-left:1px solid rgba(255,255,255,0.08);box-shadow:-8px 0 32px rgba(0,0,0,0.6)">
+
+          <!-- Cabecera del menú -->
+          <div class="flex items-center justify-between px-5 pt-10 pb-5"
+            style="border-bottom:1px solid rgba(255,255,255,0.07)">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center"
+                style="background:linear-gradient(135deg,#f97316,#fb923c)">
+                <span class="material-symbols-outlined text-white" style="font-size:18px">directions_car</span>
+              </div>
+              <div>
+                <p class="text-white font-black text-sm">Anda y Gana</p>
+                <p class="text-slate-500 text-xs">{{ firstName() }}</p>
+              </div>
+            </div>
+            <button (click)="agMenuOpen.set(false)"
+              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors active:scale-90"
+              style="background:rgba(255,255,255,0.06)">
+              <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+            </button>
+          </div>
+
+          <!-- Opciones -->
+          <nav class="flex-1 overflow-y-auto py-3 px-3">
+
+            <p class="text-slate-600 text-xs font-bold uppercase tracking-widest px-3 pb-2 pt-1">Principal</p>
+
+            @for (item of agMenuItems; track item.label) {
+              @if (item.divider) {
+                <div class="my-2" style="border-top:1px solid rgba(255,255,255,0.06)"></div>
+                @if (item.section) {
+                  <p class="text-slate-600 text-xs font-bold uppercase tracking-widest px-3 pb-2 pt-1">{{ item.section }}</p>
+                }
+              } @else {
+                <button (click)="agMenuOpen.set(false)"
+                  class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all active:scale-[0.98] mb-0.5"
+                  style="color:#cbd5e1"
+                  onmouseover="this.style.background='rgba(249,115,22,0.08)'"
+                  onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-outlined flex-shrink-0"
+                    style="font-size:20px;color:#f97316">{{ item.icon }}</span>
+                  <span class="text-sm font-medium">{{ item.label }}</span>
+                </button>
+              }
+            }
+          </nav>
+
+          <!-- Footer del menú -->
+          <div class="px-5 py-5" style="border-top:1px solid rgba(255,255,255,0.07)">
+            <p class="text-slate-600 text-xs text-center">Anda y Gana · v1.0</p>
+          </div>
+        </div>
+      }
 
       <!-- Mapa con overlays flotantes -->
       <div class="relative rounded-2xl overflow-hidden" style="height:520px;border:1px solid rgba(255,255,255,0.08)">
@@ -943,6 +1016,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripSending     = signal(false);
   tripSent        = signal(false);
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
+  agMenuOpen      = signal(false);
+
+  readonly agMenuItems = [
+    { icon: 'location_city',    label: 'Ciudad',                  divider: false, section: '' },
+    { icon: 'history',          label: 'Historial de solicitudes', divider: false, section: '' },
+    { icon: 'local_shipping',   label: 'Entregas',                divider: false, section: '' },
+    { icon: 'directions_bus',   label: 'Ciudad a Ciudad',         divider: false, section: '' },
+    { icon: 'airport_shuttle',  label: 'Flete',                   divider: false, section: '' },
+    { divider: true,  section: 'Cuenta', icon: '', label: '' },
+    { icon: 'notifications',    label: 'Notificaciones',          divider: false, section: '' },
+    { icon: 'shield',           label: 'Seguridad',               divider: false, section: '' },
+    { icon: 'settings',         label: 'Configuración',           divider: false, section: '' },
+    { icon: 'help',             label: 'Ayuda',                   divider: false, section: '' },
+    { divider: true,  section: '', icon: '', label: '' },
+    { icon: 'drive_eta',        label: 'Conductor',               divider: false, section: '' },
+  ];
 
   private _map:             any    = null;
   private _userMarker:      any    = null;
