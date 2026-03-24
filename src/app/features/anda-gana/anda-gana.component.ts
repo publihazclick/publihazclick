@@ -1268,7 +1268,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     mapboxgl.accessToken = this.MAPBOX_TOKEN;
     this._map = new mapboxgl.Map({
       container,
-      style:   'mapbox://styles/mapbox/streets-v12',  // mapa claro con calles
+      style:   'mapbox://styles/mapbox/navigation-day-v1',  // estilo profesional de navegación (claro, como Uber/Lyft)
       center:  [lng, lat],
       zoom:    16,
       attributionControl: false,
@@ -1355,15 +1355,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (paths.length < 2) return;
 
     const configs = [
-      { isMoto: false, color: '#F59E0B' },
-      { isMoto: false, color: '#FFFFFF'  },
-      { isMoto: false, color: '#3B82F6'  },
-      { isMoto: false, color: '#EF4444'  },
-      { isMoto: false, color: '#1e293b'  },
-      { isMoto: true,  color: '#06B6D4'  },
-      { isMoto: true,  color: '#F97316'  },
-      { isMoto: true,  color: '#22C55E'  },
-      { isMoto: true,  color: '#A855F7'  },
+      // Carros — colores contrastantes sobre fondo claro
+      { isMoto: false, color: '#1D4ED8' },  // azul rey
+      { isMoto: false, color: '#DC2626' },  // rojo
+      { isMoto: false, color: '#D97706' },  // ámbar oscuro
+      { isMoto: false, color: '#15803D' },  // verde oscuro
+      { isMoto: false, color: '#1e293b' },  // grafito
+      { isMoto: false, color: '#7C3AED' },  // violeta
+      { isMoto: false, color: '#0F766E' },  // teal
+      // Motos — colores vivos
+      { isMoto: true,  color: '#EA580C' },  // naranja
+      { isMoto: true,  color: '#0891B2' },  // cyan oscuro
+      { isMoto: true,  color: '#16A34A' },  // verde
+      { isMoto: true,  color: '#9333EA' },  // púrpura
+      { isMoto: true,  color: '#BE185D' },  // rosa oscuro
     ];
 
     for (let i = 0; i < configs.length; i++) {
@@ -1425,17 +1430,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   /** Obtiene rutas reales sobre calles vía Mapbox Directions API */
   private async _fetchRoadPathsViaDirections(lat: number, lng: number): Promise<[number, number][][]> {
-    // Genera 8 destinos radiales alrededor del punto actual (~300m cada uno)
-    const R = 0.003;
+    // Genera 12 destinos radiales alrededor del punto actual (~300m–500m)
+    // Ángulos distribuidos uniformemente para máxima cobertura de calles
+    const R1 = 0.003;   // ~330m
+    const R2 = 0.005;   // ~550m
     const offsets: [number, number][] = [
-      [lng + R,     lat],
-      [lng - R,     lat],
-      [lng,         lat + R],
-      [lng,         lat - R],
-      [lng + R,     lat + R],
-      [lng - R,     lat + R],
-      [lng + R,     lat - R],
-      [lng - R,     lat - R],
+      [lng + R1,        lat],
+      [lng - R1,        lat],
+      [lng,             lat + R1],
+      [lng,             lat - R1],
+      [lng + R1,        lat + R1],
+      [lng - R1,        lat + R1],
+      [lng + R1,        lat - R1],
+      [lng - R1,        lat - R1],
+      [lng + R2,        lat + R1 * 0.5],
+      [lng - R2,        lat - R1 * 0.5],
+      [lng + R1 * 0.5,  lat + R2],
+      [lng - R1 * 0.5,  lat - R2],
     ];
 
     const paths: [number, number][][] = [];
@@ -1507,7 +1518,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         let dH = targetH - vs.heading;
         if (dH > 180)  dH -= 360;
         if (dH < -180) dH += 360;
-        vs.heading += dH * Math.min(1, dt * 0.012);
+        // Interpolación de giro suave: los carros giran más despacio que las motos
+        vs.heading += dH * Math.min(1, dt * 0.018);
 
         // No colocar vehículo encima del marcador del usuario
         const uLng = this._currentLng, uLat = this._currentLat;
@@ -1531,7 +1543,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _carElement(heading: number, color: string): HTMLElement {
     const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:18px;height:30px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55));`;
+    wrap.style.cssText = `width:18px;height:30px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 8px rgba(0,0,0,0.45)) drop-shadow(0 1px 3px rgba(0,0,0,0.3));`;
     wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 56" width="18" height="30">
       <defs>
         <linearGradient id="cg${uid}" x1="0" y1="0" x2="1" y2="0">
@@ -1569,7 +1581,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _motoElement(heading: number, color: string): HTMLElement {
     const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:11px;height:26px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55));`;
+    wrap.style.cssText = `width:11px;height:26px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 8px rgba(0,0,0,0.45)) drop-shadow(0 1px 3px rgba(0,0,0,0.3));`;
     wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 56" width="11" height="26">
       <defs>
         <linearGradient id="mg${uid}" x1="0" y1="0" x2="1" y2="0">
