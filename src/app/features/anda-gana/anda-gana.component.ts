@@ -407,12 +407,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].label }}</p>
                   </div>
                 </div>
-                <!-- Cancelar -->
-                <button (click)="cancelTrip()"
-                  class="w-full py-2.5 rounded-xl text-slate-500 text-xs font-bold active:scale-[0.98] transition-all"
-                  style="background:#f1f5f9;border:1px solid #e2e8f0">
-                  Cancelar viaje
-                </button>
+                <!-- Finalizar / Cancelar -->
+                <div class="flex gap-2">
+                  <button (click)="finishTrip()"
+                    class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+                    style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                    <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>
+                    Finalizar viaje
+                  </button>
+                  <button (click)="cancelTrip()"
+                    class="px-4 py-2.5 rounded-xl text-slate-500 text-xs font-bold active:scale-[0.98] transition-all"
+                    style="background:#f1f5f9;border:1px solid #e2e8f0">
+                    Cancelar
+                  </button>
+                </div>
               </div>
 
             } @else if (!tripSent()) {
@@ -745,6 +753,36 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">Sin comisión</span>
           }
         </div>
+
+        <!-- Viajes activos del conductor -->
+        @if (driverActiveTrips().length > 0) {
+          <div class="flex flex-col gap-2">
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Viajes en curso</p>
+            @for (trip of driverActiveTrips(); track trip.id) {
+              <div class="rounded-2xl overflow-hidden" style="background:#0f1421;border:1px solid rgba(16,185,129,0.2)">
+                <div class="flex items-center gap-3 px-4 py-3">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2)">
+                    <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">directions_car</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-white font-bold text-sm truncate">{{ trip.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}</p>
+                    <p class="text-slate-500 text-xs truncate">→ {{ trip.ag_trip_requests?.dest_name }}</p>
+                  </div>
+                  <p class="text-emerald-400 font-black text-sm flex-shrink-0">{{ formatCOP(trip.offered_price) }}</p>
+                </div>
+                <div class="px-4 pb-3">
+                  <button (click)="finishDriverTrip(trip)"
+                    class="w-full py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                    style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                    <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
+                    Finalizar viaje
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
 
         <!-- Panel de solicitudes de viaje -->
         <div class="flex flex-col gap-3">
@@ -1500,6 +1538,91 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ MODAL CALIFICACIÓN ═══════════ -->
+  @if (ratingModal()) {
+    <div class="fixed inset-0 z-50 flex items-end justify-center pb-0"
+      style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)">
+      <div class="w-full max-w-lg rounded-t-3xl flex flex-col gap-5 p-6 pb-10"
+        style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1)">
+
+        @if (ratingSkipped()) {
+          <!-- Confirmación de skip -->
+          <div class="flex flex-col items-center gap-3 py-4 text-center">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:48px">check_circle</span>
+            <p class="text-white font-black text-lg">¡Viaje finalizado!</p>
+            <p class="text-slate-500 text-sm">Gracias por usar Anda y Gana</p>
+            <button (click)="closeRatingModal()"
+              class="mt-2 px-8 py-3 rounded-xl text-white font-black text-sm"
+              style="background:linear-gradient(135deg,#f97316,#fb923c)">
+              Cerrar
+            </button>
+          </div>
+        } @else {
+          <!-- Handle -->
+          <div class="flex justify-center -mt-2 mb-1">
+            <div class="w-10 h-1 rounded-full" style="background:rgba(255,255,255,0.2)"></div>
+          </div>
+
+          <div class="flex flex-col items-center gap-1 text-center">
+            <p class="text-slate-400 text-xs uppercase tracking-widest font-bold">Calificar (opcional)</p>
+            <p class="text-white font-black text-xl">
+              {{ ratingTarget()?.role === 'driver' ? '¿Cómo fue tu conductor?' : '¿Cómo fue el pasajero?' }}
+            </p>
+            <p class="text-slate-400 text-sm">{{ ratingTarget()?.name }}</p>
+          </div>
+
+          <!-- Estrellas -->
+          <div class="flex justify-center gap-3">
+            @for (s of [1,2,3,4,5]; track s) {
+              <button (click)="ratingStars.set(s)" class="transition-transform active:scale-90"
+                [style.transform]="ratingStars() >= s ? 'scale(1.15)' : 'scale(1)'">
+                <span class="material-symbols-outlined"
+                  style="font-size:40px"
+                  [style.color]="ratingStars() >= s ? '#f59e0b' : 'rgba(255,255,255,0.15)'">
+                  {{ ratingStars() >= s ? 'star' : 'star_border' }}
+                </span>
+              </button>
+            }
+          </div>
+
+          <!-- Label estrellas -->
+          @if (ratingStars() > 0) {
+            <p class="text-center text-sm font-bold"
+              [class]="ratingStars() >= 4 ? 'text-amber-400' : ratingStars() === 3 ? 'text-slate-300' : 'text-rose-400'">
+              {{ ratingStars() === 1 ? 'Muy malo' : ratingStars() === 2 ? 'Malo' : ratingStars() === 3 ? 'Regular' : ratingStars() === 4 ? 'Bueno' : '¡Excelente!' }}
+            </p>
+          }
+
+          <!-- Comentario -->
+          <textarea [(ngModel)]="ratingCommentValue" placeholder="Comentario opcional..."
+            rows="2"
+            class="w-full rounded-2xl px-4 py-3 text-sm text-white placeholder-slate-600 resize-none focus:outline-none"
+            style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)"></textarea>
+
+          <!-- Botones -->
+          <div class="flex gap-3">
+            <button (click)="skipRating()"
+              class="flex-1 py-3 rounded-xl text-slate-400 text-sm font-bold transition-all active:scale-[0.98]"
+              style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08)">
+              Omitir
+            </button>
+            <button (click)="submitRating()"
+              [disabled]="ratingStars() === 0 || submittingRating()"
+              class="flex-[2] py-3 rounded-xl text-white text-sm font-black transition-all active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+              style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+              @if (submittingRating()) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+              } @else {
+                <span class="material-symbols-outlined" style="font-size:16px">star</span>
+              }
+              Enviar calificación
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
 </div>
   `,
 })
@@ -1558,6 +1681,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Commission + wallet — driver
   driverCommissionPct  = signal(0);
   driverWalletBalance  = signal(0);
+  // Rating
+  ratingModal      = signal(false);
+  ratingStars      = signal(0);
+  ratingCommentValue = '';
+  submittingRating = signal(false);
+  ratingSkipped    = signal(false);
+  ratingTarget     = signal<{ userId: string; name: string; role: 'driver' | 'passenger' } | null>(null);
+  ratingTripId     = signal<string | null>(null);
+  // Driver active trips (accepted offers)
+  driverActiveTrips = signal<any[]>([]);
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
@@ -1632,12 +1765,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.screen.set('driver-home');
       if (mine?.status === 'approved') {
         this._loadDriverRequests(mine.vehicle_type);
-        const [pct, balance] = await Promise.all([
+        const [pct, balance, activeTrips] = await Promise.all([
           this.agService.getCommissionPct(),
           this.agService.getDriverWalletBalance(mine.id),
+          this.agService.getMyAcceptedDriverOffers(),
         ]);
         this.driverCommissionPct.set(pct);
         this.driverWalletBalance.set(balance);
+        this.driverActiveTrips.set(activeTrips);
       }
     }
 
@@ -2189,6 +2324,93 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   requiredCommission(price: number): number {
     return Math.ceil(price * this.driverCommissionPct() / 100);
+  }
+
+  // ── Rating — passenger finishes trip ──────────────────────────
+  async finishTrip() {
+    const tripId = this.currentTripRequestId();
+    const offer  = this.tripAccepted();
+    if (!tripId || !offer) { this._resetTrip(); return; }
+    await this.agService.completeTrip(tripId);
+    const driverUser = offer.ag_drivers?.ag_users;
+    this.ratingTripId.set(tripId);
+    this.ratingTarget.set({
+      userId: offer.ag_drivers?.ag_user_id ?? '',
+      name:   driverUser?.full_name ?? 'Tu conductor',
+      role:   'driver',
+    });
+    this.ratingStars.set(0);
+    this.ratingCommentValue = '';
+    this.ratingSkipped.set(false);
+    this.ratingModal.set(true);
+    this._resetTrip();
+  }
+
+  // ── Rating — driver finishes trip ─────────────────────────────
+  async finishDriverTrip(trip: any) {
+    const tripRequestId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
+    if (!tripRequestId) return;
+    await this.agService.completeTrip(tripRequestId);
+    const passenger = trip.ag_trip_requests?.ag_users;
+    this.ratingTripId.set(tripRequestId);
+    this.ratingTarget.set({
+      userId: passenger?.id ?? '',
+      name:   passenger?.full_name ?? 'El pasajero',
+      role:   'passenger',
+    });
+    this.ratingStars.set(0);
+    this.ratingCommentValue = '';
+    this.ratingSkipped.set(false);
+    this.ratingModal.set(true);
+    this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
+  }
+
+  async submitRating() {
+    if (this.ratingStars() === 0) return;
+    const profile = this.agProfile();
+    const target  = this.ratingTarget();
+    const tripId  = this.ratingTripId();
+    if (!profile || !target || !tripId) { this.ratingSkipped.set(true); return; }
+    this.submittingRating.set(true);
+    await this.agService.submitRating(
+      tripId, profile.id, target.userId, target.role,
+      this.ratingStars(), this.ratingCommentValue,
+    );
+    this.submittingRating.set(false);
+    this.ratingSkipped.set(true); // reuse "finished" screen
+  }
+
+  skipRating() {
+    this.ratingSkipped.set(true);
+  }
+
+  closeRatingModal() {
+    this.ratingModal.set(false);
+    this.ratingSkipped.set(false);
+    this.ratingStars.set(0);
+    this.ratingCommentValue = '';
+    this.ratingTarget.set(null);
+    this.ratingTripId.set(null);
+  }
+
+  private _resetTrip() {
+    this._stopWaiting();
+    this._unsubscribeOffers();
+    this.tripDest.set(null);
+    this.tripSent.set(false);
+    this.tripOpen.set(false);
+    this.tripQuery.set('');
+    this.tripSuggestions.set([]);
+    this.tripDistKm.set(0);
+    this.tripPrice.set(0);
+    this.waitingDriverCount.set(0);
+    this.waitingDriverColors.set([]);
+    this.autoAccept.set(false);
+    this.currentTripRequestId.set(null);
+    this.receivedOffers.set([]);
+    this.tripAccepted.set(null);
+    this.acceptingOfferId.set(null);
+    this._clearRoute();
   }
 
   scrollIcons(px: number) {

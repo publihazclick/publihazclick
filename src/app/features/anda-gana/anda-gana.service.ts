@@ -423,6 +423,46 @@ export class AndaGanaService {
     return error ? { success: false, error: error.message } : { success: true };
   }
 
+  async completeTrip(tripRequestId: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.rpc('ag_complete_trip', { p_trip_request_id: tripRequestId });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async submitRating(
+    tripRequestId: string,
+    raterUserId: string,
+    ratedUserId: string,
+    ratedByRole: 'passenger' | 'driver',
+    stars: number,
+    comment: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_trip_ratings').insert({
+      trip_request_id: tripRequestId,
+      rated_by_role:   ratedByRole,
+      rater_user_id:   raterUserId,
+      rated_user_id:   ratedUserId,
+      stars,
+      comment: comment.trim() || null,
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async getMyAcceptedDriverOffers(): Promise<any[]> {
+    const profile = await this.getMyAgProfile();
+    if (!profile || profile.role !== 'driver') return [];
+    const { data: driver } = await this.supabase
+      .from('ag_drivers').select('id').eq('ag_user_id', profile.id).maybeSingle();
+    if (!driver) return [];
+    const { data } = await this.supabase
+      .from('ag_trip_offers')
+      .select('*, ag_trip_requests(*, ag_users(*))')
+      .eq('driver_id', driver.id)
+      .eq('status', 'accepted')
+      .order('updated_at', { ascending: false })
+      .limit(10);
+    return data ?? [];
+  }
+
   async getStats(): Promise<{ passengers: number; pending: number; approved: number; rejected: number }> {
     const [p, pend, appr, rej] = await Promise.all([
       this.supabase.from('ag_users').select('id', { count: 'exact', head: true }).eq('role', 'passenger'),
