@@ -195,7 +195,7 @@ import {
                           </div>
                           <p class="text-xs text-slate-500 mt-0.5">
                             \${{ up.package?.price_usd | number:'1.0-0' }} USD ·
-                            2.5% - 6% / mes ·
+                            2.5% - 30% / mes ·
                             {{ up.activated_at | date:'d MMM yyyy' }}
                           </p>
                           @if (up.notes) {
@@ -248,7 +248,7 @@ import {
                         <option value="" style="background:#0d0d0d">— Elige un paquete —</option>
                         @for (pkg of catalog(); track pkg.name) {
                           <option [value]="pkg.name" style="background:#0d0d0d">
-                            {{ pkg.name }} — \${{ pkg.price_usd | number:'1.0-0' }} USD · 2.5% - 6% / mes
+                            {{ pkg.name }} — \${{ pkg.price_usd | number:'1.0-0' }} USD · 2.5% - 30% / mes
                           </option>
                         }
                       </select>
@@ -267,7 +267,7 @@ import {
                           <p class="text-white font-black text-base">{{ selectedCatalogPkg()!.name }}</p>
                         </div>
                         <div class="ml-auto text-right">
-                          <p class="text-emerald-400 font-black text-lg">2.5% - 6%</p>
+                          <p class="text-emerald-400 font-black text-lg">2.5% - 30%</p>
                           <p class="text-[10px] text-slate-500">/ mes</p>
                         </div>
                       </div>

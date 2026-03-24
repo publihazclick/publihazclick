@@ -96,7 +96,7 @@ interface TradingPackage {
               <!-- Monthly return -->
               <div class="flex items-center gap-1 bg-black/20 rounded-lg px-2 py-1">
                 <span class="material-symbols-outlined text-emerald-400" style="font-size:13px">trending_up</span>
-                <span class="text-emerald-400 font-black text-xs">2.5% - 6%</span>
+                <span class="text-emerald-400 font-black text-xs">2.5% - 30%</span>
                 <span class="text-slate-500 text-[10px]">/ mes</span>
               </div>
 
@@ -184,7 +184,7 @@ interface TradingPackage {
               <div class="w-px h-8 bg-white/10 shrink-0"></div>
               <div class="flex-1 text-right min-w-0">
                 <p class="text-slate-400 text-xs">Rentabilidad</p>
-                <p class="text-emerald-400 font-black text-lg sm:text-xl">2.5% - 6%
+                <p class="text-emerald-400 font-black text-lg sm:text-xl">2.5% - 30%
                   <span class="text-xs font-bold text-slate-500">/ mes</span>
                 </p>
               </div>

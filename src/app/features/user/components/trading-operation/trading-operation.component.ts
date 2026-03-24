@@ -59,7 +59,7 @@ interface TradingPackage {
               <p class="text-white font-black text-base group-hover:text-cyan-300 transition-colors">
                 \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} <span class="text-xs text-slate-500">USD</span>
               </p>
-              <p class="text-emerald-400 font-black text-sm">2.5% - 6% <span class="text-[10px] text-slate-500">/ mes</span></p>
+              <p class="text-emerald-400 font-black text-sm">2.5% - 30% <span class="text-[10px] text-slate-500">/ mes</span></p>
             </button>
             <!-- Rentabilidad: botón clickeable que abre formulario -->
             <button (click)="onEarningsClick()" class="text-right border-l border-white/10 pl-4 cursor-pointer hover:opacity-80 transition-opacity group">
@@ -99,7 +99,7 @@ interface TradingPackage {
               </div>
               <p class="text-[10px] text-slate-500 mb-4">
                 Rentabilidad estimada: <strong class="text-cyan-400">\${{ earningsMin() | number:'1.2-2' }} — \${{ earningsMax() | number:'1.2-2' }} USD</strong>
-                (entre 2.5% y 6% sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD)
+                (entre 2.5% y 30% sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD)
               </p>
               <div class="space-y-3">
                 <div>
@@ -232,7 +232,7 @@ interface TradingPackage {
               </div>
               <div class="flex items-center gap-1 bg-black/20 rounded-lg px-2 py-1">
                 <span class="material-symbols-outlined text-emerald-400" style="font-size:13px">trending_up</span>
-                <span class="text-emerald-400 font-black text-xs">2.5% - 6%</span>
+                <span class="text-emerald-400 font-black text-xs">2.5% - 30%</span>
                 <span class="text-slate-500 text-[10px]">/ mes</span>
               </div>
               <button (click)="selectedPackage.set(pkg)"
@@ -313,7 +313,7 @@ interface TradingPackage {
               </div>
               <div class="w-px h-8 bg-white/10 shrink-0"></div>
               <div class="flex-1 text-right"><p class="text-slate-400 text-xs">Rentabilidad</p>
-                <p class="text-emerald-400 font-black text-xl">2.5% - 6% <span class="text-xs font-bold text-slate-500">/ mes</span></p>
+                <p class="text-emerald-400 font-black text-xl">2.5% - 30% <span class="text-xs font-bold text-slate-500">/ mes</span></p>
               </div>
             </div>
           </div>
@@ -563,7 +563,7 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
         price_usd: pkg.package?.price_usd,
         earnings_min_usd: minAmount,
         earnings_max_usd: maxAmount,
-        return_range: '2.5% - 6%',
+        return_range: '2.5% - 30%',
         activated_at: pkg.activated_at,
         days_active: this.daysActive(),
         full_name: this.withdrawFullName().trim(),
