@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../../core/supabase.client';
+import { environment } from '../../../environments/environment';
 
 export interface PassengerFormData {
   fullName: string; birthDate: string; city: string; idNumber: string;
@@ -473,6 +474,25 @@ export class AndaGanaService {
     accepts_child_seat: boolean; hide_phone: boolean; notify_sound: boolean; notify_vibration: boolean;
   }): Promise<void> {
     await this.supabase.from('ag_drivers').update({ ...prefs, updated_at: new Date().toISOString() }).eq('id', driverId);
+  }
+
+  async createWalletRecharge(amount: number): Promise<any> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) throw new Error('Sin sesión activa');
+    const res = await fetch(
+      `${environment.supabase.url}/functions/v1/ag-create-wallet-recharge`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ amount }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? 'Error al crear pago');
+    return data;
   }
 
   async signOut(): Promise<void> {

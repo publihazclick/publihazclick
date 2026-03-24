@@ -80,8 +80,9 @@ Deno.serve(async (req) => {
     const x_amount          = p['x_amount']          ?? '';
     const x_currency_code   = p['x_currency_code']   ?? '';
     const x_signature       = p['x_signature']       ?? '';
-    const x_extra1          = p['x_extra1']          ?? ''; // nuestro payment UUID
-    const x_extra2          = p['x_extra2']          ?? ''; // package ID
+    const x_extra1          = p['x_extra1']          ?? ''; // payment UUID (packages) o ag_wallet_payments UUID
+    const x_extra2          = p['x_extra2']          ?? ''; // package ID o driver ID
+    const x_extra3          = p['x_extra3']          ?? ''; // 'ag_wallet' para recargas de billetera
     const x_invoice         = p['x_invoice']         ?? '';
 
     // ── 2. Verificar firma SHA256 ────────────────────────────────────────────
@@ -116,7 +117,24 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // ── 4. Buscar pago en DB ─────────────────────────────────────────────────
+    // ── 4A. Si es recarga de billetera Anda y Gana ───────────────────────────
+    if (x_extra3 === 'ag_wallet' && x_extra1) {
+      const { error: approveErr } = await supabase.rpc('ag_approve_wallet_payment', {
+        p_payment_id: x_extra1,
+      });
+      if (approveErr) {
+        console.error('Error aprobando recarga de billetera:', approveErr);
+        return fail('Wallet approval failed', 500);
+      }
+      // Actualizar referencia ePayco en el registro
+      await supabase.from('ag_wallet_payments')
+        .update({ epayco_ref: x_ref_payco })
+        .eq('id', x_extra1);
+      console.log(`Recarga billetera AG aprobada — payment: ${x_extra1}, ref: ${x_ref_payco}`);
+      return ok('ag_wallet_approved');
+    }
+
+    // ── 4. Buscar pago en DB (flujo paquetes) ────────────────────────────────
     // Intentar por extra1 (payment UUID) o por gateway_reference (invoice)
     let paymentId: string | null = null;
 

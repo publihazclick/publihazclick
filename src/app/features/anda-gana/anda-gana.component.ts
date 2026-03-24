@@ -1198,11 +1198,55 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- ── GANANCIAS ── -->
           @if (!loadingSection() && driverSection() === 'earnings') {
             <!-- Balance total -->
-            <div class="rounded-2xl p-5 flex flex-col gap-1"
+            <div class="rounded-2xl p-5 flex flex-col gap-3"
               style="background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08));border:1px solid rgba(16,185,129,0.2)">
-              <p class="text-slate-400 text-xs uppercase font-bold tracking-widest">Saldo disponible</p>
-              <p class="text-white font-black text-4xl">{{ formatCOP(driverWalletBalance()) }}</p>
-              <p class="text-slate-500 text-xs">Total ganado en viajes: {{ formatCOP(driverEarnings().total) }}</p>
+              <div>
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-widest">Saldo disponible</p>
+                <p class="text-white font-black text-4xl">{{ formatCOP(driverWalletBalance()) }}</p>
+                <p class="text-slate-500 text-xs">Total ganado en viajes: {{ formatCOP(driverEarnings().total) }}</p>
+              </div>
+              <!-- Recargar saldo -->
+              <div class="flex flex-col gap-3 pt-2" style="border-top:1px solid rgba(16,185,129,0.15)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Recargar saldo</p>
+                <!-- Montos rápidos -->
+                <div class="grid grid-cols-3 gap-2">
+                  @for (amt of rechargePresets; track amt) {
+                    <button (click)="rechargeAmount.set(amt)"
+                      class="py-2.5 rounded-xl text-xs font-black transition-all active:scale-95"
+                      [style]="rechargeAmount() === amt
+                        ? 'background:linear-gradient(135deg,#10b981,#059669);color:#fff'
+                        : 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#94a3b8'">
+                      {{ formatCOP(amt) }}
+                    </button>
+                  }
+                </div>
+                <!-- Monto personalizado -->
+                <div class="flex items-center gap-2 rounded-xl px-3 py-2"
+                  style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1)">
+                  <span class="text-slate-500 text-sm font-bold">$</span>
+                  <input type="number" [(ngModel)]="rechargeCustom"
+                    (input)="rechargeAmount.set(+rechargeCustom || 0)"
+                    placeholder="Otro monto..."
+                    class="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-600"/>
+                  <span class="text-slate-600 text-xs">COP</span>
+                </div>
+                @if (rechargeError()) {
+                  <p class="text-rose-400 text-xs">{{ rechargeError() }}</p>
+                }
+                <!-- Botón pagar -->
+                <button (click)="startWalletRecharge()"
+                  [disabled]="rechargeAmount() < 5000 || rechargeLoading()"
+                  class="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.98]"
+                  style="background:linear-gradient(135deg,#0f6fde,#1d4ed8);color:#fff">
+                  @if (rechargeLoading()) {
+                    <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Abriendo pago...
+                  } @else {
+                    <span class="material-symbols-outlined" style="font-size:16px">credit_card</span>
+                    Pagar {{ rechargeAmount() >= 5000 ? formatCOP(rechargeAmount()) : '' }} con ePayco
+                  }
+                </button>
+                <p class="text-slate-600 text-[10px] text-center">Mínimo {{ formatCOP(5000) }} · Seguro con ePayco</p>
+              </div>
             </div>
             <!-- Historial -->
             <p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Historial de movimientos</p>
@@ -2190,6 +2234,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverSettings     = signal({ hidePhone: false, notifySound: true, notifyVibration: true });
   savingPrefs        = signal(false);
   savingSettings     = signal(false);
+  // Wallet recharge via ePayco
+  rechargeAmount     = signal(0);
+  rechargeCustom     = '';
+  rechargeLoading    = signal(false);
+  rechargeError      = signal<string | null>(null);
   panicActivated     = signal(false);
   emergencyContacts  = signal<{ name: string; phone: string }[]>([]);
   newContactName     = '';
@@ -2228,6 +2277,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { divider: true,  section: '', icon: '', label: '' },
     { icon: 'drive_eta',        label: 'Conductor',               divider: false, section: '' },
   ];
+
+  readonly rechargePresets = [10000, 20000, 50000, 100000, 200000, 500000];
 
   readonly driverMenuItems = [
     { icon: 'person',         label: 'Mi Perfil',         action: 'profile',      sectionLabel: 'Principal', danger: false, divider: false },
@@ -3581,5 +3632,76 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } else {
       this.driverError.set(result.error ?? 'Error al registrarse.');
     }
+  }
+
+  // ── Recarga de billetera vía ePayco ────────────────────────────────────────
+
+  async startWalletRecharge(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const amount = this.rechargeAmount();
+    if (amount < 5000) {
+      this.rechargeError.set('El monto mínimo es $5.000 COP');
+      return;
+    }
+
+    this.rechargeError.set(null);
+    this.rechargeLoading.set(true);
+
+    try {
+      const params = await this.agService.createWalletRecharge(amount);
+      await this._openEpaycoWalletCheckout(params);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al iniciar el pago';
+      this.rechargeError.set(msg);
+    } finally {
+      this.rechargeLoading.set(false);
+    }
+  }
+
+  private _loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as unknown as Record<string, unknown>)['ePayco']) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.epayco.co/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar el script de ePayco'));
+      document.head.appendChild(script);
+    });
+  }
+
+  private async _openEpaycoWalletCheckout(params: Record<string, unknown>): Promise<void> {
+    await this._loadEpaycoScript();
+
+    const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
+      checkout: { configure: (cfg: unknown) => { open: (params: unknown) => void } };
+    };
+
+    const handler = epayco.checkout.configure({
+      key:  params['publicKey'],
+      test: params['test'],
+    });
+
+    handler.open({
+      name:          params['name'],
+      description:   params['description'],
+      invoice:       params['invoice'],
+      currency:      params['currency'],
+      amount:        params['amount'],
+      tax_base:      params['tax_base'],
+      tax:           params['tax'],
+      country:       params['country'],
+      lang:          params['lang'],
+      confirmation:  params['confirmation'],
+      response:      params['response'],
+      email_billing: params['email_billing'],
+      name_billing:  params['name_billing'],
+      extra1:        params['extra1'],
+      extra2:        params['extra2'],
+      extra3:        params['extra3'],
+    });
   }
 }
