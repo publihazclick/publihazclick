@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../../core/supabase.client';
 
 export interface PassengerFormData {
@@ -37,6 +37,33 @@ export interface AgDriver {
   ag_users?: AgUser;
 }
 
+export interface AgTripOffer {
+  id: string;
+  trip_request_id: string;
+  driver_id: string;
+  offered_price: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  ag_drivers?: AgDriver & { ag_users?: AgUser };
+}
+
+export interface AgTripRequest {
+  id: string;
+  passenger_user_id: string;
+  origin_lat: number;
+  origin_lng: number;
+  dest_name: string;
+  dest_lat: number;
+  dest_lng: number;
+  distance_km: number;
+  vehicle_type: string;
+  offered_price: number;
+  status: string;
+  created_at: string;
+  ag_users?: AgUser;
+}
+
 export interface AgRegistrationResult {
   success: boolean;
   error?: string;
@@ -64,6 +91,18 @@ export class AndaGanaService {
     return data ?? null;
   }
 
+  // ── Driver profile for current user ───────────────────────────
+  async getMyDriverProfile(): Promise<AgDriver | null> {
+    const profile = await this.getMyAgProfile();
+    if (!profile || profile.role !== 'driver') return null;
+    const { data } = await this.supabase
+      .from('ag_drivers')
+      .select('*')
+      .eq('ag_user_id', profile.id)
+      .maybeSingle();
+    return data ?? null;
+  }
+
   // ── Registro ──────────────────────────────────────────────────
   private async uploadFile(bucket: string, folder: string, file: File): Promise<string | null> {
     const ext = file.name.split('.').pop() ?? 'jpg';
@@ -81,11 +120,9 @@ export class AndaGanaService {
       const uid = await this.currentUserId();
       if (!uid) return { success: false, error: 'Debes iniciar sesión primero.' };
 
-      // Verificar que no esté ya registrado
       const existing = await this.getMyAgProfile();
       if (existing) return { success: false, error: 'Ya tienes un perfil en Anda y Gana.' };
 
-      // Upload selfie
       let selfieUrl: string | null = null;
       if (form.selfieFile) {
         selfieUrl = await this.uploadFile('ag-passengers', uid, form.selfieFile);
@@ -120,7 +157,6 @@ export class AndaGanaService {
       const existing = await this.getMyAgProfile();
       if (existing) return { success: false, error: 'Ya tienes un perfil en Anda y Gana.' };
 
-      // Upload todos los documentos en paralelo
       const uploadTasks = Object.entries(form.files).map(async ([key, file]) => {
         const url = await this.uploadFile('ag-drivers', uid, file);
         return [key, url] as [string, string | null];
@@ -129,7 +165,6 @@ export class AndaGanaService {
       const documents: Record<string, string> = {};
       for (const [key, url] of results) { if (url) documents[key] = url; }
 
-      // Insertar ag_users
       const { data: agUser, error: userError } = await this.supabase
         .from('ag_users')
         .insert({
@@ -149,7 +184,6 @@ export class AndaGanaService {
 
       if (userError) return { success: false, error: userError.message };
 
-      // Insertar ag_drivers
       const { error: driverError } = await this.supabase.from('ag_drivers').insert({
         ag_user_id: agUser.id,
         license_number: form.licenseNumber,
@@ -176,7 +210,6 @@ export class AndaGanaService {
   async getNearbyVehicles(lat: number, lng: number): Promise<
     { id: string; lat: number; lng: number; heading: number; vehicle_type: string }[]
   > {
-    // Busca conductores aprobados y disponibles con ubicación registrada
     const { data } = await this.supabase
       .from('ag_driver_locations')
       .select('driver_id, lat, lng, heading, ag_drivers!inner(vehicle_type, status, is_available)')
@@ -231,18 +264,110 @@ export class AndaGanaService {
     return !error;
   }
 
+  // ── Trip requests ─────────────────────────────────────────────
   async requestTrip(data: {
     passengerUserId: string; originLat: number; originLng: number;
     destName: string; destLat: number; destLng: number;
     distanceKm: number; vehicleType: string; offeredPrice: number;
-  }): Promise<{ success: boolean; error?: string }> {
-    const { error } = await this.supabase.from('ag_trip_requests').insert({
-      passenger_user_id: data.passengerUserId,
-      origin_lat: data.originLat, origin_lng: data.originLng,
-      dest_name: data.destName, dest_lat: data.destLat, dest_lng: data.destLng,
-      distance_km: data.distanceKm, vehicle_type: data.vehicleType,
-      offered_price: data.offeredPrice, status: 'searching',
-    });
+  }): Promise<{ success: boolean; tripId?: string; error?: string }> {
+    const { data: row, error } = await this.supabase
+      .from('ag_trip_requests')
+      .insert({
+        passenger_user_id: data.passengerUserId,
+        origin_lat: data.originLat, origin_lng: data.originLng,
+        dest_name: data.destName, dest_lat: data.destLat, dest_lng: data.destLng,
+        distance_km: data.distanceKm, vehicle_type: data.vehicleType,
+        offered_price: data.offeredPrice, status: 'searching',
+      })
+      .select('id')
+      .single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, tripId: row.id };
+  }
+
+  async cancelTripRequest(tripRequestId: string): Promise<void> {
+    await this.supabase
+      .from('ag_trip_requests')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', tripRequestId);
+  }
+
+  // ── Trip offers — passenger ───────────────────────────────────
+  async getOffersForTrip(tripRequestId: string): Promise<AgTripOffer[]> {
+    const { data } = await this.supabase
+      .from('ag_trip_offers')
+      .select('*, ag_drivers(*, ag_users(*))')
+      .eq('trip_request_id', tripRequestId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+    return (data ?? []) as AgTripOffer[];
+  }
+
+  async acceptOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase
+      .from('ag_trip_offers')
+      .update({ status: 'accepted', updated_at: new Date().toISOString() })
+      .eq('id', offerId);
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async rejectOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase
+      .from('ag_trip_offers')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', offerId);
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  /** Escucha nuevas ofertas en tiempo real para un viaje activo */
+  subscribeToOffers(
+    tripRequestId: string,
+    onOffer: (offer: AgTripOffer) => void,
+  ): RealtimeChannel {
+    return this.supabase
+      .channel(`trip-offers-${tripRequestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ag_trip_offers',
+          filter: `trip_request_id=eq.${tripRequestId}`,
+        },
+        async (payload) => {
+          const { data } = await this.supabase
+            .from('ag_trip_offers')
+            .select('*, ag_drivers(*, ag_users(*))')
+            .eq('id', payload.new['id'])
+            .single();
+          if (data) onOffer(data as AgTripOffer);
+        },
+      )
+      .subscribe();
+  }
+
+  // ── Trip offers — driver ──────────────────────────────────────
+  /** Solicitudes de viaje en estado "searching" compatibles con el tipo de vehículo */
+  async getSearchingRequests(vehicleType?: string): Promise<AgTripRequest[]> {
+    let query = this.supabase
+      .from('ag_trip_requests')
+      .select('*, ag_users(*)')
+      .eq('status', 'searching')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (vehicleType) query = query.eq('vehicle_type', vehicleType);
+    const { data } = await query;
+    return (data ?? []) as AgTripRequest[];
+  }
+
+  async makeOffer(
+    tripRequestId: string,
+    driverId: string,
+    offeredPrice: number,
+  ): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase
+      .from('ag_trip_offers')
+      .insert({ trip_request_id: tripRequestId, driver_id: driverId, offered_price: offeredPrice });
     return error ? { success: false, error: error.message } : { success: true };
   }
 

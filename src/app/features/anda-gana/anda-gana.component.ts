@@ -1,7 +1,8 @@
 import { Component, ChangeDetectionStrategy, signal, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser } from '@angular/common';
-import { AndaGanaService, AgUser } from './anda-gana.service';
+import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest } from './anda-gana.service';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 
 type AgScreen = 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
@@ -198,8 +199,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
-            [style.maxHeight]="tripSent() ? '58%' : ''"
-            [style.overflowY]="tripSent() ? 'auto' : 'hidden'"
+            [style.maxHeight]="(tripSent() || tripAccepted()) ? '58%' : ''"
+            [style.overflowY]="(tripSent() || tripAccepted()) ? 'auto' : 'hidden'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
 
             <!-- Fila de servicios -->
@@ -356,6 +357,54 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               }
 
+            } @else if (tripAccepted()) {
+              <!-- ══ Viaje Aceptado ══ -->
+              <div class="px-4 pt-4 pb-3 flex flex-col gap-3">
+                <!-- Header éxito -->
+                <div class="rounded-2xl flex flex-col items-center gap-2 py-4"
+                  style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:1px solid #86efac">
+                  <div class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white" style="font-size:24px">check_circle</span>
+                  </div>
+                  <p class="text-emerald-800 font-black text-base">¡Conductor en camino!</p>
+                  <p class="text-emerald-700 text-xs">Tu viaje ha sido confirmado</p>
+                </div>
+                <!-- Datos del conductor -->
+                <div class="rounded-2xl flex items-center gap-3 px-4 py-3"
+                  style="background:#fff;border:1px solid #e2e8f0">
+                  <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                    style="background:linear-gradient(135deg,#f97316,#fb923c)">
+                    <span class="material-symbols-outlined text-white" style="font-size:24px">person</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-slate-800 font-black text-sm truncate">
+                      {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}
+                    </p>
+                    <p class="text-slate-500 text-xs truncate">
+                      {{ tripAccepted()!.ag_drivers?.vehicle_brand }} {{ tripAccepted()!.ag_drivers?.vehicle_model }}
+                      · {{ tripAccepted()!.ag_drivers?.plate }}
+                      · {{ tripAccepted()!.ag_drivers?.vehicle_color }}
+                    </p>
+                  </div>
+                  <p class="font-black text-lg text-emerald-600 flex-shrink-0">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
+                </div>
+                <!-- Destino -->
+                <div class="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                  style="background:#f8fafc;border:1px solid #e2e8f0">
+                  <span class="material-symbols-outlined text-slate-700 flex-shrink-0" style="font-size:18px">place</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-slate-500 text-[10px] uppercase font-bold">Destino</p>
+                    <p class="text-slate-800 text-sm font-semibold truncate">{{ tripDest()?.name }}</p>
+                  </div>
+                </div>
+                <!-- Cancelar -->
+                <button (click)="cancelTrip()"
+                  class="w-full py-2.5 rounded-xl text-slate-500 text-xs font-bold active:scale-[0.98] transition-all"
+                  style="background:#f1f5f9;border:1px solid #e2e8f0">
+                  Cancelar viaje
+                </button>
+              </div>
+
             } @else if (!tripSent()) {
               <!-- ── Tarjeta de ruta: origen → destino ── -->
               <div class="mx-4 mt-3 mb-1 rounded-2xl overflow-hidden"
@@ -458,7 +507,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <!-- Fila: conductores viendo + avatares -->
               <div class="flex items-center justify-between px-4 pt-3 pb-2.5" style="border-bottom:1px solid #e2e8f0">
                 <p class="text-slate-800 text-sm font-semibold flex-1 leading-snug">
-                  @if (waitingDriverCount() === 0) {
+                  @if (receivedOffers().length > 0) {
+                    <span class="text-emerald-600 font-black">{{ receivedOffers().length }}</span>
+                    {{ receivedOffers().length === 1 ? ' oferta recibida' : ' ofertas recibidas' }}
+                  } @else if (waitingDriverCount() === 0) {
                     Buscando conductores disponibles...
                   } @else {
                     <span class="text-orange-500 font-black">{{ waitingDriverCount() }}</span>
@@ -474,6 +526,67 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                 </div>
               </div>
+
+              <!-- ══ Tarjetas de ofertas reales ══ -->
+              @if (receivedOffers().length > 0) {
+                <div class="flex flex-col gap-2 px-4 pt-2 pb-1">
+                  @for (offer of receivedOffers(); track offer.id) {
+                    <div class="rounded-2xl overflow-hidden"
+                      style="background:#fff;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+                      <div class="flex items-center gap-3 px-3 py-3">
+                        <!-- Avatar conductor -->
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style="background:linear-gradient(135deg,#f97316,#fb923c)">
+                          <span class="material-symbols-outlined text-white" style="font-size:20px">person</span>
+                        </div>
+                        <!-- Datos -->
+                        <div class="flex-1 min-w-0">
+                          <p class="text-slate-800 text-sm font-black truncate">
+                            {{ offer.ag_drivers?.ag_users?.full_name ?? 'Conductor' }}
+                          </p>
+                          <p class="text-slate-500 text-xs truncate">
+                            {{ offer.ag_drivers?.vehicle_brand }} {{ offer.ag_drivers?.vehicle_model }}
+                            · {{ offer.ag_drivers?.plate }}
+                          </p>
+                        </div>
+                        <!-- Precio ofrecido -->
+                        <div class="text-right flex-shrink-0">
+                          <p class="font-black text-lg leading-tight"
+                            [style.color]="offer.offered_price <= tripPrice() ? '#16a34a' : '#dc2626'">
+                            {{ formatCOP(offer.offered_price) }}
+                          </p>
+                          @if (offer.offered_price < tripPrice()) {
+                            <p class="text-emerald-600 text-[10px] font-bold">Más barato</p>
+                          } @else if (offer.offered_price > tripPrice()) {
+                            <p class="text-rose-500 text-[10px] font-bold">Más caro</p>
+                          } @else {
+                            <p class="text-slate-400 text-[10px]">Igual al tuyo</p>
+                          }
+                        </div>
+                      </div>
+                      <!-- Botones -->
+                      <div class="flex border-t border-slate-100">
+                        <button (click)="rejectOfferCard(offer)"
+                          class="flex-1 py-2.5 text-slate-500 text-sm font-bold flex items-center justify-center gap-1.5 active:bg-slate-100 transition-colors"
+                          style="border-right:1px solid #f1f5f9">
+                          <span class="material-symbols-outlined" style="font-size:16px">close</span> Rechazar
+                        </button>
+                        <button (click)="acceptOfferCard(offer)"
+                          [disabled]="acceptingOfferId() === offer.id"
+                          class="flex-1 py-2.5 text-white text-sm font-black flex items-center justify-center gap-1.5 active:opacity-80 transition-all disabled:opacity-60"
+                          style="background:#16a34a">
+                          @if (acceptingOfferId() === offer.id) {
+                            <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                          } @else {
+                            <span class="material-symbols-outlined" style="font-size:16px">check</span>
+                          }
+                          Aceptar
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
 
               <!-- Fila: texto prioridad + temporizador -->
               <div class="flex items-center gap-2 px-4 pt-3 pb-1">
@@ -574,10 +687,88 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
       @if (driverStatus() === 'approved') {
-        <div class="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-5 text-center flex flex-col items-center gap-2">
-          <span class="material-symbols-outlined text-emerald-400" style="font-size:36px">verified</span>
-          <p class="text-white font-bold text-sm">¡Estás aprobado como conductor!</p>
-          <p class="text-slate-400 text-xs">Ya puedes recibir solicitudes de viaje. La app estará disponible muy pronto.</p>
+        <!-- Panel de solicitudes de viaje -->
+        <div class="flex flex-col gap-3">
+          <!-- Header toggle -->
+          <button (click)="toggleDriverRequests()"
+            class="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all active:scale-[0.98]"
+            style="background:linear-gradient(135deg,#0f766e,#0891b2);box-shadow:0 4px 14px rgba(8,145,178,0.25)">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-white" style="font-size:22px">directions_car</span>
+              <div class="text-left">
+                <p class="text-white font-black text-sm">Solicitudes de viaje</p>
+                <p class="text-cyan-200 text-xs">{{ driverRequests().length }} disponibles cerca</p>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-white" style="font-size:20px">
+              {{ driverRequestsOpen() ? 'expand_less' : 'expand_more' }}
+            </span>
+          </button>
+
+          @if (driverRequestsOpen()) {
+            <!-- Actualizar -->
+            <div class="flex justify-end">
+              <button (click)="refreshDriverRequests()"
+                class="flex items-center gap-1 text-xs text-cyan-400 font-bold active:scale-95 transition-all">
+                <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
+              </button>
+            </div>
+
+            @if (driverRequests().length === 0) {
+              <div class="rounded-2xl flex flex-col items-center gap-2 py-8"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <span class="material-symbols-outlined text-slate-600" style="font-size:36px">search_off</span>
+                <p class="text-slate-500 text-sm">Sin solicitudes activas ahora</p>
+                <p class="text-slate-600 text-xs">Los pasajeros aparecerán aquí</p>
+              </div>
+            }
+
+            @for (req of driverRequests(); track req.id) {
+              <div class="rounded-2xl overflow-hidden"
+                style="background:#0f1421;border:1px solid rgba(255,255,255,0.08)">
+                <div class="flex items-start gap-3 px-4 pt-3 pb-2">
+                  <!-- Icono tipo -->
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style="background:rgba(8,145,178,0.12);border:1px solid rgba(8,145,178,0.2)">
+                    <span class="material-symbols-outlined text-cyan-400" style="font-size:20px">
+                      {{ req.vehicle_type === 'moto' ? 'two_wheeler' : 'directions_car' }}
+                    </span>
+                  </div>
+                  <!-- Info -->
+                  <div class="flex-1 min-w-0">
+                    <p class="text-slate-300 text-xs mb-0.5">
+                      <span class="text-white font-bold">{{ req.ag_users?.full_name ?? 'Pasajero' }}</span>
+                      · {{ req.distance_km }} km
+                    </p>
+                    <p class="text-slate-500 text-xs truncate">→ {{ req.dest_name }}</p>
+                  </div>
+                  <!-- Precio ofrecido -->
+                  <div class="text-right flex-shrink-0">
+                    <p class="text-cyan-400 font-black text-base">{{ formatCOP(req.offered_price) }}</p>
+                    <p class="text-slate-600 text-[10px]">precio pasajero</p>
+                  </div>
+                </div>
+
+                <!-- Botón hacer oferta -->
+                @if (offerSentFor().has(req.id)) {
+                  <div class="flex items-center justify-center gap-1.5 py-2.5 mx-4 mb-3 rounded-xl"
+                    style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
+                    <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span>
+                    <span class="text-emerald-400 text-xs font-bold">Oferta enviada</span>
+                  </div>
+                } @else {
+                  <div class="px-4 pb-3">
+                    <button (click)="openMakeOffer(req)"
+                      class="w-full py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                      style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                      <span class="material-symbols-outlined" style="font-size:16px">local_offer</span>
+                      Hacer oferta
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          }
         </div>
       }
       @if (driverStatus() === 'rejected') {
@@ -683,6 +874,72 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
       </div>
     </div>
+
+    <!-- ══ Modal: hacer oferta ══ -->
+    @if (makingOfferFor()) {
+      <!-- Overlay -->
+      <div (click)="closeMakeOffer()"
+        class="fixed inset-0 z-50"
+        style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
+      <!-- Sheet -->
+      <div class="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col gap-4 px-5 pt-5 pb-8"
+        style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -8px 40px rgba(0,0,0,0.5)">
+        <!-- Handle -->
+        <div class="mx-auto w-10 h-1 rounded-full bg-white/20 mb-1"></div>
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-white font-black text-base">Tu oferta</p>
+            <p class="text-slate-500 text-xs">{{ makingOfferFor()!.dest_name }} · {{ makingOfferFor()!.distance_km }} km</p>
+          </div>
+          <button (click)="closeMakeOffer()"
+            class="w-8 h-8 rounded-lg flex items-center justify-center"
+            style="background:rgba(255,255,255,0.06)">
+            <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+          </button>
+        </div>
+        <!-- Precio pasajero vs tu oferta -->
+        <div class="flex items-center gap-3 rounded-2xl px-4 py-3"
+          style="background:rgba(8,145,178,0.07);border:1px solid rgba(8,145,178,0.15)">
+          <div class="flex-1 text-center">
+            <p class="text-slate-500 text-[10px] uppercase font-bold">Pasajero pide</p>
+            <p class="text-slate-300 font-black text-lg">{{ formatCOP(makingOfferFor()!.offered_price) }}</p>
+          </div>
+          <div class="w-px self-stretch bg-white/10"></div>
+          <div class="flex-1 text-center">
+            <p class="text-cyan-400 text-[10px] uppercase font-bold">Tu oferta</p>
+            <p class="text-white font-black text-xl">{{ formatCOP(driverOfferPrice()) }}</p>
+          </div>
+        </div>
+        <!-- Ajustar precio -->
+        <div class="flex items-center gap-3">
+          <button (click)="driverOfferPrice.set(driverOfferPrice() > 2500 ? driverOfferPrice() - 500 : 2000)"
+            class="w-14 h-14 rounded-2xl font-black text-2xl flex items-center justify-center active:scale-90 transition-all text-slate-200"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">−</button>
+          <div class="flex-1 flex flex-col items-center">
+            <input type="number" [value]="driverOfferPrice()"
+              (input)="driverOfferPrice.set(+$any($event.target).value > 2000 ? +$any($event.target).value : 2000)"
+              class="w-full text-center text-white font-black text-2xl bg-transparent outline-none"
+              style="min-width:0"/>
+            <p class="text-slate-600 text-[10px]">COP</p>
+          </div>
+          <button (click)="driverOfferPrice.set(driverOfferPrice() + 500)"
+            class="w-14 h-14 rounded-2xl font-black text-2xl flex items-center justify-center active:scale-90 transition-all text-slate-200"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">+</button>
+        </div>
+        <!-- Enviar oferta -->
+        <button (click)="submitDriverOffer()" [disabled]="sendingOffer()"
+          class="w-full py-4 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
+          style="background:linear-gradient(135deg,#0891b2,#0e7490);box-shadow:0 4px 16px rgba(8,145,178,0.3)">
+          @if (sendingOffer()) {
+            <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span> Enviando...
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:20px">local_offer</span>
+            Enviar oferta · {{ formatCOP(driverOfferPrice()) }}
+          }
+        </button>
+      </div>
+    }
   }
 
   <!-- ═══════════ HOME ═══════════ -->
@@ -1206,6 +1463,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   waitingCountdown    = signal(90);
   waitingProgress     = signal(0);
   autoAccept          = signal(false);
+  // Offer system — passenger
+  currentTripRequestId = signal<string | null>(null);
+  receivedOffers       = signal<AgTripOffer[]>([]);
+  acceptingOfferId     = signal<string | null>(null);
+  tripAccepted         = signal<AgTripOffer | null>(null);
+  // Offer system — driver
+  driverRequests       = signal<AgTripRequest[]>([]);
+  driverRequestsOpen   = signal(false);
+  makingOfferFor       = signal<AgTripRequest | null>(null);
+  driverOfferPrice     = signal(0);
+  sendingOffer         = signal(false);
+  offerSentFor         = signal<Set<string>>(new Set());
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
@@ -1234,6 +1503,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _animFrame: number | null = null;
   private _lastTs:    number | null = null;
   private _waitingInterval: ReturnType<typeof setInterval> | null = null;
+  private _offerChannel: RealtimeChannel | null = null;
   private _mapboxPromise:   Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _tripDebounce:    ReturnType<typeof setTimeout> | null = null;
@@ -1262,13 +1532,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.driverStatus.set(mine?.status ?? 'pending');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
+      if (mine?.status === 'approved') {
+        this._loadDriverRequests(mine.vehicle_type);
+      }
     }
 
     // Iniciar mapa después de que Angular renderice el DOM
     setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
   }
 
-  ngOnDestroy() { this._destroyMap(); }
+  ngOnDestroy() {
+    this._destroyMap();
+    this._stopWaiting();
+    this._unsubscribeOffers();
+    if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+  }
 
   // ── Mapbox loader (CDN con caché) ──────────────────────────────
   private loadMapbox(): Promise<void> {
@@ -1904,7 +2182,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.tripSending.set(true);
     const profile = this.agProfile();
     if (profile) {
-      await this.agService.requestTrip({
+      const result = await this.agService.requestTrip({
         passengerUserId: profile.id,
         originLat: this._currentLat, originLng: this._currentLng,
         destName: dest.name, destLat: dest.lat, destLng: dest.lng,
@@ -1912,6 +2190,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         vehicleType: this.tripVehicle(),
         offeredPrice: this.tripPrice(),
       });
+      if (result.success && result.tripId) {
+        this.currentTripRequestId.set(result.tripId);
+        this.receivedOffers.set([]);
+        this.tripAccepted.set(null);
+        this._subscribeToOffers(result.tripId);
+      }
     }
     this.tripSending.set(false);
     this.tripSent.set(true);
@@ -1945,6 +2229,92 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._waitingInterval !== null) { clearInterval(this._waitingInterval); this._waitingInterval = null; }
   }
 
+  // ── Realtime offer subscription ────────────────────────────────
+  private _subscribeToOffers(tripId: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this._unsubscribeOffers();
+    this._offerChannel = this.agService.subscribeToOffers(tripId, (offer) => {
+      this.receivedOffers.update(list => {
+        const idx = list.findIndex(o => o.id === offer.id);
+        if (idx >= 0) { const nl = [...list]; nl[idx] = offer; return nl; }
+        return [...list, offer];
+      });
+    });
+  }
+
+  private _unsubscribeOffers() {
+    if (this._offerChannel) {
+      this._offerChannel.unsubscribe();
+      this._offerChannel = null;
+    }
+  }
+
+  // ── Accept / reject offer (passenger) ─────────────────────────
+  async acceptOfferCard(offer: AgTripOffer) {
+    this.acceptingOfferId.set(offer.id);
+    const result = await this.agService.acceptOffer(offer.id);
+    if (result.success) {
+      this._stopWaiting();
+      this._unsubscribeOffers();
+      this.tripAccepted.set(offer);
+      this.tripSent.set(false);
+    }
+    this.acceptingOfferId.set(null);
+  }
+
+  async rejectOfferCard(offer: AgTripOffer) {
+    await this.agService.rejectOffer(offer.id);
+    this.receivedOffers.update(list => list.filter(o => o.id !== offer.id));
+  }
+
+  // ── Driver: load & refresh trip requests ──────────────────────
+  private _driverRefreshInterval: ReturnType<typeof setInterval> | null = null;
+
+  _loadDriverRequests(vehicleType?: string) {
+    this.agService.getSearchingRequests(vehicleType).then(reqs => {
+      this.driverRequests.set(reqs);
+    });
+    // Refresh every 15s
+    if (this._driverRefreshInterval) clearInterval(this._driverRefreshInterval);
+    this._driverRefreshInterval = setInterval(() => {
+      if (this.driverRequestsOpen()) {
+        this.agService.getSearchingRequests(vehicleType).then(reqs => this.driverRequests.set(reqs));
+      }
+    }, 15000);
+  }
+
+  toggleDriverRequests() {
+    const nowOpen = !this.driverRequestsOpen();
+    this.driverRequestsOpen.set(nowOpen);
+    if (nowOpen) this._loadDriverRequests(this.driverData()?.vehicle_type);
+  }
+
+  refreshDriverRequests() {
+    this._loadDriverRequests(this.driverData()?.vehicle_type);
+  }
+
+  openMakeOffer(req: AgTripRequest) {
+    this.makingOfferFor.set(req);
+    this.driverOfferPrice.set(req.offered_price);
+  }
+
+  closeMakeOffer() {
+    this.makingOfferFor.set(null);
+  }
+
+  async submitDriverOffer() {
+    const req = this.makingOfferFor();
+    const driver = this.driverData();
+    if (!req || !driver) return;
+    this.sendingOffer.set(true);
+    const result = await this.agService.makeOffer(req.id, driver.id, this.driverOfferPrice());
+    this.sendingOffer.set(false);
+    if (result.success) {
+      this.offerSentFor.update(s => { const ns = new Set(s); ns.add(req.id); return ns; });
+      this.makingOfferFor.set(null);
+    }
+  }
+
   formatTime(s: number): string {
     const v = Math.max(0, s);
     return `${Math.floor(v / 60)}:${(v % 60).toString().padStart(2, '0')}`;
@@ -1952,6 +2322,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   cancelTrip() {
     this._stopWaiting();
+    this._unsubscribeOffers();
+    const tripId = this.currentTripRequestId();
+    if (tripId) this.agService.cancelTripRequest(tripId);
     this.tripDest.set(null);
     this.tripSent.set(false);
     this.tripOpen.set(false);
@@ -1962,6 +2335,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.waitingDriverCount.set(0);
     this.waitingDriverColors.set([]);
     this.autoAccept.set(false);
+    this.currentTripRequestId.set(null);
+    this.receivedOffers.set([]);
+    this.tripAccepted.set(null);
+    this.acceptingOfferId.set(null);
     this._clearRoute();
   }
 
