@@ -1395,7 +1395,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.00000035 : 0.00000025,
+        speed:   isMoto ? 0.0000007 : 0.0000005,
         forward: i % 3 !== 0,
         marker,
         heading: h0,
@@ -1518,8 +1518,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         let dH = targetH - vs.heading;
         if (dH > 180)  dH -= 360;
         if (dH < -180) dH += 360;
-        // Interpolación de giro suave: los carros giran más despacio que las motos
-        vs.heading += dH * Math.min(1, dt * 0.018);
+        // Interpolación de giro suave: factor alto = giro instantáneo, bajo = suave
+        vs.heading += dH * Math.min(1, dt * 0.10);
 
         // No colocar vehículo encima del marcador del usuario
         const uLng = this._currentLng, uLat = this._currentLat;
