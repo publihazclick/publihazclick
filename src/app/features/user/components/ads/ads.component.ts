@@ -129,6 +129,11 @@ export class UserAdsComponent implements OnInit, OnDestroy {
           status: task.status,
         }))
       );
+      // Sincronizar anuncios vistos HOY desde la BD (fuente de verdad).
+      // Garantiza que cambiar navegador, dispositivo o borrar caché no muestre
+      // anuncios ya cobrados como disponibles.
+      const { getSupabaseClient } = await import('../../../../core/supabase.client');
+      await this.userTracking.loadTodayClicksFromDb(getSupabaseClient());
     } catch {
       this.error.set('Error al cargar los anuncios');
     } finally {

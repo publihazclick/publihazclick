@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Interfaz para almacenar datos de cacheo de anuncio
@@ -266,6 +267,43 @@ export class UserTrackingService {
    */
   getIp(): string {
     return this.currentIp();
+  }
+
+  /**
+   * Sincroniza los anuncios vistos hoy desde Supabase (fuente de verdad).
+   * Llama al RPC get_my_today_clicks() y combina el resultado con el estado local.
+   * Debe llamarse al cargar cada página de anuncios para que el estado sea correcto
+   * independientemente del navegador, dispositivo o caché del usuario.
+   */
+  async loadTodayClicksFromDb(supabase: SupabaseClient): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      const { data } = await supabase.rpc('get_my_today_clicks');
+      if (!data || !Array.isArray(data) || data.length === 0) return;
+
+      const dbTaskIds: string[] = data.map((row: { task_id: string }) => row.task_id);
+
+      const currentData = this.sessionData() ?? {
+        ip: this.currentIp(),
+        firstVisit: Date.now(),
+        adsViewed: [],
+      };
+
+      const existingIds = new Set(currentData.adsViewed.map(a => a.adId));
+      const merged = [...currentData.adsViewed];
+
+      for (const taskId of dbTaskIds) {
+        if (!existingIds.has(taskId)) {
+          merged.push({ adId: taskId, timestamp: Date.now(), ip: this.currentIp() });
+        }
+      }
+
+      const updated: UserSessionData = { ...currentData, adsViewed: merged };
+      this.sessionData.set(updated);
+      this.saveSession(updated);
+    } catch {
+      // Fallo silencioso: se usa el estado de localStorage como fallback
+    }
   }
 
   /**

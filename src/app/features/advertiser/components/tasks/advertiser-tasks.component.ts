@@ -94,6 +94,8 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   private pendingRewardAd: PtcAd | null = null;
   private pendingRewardDuration = 0;
   private destroyed = false;
+  // Clicks de hoy cargados desde la BD (fuente de verdad, independiente de caché/navegador)
+  private dbDoneToday = new Set<string>();
 
   private readonly adTypeRewards: Record<string, number> = {
     mega: 2000, standard_600: 600, standard_400: 400, mini: 83.33, mini_referral: 100,
@@ -153,9 +155,23 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
     await this.checkRequirements();
     if (this.requirementsMet()) {
       await this.loadAffiliatesCount();
+      // Cargar clicks de hoy desde la BD antes de construir slots.
+      // Así el estado "visto" es correcto en cualquier navegador o dispositivo.
+      await this.loadDbDoneToday();
       await Promise.all([this.loadTasks(), this.loadMiniReferralSlots()]);
     }
     this.loading.set(false);
+  }
+
+  private async loadDbDoneToday(): Promise<void> {
+    try {
+      const { data } = await this.supabase.rpc('get_my_today_clicks');
+      if (data && Array.isArray(data)) {
+        this.dbDoneToday = new Set(data.map((r: { task_id: string }) => r.task_id));
+      }
+    } catch {
+      // Fallback: usar solo localStorage si la consulta falla
+    }
   }
 
   private async checkRequirements(): Promise<void> {
@@ -187,8 +203,9 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
         { page: 1, pageSize: 100 }
       );
       const tasks = result.data ?? [];
-      const dailyDone = this.getDailyDone();
-      const megaDone = this.getMegaDone();
+      // Combinar clicks de BD (fuente de verdad) con localStorage (cache local inmediato)
+      const dailyDone = new Set([...this.dbDoneToday, ...this.getDailyDone()]);
+      const megaDone = new Set([...this.dbDoneToday, ...this.getMegaDone()]);
 
       const toSlot = (task: any, isDailyType: boolean): TaskSlot => ({
         id: task.id,
@@ -254,7 +271,7 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
       // Leer asignaciones del día
       const { data } = await this.supabase.rpc('get_mini_referral_tasks_today', { p_user_id: user.id });
       const rows: any[] = data ?? [];
-      const dailyDone = this.getDailyDone();
+      const dailyDone = new Set([...this.dbDoneToday, ...this.getDailyDone()]);
       const total = this.miniReferralSlotsAvailable();
 
       const filled: TaskSlot[] = rows.map(r => ({
