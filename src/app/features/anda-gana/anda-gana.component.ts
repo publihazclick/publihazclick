@@ -1342,20 +1342,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // ── Demo animado ──────────────────────────────────────────────
-    // 1. Directions API primero — garantiza rutas sobre calles reales
-    let paths = await this._fetchRoadPathsViaDirections(lat, lng);
-
-    // 2. Fallback: calles del mapa ya renderizado
-    if (paths.length < 2) {
-      paths = this._extractRoadPaths(lat, lng);
-    }
-
-    // 3. Sin calles → no mostrar vehículos demo
-    if (paths.length < 2) return;
+    // ── Demo animado — rutas sintéticas (no dependen de API) ──────
+    const paths = this._generateCityPaths(lat, lng);
 
     const configs = [
-      // Carros — colores contrastantes sobre fondo claro
       { isMoto: false, color: '#1D4ED8' },  // azul rey
       { isMoto: false, color: '#DC2626' },  // rojo
       { isMoto: false, color: '#D97706' },  // ámbar oscuro
@@ -1363,7 +1353,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       { isMoto: false, color: '#1e293b' },  // grafito
       { isMoto: false, color: '#7C3AED' },  // violeta
       { isMoto: false, color: '#0F766E' },  // teal
-      // Motos — colores vivos
       { isMoto: true,  color: '#EA580C' },  // naranja
       { isMoto: true,  color: '#0891B2' },  // cyan oscuro
       { isMoto: true,  color: '#16A34A' },  // verde
@@ -1374,29 +1363,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     for (let i = 0; i < configs.length; i++) {
       const { isMoto, color } = configs[i];
       const path = paths[i % paths.length];
-      if (!path || path.length < 2) continue;
-
-      // Distribuir puntos de inicio a lo largo de los caminos
-      let segIdx = Math.min(Math.floor(((i * 0.11) % 1) * (path.length - 1)), path.length - 2);
-      for (let s = 0; s < path.length - 1; s++) {
-        const [cx, cy] = path[segIdx];
-        if (Math.abs(cx - lng) > 0.0014 || Math.abs(cy - lat) > 0.0014) break;
-        segIdx = (segIdx + 1) % (path.length - 1);
-      }
-      const [lng0, lat0] = path[segIdx];
+      // Cada vehículo arranca en un punto diferente del recorrido
+      const segIdx = Math.floor((i / configs.length) * (path.length - 1));
       const h0 = this._segHeading(path, segIdx);
+      const [lng0, lat0] = path[segIdx];
 
       const el = isMoto ? this._motoElement(h0, color) : this._carElement(h0, color);
       const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng0, lat0]).addTo(this._map);
+        .setLngLat([lng0, lat0]).addTo(this._map!);
 
       this._vehicleMarkers.push(marker);
       this._vehicleStates.push({
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.0000007 : 0.0000005,
-        forward: i % 3 !== 0,
+        speed:   isMoto ? 0.0000011 : 0.0000008,
+        forward: true,
         marker,
         heading: h0,
       });
@@ -1405,66 +1387,43 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._startAnimation();
   }
 
-  /** Extrae LineStrings de cualquier capa renderizada como rutas de animación */
-  private _extractRoadPaths(lat: number, lng: number): [number, number][][] {
-    // Sin filtro de capas → funciona con cualquier estilo de Mapbox
-    const features = (this._map as any)?.queryRenderedFeatures(undefined) ?? [];
-    const paths:  [number, number][][] = [];
-    const seen = new Set<string>();
+  /**
+   * Genera 12 rutas rectangulares sintéticas alrededor del usuario.
+   * No depende de ninguna API — siempre funciona.
+   * Cada ruta es un loop cerrado con 30 puntos por arista → giros suaves.
+   * Los 12 recorridos son completamente distintos → ningún vehículo se superpone.
+   */
+  private _generateCityPaths(lat: number, lng: number): [number, number][][] {
+    const N = 30; // puntos por arista
 
-    for (const f of features) {
-      if (paths.length >= 12) break;
-      if (f?.geometry?.type !== 'LineString') continue;
-      const coords = f.geometry.coordinates as [number, number][];
-      if (coords.length < 3) continue;
-      const mid = coords[Math.floor(coords.length / 2)];
-      if (Math.abs(mid[0] - lng) > 0.006 || Math.abs(mid[1] - lat) > 0.006) continue;
-      const key = `${coords[0][0].toFixed(5)},${coords[0][1].toFixed(5)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      paths.push(coords);
-    }
+    /** Crea un loop rectangular cerrado con N puntos por lado */
+    const rect = (x0: number, y0: number, x1: number, y1: number): [number, number][] => {
+      const p: [number, number][] = [];
+      for (let i = 0; i < N; i++) p.push([x0 + (x1 - x0) * i / N, y1]);   // arriba W→E
+      for (let i = 0; i < N; i++) p.push([x1, y1 - (y1 - y0) * i / N]);   // derecha N→S
+      for (let i = 0; i < N; i++) p.push([x1 - (x1 - x0) * i / N, y0]);   // abajo E→W
+      for (let i = 0; i < N; i++) p.push([x0, y0 + (y1 - y0) * i / N]);   // izquierda S→N
+      p.push(p[0]); // cerrar
+      return p;
+    };
 
-    return paths;
-  }
+    const a = 0.0018, b = 0.0032, c = 0.0050, d = 0.0068;
 
-  /** Obtiene rutas reales sobre calles vía Mapbox Directions API */
-  private async _fetchRoadPathsViaDirections(lat: number, lng: number): Promise<[number, number][][]> {
-    // Genera 12 destinos radiales alrededor del punto actual (~300m–500m)
-    // Ángulos distribuidos uniformemente para máxima cobertura de calles
-    const R1 = 0.003;   // ~330m
-    const R2 = 0.005;   // ~550m
-    const offsets: [number, number][] = [
-      [lng + R1,        lat],
-      [lng - R1,        lat],
-      [lng,             lat + R1],
-      [lng,             lat - R1],
-      [lng + R1,        lat + R1],
-      [lng - R1,        lat + R1],
-      [lng + R1,        lat - R1],
-      [lng - R1,        lat - R1],
-      [lng + R2,        lat + R1 * 0.5],
-      [lng - R2,        lat - R1 * 0.5],
-      [lng + R1 * 0.5,  lat + R2],
-      [lng - R1 * 0.5,  lat - R2],
+    // 12 recorridos distintos — separados entre sí para no superponerse
+    return [
+      rect(lng - a,     lat - a,     lng + a,     lat + a    ),  // 0: bloque central
+      rect(lng + a,     lat - a,     lng + b,     lat + a    ),  // 1: bloque Este
+      rect(lng - b,     lat - a,     lng - a,     lat + a    ),  // 2: bloque Oeste
+      rect(lng - a,     lat + a,     lng + a,     lat + b    ),  // 3: bloque Norte
+      rect(lng - a,     lat - b,     lng + a,     lat - a    ),  // 4: bloque Sur
+      rect(lng + a,     lat + a,     lng + c,     lat + c    ),  // 5: esquina NE
+      rect(lng - c,     lat - c,     lng - a,     lat - a    ),  // 6: esquina SW
+      rect(lng - c,     lat + a,     lng - a,     lat + c    ),  // 7: esquina NW
+      rect(lng + a,     lat - c,     lng + c,     lat - a    ),  // 8: esquina SE
+      rect(lng - b,     lat - b,     lng + b,     lat + b    ),  // 9: anillo medio
+      rect(lng - d,     lat - d,     lng + d,     lat + d    ),  // 10: anillo exterior
+      rect(lng - a / 2, lat - c,     lng + a / 2, lat + c    ),  // 11: corredor N-S
     ];
-
-    const paths: [number, number][][] = [];
-    const token = this.MAPBOX_TOKEN;
-
-    await Promise.all(offsets.map(async ([dLng, dLat]) => {
-      try {
-        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${lng},${lat};${dLng},${dLat}`
-          + `?geometries=geojson&overview=full&access_token=${token}`;
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const json = await res.json();
-        const coords = json?.routes?.[0]?.geometry?.coordinates as [number, number][] | undefined;
-        if (coords && coords.length >= 3) paths.push(coords);
-      } catch { /* ignorar errores de red */ }
-    }));
-
-    return paths;
   }
 
   private _segHeading(path: [number, number][], segIdx: number): number {
@@ -1488,20 +1447,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const [x1, y1] = vs.path[nx];
         const segLen = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2) || 1e-9;
 
-        vs.t += (vs.speed * dt) / segLen * (vs.forward ? 1 : -1);
+        vs.t += (vs.speed * dt) / segLen;
 
-        // Avanzar o retroceder segmentos (ping-pong al llegar a extremos)
-        while (vs.t >= 1 && vs.forward) {
+        // Avanzar segmentos en loop continuo (los recorridos son loops cerrados)
+        while (vs.t >= 1) {
           vs.t -= 1;
-          vs.segIdx = Math.min(vs.segIdx + 1, vs.path.length - 2);
-          if (vs.segIdx >= vs.path.length - 2 && vs.t > 0) { vs.forward = false; break; }
+          vs.segIdx = (vs.segIdx + 1) % Math.max(1, vs.path.length - 1);
         }
-        while (vs.t < 0 && !vs.forward) {
-          vs.t += 1;
-          vs.segIdx = Math.max(vs.segIdx - 1, 0);
-          if (vs.segIdx <= 0 && vs.t < 1) { vs.forward = true; break; }
-        }
-        vs.t = Math.max(0, Math.min(1, vs.t));
 
         // Posición interpolada
         const [cx0, cy0] = vs.path[vs.segIdx];
@@ -1510,16 +1462,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const curLng = cx0 + vs.t * (cx1 - cx0);
         const curLat = cy0 + vs.t * (cy1 - cy0);
 
-        // Heading objetivo del segmento actual
-        const rawH = Math.atan2(cx1 - cx0, cy1 - cy0) * 180 / Math.PI;
-        const targetH = vs.forward ? rawH : rawH + 180;
+        // Heading objetivo del segmento actual (siempre hacia adelante)
+        const targetH = Math.atan2(cx1 - cx0, cy1 - cy0) * 180 / Math.PI;
 
         // Interpolación suave del ángulo (maneja cruce por ±180°)
         let dH = targetH - vs.heading;
         if (dH > 180)  dH -= 360;
         if (dH < -180) dH += 360;
-        // Interpolación de giro suave: factor alto = giro instantáneo, bajo = suave
-        vs.heading += dH * Math.min(1, dt * 0.10);
+        // Interpolación de giro suave (~40% por frame a 60fps → curvas fluidas)
+        vs.heading += dH * Math.min(1, dt * 0.025);
 
         // No colocar vehículo encima del marcador del usuario
         const uLng = this._currentLng, uLat = this._currentLat;
