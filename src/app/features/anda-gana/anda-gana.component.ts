@@ -1272,7 +1272,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
                 <input type="range" min="5" max="50" step="5"
                   [value]="driverPrefs().maxDistance"
-                  (input)="driverPrefs.update(p => ({ ...p, maxDistance: +$any($event.target).value }))"
+                  (input)="setMaxDistance(+$any($event.target).value)"
                   class="w-full" style="accent-color:#0891b2"/>
                 <div class="flex justify-between text-[10px] text-slate-600">
                   <span>5 km</span><span>25 km</span><span>50 km</span>
@@ -2944,6 +2944,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   getPrefValue(key: string): boolean {
     const p = this.driverPrefs();
     return (p as any)[key] ?? false;
+  }
+
+  setMaxDistance(val: number) {
+    this.driverPrefs.update(p => ({ ...p, maxDistance: val }));
   }
 
   togglePref(key: string) {
