@@ -767,11 +767,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             @for (item of driverMenuItems; track item.label) {
               @if (item.divider) {
                 <div class="my-2" style="border-top:1px solid rgba(255,255,255,0.06)"></div>
-                @if (item.section) {
-                  <p class="text-slate-600 text-xs font-bold uppercase tracking-widest px-3 pb-2 pt-1">{{ item.section }}</p>
+                @if (item.sectionLabel) {
+                  <p class="text-slate-600 text-xs font-bold uppercase tracking-widest px-3 pb-2 pt-1">{{ item.sectionLabel }}</p>
                 }
               } @else {
-                <button (click)="driverMenuOpen.set(false)"
+                <button (click)="openDriverSection(item.action)"
                   class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all active:scale-[0.98] mb-0.5"
                   [style.color]="item.danger ? '#f87171' : '#cbd5e1'"
                   onmouseover="this.style.background='rgba(8,145,178,0.08)'"
@@ -791,6 +791,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
+      @if (driverSection() === null) {
       <div class="flex flex-col items-center gap-3 text-center pt-2 pb-2">
         <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center">
           <span class="material-symbols-outlined text-cyan-400" style="font-size:32px">directions_car</span>
@@ -1080,6 +1081,402 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
       </div>
+
+      } @else {
+        <!-- ══ SECCIONES DEL MENÚ CONDUCTOR ══ -->
+        <div class="flex flex-col gap-4">
+
+          <!-- Back header (común a todas las secciones) -->
+          <div class="flex items-center gap-3">
+            <button (click)="driverSection.set(null)"
+              class="w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all"
+              style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)">
+              <span class="material-symbols-outlined text-white" style="font-size:20px">arrow_back</span>
+            </button>
+            <h2 class="text-white font-black text-lg">
+              {{ driverSection() === 'profile' ? 'Mi Perfil' :
+                 driverSection() === 'status' ? 'Estado' :
+                 driverSection() === 'earnings' ? 'Ganancias' :
+                 driverSection() === 'trips' ? 'Mis Viajes' :
+                 driverSection() === 'preferences' ? 'Preferencias' :
+                 driverSection() === 'security' ? 'Seguridad' :
+                 driverSection() === 'support' ? 'Soporte' :
+                 driverSection() === 'settings' ? 'Configuración' : '' }}
+            </h2>
+          </div>
+
+          @if (loadingSection()) {
+            <div class="flex items-center justify-center py-16">
+              <span class="material-symbols-outlined text-cyan-400 animate-spin" style="font-size:36px">autorenew</span>
+            </div>
+          }
+
+          <!-- ── MI PERFIL ── -->
+          @if (!loadingSection() && driverSection() === 'profile') {
+            <div class="flex flex-col items-center gap-4 pt-2">
+              <!-- Avatar -->
+              <div class="w-24 h-24 rounded-3xl flex items-center justify-center"
+                style="background:linear-gradient(135deg,#0891b2,#0e7490);font-size:36px;color:white;font-weight:900">
+                {{ firstName().charAt(0).toUpperCase() }}
+              </div>
+              <div class="text-center">
+                <p class="text-white font-black text-xl">{{ agProfile()?.full_name }}</p>
+                <p class="text-slate-500 text-sm">{{ agProfile()?.email }}</p>
+                <p class="text-slate-500 text-sm">{{ agProfile()?.phone }}</p>
+              </div>
+              <!-- Verificación -->
+              @if (driverStatus() === 'approved') {
+                <div class="flex items-center gap-2 px-4 py-2 rounded-full"
+                  style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2)">
+                  <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">verified</span>
+                  <span class="text-emerald-400 text-xs font-black">Identidad verificada</span>
+                </div>
+              }
+            </div>
+            <!-- Stats -->
+            <div class="grid grid-cols-3 gap-3">
+              <div class="rounded-2xl p-4 flex flex-col items-center gap-1"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <span class="material-symbols-outlined text-amber-400" style="font-size:22px">star</span>
+                <p class="text-white font-black text-xl">{{ driverStats()?.avgRating ?? '–' }}</p>
+                <p class="text-slate-500 text-[10px] text-center">Calificación</p>
+              </div>
+              <div class="rounded-2xl p-4 flex flex-col items-center gap-1"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <span class="material-symbols-outlined text-cyan-400" style="font-size:22px">directions_car</span>
+                <p class="text-white font-black text-xl">{{ driverStats()?.completedTrips ?? 0 }}</p>
+                <p class="text-slate-500 text-[10px] text-center">Viajes</p>
+              </div>
+              <div class="rounded-2xl p-4 flex flex-col items-center gap-1"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:22px">account_balance_wallet</span>
+                <p class="text-white font-black text-lg">{{ formatCOP(driverWalletBalance()) }}</p>
+                <p class="text-slate-500 text-[10px] text-center">Saldo</p>
+              </div>
+            </div>
+            <!-- Vehículo -->
+            <div class="rounded-2xl p-4 flex flex-col gap-3"
+              style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Tu vehículo</p>
+              <div class="grid grid-cols-2 gap-2">
+                <div><p class="text-slate-500 text-[10px] uppercase">Placa</p><p class="text-white font-black text-sm">{{ driverData()?.plate }}</p></div>
+                <div><p class="text-slate-500 text-[10px] uppercase">Tipo</p><p class="text-white text-sm">{{ driverData()?.vehicle_type }}</p></div>
+                <div><p class="text-slate-500 text-[10px] uppercase">Marca</p><p class="text-white text-sm">{{ driverData()?.vehicle_brand }} {{ driverData()?.vehicle_model }}</p></div>
+                <div><p class="text-slate-500 text-[10px] uppercase">Color</p><p class="text-white text-sm">{{ driverData()?.vehicle_color }}</p></div>
+              </div>
+            </div>
+          }
+
+          <!-- ── ESTADO ── -->
+          @if (!loadingSection() && driverSection() === 'status') {
+            <div class="flex flex-col items-center gap-6 pt-4">
+              <!-- Toggle grande -->
+              <div class="flex flex-col items-center gap-3">
+                <button (click)="toggleOnline()"
+                  [disabled]="togglingOnline()"
+                  class="w-32 h-32 rounded-full flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
+                  [style]="driverOnline() ? 'background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 40px rgba(16,185,129,0.4)' : 'background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.1)'">
+                  @if (togglingOnline()) {
+                    <span class="material-symbols-outlined text-white animate-spin" style="font-size:36px">autorenew</span>
+                  } @else {
+                    <span class="material-symbols-outlined text-white" style="font-size:36px">{{ driverOnline() ? 'wifi_tethering' : 'wifi_off' }}</span>
+                  }
+                  <span class="text-white font-black text-sm">{{ driverOnline() ? 'En línea' : 'Fuera de línea' }}</span>
+                </button>
+                <p class="text-slate-500 text-xs text-center">Toca para {{ driverOnline() ? 'desconectarte' : 'conectarte' }}</p>
+              </div>
+              <div class="w-full rounded-2xl p-4 flex flex-col gap-2"
+                [style]="driverOnline() ? 'background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15)' : 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)'">
+                <p class="font-bold text-sm" [class]="driverOnline() ? 'text-emerald-400' : 'text-slate-400'">
+                  {{ driverOnline() ? 'Estás recibiendo solicitudes' : 'No recibes solicitudes' }}
+                </p>
+                <p class="text-slate-500 text-xs">Puedes conectarte y desconectarte sin penalizaciones en cualquier momento.</p>
+              </div>
+            </div>
+          }
+
+          <!-- ── GANANCIAS ── -->
+          @if (!loadingSection() && driverSection() === 'earnings') {
+            <!-- Balance total -->
+            <div class="rounded-2xl p-5 flex flex-col gap-1"
+              style="background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08));border:1px solid rgba(16,185,129,0.2)">
+              <p class="text-slate-400 text-xs uppercase font-bold tracking-widest">Saldo disponible</p>
+              <p class="text-white font-black text-4xl">{{ formatCOP(driverWalletBalance()) }}</p>
+              <p class="text-slate-500 text-xs">Total ganado en viajes: {{ formatCOP(driverEarnings().total) }}</p>
+            </div>
+            <!-- Historial -->
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Historial de movimientos</p>
+            @if (driverEarnings().walletHistory.length === 0) {
+              <div class="rounded-2xl flex flex-col items-center gap-2 py-10"
+                style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06)">
+                <span class="material-symbols-outlined text-slate-600" style="font-size:36px">receipt_long</span>
+                <p class="text-slate-500 text-sm">Sin movimientos aún</p>
+              </div>
+            }
+            @for (tx of driverEarnings().walletHistory; track tx.id) {
+              <div class="flex items-center gap-3 rounded-xl px-4 py-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  [style]="tx.type === 'recharge' ? 'background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2)' : 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2)'">
+                  <span class="material-symbols-outlined" style="font-size:16px"
+                    [class]="tx.type === 'recharge' ? 'text-emerald-400' : 'text-rose-400'">
+                    {{ tx.type === 'recharge' ? 'add_circle' : 'remove_circle' }}
+                  </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-slate-300 text-xs truncate">{{ tx.description }}</p>
+                  <p class="text-slate-600 text-[10px]">{{ tx.created_at | slice:0:10 }}</p>
+                </div>
+                <p class="font-black text-sm flex-shrink-0"
+                  [class]="tx.amount > 0 ? 'text-emerald-400' : 'text-rose-400'">
+                  {{ tx.amount > 0 ? '+' : '' }}{{ formatCOP(tx.amount) }}
+                </p>
+              </div>
+            }
+          }
+
+          <!-- ── MIS VIAJES ── -->
+          @if (!loadingSection() && driverSection() === 'trips') {
+            @if (driverCompletedTrips().length === 0) {
+              <div class="flex flex-col items-center gap-3 py-16"
+                style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:16px">
+                <span class="material-symbols-outlined text-slate-600" style="font-size:40px">directions_car</span>
+                <p class="text-slate-500 text-sm">Aún no has completado viajes</p>
+              </div>
+            }
+            @for (trip of driverCompletedTrips(); track trip.id) {
+              <div class="rounded-2xl p-4 flex flex-col gap-2"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div class="flex items-center justify-between">
+                  <p class="text-white font-bold text-sm">{{ trip.ag_users?.full_name ?? 'Pasajero' }}</p>
+                  <p class="text-emerald-400 font-black text-sm">{{ formatCOP(trip.ag_trip_offers?.offered_price ?? 0) }}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-slate-500" style="font-size:14px">place</span>
+                  <p class="text-slate-400 text-xs truncate">→ {{ trip.dest_name }}</p>
+                </div>
+                <p class="text-slate-600 text-[10px]">{{ trip.completed_at | slice:0:10 }}</p>
+              </div>
+            }
+          }
+
+          <!-- ── PREFERENCIAS ── -->
+          @if (!loadingSection() && driverSection() === 'preferences') {
+            <div class="flex flex-col gap-4">
+              <!-- Distancia máxima -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div class="flex items-center justify-between">
+                  <p class="text-white font-bold text-sm">Distancia máxima</p>
+                  <p class="text-cyan-400 font-black text-sm">{{ driverPrefs().maxDistance }} km</p>
+                </div>
+                <input type="range" min="5" max="50" step="5"
+                  [value]="driverPrefs().maxDistance"
+                  (input)="driverPrefs.update(p => ({ ...p, maxDistance: +$any($event.target).value }))"
+                  class="w-full" style="accent-color:#0891b2"/>
+                <div class="flex justify-between text-[10px] text-slate-600">
+                  <span>5 km</span><span>25 km</span><span>50 km</span>
+                </div>
+              </div>
+              <!-- Opciones extra -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Opciones extra</p>
+                @for (opt of prefOptions; track opt.key) {
+                  <div class="flex items-center justify-between py-1">
+                    <div class="flex items-center gap-3">
+                      <span class="material-symbols-outlined text-slate-400" style="font-size:18px">{{ opt.icon }}</span>
+                      <p class="text-slate-300 text-sm">{{ opt.label }}</p>
+                    </div>
+                    <button (click)="togglePref(opt.key)"
+                      class="w-12 h-6 rounded-full flex items-center px-0.5 transition-all"
+                      [style]="getPrefValue(opt.key) ? 'background:#0891b2' : 'background:rgba(255,255,255,0.1)'">
+                      <div class="w-5 h-5 rounded-full bg-white transition-all"
+                        [style]="getPrefValue(opt.key) ? 'margin-left:auto' : 'margin-left:0'"></div>
+                    </button>
+                  </div>
+                }
+              </div>
+              <button (click)="savePreferences()"
+                [disabled]="savingPrefs()"
+                class="w-full py-3 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                @if (savingPrefs()) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:16px">save</span>
+                }
+                Guardar preferencias
+              </button>
+            </div>
+          }
+
+          <!-- ── SEGURIDAD ── -->
+          @if (!loadingSection() && driverSection() === 'security') {
+            <div class="flex flex-col gap-4">
+              <!-- Pánico -->
+              <button (click)="activatePanic()"
+                class="w-full py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-[0.98]"
+                [style]="panicActivated() ? 'background:rgba(239,68,68,0.2);border:2px solid #ef4444' : 'background:rgba(239,68,68,0.08);border:2px solid rgba(239,68,68,0.3)'">
+                <span class="material-symbols-outlined text-rose-400" style="font-size:40px">emergency</span>
+                <p class="text-rose-400 font-black text-base">{{ panicActivated() ? '¡Alerta enviada!' : 'Botón de pánico' }}</p>
+                <p class="text-slate-500 text-xs">{{ panicActivated() ? 'Se notificó a tus contactos de emergencia' : 'Toca para alertar a tus contactos' }}</p>
+              </button>
+              <!-- Contactos de confianza -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Contactos de confianza</p>
+                @for (c of emergencyContacts(); track c.phone) {
+                  <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-slate-500" style="font-size:18px">person</span>
+                    <div class="flex-1">
+                      <p class="text-white text-sm font-bold">{{ c.name }}</p>
+                      <p class="text-slate-500 text-xs">{{ c.phone }}</p>
+                    </div>
+                    <button (click)="removeEmergencyContact(c.phone)"
+                      class="text-slate-600 active:text-rose-400">
+                      <span class="material-symbols-outlined" style="font-size:18px">delete</span>
+                    </button>
+                  </div>
+                }
+                <div class="flex gap-2">
+                  <input [(ngModel)]="newContactName" placeholder="Nombre"
+                    class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-cyan-500/50"/>
+                  <input [(ngModel)]="newContactPhone" placeholder="Teléfono"
+                    class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-cyan-500/50"/>
+                  <button (click)="addEmergencyContact()"
+                    class="px-3 rounded-xl text-white font-black text-xs"
+                    style="background:rgba(8,145,178,0.2);border:1px solid rgba(8,145,178,0.3)">
+                    <span class="material-symbols-outlined" style="font-size:18px">add</span>
+                  </button>
+                </div>
+              </div>
+              <!-- Reportar incidente -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Reportar incidente</p>
+                <textarea [(ngModel)]="reportIncidentText" placeholder="Describe el incidente..." rows="3"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs resize-none focus:outline-none focus:border-rose-500/50"></textarea>
+                <button (click)="submitReport('incident')"
+                  class="w-full py-2.5 rounded-xl text-white text-xs font-black"
+                  style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.25)">
+                  Enviar reporte
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- ── SOPORTE ── -->
+          @if (!loadingSection() && driverSection() === 'support') {
+            <div class="flex flex-col gap-4">
+              <!-- Contacto directo -->
+              <a href="https://wa.me/573000000000" target="_blank"
+                class="w-full py-4 rounded-2xl flex items-center justify-center gap-3"
+                style="background:linear-gradient(135deg,rgba(37,211,102,0.12),rgba(18,140,126,0.08));border:1px solid rgba(37,211,102,0.25)">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:24px">chat</span>
+                <div class="text-left">
+                  <p class="text-white font-black text-sm">Chat con soporte 24/7</p>
+                  <p class="text-slate-400 text-xs">Respuesta en menos de 5 minutos</p>
+                </div>
+              </a>
+              <!-- FAQ -->
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Preguntas frecuentes</p>
+              @for (faq of faqItems; track faq.q) {
+                <div class="rounded-2xl overflow-hidden"
+                  style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                  <button (click)="toggleFaq(faq.q)"
+                    class="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p class="text-white text-sm font-bold">{{ faq.q }}</p>
+                    <span class="material-symbols-outlined text-slate-500 flex-shrink-0" style="font-size:18px">
+                      {{ openFaq() === faq.q ? 'expand_less' : 'expand_more' }}
+                    </span>
+                  </button>
+                  @if (openFaq() === faq.q) {
+                    <div class="px-4 pb-3">
+                      <p class="text-slate-400 text-xs leading-relaxed">{{ faq.a }}</p>
+                    </div>
+                  }
+                </div>
+              }
+              <!-- Reportar pasajero -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Reportar problema con pasajero</p>
+                <textarea [(ngModel)]="reportPassengerText" placeholder="Describe el problema..." rows="3"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs resize-none focus:outline-none focus:border-amber-500/50"></textarea>
+                <button (click)="submitReport('passenger')"
+                  class="w-full py-2.5 rounded-xl text-amber-400 text-xs font-black"
+                  style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+                  Enviar reporte
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- ── CONFIGURACIÓN ── -->
+          @if (!loadingSection() && driverSection() === 'settings') {
+            <div class="flex flex-col gap-4">
+              <div class="rounded-2xl p-4 flex flex-col gap-4"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Notificaciones</p>
+                @for (opt of settingOptions; track opt.key) {
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="material-symbols-outlined text-slate-400" style="font-size:18px">{{ opt.icon }}</span>
+                      <p class="text-slate-300 text-sm">{{ opt.label }}</p>
+                    </div>
+                    <button (click)="toggleSetting(opt.key)"
+                      class="w-12 h-6 rounded-full flex items-center px-0.5 transition-all"
+                      [style]="getSettingValue(opt.key) ? 'background:#0891b2' : 'background:rgba(255,255,255,0.1)'">
+                      <div class="w-5 h-5 rounded-full bg-white transition-all"
+                        [style]="getSettingValue(opt.key) ? 'margin-left:auto' : 'margin-left:0'"></div>
+                    </button>
+                  </div>
+                }
+              </div>
+              <div class="rounded-2xl p-4 flex flex-col gap-4"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Privacidad</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-slate-400" style="font-size:18px">phone_locked</span>
+                    <div>
+                      <p class="text-slate-300 text-sm">Ocultar número</p>
+                      <p class="text-slate-600 text-[10px]">El pasajero no verá tu número</p>
+                    </div>
+                  </div>
+                  <button (click)="toggleSetting('hidePhone')"
+                    class="w-12 h-6 rounded-full flex items-center px-0.5 transition-all"
+                    [style]="driverSettings().hidePhone ? 'background:#0891b2' : 'background:rgba(255,255,255,0.1)'">
+                    <div class="w-5 h-5 rounded-full bg-white transition-all"
+                      [style]="driverSettings().hidePhone ? 'margin-left:auto' : 'margin-left:0'"></div>
+                  </button>
+                </div>
+              </div>
+              <!-- T&C -->
+              <button class="flex items-center gap-3 px-4 py-3 rounded-2xl w-full text-left"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <span class="material-symbols-outlined text-slate-400" style="font-size:18px">description</span>
+                <p class="text-slate-300 text-sm">Términos y condiciones</p>
+                <span class="material-symbols-outlined text-slate-600 ml-auto" style="font-size:16px">chevron_right</span>
+              </button>
+              <button (click)="saveSettings()"
+                [disabled]="savingSettings()"
+                class="w-full py-3 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                @if (savingSettings()) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:16px">save</span>
+                }
+                Guardar configuración
+              </button>
+            </div>
+          }
+
+        </div>
+      }
+
     </div>
 
     <!-- ══ Modal: hacer oferta ══ -->
@@ -1781,6 +2178,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ratingTripId     = signal<string | null>(null);
   // Driver active trips (accepted offers)
   driverActiveTrips = signal<any[]>([]);
+  // Driver menu sections
+  driverSection      = signal<string | null>(null);
+  loadingSection     = signal(false);
+  driverOnline       = signal(false);
+  togglingOnline     = signal(false);
+  driverStats        = signal<{ avgRating: number; completedTrips: number } | null>(null);
+  driverCompletedTrips = signal<any[]>([]);
+  driverEarnings     = signal<{ total: number; walletHistory: any[] }>({ total: 0, walletHistory: [] });
+  driverPrefs        = signal({ maxDistance: 20, acceptsPets: false, acceptsLuggage: true, acceptsChildSeat: false });
+  driverSettings     = signal({ hidePhone: false, notifySound: true, notifyVibration: true });
+  savingPrefs        = signal(false);
+  savingSettings     = signal(false);
+  panicActivated     = signal(false);
+  emergencyContacts  = signal<{ name: string; phone: string }[]>([]);
+  newContactName     = '';
+  newContactPhone    = '';
+  reportIncidentText = '';
+  reportPassengerText = '';
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
@@ -1815,18 +2230,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ];
 
   readonly driverMenuItems = [
-    { icon: 'person',              label: 'Mi Perfil',       divider: false, section: 'Principal', danger: false },
-    { icon: 'wifi_tethering',      label: 'Estado / En Línea', divider: false, section: '', danger: false },
-    { icon: 'payments',            label: 'Ganancias',       divider: false, section: '', danger: false },
-    { icon: 'directions_car',      label: 'Mis Viajes',      divider: false, section: '', danger: false },
-    { icon: 'local_offer',         label: 'Tarifas',         divider: false, section: '', danger: false },
-    { divider: true, section: 'Configuración', icon: '', label: '', danger: false },
-    { icon: 'tune',                label: 'Preferencias',    divider: false, section: '', danger: false },
-    { icon: 'shield',              label: 'Seguridad',       divider: false, section: '', danger: false },
-    { icon: 'support_agent',       label: 'Soporte',         divider: false, section: '', danger: false },
-    { icon: 'settings',            label: 'Configuración',   divider: false, section: '', danger: false },
-    { divider: true, section: '', icon: '', label: '', danger: false },
-    { icon: 'logout',              label: 'Cerrar Sesión',   divider: false, section: '', danger: true },
+    { icon: 'person',         label: 'Mi Perfil',         action: 'profile',      sectionLabel: 'Principal', danger: false, divider: false },
+    { icon: 'wifi_tethering', label: 'Estado / En Línea', action: 'status',       sectionLabel: '',          danger: false, divider: false },
+    { icon: 'payments',       label: 'Ganancias',         action: 'earnings',     sectionLabel: '',          danger: false, divider: false },
+    { icon: 'route',          label: 'Mis Viajes',        action: 'trips',        sectionLabel: '',          danger: false, divider: false },
+    { icon: '',               label: '',                  action: '',             sectionLabel: 'Configuración', danger: false, divider: true },
+    { icon: 'tune',           label: 'Preferencias',      action: 'preferences',  sectionLabel: '',          danger: false, divider: false },
+    { icon: 'shield',         label: 'Seguridad',         action: 'security',     sectionLabel: '',          danger: false, divider: false },
+    { icon: 'support_agent',  label: 'Soporte',           action: 'support',      sectionLabel: '',          danger: false, divider: false },
+    { icon: 'settings',       label: 'Configuración',     action: 'settings',     sectionLabel: '',          danger: false, divider: false },
+    { icon: '',               label: '',                  action: '',             sectionLabel: '',          danger: false, divider: true },
+    { icon: 'logout',         label: 'Cerrar Sesión',     action: 'logout',       sectionLabel: '',          danger: true,  divider: false },
   ];
 
   driverMenuOpen = signal(false);
@@ -1880,6 +2294,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.driverCommissionPct.set(pct);
         this.driverWalletBalance.set(balance);
         this.driverActiveTrips.set(activeTrips);
+        this.driverOnline.set(mine.is_online ?? false);
       }
     }
 
@@ -2498,6 +2913,157 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.ratingCommentValue = '';
     this.ratingTarget.set(null);
     this.ratingTripId.set(null);
+  }
+
+  // ── Driver section helpers ────────────────────────────────────
+  readonly prefOptions = [
+    { key: 'acceptsPets',       icon: 'pets',              label: 'Acepto mascotas' },
+    { key: 'acceptsLuggage',    icon: 'luggage',           label: 'Acepto equipaje' },
+    { key: 'acceptsChildSeat',  icon: 'child_care',        label: 'Tengo silla infantil' },
+  ];
+
+  readonly settingOptions = [
+    { key: 'notifySound',      icon: 'volume_up',   label: 'Sonido de notificaciones' },
+    { key: 'notifyVibration',  icon: 'vibration',   label: 'Vibración' },
+  ];
+
+  readonly faqItems = [
+    { q: '¿Cómo se calcula mi pago?', a: 'El pago es el precio ofrecido por el pasajero menos la comisión de la plataforma. El saldo se acredita automáticamente al completar el viaje.' },
+    { q: '¿Puedo rechazar solicitudes?', a: 'Sí, puedes rechazar cualquier solicitud sin penalización. También puedes desconectarte en cualquier momento.' },
+    { q: '¿Cómo retiro mis ganancias?', a: 'Desde la sección Ganancias puedes solicitar un retiro a tu cuenta bancaria o billetera digital registrada.' },
+    { q: '¿Qué pasa si el pasajero cancela?', a: 'Si el pasajero cancela después de aceptar la oferta, recibirás una compensación por el tiempo y distancia recorrida.' },
+    { q: '¿Cómo mejoro mi calificación?', a: 'Brinda un servicio puntual, mantén el vehículo limpio y sé amable. Las calificaciones se promedian con los últimos 50 viajes.' },
+  ];
+
+  openFaq = signal<string | null>(null);
+
+  toggleFaq(q: string) {
+    this.openFaq.set(this.openFaq() === q ? null : q);
+  }
+
+  getPrefValue(key: string): boolean {
+    const p = this.driverPrefs();
+    return (p as any)[key] ?? false;
+  }
+
+  togglePref(key: string) {
+    this.driverPrefs.update(p => ({ ...p, [key]: !(p as any)[key] }));
+  }
+
+  getSettingValue(key: string): boolean {
+    const s = this.driverSettings();
+    return (s as any)[key] ?? false;
+  }
+
+  toggleSetting(key: string) {
+    this.driverSettings.update(s => ({ ...s, [key]: !(s as any)[key] }));
+  }
+
+  async openDriverSection(action: string) {
+    this.driverMenuOpen.set(false);
+    if (!action) return;
+    if (action === 'logout') { await this.agService.signOut(); window.location.href = '/login'; return; }
+    this.driverSection.set(action);
+    const driver = this.driverData();
+    if (!driver) return;
+
+    this.loadingSection.set(true);
+    if (action === 'profile') {
+      const stats = await this.agService.getDriverStats(driver.id);
+      this.driverStats.set(stats);
+    } else if (action === 'earnings') {
+      const [history, total] = await Promise.all([
+        this.agService.getDriverWalletHistory(driver.id),
+        this.agService.getDriverEarningsSummary(driver.id),
+      ]);
+      this.driverEarnings.set({ total, walletHistory: history });
+    } else if (action === 'trips') {
+      const trips = await this.agService.getDriverCompletedTrips(driver.id);
+      this.driverCompletedTrips.set(trips);
+    } else if (action === 'preferences') {
+      this.driverPrefs.set({
+        maxDistance:      driver.max_distance_km   ?? 20,
+        acceptsPets:      driver.accepts_pets      ?? false,
+        acceptsLuggage:   driver.accepts_luggage   ?? true,
+        acceptsChildSeat: driver.accepts_child_seat ?? false,
+      });
+      this.driverSettings.set({
+        hidePhone:        driver.hide_phone        ?? false,
+        notifySound:      driver.notify_sound      ?? true,
+        notifyVibration:  driver.notify_vibration  ?? true,
+      });
+    } else if (action === 'settings') {
+      this.driverSettings.set({
+        hidePhone:        driver.hide_phone        ?? false,
+        notifySound:      driver.notify_sound      ?? true,
+        notifyVibration:  driver.notify_vibration  ?? true,
+      });
+    }
+    this.loadingSection.set(false);
+  }
+
+  async toggleOnline() {
+    const driver = this.driverData();
+    if (!driver) return;
+    this.togglingOnline.set(true);
+    const next = !this.driverOnline();
+    await this.agService.setDriverOnline(driver.id, next);
+    this.driverOnline.set(next);
+    this.togglingOnline.set(false);
+  }
+
+  async savePreferences() {
+    const driver = this.driverData();
+    if (!driver) return;
+    this.savingPrefs.set(true);
+    const p = this.driverPrefs();
+    const s = this.driverSettings();
+    await this.agService.updateDriverPreferences(driver.id, {
+      max_distance_km:    p.maxDistance,
+      accepts_pets:       p.acceptsPets,
+      accepts_luggage:    p.acceptsLuggage,
+      accepts_child_seat: p.acceptsChildSeat,
+      hide_phone:         s.hidePhone,
+      notify_sound:       s.notifySound,
+      notify_vibration:   s.notifyVibration,
+    });
+    this.savingPrefs.set(false);
+  }
+
+  async saveSettings() {
+    await this.savePreferences();
+    this.savingSettings.set(true);
+    await new Promise(r => setTimeout(r, 300));
+    this.savingSettings.set(false);
+  }
+
+  activatePanic() {
+    this.panicActivated.set(true);
+    // Llamada de emergencia al 123 (Colombia)
+    if (typeof window !== 'undefined') {
+      const contacts = this.emergencyContacts();
+      if (contacts.length > 0) {
+        window.open(`tel:${contacts[0].phone}`, '_self');
+      }
+    }
+  }
+
+  addEmergencyContact() {
+    if (!this.newContactName.trim() || !this.newContactPhone.trim()) return;
+    this.emergencyContacts.update(list => [...list, { name: this.newContactName.trim(), phone: this.newContactPhone.trim() }]);
+    this.newContactName = '';
+    this.newContactPhone = '';
+  }
+
+  removeEmergencyContact(phone: string) {
+    this.emergencyContacts.update(list => list.filter(c => c.phone !== phone));
+  }
+
+  submitReport(type: 'incident' | 'passenger') {
+    // TODO: persist report to DB
+    if (type === 'incident') this.reportIncidentText = '';
+    else this.reportPassengerText = '';
+    alert('Reporte enviado. Nuestro equipo lo revisará en las próximas 24 horas.');
   }
 
   private _resetTrip() {

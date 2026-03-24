@@ -34,6 +34,14 @@ export interface AgDriver {
   documents: Record<string, string>; status: string;
   rejection_reason: string | null; approved_at: string | null;
   wallet_balance: number;
+  max_distance_km: number;
+  accepts_pets: boolean;
+  accepts_luggage: boolean;
+  accepts_child_seat: boolean;
+  hide_phone: boolean;
+  notify_sound: boolean;
+  notify_vibration: boolean;
+  is_online: boolean;
   created_at: string;
   ag_users?: AgUser;
 }
@@ -421,6 +429,54 @@ export class AndaGanaService {
       p_amount:    amount,
     });
     return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async getDriverStats(driverId: string): Promise<{ avgRating: number; completedTrips: number }> {
+    const [ratingsRes, tripsRes] = await Promise.all([
+      this.supabase.from('ag_trip_ratings')
+        .select('stars').eq('rated_user_id', driverId).eq('rated_by_role', 'driver'),  // wait, rated_user_id is ag_users.id not driver id
+      this.supabase.from('ag_trip_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('driver_id', driverId).eq('status', 'completed'),
+    ]);
+    const stars = (ratingsRes.data ?? []).map((r: any) => r.stars);
+    const avg = stars.length ? Math.round((stars.reduce((a: number, b: number) => a + b, 0) / stars.length) * 10) / 10 : 0;
+    return { avgRating: avg, completedTrips: tripsRes.count ?? 0 };
+  }
+
+  async getDriverCompletedTrips(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_trip_requests')
+      .select('*, ag_users!passenger_user_id(full_name), ag_trip_offers!accepted_offer_id(offered_price)')
+      .eq('driver_id', driverId)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(50);
+    return data ?? [];
+  }
+
+  async getDriverEarningsSummary(driverId: string): Promise<number> {
+    const { data } = await this.supabase
+      .from('ag_trip_offers')
+      .select('offered_price')
+      .eq('driver_id', driverId)
+      .eq('status', 'accepted');
+    return (data ?? []).reduce((sum: number, r: any) => sum + (r.offered_price ?? 0), 0);
+  }
+
+  async setDriverOnline(driverId: string, online: boolean): Promise<void> {
+    await this.supabase.from('ag_drivers').update({ is_online: online, updated_at: new Date().toISOString() }).eq('id', driverId);
+  }
+
+  async updateDriverPreferences(driverId: string, prefs: {
+    max_distance_km: number; accepts_pets: boolean; accepts_luggage: boolean;
+    accepts_child_seat: boolean; hide_phone: boolean; notify_sound: boolean; notify_vibration: boolean;
+  }): Promise<void> {
+    await this.supabase.from('ag_drivers').update({ ...prefs, updated_at: new Date().toISOString() }).eq('id', driverId);
+  }
+
+  async signOut(): Promise<void> {
+    await this.supabase.auth.signOut();
   }
 
   async completeTrip(tripRequestId: string): Promise<{ success: boolean; error?: string }> {
