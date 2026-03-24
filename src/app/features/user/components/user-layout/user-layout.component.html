@@ -92,14 +92,6 @@
             </a>
           </li>
           <li>
-            <a routerLink="/dashboard/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">workspace_premium</span>
-              @if (!sidebarCollapsed()) { <span>Ver Paquetes</span> }
-            </a>
-          </li>
-          <li>
             <button
               (click)="openReferralModal()"
               class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -141,6 +133,38 @@
             </a>
           </li>
           <li>
+            <a routerLink="/dashboard/wallet" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">account_balance_wallet</span>
+              @if (!sidebarCollapsed()) { <span>Billetera</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/dashboard/history" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">history</span>
+              @if (!sidebarCollapsed()) { <span>Historial</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/dashboard/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/dashboard/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">manage_accounts</span>
+              @if (!sidebarCollapsed()) { <span>Mi Perfil</span> }
+            </a>
+          </li>
+          <li>
             <a routerLink="/dashboard/trading-bot" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-emerald-500/5 text-slate-400 hover:text-emerald-300 transition-all border border-transparent"
                [class.justify-center]="sidebarCollapsed()">
@@ -177,29 +201,6 @@
                 <span>Anda y Gana</span>
                 <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-orange-500 to-amber-500 text-black rounded uppercase">NEW</span>
               }
-            </a>
-          </li>
-        </ul>
-      </div>
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Actividad</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/dashboard/history" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">history</span>
-              @if (!sidebarCollapsed()) { <span>Historial</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/dashboard/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">settings</span>
-              @if (!sidebarCollapsed()) { <span>Configuración</span> }
             </a>
           </li>
         </ul>
