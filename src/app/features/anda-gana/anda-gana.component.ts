@@ -197,8 +197,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
-          <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl overflow-hidden"
-            style="background:#f1f5f9;border-top:1px solid #cbd5e1">
+          <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
+            [style.maxHeight]="tripSent() ? '58%' : ''"
+            [style.overflowY]="tripSent() ? 'auto' : 'hidden'"
+            style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
 
             <!-- Fila de servicios -->
             <div class="flex items-center gap-1 pt-3 pb-1">
