@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, signal, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser } from '@angular/common';
-import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest } from './anda-gana.service';
+import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 
@@ -388,13 +388,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                   <p class="font-black text-lg text-emerald-600 flex-shrink-0">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
                 </div>
-                <!-- Destino -->
-                <div class="flex items-center gap-3 rounded-xl px-3 py-2.5"
-                  style="background:#f8fafc;border:1px solid #e2e8f0">
-                  <span class="material-symbols-outlined text-slate-700 flex-shrink-0" style="font-size:18px">place</span>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-slate-500 text-[10px] uppercase font-bold">Destino</p>
-                    <p class="text-slate-800 text-sm font-semibold truncate">{{ tripDest()?.name }}</p>
+                <!-- Destino + pago -->
+                <div class="flex gap-2">
+                  <div class="flex-1 flex items-center gap-3 rounded-xl px-3 py-2.5"
+                    style="background:#f8fafc;border:1px solid #e2e8f0">
+                    <span class="material-symbols-outlined text-slate-700 flex-shrink-0" style="font-size:18px">place</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-slate-500 text-[10px] uppercase font-bold">Destino</p>
+                      <p class="text-slate-800 text-sm font-semibold truncate">{{ tripDest()?.name }}</p>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2.5"
+                    [style.background]="paymentMethodMap[tripPayment()].bgSel"
+                    [style.border]="'1px solid ' + paymentMethodMap[tripPayment()].color">
+                    <span class="material-symbols-outlined" style="font-size:20px"
+                      [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].icon }}</span>
+                    <p class="text-[10px] font-black whitespace-nowrap"
+                      [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].label }}</p>
                   </div>
                 </div>
                 <!-- Cancelar -->
@@ -488,6 +498,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
                 <button (click)="adjustTripPrice(500)"
                   class="w-11 h-11 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0">+</button>
+              </div>
+
+              <!-- Método de pago -->
+              <div class="px-4 pt-2 pb-1">
+                <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2">Método de pago</p>
+                <div class="grid grid-cols-3 gap-1.5">
+                  @for (pm of paymentMethods; track pm.value) {
+                    <button (click)="tripPayment.set(pm.value)"
+                      class="flex flex-col items-center gap-1 py-2 rounded-xl border transition-all active:scale-95"
+                      [style.background]="tripPayment() === pm.value ? pm.bgSel : '#f8fafc'"
+                      [style.borderColor]="tripPayment() === pm.value ? pm.color : '#e2e8f0'">
+                      <span class="material-symbols-outlined" style="font-size:18px"
+                        [style.color]="tripPayment() === pm.value ? pm.color : '#94a3b8'">{{ pm.icon }}</span>
+                      <span class="text-[10px] font-bold leading-tight text-center"
+                        [style.color]="tripPayment() === pm.value ? pm.color : '#94a3b8'">{{ pm.label }}</span>
+                    </button>
+                  }
+                </div>
               </div>
 
               <div class="px-4 py-3">
@@ -588,11 +616,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               }
 
-              <!-- Fila: texto prioridad + temporizador -->
+              <!-- Fila: pago + temporizador -->
               <div class="flex items-center gap-2 px-4 pt-3 pb-1">
                 <p class="text-slate-700 text-sm font-semibold flex-1 leading-snug">
                   Mejor tarifa. Tu solicitud tiene prioridad
                 </p>
+                <div class="flex items-center gap-1.5 flex-shrink-0 px-2.5 py-1 rounded-full"
+                  [style.background]="paymentMethodMap[tripPayment()].bgSel"
+                  [style.border]="'1px solid ' + paymentMethodMap[tripPayment()].color">
+                  <span class="material-symbols-outlined" style="font-size:13px"
+                    [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].icon }}</span>
+                  <span class="text-[10px] font-black"
+                    [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].label }}</span>
+                </div>
                 <span class="font-black text-xl text-slate-800 flex-shrink-0 tabular-nums">{{ formatTime(waitingCountdown()) }}</span>
               </div>
 
@@ -741,6 +777,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       · {{ req.distance_km }} km
                     </p>
                     <p class="text-slate-500 text-xs truncate">→ {{ req.dest_name }}</p>
+                    <!-- Método de pago -->
+                    <div class="flex items-center gap-1 mt-1.5 w-fit px-2 py-0.5 rounded-full"
+                      [style.background]="paymentMethodMap[req.payment_method ?? 'efectivo'].bgDark"
+                      [style.border]="'1px solid ' + paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">
+                      <span class="material-symbols-outlined" style="font-size:11px"
+                        [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].icon }}</span>
+                      <span class="text-[10px] font-bold"
+                        [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].label }}</span>
+                    </div>
                   </div>
                   <!-- Precio ofrecido -->
                   <div class="text-right flex-shrink-0">
@@ -1454,6 +1499,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripDest        = signal<{ name: string; lat: number; lng: number } | null>(null);
   tripVehicle     = signal<'carro' | 'moto'>('carro');
   tripPrice       = signal(0);
+  tripPayment     = signal<AgPaymentMethod>('efectivo');
   tripDistKm      = signal(0);
   tripSending     = signal(false);
   tripSent        = signal(false);
@@ -1477,6 +1523,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   offerSentFor         = signal<Set<string>>(new Set());
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
+
+  readonly paymentMethods: {
+    value: AgPaymentMethod; label: string; icon: string;
+    color: string; bgSel: string; colorDark: string; bgDark: string;
+  }[] = [
+    { value: 'efectivo',    label: 'Efectivo',    icon: 'payments',        color: '#16a34a', bgSel: '#f0fdf4', colorDark: '#4ade80', bgDark: 'rgba(74,222,128,0.08)' },
+    { value: 'nequi',       label: 'Nequi',       icon: 'smartphone',      color: '#7c3aed', bgSel: '#faf5ff', colorDark: '#a78bfa', bgDark: 'rgba(167,139,250,0.08)' },
+    { value: 'daviplata',   label: 'Daviplata',   icon: 'smartphone',      color: '#dc2626', bgSel: '#fff1f2', colorDark: '#f87171', bgDark: 'rgba(248,113,113,0.08)' },
+    { value: 'bancolombia', label: 'Bancolombia', icon: 'account_balance',  color: '#b45309', bgSel: '#fffbeb', colorDark: '#fbbf24', bgDark: 'rgba(251,191,36,0.08)'  },
+    { value: 'tarjeta',     label: 'Tarjeta',     icon: 'credit_card',     color: '#0369a1', bgSel: '#f0f9ff', colorDark: '#38bdf8', bgDark: 'rgba(56,189,248,0.08)'  },
+  ];
+
+  readonly paymentMethodMap = Object.fromEntries(
+    this.paymentMethods.map(p => [p.value, p])
+  ) as Record<AgPaymentMethod, typeof this.paymentMethods[0]>;
 
   readonly agMenuItems = [
     { icon: 'location_city',    label: 'Ciudad',                  divider: false, section: '' },
@@ -2189,6 +2250,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         distanceKm: this.tripDistKm(),
         vehicleType: this.tripVehicle(),
         offeredPrice: this.tripPrice(),
+        paymentMethod: this.tripPayment(),
       });
       if (result.success && result.tripId) {
         this.currentTripRequestId.set(result.tripId);

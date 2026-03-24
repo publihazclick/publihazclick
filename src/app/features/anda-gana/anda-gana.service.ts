@@ -48,6 +48,8 @@ export interface AgTripOffer {
   ag_drivers?: AgDriver & { ag_users?: AgUser };
 }
 
+export type AgPaymentMethod = 'efectivo' | 'nequi' | 'daviplata' | 'bancolombia' | 'tarjeta';
+
 export interface AgTripRequest {
   id: string;
   passenger_user_id: string;
@@ -59,6 +61,7 @@ export interface AgTripRequest {
   distance_km: number;
   vehicle_type: string;
   offered_price: number;
+  payment_method: AgPaymentMethod;
   status: string;
   created_at: string;
   ag_users?: AgUser;
@@ -269,6 +272,7 @@ export class AndaGanaService {
     passengerUserId: string; originLat: number; originLng: number;
     destName: string; destLat: number; destLng: number;
     distanceKm: number; vehicleType: string; offeredPrice: number;
+    paymentMethod: AgPaymentMethod;
   }): Promise<{ success: boolean; tripId?: string; error?: string }> {
     const { data: row, error } = await this.supabase
       .from('ag_trip_requests')
@@ -277,7 +281,8 @@ export class AndaGanaService {
         origin_lat: data.originLat, origin_lng: data.originLng,
         dest_name: data.destName, dest_lat: data.destLat, dest_lng: data.destLng,
         distance_km: data.distanceKm, vehicle_type: data.vehicleType,
-        offered_price: data.offeredPrice, status: 'searching',
+        offered_price: data.offeredPrice, payment_method: data.paymentMethod,
+        status: 'searching',
       })
       .select('id')
       .single();
