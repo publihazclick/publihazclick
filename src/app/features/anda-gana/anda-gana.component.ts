@@ -451,15 +451,81 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
 
             } @else {
-              <div class="px-4 py-6 flex flex-col items-center gap-3 text-center">
-                <div class="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-emerald-500" style="font-size:28px">check_circle</span>
+              <!-- ══ Pantalla de espera estilo inDrive ══ -->
+
+              <!-- Fila: conductores viendo + avatares -->
+              <div class="flex items-center justify-between px-4 pt-3 pb-2.5" style="border-bottom:1px solid #e2e8f0">
+                <p class="text-slate-800 text-sm font-semibold flex-1 leading-snug">
+                  @if (waitingDriverCount() === 0) {
+                    Buscando conductores disponibles...
+                  } @else {
+                    <span class="text-orange-500 font-black">{{ waitingDriverCount() }}</span>
+                    {{ waitingDriverCount() === 1 ? ' conductor está viendo' : ' conductores están viendo' }} tu solicitud
+                  }
+                </p>
+                <div class="flex items-center flex-shrink-0 ml-2">
+                  @for (color of waitingDriverColors(); track $index) {
+                    <div class="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center flex-shrink-0"
+                      [style.background]="color" style="margin-left:-10px">
+                      <span class="material-symbols-outlined text-white" style="font-size:15px">person</span>
+                    </div>
+                  }
                 </div>
-                <p class="text-slate-800 font-black text-base">¡Solicitud enviada!</p>
-                <p class="text-slate-500 text-sm">Buscando conductores disponibles…</p>
-                <p class="text-slate-400 text-xs">{{ tripDest()!.name }} · {{ formatCOP(tripPrice()) }} · {{ tripDistKm() }} km</p>
+              </div>
+
+              <!-- Fila: texto prioridad + temporizador -->
+              <div class="flex items-center gap-2 px-4 pt-3 pb-1">
+                <p class="text-slate-700 text-sm font-semibold flex-1 leading-snug">
+                  Mejor tarifa. Tu solicitud tiene prioridad
+                </p>
+                <span class="font-black text-xl text-slate-800 flex-shrink-0 tabular-nums">{{ formatTime(waitingCountdown()) }}</span>
+              </div>
+
+              <!-- Barra de progreso -->
+              <div class="mx-4 mb-3 rounded-full overflow-hidden" style="height:3px;background:#e2e8f0">
+                <div class="h-full rounded-full bg-slate-800 transition-all duration-1000"
+                  [style.width]="waitingProgress() + '%'"></div>
+              </div>
+
+              <!-- Ajuste de precio -->
+              <div class="flex items-center justify-between px-4 py-2.5" style="border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0">
+                <button (click)="adjustTripPrice(-500)"
+                  class="px-4 py-2 rounded-xl text-slate-600 text-sm font-bold active:scale-95 transition-all"
+                  style="background:#f1f5f9;border:1px solid #e2e8f0">-500</button>
+                <p class="font-black text-xl text-slate-800">{{ formatCOP(tripPrice()) }}</p>
+                <button (click)="adjustTripPrice(500)"
+                  class="px-4 py-2 rounded-xl text-slate-600 text-sm font-bold active:scale-95 transition-all"
+                  style="background:#f1f5f9;border:1px solid #e2e8f0">+500</button>
+              </div>
+
+              <!-- Aumentar tarifa -->
+              <div class="px-4 py-2" style="border-bottom:1px solid #e2e8f0">
+                <button class="w-full py-1.5 text-slate-400 text-sm font-semibold text-center">
+                  Aumentar tarifa
+                </button>
+              </div>
+
+              <!-- Toggle auto-aceptar -->
+              <div class="flex items-center gap-3 px-4 py-3" style="border-bottom:1px solid #e2e8f0">
+                <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">near_me</span>
+                <p class="text-slate-700 text-xs flex-1 leading-snug">
+                  Aceptar automáticamente al conductor más cercano por {{ formatCOP(tripPrice()) }}
+                </p>
+                <button (click)="autoAccept.set(!autoAccept())"
+                  class="flex-shrink-0 relative rounded-full transition-all duration-200"
+                  style="width:44px;height:24px"
+                  [style.background]="autoAccept() ? '#f97316' : '#cbd5e1'">
+                  <div class="absolute top-0.5 rounded-full bg-white shadow transition-all duration-200"
+                    style="width:20px;height:20px"
+                    [style.left]="autoAccept() ? '22px' : '2px'"></div>
+                </button>
+              </div>
+
+              <!-- Cancelar -->
+              <div class="px-4 py-3">
                 <button (click)="cancelTrip()"
-                  class="mt-2 px-5 py-2 rounded-xl bg-slate-200 border border-slate-300 text-slate-500 text-xs font-bold">
+                  class="w-full py-2.5 rounded-xl text-slate-500 text-xs font-bold active:scale-[0.98] transition-all"
+                  style="background:#f1f5f9;border:1px solid #e2e8f0">
                   Cancelar solicitud
                 </button>
               </div>
@@ -1132,6 +1198,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripDistKm      = signal(0);
   tripSending     = signal(false);
   tripSent        = signal(false);
+  // Pantalla de espera estilo inDrive
+  waitingDriverCount  = signal(0);
+  waitingDriverColors = signal<string[]>([]);
+  waitingCountdown    = signal(90);
+  waitingProgress     = signal(0);
+  autoAccept          = signal(false);
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
@@ -1159,6 +1231,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }> = [];
   private _animFrame: number | null = null;
   private _lastTs:    number | null = null;
+  private _waitingInterval: ReturnType<typeof setInterval> | null = null;
   private _mapboxPromise:   Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _tripDebounce:    ReturnType<typeof setTimeout> | null = null;
@@ -1840,9 +1913,43 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
     this.tripSending.set(false);
     this.tripSent.set(true);
+    this._startWaiting();
+  }
+
+  private _startWaiting() {
+    this._stopWaiting();
+    const total = 90;
+    const driverTimes = [4, 12, 21, 32, 45];
+    const palette = ['#1D4ED8','#DC2626','#15803D','#7C3AED','#EA580C'];
+    let elapsed = 0;
+    this.waitingCountdown.set(total);
+    this.waitingProgress.set(0);
+    this.waitingDriverCount.set(0);
+    this.waitingDriverColors.set([]);
+    this._waitingInterval = setInterval(() => {
+      elapsed++;
+      this.waitingCountdown.set(Math.max(0, total - elapsed));
+      this.waitingProgress.set(Math.min(100, (elapsed / total) * 100));
+      if (driverTimes.includes(elapsed)) {
+        const n = this.waitingDriverCount();
+        this.waitingDriverCount.set(n + 1);
+        this.waitingDriverColors.update(arr => [...arr, palette[n % palette.length]]);
+      }
+      if (elapsed >= total) this._stopWaiting();
+    }, 1000);
+  }
+
+  private _stopWaiting() {
+    if (this._waitingInterval !== null) { clearInterval(this._waitingInterval); this._waitingInterval = null; }
+  }
+
+  formatTime(s: number): string {
+    const v = Math.max(0, s);
+    return `${Math.floor(v / 60)}:${(v % 60).toString().padStart(2, '0')}`;
   }
 
   cancelTrip() {
+    this._stopWaiting();
     this.tripDest.set(null);
     this.tripSent.set(false);
     this.tripOpen.set(false);
@@ -1850,6 +1957,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.tripSuggestions.set([]);
     this.tripDistKm.set(0);
     this.tripPrice.set(0);
+    this.waitingDriverCount.set(0);
+    this.waitingDriverColors.set([]);
+    this.autoAccept.set(false);
     this._clearRoute();
   }
 
