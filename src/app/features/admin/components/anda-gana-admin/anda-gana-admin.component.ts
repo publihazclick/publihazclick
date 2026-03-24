@@ -47,24 +47,24 @@ type AdminTab = 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'config
   }
 
   <!-- Tabs -->
-  <div class="flex gap-2 border-b border-white/8 pb-0">
+  <div class="flex gap-2 border-b border-white/8 pb-0 overflow-x-auto scrollbar-hide" style="scrollbar-width:none">
     <button (click)="tab.set('conductores-pendientes')"
-      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg"
+      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'conductores-pendientes' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-500 hover:text-slate-300'">
       Pendientes <span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px]">{{ stats().pending }}</span>
     </button>
     <button (click)="tab.set('conductores')"
-      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg"
+      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'conductores' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-500 hover:text-slate-300'">
       Conductores
     </button>
     <button (click)="tab.set('pasajeros')"
-      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg"
+      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'pasajeros' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-slate-500 hover:text-slate-300'">
       Pasajeros
     </button>
     <button (click)="tab.set('configuracion')"
-      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg"
+      class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'configuracion' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-slate-500 hover:text-slate-300'">
       Configuración
     </button>
