@@ -127,6 +127,18 @@
             </div>
           }
 
+          @if (bannerIsExpired()) {
+            <div class="flex items-start gap-2 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+              <span class="material-symbols-outlined text-amber-400 flex-shrink-0" style="font-size:16px">schedule</span>
+              <p class="text-xs text-amber-400">Tu banner venció el {{ bannerExpiresText() }}. Edítalo o guárdalo de nuevo para renovarlo por 30 días más.</p>
+            </div>
+          } @else if (bannerExpiresText()) {
+            <div class="flex items-start gap-2 px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl">
+              <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:16px">event</span>
+              <p class="text-xs text-slate-400">Activo hasta el <span class="text-white font-bold">{{ bannerExpiresText() }}</span></p>
+            </div>
+          }
+
           <!-- Acciones -->
           <div class="flex gap-3 pt-2 flex-wrap">
             <button

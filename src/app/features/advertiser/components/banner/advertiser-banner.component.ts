@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -17,6 +17,8 @@ interface MyBanner {
   total_impressions: number;
   total_clicks: number;
   created_at: string;
+  start_date: string | null;
+  end_date: string | null;
 }
 
 interface BannerForm {
@@ -73,6 +75,23 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
   readonly myBanner = signal<MyBanner | null>(null);
   readonly successMsg = signal<string | null>(null);
   readonly errorMsg = signal<string | null>(null);
+
+  readonly bannerExpiresAt = computed<Date | null>(() => {
+    const b = this.myBanner();
+    if (!b?.end_date) return null;
+    return new Date(b.end_date);
+  });
+
+  readonly bannerIsExpired = computed(() => {
+    const exp = this.bannerExpiresAt();
+    return exp ? exp < new Date() : false;
+  });
+
+  readonly bannerExpiresText = computed(() => {
+    const exp = this.bannerExpiresAt();
+    if (!exp) return null;
+    return exp.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+  });
 
   private approvalTimer: ReturnType<typeof setTimeout> | null = null;
 

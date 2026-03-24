@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -19,6 +19,7 @@ interface MyAd {
   daily_limit: number;
   total_clicks: number;
   created_at: string;
+  activated_at: string | null;
 }
 
 interface AdForm {
@@ -72,6 +73,25 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
   readonly myAd = signal<MyAd | null>(null);
   readonly successMsg = signal<string | null>(null);
   readonly errorMsg = signal<string | null>(null);
+
+  readonly adExpiresAt = computed<Date | null>(() => {
+    const ad = this.myAd();
+    if (!ad?.activated_at) return null;
+    const d = new Date(ad.activated_at);
+    d.setDate(d.getDate() + 30);
+    return d;
+  });
+
+  readonly adIsExpired = computed(() => {
+    const exp = this.adExpiresAt();
+    return exp ? exp < new Date() : false;
+  });
+
+  readonly adExpiresText = computed(() => {
+    const exp = this.adExpiresAt();
+    if (!exp) return null;
+    return exp.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+  });
 
   private approvalTimer: ReturnType<typeof setTimeout> | null = null;
 
