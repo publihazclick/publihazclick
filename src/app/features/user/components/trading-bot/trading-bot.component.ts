@@ -36,7 +36,7 @@ interface TradingPackage {
       <p class="text-slate-300 text-sm text-center max-w-xl mb-3 leading-relaxed">
         Compra un paquete de servicio para trading automático monitoreado las 24/7 y genera ganancias
         estimadas mensualmente que van entre un <span class="text-emerald-400 font-black">2.5%</span> y un
-        <span class="text-emerald-400 font-black">6% mensual</span>.
+        <span class="text-emerald-400 font-black">30% mensual</span>.
       </p>
 
       <div class="max-w-xl mb-6 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 text-center">

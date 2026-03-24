@@ -12,6 +12,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TradingDemoComponent } from '../trading-bot/trading-demo.component';
 import { TradingPackageService, UserTradingPackage } from '../../../../core/services/trading-package.service';
+import { PlatformSettingsService } from '../../../../core/services/platform-settings.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 
 interface TradingPackage {
@@ -373,9 +374,13 @@ interface TradingPackage {
 })
 export class TradingOperationComponent implements OnInit, OnDestroy {
   private readonly svc = inject(TradingPackageService);
+  private readonly settingsSvc = inject(PlatformSettingsService);
   private readonly route = inject(ActivatedRoute);
   private readonly supabase = getSupabaseClient();
   private paramSub?: Subscription;
+
+  // Rentabilidad mensual máxima fijada por el administrador (default 30%)
+  readonly globalReturnPct = signal(30);
 
   readonly currentPkg      = signal<UserTradingPackage | null>(null);
   readonly selectedPackage = signal<TradingPackage | null>(null);
@@ -428,7 +433,7 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
   readonly earningsMax = computed(() => {
     const pkg = this.currentPkg();
     if (!pkg?.package) return 0;
-    return pkg.package.price_usd * 0.06;
+    return pkg.package.price_usd * (this.globalReturnPct() / 100);
   });
 
   readonly withdrawAvailableDate = computed(() => {
@@ -440,6 +445,14 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // Cargar rentabilidad global fijada por el admin
+    this.settingsSvc.getSetting('trading_monthly_return_pct').then(v => {
+      const parsed = parseFloat(v);
+      if (!isNaN(parsed) && parsed >= 2.5 && parsed <= 30) {
+        this.globalReturnPct.set(parsed);
+      }
+    }).catch(() => {});
+
     this.paramSub = this.route.paramMap.subscribe(params => {
       const packageId = params.get('packageId');
       this.currentPkg.set(null);

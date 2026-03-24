@@ -14,6 +14,7 @@ import {
   UserTradingPackage,
   TradingUserResult,
 } from '../../../../core/services/trading-package.service';
+import { PlatformSettingsService } from '../../../../core/services/platform-settings.service';
 
 @Component({
   selector: 'app-trading-config',
@@ -35,6 +36,64 @@ import {
         <div class="flex-shrink-0 text-right">
           <p class="text-2xl font-black text-primary">{{ totalUsers() }}</p>
           <p class="text-[10px] text-slate-500 uppercase tracking-widest">usuarios</p>
+        </div>
+      </div>
+
+      <!-- ── Rentabilidad Global ─────────────────────────────────────────── -->
+      <div class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-4">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">percent</span>
+            </div>
+            <div>
+              <p class="text-sm font-black text-white">Rentabilidad Mensual Global</p>
+              <p class="text-xs text-slate-500">Aplica a todos los paquetes al final de cada mes. Rango: 2.5% – 30%</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2">
+              <input
+                type="number"
+                [(ngModel)]="returnInputValue"
+                min="2.5" max="30" step="0.5"
+                class="w-20 bg-transparent text-white font-black text-lg text-center focus:outline-none"
+              />
+              <span class="text-emerald-400 font-black text-lg">%</span>
+            </div>
+            <button
+              (click)="saveGlobalReturn()"
+              [disabled]="savingReturn()"
+              class="px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all disabled:opacity-40 flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/25"
+            >
+              @if (savingReturn()) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+              } @else {
+                <span class="material-symbols-outlined" style="font-size:16px">save</span>
+              }
+              Guardar
+            </button>
+          </div>
+        </div>
+        @if (returnFeedback()) {
+          <div class="mt-3 flex items-center gap-2 text-sm font-bold"
+            [class]="returnFeedbackType() === 'ok' ? 'text-emerald-400' : 'text-rose-400'">
+            <span class="material-symbols-outlined" style="font-size:16px">
+              {{ returnFeedbackType() === 'ok' ? 'check_circle' : 'error' }}
+            </span>
+            {{ returnFeedback() }}
+          </div>
+        }
+        <div class="mt-3 flex items-center gap-3">
+          <input
+            type="range"
+            [(ngModel)]="returnInputValue"
+            min="2.5" max="30" step="0.5"
+            class="flex-1 accent-emerald-400 h-2 rounded-full cursor-pointer"
+          />
+          <div class="flex justify-between text-[10px] text-slate-600 gap-4">
+            <span>2.5%</span><span>30%</span>
+          </div>
         </div>
       </div>
 
@@ -280,7 +339,7 @@ import {
                         <span class="mx-2 text-white/10">|</span>
                         <span class="text-xs text-slate-400">Ganancia estimada / mes:</span>
                         <span class="text-emerald-400 font-black text-sm ml-1">
-                          \${{ (selectedCatalogPkg()!.price_usd * 0.025) | number:'1.0-0' }} - \${{ (selectedCatalogPkg()!.price_usd * 0.06) | number:'1.0-0' }} USD
+                          \${{ (selectedCatalogPkg()!.price_usd * 0.025) | number:'1.0-0' }} - \${{ (selectedCatalogPkg()!.price_usd * globalReturnPct() / 100) | number:'1.0-0' }} USD
                         </span>
                       </div>
                     </div>
@@ -346,9 +405,17 @@ import {
 })
 export class TradingConfigComponent implements OnInit {
   private readonly svc = inject(TradingPackageService);
+  private readonly settingsSvc = inject(PlatformSettingsService);
 
   searchQuery = '';
   activationNote = '';
+
+  // ── Rentabilidad global ───────────────────────────────────────────────────
+  readonly globalReturnPct = signal(30);
+  returnInputValue = 30;
+  readonly savingReturn = signal(false);
+  readonly returnFeedback = signal<string | null>(null);
+  readonly returnFeedbackType = signal<'ok' | 'err'>('ok');
 
   readonly loadingUsers = signal(true);
   readonly allUsers = signal<TradingUserResult[]>([]);
@@ -374,6 +441,15 @@ export class TradingConfigComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    // Cargar rentabilidad global
+    this.settingsSvc.getSetting('trading_monthly_return_pct').then(v => {
+      const parsed = parseFloat(v);
+      if (!isNaN(parsed)) {
+        this.globalReturnPct.set(parsed);
+        this.returnInputValue = parsed;
+      }
+    }).catch(() => {});
+
     await Promise.all([
       this.loadPage(1),
       this.svc.getTradingPackages().then(pkgs => {
@@ -381,6 +457,29 @@ export class TradingConfigComponent implements OnInit {
         this.loadingCatalog.set(false);
       }),
     ]);
+  }
+
+  async saveGlobalReturn(): Promise<void> {
+    const val = Number(this.returnInputValue);
+    if (isNaN(val) || val < 2.5 || val > 30) {
+      this.returnFeedback.set('El valor debe estar entre 2.5% y 30%');
+      this.returnFeedbackType.set('err');
+      setTimeout(() => this.returnFeedback.set(null), 4000);
+      return;
+    }
+    this.savingReturn.set(true);
+    this.returnFeedback.set(null);
+    try {
+      await this.settingsSvc.setSetting('trading_monthly_return_pct', val.toString());
+      this.globalReturnPct.set(val);
+      this.returnFeedback.set(`✓ Rentabilidad global actualizada a ${val}% mensual`);
+      this.returnFeedbackType.set('ok');
+    } catch {
+      this.returnFeedback.set('Error al guardar. Intenta de nuevo.');
+      this.returnFeedbackType.set('err');
+    }
+    this.savingReturn.set(false);
+    setTimeout(() => this.returnFeedback.set(null), 5000);
   }
 
   private async loadPage(page: number): Promise<void> {
