@@ -723,6 +723,29 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
       @if (driverStatus() === 'approved') {
+        <!-- Billetera del conductor -->
+        <div class="flex items-center gap-3 rounded-2xl px-4 py-3"
+          style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2)">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">account_balance_wallet</span>
+          </div>
+          <div class="flex-1">
+            <p class="text-slate-500 text-[10px] uppercase font-bold tracking-widest">Saldo billetera</p>
+            <p class="font-black text-base" [class]="driverWalletBalance() >= 0 ? 'text-emerald-400' : 'text-rose-400'">
+              {{ formatCOP(driverWalletBalance()) }}
+            </p>
+          </div>
+          @if (driverCommissionPct() > 0) {
+            <div class="text-right">
+              <p class="text-slate-600 text-[10px]">Comisión</p>
+              <p class="text-purple-400 font-black text-sm">{{ driverCommissionPct() }}%</p>
+            </div>
+          } @else {
+            <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">Sin comisión</span>
+          }
+        </div>
+
         <!-- Panel de solicitudes de viaje -->
         <div class="flex flex-col gap-3">
           <!-- Header toggle -->
@@ -803,12 +826,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                 } @else {
                   <div class="px-4 pb-3">
-                    <button (click)="openMakeOffer(req)"
-                      class="w-full py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-                      style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                      <span class="material-symbols-outlined" style="font-size:16px">local_offer</span>
-                      Hacer oferta
-                    </button>
+                    @if (driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
+                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
+                        style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-rose-400" style="font-size:15px">account_balance_wallet</span>
+                          <span class="text-rose-400 text-xs font-black">Saldo insuficiente</span>
+                        </div>
+                        <p class="text-slate-500 text-[10px]">Recarga tu billetera para tomar este viaje</p>
+                      </div>
+                    } @else {
+                      <button (click)="openMakeOffer(req)"
+                        class="w-full py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                        style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                        <span class="material-symbols-outlined" style="font-size:16px">local_offer</span>
+                        Hacer oferta
+                      </button>
+                    }
                   </div>
                 }
               </div>
@@ -1521,6 +1555,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverOfferPrice     = signal(0);
   sendingOffer         = signal(false);
   offerSentFor         = signal<Set<string>>(new Set());
+  // Commission + wallet — driver
+  driverCommissionPct  = signal(0);
+  driverWalletBalance  = signal(0);
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
@@ -1595,6 +1632,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.screen.set('driver-home');
       if (mine?.status === 'approved') {
         this._loadDriverRequests(mine.vehicle_type);
+        const [pct, balance] = await Promise.all([
+          this.agService.getCommissionPct(),
+          this.agService.getDriverWalletBalance(mine.id),
+        ]);
+        this.driverCommissionPct.set(pct);
+        this.driverWalletBalance.set(balance);
       }
     }
 
@@ -2142,6 +2185,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Trip request ──────────────────────────────────────────────
   formatCOP(n: number): string {
     return '$\u00a0' + n.toLocaleString('es-CO');
+  }
+
+  requiredCommission(price: number): number {
+    return Math.ceil(price * this.driverCommissionPct() / 100);
   }
 
   scrollIcons(px: number) {

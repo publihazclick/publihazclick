@@ -33,6 +33,7 @@ export interface AgDriver {
   vehicle_model: string; vehicle_year: string; vehicle_color: string;
   documents: Record<string, string>; status: string;
   rejection_reason: string | null; approved_at: string | null;
+  wallet_balance: number;
   created_at: string;
   ag_users?: AgUser;
 }
@@ -373,6 +374,52 @@ export class AndaGanaService {
     const { error } = await this.supabase
       .from('ag_trip_offers')
       .insert({ trip_request_id: tripRequestId, driver_id: driverId, offered_price: offeredPrice });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  // ── Comisión (admin) ──────────────────────────────────────────
+  async getCommissionPct(): Promise<number> {
+    const { data } = await this.supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'ag_commission_pct')
+      .maybeSingle();
+    return parseInt(data?.value ?? '0', 10);
+  }
+
+  async setCommissionPct(pct: number): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('platform_settings')
+      .upsert({ key: 'ag_commission_pct', value: String(Math.max(0, Math.min(15, pct))) },
+               { onConflict: 'key' });
+    return !error;
+  }
+
+  // ── Billetera conductor ───────────────────────────────────────
+  async getDriverWalletBalance(driverId: string): Promise<number> {
+    const { data } = await this.supabase
+      .from('ag_drivers')
+      .select('wallet_balance')
+      .eq('id', driverId)
+      .single();
+    return data?.wallet_balance ?? 0;
+  }
+
+  async getDriverWalletHistory(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_wallet_transactions')
+      .select('*')
+      .eq('driver_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    return data ?? [];
+  }
+
+  async adminRechargeDriver(driverId: string, amount: number): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.rpc('ag_recharge_driver_wallet', {
+      p_driver_id: driverId,
+      p_amount:    amount,
+    });
     return error ? { success: false, error: error.message } : { success: true };
   }
 
