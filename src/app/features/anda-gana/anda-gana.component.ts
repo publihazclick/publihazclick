@@ -1917,7 +1917,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.0000011 : 0.0000008,
+        speed:   isMoto ? 0.000033 : 0.000024,
         forward: true,
         marker,
         heading: h0,
@@ -1928,41 +1928,42 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Genera 12 rutas rectangulares sintéticas alrededor del usuario.
-   * No depende de ninguna API — siempre funciona.
-   * Cada ruta es un loop cerrado con 30 puntos por arista → giros suaves.
-   * Los 12 recorridos son completamente distintos → ningún vehículo se superpone.
+   * Genera 12 rutas en cuadrícula 4×3 completamente disjuntas.
+   * Cada vehículo tiene su propia celda exclusiva → nunca se superponen.
+   * cw × ch = tamaño de cada celda en grados.
    */
   private _generateCityPaths(lat: number, lng: number): [number, number][][] {
-    const N = 30; // puntos por arista
+    const N  = 30;   // puntos por arista
+    const cw = 0.007; // ancho de celda en lng (~780 m)
+    const ch = 0.006; // alto de celda en lat (~667 m)
+    const cols = 4, rows = 3;
 
-    /** Crea un loop rectangular cerrado con N puntos por lado */
-    const rect = (x0: number, y0: number, x1: number, y1: number): [number, number][] => {
+    // Centrar la cuadrícula en el usuario
+    const startLng = lng - (cols / 2) * cw;  // usuario queda entre col 1 y col 2
+    const startLat = lat - (rows / 2) * ch;  // usuario queda entre fila 1 y fila 2
+
+    /** Loop rectangular cerrado dentro de una celda, con gap de 0.0003° respecto al borde
+     *  para que dos celdas adyacentes nunca compartan coordenadas exactas. */
+    const cell = (col: number, row: number): [number, number][] => {
+      const gap = 0.0002;
+      const x0 = startLng + col * cw + gap;
+      const y0 = startLat + row * ch + gap;
+      const x1 = x0 + cw - gap * 2;
+      const y1 = y0 + ch - gap * 2;
       const p: [number, number][] = [];
-      for (let i = 0; i < N; i++) p.push([x0 + (x1 - x0) * i / N, y1]);   // arriba W→E
-      for (let i = 0; i < N; i++) p.push([x1, y1 - (y1 - y0) * i / N]);   // derecha N→S
-      for (let i = 0; i < N; i++) p.push([x1 - (x1 - x0) * i / N, y0]);   // abajo E→W
-      for (let i = 0; i < N; i++) p.push([x0, y0 + (y1 - y0) * i / N]);   // izquierda S→N
-      p.push(p[0]); // cerrar
+      for (let i = 0; i < N; i++) p.push([x0 + (x1 - x0) * i / N, y1]); // N W→E
+      for (let i = 0; i < N; i++) p.push([x1, y1 - (y1 - y0) * i / N]); // E N→S
+      for (let i = 0; i < N; i++) p.push([x1 - (x1 - x0) * i / N, y0]); // S E→W
+      for (let i = 0; i < N; i++) p.push([x0, y0 + (y1 - y0) * i / N]); // W S→N
+      p.push(p[0]);
       return p;
     };
 
-    const a = 0.0018, b = 0.0032, c = 0.0050, d = 0.0068;
-
-    // 12 recorridos distintos — separados entre sí para no superponerse
+    // 12 celdas — orden: recorre la cuadrícula fila a fila
     return [
-      rect(lng - a,     lat - a,     lng + a,     lat + a    ),  // 0: bloque central
-      rect(lng + a,     lat - a,     lng + b,     lat + a    ),  // 1: bloque Este
-      rect(lng - b,     lat - a,     lng - a,     lat + a    ),  // 2: bloque Oeste
-      rect(lng - a,     lat + a,     lng + a,     lat + b    ),  // 3: bloque Norte
-      rect(lng - a,     lat - b,     lng + a,     lat - a    ),  // 4: bloque Sur
-      rect(lng + a,     lat + a,     lng + c,     lat + c    ),  // 5: esquina NE
-      rect(lng - c,     lat - c,     lng - a,     lat - a    ),  // 6: esquina SW
-      rect(lng - c,     lat + a,     lng - a,     lat + c    ),  // 7: esquina NW
-      rect(lng + a,     lat - c,     lng + c,     lat - a    ),  // 8: esquina SE
-      rect(lng - b,     lat - b,     lng + b,     lat + b    ),  // 9: anillo medio
-      rect(lng - d,     lat - d,     lng + d,     lat + d    ),  // 10: anillo exterior
-      rect(lng - a / 2, lat - c,     lng + a / 2, lat + c    ),  // 11: corredor N-S
+      cell(0, 0), cell(1, 0), cell(2, 0), cell(3, 0),  // fila superior
+      cell(0, 1), cell(1, 1), cell(2, 1), cell(3, 1),  // fila media
+      cell(0, 2), cell(1, 2), cell(2, 2), cell(3, 2),  // fila inferior
     ];
   }
 
@@ -2009,8 +2010,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         let dH = targetH - vs.heading;
         if (dH > 180)  dH -= 360;
         if (dH < -180) dH += 360;
-        // Interpolación de giro suave (~40% por frame a 60fps → curvas fluidas)
-        vs.heading += dH * Math.min(1, dt * 0.025);
+        // Giro suave proporcional a la velocidad — más rápido = giro más ágil
+        vs.heading += dH * Math.min(1, dt * 0.08);
 
         // No colocar vehículo encima del marcador del usuario
         const uLng = this._currentLng, uLat = this._currentLat;
