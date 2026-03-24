@@ -195,6 +195,38 @@
             </a>
           </li>
           <li>
+            <a routerLink="/advertiser/wallet" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">account_balance_wallet</span>
+              @if (!sidebarCollapsed()) { <span>Billetera</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/history" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">history</span>
+              @if (!sidebarCollapsed()) { <span>Historial</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/packages" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/advertiser/settings" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">manage_accounts</span>
+              @if (!sidebarCollapsed()) { <span>Mi Perfil</span> }
+            </a>
+          </li>
+          <li>
             <a routerLink="/advertiser/trading-bot" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-emerald-500/5 text-slate-400 hover:text-emerald-300 transition-all border border-transparent"
                [class.justify-center]="sidebarCollapsed()">
@@ -236,46 +268,6 @@
         </ul>
       </div>
 
-      <!-- Actividad -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Actividad</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/advertiser/wallet" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">account_balance_wallet</span>
-              @if (!sidebarCollapsed()) { <span>Billetera</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/history" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">history</span>
-              @if (!sidebarCollapsed()) { <span>Historial</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/packages" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">workspace_premium</span>
-              @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/settings" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">manage_accounts</span>
-              @if (!sidebarCollapsed()) { <span>Mi Perfil</span> }
-            </a>
-          </li>
-        </ul>
-      </div>
     </nav>
   </div>
 
