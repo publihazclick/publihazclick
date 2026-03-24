@@ -255,17 +255,56 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <!-- Contenido del panel según estado -->
             @if (!tripDest()) {
               @if (!tripOpen()) {
-                <!-- Punto de origen — siempre visible antes de elegir destino -->
+                <!-- Punto de origen — clicable para modificar -->
                 @if (currentAddress()) {
-                  <div class="mx-4 mt-2 mb-1 flex items-center gap-2.5 px-3 py-2 rounded-xl"
-                    style="background:#fff7ed;border:1px solid #fed7aa">
-                    <div class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0 shadow shadow-orange-200"></div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-orange-400 font-bold uppercase tracking-wider" style="font-size:9px">Saldrás desde aquí</p>
-                      <p class="text-slate-700 text-xs font-semibold truncate">{{ currentAddress() }}</p>
+                  @if (!originEditOpen()) {
+                    <button (click)="openOriginEdit()"
+                      class="mx-4 mt-2 mb-1 w-[calc(100%-2rem)] flex items-center gap-2.5 px-3 py-2 rounded-xl text-left active:scale-[0.98] transition-all"
+                      style="background:#fff7ed;border:1px solid #fed7aa">
+                      <div class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-orange-400 font-bold uppercase tracking-wider" style="font-size:9px">Saldrás desde aquí · Toca para cambiar</p>
+                        <p class="text-slate-700 text-xs font-semibold truncate">{{ currentAddress() }}</p>
+                      </div>
+                      <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:16px">edit</span>
+                    </button>
+                  } @else {
+                    <!-- Búsqueda inline de origen -->
+                    <div class="mx-4 mt-2 mb-1 rounded-xl overflow-hidden"
+                      style="background:#fff;border:1.5px solid #fb923c;box-shadow:0 4px 16px rgba(249,115,22,0.15)">
+                      <div class="flex items-center gap-2.5 px-3 py-2.5" style="border-bottom:1px solid #f1f5f9">
+                        <div class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></div>
+                        <input id="origin-edit-input"
+                          [value]="addressQuery()"
+                          (input)="onAddressInput($any($event.target).value)"
+                          (keydown.escape)="originEditOpen.set(false)"
+                          (keydown.enter)="confirmTypedAddress()"
+                          placeholder="Escribe tu punto de salida..."
+                          class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                        <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
+                          <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                        </button>
+                      </div>
+                      @if (addressSuggestions().length > 0) {
+                        <div class="flex flex-col max-h-44 overflow-y-auto">
+                          @for (s of addressSuggestions(); track s.id) {
+                            <button (mousedown)="$event.preventDefault(); selectAddress(s)"
+                              class="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
+                              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">location_on</span>
+                              <div class="flex-1 min-w-0">
+                                <p class="text-slate-800 text-xs font-semibold truncate">{{ s.text }}</p>
+                                <p class="text-slate-400 text-[10px] truncate">{{ s.place_name }}</p>
+                              </div>
+                            </button>
+                          }
+                        </div>
+                      } @else if (addressQuery().length > 1) {
+                        <div class="px-3 py-3 text-slate-400 text-xs flex items-center justify-center gap-1.5">
+                          <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
+                        </div>
+                      }
                     </div>
-                    <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:16px">location_on</span>
-                  </div>
+                  }
                 }
                 <button (click)="openTripSearch()"
                   class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-200 transition-colors text-left">
@@ -320,17 +359,57 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="mx-4 mt-3 mb-1 rounded-2xl overflow-hidden"
                 style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 
-                <!-- Fila origen -->
-                <div class="flex items-center gap-3 px-3 py-2.5" style="border-bottom:1px solid #f1f5f9">
-                  <div class="flex flex-col items-center gap-0 flex-shrink-0" style="width:20px">
-                    <div class="w-3 h-3 rounded-full border-2 border-orange-400 bg-orange-100"></div>
-                    <div class="w-px flex-1 bg-slate-200" style="height:14px;margin:1px 0"></div>
+                <!-- Fila origen — clicable para cambiar -->
+                @if (!originEditOpen()) {
+                  <button (click)="openOriginEdit()"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors"
+                    style="border-bottom:1px solid #f1f5f9">
+                    <div class="flex flex-col items-center gap-0 flex-shrink-0" style="width:20px">
+                      <div class="w-3 h-3 rounded-full border-2 border-orange-400 bg-orange-100"></div>
+                      <div class="w-px bg-slate-200" style="height:14px;margin:1px 0"></div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-bold uppercase tracking-wider text-orange-400" style="font-size:9px">Saldrás desde aquí · Toca para cambiar</p>
+                      <p class="text-slate-700 text-xs font-semibold truncate">{{ currentAddress() || 'Tu ubicación actual' }}</p>
+                    </div>
+                    <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:15px">edit</span>
+                  </button>
+                } @else {
+                  <!-- Búsqueda inline dentro de la tarjeta -->
+                  <div style="border-bottom:1px solid #fed7aa;background:#fff7ed">
+                    <div class="flex items-center gap-2.5 px-3 py-2.5">
+                      <div class="w-3 h-3 rounded-full border-2 border-orange-500 bg-orange-100 flex-shrink-0"></div>
+                      <input id="origin-edit-input"
+                        [value]="addressQuery()"
+                        (input)="onAddressInput($any($event.target).value)"
+                        (keydown.escape)="originEditOpen.set(false)"
+                        (keydown.enter)="confirmTypedAddress()"
+                        placeholder="Escribe tu punto de salida..."
+                        class="flex-1 text-slate-800 text-xs outline-none placeholder-slate-500 bg-transparent"/>
+                      <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
+                        <span class="material-symbols-outlined text-slate-400" style="font-size:17px">close</span>
+                      </button>
+                    </div>
+                    @if (addressSuggestions().length > 0) {
+                      <div class="flex flex-col max-h-40 overflow-y-auto" style="background:#fff">
+                        @for (s of addressSuggestions(); track s.id) {
+                          <button (mousedown)="$event.preventDefault(); selectAddress(s)"
+                            class="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
+                            <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:15px">location_on</span>
+                            <div class="flex-1 min-w-0">
+                              <p class="text-slate-800 text-xs font-semibold truncate">{{ s.text }}</p>
+                              <p class="text-slate-400 text-[10px] truncate">{{ s.place_name }}</p>
+                            </div>
+                          </button>
+                        }
+                      </div>
+                    } @else if (addressQuery().length > 1) {
+                      <div class="px-3 py-2.5 text-slate-400 text-xs flex items-center justify-center gap-1.5" style="background:#fff">
+                        <span class="material-symbols-outlined animate-spin" style="font-size:13px">autorenew</span> Buscando...
+                      </div>
+                    }
                   </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-bold uppercase tracking-wider text-orange-400" style="font-size:9px">Saldrás desde aquí</p>
-                    <p class="text-slate-700 text-xs font-semibold truncate">{{ currentAddress() || 'Tu ubicación actual' }}</p>
-                  </div>
-                </div>
+                }
 
                 <!-- Fila destino -->
                 <div class="flex items-center gap-3 px-3 py-2.5">
@@ -1041,6 +1120,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   addressEditMode    = signal(false);
   addressQuery       = signal('');
   addressSuggestions = signal<any[]>([]);
+  originEditOpen     = signal(false);  // edición inline del punto de origen
 
   // Trip request
   tripOpen        = signal(false);
@@ -1183,6 +1263,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   // ── Dirección ──────────────────────────────────────────────────
+  openOriginEdit() {
+    this.addressQuery.set('');
+    this.addressSuggestions.set([]);
+    this.originEditOpen.set(true);
+    setTimeout(() => (document.getElementById('origin-edit-input') as HTMLInputElement | null)?.focus(), 60);
+  }
+
   openAddressEdit() {
     this.addressQuery.set('');
     this.addressSuggestions.set([]);
@@ -1236,6 +1323,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._currentLat = lat;
     this._currentLng = lng;
     this.closeAddressEdit();
+    this.originEditOpen.set(false);
 
     if (!this._map) return;
 
@@ -1255,6 +1343,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           .addTo(this._map);
       }
     }
+
+    // Si ya hay destino seleccionado, redibujar la ruta desde el nuevo origen
+    const dest = this.tripDest();
+    if (dest) this._drawRoute(dest.lng, dest.lat);
   }
 
   async confirmTypedAddress() {
