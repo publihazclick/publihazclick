@@ -123,6 +123,10 @@ export const routes: Routes = [
       {
         path: 'subir-test',
         loadComponent: () => import('./features/admin/components/subir-test/subir-test.component').then(m => m.AdminSubirTestComponent)
+      },
+      {
+        path: 'cursos',
+        loadComponent: () => import('./features/cursos/cursos.component').then(m => m.CursosComponent)
       }
     ]
   },
@@ -268,6 +272,10 @@ export const routes: Routes = [
       {
         path: 'anda-gana',
         loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
+      },
+      {
+        path: 'cursos',
+        loadComponent: () => import('./features/cursos/cursos.component').then(m => m.CursosComponent)
       }
     ]
   },
@@ -328,6 +336,10 @@ export const routes: Routes = [
       {
         path: 'anda-gana',
         loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
+      },
+      {
+        path: 'cursos',
+        loadComponent: () => import('./features/cursos/cursos.component').then(m => m.CursosComponent)
       }
     ]
   },
