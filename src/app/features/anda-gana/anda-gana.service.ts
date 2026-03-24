@@ -386,6 +386,17 @@ export class AndaGanaService {
     return error ? { success: false, error: error.message } : { success: true };
   }
 
+  // ── Passenger trip history ────────────────────────────────────
+  async getPassengerTripHistory(userId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_trip_requests')
+      .select('id, dest_name, distance_km, offered_price, status, created_at, payment_method')
+      .eq('passenger_user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    return data ?? [];
+  }
+
   // ── Comisión (admin) ──────────────────────────────────────────
   async getCommissionPct(): Promise<number> {
     const { data } = await this.supabase

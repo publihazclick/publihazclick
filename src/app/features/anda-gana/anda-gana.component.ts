@@ -94,7 +94,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <p class="text-slate-600 text-xs font-bold uppercase tracking-widest px-3 pb-2 pt-1">{{ item.section }}</p>
                 }
               } @else {
-                <button (click)="agMenuOpen.set(false)"
+                <button (click)="openPassengerSection(item.action)"
                   class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all active:scale-[0.98] mb-0.5"
                   style="color:#cbd5e1"
                   onmouseover="this.style.background='rgba(249,115,22,0.08)'"
@@ -114,6 +114,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
+      @if (passengerSection() === null) {
       <!-- Mapa con overlays flotantes -->
       <div class="relative rounded-2xl overflow-hidden" style="height:520px;border:1px solid rgba(255,255,255,0.08)">
 
@@ -694,6 +695,285 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
 
       </div><!-- /map container -->
+      } @else {
+      <!-- ══ Sección pasajero ══ -->
+      <div class="flex flex-col gap-4">
+
+        <!-- Botón volver -->
+        <button (click)="passengerSection.set(null)"
+          class="flex items-center gap-2 text-orange-400 font-bold text-sm active:scale-95 transition-all self-start">
+          <span class="material-symbols-outlined" style="font-size:20px">arrow_back</span>
+          Volver
+        </button>
+
+        <!-- ── HISTORIAL ── -->
+        @if (passengerSection() === 'history') {
+          <div class="flex flex-col gap-3">
+            <h2 class="text-white font-black text-lg">Historial de solicitudes</h2>
+            @if (passengerHistoryLoading()) {
+              <div class="flex justify-center py-8">
+                <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:32px">autorenew</span>
+              </div>
+            } @else if (passengerHistory().length === 0) {
+              <div class="flex flex-col items-center gap-3 py-10">
+                <span class="material-symbols-outlined text-slate-600" style="font-size:48px">history</span>
+                <p class="text-slate-400 text-sm">No tienes viajes registrados aún</p>
+              </div>
+            } @else {
+              <div class="flex flex-col gap-2">
+                @for (trip of passengerHistory(); track trip.id) {
+                  <div class="rounded-2xl p-4 flex flex-col gap-2"
+                    style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
+                        <p class="text-white font-bold text-sm truncate max-w-[180px]">{{ trip.dest_name }}</p>
+                      </div>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase"
+                        [style.background]="trip.status==='completed' ? 'rgba(16,185,129,0.15)' : trip.status==='cancelled' ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)'"
+                        [style.color]="trip.status==='completed' ? '#34d399' : trip.status==='cancelled' ? '#f87171' : '#fb923c'">
+                        {{ trip.status === 'completed' ? 'Completado' : trip.status === 'cancelled' ? 'Cancelado' : 'En curso' }}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-4 text-xs text-slate-400">
+                      <span class="flex items-center gap-1">
+                        <span class="material-symbols-outlined" style="font-size:14px">straighten</span>
+                        {{ trip.distance_km }} km
+                      </span>
+                      <span class="flex items-center gap-1 text-emerald-400 font-bold">
+                        <span class="material-symbols-outlined" style="font-size:14px">payments</span>
+                        {{ formatCOP(trip.offered_price) }}
+                      </span>
+                      <span>{{ formatTripDate(trip.created_at) }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- ── NOTIFICACIONES ── -->
+        @if (passengerSection() === 'notifications') {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-white font-black text-lg">Notificaciones</h2>
+            <div class="rounded-2xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <div class="flex items-center justify-between px-4 py-4" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-orange-400" style="font-size:20px">volume_up</span>
+                  <div>
+                    <p class="text-white font-bold text-sm">Sonido</p>
+                    <p class="text-slate-400 text-xs">Alertas sonoras al recibir ofertas</p>
+                  </div>
+                </div>
+                <button (click)="togglePassengerSound()"
+                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                  style="width:44px;height:24px"
+                  [style.background]="passengerNotifSettings().sound ? '#f97316' : 'rgba(255,255,255,0.1)'">
+                  <div class="absolute top-0.5 rounded-full bg-white shadow transition-all duration-200"
+                    style="width:20px;height:20px"
+                    [style.left]="passengerNotifSettings().sound ? '22px' : '2px'"></div>
+                </button>
+              </div>
+              <div class="flex items-center justify-between px-4 py-4" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-orange-400" style="font-size:20px">vibration</span>
+                  <div>
+                    <p class="text-white font-bold text-sm">Vibración</p>
+                    <p class="text-slate-400 text-xs">Vibrar al recibir nuevas ofertas</p>
+                  </div>
+                </div>
+                <button (click)="togglePassengerVibration()"
+                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                  style="width:44px;height:24px"
+                  [style.background]="passengerNotifSettings().vibration ? '#f97316' : 'rgba(255,255,255,0.1)'">
+                  <div class="absolute top-0.5 rounded-full bg-white shadow transition-all duration-200"
+                    style="width:20px;height:20px"
+                    [style.left]="passengerNotifSettings().vibration ? '22px' : '2px'"></div>
+                </button>
+              </div>
+              <div class="flex items-center justify-between px-4 py-4">
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-orange-400" style="font-size:20px">notifications_active</span>
+                  <div>
+                    <p class="text-white font-bold text-sm">Nuevas ofertas</p>
+                    <p class="text-slate-400 text-xs">Notificar cuando un conductor responde</p>
+                  </div>
+                </div>
+                <button (click)="togglePassengerNewOffers()"
+                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                  style="width:44px;height:24px"
+                  [style.background]="passengerNotifSettings().newOffers ? '#f97316' : 'rgba(255,255,255,0.1)'">
+                  <div class="absolute top-0.5 rounded-full bg-white shadow transition-all duration-200"
+                    style="width:20px;height:20px"
+                    [style.left]="passengerNotifSettings().newOffers ? '22px' : '2px'"></div>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ── SEGURIDAD ── -->
+        @if (passengerSection() === 'security') {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-white font-black text-lg">Seguridad</h2>
+            <!-- Botón de pánico -->
+            <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-red-400" style="font-size:22px">emergency</span>
+                <div>
+                  <p class="text-white font-black text-sm">Botón de pánico</p>
+                  <p class="text-slate-400 text-xs">Llama a tu contacto de emergencia</p>
+                </div>
+              </div>
+              <button (click)="panicActivated.set(true)"
+                class="w-full py-3 rounded-xl font-black text-sm transition-all active:scale-[0.98]"
+                [style.background]="panicActivated() ? 'rgba(239,68,68,0.3)' : 'linear-gradient(135deg,#dc2626,#b91c1c)'"
+                style="color:#fff">
+                @if (panicActivated()) { Pánico activado — llamando... }
+                @else { Activar pánico }
+              </button>
+            </div>
+            <!-- Contactos de emergencia -->
+            <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <p class="text-white font-black text-sm">Contactos de emergencia</p>
+              @for (c of passengerSecurityContacts(); track c.phone) {
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <span class="material-symbols-outlined text-orange-400" style="font-size:16px">person</span>
+                    <div class="min-w-0">
+                      <p class="text-white text-xs font-bold truncate">{{ c.name }}</p>
+                      <p class="text-slate-400 text-[10px]">{{ c.phone }}</p>
+                    </div>
+                  </div>
+                  <button (click)="removePassengerContact(c.phone)"
+                    class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style="background:rgba(239,68,68,0.15)">
+                    <span class="material-symbols-outlined text-red-400" style="font-size:14px">close</span>
+                  </button>
+                </div>
+              }
+              <div class="flex flex-col gap-2">
+                <input [(ngModel)]="passengerNewContactName" placeholder="Nombre"
+                  class="w-full px-3 py-2 rounded-xl text-sm text-white outline-none"
+                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)"/>
+                <input [(ngModel)]="passengerNewContactPhone" placeholder="Teléfono" type="tel"
+                  class="w-full px-3 py-2 rounded-xl text-sm text-white outline-none"
+                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)"/>
+                <button (click)="addPassengerContact()"
+                  class="w-full py-2.5 rounded-xl text-sm font-black transition-all active:scale-[0.98]"
+                  style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
+                  Agregar contacto
+                </button>
+              </div>
+            </div>
+            <!-- Compartir ubicación -->
+            <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-orange-400" style="font-size:20px">share_location</span>
+                <div>
+                  <p class="text-white font-bold text-sm">Compartir ubicación</p>
+                  <p class="text-slate-400 text-xs">Envía tu ubicación en tiempo real a tus contactos durante el viaje</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ── CONFIGURACIÓN ── -->
+        @if (passengerSection() === 'settings') {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-white font-black text-lg">Configuración</h2>
+            <div class="rounded-2xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <div class="flex items-center justify-between px-4 py-4" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-orange-400" style="font-size:20px">phone_disabled</span>
+                  <div>
+                    <p class="text-white font-bold text-sm">Ocultar teléfono</p>
+                    <p class="text-slate-400 text-xs">Los conductores no verán tu número</p>
+                  </div>
+                </div>
+                <button (click)="togglePassengerHidePhone()"
+                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                  style="width:44px;height:24px"
+                  [style.background]="passengerSettings().hidePhone ? '#f97316' : 'rgba(255,255,255,0.1)'">
+                  <div class="absolute top-0.5 rounded-full bg-white shadow transition-all duration-200"
+                    style="width:20px;height:20px"
+                    [style.left]="passengerSettings().hidePhone ? '22px' : '2px'"></div>
+                </button>
+              </div>
+              <div class="flex items-center justify-between px-4 py-4">
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-orange-400" style="font-size:20px">language</span>
+                  <div>
+                    <p class="text-white font-bold text-sm">Idioma</p>
+                    <p class="text-slate-400 text-xs">Español (Colombia)</p>
+                  </div>
+                </div>
+                <span class="text-slate-500 text-xs font-bold">ES</span>
+              </div>
+            </div>
+            <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <p class="text-slate-400 text-xs">Versión de la app</p>
+              <p class="text-white font-bold text-sm">Anda y Gana v1.0.0</p>
+              <button class="text-slate-500 text-xs text-left hover:text-slate-300 transition-colors">Ver términos y condiciones</button>
+              <button class="text-slate-500 text-xs text-left hover:text-slate-300 transition-colors">Política de privacidad</button>
+            </div>
+            <button (click)="savePassengerSettings()"
+              [disabled]="savingPassengerSettings()"
+              class="w-full py-3 rounded-xl font-black text-sm transition-all active:scale-[0.98] disabled:opacity-40"
+              style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
+              @if (savingPassengerSettings()) { Guardando... } @else { Guardar cambios }
+            </button>
+          </div>
+        }
+
+        <!-- ── AYUDA ── -->
+        @if (passengerSection() === 'support') {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-white font-black text-lg">Ayuda y Soporte</h2>
+            <!-- Contacto rápido -->
+            <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
+              <p class="text-white font-black text-sm">Contactar soporte</p>
+              <a href="https://wa.me/573000000000" target="_blank" rel="noopener"
+                class="flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all active:scale-[0.98]"
+                style="background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.25)">
+                <span class="material-symbols-outlined text-green-400" style="font-size:20px">chat</span>
+                <span class="text-green-300 font-bold text-sm">WhatsApp 24&#x2F;7</span>
+              </a>
+              <a href="mailto:soporte@andaygana.com"
+                class="flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all active:scale-[0.98]"
+                style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)">
+                <span class="material-symbols-outlined text-orange-400" style="font-size:20px">mail</span>
+                <span class="text-slate-300 font-bold text-sm">soporte&#64;andaygana.com</span>
+              </a>
+            </div>
+            <!-- FAQ -->
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Preguntas frecuentes</p>
+            <div class="flex flex-col gap-2">
+              @for (faq of passengerFaqItems; track faq.q) {
+                <div class="rounded-xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                  <button (click)="togglePassengerFaq(faq.q)"
+                    class="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p class="text-white font-bold text-sm flex-1 pr-2">{{ faq.q }}</p>
+                    <span class="material-symbols-outlined text-orange-400 flex-shrink-0 transition-transform"
+                      style="font-size:18px"
+                      [style.transform]="openPassengerFaq() === faq.q ? 'rotate(180deg)' : 'rotate(0)'">expand_more</span>
+                  </button>
+                  @if (openPassengerFaq() === faq.q) {
+                    <div class="px-4 pb-4 text-slate-400 text-sm leading-relaxed" style="border-top:1px solid rgba(255,255,255,0.06)">
+                      <p class="pt-3">{{ faq.a }}</p>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+      </div>
+      }
+
     </div>
   }
 
@@ -2248,6 +2528,26 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
+  // ── Passenger menu sections ────────────────────────────────────
+  passengerSection         = signal<string | null>(null);
+  passengerHistory         = signal<any[]>([]);
+  passengerHistoryLoading  = signal(false);
+  passengerNotifSettings   = signal({ sound: true, vibration: true, newOffers: true });
+  passengerSettings        = signal({ hidePhone: false, language: 'es' });
+  passengerSecurityContacts = signal<{ name: string; phone: string }[]>([]);
+  passengerNewContactName  = '';
+  passengerNewContactPhone = '';
+  savingPassengerSettings  = signal(false);
+  openPassengerFaq         = signal<string | null>(null);
+
+  readonly passengerFaqItems = [
+    { q: '¿Cómo solicito un viaje?',       a: 'Toca el botón "¿A dónde vas?" en el mapa, busca tu destino y confirma el precio. Los conductores cercanos recibirán tu solicitud.' },
+    { q: '¿Cómo se calcula el precio?',    a: 'El precio se calcula según la distancia del recorrido. Tú propones el precio y los conductores deciden si aceptan.' },
+    { q: '¿Puedo cancelar un viaje?',       a: 'Sí, puedes cancelar antes de que un conductor sea asignado. Toca el botón "Cancelar solicitud" en el panel inferior.' },
+    { q: '¿Cómo pago?',                    a: 'Puedes pagar en efectivo, Nequi, Daviplata, Bancolombia o tarjeta. Selecciona tu método antes de confirmar el viaje.' },
+    { q: '¿Cómo califico al conductor?',   a: 'Al finalizar el viaje aparecerá una pantalla de calificación. Tu opinión ayuda a mantener la calidad del servicio.' },
+  ];
+
   readonly paymentMethods: {
     value: AgPaymentMethod; label: string; icon: string;
     color: string; bgSel: string; colorDark: string; bgDark: string;
@@ -2264,18 +2564,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ) as Record<AgPaymentMethod, typeof this.paymentMethods[0]>;
 
   readonly agMenuItems = [
-    { icon: 'location_city',    label: 'Ciudad',                  divider: false, section: '' },
-    { icon: 'history',          label: 'Historial de solicitudes', divider: false, section: '' },
-    { icon: 'local_shipping',   label: 'Entregas',                divider: false, section: '' },
-    { icon: 'directions_bus',   label: 'Ciudad a Ciudad',         divider: false, section: '' },
-    { icon: 'airport_shuttle',  label: 'Flete',                   divider: false, section: '' },
-    { divider: true,  section: 'Cuenta', icon: '', label: '' },
-    { icon: 'notifications',    label: 'Notificaciones',          divider: false, section: '' },
-    { icon: 'shield',           label: 'Seguridad',               divider: false, section: '' },
-    { icon: 'settings',         label: 'Configuración',           divider: false, section: '' },
-    { icon: 'help',             label: 'Ayuda',                   divider: false, section: '' },
-    { divider: true,  section: '', icon: '', label: '' },
-    { icon: 'drive_eta',        label: 'Conductor',               divider: false, section: '' },
+    { icon: 'location_city',    label: 'Ciudad',                   action: 'service:viaje',    divider: false, section: '' },
+    { icon: 'history',          label: 'Historial de solicitudes', action: 'history',           divider: false, section: '' },
+    { icon: 'local_shipping',   label: 'Entregas',                 action: 'service:domicilio', divider: false, section: '' },
+    { icon: 'directions_bus',   label: 'Ciudad a Ciudad',          action: 'service:ciudad',    divider: false, section: '' },
+    { icon: 'airport_shuttle',  label: 'Flete',                    action: 'service:fletes',    divider: false, section: '' },
+    { divider: true,  section: 'Cuenta', icon: '', label: '', action: '' },
+    { icon: 'notifications',    label: 'Notificaciones',           action: 'notifications',     divider: false, section: '' },
+    { icon: 'shield',           label: 'Seguridad',                action: 'security',          divider: false, section: '' },
+    { icon: 'settings',         label: 'Configuración',            action: 'settings',          divider: false, section: '' },
+    { icon: 'help',             label: 'Ayuda',                    action: 'support',           divider: false, section: '' },
+    { divider: true,  section: '', icon: '', label: '', action: '' },
+    { icon: 'drive_eta',        label: 'Conductor',                action: 'driver',            divider: false, section: '' },
   ];
 
   readonly rechargePresets = [10000, 20000, 50000, 100000, 200000, 500000];
@@ -3671,6 +3971,86 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       script.onerror = () => reject(new Error('No se pudo cargar el script de ePayco'));
       document.head.appendChild(script);
     });
+  }
+
+  // ── Passenger menu methods ─────────────────────────────────────
+  openPassengerSection(action: string) {
+    this.agMenuOpen.set(false);
+    if (action.startsWith('service:')) {
+      const svc = action.replace('service:', '') as 'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes';
+      this.tripService.set(svc);
+      return;
+    }
+    if (action === 'driver') {
+      this.screen.set('driver-home');
+      return;
+    }
+    this.passengerSection.set(action);
+    if (action === 'history') this.loadPassengerHistory();
+  }
+
+  async loadPassengerHistory() {
+    const profile = this.agProfile();
+    if (!profile) return;
+    this.passengerHistoryLoading.set(true);
+    try {
+      const history = await this.agService.getPassengerTripHistory(profile.id);
+      this.passengerHistory.set(history);
+    } catch { /* silent */ } finally {
+      this.passengerHistoryLoading.set(false);
+    }
+  }
+
+  addPassengerContact() {
+    if (!this.passengerNewContactName.trim() || !this.passengerNewContactPhone.trim()) return;
+    this.passengerSecurityContacts.update(list => [
+      ...list,
+      { name: this.passengerNewContactName.trim(), phone: this.passengerNewContactPhone.trim() },
+    ]);
+    this.passengerNewContactName = '';
+    this.passengerNewContactPhone = '';
+  }
+
+  removePassengerContact(phone: string) {
+    this.passengerSecurityContacts.update(list => list.filter(c => c.phone !== phone));
+  }
+
+  async savePassengerSettings() {
+    this.savingPassengerSettings.set(true);
+    await new Promise(r => setTimeout(r, 400));
+    this.savingPassengerSettings.set(false);
+  }
+
+  togglePassengerFaq(q: string) {
+    this.openPassengerFaq.set(this.openPassengerFaq() === q ? null : q);
+  }
+
+  togglePassengerSound() {
+    const s = this.passengerNotifSettings();
+    this.passengerNotifSettings.set({ ...s, sound: !s.sound });
+  }
+
+  togglePassengerVibration() {
+    const s = this.passengerNotifSettings();
+    this.passengerNotifSettings.set({ ...s, vibration: !s.vibration });
+  }
+
+  togglePassengerNewOffers() {
+    const s = this.passengerNotifSettings();
+    this.passengerNotifSettings.set({ ...s, newOffers: !s.newOffers });
+  }
+
+  togglePassengerHidePhone() {
+    const s = this.passengerSettings();
+    this.passengerSettings.set({ ...s, hidePhone: !s.hidePhone });
+  }
+
+  formatTripDate(isoString: string): string {
+    try {
+      return new Date(isoString).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    } catch {
+      return '';
+    }
   }
 
   private async _openEpaycoWalletCheckout(params: Record<string, unknown>): Promise<void> {
