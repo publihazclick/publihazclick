@@ -121,4 +121,8 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
   isSettingsRoute(): boolean {
     return this.router.url.includes('/settings');
   }
+
+  isAndaGanaRoute(): boolean {
+    return this.router.url.includes('/anda-gana');
+  }
 }
