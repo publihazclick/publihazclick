@@ -1540,91 +1540,88 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._vehicleStates = [];
   }
 
+  // ── Íconos estilo inDrive — vista superior (top-down) ────────────────────
+
   private _carElement(heading: number, color: string): HTMLElement {
-    const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:18px;height:30px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 8px rgba(0,0,0,0.45)) drop-shadow(0 1px 3px rgba(0,0,0,0.3));`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 56" width="18" height="30">
-      <defs>
-        <linearGradient id="cg${uid}" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stop-color="rgba(0,0,0,0.20)"/>
-          <stop offset="45%"  stop-color="rgba(255,255,255,0.12)"/>
-          <stop offset="100%" stop-color="rgba(0,0,0,0.18)"/>
-        </linearGradient>
-      </defs>
-      <!-- shadow -->
-      <ellipse cx="17" cy="54" rx="11" ry="2" fill="rgba(0,0,0,0.25)"/>
-      <!-- body -->
-      <path d="M5,12 C5,5 10,2 17,2 C24,2 29,5 29,12 L29,46 C29,52 24,54 17,54 C10,54 5,52 5,46 Z" fill="${color}"/>
-      <path d="M5,12 C5,5 10,2 17,2 C24,2 29,5 29,12 L29,46 C29,52 24,54 17,54 C10,54 5,52 5,46 Z" fill="url(#cg${uid})"/>
-      <!-- windshield -->
-      <path d="M9,13 C9,8 12,6 17,6 C22,6 25,8 25,13 L24,22 C21,24 13,24 10,22 Z" fill="rgba(186,230,253,0.78)"/>
-      <path d="M11,7.5 C13,6.5 16,6.5 18,7.5 L17.5,17 C15.5,16.5 12.5,16 11,14 Z" fill="rgba(255,255,255,0.28)"/>
-      <!-- rear window -->
-      <path d="M10,36 C13,38.5 21,38.5 24,36 L24,43 C21,44.5 13,44.5 10,43 Z" fill="rgba(186,230,253,0.55)"/>
-      <!-- headlights -->
-      <circle cx="9"  cy="7"  r="5" fill="#FEF9C3"/>
-      <circle cx="9"  cy="7"  r="2.8" fill="#FDE047"/>
-      <circle cx="25" cy="7"  r="5" fill="#FEF9C3"/>
-      <circle cx="25" cy="7"  r="2.8" fill="#FDE047"/>
-      <!-- direction chevron -->
-      <path d="M17,1 L14,5 L17,4 L20,5 Z" fill="rgba(255,255,255,0.75)"/>
-      <!-- taillights -->
-      <circle cx="9"  cy="50" r="4.5" fill="#EF4444"/>
-      <circle cx="9"  cy="50" r="2.4" fill="#FCA5A5"/>
-      <circle cx="25" cy="50" r="4.5" fill="#EF4444"/>
-      <circle cx="25" cy="50" r="2.4" fill="#FCA5A5"/>
+    // Tamaño mayor para visibilidad clara en el mapa
+    wrap.style.cssText = `width:28px;height:46px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 12px rgba(0,0,0,0.50)) drop-shadow(0 1px 4px rgba(0,0,0,0.35));will-change:transform;`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 46" width="28" height="46">
+      <!-- Sombra exterior -->
+      <ellipse cx="14" cy="44.5" rx="10" ry="2" fill="rgba(0,0,0,0.22)"/>
+      <!-- Borde blanco (contraste sobre mapa claro) -->
+      <path d="M5,9 C5,4 8,2 14,2 C20,2 23,4 23,9 L23,37 C23,42 20,44 14,44 C8,44 5,42 5,37 Z"
+            fill="white" stroke="white" stroke-width="1"/>
+      <!-- Carrocería principal -->
+      <path d="M6,10 C6,5 9,3 14,3 C19,3 22,5 22,10 L22,36 C22,41 19,43 14,43 C9,43 6,41 6,36 Z"
+            fill="${color}"/>
+      <!-- Techo (panel central más claro) -->
+      <path d="M9,18 C9,16 11,15 14,15 C17,15 19,16 19,18 L19,31 C19,33 17,34 14,34 C11,34 9,33 9,31 Z"
+            fill="rgba(255,255,255,0.18)"/>
+      <!-- Parabrisas delantero -->
+      <path d="M8,10 C8,7 10,6 14,6 C18,6 20,7 20,10 L19,16 C17,18 11,18 9,16 Z"
+            fill="rgba(196,232,252,0.88)"/>
+      <!-- Reflejo parabrisas -->
+      <path d="M9,10 C10,8 11,7 14,7 L13.5,14 C12,13.5 10.5,12.5 9,11 Z"
+            fill="rgba(255,255,255,0.35)"/>
+      <!-- Luneta trasera -->
+      <path d="M9,32 C11,34 17,34 19,32 L19,37 C17,39 11,39 9,37 Z"
+            fill="rgba(185,220,245,0.70)"/>
+      <!-- Espejos retrovisores -->
+      <rect x="2.5" y="20" width="3.5" height="5.5" rx="1.8" fill="${color}" stroke="rgba(255,255,255,0.75)" stroke-width="0.9"/>
+      <rect x="22" y="20" width="3.5" height="5.5" rx="1.8" fill="${color}" stroke="rgba(255,255,255,0.75)" stroke-width="0.9"/>
+      <!-- Faros delanteros (amarillo-blanco) -->
+      <path d="M6.5,7 L9,6 L9,11 L7,10 Z" fill="#FFFDE7"/>
+      <path d="M21.5,7 L19,6 L19,11 L21,10 Z" fill="#FFFDE7"/>
+      <ellipse cx="7.5" cy="8.5" rx="1.5" ry="1.2" fill="#FDD835"/>
+      <ellipse cx="20.5" cy="8.5" rx="1.5" ry="1.2" fill="#FDD835"/>
+      <!-- Luces traseras (rojo) -->
+      <path d="M6.5,40 L9,41 L9,36 L7,37 Z" fill="#E53935"/>
+      <path d="M21.5,40 L19,41 L19,36 L21,37 Z" fill="#E53935"/>
+      <ellipse cx="7.5" cy="39" rx="1.5" ry="1.1" fill="#FF5252"/>
+      <ellipse cx="20.5" cy="39" rx="1.5" ry="1.1" fill="#FF5252"/>
+      <!-- Flecha de dirección (frente del vehículo) -->
+      <path d="M14,1 L11,4.5 L14,3.5 L17,4.5 Z" fill="rgba(255,255,255,0.95)"/>
     </svg>`;
     return wrap;
   }
 
   private _motoElement(heading: number, color: string): HTMLElement {
-    const uid = Math.random().toString(36).slice(2, 6);
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:11px;height:26px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 8px rgba(0,0,0,0.45)) drop-shadow(0 1px 3px rgba(0,0,0,0.3));`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 56" width="11" height="26">
-      <defs>
-        <linearGradient id="mg${uid}" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stop-color="rgba(0,0,0,0.22)"/>
-          <stop offset="50%"  stop-color="rgba(255,255,255,0.15)"/>
-          <stop offset="100%" stop-color="rgba(0,0,0,0.20)"/>
-        </linearGradient>
-      </defs>
-      <!-- shadow -->
-      <ellipse cx="11" cy="54" rx="8" ry="2" fill="rgba(0,0,0,0.25)"/>
-      <!-- rear wheel -->
-      <circle cx="11" cy="47" r="7" fill="#0f172a"/>
-      <circle cx="11" cy="47" r="4.5" fill="#1e293b"/>
-      <circle cx="11" cy="47" r="1.8" fill="#475569"/>
-      <line x1="11" y1="41" x2="11" y2="53" stroke="#374151" stroke-width="0.7"/>
-      <line x1="5"  y1="47" x2="17" y2="47" stroke="#374151" stroke-width="0.7"/>
-      <!-- body -->
-      <path d="M8,18 C8,14 9,12 11,12 C13,12 14,14 14,18 L14,40 C14,43 13,44 11,44 C9,44 8,43 8,40 Z" fill="${color}"/>
-      <path d="M8,18 C8,14 9,12 11,12 C13,12 14,14 14,18 L14,40 C14,43 13,44 11,44 C9,44 8,43 8,40 Z" fill="url(#mg${uid})"/>
-      <!-- tank highlight -->
-      <path d="M8.5,18 C8.5,15 9.5,13 11,13 L10.5,22 C9.5,21.5 8.5,20.5 8.5,19 Z" fill="rgba(255,255,255,0.22)"/>
-      <!-- seat -->
-      <rect x="8.5" y="26" width="5" height="12" rx="2" fill="rgba(0,0,0,0.28)"/>
-      <!-- handlebars -->
-      <rect x="2" y="20" width="18" height="2.5" rx="1.2" fill="#94a3b8"/>
-      <rect x="2"   y="20" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
-      <rect x="16.5" y="20" width="3.5" height="2.5" rx="1.2" fill="#64748b"/>
-      <!-- fork -->
-      <rect x="9.5" y="13" width="3" height="9" rx="1.5" fill="${color}" opacity="0.65"/>
-      <!-- front wheel -->
-      <circle cx="11" cy="9"  r="7" fill="#0f172a"/>
-      <circle cx="11" cy="9"  r="4.5" fill="#1e293b"/>
-      <circle cx="11" cy="9"  r="1.8" fill="#475569"/>
-      <line x1="11" y1="3"  x2="11" y2="15" stroke="#374151" stroke-width="0.7"/>
-      <line x1="5"  y1="9"  x2="17" y2="9"  stroke="#374151" stroke-width="0.7"/>
-      <!-- headlight -->
-      <circle cx="11" cy="4"  r="3.2" fill="#FEF9C3"/>
-      <circle cx="11" cy="4"  r="1.7" fill="#FDE047"/>
-      <!-- direction chevron -->
-      <path d="M11,1 L9,4 L11,3.3 L13,4 Z" fill="rgba(255,255,255,0.75)"/>
-      <!-- taillight -->
-      <circle cx="11" cy="51" r="2.5" fill="#EF4444"/>
-      <circle cx="11" cy="51" r="1.2" fill="#FCA5A5"/>
+    // Más estrecha y alargada que el carro — claramente diferenciable
+    wrap.style.cssText = `width:14px;height:36px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 10px rgba(0,0,0,0.50)) drop-shadow(0 1px 3px rgba(0,0,0,0.35));will-change:transform;`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 36" width="14" height="36">
+      <!-- Sombra exterior -->
+      <ellipse cx="7" cy="35" rx="5" ry="1.5" fill="rgba(0,0,0,0.22)"/>
+      <!-- Rueda trasera (oscura, pequeña) -->
+      <ellipse cx="7" cy="30.5" rx="3.5" ry="3.5" fill="#1e293b"/>
+      <ellipse cx="7" cy="30.5" rx="2" ry="2" fill="#334155"/>
+      <ellipse cx="7" cy="30.5" rx="0.8" ry="0.8" fill="#64748b"/>
+      <!-- Borde blanco carrocería -->
+      <path d="M4,8 C4,5 5,3.5 7,3.5 C9,3.5 10,5 10,8 L10,26 C10,28.5 9,30 7,30 C5,30 4,28.5 4,26 Z"
+            fill="white"/>
+      <!-- Carrocería principal -->
+      <path d="M5,9 C5,6 6,4.5 7,4.5 C8,4.5 9,6 9,9 L9,25 C9,27.5 8,29 7,29 C6,29 5,27.5 5,25 Z"
+            fill="${color}"/>
+      <!-- Piloto (vista desde arriba — casco ovalado) -->
+      <ellipse cx="7" cy="18" rx="2.2" ry="2.8" fill="rgba(15,23,42,0.80)"/>
+      <ellipse cx="7" cy="17.2" rx="1.2" ry="0.9" fill="rgba(255,255,255,0.22)"/>
+      <!-- Manillar -->
+      <rect x="1.5" y="11.5" width="11" height="1.8" rx="0.9" fill="#94a3b8"/>
+      <rect x="1.5" y="11.5" width="2.5" height="1.8" rx="0.9" fill="#64748b"/>
+      <rect x="10" y="11.5" width="2.5" height="1.8" rx="0.9" fill="#64748b"/>
+      <!-- Rueda delantera (oscura) -->
+      <ellipse cx="7" cy="5.5" rx="3.5" ry="3.5" fill="#1e293b"/>
+      <ellipse cx="7" cy="5.5" rx="2" ry="2" fill="#334155"/>
+      <ellipse cx="7" cy="5.5" rx="0.8" ry="0.8" fill="#64748b"/>
+      <!-- Faro delantero -->
+      <ellipse cx="7" cy="2.8" rx="2" ry="1.3" fill="#FFFDE7"/>
+      <ellipse cx="7" cy="2.8" rx="1.1" ry="0.7" fill="#FDD835"/>
+      <!-- Flecha de dirección -->
+      <path d="M7,1 L5.2,3.5 L7,2.8 L8.8,3.5 Z" fill="rgba(255,255,255,0.95)"/>
+      <!-- Luz trasera -->
+      <ellipse cx="7" cy="33" rx="1.8" ry="1.3" fill="#E53935"/>
+      <ellipse cx="7" cy="33" rx="1" ry="0.7" fill="#FF5252"/>
     </svg>`;
     return wrap;
   }
