@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -57,7 +57,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   imports: [CommonModule, FormsModule],
   templateUrl: './advertiser-banner.component.html',
 })
-export class AdvertiserBannerComponent implements OnInit {
+export class AdvertiserBannerComponent implements OnInit, OnDestroy {
   private readonly profileService = inject(ProfileService);
   private readonly storageService = inject(StorageService);
   private readonly platformId = inject(PLATFORM_ID);
@@ -73,6 +73,8 @@ export class AdvertiserBannerComponent implements OnInit {
   readonly myBanner = signal<MyBanner | null>(null);
   readonly successMsg = signal<string | null>(null);
   readonly errorMsg = signal<string | null>(null);
+
+  private approvalTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly form = signal<BannerForm>({
     name: '',
@@ -129,7 +131,7 @@ export class AdvertiserBannerComponent implements OnInit {
             name: banner.name,
             description: banner.description,
             image_url: banner.image_url,
-            status: 'pending',
+            status: 'active',
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
@@ -145,7 +147,7 @@ export class AdvertiserBannerComponent implements OnInit {
             url: banner.url,
             position: 'header',
             advertiser_id: user.id,
-            status: 'pending',
+            status: 'active',
             location: 'app',
             impressions_limit: 10000,
             clicks_limit: 1000,
@@ -158,7 +160,7 @@ export class AdvertiserBannerComponent implements OnInit {
       await this.loadMyBanner();
       this.showForm.set(false);
       this.cloningFrom.set(null);
-      this.showSuccess('Banner creado y enviado a revisión.');
+      this.scheduleAutoApproval();
 
       if (isPlatformBrowser(this.platformId)) {
         setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
@@ -269,13 +271,12 @@ export class AdvertiserBannerComponent implements OnInit {
             image_url: f.image_url,
             url: f.url.trim(),
             position: f.position,
-            status: 'pending',
+            status: 'active',
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
 
         if (error) throw error;
-        this.showSuccess('Banner actualizado. Pendiente de revisión por el administrador.');
       } else {
         const { error } = await this.supabase
           .from('banner_ads')
@@ -286,7 +287,7 @@ export class AdvertiserBannerComponent implements OnInit {
             url: f.url.trim(),
             position: f.position,
             advertiser_id: user.id,
-            status: 'pending',
+            status: 'active',
             location: 'app',
             impressions_limit: 10000,
             clicks_limit: 1000,
@@ -294,11 +295,11 @@ export class AdvertiserBannerComponent implements OnInit {
           });
 
         if (error) throw error;
-        this.showSuccess('Banner creado y enviado a revisión. El admin lo activará pronto.');
       }
 
       await this.loadMyBanner();
       this.showForm.set(false);
+      this.scheduleAutoApproval();
     } catch {
       this.showError('Error al guardar. Intenta de nuevo.');
     }
@@ -325,8 +326,22 @@ export class AdvertiserBannerComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    if (this.approvalTimer) clearTimeout(this.approvalTimer);
+  }
+
   getStatusInfo(status: string): { label: string; color: string } {
     return STATUS_LABELS[status] ?? { label: status, color: 'text-slate-400 bg-white/5 border-white/10' };
+  }
+
+  private scheduleAutoApproval(): void {
+    if (this.approvalTimer) clearTimeout(this.approvalTimer);
+    this.successMsg.set('Pendiente de aprobación. Tu banner está siendo revisado...');
+    this.approvalTimer = setTimeout(async () => {
+      await this.loadMyBanner();
+      this.successMsg.set('¡Tu banner fue aprobado y ya está activo!');
+      setTimeout(() => this.successMsg.set(null), 6000);
+    }, 3 * 60 * 1000);
   }
 
   private showSuccess(msg: string): void {
