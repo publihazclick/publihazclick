@@ -1395,7 +1395,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.0000022 : 0.0000015,
+        speed:   isMoto ? 0.00000035 : 0.00000025,
         forward: i % 3 !== 0,
         marker,
         heading: h0,
@@ -1526,7 +1526,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         if (Math.abs(curLng - uLng) > 0.0006 || Math.abs(curLat - uLat) > 0.0006) {
           vs.marker.setLngLat([curLng, curLat]);
         }
-        (vs.marker.getElement() as HTMLElement).style.transform = `rotate(${vs.heading}deg)`;
+        // Rotar el inner div — el outer lo usa Mapbox para el translate de posición
+        const rotEl = vs.marker.getElement().firstElementChild as HTMLElement | null;
+        if (rotEl) rotEl.style.transform = `rotate(${vs.heading}deg)`;
       }
 
       this._animFrame = requestAnimationFrame(loop);
@@ -1543,8 +1545,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Íconos estilo inDrive — vista superior (top-down) ────────────────────
 
   private _carElement(heading: number, color: string): HTMLElement {
+    // outer: Mapbox controla su transform para posicionamiento en el mapa
+    const outer = document.createElement('div');
+    outer.style.cssText = 'width:28px;height:46px;';
+    // inner: nosotros controlamos la rotación del icono
     const wrap = document.createElement('div');
-    // Tamaño mayor para visibilidad clara en el mapa
     wrap.style.cssText = `width:28px;height:46px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 12px rgba(0,0,0,0.50)) drop-shadow(0 1px 4px rgba(0,0,0,0.35));will-change:transform;`;
     wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 46" width="28" height="46">
       <!-- Sombra exterior -->
@@ -1583,10 +1588,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       <!-- Flecha de dirección (frente del vehículo) -->
       <path d="M14,1 L11,4.5 L14,3.5 L17,4.5 Z" fill="rgba(255,255,255,0.95)"/>
     </svg>`;
-    return wrap;
+    outer.appendChild(wrap);
+    return outer;
   }
 
   private _motoElement(heading: number, color: string): HTMLElement {
+    const outer = document.createElement('div');
+    outer.style.cssText = 'width:14px;height:36px;';
     const wrap = document.createElement('div');
     // Más estrecha y alargada que el carro — claramente diferenciable
     wrap.style.cssText = `width:14px;height:36px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 10px rgba(0,0,0,0.50)) drop-shadow(0 1px 3px rgba(0,0,0,0.35));will-change:transform;`;
@@ -1623,7 +1631,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       <ellipse cx="7" cy="33" rx="1.8" ry="1.3" fill="#E53935"/>
       <ellipse cx="7" cy="33" rx="1" ry="0.7" fill="#FF5252"/>
     </svg>`;
-    return wrap;
+    outer.appendChild(wrap);
+    return outer;
   }
 
   private _destroyMap() {
