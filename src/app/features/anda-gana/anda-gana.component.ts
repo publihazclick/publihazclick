@@ -700,12 +700,102 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <!-- ═══════════ CONDUCTOR DASHBOARD ═══════════ -->
   @if (screen() === 'driver-home') {
     <div class="w-full max-w-lg flex flex-col gap-5">
-      <div class="flex flex-col items-center gap-3 text-center pt-4 pb-2">
+
+      <!-- Header conductor -->
+      <div class="flex items-center justify-between px-1 pt-2">
+        <div>
+          <h1 class="text-white font-black text-lg leading-tight">¡Hola, {{ firstName() }}!</h1>
+          <p class="text-slate-500 text-xs">Modo conductor</p>
+        </div>
+        <button (click)="driverMenuOpen.set(true)"
+          class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 px-2 py-1.5 rounded-xl"
+          style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.2)">
+          <div class="flex flex-col items-center gap-1">
+            <span class="block rounded-full bg-cyan-400" style="width:18px;height:2px"></span>
+            <span class="block rounded-full bg-cyan-400" style="width:18px;height:2px"></span>
+            <span class="block rounded-full bg-cyan-400" style="width:14px;height:2px"></span>
+          </div>
+          <span class="text-cyan-400 font-bold" style="font-size:9px;letter-spacing:0.08em">MENÚ</span>
+        </button>
+      </div>
+
+      <!-- Drawer menú conductor -->
+      @if (driverMenuOpen()) {
+        <div (click)="driverMenuOpen.set(false)"
+          class="fixed inset-0 z-50 transition-opacity"
+          style="background:rgba(0,0,0,0.55);backdrop-filter:blur(2px)"></div>
+
+        <div class="fixed top-0 right-0 bottom-0 z-50 flex flex-col"
+          style="width:285px;background:#0b1220;border-left:1px solid rgba(8,145,178,0.15);box-shadow:-8px 0 32px rgba(0,0,0,0.6)">
+
+          <!-- Cabecera -->
+          <div class="flex items-center justify-between px-5 pt-10 pb-5"
+            style="border-bottom:1px solid rgba(255,255,255,0.07)">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                <span class="material-symbols-outlined text-white" style="font-size:18px">directions_car</span>
+              </div>
+              <div>
+                <p class="text-white font-black text-sm">Conductor</p>
+                <p class="text-slate-400 text-xs font-medium">{{ agProfile()?.full_name }}</p>
+              </div>
+            </div>
+            <button (click)="driverMenuOpen.set(false)"
+              class="w-8 h-8 rounded-lg flex items-center justify-center active:scale-90"
+              style="background:rgba(255,255,255,0.06)">
+              <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+            </button>
+          </div>
+
+          <!-- Estado en línea badge -->
+          <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 rounded-xl"
+            style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
+            <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0" style="box-shadow:0 0 6px #34d399"></div>
+            <div class="flex-1">
+              <p class="text-emerald-400 font-black text-xs">En línea</p>
+              <p class="text-slate-500 text-[10px]">Disponible para viajes</p>
+            </div>
+            <div class="w-10 h-5 rounded-full flex items-center px-0.5 cursor-pointer"
+              style="background:linear-gradient(135deg,#10b981,#059669)">
+              <div class="w-4 h-4 rounded-full bg-white ml-auto"></div>
+            </div>
+          </div>
+
+          <!-- Opciones -->
+          <nav class="flex-1 overflow-y-auto py-3 px-3">
+            @for (item of driverMenuItems; track item.label) {
+              @if (item.divider) {
+                <div class="my-2" style="border-top:1px solid rgba(255,255,255,0.06)"></div>
+                @if (item.section) {
+                  <p class="text-slate-600 text-xs font-bold uppercase tracking-widest px-3 pb-2 pt-1">{{ item.section }}</p>
+                }
+              } @else {
+                <button (click)="driverMenuOpen.set(false)"
+                  class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all active:scale-[0.98] mb-0.5"
+                  [style.color]="item.danger ? '#f87171' : '#cbd5e1'"
+                  onmouseover="this.style.background='rgba(8,145,178,0.08)'"
+                  onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px"
+                    [style.color]="item.danger ? '#f87171' : '#22d3ee'">{{ item.icon }}</span>
+                  <span class="text-sm font-medium">{{ item.label }}</span>
+                </button>
+              }
+            }
+          </nav>
+
+          <!-- Footer -->
+          <div class="px-5 py-5" style="border-top:1px solid rgba(255,255,255,0.07)">
+            <p class="text-slate-600 text-xs text-center">Anda y Gana · Conductor v1.0</p>
+          </div>
+        </div>
+      }
+
+      <div class="flex flex-col items-center gap-3 text-center pt-2 pb-2">
         <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center">
           <span class="material-symbols-outlined text-cyan-400" style="font-size:32px">directions_car</span>
         </div>
         <div>
-          <h1 class="text-white font-black text-xl">¡Hola, {{ firstName() }}!</h1>
           <p class="text-slate-400 text-sm">Tu cuenta de conductor</p>
         </div>
         @if (driverStatus() === 'pending') {
@@ -1723,6 +1813,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { divider: true,  section: '', icon: '', label: '' },
     { icon: 'drive_eta',        label: 'Conductor',               divider: false, section: '' },
   ];
+
+  readonly driverMenuItems = [
+    { icon: 'person',              label: 'Mi Perfil',       divider: false, section: 'Principal', danger: false },
+    { icon: 'wifi_tethering',      label: 'Estado / En Línea', divider: false, section: '', danger: false },
+    { icon: 'payments',            label: 'Ganancias',       divider: false, section: '', danger: false },
+    { icon: 'directions_car',      label: 'Mis Viajes',      divider: false, section: '', danger: false },
+    { icon: 'local_offer',         label: 'Tarifas',         divider: false, section: '', danger: false },
+    { divider: true, section: 'Configuración', icon: '', label: '', danger: false },
+    { icon: 'tune',                label: 'Preferencias',    divider: false, section: '', danger: false },
+    { icon: 'shield',              label: 'Seguridad',       divider: false, section: '', danger: false },
+    { icon: 'support_agent',       label: 'Soporte',         divider: false, section: '', danger: false },
+    { icon: 'settings',            label: 'Configuración',   divider: false, section: '', danger: false },
+    { divider: true, section: '', icon: '', label: '', danger: false },
+    { icon: 'logout',              label: 'Cerrar Sesión',   divider: false, section: '', danger: true },
+  ];
+
+  driverMenuOpen = signal(false);
 
   private _map:             any    = null;
   private _userMarker:      any    = null;
