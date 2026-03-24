@@ -255,6 +255,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <!-- Contenido del panel según estado -->
             @if (!tripDest()) {
               @if (!tripOpen()) {
+                <!-- Punto de origen — siempre visible antes de elegir destino -->
+                @if (currentAddress()) {
+                  <div class="mx-4 mt-2 mb-1 flex items-center gap-2.5 px-3 py-2 rounded-xl"
+                    style="background:#fff7ed;border:1px solid #fed7aa">
+                    <div class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0 shadow shadow-orange-200"></div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-orange-400 font-bold uppercase tracking-wider" style="font-size:9px">Saldrás desde aquí</p>
+                      <p class="text-slate-700 text-xs font-semibold truncate">{{ currentAddress() }}</p>
+                    </div>
+                    <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:16px">location_on</span>
+                  </div>
+                }
                 <button (click)="openTripSearch()"
                   class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-200 transition-colors text-left">
                   <div class="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
@@ -304,15 +316,37 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
 
             } @else if (!tripSent()) {
-              <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
-                <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">place</span>
-                <div class="flex-1 min-w-0">
-                  <p class="text-slate-400 text-[10px] uppercase tracking-wider">Destino · {{ tripDistKm() }} km</p>
-                  <p class="text-slate-800 text-sm font-bold truncate">{{ tripDest()!.name }}</p>
+              <!-- ── Tarjeta de ruta: origen → destino ── -->
+              <div class="mx-4 mt-3 mb-1 rounded-2xl overflow-hidden"
+                style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+
+                <!-- Fila origen -->
+                <div class="flex items-center gap-3 px-3 py-2.5" style="border-bottom:1px solid #f1f5f9">
+                  <div class="flex flex-col items-center gap-0 flex-shrink-0" style="width:20px">
+                    <div class="w-3 h-3 rounded-full border-2 border-orange-400 bg-orange-100"></div>
+                    <div class="w-px flex-1 bg-slate-200" style="height:14px;margin:1px 0"></div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-bold uppercase tracking-wider text-orange-400" style="font-size:9px">Saldrás desde aquí</p>
+                    <p class="text-slate-700 text-xs font-semibold truncate">{{ currentAddress() || 'Tu ubicación actual' }}</p>
+                  </div>
                 </div>
-                <button (click)="cancelTrip()">
-                  <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
-                </button>
+
+                <!-- Fila destino -->
+                <div class="flex items-center gap-3 px-3 py-2.5">
+                  <div class="flex flex-col items-center flex-shrink-0" style="width:20px">
+                    <div class="w-3 h-3 rounded-full border-2 border-slate-700 bg-slate-800"></div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-bold uppercase tracking-wider text-slate-400" style="font-size:9px">Tu destino · {{ tripDistKm() }} km</p>
+                    <p class="text-slate-800 text-sm font-black truncate">{{ tripDest()!.name }}</p>
+                  </div>
+                  <button (click)="cancelTrip()"
+                    class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-all"
+                    style="background:#f1f5f9;border:1px solid #e2e8f0">
+                    <span class="material-symbols-outlined text-slate-400" style="font-size:16px">close</span>
+                  </button>
+                </div>
               </div>
 
               <div class="flex items-center justify-between px-4 py-2 border-b border-slate-200">
