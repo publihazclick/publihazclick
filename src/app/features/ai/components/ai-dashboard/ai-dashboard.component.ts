@@ -86,8 +86,7 @@ export class AiDashboardComponent {
       description: 'Asistente inteligente para responder preguntas y ayudarte con tu estrategia.',
       icon: 'chat',
       route: '/ai/chatbot',
-      available: false,
-      badge: 'Próximamente',
+      available: true,
       gradient: 'bg-gradient-to-br from-emerald-600 to-teal-600',
     },
     {
@@ -95,8 +94,15 @@ export class AiDashboardComponent {
       description: 'Genera voces profesionales para narración de tus videos y anuncios.',
       icon: 'mic',
       route: '/ai/voz',
-      available: false,
-      badge: 'Próximamente',
+      available: true,
+      gradient: 'bg-gradient-to-br from-amber-600 to-orange-600',
+    },
+    {
+      name: 'Planes y Precios',
+      description: 'Elige el plan que mejor se adapta a tus necesidades. Desde gratuito hasta Business.',
+      icon: 'sell',
+      route: '/ai/planes',
+      available: true,
       gradient: 'bg-gradient-to-br from-amber-600 to-orange-600',
     },
   ];

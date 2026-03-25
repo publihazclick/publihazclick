@@ -67,7 +67,7 @@
             <span class="material-symbols-outlined">image</span>
             @if (!sidebarCollapsed()) {
               <span>Imagen IA</span>
-              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-violet-500/20 text-violet-300 rounded uppercase border border-violet-500/20">Pronto</span>
+              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/20 text-emerald-400 rounded uppercase border border-emerald-500/20">Activo</span>
             }
           </a>
         </li>
@@ -78,7 +78,7 @@
             <span class="material-symbols-outlined">chat</span>
             @if (!sidebarCollapsed()) {
               <span>Chatbot IA</span>
-              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-violet-500/20 text-violet-300 rounded uppercase border border-violet-500/20">Pronto</span>
+              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/20 text-emerald-400 rounded uppercase border border-emerald-500/20">Activo</span>
             }
           </a>
         </li>
@@ -89,7 +89,17 @@
             <span class="material-symbols-outlined">mic</span>
             @if (!sidebarCollapsed()) {
               <span>Voz IA</span>
-              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-violet-500/20 text-violet-300 rounded uppercase border border-violet-500/20">Pronto</span>
+              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/20 text-emerald-400 rounded uppercase border border-emerald-500/20">Activo</span>
+            }
+          </a>
+        </li>
+        <li>
+          <a routerLink="/ai/planes" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
+             class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+             [class.justify-center]="sidebarCollapsed()">
+            <span class="material-symbols-outlined">sell</span>
+            @if (!sidebarCollapsed()) {
+              <span>Planes y Precios</span>
             }
           </a>
         </li>

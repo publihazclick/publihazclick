@@ -188,13 +188,22 @@ export const routes: Routes = [
       },
       {
         path: 'chatbot',
-        loadComponent: () => import('./features/ai/components/ai-placeholder/ai-placeholder.component').then(m => m.AiPlaceholderComponent),
-        data: { name: 'Chatbot IA', icon: 'chat' }
+        loadComponent: () =>
+          import('./features/ai/components/ai-chatbot/ai-chatbot.component').then(
+            m => m.AiChatbotComponent
+          )
       },
       {
         path: 'voz',
-        loadComponent: () => import('./features/ai/components/ai-placeholder/ai-placeholder.component').then(m => m.AiPlaceholderComponent),
-        data: { name: 'Voz IA', icon: 'mic' }
+        loadComponent: () =>
+          import('./features/ai/components/ai-voz/ai-voz.component').then(m => m.AiVozComponent)
+      },
+      {
+        path: 'planes',
+        loadComponent: () =>
+          import('./features/ai/components/ai-planes/ai-planes.component').then(
+            m => m.AiPlanesComponent
+          )
       }
     ]
   },
