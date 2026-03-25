@@ -126,7 +126,7 @@ export const routes: Routes = [
       },
       {
         path: 'cursos',
-        loadComponent: () => import('./features/cursos/cursos.component').then(m => m.CursosComponent)
+        loadChildren: () => import('./features/cursos/cursos.routes').then(m => m.cursosRoutes)
       }
     ]
   },
@@ -275,7 +275,7 @@ export const routes: Routes = [
       },
       {
         path: 'cursos',
-        loadComponent: () => import('./features/cursos/cursos.component').then(m => m.CursosComponent)
+        loadChildren: () => import('./features/cursos/cursos.routes').then(m => m.cursosRoutes)
       }
     ]
   },
@@ -339,7 +339,7 @@ export const routes: Routes = [
       },
       {
         path: 'cursos',
-        loadComponent: () => import('./features/cursos/cursos.component').then(m => m.CursosComponent)
+        loadChildren: () => import('./features/cursos/cursos.routes').then(m => m.cursosRoutes)
       }
     ]
   },

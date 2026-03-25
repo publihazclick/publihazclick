@@ -1,0 +1,86 @@
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white flex items-center gap-2">
+      <span class="material-symbols-outlined text-sky-400" style="font-size:22px">link</span>
+      Mis Links de Afiliado
+    </h2>
+    <p class="text-xs text-slate-500 mt-1">Gana comisiones del 20% promocionando cursos de otros creadores</p>
+  </div>
+
+  <!-- Info banner -->
+  <div class="flex items-start gap-3 p-4 bg-sky-500/10 border border-sky-500/20 rounded-2xl">
+    <span class="material-symbols-outlined text-sky-400 flex-shrink-0" style="font-size:20px">info</span>
+    <div class="text-xs text-sky-300/80 leading-relaxed">
+      Para generar tu link de afiliado para un curso, ve a la página del curso en Explorar y regístrate como afiliado.
+      Cada venta que traigas con tu link te genera el <strong class="text-sky-300">20% de comisión</strong>.
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="space-y-3">
+      @for (i of [1,2,3]; track i) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl p-4 animate-pulse h-24"></div>
+      }
+    </div>
+  } @else if (affiliates().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
+      <span class="material-symbols-outlined text-slate-600" style="font-size:56px">link_off</span>
+      <div>
+        <p class="text-white font-bold">Aún no eres afiliado de ningún curso</p>
+        <p class="text-slate-500 text-sm mt-1">Explora el catálogo y únete como afiliado a los cursos que quieras promocionar</p>
+      </div>
+    </div>
+  } @else {
+    <div class="space-y-3">
+      @for (aff of affiliates(); track aff.id) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl p-4 space-y-3">
+          <!-- Course info -->
+          <div class="flex items-start gap-3">
+            @if (aff.course?.thumbnail_url) {
+              <img [src]="aff.course!.thumbnail_url!" class="w-12 h-12 rounded-xl object-cover flex-shrink-0">
+            } @else {
+              <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-sky-400" style="font-size:20px">school</span>
+              </div>
+            }
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-white leading-tight truncate">{{ aff.course?.title ?? 'Curso' }}</p>
+              <p class="text-xs text-slate-500 mt-0.5">{{ formatCOP(aff.course?.price_cop ?? 0) }} · Comisión 20%</p>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white/3 rounded-xl p-3 text-center">
+              <p class="text-lg font-black text-white">{{ aff.total_sales }}</p>
+              <p class="text-[10px] text-slate-500">Ventas</p>
+            </div>
+            <div class="bg-white/3 rounded-xl p-3 text-center">
+              <p class="text-lg font-black text-sky-400">{{ formatCOP(aff.total_earned_cop) }}</p>
+              <p class="text-[10px] text-slate-500">Ganado</p>
+            </div>
+          </div>
+
+          <!-- Affiliate link -->
+          <div class="flex items-center gap-2">
+            <div class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-400 font-mono truncate">
+              {{ getAffLink(aff) }}
+            </div>
+            <button (click)="copyLink(aff)"
+                    class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all"
+                    [class]="copied() === aff.id
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20'">
+              <span class="material-symbols-outlined" style="font-size:14px">{{ copied() === aff.id ? 'check' : 'content_copy' }}</span>
+              {{ copied() === aff.id ? 'Copiado' : 'Copiar' }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+</div>

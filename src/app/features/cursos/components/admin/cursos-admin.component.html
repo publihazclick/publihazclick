@@ -1,0 +1,190 @@
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white flex items-center gap-2">
+      <span class="material-symbols-outlined text-sky-400" style="font-size:22px">admin_panel_settings</span>
+      Admin Cursos
+    </h2>
+    <p class="text-xs text-slate-500 mt-1">Moderación y estadísticas de la plataforma de cursos</p>
+  </div>
+
+  <!-- Action message -->
+  @if (actionMsg()) {
+    <div class="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 font-bold">
+      <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
+      {{ actionMsg() }}
+    </div>
+  }
+
+  <!-- Tabs -->
+  <div class="flex gap-1">
+    @for (t of ([['pending','En revisión'],['all','Todos los cursos'],['transactions','Transacciones']] as [string,string][]); track t[0]) {
+      <button (click)="switchTab(t[0] as any)"
+              class="px-3 py-2 rounded-xl text-xs font-bold transition-all"
+              [class]="tab() === t[0]
+                ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
+                : 'text-slate-400 hover:bg-white/5 border border-transparent'">
+        {{ t[1] }}
+        @if (t[0] === 'pending' && pending().length > 0) {
+          <span class="ml-1 px-1.5 py-0.5 bg-yellow-500 text-white rounded-full text-[9px]">{{ pending().length }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="flex items-center justify-center py-16">
+      <div class="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  } @else {
+
+    <!-- PENDING TAB -->
+    @if (tab() === 'pending') {
+      @if (pending().length === 0) {
+        <div class="flex flex-col items-center justify-center py-16 text-center gap-3">
+          <span class="material-symbols-outlined text-slate-600" style="font-size:48px">check_circle</span>
+          <p class="text-white font-bold">No hay cursos pendientes de revisión</p>
+        </div>
+      } @else {
+        <div class="space-y-3">
+          @for (course of pending(); track course.id) {
+            <div class="bg-card-dark border border-yellow-500/20 rounded-2xl p-4 space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-16 h-11 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
+                  @if (course.thumbnail_url) {
+                    <img [src]="course.thumbnail_url" class="w-full h-full object-cover">
+                  } @else {
+                    <div class="w-full h-full flex items-center justify-center">
+                      <span class="material-symbols-outlined text-zinc-700" style="font-size:20px">school</span>
+                    </div>
+                  }
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black text-white">{{ course.title }}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">por {{ course.creator_username ?? '—' }} · {{ formatCOP(course.price_cop) }} · {{ course.category }}</p>
+                  @if (course.description) {
+                    <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ course.description }}</p>
+                  }
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button (click)="approve(course)"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl text-xs transition-all">
+                  <span class="material-symbols-outlined" style="font-size:14px">check</span>
+                  Aprobar
+                </button>
+                <button (click)="reject(course)"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 font-black rounded-xl text-xs transition-all">
+                  <span class="material-symbols-outlined" style="font-size:14px">close</span>
+                  Rechazar
+                </button>
+                <span class="text-[10px] text-slate-500 ml-auto">{{ formatDate(course.created_at) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ALL COURSES TAB -->
+    @if (tab() === 'all') {
+      @if (allCourses().length === 0) {
+        <div class="flex flex-col items-center justify-center py-16 text-center gap-3">
+          <span class="material-symbols-outlined text-slate-600" style="font-size:48px">school</span>
+          <p class="text-white font-bold">No hay cursos en la plataforma</p>
+        </div>
+      } @else {
+        <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-white/5 text-slate-500">
+                  <th class="text-left px-5 py-3 font-bold">Curso</th>
+                  <th class="text-left px-5 py-3 font-bold">Creador</th>
+                  <th class="text-right px-5 py-3 font-bold">Precio</th>
+                  <th class="text-right px-5 py-3 font-bold">Ventas</th>
+                  <th class="text-center px-5 py-3 font-bold">Estado</th>
+                  <th class="text-left px-5 py-3 font-bold">Fecha</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                @for (c of allCourses(); track c.id) {
+                  <tr class="hover:bg-white/2">
+                    <td class="px-5 py-3 font-bold text-white max-w-[180px] truncate">{{ c.title }}</td>
+                    <td class="px-5 py-3 text-slate-400">{{ c.creator_username ?? '—' }}</td>
+                    <td class="px-5 py-3 text-right text-slate-400">{{ formatCOP(c.price_cop) }}</td>
+                    <td class="px-5 py-3 text-right text-sky-400 font-bold">{{ c.total_sales }}</td>
+                    <td class="px-5 py-3 text-center">
+                      <span class="px-2 py-0.5 rounded-full border font-bold text-[10px]"
+                            [class]="c.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                   : c.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                   : c.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                   : 'bg-slate-500/10 text-slate-400 border-slate-500/20'">
+                        {{ c.status }}
+                      </span>
+                    </td>
+                    <td class="px-5 py-3 text-slate-500">{{ formatDate(c.created_at) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    }
+
+    <!-- TRANSACTIONS TAB -->
+    @if (tab() === 'transactions') {
+      @if (transactions().length === 0) {
+        <div class="flex flex-col items-center justify-center py-16 text-center gap-3">
+          <span class="material-symbols-outlined text-slate-600" style="font-size:48px">receipt_long</span>
+          <p class="text-white font-bold">No hay transacciones aún</p>
+        </div>
+      } @else {
+        <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-white/5 text-slate-500">
+                  <th class="text-left px-5 py-3 font-bold">Fecha</th>
+                  <th class="text-left px-5 py-3 font-bold">Curso</th>
+                  <th class="text-left px-5 py-3 font-bold">Comprador</th>
+                  <th class="text-right px-5 py-3 font-bold">Monto</th>
+                  <th class="text-right px-5 py-3 font-bold">Plataforma</th>
+                  <th class="text-right px-5 py-3 font-bold">Creador</th>
+                  <th class="text-right px-5 py-3 font-bold">Afiliado</th>
+                  <th class="text-center px-5 py-3 font-bold">Estado</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                @for (tx of transactions(); track tx.id) {
+                  <tr class="hover:bg-white/2">
+                    <td class="px-5 py-3 text-slate-500">{{ formatDate(tx.created_at) }}</td>
+                    <td class="px-5 py-3 text-white font-bold max-w-[140px] truncate">{{ tx.course?.title ?? '—' }}</td>
+                    <td class="px-5 py-3 text-slate-400">{{ tx.buyer_username ?? '—' }}</td>
+                    <td class="px-5 py-3 text-right text-white font-bold">{{ formatCOP(tx.amount_cop) }}</td>
+                    <td class="px-5 py-3 text-right text-sky-400">{{ formatCOP(tx.platform_cut) }}</td>
+                    <td class="px-5 py-3 text-right text-emerald-400">{{ formatCOP(tx.creator_cut) }}</td>
+                    <td class="px-5 py-3 text-right text-purple-400">{{ formatCOP(tx.affiliate_cut) }}</td>
+                    <td class="px-5 py-3 text-center">
+                      @if (tx.status === 'completed') {
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">Completado</span>
+                      } @else if (tx.status === 'pending') {
+                        <span class="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-bold">Pendiente</span>
+                      } @else {
+                        <span class="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-bold">Reembolsado</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    }
+
+  }
+
+</div>

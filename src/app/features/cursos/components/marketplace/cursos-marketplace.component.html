@@ -1,0 +1,115 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-black text-white flex items-center gap-2">
+        <span class="material-symbols-outlined text-sky-400" style="font-size:22px">school</span>
+        Explorar Cursos
+      </h2>
+      <p class="text-xs text-slate-500 mt-1">{{ courses().length }} cursos disponibles</p>
+    </div>
+    <a routerLink="../vender"
+       class="flex items-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
+      <span class="material-symbols-outlined" style="font-size:16px">add</span>
+      Publicar mi curso
+    </a>
+  </div>
+
+  <!-- Filtros -->
+  <div class="flex flex-wrap gap-3">
+    <div class="relative flex-1 min-w-[180px]">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" style="font-size:16px">search</span>
+      <input type="text" placeholder="Buscar cursos..."
+             [value]="search()"
+             (input)="onSearch($any($event.target).value)"
+             class="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+    </div>
+    <select [value]="category()" (change)="onCategory($any($event.target).value)"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-sky-500/40">
+      <option value="">Todas las categorías</option>
+      @for (cat of categories; track cat) {
+        <option [value]="cat">{{ cat }}</option>
+      }
+    </select>
+    <select [value]="level()" (change)="onLevel($any($event.target).value)"
+            class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-sky-500/40">
+      <option value="">Todos los niveles</option>
+      @for (l of levels; track l) {
+        <option [value]="l">{{ levelLabels[l] }}</option>
+      }
+    </select>
+    @if (search() || category() || level()) {
+      <button (click)="clearFilters()"
+              class="px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs text-slate-400 transition-all">
+        Limpiar
+      </button>
+    }
+  </div>
+
+  <!-- Grid -->
+  @if (loading()) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden animate-pulse">
+          <div class="h-44 bg-white/5"></div>
+          <div class="p-4 space-y-2">
+            <div class="h-4 bg-white/5 rounded w-3/4"></div>
+            <div class="h-3 bg-white/5 rounded w-1/2"></div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (courses().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
+      <span class="material-symbols-outlined text-slate-600" style="font-size:56px">school</span>
+      <div>
+        <p class="text-white font-bold">No hay cursos disponibles</p>
+        <p class="text-slate-500 text-sm mt-1">Sé el primero en publicar un curso</p>
+      </div>
+      <a routerLink="../vender"
+         class="px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
+        Publicar Curso
+      </a>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      @for (course of courses(); track course.id) {
+        <a [routerLink]="['../ver', course.slug]"
+           class="bg-card-dark border border-white/5 hover:border-sky-500/20 rounded-2xl overflow-hidden transition-all hover:scale-[1.01] group block">
+          <!-- Thumbnail -->
+          <div class="relative h-44 bg-zinc-900 overflow-hidden">
+            @if (course.thumbnail_url) {
+              <img [src]="course.thumbnail_url" [alt]="course.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+            } @else {
+              <div class="w-full h-full flex items-center justify-center">
+                <span class="material-symbols-outlined text-zinc-700" style="font-size:56px">school</span>
+              </div>
+            }
+            <div class="absolute top-2 left-2">
+              <span class="text-[10px] font-black px-2 py-1 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                {{ course.category }}
+              </span>
+            </div>
+          </div>
+          <!-- Info -->
+          <div class="p-4 space-y-3">
+            <h3 class="font-black text-white text-sm leading-tight line-clamp-2">{{ course.title }}</h3>
+            <p class="text-xs text-slate-500 truncate">por {{ course.creator_username ?? 'Creador' }}</p>
+            <div class="flex items-center justify-between">
+              <p class="text-lg font-black text-sky-400">{{ formatCOP(course.price_cop) }}</p>
+              <div class="flex items-center gap-1 text-[10px] text-slate-500">
+                <span class="material-symbols-outlined" style="font-size:12px">group</span>
+                {{ course.total_sales }} ventas
+              </div>
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400 font-bold">
+                {{ levelLabels[course.level] }}
+              </span>
+            </div>
+          </div>
+        </a>
+      }
+    </div>
+  }
+</div>

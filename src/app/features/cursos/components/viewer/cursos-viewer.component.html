@@ -1,0 +1,271 @@
+<!-- Loading -->
+@if (loading()) {
+  <div class="space-y-6 animate-pulse">
+    <div class="h-64 bg-white/5 rounded-2xl"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="h-8 bg-white/5 rounded w-3/4"></div>
+        <div class="h-4 bg-white/5 rounded w-1/2"></div>
+        <div class="h-32 bg-white/5 rounded"></div>
+      </div>
+      <div class="h-64 bg-white/5 rounded-2xl"></div>
+    </div>
+  </div>
+}
+
+<!-- Not found -->
+@if (!loading() && !course()) {
+  <div class="flex flex-col items-center justify-center py-24 gap-4 text-center">
+    <span class="material-symbols-outlined text-slate-600" style="font-size:64px">school</span>
+    <p class="text-white font-bold text-lg">Curso no encontrado</p>
+    <a routerLink="../explorar" class="px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
+      Ver todos los cursos
+    </a>
+  </div>
+}
+
+<!-- Course detail -->
+@if (!loading() && course(); as c) {
+  <div class="space-y-6">
+
+    <!-- Back -->
+    <a routerLink="../explorar" class="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-sky-400 transition-colors">
+      <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>
+      Volver al catálogo
+    </a>
+
+    <!-- Success banner -->
+    @if (payStep() === 'success') {
+      <div class="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
+        <span class="material-symbols-outlined text-emerald-400" style="font-size:28px">check_circle</span>
+        <div>
+          <p class="text-emerald-300 font-black">¡Compra exitosa!</p>
+          <p class="text-emerald-400/70 text-xs mt-0.5">Ya tienes acceso al curso. Haz clic en "Comenzar" para estudiar.</p>
+        </div>
+      </div>
+    }
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Main content -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- Promo video or thumbnail -->
+        <div class="relative rounded-2xl overflow-hidden bg-zinc-900 aspect-video">
+          @if (c.promo_video_url && getYoutubeId(c.promo_video_url)) {
+            <iframe
+              [src]="getYoutubeEmbedUrl(c.promo_video_url)"
+              class="w-full h-full"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          } @else if (c.thumbnail_url) {
+            <img [src]="c.thumbnail_url" [alt]="c.title" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full flex items-center justify-center">
+              <span class="material-symbols-outlined text-zinc-700" style="font-size:80px">school</span>
+            </div>
+          }
+        </div>
+
+        <!-- Title & meta -->
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[10px] font-black px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
+              {{ c.category }}
+            </span>
+            <span class="text-[10px] px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-slate-400 font-bold">
+              {{ levelLabels[c.level] }}
+            </span>
+          </div>
+          <h1 class="text-2xl font-black text-white leading-tight">{{ c.title }}</h1>
+          <div class="flex items-center gap-4 text-xs text-slate-500">
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:14px">person</span>
+              por <span class="text-slate-300 font-bold ml-1">{{ c.creator_username ?? 'Creador' }}</span>
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:14px">group</span>
+              {{ c.total_sales }} estudiantes
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:14px">play_circle</span>
+              {{ getTotalLessons() }} lecciones
+            </span>
+          </div>
+        </div>
+
+        <!-- Description -->
+        @if (c.description) {
+          <div class="bg-white/3 border border-white/5 rounded-2xl p-5">
+            <h2 class="text-sm font-black text-white mb-3">Descripción del curso</h2>
+            <p class="text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">{{ c.description }}</p>
+          </div>
+        }
+
+        <!-- Modules & Lessons -->
+        @if (c.modules && c.modules.length > 0) {
+          <div class="space-y-3">
+            <h2 class="text-sm font-black text-white">Contenido del curso</h2>
+            @for (mod of c.modules; track mod.id) {
+              <div class="bg-white/3 border border-white/5 rounded-xl overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sky-400" style="font-size:16px">folder</span>
+                    <span class="text-sm font-black text-white">{{ mod.title }}</span>
+                  </div>
+                  <span class="text-[10px] text-slate-500">{{ mod.lessons?.length ?? 0 }} lecciones</span>
+                </div>
+                @if (mod.lessons && mod.lessons.length > 0) {
+                  <div class="divide-y divide-white/5">
+                    @for (lesson of mod.lessons; track lesson.id) {
+                      <div class="flex items-center gap-3 px-4 py-2.5">
+                        @if (lesson.is_free_preview || purchased()) {
+                          <span class="material-symbols-outlined text-sky-400 flex-shrink-0" style="font-size:16px">play_circle</span>
+                        } @else {
+                          <span class="material-symbols-outlined text-slate-600 flex-shrink-0" style="font-size:16px">lock</span>
+                        }
+                        <span class="text-xs text-slate-400 flex-1">{{ lesson.title }}</span>
+                        @if (lesson.is_free_preview && !purchased()) {
+                          <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">Vista previa</span>
+                        }
+                        @if (lesson.duration_seconds > 0) {
+                          <span class="text-[10px] text-slate-600 flex-shrink-0">
+                            {{ formatDuration(lesson.duration_seconds) }}
+                          </span>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+      </div>
+
+      <!-- Sidebar -->
+      <div class="lg:col-span-1">
+        <div class="sticky top-24 space-y-4">
+
+          <!-- Price card -->
+          <div class="bg-card-dark border border-white/10 rounded-2xl p-5 space-y-4">
+            <div class="text-3xl font-black text-sky-400">{{ formatCOP(c.price_cop) }}</div>
+
+            @if (purchased()) {
+              <!-- Already purchased -->
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-emerald-400 text-sm font-black">
+                  <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+                  Ya tienes este curso
+                </div>
+                <a [routerLink]="['../player', c.id]"
+                   class="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl text-sm transition-all">
+                  <span class="material-symbols-outlined" style="font-size:18px">play_circle</span>
+                  Comenzar / Continuar
+                </a>
+              </div>
+            } @else {
+              <!-- Buy button area -->
+              @if (payStep() === 'idle' || payStep() === 'error') {
+                <button (click)="buy()"
+                        class="w-full flex items-center justify-center gap-2 py-3.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
+                  <span class="material-symbols-outlined" style="font-size:18px">shopping_cart</span>
+                  Comprar ahora
+                </button>
+              } @else if (payStep() === 'loading') {
+                <button disabled class="w-full flex items-center justify-center gap-2 py-3.5 bg-sky-500/50 text-white font-black rounded-xl text-sm cursor-not-allowed">
+                  <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Preparando pago...
+                </button>
+              } @else if (payStep() === 'opening') {
+                <button disabled class="w-full flex items-center justify-center gap-2 py-3.5 bg-sky-500/50 text-white font-black rounded-xl text-sm cursor-not-allowed">
+                  <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Abriendo pasarela...
+                </button>
+              }
+
+              @if (payStep() === 'error' && payError()) {
+                <div class="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                  <span class="material-symbols-outlined text-red-400 flex-shrink-0 mt-0.5" style="font-size:14px">error</span>
+                  <p class="text-red-400 text-xs">{{ payError() }}</p>
+                </div>
+              }
+            }
+
+            <!-- Quick stats -->
+            <div class="border-t border-white/5 pt-3 space-y-2">
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span class="material-symbols-outlined" style="font-size:14px">schedule</span>
+                {{ getTotalLessons() }} lecciones
+              </div>
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span class="material-symbols-outlined" style="font-size:14px">wifi_off</span>
+                Acceso de por vida
+              </div>
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span class="material-symbols-outlined" style="font-size:14px">devices</span>
+                Cualquier dispositivo
+              </div>
+            </div>
+          </div>
+
+          <!-- Affiliate -->
+          @if (!purchased()) {
+            <div class="bg-white/3 border border-white/5 rounded-2xl p-4 space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-purple-400" style="font-size:16px">link</span>
+                <p class="text-xs font-black text-white">Programa de afiliados</p>
+              </div>
+              <p class="text-[10px] text-slate-500 leading-relaxed">Gana el <strong class="text-purple-400">20%</strong> de comisión por cada persona que compre este curso con tu enlace.</p>
+              @if (myAffCode()) {
+                <div class="space-y-2">
+                  <div class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] text-slate-400 font-mono truncate">
+                    {{ getAffLink() }}
+                  </div>
+                  <button (click)="copyAffLink()"
+                          class="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black transition-all"
+                          [class]="affCopied()
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20'">
+                    <span class="material-symbols-outlined" style="font-size:14px">{{ affCopied() ? 'check' : 'content_copy' }}</span>
+                    {{ affCopied() ? 'Copiado' : 'Copiar link de afiliado' }}
+                  </button>
+                </div>
+              } @else {
+                <button (click)="joinAffiliate()" [disabled]="joiningAff()"
+                        class="w-full flex items-center justify-center gap-1.5 py-2 bg-purple-500/10 hover:bg-purple-500/20 disabled:opacity-50 text-purple-400 border border-purple-500/20 font-black rounded-xl text-xs transition-all">
+                  @if (joiningAff()) {
+                    <div class="w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+                  } @else {
+                    <span class="material-symbols-outlined" style="font-size:14px">add_link</span>
+                  }
+                  Obtener link de afiliado
+                </button>
+              }
+            </div>
+          }
+
+          <!-- Instructor -->
+          <div class="bg-white/3 border border-white/5 rounded-2xl p-4 flex items-center gap-3">
+            @if (c.creator_avatar) {
+              <img [src]="c.creator_avatar" class="w-10 h-10 rounded-full object-cover border border-white/10">
+            } @else {
+              <div class="w-10 h-10 rounded-full bg-sky-500/20 border border-sky-500/30 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-sky-400" style="font-size:18px">person</span>
+              </div>
+            }
+            <div>
+              <p class="text-xs font-black text-white">{{ c.creator_username ?? 'Instructor' }}</p>
+              <p class="text-[10px] text-slate-500">Creador del curso</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+}

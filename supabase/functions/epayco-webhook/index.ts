@@ -134,6 +134,24 @@ Deno.serve(async (req) => {
       return ok('ag_wallet_approved');
     }
 
+    // ── 4B. Si es compra de curso ────────────────────────────────────────────
+    if (x_extra3 === 'curso_purchase' && x_extra1) {
+      const { error: courseErr } = await supabase.rpc('complete_course_purchase', {
+        p_purchase_id: x_extra1,
+      });
+      if (courseErr) {
+        console.error('Error completando compra de curso:', courseErr);
+        return fail('Course purchase completion failed', 500);
+      }
+      // Registrar la referencia de ePayco en la compra
+      await supabase.from('course_purchases')
+        .update({ epayco_ref: x_ref_payco })
+        .eq('id', x_extra1);
+
+      console.log(`Compra de curso ${x_extra1} completada — ref: ${x_ref_payco}`);
+      return ok('curso_purchase_approved');
+    }
+
     // ── 4. Buscar pago en DB (flujo paquetes) ────────────────────────────────
     // Intentar por extra1 (payment UUID) o por gateway_reference (invoice)
     let paymentId: string | null = null;

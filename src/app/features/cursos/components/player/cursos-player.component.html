@@ -1,0 +1,137 @@
+@if (loading()) {
+  <div class="flex items-center justify-center py-24">
+    <div class="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+}
+
+@if (!loading() && !course()) {
+  <div class="flex flex-col items-center justify-center py-24 gap-4 text-center">
+    <span class="material-symbols-outlined text-slate-600" style="font-size:64px">play_circle</span>
+    <p class="text-white font-bold">Curso no encontrado</p>
+    <a routerLink="../mis-cursos" class="px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm">
+      Mis cursos
+    </a>
+  </div>
+}
+
+@if (!loading() && course(); as c) {
+  <div class="flex flex-col gap-0 -mx-4 lg:-mx-8 -mt-6">
+
+    <!-- Top bar -->
+    <div class="flex items-center gap-3 px-4 lg:px-8 py-3 bg-card-dark/95 border-b border-white/5">
+      <a routerLink="../mis-cursos" class="flex items-center gap-1.5 text-xs text-slate-500 hover:text-sky-400 transition-colors">
+        <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>
+        Mis cursos
+      </a>
+      <span class="text-slate-700">·</span>
+      <span class="text-sm font-black text-white truncate flex-1">{{ c.title }}</span>
+      <!-- Progress -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div class="h-full bg-sky-500 rounded-full transition-all" [style.width]="getProgress() + '%'"></div>
+        </div>
+        <span class="text-[10px] text-slate-500 font-bold">{{ getProgress() }}%</span>
+      </div>
+      <button (click)="sidebarOpen.set(!sidebarOpen())"
+              class="flex-shrink-0 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 transition-all">
+        <span class="material-symbols-outlined" style="font-size:16px">{{ sidebarOpen() ? 'menu_open' : 'menu' }}</span>
+      </button>
+    </div>
+
+    <!-- Content area -->
+    <div class="flex h-[calc(100vh-120px)] min-h-[500px]">
+
+      <!-- Video player area -->
+      <div class="flex-1 flex flex-col min-w-0 bg-black">
+
+        <!-- Video -->
+        <div class="relative flex-1 bg-black">
+          @if (currentLesson() && getEmbedUrl(currentLesson()!.video_url)) {
+            <iframe
+              [src]="getEmbedUrl(currentLesson()!.video_url)"
+              class="w-full h-full"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          } @else if (currentLesson()) {
+            <div class="w-full h-full flex flex-col items-center justify-center gap-4">
+              <span class="material-symbols-outlined text-zinc-700" style="font-size:80px">play_disabled</span>
+              <p class="text-slate-500 text-sm">Esta lección no tiene video disponible</p>
+            </div>
+          } @else {
+            <div class="w-full h-full flex flex-col items-center justify-center gap-4">
+              <span class="material-symbols-outlined text-zinc-700" style="font-size:80px">play_circle</span>
+              <p class="text-slate-500 text-sm">Selecciona una lección para comenzar</p>
+            </div>
+          }
+        </div>
+
+        <!-- Lesson info bar -->
+        @if (currentLesson()) {
+          <div class="px-6 py-4 bg-card-dark border-t border-white/5 flex items-center gap-4">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-white truncate">{{ currentLesson()!.title }}</p>
+              @if (currentLesson()!.description) {
+                <p class="text-xs text-slate-500 mt-0.5 truncate">{{ currentLesson()!.description }}</p>
+              }
+            </div>
+            @if (!isCompleted(currentLesson()!.id)) {
+              <button (click)="markComplete(currentLesson()!)"
+                      class="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl text-xs transition-all">
+                <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
+                Marcar completada
+              </button>
+            } @else {
+              <span class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold">
+                <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
+                Completada
+              </span>
+            }
+          </div>
+        }
+
+      </div>
+
+      <!-- Sidebar: module/lesson list -->
+      @if (sidebarOpen()) {
+        <div class="w-72 flex-shrink-0 bg-card-dark border-l border-white/5 overflow-y-auto flex flex-col">
+          <div class="px-4 py-3 border-b border-white/5">
+            <p class="text-xs font-black text-white">Contenido del curso</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">{{ completedIds().size }} / {{ getTotalLessons() }} lecciones</p>
+          </div>
+
+          @for (mod of c.modules ?? []; track mod.id) {
+            <div>
+              <div class="px-4 py-2.5 bg-white/3 border-b border-white/5 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sky-400" style="font-size:14px">folder</span>
+                <span class="text-xs font-black text-white leading-tight">{{ mod.title }}</span>
+              </div>
+              @for (lesson of mod.lessons ?? []; track lesson.id) {
+                <button (click)="selectLesson(lesson)"
+                        class="w-full flex items-center gap-3 px-4 py-2.5 text-left border-b border-white/3 transition-all"
+                        [class]="currentLesson()?.id === lesson.id
+                          ? 'bg-sky-500/10 border-l-2 border-l-sky-500'
+                          : 'hover:bg-white/3'">
+                  @if (isCompleted(lesson.id)) {
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:14px">check_circle</span>
+                  } @else if (currentLesson()?.id === lesson.id) {
+                    <span class="material-symbols-outlined text-sky-400 flex-shrink-0" style="font-size:14px">play_circle</span>
+                  } @else {
+                    <span class="material-symbols-outlined text-slate-600 flex-shrink-0" style="font-size:14px">radio_button_unchecked</span>
+                  }
+                  <span class="text-xs leading-tight flex-1 min-w-0"
+                        [class]="currentLesson()?.id === lesson.id ? 'text-sky-300 font-bold' : 'text-slate-400'">
+                    {{ lesson.title }}
+                  </span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+
+  </div>
+}

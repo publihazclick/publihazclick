@@ -1,0 +1,88 @@
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div>
+    <h2 class="text-xl font-black text-white flex items-center gap-2">
+      <span class="material-symbols-outlined text-sky-400" style="font-size:22px">trending_up</span>
+      Mis Ganancias
+    </h2>
+    <p class="text-xs text-slate-500 mt-1">Ventas e ingresos de los cursos que creaste</p>
+  </div>
+
+  @if (loading()) {
+    <div class="flex items-center justify-center py-16">
+      <div class="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  } @else {
+
+    <!-- Stats summary -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-1">
+        <p class="text-xs text-slate-500">Ganancias totales</p>
+        <p class="text-2xl font-black text-sky-400">{{ formatCOP(totalEarned()) }}</p>
+        <p class="text-[10px] text-slate-600">Acreditado a tu wallet</p>
+      </div>
+      <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-1">
+        <p class="text-xs text-slate-500">Ventas completadas</p>
+        <p class="text-2xl font-black text-emerald-400">{{ totalSales() }}</p>
+        <p class="text-[10px] text-slate-600">Pagos confirmados</p>
+      </div>
+      <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-1">
+        <p class="text-xs text-slate-500">Ventas pendientes</p>
+        <p class="text-2xl font-black text-yellow-400">{{ pendingSales() }}</p>
+        <p class="text-[10px] text-slate-600">Esperando confirmación</p>
+      </div>
+    </div>
+
+    <!-- Sales table -->
+    @if (sales().length === 0) {
+      <div class="flex flex-col items-center justify-center py-16 text-center gap-3">
+        <span class="material-symbols-outlined text-slate-600" style="font-size:48px">receipt_long</span>
+        <p class="text-white font-bold">Aún no tienes ventas</p>
+        <p class="text-slate-500 text-sm">Publica un curso para comenzar a generar ingresos</p>
+      </div>
+    } @else {
+      <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/5">
+          <p class="text-xs font-black text-white">Historial de ventas</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-white/5 text-slate-500">
+                <th class="text-left px-5 py-3 font-bold">Fecha</th>
+                <th class="text-left px-5 py-3 font-bold">Curso</th>
+                <th class="text-left px-5 py-3 font-bold">Comprador</th>
+                <th class="text-right px-5 py-3 font-bold">Precio</th>
+                <th class="text-right px-5 py-3 font-bold">Tu ganancia</th>
+                <th class="text-center px-5 py-3 font-bold">Estado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              @for (sale of sales(); track sale.id) {
+                <tr class="hover:bg-white/2 transition-colors">
+                  <td class="px-5 py-3 text-slate-500">{{ formatDate(sale.created_at) }}</td>
+                  <td class="px-5 py-3 text-white font-bold truncate max-w-[160px]">{{ sale.course?.title ?? '—' }}</td>
+                  <td class="px-5 py-3 text-slate-400">{{ sale.buyer_username ?? '—' }}</td>
+                  <td class="px-5 py-3 text-right text-slate-400">{{ formatCOP(sale.amount_cop) }}</td>
+                  <td class="px-5 py-3 text-right font-black text-sky-400">{{ formatCOP(sale.creator_cut) }}</td>
+                  <td class="px-5 py-3 text-center">
+                    @if (sale.status === 'completed') {
+                      <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">Completado</span>
+                    } @else if (sale.status === 'pending') {
+                      <span class="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-bold">Pendiente</span>
+                    } @else {
+                      <span class="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-bold">Reembolsado</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+  }
+
+</div>

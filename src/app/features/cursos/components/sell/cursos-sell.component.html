@@ -1,0 +1,258 @@
+<!-- LIST VIEW -->
+@if (view() === 'list') {
+  <div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-black text-white flex items-center gap-2">
+          <span class="material-symbols-outlined text-sky-400" style="font-size:22px">upload</span>
+          Mis Cursos Publicados
+        </h2>
+        <p class="text-xs text-slate-500 mt-1">Administra los cursos que has creado</p>
+      </div>
+      <button (click)="openCreate()"
+              class="flex items-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
+        <span class="material-symbols-outlined" style="font-size:16px">add</span>
+        Nuevo curso
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="flex items-center justify-center py-16">
+        <div class="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    } @else if (myCourses().length === 0) {
+      <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <span class="material-symbols-outlined text-slate-600" style="font-size:56px">school</span>
+        <div>
+          <p class="text-white font-bold">Aún no has publicado ningún curso</p>
+          <p class="text-slate-500 text-sm mt-1">Crea tu primer curso y empieza a vender</p>
+        </div>
+        <button (click)="openCreate()"
+                class="px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
+          Crear mi primer curso
+        </button>
+      </div>
+    } @else {
+      <div class="space-y-3">
+        @for (course of myCourses(); track course.id) {
+          <div class="bg-card-dark border border-white/5 rounded-2xl p-4 flex items-start gap-4">
+            <!-- Thumbnail -->
+            <div class="w-20 h-14 rounded-xl bg-zinc-900 flex-shrink-0 overflow-hidden">
+              @if (course.thumbnail_url) {
+                <img [src]="course.thumbnail_url" class="w-full h-full object-cover">
+              } @else {
+                <div class="w-full h-full flex items-center justify-center">
+                  <span class="material-symbols-outlined text-zinc-700" style="font-size:24px">school</span>
+                </div>
+              }
+            </div>
+            <!-- Info -->
+            <div class="flex-1 min-w-0 space-y-1">
+              <p class="text-sm font-black text-white truncate">{{ course.title }}</p>
+              <p class="text-xs text-slate-500">{{ formatCOP(course.price_cop) }} · {{ course.total_sales }} ventas</p>
+              <span class="inline-flex text-[10px] px-2 py-0.5 rounded-full border font-bold"
+                    [class]="statusLabel()[course.status].cls">
+                {{ statusLabel()[course.status].text }}
+              </span>
+              @if (course.rejection_reason) {
+                <p class="text-[10px] text-red-400 mt-1">{{ course.rejection_reason }}</p>
+              }
+            </div>
+            <!-- Actions -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button (click)="openEdit(course)"
+                      class="p-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 transition-all">
+                <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+              </button>
+              <button (click)="deleteCourse(course)"
+                      class="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all">
+                <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+  </div>
+}
+
+<!-- CREATE / EDIT VIEW -->
+@if (view() === 'create' || view() === 'edit') {
+  <div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+      <button (click)="backToList()" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 transition-all">
+        <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span>
+      </button>
+      <div>
+        <h2 class="text-xl font-black text-white">
+          {{ view() === 'create' ? 'Crear nuevo curso' : 'Editar curso' }}
+        </h2>
+        <p class="text-xs text-slate-500">{{ view() === 'create' ? 'Completa los datos del curso para publicarlo' : 'Actualiza la información del curso' }}</p>
+      </div>
+    </div>
+
+    <!-- Basic info form -->
+    <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-4">
+      <h3 class="text-sm font-black text-white">Información básica</h3>
+
+      <!-- Title -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-400">Título del curso *</label>
+        <input type="text" [(ngModel)]="title" placeholder="Ej: Marketing Digital para Emprendedores"
+               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+      </div>
+
+      <!-- Description -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-400">Descripción</label>
+        <textarea [(ngModel)]="description" rows="4" placeholder="Describe qué aprenderán los estudiantes..."
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40 resize-none"></textarea>
+      </div>
+
+      <!-- Category & Level -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-400">Categoría *</label>
+          <select [(ngModel)]="category"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-sky-500/40">
+            @for (cat of categories; track cat) {
+              <option [value]="cat">{{ cat }}</option>
+            }
+          </select>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-400">Nivel *</label>
+          <select [(ngModel)]="level"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-sky-500/40">
+            @for (l of levels; track l) {
+              <option [value]="l">{{ levelLabels[l] }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- Price -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-400">Precio (COP) *</label>
+        <input type="number" [(ngModel)]="priceCop" min="0" placeholder="Ej: 150000"
+               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+        <p class="text-[10px] text-slate-600">La plataforma retiene el 10%. Recibirás el 70% de cada venta (90% si no hay afiliado).</p>
+      </div>
+
+      <!-- Thumbnail URL -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-400">URL de imagen portada</label>
+        <input type="url" [(ngModel)]="thumbnail" placeholder="https://..."
+               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+      </div>
+
+      <!-- Promo video URL -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-400">URL de video promocional (YouTube)</label>
+        <input type="url" [(ngModel)]="promoVideo" placeholder="https://youtube.com/watch?v=..."
+               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+      </div>
+
+      <!-- Save button -->
+      <div class="flex items-center gap-3 pt-1">
+        <button (click)="save()" [disabled]="saving() || !title.trim()"
+                class="flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl text-sm transition-all">
+          @if (saving()) {
+            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            Guardando...
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:16px">save</span>
+            {{ view() === 'create' ? 'Crear curso' : 'Guardar cambios' }}
+          }
+        </button>
+        @if (saveSuccess()) {
+          <span class="flex items-center gap-1 text-xs text-emerald-400 font-bold">
+            <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
+            Guardado
+          </span>
+        }
+        @if (saveError()) {
+          <span class="text-xs text-red-400">{{ saveError() }}</span>
+        }
+      </div>
+    </div>
+
+    <!-- Modules & Lessons (only when editing existing course) -->
+    @if (view() === 'edit' && editCourse()) {
+      <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-4">
+        <h3 class="text-sm font-black text-white">Módulos y Lecciones</h3>
+        <p class="text-xs text-slate-500">Organiza el contenido de tu curso en módulos y agrega lecciones con videos de YouTube.</p>
+
+        <!-- Existing modules -->
+        @for (mod of modules(); track mod.id) {
+          <div class="border border-white/5 rounded-xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 bg-white/3 border-b border-white/5">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-sky-400" style="font-size:16px">folder</span>
+                <span class="text-sm font-black text-white">{{ mod.title }}</span>
+              </div>
+              <button (click)="deleteModule(mod.id)" class="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all">
+                <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+              </button>
+            </div>
+
+            <!-- Lessons -->
+            @if (mod.lessons && mod.lessons.length > 0) {
+              <div class="divide-y divide-white/5">
+                @for (lesson of mod.lessons; track lesson.id) {
+                  <div class="flex items-center gap-3 px-4 py-2.5">
+                    <span class="material-symbols-outlined text-slate-500" style="font-size:14px">play_circle</span>
+                    <span class="text-xs text-slate-400 flex-1 truncate">{{ lesson.title }}</span>
+                    @if (lesson.is_free_preview) {
+                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">Preview</span>
+                    }
+                    <button (click)="deleteLesson(lesson.id)" class="p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition-all">
+                      <span class="material-symbols-outlined" style="font-size:14px">close</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Add lesson form -->
+            <div class="p-3 bg-white/2 space-y-2">
+              <input type="text" [(ngModel)]="newLessonTitle[mod.id]" placeholder="Título de la lección..."
+                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+              <input type="url" [(ngModel)]="newLessonVideo[mod.id]" placeholder="URL YouTube del video..."
+                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+              <div class="flex items-center gap-3">
+                <input type="number" [(ngModel)]="newLessonDuration[mod.id]" placeholder="Duración (seg)" min="0"
+                       class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+                <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+                  <input type="checkbox" [(ngModel)]="newLessonFree[mod.id]" class="rounded">
+                  Vista previa gratuita
+                </label>
+                <button (click)="addLesson(mod)" [disabled]="!newLessonTitle[mod.id]?.trim()"
+                        class="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white font-black rounded-lg text-xs transition-all">
+                  + Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Add new module -->
+        <div class="flex items-center gap-2">
+          <input type="text" [(ngModel)]="newModuleTitle" placeholder="Nombre del nuevo módulo..."
+                 class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
+          <button (click)="addModule()" [disabled]="!newModuleTitle.trim()"
+                  class="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black rounded-xl text-sm transition-all">
+            <span class="material-symbols-outlined" style="font-size:16px">add</span>
+            Módulo
+          </button>
+        </div>
+      </div>
+    }
+
+  </div>
+}
