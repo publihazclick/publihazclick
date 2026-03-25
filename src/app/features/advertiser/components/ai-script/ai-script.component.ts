@@ -168,8 +168,8 @@ export class AiScriptComponent {
     { id: 'faceless', name: 'Canal Oscuro', subtitle: 'Automatizado', icon: 'visibility_off' },
   ];
 
-  readonly selectedPlatform = signal<string | null>(null);
-  readonly selectedMonetization = signal<string | null>(null);
+  readonly selectedPlatform = signal<string | null>('instagram');
+  readonly selectedMonetization = signal<string | null>('personal-brand');
 
   // ─── Step 2: Video Type ──────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ export class AiScriptComponent {
     { id: 'unboxing', name: 'Unboxing', subtitle: 'Abrir y mostrar productos', icon: 'inventory_2' },
   ];
 
-  readonly selectedVideoType = signal<string | null>(null);
+  readonly selectedVideoType = signal<string | null>('tutorial');
 
   // ─── Step 3: Niche ───────────────────────────────────────────────────
 
@@ -927,9 +927,9 @@ export class AiScriptComponent {
 
     this.currentWizardStep.set('monetization');
     this.generatePhase.set('idle');
-    this.selectedPlatform.set(null);
-    this.selectedMonetization.set(null);
-    this.selectedVideoType.set(null);
+    this.selectedPlatform.set('instagram');
+    this.selectedMonetization.set('personal-brand');
+    this.selectedVideoType.set('tutorial');
     this.selectedNiche.set(null);
     this.customNiche.set('');
     this.description.set('');
