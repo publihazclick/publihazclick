@@ -1,76 +1,108 @@
-<!-- LIST VIEW -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- LIST VIEW                                                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
 @if (view() === 'list') {
   <div class="space-y-6">
 
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl font-black text-white flex items-center gap-2">
-          <span class="material-symbols-outlined text-sky-400" style="font-size:22px">upload</span>
-          Mis Cursos Publicados
-        </h2>
-        <p class="text-xs text-slate-500 mt-1">Administra los cursos que has creado</p>
+        <h2 class="text-xl font-bold text-white">Mis Cursos</h2>
+        <p class="text-xs text-white/40 mt-0.5">Crea y gestiona tus cursos para vender en la plataforma</p>
       </div>
-      <button (click)="openCreate()"
-              class="flex items-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
-        <span class="material-symbols-outlined" style="font-size:16px">add</span>
-        Nuevo curso
+      <button
+        (click)="openCreate()"
+        class="flex items-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-400 text-white text-sm font-semibold rounded-xl transition-colors"
+      >
+        <span class="material-symbols-outlined text-base">add</span>
+        Nuevo Curso
       </button>
     </div>
 
+    <!-- Loading -->
     @if (loading()) {
-      <div class="flex items-center justify-center py-16">
+      <div class="flex items-center justify-center py-20">
         <div class="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     } @else if (myCourses().length === 0) {
-      <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
-        <span class="material-symbols-outlined text-slate-600" style="font-size:56px">school</span>
-        <div>
-          <p class="text-white font-bold">Aún no has publicado ningún curso</p>
-          <p class="text-slate-500 text-sm mt-1">Crea tu primer curso y empieza a vender</p>
-        </div>
-        <button (click)="openCreate()"
-                class="px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black rounded-xl text-sm transition-all">
+      <!-- Empty state -->
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+        <span class="material-symbols-outlined text-5xl text-white/10 mb-4">school</span>
+        <p class="text-white/50 font-medium">Aún no tienes cursos creados</p>
+        <p class="text-white/30 text-sm mt-1">Crea tu primer curso y empieza a generar ingresos</p>
+        <button
+          (click)="openCreate()"
+          class="mt-6 flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white text-sm font-semibold rounded-xl transition-colors"
+        >
+          <span class="material-symbols-outlined text-base">add</span>
           Crear mi primer curso
         </button>
       </div>
     } @else {
-      <div class="space-y-3">
+      <!-- Course cards -->
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         @for (course of myCourses(); track course.id) {
-          <div class="bg-card-dark border border-white/5 rounded-2xl p-4 flex items-start gap-4">
+          <div class="bg-white/3 border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 transition-colors">
+
             <!-- Thumbnail -->
-            <div class="w-20 h-14 rounded-xl bg-zinc-900 flex-shrink-0 overflow-hidden">
+            <div class="relative h-36 bg-white/5 overflow-hidden">
               @if (course.thumbnail_url) {
-                <img [src]="course.thumbnail_url" class="w-full h-full object-cover">
+                <img [src]="course.thumbnail_url" [alt]="course.title" class="w-full h-full object-cover" />
               } @else {
-                <div class="w-full h-full flex items-center justify-center">
-                  <span class="material-symbols-outlined text-zinc-700" style="font-size:24px">school</span>
+                <div class="flex items-center justify-center h-full">
+                  <span class="material-symbols-outlined text-4xl text-white/10">image</span>
                 </div>
               }
-            </div>
-            <!-- Info -->
-            <div class="flex-1 min-w-0 space-y-1">
-              <p class="text-sm font-black text-white truncate">{{ course.title }}</p>
-              <p class="text-xs text-slate-500">{{ formatCOP(course.price_cop) }} · {{ course.total_sales }} ventas</p>
-              <span class="inline-flex text-[10px] px-2 py-0.5 rounded-full border font-bold"
-                    [class]="statusLabel()[course.status].cls">
-                {{ statusLabel()[course.status].text }}
+              <!-- Status badge -->
+              <span class="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-xs font-semibold border {{ statusConfig[course.status].cls }}">
+                {{ statusConfig[course.status].text }}
               </span>
+            </div>
+
+            <!-- Info -->
+            <div class="p-4 space-y-3">
+              <div>
+                <h3 class="text-sm font-semibold text-white line-clamp-2 leading-snug">{{ course.title }}</h3>
+                <p class="text-xs text-white/40 mt-1">{{ course.category }} · {{ levelLabels[course.level] }}</p>
+              </div>
+
+              <!-- Stats row -->
+              <div class="flex items-center gap-4 text-xs text-white/40">
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">sell</span>
+                  {{ course.total_sales }} ventas
+                </span>
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">payments</span>
+                  {{ formatCOP(course.price_cop) }}
+                </span>
+              </div>
+
               @if (course.rejection_reason) {
-                <p class="text-[10px] text-red-400 mt-1">{{ course.rejection_reason }}</p>
+                <p class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  {{ course.rejection_reason }}
+                </p>
               }
+
+              <!-- Actions -->
+              <div class="flex items-center gap-2 pt-1">
+                <button
+                  (click)="openEdit(course)"
+                  class="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium rounded-xl transition-colors"
+                >
+                  <span class="material-symbols-outlined text-sm">edit</span>
+                  Editar
+                </button>
+                <button
+                  (click)="deleteCourse(course)"
+                  class="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-xl transition-colors"
+                  title="Eliminar curso"
+                >
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              </div>
             </div>
-            <!-- Actions -->
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <button (click)="openEdit(course)"
-                      class="p-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 transition-all">
-                <span class="material-symbols-outlined" style="font-size:16px">edit</span>
-              </button>
-              <button (click)="deleteCourse(course)"
-                      class="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all">
-                <span class="material-symbols-outlined" style="font-size:16px">delete</span>
-              </button>
-            </div>
+
           </div>
         }
       </div>
@@ -79,178 +111,763 @@
   </div>
 }
 
-<!-- CREATE / EDIT VIEW -->
-@if (view() === 'create' || view() === 'edit') {
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- EDIT / CREATE VIEW                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+@if (view() === 'edit') {
   <div class="space-y-6">
 
-    <!-- Header -->
+    <!-- Top bar -->
     <div class="flex items-center gap-3">
-      <button (click)="backToList()" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 transition-all">
-        <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span>
+      <button
+        (click)="backToList()"
+        class="p-2 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-xl transition-colors"
+      >
+        <span class="material-symbols-outlined text-base">arrow_back</span>
       </button>
-      <div>
-        <h2 class="text-xl font-black text-white">
-          {{ view() === 'create' ? 'Crear nuevo curso' : 'Editar curso' }}
-        </h2>
-        <p class="text-xs text-slate-500">{{ view() === 'create' ? 'Completa los datos del curso para publicarlo' : 'Actualiza la información del curso' }}</p>
+      <div class="flex-1 min-w-0">
+        @if (editCourse()) {
+          <h2 class="text-base font-bold text-white truncate">{{ editCourse()!.title || 'Editar curso' }}</h2>
+          <p class="text-xs text-white/40">{{ statusConfig[editCourse()!.status].text }}</p>
+        } @else {
+          <h2 class="text-base font-bold text-white">Nuevo Curso</h2>
+          <p class="text-xs text-white/40">Completa la información básica para empezar</p>
+        }
       </div>
-    </div>
-
-    <!-- Basic info form -->
-    <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-4">
-      <h3 class="text-sm font-black text-white">Información básica</h3>
-
-      <!-- Title -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-400">Título del curso *</label>
-        <input type="text" [(ngModel)]="title" placeholder="Ej: Marketing Digital para Emprendedores"
-               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-      </div>
-
-      <!-- Description -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-400">Descripción</label>
-        <textarea [(ngModel)]="description" rows="4" placeholder="Describe qué aprenderán los estudiantes..."
-                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40 resize-none"></textarea>
-      </div>
-
-      <!-- Category & Level -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-400">Categoría *</label>
-          <select [(ngModel)]="category"
-                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-sky-500/40">
-            @for (cat of categories; track cat) {
-              <option [value]="cat">{{ cat }}</option>
-            }
-          </select>
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-400">Nivel *</label>
-          <select [(ngModel)]="level"
-                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-sky-500/40">
-            @for (l of levels; track l) {
-              <option [value]="l">{{ levelLabels[l] }}</option>
-            }
-          </select>
-        </div>
-      </div>
-
-      <!-- Price -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-400">Precio (COP) *</label>
-        <input type="number" [(ngModel)]="priceCop" min="0" placeholder="Ej: 150000"
-               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-        <p class="text-[10px] text-slate-600">La plataforma retiene el 10%. Recibirás el 70% de cada venta (90% si no hay afiliado).</p>
-      </div>
-
-      <!-- Thumbnail URL -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-400">URL de imagen portada</label>
-        <input type="url" [(ngModel)]="thumbnail" placeholder="https://..."
-               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-      </div>
-
-      <!-- Promo video URL -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-400">URL de video promocional (YouTube)</label>
-        <input type="url" [(ngModel)]="promoVideo" placeholder="https://youtube.com/watch?v=..."
-               class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-      </div>
-
-      <!-- Save button -->
-      <div class="flex items-center gap-3 pt-1">
-        <button (click)="save()" [disabled]="saving() || !title.trim()"
-                class="flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl text-sm transition-all">
+      @if (activeTab() === 'info') {
+        <button
+          (click)="save()"
+          [disabled]="saving()"
+          class="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
+        >
           @if (saving()) {
             <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             Guardando...
           } @else {
-            <span class="material-symbols-outlined" style="font-size:16px">save</span>
-            {{ view() === 'create' ? 'Crear curso' : 'Guardar cambios' }}
+            <span class="material-symbols-outlined text-base">save</span>
+            Guardar
           }
         </button>
-        @if (saveSuccess()) {
-          <span class="flex items-center gap-1 text-xs text-emerald-400 font-bold">
-            <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
-            Guardado
-          </span>
-        }
-        @if (saveError()) {
-          <span class="text-xs text-red-400">{{ saveError() }}</span>
-        }
-      </div>
+      }
     </div>
 
-    <!-- Modules & Lessons (only when editing existing course) -->
-    @if (view() === 'edit' && editCourse()) {
-      <div class="bg-card-dark border border-white/5 rounded-2xl p-5 space-y-4">
-        <h3 class="text-sm font-black text-white">Módulos y Lecciones</h3>
-        <p class="text-xs text-slate-500">Organiza el contenido de tu curso en módulos y agrega lecciones con videos de YouTube.</p>
+    <!-- Tabs -->
+    <div class="flex gap-1 bg-white/3 p-1 rounded-xl border border-white/5">
+      <button
+        (click)="activeTab.set('info')"
+        class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg transition-colors {{ activeTab() === 'info' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70' }}"
+      >
+        <span class="material-symbols-outlined text-sm">info</span>
+        Info
+      </button>
+      <button
+        (click)="activeTab.set('content')"
+        class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg transition-colors {{ activeTab() === 'content' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70' }}"
+      >
+        <span class="material-symbols-outlined text-sm">list</span>
+        Contenido
+      </button>
+      <button
+        (click)="activeTab.set('publish')"
+        class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg transition-colors {{ activeTab() === 'publish' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70' }}"
+      >
+        <span class="material-symbols-outlined text-sm">rocket_launch</span>
+        Publicación
+      </button>
+    </div>
 
-        <!-- Existing modules -->
-        @for (mod of modules(); track mod.id) {
-          <div class="border border-white/5 rounded-xl overflow-hidden">
-            <div class="flex items-center justify-between px-4 py-3 bg-white/3 border-b border-white/5">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-sky-400" style="font-size:16px">folder</span>
-                <span class="text-sm font-black text-white">{{ mod.title }}</span>
-              </div>
-              <button (click)="deleteModule(mod.id)" class="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all">
-                <span class="material-symbols-outlined" style="font-size:14px">delete</span>
-              </button>
-            </div>
+    <!-- ─── INFO TAB ─────────────────────────────────────────────────────── -->
+    @if (activeTab() === 'info') {
+      <div class="space-y-5">
 
-            <!-- Lessons -->
-            @if (mod.lessons && mod.lessons.length > 0) {
-              <div class="divide-y divide-white/5">
-                @for (lesson of mod.lessons; track lesson.id) {
-                  <div class="flex items-center gap-3 px-4 py-2.5">
-                    <span class="material-symbols-outlined text-slate-500" style="font-size:14px">play_circle</span>
-                    <span class="text-xs text-slate-400 flex-1 truncate">{{ lesson.title }}</span>
-                    @if (lesson.is_free_preview) {
-                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">Preview</span>
-                    }
-                    <button (click)="deleteLesson(lesson.id)" class="p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition-all">
-                      <span class="material-symbols-outlined" style="font-size:14px">close</span>
-                    </button>
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- Add lesson form -->
-            <div class="p-3 bg-white/2 space-y-2">
-              <input type="text" [(ngModel)]="newLessonTitle[mod.id]" placeholder="Título de la lección..."
-                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-              <input type="url" [(ngModel)]="newLessonVideo[mod.id]" placeholder="URL YouTube del video..."
-                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-              <div class="flex items-center gap-3">
-                <input type="number" [(ngModel)]="newLessonDuration[mod.id]" placeholder="Duración (seg)" min="0"
-                       class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-                <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
-                  <input type="checkbox" [(ngModel)]="newLessonFree[mod.id]" class="rounded">
-                  Vista previa gratuita
-                </label>
-                <button (click)="addLesson(mod)" [disabled]="!newLessonTitle[mod.id]?.trim()"
-                        class="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white font-black rounded-lg text-xs transition-all">
-                  + Agregar
-                </button>
-              </div>
-            </div>
+        @if (saveSuccess()) {
+          <div class="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm">
+            <span class="material-symbols-outlined text-base">check_circle</span>
+            Cambios guardados correctamente
+          </div>
+        }
+        @if (saveError()) {
+          <div class="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            <span class="material-symbols-outlined text-base">error</span>
+            {{ saveError() }}
           </div>
         }
 
-        <!-- Add new module -->
-        <div class="flex items-center gap-2">
-          <input type="text" [(ngModel)]="newModuleTitle" placeholder="Nombre del nuevo módulo..."
-                 class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/40">
-          <button (click)="addModule()" [disabled]="!newModuleTitle.trim()"
-                  class="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black rounded-xl text-sm transition-all">
-            <span class="material-symbols-outlined" style="font-size:16px">add</span>
-            Módulo
+        <!-- Title -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-white/50 uppercase tracking-wide">Título del curso *</label>
+          <input
+            type="text"
+            [(ngModel)]="title"
+            placeholder="Ej: Marketing Digital para Emprendedores"
+            class="w-full bg-white/5 border border-white/8 hover:border-white/15 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-4 py-3 outline-none transition-colors"
+          />
+        </div>
+
+        <!-- Description -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-white/50 uppercase tracking-wide">Descripción *</label>
+          <textarea
+            [(ngModel)]="description"
+            rows="5"
+            placeholder="Describe tu curso, qué aprenderán los estudiantes, requisitos previos..."
+            class="w-full bg-white/5 border border-white/8 hover:border-white/15 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-4 py-3 outline-none transition-colors resize-none"
+          ></textarea>
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-white/30">Mínimo 50 caracteres para publicar</p>
+            <span class="text-xs {{ description.length >= 50 ? 'text-emerald-400' : 'text-white/30' }}">
+              {{ description.length }} caracteres
+            </span>
+          </div>
+        </div>
+
+        <!-- Category + Level -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-white/50 uppercase tracking-wide">Categoría *</label>
+            <select
+              [(ngModel)]="category"
+              class="w-full bg-white/5 border border-white/8 hover:border-white/15 focus:border-sky-500/50 text-white text-sm rounded-xl px-4 py-3 outline-none transition-colors"
+            >
+              @for (cat of categories; track cat) {
+                <option [value]="cat" class="bg-neutral-900 text-white">{{ cat }}</option>
+              }
+            </select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-white/50 uppercase tracking-wide">Nivel *</label>
+            <select
+              [(ngModel)]="level"
+              class="w-full bg-white/5 border border-white/8 hover:border-white/15 focus:border-sky-500/50 text-white text-sm rounded-xl px-4 py-3 outline-none transition-colors"
+            >
+              @for (lvl of levels; track lvl) {
+                <option [value]="lvl" class="bg-neutral-900 text-white">{{ levelLabels[lvl] }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <!-- Price -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-white/50 uppercase tracking-wide">Precio (COP) *</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-medium pointer-events-none">$</span>
+            <input
+              type="number"
+              [(ngModel)]="priceCop"
+              min="0"
+              step="1000"
+              placeholder="50000"
+              class="w-full bg-white/5 border border-white/8 hover:border-white/15 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl pl-8 pr-4 py-3 outline-none transition-colors"
+            />
+          </div>
+          @if (priceCop > 0) {
+            <div class="flex items-center gap-1.5 px-3 py-2 bg-white/3 rounded-lg text-xs text-white/40">
+              <span class="material-symbols-outlined text-sm text-emerald-400">info</span>
+              Tú recibes aprox.
+              <span class="text-emerald-400 font-semibold">{{ formatCOP(priceCop * 0.7) }}</span>
+              por venta (70%). Plataforma: 10%, Afiliados: 20%.
+            </div>
+          }
+        </div>
+
+        <!-- Thumbnail URL -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-white/50 uppercase tracking-wide">URL de miniatura</label>
+          <input
+            type="url"
+            [(ngModel)]="thumbnail"
+            placeholder="https://ejemplo.com/imagen.jpg"
+            class="w-full bg-white/5 border border-white/8 hover:border-white/15 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-4 py-3 outline-none transition-colors"
+          />
+          @if (thumbnail) {
+            <div class="mt-2 rounded-xl overflow-hidden border border-white/8 h-40 bg-white/3">
+              <img [src]="thumbnail" alt="Vista previa de miniatura" class="w-full h-full object-cover" />
+            </div>
+          }
+        </div>
+
+        <!-- Promo Video URL -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-white/50 uppercase tracking-wide">Video promocional (YouTube)</label>
+          <input
+            type="url"
+            [ngModel]="promoVideo"
+            (ngModelChange)="onPromoVideoChange($event)"
+            placeholder="https://www.youtube.com/watch?v=..."
+            class="w-full bg-white/5 border border-white/8 hover:border-white/15 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-4 py-3 outline-none transition-colors"
+          />
+          @if (previewYtId()) {
+            <div class="mt-2 rounded-xl overflow-hidden border border-white/8 bg-black" style="aspect-ratio:16/9">
+              <iframe
+                [src]="'https://www.youtube.com/embed/' + previewYtId()"
+                class="w-full h-full"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+            </div>
+          }
+        </div>
+
+        <!-- Save button bottom -->
+        <div class="flex justify-end pt-2">
+          <button
+            (click)="save()"
+            [disabled]="saving()"
+            class="flex items-center gap-2 px-6 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            @if (saving()) {
+              <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined text-base">save</span>
+              @if (editCourse()) { Guardar cambios } @else { Crear curso }
+            }
           </button>
         </div>
+
+      </div>
+    }
+
+    <!-- ─── CONTENT TAB ───────────────────────────────────────────────────── -->
+    @if (activeTab() === 'content') {
+      <div class="space-y-5">
+
+        @if (!editCourse()) {
+          <div class="flex flex-col items-center justify-center py-16 text-center">
+            <span class="material-symbols-outlined text-4xl text-white/10 mb-3">save</span>
+            <p class="text-white/50 font-medium">Guarda primero la información básica</p>
+            <p class="text-white/30 text-sm mt-1">Ve a la pestaña "Info" y guarda el curso para agregar contenido</p>
+            <button
+              (click)="activeTab.set('info')"
+              class="mt-5 flex items-center gap-2 px-4 py-2 bg-white/8 hover:bg-white/12 text-white/70 hover:text-white text-sm font-medium rounded-xl transition-colors"
+            >
+              <span class="material-symbols-outlined text-sm">arrow_back</span>
+              Ir a Info
+            </button>
+          </div>
+        } @else {
+
+          <!-- Completeness bar -->
+          <div class="bg-white/3 border border-white/5 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-white/50">Completitud del contenido</span>
+              <span class="text-xs font-bold {{ completeness().score >= 70 ? 'text-emerald-400' : completeness().score >= 40 ? 'text-yellow-400' : 'text-red-400' }}">
+                {{ completeness().score }}%
+              </span>
+            </div>
+            <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-500 {{ completeness().score >= 70 ? 'bg-emerald-500' : completeness().score >= 40 ? 'bg-yellow-500' : 'bg-red-500' }}"
+                [style.width.%]="completeness().score"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Modules list -->
+          @for (mod of modules(); track mod.id; let modIdx = $index) {
+            <div class="bg-white/3 border border-white/5 rounded-xl overflow-hidden">
+
+              <!-- Module header -->
+              <div class="flex items-center gap-2 px-4 py-3 {{ isExpanded(mod.id) ? 'border-b border-white/5' : '' }}">
+
+                <!-- Expand toggle -->
+                <button
+                  (click)="toggleModule(mod.id)"
+                  class="p-1 text-white/40 hover:text-white transition-colors"
+                >
+                  <span class="material-symbols-outlined text-base transition-transform {{ isExpanded(mod.id) ? 'rotate-90' : '' }}">
+                    chevron_right
+                  </span>
+                </button>
+
+                <!-- Module info -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-white truncate">{{ mod.title }}</p>
+                  <p class="text-xs text-white/30">{{ mod.lessons?.length ?? 0 }} lecciones</p>
+                </div>
+
+                <!-- Lesson count badge -->
+                <span class="px-2 py-0.5 bg-white/5 text-white/40 text-xs rounded-lg">
+                  {{ mod.lessons?.length ?? 0 }}
+                </span>
+
+                <!-- Reorder buttons -->
+                <div class="flex flex-col">
+                  <button
+                    (click)="moveModule(mod.id, 'up')"
+                    [disabled]="modIdx === 0"
+                    class="p-0.5 text-white/30 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <span class="material-symbols-outlined text-sm">arrow_drop_up</span>
+                  </button>
+                  <button
+                    (click)="moveModule(mod.id, 'down')"
+                    [disabled]="modIdx === modules().length - 1"
+                    class="p-0.5 text-white/30 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <span class="material-symbols-outlined text-sm">arrow_drop_down</span>
+                  </button>
+                </div>
+
+                <!-- Delete module -->
+                <button
+                  (click)="deleteModule(mod.id)"
+                  [disabled]="deletingId() === mod.id"
+                  class="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 rounded-lg transition-colors"
+                >
+                  @if (deletingId() === mod.id) {
+                    <div class="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                  } @else {
+                    <span class="material-symbols-outlined text-sm">delete</span>
+                  }
+                </button>
+
+              </div>
+
+              <!-- Module body (lessons) -->
+              @if (isExpanded(mod.id)) {
+                <div class="divide-y divide-white/3">
+
+                  @if (!mod.lessons || mod.lessons.length === 0) {
+                    <p class="px-5 py-4 text-xs text-white/25 italic">Sin lecciones aún. Agrega la primera abajo.</p>
+                  }
+
+                  @for (lesson of mod.lessons; track lesson.id; let lesIdx = $index) {
+                    <div class="px-4 py-3">
+
+                      @if (editingLesson() === lesson.id) {
+                        <!-- Inline edit form -->
+                        <div class="space-y-3">
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class="material-symbols-outlined text-sm text-sky-400">edit</span>
+                            <span class="text-xs font-semibold text-white/60 uppercase tracking-wide">Editando lección</span>
+                          </div>
+
+                          <input
+                            type="text"
+                            [(ngModel)]="editLessonData.title"
+                            placeholder="Título de la lección"
+                            class="w-full bg-white/5 border border-white/10 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2.5 outline-none transition-colors"
+                          />
+
+                          <input
+                            type="url"
+                            [(ngModel)]="editLessonData.videoUrl"
+                            placeholder="URL de YouTube (opcional)"
+                            class="w-full bg-white/5 border border-white/10 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2.5 outline-none transition-colors"
+                          />
+
+                          <textarea
+                            [(ngModel)]="editLessonData.description"
+                            rows="2"
+                            placeholder="Descripción breve (opcional)"
+                            class="w-full bg-white/5 border border-white/10 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2.5 outline-none transition-colors resize-none"
+                          ></textarea>
+
+                          <div class="flex items-end gap-3">
+                            <div class="w-32">
+                              <label class="text-xs text-white/40 mb-1 block">Duración (min)</label>
+                              <input
+                                type="number"
+                                [(ngModel)]="editLessonData.durationMin"
+                                min="0"
+                                placeholder="0"
+                                class="w-full bg-white/5 border border-white/10 focus:border-sky-500/50 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2 outline-none transition-colors"
+                              />
+                            </div>
+                            <label class="flex items-center gap-2 cursor-pointer pb-1">
+                              <div
+                                (click)="editLessonData.isFree = !editLessonData.isFree"
+                                class="relative w-9 h-5 rounded-full transition-colors {{ editLessonData.isFree ? 'bg-emerald-500' : 'bg-white/10' }}"
+                              >
+                                <span class="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-200 {{ editLessonData.isFree ? 'left-4' : 'left-0.5' }}"></span>
+                              </div>
+                              <span class="text-xs text-white/50">Vista gratis</span>
+                            </label>
+                            <div class="flex items-center gap-2 ml-auto pb-1">
+                              <button
+                                (click)="saveLesson(lesson)"
+                                class="flex items-center gap-1.5 px-3 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold rounded-xl transition-colors"
+                              >
+                                <span class="material-symbols-outlined text-sm">save</span>
+                                Guardar
+                              </button>
+                              <button
+                                (click)="cancelEditLesson()"
+                                class="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-medium rounded-xl transition-colors"
+                              >
+                                <span class="material-symbols-outlined text-sm">close</span>
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                      } @else {
+                        <!-- Lesson row -->
+                        <div class="flex items-center gap-3">
+
+                          <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                            @if (lesson.video_url) {
+                              <span class="material-symbols-outlined text-sm text-sky-400">play_arrow</span>
+                            } @else {
+                              <span class="material-symbols-outlined text-sm text-white/20">article</span>
+                            }
+                          </div>
+
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm text-white truncate">{{ lesson.title }}</p>
+                            <div class="flex items-center gap-2 mt-0.5">
+                              @if (lesson.duration_seconds > 0) {
+                                <span class="text-xs text-white/30">
+                                  @if (lesson.duration_seconds >= 60) {
+                                    {{ lesson.duration_seconds / 60 }} min
+                                  } @else {
+                                    {{ lesson.duration_seconds }} seg
+                                  }
+                                </span>
+                              }
+                              @if (lesson.is_free_preview) {
+                                <span class="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs rounded-md border border-emerald-500/20">
+                                  Gratis
+                                </span>
+                              }
+                            </div>
+                          </div>
+
+                          <div class="flex items-center gap-1">
+                            <div class="flex flex-col">
+                              <button
+                                (click)="moveLesson(mod, lesson.id, 'up')"
+                                [disabled]="lesIdx === 0"
+                                class="p-0.5 text-white/20 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <span class="material-symbols-outlined text-sm">arrow_drop_up</span>
+                              </button>
+                              <button
+                                (click)="moveLesson(mod, lesson.id, 'down')"
+                                [disabled]="lesIdx === (mod.lessons?.length ?? 1) - 1"
+                                class="p-0.5 text-white/20 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <span class="material-symbols-outlined text-sm">arrow_drop_down</span>
+                              </button>
+                            </div>
+                            <button
+                              (click)="startEditLesson(lesson)"
+                              class="p-1.5 text-white/30 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors"
+                            >
+                              <span class="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                            <button
+                              (click)="deleteLesson(mod, lesson.id)"
+                              [disabled]="deletingId() === lesson.id"
+                              class="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 rounded-lg transition-colors"
+                            >
+                              @if (deletingId() === lesson.id) {
+                                <div class="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                              } @else {
+                                <span class="material-symbols-outlined text-sm">delete</span>
+                              }
+                            </button>
+                          </div>
+
+                        </div>
+                      }
+
+                    </div>
+                  }
+
+                  <!-- Add lesson form -->
+                  <div class="px-4 py-4 bg-white/2 space-y-3">
+                    <p class="text-xs font-semibold text-white/40 uppercase tracking-wide flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-sm">add_circle</span>
+                      Agregar lección
+                    </p>
+
+                    <input
+                      type="text"
+                      [(ngModel)]="getNewLesson(mod.id).title"
+                      placeholder="Título de la lección *"
+                      class="w-full bg-white/5 border border-white/8 focus:border-sky-500/40 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2.5 outline-none transition-colors"
+                    />
+
+                    <input
+                      type="url"
+                      [(ngModel)]="getNewLesson(mod.id).videoUrl"
+                      placeholder="URL de YouTube (opcional)"
+                      class="w-full bg-white/5 border border-white/8 focus:border-sky-500/40 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2.5 outline-none transition-colors"
+                    />
+
+                    <textarea
+                      [(ngModel)]="getNewLesson(mod.id).description"
+                      rows="2"
+                      placeholder="Descripción breve (opcional)"
+                      class="w-full bg-white/5 border border-white/8 focus:border-sky-500/40 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2.5 outline-none transition-colors resize-none"
+                    ></textarea>
+
+                    <div class="flex items-end gap-3 flex-wrap">
+                      <div class="w-28">
+                        <label class="text-xs text-white/40 mb-1 block">Duración (min)</label>
+                        <input
+                          type="number"
+                          [(ngModel)]="getNewLesson(mod.id).durationMin"
+                          min="0"
+                          placeholder="0"
+                          class="w-full bg-white/5 border border-white/8 focus:border-sky-500/40 text-white text-sm placeholder-white/20 rounded-xl px-3 py-2 outline-none transition-colors"
+                        />
+                      </div>
+
+                      <label class="flex items-center gap-2 cursor-pointer pb-1">
+                        <div
+                          (click)="getNewLesson(mod.id).isFree = !getNewLesson(mod.id).isFree"
+                          class="relative w-9 h-5 rounded-full transition-colors {{ getNewLesson(mod.id).isFree ? 'bg-emerald-500' : 'bg-white/10' }}"
+                        >
+                          <span class="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-200 {{ getNewLesson(mod.id).isFree ? 'left-4' : 'left-0.5' }}"></span>
+                        </div>
+                        <span class="text-xs text-white/50">Vista gratis</span>
+                      </label>
+
+                      <button
+                        (click)="addLesson(mod)"
+                        [disabled]="!getNewLesson(mod.id).title.trim()"
+                        class="ml-auto flex items-center gap-1.5 px-4 py-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl transition-colors"
+                      >
+                        <span class="material-symbols-outlined text-sm">add</span>
+                        Agregar lección
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              }
+
+            </div>
+          }
+
+          @if (modules().length === 0) {
+            <div class="flex flex-col items-center justify-center py-10 text-center border border-dashed border-white/10 rounded-xl">
+              <span class="material-symbols-outlined text-3xl text-white/10 mb-2">folder_open</span>
+              <p class="text-white/30 text-sm">Aún no hay módulos. Agrega el primero abajo.</p>
+            </div>
+          }
+
+          <!-- New module form -->
+          <div class="bg-white/3 border border-white/5 rounded-xl p-4 space-y-3">
+            <p class="text-xs font-semibold text-white/50 uppercase tracking-wide flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-sm">folder_open</span>
+              Nuevo módulo
+            </p>
+            <div class="flex gap-3">
+              <input
+                type="text"
+                [(ngModel)]="newModuleTitle"
+                placeholder="Ej: Introducción al curso"
+                (keydown.enter)="addModule()"
+                class="flex-1 bg-white/5 border border-white/8 focus:border-sky-500/40 text-white text-sm placeholder-white/20 rounded-xl px-4 py-2.5 outline-none transition-colors"
+              />
+              <button
+                (click)="addModule()"
+                [disabled]="!newModuleTitle.trim()"
+                class="flex items-center gap-1.5 px-4 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                <span class="material-symbols-outlined text-base">add</span>
+                Agregar
+              </button>
+            </div>
+          </div>
+
+        }
+      </div>
+    }
+
+    <!-- ─── PUBLISH TAB ───────────────────────────────────────────────────── -->
+    @if (activeTab() === 'publish') {
+      <div class="space-y-5">
+
+        <!-- Completeness checklist -->
+        <div class="bg-white/3 border border-white/5 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-white">Checklist de publicación</h3>
+              <p class="text-xs text-white/40 mt-0.5">Completa todos los puntos para publicar tu curso</p>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-extrabold {{ completeness().score >= 70 ? 'text-emerald-400' : completeness().score >= 40 ? 'text-yellow-400' : 'text-red-400' }}">
+                {{ completeness().score }}%
+              </div>
+              <div class="text-xs text-white/30">completitud</div>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="h-2 bg-white/5 rounded-full overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all duration-700 {{ completeness().score >= 70 ? 'bg-emerald-500' : completeness().score >= 40 ? 'bg-yellow-500' : 'bg-red-500' }}"
+              [style.width.%]="completeness().score"
+            ></div>
+          </div>
+
+          <!-- Checklist items -->
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3 text-sm {{ completeness().hasTitle ? 'text-white/70' : 'text-white/30' }}">
+              <span class="material-symbols-outlined text-base {{ completeness().hasTitle ? 'text-emerald-400' : 'text-red-400/60' }}">
+                {{ completeness().hasTitle ? 'check_circle' : 'cancel' }}
+              </span>
+              Título del curso
+            </div>
+            <div class="flex items-center gap-3 text-sm {{ completeness().hasDescription ? 'text-white/70' : 'text-white/30' }}">
+              <span class="material-symbols-outlined text-base {{ completeness().hasDescription ? 'text-emerald-400' : 'text-red-400/60' }}">
+                {{ completeness().hasDescription ? 'check_circle' : 'cancel' }}
+              </span>
+              Descripción (mínimo 50 caracteres)
+            </div>
+            <div class="flex items-center gap-3 text-sm {{ completeness().hasPrice ? 'text-white/70' : 'text-white/30' }}">
+              <span class="material-symbols-outlined text-base {{ completeness().hasPrice ? 'text-emerald-400' : 'text-red-400/60' }}">
+                {{ completeness().hasPrice ? 'check_circle' : 'cancel' }}
+              </span>
+              Precio establecido
+            </div>
+            <div class="flex items-center gap-3 text-sm {{ completeness().hasCategory ? 'text-white/70' : 'text-white/30' }}">
+              <span class="material-symbols-outlined text-base {{ completeness().hasCategory ? 'text-emerald-400' : 'text-red-400/60' }}">
+                {{ completeness().hasCategory ? 'check_circle' : 'cancel' }}
+              </span>
+              Categoría seleccionada
+            </div>
+            <div class="flex items-center gap-3 text-sm {{ completeness().hasThumbnail ? 'text-white/70' : 'text-white/30' }}">
+              <span class="material-symbols-outlined text-base {{ completeness().hasThumbnail ? 'text-emerald-400' : 'text-red-400/60' }}">
+                {{ completeness().hasThumbnail ? 'check_circle' : 'cancel' }}
+              </span>
+              Miniatura del curso
+            </div>
+            <div class="flex items-center gap-3 text-sm {{ completeness().hasModules ? 'text-white/70' : 'text-white/30' }}">
+              <span class="material-symbols-outlined text-base {{ completeness().hasModules ? 'text-emerald-400' : 'text-red-400/60' }}">
+                {{ completeness().hasModules ? 'check_circle' : 'cancel' }}
+              </span>
+              Al menos un módulo de contenido
+            </div>
+            <div class="flex items-center gap-3 text-sm {{ completeness().hasLessons ? 'text-white/70' : 'text-white/30' }}">
+              <span class="material-symbols-outlined text-base {{ completeness().hasLessons ? 'text-emerald-400' : 'text-red-400/60' }}">
+                {{ completeness().hasLessons ? 'check_circle' : 'cancel' }}
+              </span>
+              Al menos una lección publicada
+            </div>
+          </div>
+        </div>
+
+        @if (editCourse()) {
+
+          <!-- Current status card -->
+          <div class="border rounded-xl p-5 {{ statusConfig[editCourse()!.status].cls }}">
+            <div class="flex items-start gap-3">
+              <span class="material-symbols-outlined text-xl">{{ statusConfig[editCourse()!.status].icon }}</span>
+              <div class="flex-1">
+                <p class="font-semibold text-sm">Estado actual: {{ statusConfig[editCourse()!.status].text }}</p>
+                <p class="text-xs mt-0.5 opacity-70">{{ statusConfig[editCourse()!.status].desc }}</p>
+              </div>
+            </div>
+
+            @if (editCourse()!.status === 'rejected' && editCourse()!.rejection_reason) {
+              <div class="mt-4 p-3 bg-red-900/30 border border-red-500/30 rounded-xl">
+                <p class="text-xs font-semibold text-red-300 mb-1 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm">warning</span>
+                  Motivo del rechazo
+                </p>
+                <p class="text-sm text-red-200">{{ editCourse()!.rejection_reason }}</p>
+              </div>
+            }
+          </div>
+
+          <!-- Pricing summary -->
+          @if (priceCop > 0) {
+            <div class="bg-white/3 border border-white/5 rounded-xl p-5 space-y-3">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-base text-sky-400">payments</span>
+                Resumen de ingresos por venta
+              </h3>
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-white/50">Precio del curso</span>
+                  <span class="text-white font-semibold">{{ formatCOP(priceCop) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-white/50">Plataforma (10%)</span>
+                  <span class="text-white/40">− {{ formatCOP(priceCop * 0.10) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-white/50">Afiliados (20%)</span>
+                  <span class="text-white/40">− {{ formatCOP(priceCop * 0.20) }}</span>
+                </div>
+                <div class="border-t border-white/8 pt-2 flex justify-between text-sm">
+                  <span class="text-emerald-400 font-semibold">Tu ganancia (70%)</span>
+                  <span class="text-emerald-400 font-bold">{{ formatCOP(priceCop * 0.70) }}</span>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Submit for review -->
+          @if (completeness().score >= 70 && editCourse()!.status !== 'active') {
+            <div class="bg-sky-500/10 border border-sky-500/20 rounded-xl p-5 space-y-4">
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-sky-400 text-xl">rocket_launch</span>
+                <div>
+                  <p class="text-sm font-semibold text-white">Tu curso está listo para revisión</p>
+                  <p class="text-xs text-white/50 mt-0.5">Una vez enviado, el equipo de Publihazclick revisará tu curso en 24–48 horas.</p>
+                </div>
+              </div>
+              <button
+                (click)="save()"
+                [disabled]="saving()"
+                class="w-full flex items-center justify-center gap-2 py-3 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors"
+              >
+                @if (saving()) {
+                  <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Enviando...
+                } @else {
+                  <span class="material-symbols-outlined text-base">send</span>
+                  Enviar a revisión
+                }
+              </button>
+            </div>
+          } @else if (completeness().score < 70) {
+            <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center gap-3">
+              <span class="material-symbols-outlined text-yellow-400 text-xl">info</span>
+              <p class="text-sm text-yellow-300">Completa al menos el 70% del checklist para enviar tu curso a revisión.</p>
+            </div>
+          }
+
+          <!-- Affiliate / share link (active courses only) -->
+          @if (editCourse()!.status === 'active') {
+            <div class="bg-white/3 border border-white/5 rounded-xl p-5 space-y-3">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-base text-emerald-400">link</span>
+                Enlace para compartir
+              </h3>
+              <p class="text-xs text-white/40">Comparte este enlace para que otros puedan comprar tu curso directamente.</p>
+              <div class="flex items-center gap-2 bg-white/5 border border-white/8 rounded-xl px-4 py-2.5">
+                <span class="flex-1 text-xs text-white/60 truncate">
+                  https://publihazclick.com/cursos/{{ editCourse()!.slug }}
+                </span>
+                <button
+                  class="text-sky-400 hover:text-sky-300 transition-colors shrink-0"
+                  title="Copiar enlace"
+                >
+                  <span class="material-symbols-outlined text-base">content_copy</span>
+                </button>
+              </div>
+            </div>
+          }
+
+        } @else {
+          <div class="flex flex-col items-center justify-center py-10 text-center">
+            <span class="material-symbols-outlined text-4xl text-white/10 mb-3">rocket_launch</span>
+            <p class="text-white/50 font-medium">Guarda primero la información básica</p>
+            <p class="text-white/30 text-sm mt-1">Ve a la pestaña "Info" y guarda el curso para ver las opciones de publicación</p>
+          </div>
+        }
+
       </div>
     }
 

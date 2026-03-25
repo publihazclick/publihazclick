@@ -228,8 +228,10 @@ export class CursosService {
     return data;
   }
 
-  async updateModule(id: string, title: string): Promise<void> {
-    await this.supabase.from('course_modules').update({ title }).eq('id', id);
+  async updateModule(id: string, title: string, position?: number): Promise<void> {
+    const update: Record<string, unknown> = { title };
+    if (position !== undefined) update['position'] = position;
+    await this.supabase.from('course_modules').update(update).eq('id', id);
   }
 
   async deleteModule(id: string): Promise<void> {
