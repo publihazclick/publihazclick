@@ -1,0 +1,414 @@
+<div class="min-h-screen bg-black p-4 lg:p-8">
+
+  <!-- Step indicator bar -->
+  <div class="flex items-center justify-center mb-8 overflow-x-auto pb-2">
+    <div class="flex items-center gap-0 min-w-max">
+      @for (step of ['topic', 'platform', 'script', 'voice', 'images', 'preview']; track step; let i = $index) {
+        <!-- Step circle + label -->
+        <div class="flex flex-col items-center">
+          <button
+            (click)="goToStep($any(step))"
+            class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all"
+            [class]="stepIndex() === i
+              ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/40'
+              : stepIndex() > i
+                ? 'bg-violet-500/30 text-violet-300 cursor-pointer hover:bg-violet-500/50'
+                : 'bg-white/5 text-slate-600 cursor-default'"
+          >
+            @if (stepIndex() > i) {
+              <span class="material-symbols-outlined text-sm">check</span>
+            } @else {
+              {{ i + 1 }}
+            }
+          </button>
+          <span
+            class="text-[10px] mt-1 font-medium whitespace-nowrap"
+            [class]="stepIndex() === i ? 'text-violet-400' : stepIndex() > i ? 'text-slate-500' : 'text-slate-700'"
+          >
+            {{ step }}
+          </span>
+        </div>
+
+        <!-- Connector line (not after last) -->
+        @if (i < 5) {
+          <div
+            class="w-8 h-px mb-5 transition-colors"
+            [class]="stepIndex() > i ? 'bg-violet-500/50' : 'bg-white/5'"
+          ></div>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Error alert -->
+  @if (error()) {
+    <div class="max-w-3xl mx-auto mb-6 flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+      <span class="material-symbols-outlined text-red-400 text-xl shrink-0">error</span>
+      <div>
+        <p class="text-sm font-bold text-red-400">Error</p>
+        <p class="text-xs text-red-300/80 mt-0.5">{{ error() }}</p>
+      </div>
+      <button (click)="error.set(null)" class="ml-auto text-red-400/60 hover:text-red-400 transition-colors">
+        <span class="material-symbols-outlined text-lg">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- Generation progress bar -->
+  @if (isGenerating()) {
+    <div class="max-w-3xl mx-auto mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-slate-400 flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm text-violet-400 animate-spin">progress_activity</span>
+          {{ generationStep() || 'Procesando...' }}
+        </span>
+        <span class="text-xs text-violet-400 font-bold">{{ aiVideoService.generationProgress() }}%</span>
+      </div>
+      <div class="h-1 bg-white/5 rounded-full overflow-hidden">
+        <div
+          class="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-500"
+          [style.width.%]="aiVideoService.generationProgress()"
+        ></div>
+      </div>
+    </div>
+  }
+
+  <!-- Step content -->
+  @switch (currentStep()) {
+
+    <!-- TOPIC -->
+    @case ('topic') {
+      <div class="max-w-2xl mx-auto bg-card-dark border border-white/5 rounded-2xl p-6">
+        <h2 class="text-xl font-black text-white mb-1">De que sera tu video?</h2>
+        <p class="text-slate-500 text-sm mb-4">Describe tu idea, tema o mensaje principal</p>
+
+        <textarea
+          [ngModel]="topic()"
+          (ngModelChange)="topic.set($event)"
+          class="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white placeholder-slate-600 resize-none focus:border-violet-500/50 focus:outline-none transition-colors"
+          rows="4"
+          placeholder="Ej: 5 tips para mejorar tu productividad trabajando desde casa..."
+          maxlength="500"
+        ></textarea>
+        <p class="text-right text-xs text-slate-600 mt-1">{{ topic().length }}/500</p>
+
+        <!-- Optional config -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+          <!-- Video type -->
+          <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tipo</label>
+            <select
+              [ngModel]="selectedVideoType()"
+              (ngModelChange)="selectedVideoType.set($event)"
+              class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-violet-500/50 focus:outline-none"
+            >
+              @for (t of videoTypes; track t) {
+                <option [value]="t" class="bg-black">{{ t }}</option>
+              }
+            </select>
+          </div>
+          <!-- Tone -->
+          <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tono</label>
+            <select
+              [ngModel]="selectedTone()"
+              (ngModelChange)="selectedTone.set($event)"
+              class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-violet-500/50 focus:outline-none"
+            >
+              @for (t of tones; track t) {
+                <option [value]="t" class="bg-black">{{ t }}</option>
+              }
+            </select>
+          </div>
+          <!-- Monetization -->
+          <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Monetizacion</label>
+            <select
+              [ngModel]="selectedMonetization()"
+              (ngModelChange)="selectedMonetization.set($event)"
+              class="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-violet-500/50 focus:outline-none"
+            >
+              @for (m of monetizations; track m) {
+                <option [value]="m" class="bg-black">{{ m }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- PLATFORM -->
+    @case ('platform') {
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-xl font-black text-white mb-1 text-center">Elige la plataforma</h2>
+        <p class="text-slate-500 text-sm mb-6 text-center">Selecciona donde publicaras tu video</p>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          @for (p of platforms; track p.id) {
+            <button
+              (click)="selectedPlatform.set(p.id); selectedDuration.set(p.durations[1] ?? p.durations[0])"
+              class="bg-card-dark border rounded-2xl p-4 text-center transition-all hover:scale-105"
+              [class]="selectedPlatform() === p.id
+                ? 'border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10'
+                : 'border-white/5 hover:border-white/20'"
+            >
+              <span class="text-3xl block mb-2">{{ p.icon }}</span>
+              <span class="text-sm font-bold text-white block">{{ p.name }}</span>
+              <span class="text-[10px] text-slate-500 block mt-1">{{ p.aspect }}</span>
+            </button>
+          }
+        </div>
+
+        <!-- Duration selector -->
+        @if (selectedPlatform()) {
+          <div class="mt-6 text-center">
+            <h3 class="text-sm font-bold text-slate-400 mb-3">Duracion del video</h3>
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+              @for (d of getSelectedPlatformDurations(); track d) {
+                <button
+                  (click)="selectedDuration.set(d)"
+                  class="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+                  [class]="selectedDuration() === d
+                    ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/30'
+                    : 'bg-white/5 text-slate-400 hover:bg-white/10'"
+                >
+                  {{ d }}s
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- SCRIPT -->
+    @case ('script') {
+      <div class="max-w-3xl mx-auto space-y-4">
+        <h2 class="text-xl font-black text-white text-center">Guion generado</h2>
+
+        @if (!script() && isGenerating()) {
+          <div class="bg-card-dark border border-white/5 rounded-2xl p-10 text-center">
+            <span class="material-symbols-outlined text-5xl text-violet-500/40 animate-pulse block mb-3">auto_awesome</span>
+            <p class="text-slate-500 text-sm">Creando tu guion con IA...</p>
+          </div>
+        }
+
+        @if (script()) {
+          <div class="bg-card-dark border border-white/5 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-black text-violet-400">{{ script()!.title }}</h3>
+              <button
+                (click)="generateScript()"
+                [disabled]="isGenerating()"
+                class="px-3 py-1.5 text-xs bg-violet-500/10 text-violet-400 rounded-lg hover:bg-violet-500/20 transition-all border border-violet-500/20 disabled:opacity-50 flex items-center gap-1"
+              >
+                <span class="material-symbols-outlined text-sm">refresh</span>
+                Regenerar
+              </button>
+            </div>
+
+            <p class="text-emerald-400 text-sm font-medium mb-4">
+              Hook: {{ script()!.hook }}
+            </p>
+
+            <!-- Scenes list -->
+            <div class="space-y-3">
+              @for (scene of script()!.scenes; track scene.scene) {
+                <div class="bg-black/30 rounded-xl p-4 border border-white/5">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 text-xs font-black flex items-center justify-center shrink-0">
+                      {{ scene.scene }}
+                    </span>
+                    <span class="text-xs text-slate-500">{{ scene.duration_seconds }}s &middot; {{ scene.camera_direction }}</span>
+                  </div>
+                  <p class="text-white text-sm leading-relaxed">{{ scene.narration }}</p>
+                  <p class="text-slate-500 text-xs mt-1 italic">Visual: {{ scene.visual_description }}</p>
+                  @if (scene.text_overlay) {
+                    <p class="text-amber-400/70 text-xs mt-1">Overlay: {{ scene.text_overlay }}</p>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- CTA / music -->
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              @if (script()!.cta) {
+                <div class="p-3 bg-fuchsia-500/5 rounded-xl border border-fuchsia-500/10">
+                  <p class="text-xs font-bold text-fuchsia-400 mb-1">CTA</p>
+                  <p class="text-xs text-slate-400">{{ script()!.cta }}</p>
+                </div>
+              }
+              @if (script()!.music_suggestion) {
+                <div class="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                  <p class="text-xs font-bold text-emerald-400 mb-1">Musica sugerida</p>
+                  <p class="text-xs text-slate-400">{{ script()!.music_suggestion }}</p>
+                </div>
+              }
+            </div>
+
+            <!-- SEO section -->
+            @if (script()!.seo) {
+              <div class="mt-4 p-3 bg-violet-500/5 rounded-xl border border-violet-500/10">
+                <p class="text-xs font-bold text-violet-400 mb-1">SEO</p>
+                <p class="text-xs text-slate-400">{{ script()!.seo!.description }}</p>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  @for (tag of script()!.seo!.hashtags; track tag) {
+                    <span class="text-[10px] bg-violet-500/10 text-violet-300 px-2 py-0.5 rounded-full">{{ tag }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- VOICE -->
+    @case ('voice') {
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-xl font-black text-white mb-1 text-center">Elige la voz</h2>
+        <p class="text-slate-500 text-sm mb-6 text-center">Selecciona el tipo de voz para la narracion</p>
+
+        <div class="grid grid-cols-2 gap-4">
+          @for (v of getVoiceOptions(); track v.type) {
+            <button
+              (click)="selectedVoiceType.set(v.type)"
+              class="bg-card-dark border rounded-2xl p-5 text-left transition-all hover:scale-[1.02]"
+              [class]="selectedVoiceType() === v.type
+                ? 'border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10'
+                : 'border-white/5 hover:border-white/20'"
+            >
+              <span
+                class="material-symbols-outlined text-2xl mb-2 block transition-colors"
+                [class]="selectedVoiceType() === v.type ? 'text-violet-400' : 'text-slate-500'"
+              >{{ v.icon }}</span>
+              <span class="text-sm font-bold text-white block">{{ v.label }}</span>
+              <span class="text-[10px] text-slate-500 block mt-1">{{ v.voice_id }}</span>
+            </button>
+          }
+        </div>
+
+        @if (selectedVoiceType() && script()?.scenes?.length) {
+          <div class="mt-6 text-center">
+            <button
+              (click)="previewVoice()"
+              [disabled]="previewVoiceLoading()"
+              class="px-4 py-2 bg-violet-500/10 text-violet-400 rounded-xl text-sm font-bold hover:bg-violet-500/20 transition-all border border-violet-500/20 disabled:opacity-50 inline-flex items-center gap-1"
+            >
+              @if (previewVoiceLoading()) {
+                <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                Generando...
+              } @else {
+                <span class="material-symbols-outlined text-sm">play_circle</span>
+                Escuchar preview
+              }
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- IMAGES -->
+    @case ('images') {
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-xl font-black text-white mb-1 text-center">Imagenes generadas</h2>
+        <p class="text-slate-500 text-sm mb-6 text-center">Imagenes unicas para cada escena de tu video</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (scene of scenes(); track scene.scene; let i = $index) {
+            <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+              <div class="aspect-[9/16] bg-black/50 relative">
+                @if (scene.image_url) {
+                  <img
+                    [src]="scene.image_url"
+                    [alt]="'Escena ' + scene.scene"
+                    class="w-full h-full object-cover"
+                  >
+                  <button
+                    (click)="regenerateSceneImage(i)"
+                    [disabled]="isGenerating()"
+                    class="absolute top-2 right-2 w-8 h-8 bg-black/70 rounded-lg flex items-center justify-center hover:bg-violet-500/50 transition-all disabled:opacity-50"
+                    title="Regenerar imagen"
+                  >
+                    <span class="material-symbols-outlined text-white text-sm">refresh</span>
+                  </button>
+                } @else {
+                  <div class="w-full h-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-4xl text-slate-700 animate-pulse">image</span>
+                  </div>
+                }
+              </div>
+              <div class="p-3">
+                <p class="text-xs font-bold text-slate-400">Escena {{ scene.scene }} &middot; {{ scene.duration_seconds }}s</p>
+                <p class="text-xs text-slate-600 mt-1 line-clamp-2">{{ scene.narration }}</p>
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (!scenes().length && !isGenerating()) {
+          <div class="text-center py-12">
+            <span class="material-symbols-outlined text-5xl text-slate-700 block mb-3">image_not_supported</span>
+            <p class="text-slate-500 text-sm">No hay escenas disponibles. Vuelve al paso de guion.</p>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- PREVIEW -->
+    @case ('preview') {
+      <div class="max-w-2xl mx-auto text-center">
+        <h2 class="text-xl font-black text-white mb-6">Vista previa del video</h2>
+
+        <app-video-preview
+          [scenes]="scenes()"
+          [aspectRatio]="getAspectRatio()"
+          [watermark]="true"
+        />
+
+        <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
+          <button
+            class="px-6 py-3 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-black rounded-xl text-sm hover:opacity-90 transition-all inline-flex items-center gap-1"
+          >
+            <span class="material-symbols-outlined text-sm">download</span>
+            Descargar con marca de agua
+          </button>
+          <button
+            class="px-6 py-3 bg-white/5 text-slate-400 font-bold rounded-xl text-sm border border-white/10 hover:border-amber-500/30 hover:text-amber-400 transition-all inline-flex items-center gap-1"
+          >
+            <span class="material-symbols-outlined text-sm">toll</span>
+            Descargar HD (Creditos)
+          </button>
+        </div>
+      </div>
+    }
+
+  }
+
+  <!-- Navigation buttons -->
+  <div class="max-w-3xl mx-auto flex items-center justify-between mt-8">
+    @if (stepIndex() > 0) {
+      <button
+        (click)="prevStep()"
+        class="px-5 py-2.5 bg-white/5 text-slate-400 rounded-xl text-sm font-bold border border-white/10 hover:bg-white/10 transition-all inline-flex items-center gap-1"
+      >
+        <span class="material-symbols-outlined text-sm">arrow_back</span>
+        Atras
+      </button>
+    } @else {
+      <div></div>
+    }
+
+    @if (currentStep() !== 'preview') {
+      <button
+        (click)="nextStep()"
+        [disabled]="!canProceed() || isGenerating()"
+        class="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl text-sm font-black hover:opacity-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center gap-1"
+      >
+        Siguiente
+        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+      </button>
+    }
+  </div>
+
+</div>

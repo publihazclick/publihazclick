@@ -1,0 +1,64 @@
+<div class="relative overflow-hidden rounded-2xl bg-black border border-white/10 mx-auto"
+     [style.aspect-ratio]="aspectRatioStyle()"
+     [style.max-width]="aspectRatio() === '16:9' ? '640px' : '360px'">
+
+  <!-- Scene image with Ken Burns -->
+  @if (currentScene()?.image_url) {
+    <img [src]="currentScene()!.image_url"
+         alt="Scene"
+         class="absolute inset-0 w-full h-full object-cover"
+         [class]="isPlaying() ? kenBurnsClass() : ''"
+         [style.animation-duration]="currentScene()!.duration_seconds + 's'">
+  } @else {
+    <div class="absolute inset-0 flex items-center justify-center bg-zinc-950">
+      <span class="material-symbols-outlined text-6xl text-slate-800">movie</span>
+    </div>
+  }
+
+  <!-- Text overlay -->
+  @if (currentScene()?.text_overlay) {
+    <div class="absolute bottom-16 left-0 right-0 text-center px-4">
+      <p class="text-white text-sm font-bold drop-shadow-lg bg-black/40 inline-block px-3 py-1 rounded-lg">
+        {{ currentScene()!.text_overlay }}
+      </p>
+    </div>
+  }
+
+  <!-- Watermark -->
+  @if (watermark()) {
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+      <p class="text-white/20 text-4xl font-black rotate-[-30deg] tracking-widest">PUBLISTUDIO</p>
+    </div>
+  }
+
+  <!-- Play/Pause button overlay -->
+  <button (click)="togglePlay()"
+    class="absolute inset-0 flex items-center justify-center group">
+    @if (!isPlaying()) {
+      <div class="w-16 h-16 rounded-full bg-violet-500/80 flex items-center justify-center backdrop-blur-sm group-hover:bg-violet-500 transition-all shadow-lg">
+        <span class="material-symbols-outlined text-white text-3xl ml-1">play_arrow</span>
+      </div>
+    }
+  </button>
+
+  <!-- Bottom controls -->
+  <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+    <!-- Progress bar -->
+    <div class="w-full h-1 bg-white/10 rounded-full mb-2 cursor-pointer">
+      <div class="h-full bg-violet-500 rounded-full transition-all" [style.width.%]="progressPercent()"></div>
+    </div>
+    <!-- Scene indicators + time -->
+    <div class="flex items-center justify-between text-[10px] text-slate-400">
+      <div class="flex gap-1">
+        @for (s of scenes(); track s.scene; let i = $index) {
+          <button (click)="seekToScene(i)"
+            class="w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center transition-all"
+            [class]="i === currentSceneIndex() ? 'bg-violet-500 text-white' : 'bg-white/10 text-slate-500 hover:bg-white/20'">
+            {{ s.scene }}
+          </button>
+        }
+      </div>
+      <span>{{ elapsedTime() | number:'1.0-0' }}s / {{ totalDuration() }}s</span>
+    </div>
+  </div>
+</div>

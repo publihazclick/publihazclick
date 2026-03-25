@@ -179,31 +179,8 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
       },
       {
-        path: 'video',
-        loadComponent: () => import('./features/advertiser/components/ai-script/ai-script.component').then(m => m.AiScriptComponent)
-      },
-      {
-        path: 'imagen',
-        loadComponent: () => import('./features/ai/components/ai-imagen/ai-imagen.component').then(m => m.AiImagenComponent),
-      },
-      {
-        path: 'chatbot',
-        loadComponent: () =>
-          import('./features/ai/components/ai-chatbot/ai-chatbot.component').then(
-            m => m.AiChatbotComponent
-          )
-      },
-      {
-        path: 'voz',
-        loadComponent: () =>
-          import('./features/ai/components/ai-voz/ai-voz.component').then(m => m.AiVozComponent)
-      },
-      {
-        path: 'planes',
-        loadComponent: () =>
-          import('./features/ai/components/ai-planes/ai-planes.component').then(
-            m => m.AiPlanesComponent
-          )
+        path: 'create',
+        loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
       }
     ]
   },
@@ -252,11 +229,6 @@ export const routes: Routes = [
       {
         path: 'tasks',
         loadComponent: () => import('./features/advertiser/components/tasks/advertiser-tasks.component').then(m => m.AdvertiserTasksComponent)
-      },
-      {
-        path: 'ai-script',
-        redirectTo: '/ai/video',
-        pathMatch: 'full'
       },
       {
         path: 'settings',

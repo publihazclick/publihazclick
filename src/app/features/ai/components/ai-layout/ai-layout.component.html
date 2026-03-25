@@ -6,115 +6,107 @@
   <!-- Logo + collapse -->
   <div class="p-3 lg:p-4 flex items-center justify-between border-b border-white/10">
     @if (!sidebarCollapsed()) {
-      <div class="flex items-center gap-2">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
-          <span class="material-symbols-outlined text-white" style="font-size:20px">auto_awesome</span>
-        </div>
-        <span class="text-base font-black tracking-tight bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-          PubliStudio
-        </span>
-      </div>
+      <img src="/logo.webp" alt="PublihazClik" class="h-12 lg:h-14 w-auto" width="200" height="56">
     }
     <button
-      (click)="toggleSidebarCollapse()"
+      (click)="toggleSidebar()"
       class="flex p-1.5 rounded-lg hover:bg-white/10 transition-all ml-auto"
-      [title]="sidebarCollapsed() ? 'Expandir menú' : 'Colapsar menú'"
     >
       <span class="material-symbols-outlined text-2xl">menu</span>
     </button>
   </div>
 
-  <div class="overflow-y-auto flex-1 p-2 lg:p-4">
-    <!-- Back to advertiser -->
-    <div class="mb-4 pb-4 border-b border-white/10">
-      <a routerLink="/advertiser"
-         class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-         [class.justify-center]="sidebarCollapsed()">
-        <span class="material-symbols-outlined">arrow_back</span>
-        @if (!sidebarCollapsed()) { <span>Panel Anunciante</span> }
-      </a>
+  <div class="overflow-y-auto flex-1 p-2 lg:p-4 space-y-4">
+
+    <!-- Volver al panel -->
+    <div>
+      <button
+        (click)="goBackToDashboard()"
+        class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg bg-white/5 hover:bg-violet-500/10 hover:text-violet-400 text-slate-400 transition-all border border-white/5 hover:border-violet-500/20"
+        [class.justify-center]="sidebarCollapsed()"
+        title="Volver al Panel"
+      >
+        <span class="material-symbols-outlined text-base">arrow_back</span>
+        @if (!sidebarCollapsed()) {
+          <span class="font-semibold text-xs uppercase tracking-wider">
+            {{ (profile()?.role === 'admin' || profile()?.role === 'dev') ? 'Panel Admin' : 'Panel Anunciante' }}
+          </span>
+        }
+      </button>
     </div>
 
-    <nav class="space-y-2">
+    <!-- Badge usuario -->
+    @if (!sidebarCollapsed()) {
+      <div class="flex flex-col items-center py-4 border-b border-white/10">
+        <div class="w-14 h-14 rounded-2xl overflow-hidden mb-2 shadow-lg shadow-violet-500/20 border-2 border-white/10 flex-shrink-0">
+          @if (profile()?.avatar_url) {
+            <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center">
+              <span class="text-white font-black text-lg">{{ getInitials() }}</span>
+            </div>
+          }
+        </div>
+        @if (profile()) {
+          <h3 class="font-bold text-center text-sm">{{ profile()!.full_name || profile()!.username }}</h3>
+          <p class="text-[10px] text-violet-400 mt-1 font-bold uppercase tracking-widest">PubliStudio IA</p>
+        }
+      </div>
+    } @else {
+      <div class="flex flex-col items-center pb-2 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl overflow-hidden border-2 border-white/10 flex-shrink-0">
+          @if (profile()?.avatar_url) {
+            <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+          } @else {
+            <div class="w-full h-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center">
+              <span class="text-white font-black text-sm">{{ getInitials() }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Navegación -->
+    <nav class="space-y-1">
       @if (!sidebarCollapsed()) {
-        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 px-2 tracking-widest">Herramientas</h4>
+        <h4 class="text-[10px] uppercase font-black text-slate-500 mb-2 px-2 tracking-widest">Herramientas</h4>
       }
-      <ul class="space-y-1">
-        <li>
-          <a routerLink="/ai" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
-             [routerLinkActiveOptions]="{exact: true}"
-             class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-             [class.justify-center]="sidebarCollapsed()">
-            <span class="material-symbols-outlined">dashboard</span>
-            @if (!sidebarCollapsed()) { <span>Panel</span> }
-          </a>
-        </li>
-        <li>
-          <a routerLink="/ai/video" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
-             class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-             [class.justify-center]="sidebarCollapsed()">
-            <span class="material-symbols-outlined">smart_display</span>
-            @if (!sidebarCollapsed()) {
-              <span>Video IA</span>
-              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/20 text-emerald-400 rounded uppercase border border-emerald-500/20">Activo</span>
-            }
-          </a>
-        </li>
-        <li>
-          <a routerLink="/ai/imagen" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
-             class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-             [class.justify-center]="sidebarCollapsed()">
-            <span class="material-symbols-outlined">image</span>
-            @if (!sidebarCollapsed()) {
-              <span>Imagen IA</span>
-              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/20 text-emerald-400 rounded uppercase border border-emerald-500/20">Activo</span>
-            }
-          </a>
-        </li>
-        <li>
-          <a routerLink="/ai/chatbot" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
-             class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-             [class.justify-center]="sidebarCollapsed()">
-            <span class="material-symbols-outlined">chat</span>
-            @if (!sidebarCollapsed()) {
-              <span>Chatbot IA</span>
-              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/20 text-emerald-400 rounded uppercase border border-emerald-500/20">Activo</span>
-            }
-          </a>
-        </li>
-        <li>
-          <a routerLink="/ai/voz" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
-             class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-             [class.justify-center]="sidebarCollapsed()">
-            <span class="material-symbols-outlined">mic</span>
-            @if (!sidebarCollapsed()) {
-              <span>Voz IA</span>
-              <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/20 text-emerald-400 rounded uppercase border border-emerald-500/20">Activo</span>
-            }
-          </a>
-        </li>
-        <li>
-          <a routerLink="/ai/planes" routerLinkActive="bg-violet-500/10 text-violet-300 border border-violet-500/20"
-             class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-             [class.justify-center]="sidebarCollapsed()">
-            <span class="material-symbols-outlined">sell</span>
-            @if (!sidebarCollapsed()) {
-              <span>Planes y Precios</span>
-            }
-          </a>
-        </li>
-      </ul>
+
+      <a routerLink="/ai" routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
+         [routerLinkActiveOptions]="{ exact: true }"
+         class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+         [class.justify-center]="sidebarCollapsed()"
+         title="Panel">
+        <span class="material-symbols-outlined">dashboard</span>
+        @if (!sidebarCollapsed()) { <span>Panel</span> }
+      </a>
+
+      <a routerLink="/ai/create" routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
+         class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+         [class.justify-center]="sidebarCollapsed()"
+         title="Crear Video">
+        <span class="material-symbols-outlined">movie_creation</span>
+        @if (!sidebarCollapsed()) {
+          <span>Crear Video</span>
+          <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded uppercase">IA</span>
+        }
+      </a>
     </nav>
   </div>
 
   <!-- Bottom -->
-  <div class="p-2 lg:p-4 border-t border-white/10">
-    <a routerLink="/advertiser"
-       class="w-full bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 hover:text-violet-300 font-bold py-2.5 px-2 lg:px-4 rounded-lg transition-all text-xs border border-violet-500/20 flex items-center justify-center gap-2 uppercase tracking-wider"
-       [class.justify-center]="sidebarCollapsed()">
-      <span class="material-symbols-outlined">arrow_back</span>
-      @if (!sidebarCollapsed()) { <span>Volver al Panel</span> }
-    </a>
+  <div class="p-2 lg:p-4 border-t border-white/10 space-y-2">
+    @if (!sidebarCollapsed()) {
+      <p class="text-[9px] text-slate-600 text-center font-medium uppercase tracking-widest">
+        PUBLIHAZCLIK &mdash; PubliStudio IA
+      </p>
+    }
+    <button (click)="logout()"
+      class="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold py-2.5 px-2 lg:px-4 rounded-lg transition-all text-xs border border-rose-500/20 flex items-center justify-center gap-2 uppercase tracking-wider"
+      [class.justify-center]="sidebarCollapsed()">
+      <span class="material-symbols-outlined">logout</span>
+      @if (!sidebarCollapsed()) { <span>Salir</span> }
+    </button>
   </div>
 </aside>
 
@@ -126,43 +118,79 @@
   <!-- Header -->
   <header class="bg-card-dark/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
     <div class="flex items-center gap-3 px-4 lg:px-8 h-16">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center flex-shrink-0">
-        <span class="material-symbols-outlined text-white" style="font-size:18px">auto_awesome</span>
-      </div>
       <div class="flex-1 min-w-0">
-        <h1 class="text-base lg:text-lg font-black text-white tracking-tight truncate">PUBLISTUDIO</h1>
+        <h1 class="text-base lg:text-lg font-black text-white tracking-tight">PUBLISTUDIO IA</h1>
         <p class="text-[10px] text-slate-500 font-medium hidden sm:block uppercase tracking-widest">
-          Herramientas de Inteligencia Artificial
+          Creador de Videos con Inteligencia Artificial
         </p>
       </div>
 
-      <!-- Profile -->
-      @if (profile()) {
-        <a routerLink="/advertiser/settings"
-           class="flex items-center gap-2 p-1 rounded-xl hover:bg-white/5 transition-all">
-          <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
-            @if (profile()!.avatar_url) {
+      <!-- Avatar + dropdown -->
+      <div class="relative flex-shrink-0">
+        <button
+          (click)="toggleProfileMenu()"
+          class="flex items-center gap-2 p-1 rounded-xl hover:bg-white/5 transition-all group"
+        >
+          <div class="w-8 h-8 lg:w-9 lg:h-9 rounded-full overflow-hidden border-2 transition-colors flex-shrink-0"
+            [class]="profileMenuOpen() ? 'border-violet-500/60' : 'border-white/10 group-hover:border-white/30'">
+            @if (profile()?.avatar_url) {
               <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
             } @else {
-              <div class="w-full h-full bg-gradient-to-tr from-accent to-pink-600 flex items-center justify-center">
-                <span class="material-symbols-outlined text-white" style="font-size:16px">person</span>
+              <div class="w-full h-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                <span class="text-white font-black text-xs">{{ getInitials() }}</span>
               </div>
             }
           </div>
-          <span class="text-xs font-bold text-slate-300 hidden sm:block">{{ profile()!.full_name || profile()!.username }}</span>
-        </a>
-      }
+          <span class="material-symbols-outlined text-slate-500 group-hover:text-slate-300 transition-colors hidden sm:block" style="font-size:14px">
+            {{ profileMenuOpen() ? 'expand_less' : 'expand_more' }}
+          </span>
+        </button>
+
+        @if (profileMenuOpen()) {
+          <div class="fixed inset-0 z-40" (click)="closeProfileMenu()"></div>
+          <div class="absolute top-full right-0 mt-2 w-64 bg-[#0d0d0d] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+            <div class="px-4 py-4 flex items-center gap-3 border-b border-white/5">
+              <div class="w-12 h-12 rounded-xl overflow-hidden border-2 border-white/10 flex-shrink-0">
+                @if (profile()?.avatar_url) {
+                  <img [src]="profile()!.avatar_url" alt="avatar" class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                    <span class="text-white font-black">{{ getInitials() }}</span>
+                  </div>
+                }
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-black text-white text-sm truncate">{{ profile()?.full_name || profile()?.username }}</p>
+                <p class="text-xs text-slate-500 truncate">&#64;{{ profile()?.username }}</p>
+              </div>
+            </div>
+            <div class="p-2">
+              <button
+                (click)="goBackToDashboard(); closeProfileMenu()"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group"
+              >
+                <span class="material-symbols-outlined text-slate-400 group-hover:text-violet-400 transition-colors" style="font-size:18px">dashboard</span>
+                <span class="text-sm text-slate-300 group-hover:text-white transition-colors font-medium">
+                  {{ (profile()?.role === 'admin' || profile()?.role === 'dev') ? 'Panel Admin' : 'Panel Anunciante' }}
+                </span>
+              </button>
+              <div class="my-1 border-t border-white/5"></div>
+              <button
+                (click)="logout(); closeProfileMenu()"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-rose-500/10 transition-all group"
+              >
+                <span class="material-symbols-outlined text-slate-500 group-hover:text-rose-400 transition-colors" style="font-size:18px">logout</span>
+                <span class="text-sm text-slate-400 group-hover:text-rose-400 transition-colors font-medium">Cerrar sesion</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
     </div>
   </header>
 
   <!-- Content -->
-  <div class="p-4 lg:p-8 max-w-7xl mx-auto w-full">
+  <div class="flex-1 flex flex-col">
     <router-outlet></router-outlet>
   </div>
-
-  <!-- Footer -->
-  <footer class="mt-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-600 border-t border-white/5 gap-2">
-    <p>© 2024 PUBLIHAZCLIK — PubliStudio</p>
-    <a routerLink="/advertiser" class="hover:text-violet-400 transition-colors">← Volver al Panel</a>
-  </footer>
 </main>

@@ -1,6 +1,7 @@
-import { Component, signal, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, signal, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 
 @Component({
@@ -8,33 +9,58 @@ import { ProfileService } from '../../../../core/services/profile.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './ai-layout.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AiLayoutComponent implements OnInit, OnDestroy {
+export class AiLayoutComponent implements OnInit {
+  private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
+  private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
 
-  protected readonly sidebarCollapsed = signal(
+  readonly profile = this.profileService.profile;
+  readonly sidebarCollapsed = signal(
     isPlatformBrowser(this.platformId) && window.innerWidth < 1024
   );
+  readonly profileMenuOpen = signal(false);
 
-  readonly profile = this.profileService.profile;
+  ngOnInit(): void {
+    this.profileService.getCurrentProfile().catch(() => {});
+  }
 
-  async ngOnInit(): Promise<void> {
-    let p = this.profileService.profile();
-    if (!p) {
-      p = await this.profileService.getCurrentProfile();
-    }
-    const userId = p?.id;
-    if (userId && isPlatformBrowser(this.platformId)) {
-      this.profileService.startRealtimeProfileWatch(userId);
+  toggleSidebar(): void {
+    this.sidebarCollapsed.update(v => !v);
+  }
+
+  toggleProfileMenu(): void {
+    this.profileMenuOpen.update(v => !v);
+  }
+
+  closeProfileMenu(): void {
+    this.profileMenuOpen.set(false);
+  }
+
+  goBackToDashboard(): void {
+    const role = this.profile()?.role;
+    if (role === 'admin' || role === 'dev') {
+      this.router.navigate(['/admin']);
+    } else {
+      this.router.navigate(['/advertiser']);
     }
   }
 
-  ngOnDestroy(): void {
-    this.profileService.stopRealtimeProfileWatch();
+  getInitials(): string {
+    const p = this.profile();
+    if (!p) return '?';
+    const name = p.full_name || p.username || '';
+    return name
+      .split(' ')
+      .map(w => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   }
 
-  toggleSidebarCollapse(): void {
-    this.sidebarCollapsed.update((v) => !v);
+  logout(): void {
+    this.authService.logout().subscribe();
   }
 }

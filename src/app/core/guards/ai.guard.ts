@@ -4,7 +4,7 @@ import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
 
 /**
- * Guard de sección IA - solo advertiser, admin y dev pueden acceder
+ * Guard de Herramientas IA - solo advertiser, admin y dev pueden acceder
  */
 export const aiGuard: CanActivateFn = async (route, state) => {
   const router = inject(Router);

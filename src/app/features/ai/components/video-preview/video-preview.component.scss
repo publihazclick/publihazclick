@@ -1,0 +1,55 @@
+:host {
+  display: block;
+}
+
+.kb-zoom-in {
+  animation: kbZoomIn linear forwards;
+}
+
+.kb-zoom-out {
+  animation: kbZoomOut linear forwards;
+}
+
+.kb-pan-left {
+  animation: kbPanLeft linear forwards;
+}
+
+.kb-pan-right {
+  animation: kbPanRight linear forwards;
+}
+
+@keyframes kbZoomIn {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.3) translate(-2%, -2%);
+  }
+}
+
+@keyframes kbZoomOut {
+  from {
+    transform: scale(1.3) translate(-2%, -2%);
+  }
+  to {
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+@keyframes kbPanLeft {
+  from {
+    transform: scale(1.15) translate(5%, 0);
+  }
+  to {
+    transform: scale(1.15) translate(-5%, 0);
+  }
+}
+
+@keyframes kbPanRight {
+  from {
+    transform: scale(1.15) translate(-5%, 0);
+  }
+  to {
+    transform: scale(1.15) translate(5%, 0);
+  }
+}
