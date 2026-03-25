@@ -191,7 +191,7 @@ export class CursosService {
     return data;
   }
 
-  async updateCourse(id: string, updates: Partial<CreateCourseData>): Promise<void> {
+  async updateCourse(id: string, updates: Partial<CreateCourseData> | Record<string, unknown>): Promise<void> {
     const { error } = await this.supabase
       .from('courses')
       .update({ ...updates, updated_at: new Date().toISOString() })

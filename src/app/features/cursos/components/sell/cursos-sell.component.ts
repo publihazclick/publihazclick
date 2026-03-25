@@ -33,7 +33,7 @@ export class CursosSellComponent implements OnInit {
   thumbnail   = '';
   promoVideo  = '';
   priceCop    = 0;
-  category    = COURSE_CATEGORIES[0];
+  category    = COURSE_CATEGORIES[0] as string;
   level: CourseLevel = 'beginner';
 
   // New module/lesson inputs
@@ -79,7 +79,7 @@ export class CursosSellComponent implements OnInit {
     this.thumbnail   = course.thumbnail_url ?? '';
     this.promoVideo  = course.promo_video_url ?? '';
     this.priceCop    = course.price_cop;
-    this.category    = course.category;
+    this.category    = course.category as string;
     this.level       = course.level;
     const mods = await this.cursosService.getCourseModules(course.id);
     this.modules.set(mods);
@@ -98,19 +98,19 @@ export class CursosSellComponent implements OnInit {
     try {
       const data = {
         title: this.title,
-        description: this.description || undefined,
-        thumbnail_url: this.thumbnail || undefined,
-        promo_video_url: this.promoVideo || undefined,
+        description: this.description || null,
+        thumbnail_url: this.thumbnail || null,
+        promo_video_url: this.promoVideo || null,
         price_cop: this.priceCop,
         category: this.category,
         level: this.level,
       };
       const ec = this.editCourse();
       if (ec) {
-        await this.cursosService.updateCourse(ec.id, data);
-        this.editCourse.set({ ...ec, ...data });
+        await this.cursosService.updateCourse(ec.id, data as any);
+        this.editCourse.set({ ...ec, ...data } as Course);
       } else {
-        const created = await this.cursosService.createCourse(data);
+        const created = await this.cursosService.createCourse(data as any);
         this.editCourse.set(created);
         this.view.set('edit');
       }

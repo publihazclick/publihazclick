@@ -19,18 +19,24 @@
 
   <!-- Tabs -->
   <div class="flex gap-1">
-    @for (t of ([['pending','En revisión'],['all','Todos los cursos'],['transactions','Transacciones']] as [string,string][]); track t[0]) {
-      <button (click)="switchTab(t[0] as any)"
-              class="px-3 py-2 rounded-xl text-xs font-bold transition-all"
-              [class]="tab() === t[0]
-                ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
-                : 'text-slate-400 hover:bg-white/5 border border-transparent'">
-        {{ t[1] }}
-        @if (t[0] === 'pending' && pending().length > 0) {
-          <span class="ml-1 px-1.5 py-0.5 bg-yellow-500 text-white rounded-full text-[9px]">{{ pending().length }}</span>
-        }
-      </button>
-    }
+    <button (click)="switchTab('pending')"
+            class="px-3 py-2 rounded-xl text-xs font-bold transition-all"
+            [class]="tab() === 'pending' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:bg-white/5 border border-transparent'">
+      En revisión
+      @if (pending().length > 0) {
+        <span class="ml-1 px-1.5 py-0.5 bg-yellow-500 text-white rounded-full text-[9px]">{{ pending().length }}</span>
+      }
+    </button>
+    <button (click)="switchTab('all')"
+            class="px-3 py-2 rounded-xl text-xs font-bold transition-all"
+            [class]="tab() === 'all' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:bg-white/5 border border-transparent'">
+      Todos los cursos
+    </button>
+    <button (click)="switchTab('transactions')"
+            class="px-3 py-2 rounded-xl text-xs font-bold transition-all"
+            [class]="tab() === 'transactions' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:bg-white/5 border border-transparent'">
+      Transacciones
+    </button>
   </div>
 
   @if (loading()) {
