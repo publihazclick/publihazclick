@@ -1,6 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { getSupabaseClient } from '../supabase.client';
-import { environment } from '../../../environments/environment';
 
 export interface AiWallet {
   id: string;
@@ -140,23 +139,14 @@ export class AiWalletService {
 
   /** Crear pago de recarga y obtener parámetros de checkout ePayco */
   async createRechargePayment(amount: number): Promise<EpaycoCheckoutParams> {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) throw new Error('No autenticado');
-
-    const response = await fetch(
-      `${environment.supabase.url}/functions/v1/create-ai-wallet-recharge`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ amount }),
-      }
+    const { data, error } = await this.supabase.functions.invoke(
+      'create-ai-wallet-recharge',
+      { body: { amount } },
     );
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error ?? 'Error al crear recarga');
+    if (error || !data?.invoice) {
+      throw new Error(data?.error ?? 'Error al preparar recarga con ePayco');
+    }
     return data as EpaycoCheckoutParams;
   }
 }
