@@ -1,0 +1,119 @@
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-fuchsia-50 px-4 py-12">
+
+  <div class="w-full max-w-md">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+           style="background: linear-gradient(135deg, #7e22ce, #d946ef);">
+        <span class="material-symbols-outlined text-white" style="font-size:28px">auto_awesome</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black text-gray-900 mb-2">Crea tu cuenta en CreatorAI</h1>
+      <p class="text-gray-500 text-sm">Regístrate para acceder a todas las herramientas de IA</p>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-lg shadow-purple-500/5 p-6 sm:p-8">
+
+      <form (ngSubmit)="onSubmit()" class="space-y-5">
+
+        <!-- Email -->
+        <div>
+          <label for="email" class="block text-sm font-bold text-gray-700 mb-1.5">Correo electrónico</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400" style="font-size:20px">mail</span>
+            <input id="email" type="email" [(ngModel)]="email" name="email"
+                   placeholder="tucorreo@ejemplo.com"
+                   class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                   [class.border-red-300]="error() && !email.trim()">
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label for="password" class="block text-sm font-bold text-gray-700 mb-1.5">Contraseña</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400" style="font-size:20px">lock</span>
+            <input id="password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password"
+                   placeholder="Mínimo 6 caracteres"
+                   class="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all">
+            <button type="button" (click)="togglePassword()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 transition-colors">
+              <span class="material-symbols-outlined text-gray-400" style="font-size:20px">
+                {{ showPassword() ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div>
+          <label for="confirmPassword" class="block text-sm font-bold text-gray-700 mb-1.5">Repetir contraseña</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400" style="font-size:20px">lock</span>
+            <input id="confirmPassword" [type]="showConfirmPassword() ? 'text' : 'password'" [(ngModel)]="confirmPassword" name="confirmPassword"
+                   placeholder="Repite tu contraseña"
+                   class="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                   [class.border-red-300]="error() === 'Las contraseñas no coinciden'">
+            <button type="button" (click)="toggleConfirmPassword()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 transition-colors">
+              <span class="material-symbols-outlined text-gray-400" style="font-size:20px">
+                {{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error -->
+        @if (error()) {
+          <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+            <span class="material-symbols-outlined mt-0.5" style="font-size:18px">error</span>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        <!-- Submit -->
+        <button type="submit"
+          [disabled]="loading()"
+          class="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-sm"
+          style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef, #ec4899);">
+          @if (loading()) {
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span>Creando cuenta...</span>
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:20px">auto_awesome</span>
+            <span>Crear cuenta y acceder</span>
+          }
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-3 my-6">
+        <div class="flex-1 h-px bg-gray-200"></div>
+        <span class="text-xs text-gray-400">o</span>
+        <div class="flex-1 h-px bg-gray-200"></div>
+      </div>
+
+      <!-- Login link -->
+      <p class="text-center text-sm text-gray-500">
+        Ya tienes cuenta?
+        <a routerLink="/login" class="font-bold text-purple-600 hover:text-purple-700 transition-colors">
+          Inicia sesión
+        </a>
+      </p>
+    </div>
+
+    <!-- Back link -->
+    <div class="text-center mt-6">
+      <a routerLink="/advertiser/ai" class="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-purple-600 transition-colors">
+        <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>
+        Volver a Herramientas IA
+      </a>
+    </div>
+
+  </div>
+
+</div>

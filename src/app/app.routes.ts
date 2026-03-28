@@ -270,6 +270,10 @@ export const routes: Routes = [
       {
         path: 'ai/wallet',
         loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
+      },
+      {
+        path: 'ai/register',
+        loadComponent: () => import('./features/ai/components/ai-register/ai-register.component').then(m => m.AiRegisterComponent)
       }
     ]
   },
