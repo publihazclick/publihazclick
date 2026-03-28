@@ -12,7 +12,8 @@ import type { Profile } from '../../../../core/models/profile.model';
 type PayStep =
   | 'idle' | 'select'
   | 'redirect' | 'confirm' | 'submitting' | 'approved' | 'sent' | 'error'
-  | 'epayco-loading' | 'epayco-opening';
+  | 'epayco-loading' | 'epayco-opening'
+  | 'active-warning';
 
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -50,6 +51,9 @@ export class UserPackagesComponent implements OnInit {
   readonly payStep = signal<PayStep>('idle');
   readonly payError = signal<string | null>(null);
   readonly verifyMessage = signal<string>('');
+
+  // Paquete activo: flujo de advertencia antes de comprar otro
+  readonly pendingPaymentMethod = signal<'epayco' | 'nequi' | null>(null);
 
   // Datos del comprobante
   proofPhone = '';
@@ -105,7 +109,27 @@ export class UserPackagesComponent implements OnInit {
 
   /** Selecciona un paquete e inicia flujo Nequi */
   selectAndPay(pkg: Package): void {
+    if (this.hasActivePackage() && !this.isCurrentPackage(pkg)) {
+      this.selectedPackage.set(pkg);
+      this.pendingPaymentMethod.set('nequi');
+      this.payStep.set('active-warning');
+      return;
+    }
     this.openNequiPayment(pkg);
+  }
+
+  /** Continúa la compra tras la advertencia de paquete activo */
+  continueAfterWarning(): void {
+    const pkg = this.selectedPackage();
+    const method = this.pendingPaymentMethod();
+    if (!pkg) return;
+    this.pendingPaymentMethod.set(null);
+    if (method === 'nequi') {
+      this.openNequiPayment(pkg);
+    } else {
+      this.payStep.set('idle');
+      this.startEpaycoCheckout(pkg);
+    }
   }
 
   goToNequiLink(): void {
@@ -180,6 +204,14 @@ export class UserPackagesComponent implements OnInit {
 
   async startEpaycoCheckout(pkg: Package): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
+
+    if (this.hasActivePackage() && !this.isCurrentPackage(pkg) && this.pendingPaymentMethod() !== 'epayco') {
+      this.selectedPackage.set(pkg);
+      this.pendingPaymentMethod.set('epayco');
+      this.payStep.set('active-warning');
+      return;
+    }
+    this.pendingPaymentMethod.set(null);
 
     this.selectedPackage.set(pkg);
     this.payError.set(null);

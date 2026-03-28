@@ -305,8 +305,9 @@
                   <span class="material-symbols-outlined" style="font-size:18px">verified</span>
                   Plan actual activo
                 </div>
-              } @else {
-                <!-- Botón principal ePayco -->
+              }
+              <!-- Botón principal ePayco (siempre visible si no es el plan actual) -->
+              @if (!isCurrentPackage(pkg)) {
                 <button
                   (click)="startEpaycoCheckout(pkg)"
                   [disabled]="payStep() === 'epayco-loading'"
@@ -368,16 +369,21 @@
                  ? 'bg-emerald-500/10 border border-emerald-500/30'
                  : payStep() === 'epayco-loading' || payStep() === 'epayco-opening'
                    ? 'bg-[#00B1EA]/10 border border-[#00B1EA]/30'
-                   : 'bg-[#E6007E]/10 border border-[#E6007E]/30'">
+                   : payStep() === 'active-warning'
+                     ? 'bg-amber-500/10 border border-amber-500/30'
+                     : 'bg-[#E6007E]/10 border border-[#E6007E]/30'">
             <span class="material-symbols-outlined" style="font-size:20px"
                   [class]="payStep() === 'sent' || payStep() === 'approved'
                     ? 'text-emerald-400'
                     : payStep() === 'epayco-loading' || payStep() === 'epayco-opening'
                       ? 'text-[#00B1EA]'
-                      : 'text-[#E6007E]'">
+                      : payStep() === 'active-warning'
+                        ? 'text-amber-400'
+                        : 'text-[#E6007E]'">
               {{ payStep() === 'sent' ? 'mark_email_read'
                  : payStep() === 'approved' ? 'verified'
                  : payStep() === 'epayco-loading' || payStep() === 'epayco-opening' ? 'credit_card'
+                 : payStep() === 'active-warning' ? 'info'
                  : 'payments' }}
             </span>
           </div>
@@ -390,13 +396,14 @@
                  : payStep() === 'approved'       ? '¡Paquete activado!'
                  : payStep() === 'epayco-loading' ? 'Preparando pago...'
                  : payStep() === 'epayco-opening' ? 'Redirigiendo a ePayco...'
+                 : payStep() === 'active-warning' ? 'Paquete activo'
                  : payStep() === 'error'          ? 'Error en el pago'
                  : 'Pago' }}
             </p>
             <p class="text-[10px] text-slate-500">{{ selectedPackage()?.name }} · {{ getPriceCOP(selectedPackage()) }}</p>
           </div>
         </div>
-        @if (payStep() !== 'submitting' && payStep() !== 'epayco-loading' && payStep() !== 'epayco-opening') {
+        @if (payStep() !== 'submitting' && payStep() !== 'epayco-loading') {
           <button (click)="closePaymentModal()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-400">
             <span class="material-symbols-outlined">close</span>
           </button>
@@ -404,6 +411,33 @@
       </div>
 
       <div class="px-6 py-5 space-y-5">
+
+        <!-- ── Advertencia: paquete activo ────────────────────────────── -->
+        @if (payStep() === 'active-warning') {
+          <div class="flex flex-col items-center text-center gap-5 py-4">
+            <div class="w-20 h-20 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:44px">info</span>
+            </div>
+            <div>
+              <p class="font-black text-white text-lg">Aún tienes tu paquete publicitario activo</p>
+              <p class="text-slate-400 text-sm mt-2 leading-relaxed">
+                A tu paquete <span class="text-white font-bold">{{ currentPackage()?.name }}</span> le quedan
+                <span class="text-amber-400 font-black">{{ getDaysRemaining() }} días</span>.
+              </p>
+              <p class="text-xs text-slate-500 mt-2">Si compras un nuevo paquete, reemplazará tu plan actual.</p>
+            </div>
+            <div class="flex gap-3 w-full">
+              <button (click)="closePaymentModal()"
+                class="flex-1 py-3 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm transition-colors">
+                Cerrar
+              </button>
+              <button (click)="continueAfterWarning()"
+                class="flex-1 py-3 bg-accent hover:bg-accent/90 text-white rounded-xl font-black text-sm transition-colors">
+                Continuar compra
+              </button>
+            </div>
+          </div>
+        }
 
         <!-- ── Paso 1: Redirigir al link de Nequi ──────────────────────── -->
         @if (payStep() === 'redirect') {
