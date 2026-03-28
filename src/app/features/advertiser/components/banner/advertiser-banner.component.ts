@@ -110,6 +110,7 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
   readonly galleryBanners = signal<GalleryBanner[]>([]);
   readonly galleryLoading = signal(true);
   readonly cloningFrom = signal<GalleryBanner | null>(null);
+  readonly selectedGalleryBanner = signal<GalleryBanner | null>(null);
 
   async ngOnInit(): Promise<void> {
     await Promise.all([this.loadMyBanner(), this.loadGalleryBanners()]);
@@ -133,7 +134,17 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
     }
   }
 
-  async cloneAndCreate(banner: GalleryBanner): Promise<void> {
+  selectGalleryBanner(banner: GalleryBanner): void {
+    if (this.myBanner()) return;
+    const current = this.selectedGalleryBanner();
+    this.selectedGalleryBanner.set(current?.id === banner.id ? null : banner);
+    this.clearMessages();
+  }
+
+  async saveSelectedBanner(): Promise<void> {
+    const banner = this.selectedGalleryBanner();
+    if (!banner) return;
+
     this.saving.set(true);
     this.clearMessages();
     this.cloningFrom.set(banner);
@@ -178,7 +189,9 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
 
       await this.loadMyBanner();
       this.showForm.set(false);
+      this.selectedGalleryBanner.set(null);
       this.cloningFrom.set(null);
+      this.showSuccess('¡Has creado tu anuncio banner!');
       this.scheduleAutoApproval();
 
       if (isPlatformBrowser(this.platformId)) {

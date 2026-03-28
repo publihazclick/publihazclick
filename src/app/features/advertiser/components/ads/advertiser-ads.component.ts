@@ -107,6 +107,7 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
   readonly galleryAds = signal<GalleryAdCard[]>([]);
   readonly galleryLoading = signal(true);
   readonly cloningFrom = signal<GalleryAdCard | null>(null);
+  readonly selectedGalleryAd = signal<GalleryAdCard | null>(null);
 
   async ngOnInit(): Promise<void> {
     await Promise.all([this.loadMyAd(), this.loadGalleryAds()]);
@@ -195,26 +196,17 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
     this.clearMessages();
   }
 
-  cloneAd(ad: GalleryAdCard): void {
-    this.cloningFrom.set(ad);
-    this.form.set({
-      title: ad.title,
-      description: ad.description,
-      url: '',
-      youtube_url: ad.videoUrl,
-      image_url: ad.imageUrl,
-    });
-    this.showForm.set(true);
+  selectGalleryAd(ad: GalleryAdCard): void {
+    if (this.myAd()) return;
+    const current = this.selectedGalleryAd();
+    this.selectedGalleryAd.set(current?.id === ad.id ? null : ad);
     this.clearMessages();
-
-    if (isPlatformBrowser(this.platformId)) {
-      setTimeout(() => {
-        document.querySelector('[data-ad-form]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
-    }
   }
 
-  async cloneAndCreate(ad: GalleryAdCard): Promise<void> {
+  async saveSelectedAd(): Promise<void> {
+    const ad = this.selectedGalleryAd();
+    if (!ad) return;
+
     this.saving.set(true);
     this.clearMessages();
     this.cloningFrom.set(ad);
@@ -223,7 +215,6 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
     if (!user) { this.saving.set(false); return; }
 
     try {
-      // Si ya tiene un anuncio, actualizarlo con los datos del clon
       const existing = this.myAd();
       if (existing) {
         const { error } = await this.supabase
@@ -264,7 +255,9 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
 
       await this.loadMyAd();
       this.showForm.set(false);
+      this.selectedGalleryAd.set(null);
       this.cloningFrom.set(null);
+      this.showSuccess('¡Has creado tu anuncio PTC!');
       this.scheduleAutoApproval();
 
       if (isPlatformBrowser(this.platformId)) {

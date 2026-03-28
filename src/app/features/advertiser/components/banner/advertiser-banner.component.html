@@ -310,7 +310,12 @@
     } @else {
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         @for (banner of galleryBanners(); track banner.id) {
-          <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-white/10 transition-all">
+          <div
+            class="bg-card-dark rounded-2xl overflow-hidden flex flex-col group transition-all"
+            [class]="selectedGalleryBanner()?.id === banner.id
+              ? 'border-2 border-violet-500 shadow-lg shadow-violet-500/10'
+              : 'border border-white/5 hover:border-white/10'"
+          >
             <div class="relative aspect-[3/1] overflow-hidden bg-zinc-900">
               @if (banner.image_url) {
                 <img [src]="banner.image_url" [alt]="banner.name"
@@ -320,6 +325,11 @@
                   <span class="material-symbols-outlined text-zinc-700 text-5xl">image</span>
                 </div>
               }
+              @if (selectedGalleryBanner()?.id === banner.id) {
+                <div class="absolute top-2 right-2 w-6 h-6 bg-violet-500 rounded-full flex items-center justify-center">
+                  <span class="material-symbols-outlined text-white" style="font-size:16px">check</span>
+                </div>
+              }
             </div>
             <div class="p-3 flex flex-col flex-1 gap-2">
               <p class="text-xs font-black text-white line-clamp-1 leading-tight">{{ banner.name }}</p>
@@ -327,13 +337,16 @@
                 <p class="text-[10px] text-slate-500 line-clamp-2">{{ banner.description }}</p>
               }
               <button
-                (click)="cloneAndCreate(banner)"
-                [disabled]="saving()"
-                class="mt-auto flex items-center justify-center gap-1.5 w-full py-2 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 text-violet-400 font-bold rounded-xl text-xs transition-all disabled:opacity-50"
+                (click)="selectGalleryBanner(banner)"
+                [disabled]="!!myBanner()"
+                class="mt-auto flex items-center justify-center gap-1.5 w-full py-2 font-bold rounded-xl text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                [class]="selectedGalleryBanner()?.id === banner.id
+                  ? 'bg-violet-500/20 border border-violet-500/40 text-violet-400'
+                  : 'bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 text-violet-400'"
               >
-                @if (saving() && cloningFrom()?.id === banner.id) {
-                  <span class="material-symbols-outlined animate-spin" style="font-size:14px">sync</span>
-                  Creando...
+                @if (selectedGalleryBanner()?.id === banner.id) {
+                  <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
+                  Seleccionado
                 } @else {
                   <span class="material-symbols-outlined" style="font-size:14px">bolt</span>
                   Clonar banner
@@ -343,6 +356,28 @@
           </div>
         }
       </div>
+
+      <!-- Botón guardar selección -->
+      @if (selectedGalleryBanner()) {
+        <div class="flex flex-col items-center gap-3 pt-4">
+          <p class="text-xs text-slate-400">
+            Has seleccionado: <span class="text-white font-bold">{{ selectedGalleryBanner()!.name }}</span>
+          </p>
+          <button
+            (click)="saveSelectedBanner()"
+            [disabled]="saving()"
+            class="flex items-center gap-2 px-8 py-3 bg-violet-500 hover:bg-violet-400 disabled:opacity-50 text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all"
+          >
+            @if (saving()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:16px">save</span>
+              Guardar
+            }
+          </button>
+        </div>
+      }
     }
   </section>
 
