@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { AiWalletService, RECHARGE_AMOUNTS } from '../../../../core/services/ai-wallet.service';
+import { AiWalletService, RECHARGE_OPTIONS } from '../../../../core/services/ai-wallet.service';
 
 type PayStep = 'idle' | 'epayco-loading' | 'epayco-opening' | 'error' | 'success';
 
@@ -28,8 +28,8 @@ export class AiWalletComponent implements OnInit {
   readonly loading = this.walletService.loading;
   readonly balance = this.walletService.balance;
 
-  readonly rechargeAmounts = RECHARGE_AMOUNTS;
-  readonly selectedAmount = signal<number>(20_000);
+  readonly rechargeOptions = RECHARGE_OPTIONS;
+  readonly selectedOption = signal(RECHARGE_OPTIONS[0]);
   readonly payStep = signal<PayStep>('idle');
   readonly payError = signal<string | null>(null);
 
@@ -49,8 +49,8 @@ export class AiWalletComponent implements OnInit {
     }
   }
 
-  selectAmount(amount: number): void {
-    this.selectedAmount.set(amount);
+  selectOption(opt: typeof RECHARGE_OPTIONS[number]): void {
+    this.selectedOption.set(opt);
   }
 
   // ── Pago ePayco — MISMO patrón que packages.component.ts ──────────────────
@@ -62,7 +62,7 @@ export class AiWalletComponent implements OnInit {
     this.payStep.set('epayco-loading');
 
     try {
-      const params = await this.walletService.createEpaycoRecharge(this.selectedAmount());
+      const params = await this.walletService.createEpaycoRecharge(this.selectedOption().cop);
       this.payStep.set('epayco-opening');
       await this.openEpaycoCheckout(params);
     } catch (e: unknown) {

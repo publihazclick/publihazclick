@@ -34,8 +34,15 @@ export interface AiWalletPayment {
   approved_at: string | null;
 }
 
-/** Montos de recarga válidos en COP */
-export const RECHARGE_AMOUNTS = [10_000, 20_000, 50_000, 100_000, 200_000];
+/** Montos de recarga en USD con equivalente en COP (tasa 1 USD = 4,200 COP) */
+export const USD_TO_COP = 4_200;
+export const RECHARGE_OPTIONS = [
+  { usd: 25,   cop: 25 * 4_200 },
+  { usd: 100,  cop: 100 * 4_200 },
+  { usd: 200,  cop: 200 * 4_200 },
+  { usd: 500,  cop: 500 * 4_200 },
+  { usd: 1000, cop: 1000 * 4_200 },
+];
 
 @Injectable({ providedIn: 'root' })
 export class AiWalletService {

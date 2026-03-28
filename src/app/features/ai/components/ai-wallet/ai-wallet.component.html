@@ -54,22 +54,28 @@
     </h2>
 
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-      @for (amount of rechargeAmounts; track amount) {
-        <button (click)="selectAmount(amount)"
+      @for (opt of rechargeOptions; track opt.usd) {
+        <button (click)="selectOption(opt)"
           class="relative rounded-xl border-2 p-4 text-center transition-all hover:shadow-md"
-          [class]="selectedAmount() === amount
+          [class]="selectedOption().usd === opt.usd
             ? 'border-purple-500 bg-purple-50 shadow-md'
             : 'border-gray-200 bg-white hover:border-purple-200'">
-          @if (selectedAmount() === amount) {
+          @if (selectedOption().usd === opt.usd) {
             <span class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center">
               <span class="material-symbols-outlined text-white" style="font-size:14px">check</span>
             </span>
           }
-          <p class="text-lg sm:text-xl font-black"
-             [class]="selectedAmount() === amount ? 'text-purple-700' : 'text-gray-900'">
-            {{ formatCOP(amount) }}
+          <p class="text-xl sm:text-2xl font-black"
+             [class]="selectedOption().usd === opt.usd ? 'text-purple-700' : 'text-gray-900'">
+            ${{ opt.usd.toLocaleString('en-US') }}
           </p>
-          <p class="text-xs text-gray-400 mt-1">COP</p>
+          <p class="text-[10px] sm:text-xs font-medium mt-1"
+             [class]="selectedOption().usd === opt.usd ? 'text-purple-500' : 'text-gray-400'">
+            USD
+          </p>
+          <p class="text-[10px] sm:text-xs text-gray-400 mt-0.5">
+            {{ formatCOP(opt.cop) }}
+          </p>
         </button>
       }
     </div>
@@ -86,7 +92,7 @@
         <span>Preparando pago...</span>
       } @else {
         <span class="material-symbols-outlined" style="font-size:20px">payment</span>
-        <span>Recargar {{ formatCOP(selectedAmount()) }} con ePayco</span>
+        <span>Recargar ${{ selectedOption().usd.toLocaleString('en-US') }} USD con ePayco</span>
       }
     </button>
 
