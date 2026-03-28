@@ -34,6 +34,17 @@ function decodeJwtPayload(token: string): { sub: string; email?: string } {
 // Montos válidos de recarga en COP (equivalentes a 25, 100, 200, 500, 1000 USD × 3700)
 const VALID_AMOUNTS = [92500, 370000, 740000, 1850000, 3700000];
 
+// ── Comisión ePayco: 2.99% + $900 COP fijo + IVA 19% sobre la comisión ─────
+// Para que al vendedor le llegue el monto completo, el cliente paga:
+//   monto_cobro = (monto_base + fijo_con_iva) / (1 - tasa_con_iva)
+// Donde: tasa_con_iva = 0.0299 * 1.19 = 0.035581, fijo_con_iva = 900 * 1.19 = 1071
+const EPAYCO_RATE = 0.035581;
+const EPAYCO_FIXED = 1071;
+
+function calcChargeAmount(baseAmount: number): number {
+  return Math.ceil((baseAmount + EPAYCO_FIXED) / (1 - EPAYCO_RATE));
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -103,7 +114,10 @@ Deno.serve(async (req) => {
       return json({ error: 'Error al registrar el pago. Intenta de nuevo.' }, 500);
     }
 
-    // ── 6. Devolver parámetros para checkout.js ─────────────────────────────
+    // ── 6. Calcular monto con comisión ePayco incluida ────────────────────
+    const chargeAmount = calcChargeAmount(amount);
+
+    // ── 7. Devolver parámetros para checkout.js ─────────────────────────────
     return json({
       publicKey:       EPAYCO_PUBLIC_KEY,
       test:            EPAYCO_TEST === 'true',
@@ -111,7 +125,7 @@ Deno.serve(async (req) => {
       description:     `Recarga de $${amount.toLocaleString('es-CO')} COP — Billetera IA PubliHazClick`,
       invoice,
       currency:        'cop',
-      amount:          String(amount),
+      amount:          String(chargeAmount),
       tax_base:        '0',
       tax:             '0',
       country:         'CO',
@@ -124,6 +138,10 @@ Deno.serve(async (req) => {
       confirmation:    `${SUPABASE_URL}/functions/v1/epayco-webhook`,
       response:        `${APP_URL}/advertiser/ai/wallet?epayco=result`,
       payment_db_id:   payment.id,
+      // Info adicional para mostrar en frontend
+      base_amount:     amount,
+      charge_amount:   chargeAmount,
+      fee_amount:      chargeAmount - amount,
     });
 
   } catch (err) {
