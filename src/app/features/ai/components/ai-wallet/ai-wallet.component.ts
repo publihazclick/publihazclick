@@ -1,8 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { AiWalletService, RECHARGE_AMOUNTS } from '../../../../core/services/ai-wallet.service';
-import { getSupabaseClient } from '../../../../core/supabase.client';
 
 type PayStep = 'idle' | 'loading' | 'opening' | 'error' | 'success';
 
@@ -21,7 +20,6 @@ const COP = new Intl.NumberFormat('es-CO', {
 export class AiWalletComponent implements OnInit {
   private readonly walletService = inject(AiWalletService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly wallet = this.walletService.wallet;
@@ -36,13 +34,6 @@ export class AiWalletComponent implements OnInit {
   readonly payError = signal<string | null>(null);
 
   async ngOnInit(): Promise<void> {
-    // Verificar sesión activa, si no hay redirigir a login IA
-    const { data: { session } } = await getSupabaseClient().auth.getSession();
-    if (!session) {
-      this.router.navigate(['/advertiser/ai/login']);
-      return;
-    }
-
     await Promise.all([
       this.walletService.loadWallet(),
       this.walletService.loadTransactions(),
@@ -67,13 +58,6 @@ export class AiWalletComponent implements OnInit {
   async startRecharge(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
 
-    // Verificar sesión antes de intentar pagar
-    const { data: { session } } = await getSupabaseClient().auth.getSession();
-    if (!session) {
-      this.router.navigate(['/advertiser/ai/login']);
-      return;
-    }
-
     this.payError.set(null);
     this.payStep.set('loading');
 
@@ -82,12 +66,7 @@ export class AiWalletComponent implements OnInit {
       this.payStep.set('opening');
       await this.openEpaycoCheckout(params);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al iniciar recarga';
-      if (msg.includes('401') || msg.includes('No autorizado') || msg.includes('autenticado')) {
-        this.router.navigate(['/advertiser/ai/login']);
-        return;
-      }
-      this.payError.set(msg);
+      this.payError.set(e instanceof Error ? e.message : 'Error al iniciar recarga');
       this.payStep.set('error');
     }
   }
