@@ -168,20 +168,13 @@ export const routes: Routes = [
       }
     ]
   },
-  // Herramientas IA (advertiser, admin, dev)
+  // Herramientas IA — redirigir /ai al módulo dentro de advertiser
   {
     path: 'ai',
-    loadComponent: () => import('./features/ai/components/ai-layout/ai-layout.component').then(m => m.AiLayoutComponent),
     canActivate: [aiGuard],
     children: [
-      {
-        path: '',
-        loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
-      },
-      {
-        path: 'create',
-        loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
-      }
+      { path: '', redirectTo: '/advertiser/ai', pathMatch: 'full' },
+      { path: 'create', redirectTo: '/advertiser/ai/create', pathMatch: 'full' }
     ]
   },
   // Rutas de anunciante
@@ -257,6 +250,14 @@ export const routes: Routes = [
       {
         path: 'cursos',
         loadChildren: () => import('./features/cursos/cursos.routes').then(m => m.cursosRoutes)
+      },
+      {
+        path: 'ai',
+        loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
+      },
+      {
+        path: 'ai/create',
+        loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
       }
     ]
   },
