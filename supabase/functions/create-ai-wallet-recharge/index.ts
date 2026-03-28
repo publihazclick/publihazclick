@@ -61,15 +61,15 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // ── 2. Verificar rol (advertiser, admin, dev) ────────────────────────────
+    // ── 2. Obtener perfil del usuario ──────────────────────────────────────
     const { data: profile } = await supabase
       .from('profiles')
       .select('username, email, role')
       .eq('id', userId)
       .single();
 
-    if (!profile || !['advertiser', 'admin', 'dev'].includes(profile.role)) {
-      return json({ error: 'Sin permisos para recargar billetera IA' }, 403);
+    if (!profile) {
+      return json({ error: 'Perfil de usuario no encontrado' }, 404);
     }
 
     // ── 3. Parsear body ──────────────────────────────────────────────────────
