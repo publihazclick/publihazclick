@@ -119,16 +119,28 @@ export class UserPackagesComponent implements OnInit {
   }
 
   /** Continúa la compra tras la advertencia de paquete activo */
-  continueAfterWarning(): void {
+  async continueAfterWarning(): Promise<void> {
     const pkg = this.selectedPackage();
     const method = this.pendingPaymentMethod();
     if (!pkg) return;
+    this.pendingPaymentMethod.set(null);
+
     if (method === 'nequi') {
-      this.pendingPaymentMethod.set(null);
       this.openNequiPayment(pkg);
     } else {
-      // Mantener pendingPaymentMethod en 'epayco' para que startEpaycoCheckout no vuelva a mostrar el warning
-      this.startEpaycoCheckout(pkg);
+      // Ir directo al checkout de ePayco sin pasar por el check de paquete activo
+      if (!isPlatformBrowser(this.platformId)) return;
+      this.payError.set(null);
+      this.payStep.set('epayco-loading');
+      try {
+        const params = await this.packageService.createEpaycoPayment(pkg.id);
+        this.payStep.set('epayco-opening');
+        await this.openEpaycoCheckout(params);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Error al iniciar pago con ePayco';
+        this.payError.set(msg);
+        this.payStep.set('error');
+      }
     }
   }
 
