@@ -1,0 +1,121 @@
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { ProfileService } from '../../../../core/services/profile.service';
+
+interface QuickAction {
+  icon: string;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  description: string;
+  route: string;
+}
+
+interface RecentProject {
+  icon: string;
+  title: string;
+  type: string;
+  status: 'in_progress' | 'completed' | 'draft';
+  timeAgo: string;
+}
+
+interface Template {
+  title: string;
+  description: string;
+}
+
+@Component({
+  selector: 'app-creator-dashboard',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  templateUrl: './creator-dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class CreatorDashboardComponent {
+  private readonly profileService = inject(ProfileService);
+  readonly profile = this.profileService.profile;
+
+  readonly sidebarOpen = signal(false);
+
+  readonly menuItems = [
+    { icon: 'dashboard', label: 'Panel', route: '/advertiser/ai/creator', active: true },
+    { icon: 'videocam', label: 'Video IA', route: '/advertiser/ai/create', badge: 'Popular' },
+    { icon: 'image', label: 'Imagen IA', route: '', soon: true },
+    { icon: 'description', label: 'Documento IA', route: '', soon: true },
+    { icon: 'chat', label: 'Chatbot IA', route: '', soon: true },
+    { icon: 'language', label: 'Web IA', route: '', soon: true },
+    { icon: 'mic', label: 'Voz IA', route: '', soon: true },
+    { icon: 'music_note', label: 'Música IA', route: '', soon: true },
+    { icon: 'storefront', label: 'Marketplace', route: '', soon: true },
+    { icon: 'credit_card', label: 'Ver Paquetes', route: '/advertiser/packages' },
+  ];
+
+  readonly stats = [
+    { icon: 'auto_awesome', value: '24', label: 'Proyectos Totales', change: '+12%' },
+    { icon: 'bolt', value: '8,750', label: 'Créditos Usados', change: '+23%' },
+    { icon: 'schedule', value: '156h', label: 'Tiempo Ahorrado', change: '+45%' },
+    { icon: 'trending_up', value: '98%', label: 'Tasa de Éxito', change: '+5%' },
+  ];
+
+  readonly quickActions: QuickAction[] = [
+    {
+      icon: 'videocam',
+      iconBg: 'bg-red-50',
+      iconColor: 'text-red-500',
+      title: 'Generador de Video IA',
+      description: 'Crea videos impresionantes desde texto o imágenes',
+      route: '/advertiser/ai/create',
+    },
+    {
+      icon: 'image',
+      iconBg: 'bg-purple-50',
+      iconColor: 'text-purple-500',
+      title: 'Generador de Imagen IA',
+      description: 'Genera imágenes increíbles con IA',
+      route: '',
+    },
+    {
+      icon: 'description',
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-emerald-500',
+      title: 'Generador de Documentos IA',
+      description: 'Crea documentos profesionales con IA',
+      route: '',
+    },
+  ];
+
+  readonly recentProjects: RecentProject[] = [
+    { icon: 'videocam', title: 'Video Promocional', type: 'Video', status: 'in_progress', timeAgo: 'Hace 2 horas' },
+    { icon: 'image', title: 'Banner para redes', type: 'Imagen', status: 'completed', timeAgo: 'Hace 5 horas' },
+    { icon: 'chat', title: 'Chatbot de soporte', type: 'Chatbot', status: 'in_progress', timeAgo: 'Hace 1 día' },
+    { icon: 'smart_toy', title: 'Email Automation', type: 'Automatización', status: 'completed', timeAgo: 'Hace 2 días' },
+  ];
+
+  readonly templates: Template[] = [
+    { title: 'Video Reel Viral', description: 'Plantilla profesional para reels y TikToks virales' },
+    { title: 'Banner Publicitario', description: 'Plantilla para banners de redes sociales' },
+    { title: 'Documento SEO', description: 'Plantilla para artículos optimizados en SEO' },
+  ];
+
+  toggleSidebar(): void {
+    this.sidebarOpen.update(v => !v);
+  }
+
+  getStatusLabel(status: string): string {
+    return status === 'completed' ? 'Completado' : status === 'in_progress' ? 'En Progreso' : 'Borrador';
+  }
+
+  getStatusClass(status: string): string {
+    return status === 'completed'
+      ? 'bg-gray-900 text-white'
+      : status === 'in_progress'
+        ? 'bg-white border border-gray-200 text-gray-700'
+        : 'bg-gray-100 text-gray-500';
+  }
+
+  getUserName(): string {
+    const p = this.profile();
+    return p?.full_name?.split(' ')[0] || p?.username || 'Usuario';
+  }
+}

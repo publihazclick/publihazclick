@@ -1,0 +1,228 @@
+<div class="flex min-h-screen bg-gray-50/50 rounded-2xl overflow-hidden">
+
+  <!-- ═══ SIDEBAR (desktop siempre visible, mobile como overlay) ═══ -->
+  <aside
+    class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0"
+    [class.translate-x-0]="sidebarOpen()"
+    [class.-translate-x-full]="!sidebarOpen()"
+  >
+    <!-- Logo -->
+    <div class="px-5 py-5 flex items-center gap-2.5 border-b border-gray-100">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background: linear-gradient(135deg, #7e22ce, #d946ef);">
+        <span class="material-symbols-outlined text-white" style="font-size:20px">auto_awesome</span>
+      </div>
+      <span class="text-lg font-black text-gray-900">CreatorAI</span>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <!-- Nueva Creación -->
+      <a routerLink="/advertiser/ai/create"
+         (click)="sidebarOpen.set(false)"
+         class="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm mb-4 transition-all hover:opacity-90"
+         style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef);">
+        <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
+        Nueva Creación
+      </a>
+
+      <!-- Menu items -->
+      @for (item of menuItems; track item.label) {
+        @if (item.route && !item.soon) {
+          <a [routerLink]="item.route"
+             (click)="sidebarOpen.set(false)"
+             class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
+             [class]="item.active ? 'text-purple-600 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'">
+            <span class="material-symbols-outlined" style="font-size:20px">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+            @if (item.badge) {
+              <span class="ml-auto text-[10px] font-bold bg-gray-900 text-white px-2 py-0.5 rounded-full">{{ item.badge }}</span>
+            }
+          </a>
+        } @else {
+          <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 cursor-default">
+            <span class="material-symbols-outlined" style="font-size:20px">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+            @if (item.badge) {
+              <span class="ml-auto text-[10px] font-bold bg-gray-900 text-white px-2 py-0.5 rounded-full">{{ item.badge }}</span>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Upgrade CTA -->
+    <div class="p-4 border-t border-gray-100">
+      <div class="bg-gradient-to-br from-purple-50 to-fuchsia-50 border border-purple-100 rounded-xl p-4">
+        <p class="font-bold text-gray-900 text-sm mb-1">Mejorar a Pro</p>
+        <p class="text-gray-500 text-xs mb-3">Créditos IA ilimitados y funciones avanzadas</p>
+        <a routerLink="/advertiser/packages"
+           (click)="sidebarOpen.set(false)"
+           class="block w-full text-center py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold rounded-xl transition-colors">
+          Mejorar Ahora
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Overlay mobile -->
+  @if (sidebarOpen()) {
+    <div class="fixed inset-0 bg-black/30 z-40 lg:hidden" (click)="sidebarOpen.set(false)"></div>
+  }
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <div class="flex-1 min-w-0">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <div class="flex items-center gap-3 px-4 sm:px-6 h-14 sm:h-16">
+        <!-- Hamburger mobile -->
+        <button (click)="toggleSidebar()" class="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 transition-all">
+          <span class="material-symbols-outlined text-gray-600" style="font-size:24px">menu</span>
+        </button>
+
+        <!-- Search (desktop) -->
+        <div class="hidden sm:flex flex-1 max-w-md">
+          <div class="flex items-center gap-2 w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+            <span class="material-symbols-outlined text-gray-400" style="font-size:18px">search</span>
+            <span class="text-sm text-gray-400">Buscar cualquier cosa...</span>
+          </div>
+        </div>
+        <div class="flex-1 sm:hidden"></div>
+
+        <!-- Right side -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Créditos -->
+          <div class="flex items-center gap-1.5 bg-purple-50 border border-purple-200 rounded-xl px-2.5 sm:px-3 py-1.5">
+            <span class="material-symbols-outlined text-purple-500" style="font-size:16px">bolt</span>
+            <span class="text-xs sm:text-sm font-bold text-purple-700">1,250 Créditos</span>
+          </div>
+          <!-- Notificaciones -->
+          <button class="relative p-2 rounded-xl hover:bg-gray-100 transition-all hidden sm:block">
+            <span class="material-symbols-outlined text-gray-500" style="font-size:20px">notifications</span>
+            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+          <!-- Avatar -->
+          <div class="flex items-center gap-2 pl-1">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                 style="background: linear-gradient(135deg, #7e22ce, #d946ef);">
+              <span class="text-white font-black text-xs">{{ getUserName().charAt(0) }}</span>
+            </div>
+            <span class="text-sm font-bold text-gray-700 hidden sm:inline">{{ getUserName() }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
+
+      <!-- Welcome -->
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-black text-gray-900">
+          Bienvenido de vuelta, {{ getUserName() }}! 👋
+        </h1>
+        <p class="text-gray-500 text-sm mt-1">Aquí está un resumen de tu actividad creativa</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        @for (stat of stats; track stat.label) {
+          <div class="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                <span class="material-symbols-outlined text-purple-500" style="font-size:20px">{{ stat.icon }}</span>
+              </div>
+              <span class="text-[10px] sm:text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">{{ stat.change }}</span>
+            </div>
+            <p class="text-2xl sm:text-3xl font-black text-gray-900">{{ stat.value }}</p>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1">{{ stat.label }}</p>
+          </div>
+        }
+      </div>
+
+      <!-- Quick Actions -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg sm:text-xl font-black text-gray-900">Acciones Rápidas</h2>
+          <a routerLink="/advertiser/ai" class="text-sm font-medium text-gray-500 hover:text-purple-600 transition-colors flex items-center gap-1">
+            Ver Todo <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+          </a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          @for (action of quickActions; track action.title) {
+            @if (action.route) {
+              <a [routerLink]="action.route" class="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md hover:border-purple-200 transition-all group">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4" [class]="action.iconBg">
+                  <span class="material-symbols-outlined" [class]="action.iconColor" style="font-size:24px">{{ action.icon }}</span>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">{{ action.title }}</h3>
+                <p class="text-sm text-gray-500">{{ action.description }}</p>
+              </a>
+            } @else {
+              <div class="bg-white border border-gray-200 rounded-2xl p-5 opacity-60">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4" [class]="action.iconBg">
+                  <span class="material-symbols-outlined" [class]="action.iconColor" style="font-size:24px">{{ action.icon }}</span>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-1">{{ action.title }}</h3>
+                <p class="text-sm text-gray-500">{{ action.description }}</p>
+              </div>
+            }
+          }
+        </div>
+      </section>
+
+      <!-- Recent Projects -->
+      <section>
+        <h2 class="text-lg sm:text-xl font-black text-gray-900 mb-4">Proyectos Recientes</h2>
+        <div class="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden">
+          @for (project of recentProjects; track project.title) {
+            <div class="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 hover:bg-gray-50/50 transition-colors">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-gray-500" style="font-size:20px">{{ project.icon }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-gray-900 text-sm truncate">{{ project.title }}</p>
+                <p class="text-xs text-gray-400">{{ project.type }}</p>
+              </div>
+              <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                <span class="text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full" [class]="getStatusClass(project.status)">
+                  {{ getStatusLabel(project.status) }}
+                </span>
+                <span class="text-[10px] text-gray-400">{{ project.timeAgo }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Templates -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg sm:text-xl font-black text-gray-900">Plantillas Populares</h2>
+          <span class="text-sm font-medium text-gray-500 flex items-center gap-1">
+            Marketplace <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+          </span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          @for (tmpl of templates; track tmpl.title) {
+            <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all">
+              <!-- Gradient preview -->
+              <div class="h-28 sm:h-32 flex items-center justify-center"
+                   style="background: linear-gradient(135deg, #fce4ff, #f3e8ff, #ede9fe);">
+                <span class="material-symbols-outlined text-purple-300" style="font-size:48px">auto_awesome</span>
+              </div>
+              <div class="p-4">
+                <h3 class="font-bold text-gray-900 text-sm mb-1">{{ tmpl.title }}</h3>
+                <p class="text-xs text-gray-500 mb-3">{{ tmpl.description }}</p>
+                <button class="w-full py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  Usar Plantilla
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+</div>

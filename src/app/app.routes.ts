@@ -256,6 +256,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
       },
       {
+        path: 'ai/creator',
+        loadComponent: () => import('./features/ai/components/creator-dashboard/creator-dashboard.component').then(m => m.CreatorDashboardComponent)
+      },
+      {
         path: 'ai/create',
         loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
       }
