@@ -1,6 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { getSupabaseClient } from '../supabase.client';
-import { environment } from '../../../environments/environment';
 
 export interface AiWallet {
   id: string;
@@ -35,28 +34,6 @@ export interface AiWalletPayment {
   approved_at: string | null;
 }
 
-export interface EpaycoCheckoutParams {
-  publicKey: string;
-  test: boolean;
-  name: string;
-  description: string;
-  invoice: string;
-  currency: string;
-  amount: string;
-  tax_base: string;
-  tax: string;
-  country: string;
-  lang: string;
-  email_billing: string;
-  name_billing: string;
-  extra1: string;
-  extra2: string;
-  extra3: string;
-  confirmation: string;
-  response: string;
-  payment_db_id: string;
-}
-
 /** Montos de recarga válidos en COP */
 export const RECHARGE_AMOUNTS = [10_000, 20_000, 50_000, 100_000, 200_000];
 
@@ -72,7 +49,6 @@ export class AiWalletService {
 
   readonly balance = computed(() => this.wallet()?.balance ?? 0);
 
-  /** Cargar billetera del usuario autenticado */
   async loadWallet(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
@@ -80,7 +56,6 @@ export class AiWalletService {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
-      // Intentar crear billetera si no existe (SECURITY DEFINER)
       try { await this.supabase.rpc('ai_ensure_wallet', { p_user_id: user.id }); } catch { /* ignore */ }
 
       const { data, error } = await this.supabase
@@ -98,7 +73,6 @@ export class AiWalletService {
     }
   }
 
-  /** Cargar historial de transacciones */
   async loadTransactions(limit = 20): Promise<void> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
@@ -113,12 +87,9 @@ export class AiWalletService {
 
       if (error) throw error;
       this.transactions.set((data ?? []) as AiWalletTransaction[]);
-    } catch {
-      // silencioso
-    }
+    } catch { /* silencioso */ }
   }
 
-  /** Cargar historial de pagos/recargas */
   async loadPayments(limit = 10): Promise<void> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
@@ -133,34 +104,44 @@ export class AiWalletService {
 
       if (error) throw error;
       this.payments.set((data ?? []) as AiWalletPayment[]);
-    } catch {
-      // silencioso
-    }
+    } catch { /* silencioso */ }
   }
 
-  /** Crear pago de recarga y obtener parámetros de checkout ePayco */
-  async createRechargePayment(amount: number): Promise<Record<string, unknown>> {
+  /**
+   * Crear pago con ePayco — MISMO patrón que AdminPackageService.createEpaycoPayment()
+   */
+  async createEpaycoRecharge(amount: number): Promise<{
+    publicKey: string;
+    test: boolean;
+    name: string;
+    description: string;
+    invoice: string;
+    currency: string;
+    amount: string;
+    tax_base: string;
+    tax: string;
+    country: string;
+    lang: string;
+    email_billing: string;
+    name_billing: string;
+    extra1: string;
+    extra2: string;
+    extra3: string;
+    confirmation: string;
+    response: string;
+    payment_db_id: string;
+  }> {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) throw new Error('No autenticado');
 
-    const res = await fetch(
-      `${environment.supabase.url}/functions/v1/create-ai-wallet-recharge`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': environment.supabase.anonKey,
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ amount }),
-      },
+    const { data, error } = await this.supabase.functions.invoke(
+      'create-ai-wallet-recharge',
+      { body: { amount } },
     );
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      console.error('AI Wallet recharge error:', res.status, errBody);
-      throw new Error(errBody?.error ?? `Error ${res.status} al crear pago`);
+
+    if (error || !data?.invoice) {
+      throw new Error(data?.error ?? 'Error al preparar pago con ePayco');
     }
-    const data = await res.json();
     return data;
   }
 }

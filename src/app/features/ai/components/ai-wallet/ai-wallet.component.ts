@@ -3,7 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { AiWalletService, RECHARGE_AMOUNTS } from '../../../../core/services/ai-wallet.service';
 
-type PayStep = 'idle' | 'loading' | 'opening' | 'error' | 'success';
+type PayStep = 'idle' | 'epayco-loading' | 'epayco-opening' | 'error' | 'success';
 
 const COP = new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP',
@@ -40,12 +40,10 @@ export class AiWalletComponent implements OnInit {
       this.walletService.loadPayments(),
     ]);
 
-    // Detectar retorno de ePayco
     if (isPlatformBrowser(this.platformId)) {
       const epaycoResult = this.route.snapshot.queryParamMap.get('epayco');
       if (epaycoResult === 'result') {
         this.payStep.set('success');
-        // Recargar datos tras unos segundos para reflejar el pago
         setTimeout(() => this.refreshData(), 3000);
       }
     }
@@ -55,21 +53,73 @@ export class AiWalletComponent implements OnInit {
     this.selectedAmount.set(amount);
   }
 
-  async startRecharge(): Promise<void> {
+  // ── Pago ePayco — MISMO patrón que packages.component.ts ──────────────────
+
+  async startEpaycoCheckout(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
 
     this.payError.set(null);
-    this.payStep.set('loading');
+    this.payStep.set('epayco-loading');
 
     try {
-      const params = await this.walletService.createRechargePayment(this.selectedAmount());
-      this.payStep.set('opening');
+      const params = await this.walletService.createEpaycoRecharge(this.selectedAmount());
+      this.payStep.set('epayco-opening');
       await this.openEpaycoCheckout(params);
     } catch (e: unknown) {
-      this.payError.set(e instanceof Error ? e.message : 'Error al iniciar recarga');
+      const msg = e instanceof Error ? e.message : 'Error al iniciar pago con ePayco';
+      this.payError.set(msg);
       this.payStep.set('error');
     }
   }
+
+  private loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as unknown as Record<string, unknown>)['ePayco']) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.epayco.co/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar el script de ePayco'));
+      document.head.appendChild(script);
+    });
+  }
+
+  private async openEpaycoCheckout(params: Awaited<ReturnType<AiWalletService['createEpaycoRecharge']>>): Promise<void> {
+    await this.loadEpaycoScript();
+
+    const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
+      checkout: { configure: (cfg: unknown) => { open: (params: unknown) => void } };
+    };
+
+    const handler = epayco.checkout.configure({
+      key:  params.publicKey,
+      test: params.test,
+    });
+
+    handler.open({
+      name:         params.name,
+      description:  params.description,
+      invoice:      params.invoice,
+      currency:     params.currency,
+      amount:       params.amount,
+      tax_base:     params.tax_base,
+      tax:          params.tax,
+      country:      params.country,
+      lang:         params.lang,
+      external:     'true',
+      confirmation: params.confirmation,
+      response:     params.response,
+      email_billing: params.email_billing,
+      name_billing:  params.name_billing,
+      extra1:        params.extra1,
+      extra2:        params.extra2,
+      extra3:        params.extra3,
+    });
+  }
+
+  // ── Utilidades ────────────────────────────────────────────────────────────
 
   closeModal(): void {
     if (this.payStep() === 'success') {
@@ -85,10 +135,8 @@ export class AiWalletComponent implements OnInit {
 
   getTransactionIcon(type: string): string {
     const map: Record<string, string> = {
-      recharge: 'add_circle',
-      consumption: 'remove_circle',
-      refund: 'replay',
-      bonus: 'card_giftcard',
+      recharge: 'add_circle', consumption: 'remove_circle',
+      refund: 'replay', bonus: 'card_giftcard',
     };
     return map[type] ?? 'swap_horiz';
   }
@@ -109,9 +157,7 @@ export class AiWalletComponent implements OnInit {
 
   getStatusLabel(status: string): string {
     const map: Record<string, string> = {
-      pending: 'Pendiente',
-      approved: 'Aprobado',
-      failed: 'Fallido',
+      pending: 'Pendiente', approved: 'Aprobado', failed: 'Fallido',
     };
     return map[status] ?? status;
   }
@@ -128,51 +174,5 @@ export class AiWalletComponent implements OnInit {
       this.walletService.loadTransactions(),
       this.walletService.loadPayments(),
     ]);
-  }
-
-  private loadEpaycoScript(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if ((window as unknown as Record<string, unknown>)['ePayco']) {
-        resolve();
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.epayco.co/checkout.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('No se pudo cargar ePayco'));
-      document.head.appendChild(script);
-    });
-  }
-
-  private async openEpaycoCheckout(params: Record<string, unknown>): Promise<void> {
-    await this.loadEpaycoScript();
-
-    const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
-      checkout: { configure: (cfg: unknown) => { open: (p: unknown) => void } };
-    };
-
-    const handler = epayco.checkout.configure({
-      key:  params['publicKey'],
-      test: params['test'],
-    });
-
-    handler.open({
-      name:          params['name'],
-      description:   params['description'],
-      invoice:       params['invoice'],
-      currency:      params['currency'],
-      amount:        params['amount'],
-      tax_base:      params['tax_base'],
-      tax:           params['tax'],
-      country:       params['country'],
-      lang:          params['lang'],
-      confirmation:  params['confirmation'],
-      response:      params['response'],
-      email_billing: params['email_billing'],
-      name_billing:  params['name_billing'],
-      extra1:        params['extra1'],
-      extra2:        params['extra2'],
-      extra3:        params['extra3'],
-    });
   }
 }

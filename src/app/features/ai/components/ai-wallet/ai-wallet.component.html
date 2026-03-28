@@ -74,11 +74,11 @@
       }
     </div>
 
-    <button (click)="startRecharge()"
-      [disabled]="payStep() === 'loading' || payStep() === 'opening'"
+    <button (click)="startEpaycoCheckout()"
+      [disabled]="payStep() === 'epayco-loading' || payStep() === 'epayco-opening'"
       class="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-white font-bold px-8 py-3.5 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef, #ec4899);">
-      @if (payStep() === 'loading') {
+      @if (payStep() === 'epayco-loading') {
         <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -211,10 +211,10 @@
 </div>
 
 <!-- MODAL: Pago en proceso / resultado ePayco -->
-@if (payStep() === 'opening' || payStep() === 'success') {
+@if (payStep() === 'epayco-opening' || payStep() === 'success') {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" (click)="closeModal()">
     <div class="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center shadow-xl" (click)="$event.stopPropagation()">
-      @if (payStep() === 'opening') {
+      @if (payStep() === 'epayco-opening') {
         <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
           <span class="material-symbols-outlined text-purple-600 animate-pulse" style="font-size:32px">payment</span>
         </div>
