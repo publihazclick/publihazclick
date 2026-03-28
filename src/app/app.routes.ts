@@ -260,6 +260,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ai/components/creator-dashboard/creator-dashboard.component').then(m => m.CreatorDashboardComponent)
       },
       {
+        path: 'ai/image',
+        loadComponent: () => import('./features/ai/components/image-generator/image-generator.component').then(m => m.ImageGeneratorComponent)
+      },
+      {
         path: 'ai/create',
         loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
       }

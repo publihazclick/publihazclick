@@ -41,7 +41,7 @@ export class CreatorDashboardComponent {
   readonly menuItems = [
     { icon: 'dashboard', label: 'Panel', route: '/advertiser/ai/creator', active: true },
     { icon: 'videocam', label: 'Video IA', route: '/advertiser/ai/create', badge: 'Popular' },
-    { icon: 'image', label: 'Imagen IA', route: '', soon: true },
+    { icon: 'image', label: 'Imagen IA', route: '/advertiser/ai/image' },
     { icon: 'description', label: 'Documento IA', route: '', soon: true },
     { icon: 'chat', label: 'Chatbot IA', route: '', soon: true },
     { icon: 'language', label: 'Web IA', route: '', soon: true },
@@ -73,7 +73,7 @@ export class CreatorDashboardComponent {
       iconColor: 'text-purple-500',
       title: 'Generador de Imagen IA',
       description: 'Genera imágenes increíbles con IA',
-      route: '',
+      route: '/advertiser/ai/image',
     },
     {
       icon: 'description',
