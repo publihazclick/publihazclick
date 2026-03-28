@@ -149,13 +149,18 @@ export class AiWalletService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'apikey': environment.supabase.anonKey,
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ amount }),
       },
     );
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      console.error('AI Wallet recharge error:', res.status, errBody);
+      throw new Error(errBody?.error ?? `Error ${res.status} al crear pago`);
+    }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Error al crear pago');
     return data;
   }
 }
