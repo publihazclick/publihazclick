@@ -1,5 +1,6 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { getSupabaseClient } from '../supabase.client';
+import { environment } from '../../../environments/environment';
 
 export interface AiWallet {
   id: string;
@@ -139,27 +140,32 @@ export class AiWalletService {
 
   /** Crear pago de recarga y obtener parámetros de checkout ePayco */
   async createRechargePayment(amount: number): Promise<EpaycoCheckoutParams> {
-    const { data, error } = await this.supabase.functions.invoke<EpaycoCheckoutParams>(
-      'create-ai-wallet-recharge',
-      { body: { amount } },
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) throw new Error('No autenticado');
+
+    const res = await fetch(
+      `${environment.supabase.url}/functions/v1/create-ai-wallet-recharge`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': environment.supabase.anonKey,
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ amount }),
+      },
     );
 
-    if (error) {
-      // FunctionsHttpError contiene el body de la respuesta
-      let msg = 'Error al preparar recarga con ePayco';
-      try {
-        const ctx = error.context;
-        if (ctx && typeof ctx === 'object' && 'json' in ctx) {
-          const body = await (ctx as Response).json();
-          msg = body?.error ?? msg;
-        }
-      } catch { /* ignore parse error */ }
-      throw new Error(msg);
+    const body = await res.json();
+
+    if (!res.ok) {
+      throw new Error(body?.error ?? `Error ${res.status}`);
     }
 
-    if (!data?.invoice) {
+    if (!body?.invoice) {
       throw new Error('Respuesta incompleta del servidor');
     }
-    return data;
+
+    return body as EpaycoCheckoutParams;
   }
 }
