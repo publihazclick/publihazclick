@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       extra2:          userId,           // user ID
       extra3:          'ai_wallet',      // identificador para el webhook
       confirmation:    `${SUPABASE_URL}/functions/v1/epayco-webhook`,
-      response:        `${APP_URL}/advertiser/ai/wallet?epayco=result`,
+      response:        `https://www.publihazclick.com/advertiser/ai/wallet?epayco=result`,
       payment_db_id:   payment.id,
       // Info adicional para mostrar en frontend
       base_amount:     amount,

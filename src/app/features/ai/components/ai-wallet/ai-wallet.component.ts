@@ -110,7 +110,7 @@ export class AiWalletComponent implements OnInit {
       lang:         params.lang,
       external:     'false',
       confirmation: params.confirmation,
-      response:     params.response,
+      response:     `${window.location.origin}/advertiser/ai/wallet?epayco=result`,
       email_billing: params.email_billing,
       name_billing:  params.name_billing,
       extra1:        params.extra1,
