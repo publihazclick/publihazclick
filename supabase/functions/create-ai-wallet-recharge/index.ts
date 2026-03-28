@@ -31,8 +31,8 @@ function decodeJwtPayload(token: string): { sub: string; email?: string } {
   return JSON.parse(atob(b64));
 }
 
-// Montos válidos de recarga en COP (equivalentes a 25, 100, 200, 500, 1000 USD × 4200)
-const VALID_AMOUNTS = [105000, 420000, 840000, 2100000, 4200000];
+// Montos válidos de recarga en COP (equivalentes a 25, 100, 200, 500, 1000 USD × 3700)
+const VALID_AMOUNTS = [92500, 370000, 740000, 1850000, 3700000];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
