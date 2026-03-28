@@ -90,11 +90,13 @@
 
         <!-- Right side -->
         <div class="flex items-center gap-2 sm:gap-3">
-          <!-- Créditos -->
-          <div class="flex items-center gap-1.5 bg-purple-50 border border-purple-100 rounded-xl px-2.5 sm:px-3 py-1.5">
-            <span class="material-symbols-outlined text-purple-500" style="font-size:16px">bolt</span>
-            <span class="text-xs sm:text-sm font-bold text-purple-700">1,250 Créditos</span>
-          </div>
+          <!-- Billetera IA -->
+          <a routerLink="/advertiser/ai/wallet"
+             class="flex items-center gap-1.5 bg-purple-50 border border-purple-100 rounded-xl px-2.5 sm:px-3 py-1.5 hover:bg-purple-100 hover:border-purple-200 transition-all cursor-pointer">
+            <span class="material-symbols-outlined text-purple-500" style="font-size:16px">account_balance_wallet</span>
+            <span class="text-xs sm:text-sm font-bold text-purple-700">{{ formatBalance() }}</span>
+            <span class="material-symbols-outlined text-purple-400" style="font-size:14px">add_circle</span>
+          </a>
           <!-- Notificaciones -->
           <button class="relative p-2 rounded-xl hover:bg-gray-100 transition-all hidden sm:block">
             <span class="material-symbols-outlined text-gray-500" style="font-size:20px">notifications</span>

@@ -1,7 +1,8 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 
 interface QuickAction {
   icon: string;
@@ -32,11 +33,17 @@ interface Template {
   templateUrl: './creator-dashboard.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CreatorDashboardComponent {
+export class CreatorDashboardComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
+  private readonly walletService = inject(AiWalletService);
   readonly profile = this.profileService.profile;
+  readonly walletBalance = this.walletService.balance;
 
   readonly sidebarOpen = signal(false);
+
+  async ngOnInit(): Promise<void> {
+    await this.walletService.loadWallet();
+  }
 
   readonly menuItems = [
     { icon: 'dashboard', label: 'Panel', route: '/advertiser/ai/creator', active: true },
@@ -48,6 +55,7 @@ export class CreatorDashboardComponent {
     { icon: 'mic', label: 'Voz IA', route: '', soon: true },
     { icon: 'music_note', label: 'Música IA', route: '', soon: true },
     { icon: 'storefront', label: 'Marketplace', route: '', soon: true },
+    { icon: 'account_balance_wallet', label: 'Billetera IA', route: '/advertiser/ai/wallet' },
     { icon: 'credit_card', label: 'Ver Paquetes', route: '/advertiser/packages' },
   ];
 
@@ -117,5 +125,12 @@ export class CreatorDashboardComponent {
   getUserName(): string {
     const p = this.profile();
     return p?.full_name?.split(' ')[0] || p?.username || 'Usuario';
+  }
+
+  formatBalance(): string {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency', currency: 'COP',
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
+    }).format(this.walletBalance());
   }
 }
