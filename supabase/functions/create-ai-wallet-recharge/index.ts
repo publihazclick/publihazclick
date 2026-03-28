@@ -6,9 +6,9 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL         = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const EPAYCO_PUBLIC_KEY    = Deno.env.get('EPAYCO_PUBLIC_KEY')!;
+const SUPABASE_URL         = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const EPAYCO_PUBLIC_KEY    = Deno.env.get('EPAYCO_PUBLIC_KEY') ?? '';
 const EPAYCO_TEST          = Deno.env.get('EPAYCO_TEST') ?? 'true';
 const APP_URL              = Deno.env.get('APP_URL') ?? 'https://publihazclick.com';
 
@@ -38,6 +38,16 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
+    // ── 0. Verificar configuración ──────────────────────────────────────────
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      console.error('Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      return json({ error: 'Configuración del servidor incompleta' }, 500);
+    }
+    if (!EPAYCO_PUBLIC_KEY) {
+      console.error('Missing env: EPAYCO_PUBLIC_KEY');
+      return json({ error: 'Configuración de ePayco incompleta' }, 500);
+    }
+
     // ── 1. Verificar JWT ─────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) return json({ error: 'No autorizado' }, 401);

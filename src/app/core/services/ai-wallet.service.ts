@@ -79,14 +79,14 @@ export class AiWalletService {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
-      // Asegurar billetera existe
-      await this.supabase.rpc('ai_ensure_wallet', { p_user_id: user.id });
+      // Intentar crear billetera si no existe (SECURITY DEFINER)
+      try { await this.supabase.rpc('ai_ensure_wallet', { p_user_id: user.id }); } catch { /* ignore */ }
 
       const { data, error } = await this.supabase
         .from('ai_wallets')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       this.wallet.set(data as AiWallet);
@@ -139,14 +139,27 @@ export class AiWalletService {
 
   /** Crear pago de recarga y obtener parámetros de checkout ePayco */
   async createRechargePayment(amount: number): Promise<EpaycoCheckoutParams> {
-    const { data, error } = await this.supabase.functions.invoke(
+    const { data, error } = await this.supabase.functions.invoke<EpaycoCheckoutParams>(
       'create-ai-wallet-recharge',
       { body: { amount } },
     );
 
-    if (error || !data?.invoice) {
-      throw new Error(data?.error ?? 'Error al preparar recarga con ePayco');
+    if (error) {
+      // FunctionsHttpError contiene el body de la respuesta
+      let msg = 'Error al preparar recarga con ePayco';
+      try {
+        const ctx = error.context;
+        if (ctx && typeof ctx === 'object' && 'json' in ctx) {
+          const body = await (ctx as Response).json();
+          msg = body?.error ?? msg;
+        }
+      } catch { /* ignore parse error */ }
+      throw new Error(msg);
     }
-    return data as EpaycoCheckoutParams;
+
+    if (!data?.invoice) {
+      throw new Error('Respuesta incompleta del servidor');
+    }
+    return data;
   }
 }
