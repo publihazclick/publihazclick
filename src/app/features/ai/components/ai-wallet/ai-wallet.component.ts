@@ -2,7 +2,6 @@ import { Component, ChangeDetectionStrategy, inject, signal, OnInit, PLATFORM_ID
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { AiWalletService, RECHARGE_AMOUNTS } from '../../../../core/services/ai-wallet.service';
-import type { EpaycoCheckoutParams } from '../../../../core/services/ai-wallet.service';
 
 type PayStep = 'idle' | 'loading' | 'opening' | 'error' | 'success';
 
@@ -145,7 +144,7 @@ export class AiWalletComponent implements OnInit {
     });
   }
 
-  private async openEpaycoCheckout(params: EpaycoCheckoutParams): Promise<void> {
+  private async openEpaycoCheckout(params: Record<string, unknown>): Promise<void> {
     await this.loadEpaycoScript();
 
     const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
@@ -153,28 +152,27 @@ export class AiWalletComponent implements OnInit {
     };
 
     const handler = epayco.checkout.configure({
-      key: params.publicKey,
-      test: params.test,
+      key:  params['publicKey'],
+      test: params['test'],
     });
 
     handler.open({
-      name:          params.name,
-      description:   params.description,
-      invoice:       params.invoice,
-      currency:      params.currency,
-      amount:        params.amount,
-      tax_base:      params.tax_base,
-      tax:           params.tax,
-      country:       params.country,
-      lang:          params.lang,
-      external:      'true',
-      confirmation:  params.confirmation,
-      response:      params.response,
-      email_billing: params.email_billing,
-      name_billing:  params.name_billing,
-      extra1:        params.extra1,
-      extra2:        params.extra2,
-      extra3:        params.extra3,
+      name:          params['name'],
+      description:   params['description'],
+      invoice:       params['invoice'],
+      currency:      params['currency'],
+      amount:        params['amount'],
+      tax_base:      params['tax_base'],
+      tax:           params['tax'],
+      country:       params['country'],
+      lang:          params['lang'],
+      confirmation:  params['confirmation'],
+      response:      params['response'],
+      email_billing: params['email_billing'],
+      name_billing:  params['name_billing'],
+      extra1:        params['extra1'],
+      extra2:        params['extra2'],
+      extra3:        params['extra3'],
     });
   }
 }

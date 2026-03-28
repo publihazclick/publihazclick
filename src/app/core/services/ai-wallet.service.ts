@@ -139,7 +139,7 @@ export class AiWalletService {
   }
 
   /** Crear pago de recarga y obtener parámetros de checkout ePayco */
-  async createRechargePayment(amount: number): Promise<EpaycoCheckoutParams> {
+  async createRechargePayment(amount: number): Promise<Record<string, unknown>> {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) throw new Error('No autenticado');
 
@@ -149,23 +149,13 @@ export class AiWalletService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': environment.supabase.anonKey,
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ amount }),
       },
     );
-
-    const body = await res.json();
-
-    if (!res.ok) {
-      throw new Error(body?.error ?? `Error ${res.status}`);
-    }
-
-    if (!body?.invoice) {
-      throw new Error('Respuesta incompleta del servidor');
-    }
-
-    return body as EpaycoCheckoutParams;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? 'Error al crear pago');
+    return data;
   }
 }
