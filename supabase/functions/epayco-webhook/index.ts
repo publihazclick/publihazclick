@@ -258,6 +258,22 @@ Deno.serve(async (req) => {
       return ok('ag_wallet_approved');
     }
 
+    // ── 4A-2. Si es recarga de billetera IA ─────────────────────────────────
+    if (x_extra3 === 'ai_wallet' && x_extra1) {
+      const { error: approveErr } = await supabase.rpc('ai_approve_wallet_payment', {
+        p_payment_id: x_extra1,
+      });
+      if (approveErr) {
+        console.error('Error aprobando recarga de billetera IA:', approveErr);
+        return fail('AI Wallet approval failed', 500);
+      }
+      await supabase.from('ai_wallet_payments')
+        .update({ epayco_ref: x_ref_payco })
+        .eq('id', x_extra1);
+      console.log(`Recarga billetera IA aprobada — payment: ${x_extra1}, ref: ${x_ref_payco}`);
+      return ok('ai_wallet_approved');
+    }
+
     // ── 4B. Si es compra de curso ────────────────────────────────────────────
     if (x_extra3 === 'curso_purchase' && x_extra1) {
       // Obtener datos de la compra antes de completar

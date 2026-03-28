@@ -1,0 +1,236 @@
+<div class="min-h-screen bg-white rounded-2xl overflow-hidden">
+
+  <!-- HEADER -->
+  <section class="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-6">
+    <div class="flex items-center gap-3 mb-6">
+      <a routerLink="/advertiser/ai" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
+        <span class="material-symbols-outlined text-gray-600" style="font-size:20px">arrow_back</span>
+      </a>
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-black text-gray-900">Billetera IA</h1>
+        <p class="text-gray-500 text-sm">Recarga tu saldo para usar las herramientas de IA</p>
+      </div>
+    </div>
+
+    <!-- BALANCE CARD -->
+    <div class="relative overflow-hidden rounded-2xl p-6 sm:p-8"
+         style="background: linear-gradient(135deg, #7e22ce, #a855f7, #d946ef, #ec4899);">
+      <div class="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+      <div class="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+
+      <div class="relative z-10">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="material-symbols-outlined text-white/80" style="font-size:20px">account_balance_wallet</span>
+          <span class="text-white/80 text-sm font-medium">Saldo disponible</span>
+        </div>
+
+        @if (loading()) {
+          <div class="h-12 w-48 bg-white/20 rounded-lg animate-pulse"></div>
+        } @else {
+          <p class="text-4xl sm:text-5xl font-black text-white tracking-tight">
+            {{ formatCOP(balance()) }}
+          </p>
+        }
+
+        <div class="flex flex-wrap gap-4 mt-4 text-white/70 text-xs sm:text-sm">
+          <span class="flex items-center gap-1">
+            <span class="material-symbols-outlined" style="font-size:16px">trending_up</span>
+            Total recargado: {{ formatCOP(wallet()?.total_recharged ?? 0) }}
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="material-symbols-outlined" style="font-size:16px">trending_down</span>
+            Total consumido: {{ formatCOP(wallet()?.total_consumed ?? 0) }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECHARGE SECTION -->
+  <section class="px-4 sm:px-6 lg:px-8 pb-8">
+    <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined text-purple-600" style="font-size:22px">add_card</span>
+      Recargar saldo
+    </h2>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      @for (amount of rechargeAmounts; track amount) {
+        <button (click)="selectAmount(amount)"
+          class="relative rounded-xl border-2 p-4 text-center transition-all hover:shadow-md"
+          [class]="selectedAmount() === amount
+            ? 'border-purple-500 bg-purple-50 shadow-md'
+            : 'border-gray-200 bg-white hover:border-purple-200'">
+          @if (selectedAmount() === amount) {
+            <span class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center">
+              <span class="material-symbols-outlined text-white" style="font-size:14px">check</span>
+            </span>
+          }
+          <p class="text-lg sm:text-xl font-black"
+             [class]="selectedAmount() === amount ? 'text-purple-700' : 'text-gray-900'">
+            {{ formatCOP(amount) }}
+          </p>
+          <p class="text-xs text-gray-400 mt-1">COP</p>
+        </button>
+      }
+    </div>
+
+    <button (click)="startRecharge()"
+      [disabled]="payStep() === 'loading' || payStep() === 'opening'"
+      class="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-white font-bold px-8 py-3.5 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+      style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef, #ec4899);">
+      @if (payStep() === 'loading') {
+        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <span>Preparando pago...</span>
+      } @else {
+        <span class="material-symbols-outlined" style="font-size:20px">payment</span>
+        <span>Recargar {{ formatCOP(selectedAmount()) }} con ePayco</span>
+      }
+    </button>
+
+    @if (payError()) {
+      <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2">
+        <span class="material-symbols-outlined" style="font-size:18px">error</span>
+        {{ payError() }}
+      </div>
+    }
+  </section>
+
+  <!-- TRANSACTION HISTORY -->
+  <section class="px-4 sm:px-6 lg:px-8 pb-8">
+    <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined text-purple-600" style="font-size:22px">receipt_long</span>
+      Historial de movimientos
+    </h2>
+
+    @if (transactions().length === 0) {
+      <div class="text-center py-12 bg-gray-50 rounded-2xl border border-gray-100">
+        <span class="material-symbols-outlined text-gray-300 mb-2" style="font-size:48px">receipt_long</span>
+        <p class="text-gray-400 text-sm">No hay movimientos todavia</p>
+        <p class="text-gray-300 text-xs mt-1">Tus recargas y consumos apareceran aqui</p>
+      </div>
+    } @else {
+      <div class="space-y-2">
+        @for (tx of transactions(); track tx.id) {
+          <div class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                 [class]="tx.type === 'recharge' || tx.type === 'bonus' || tx.type === 'refund'
+                   ? 'bg-emerald-100' : 'bg-red-50'">
+              <span class="material-symbols-outlined" [class]="getTransactionColor(tx.type)" style="font-size:20px">
+                {{ getTransactionIcon(tx.type) }}
+              </span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900 truncate">{{ tx.description ?? 'Movimiento' }}</p>
+              <p class="text-xs text-gray-400">{{ formatDate(tx.created_at) }}</p>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-bold" [class]="getTransactionColor(tx.type)">
+                {{ tx.amount > 0 ? '+' : '' }}{{ formatCOP(tx.amount) }}
+              </p>
+              <p class="text-xs text-gray-400">Saldo: {{ formatCOP(tx.balance_after) }}</p>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- PAYMENT HISTORY -->
+  <section class="px-4 sm:px-6 lg:px-8 pb-12">
+    <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined text-purple-600" style="font-size:22px">credit_card</span>
+      Historial de recargas
+    </h2>
+
+    @if (payments().length === 0) {
+      <div class="text-center py-12 bg-gray-50 rounded-2xl border border-gray-100">
+        <span class="material-symbols-outlined text-gray-300 mb-2" style="font-size:48px">credit_card</span>
+        <p class="text-gray-400 text-sm">No hay recargas registradas</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wider">Fecha</th>
+              <th class="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wider">Monto</th>
+              <th class="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wider">Estado</th>
+              <th class="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wider">Referencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of payments(); track p.id) {
+              <tr class="border-b border-gray-50 hover:bg-gray-50/50">
+                <td class="py-3 px-4 text-gray-600">{{ formatDate(p.created_at) }}</td>
+                <td class="py-3 px-4 font-bold text-gray-900">{{ formatCOP(p.amount) }}</td>
+                <td class="py-3 px-4">
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold" [class]="getStatusBadge(p.status)">
+                    {{ getStatusLabel(p.status) }}
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-gray-400 text-xs font-mono">{{ p.epayco_ref ?? p.invoice ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- INFO SECTION -->
+  <section class="px-4 sm:px-6 lg:px-8 pb-12">
+    <div class="bg-purple-50 border border-purple-100 rounded-2xl p-6">
+      <h3 class="font-bold text-purple-900 text-sm mb-3 flex items-center gap-2">
+        <span class="material-symbols-outlined" style="font-size:18px">info</span>
+        Sobre la Billetera IA
+      </h3>
+      <ul class="space-y-2 text-xs sm:text-sm text-purple-700">
+        <li class="flex items-start gap-2">
+          <span class="material-symbols-outlined text-purple-400 mt-0.5" style="font-size:14px">check_circle</span>
+          El saldo es exclusivo para las herramientas de IA (videos, imagenes, voz, documentos).
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="material-symbols-outlined text-purple-400 mt-0.5" style="font-size:14px">check_circle</span>
+          Las recargas se procesan al instante una vez ePayco confirme el pago.
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="material-symbols-outlined text-purple-400 mt-0.5" style="font-size:14px">check_circle</span>
+          El saldo no tiene fecha de vencimiento. Usalo cuando quieras.
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="material-symbols-outlined text-purple-400 mt-0.5" style="font-size:14px">check_circle</span>
+          Cada herramienta consume una cantidad diferente de saldo segun su complejidad.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<!-- MODAL: Pago en proceso / resultado ePayco -->
+@if (payStep() === 'opening' || payStep() === 'success') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" (click)="closeModal()">
+    <div class="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center shadow-xl" (click)="$event.stopPropagation()">
+      @if (payStep() === 'opening') {
+        <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
+          <span class="material-symbols-outlined text-purple-600 animate-pulse" style="font-size:32px">payment</span>
+        </div>
+        <h3 class="text-xl font-black text-gray-900 mb-2">Procesando pago</h3>
+        <p class="text-gray-500 text-sm mb-6">Se abrio la ventana de ePayco. Completa el pago y tu saldo se actualizara automaticamente.</p>
+      } @else {
+        <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+          <span class="material-symbols-outlined text-emerald-600" style="font-size:32px">check_circle</span>
+        </div>
+        <h3 class="text-xl font-black text-gray-900 mb-2">Pago procesado</h3>
+        <p class="text-gray-500 text-sm mb-6">Tu recarga esta siendo verificada. El saldo se actualizara en unos momentos.</p>
+      }
+      <button (click)="closeModal()"
+        class="w-full py-3 bg-gray-900 text-white font-bold rounded-full hover:bg-gray-800 transition-colors text-sm">
+        Entendido
+      </button>
+    </div>
+  </div>
+}

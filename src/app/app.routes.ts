@@ -266,6 +266,10 @@ export const routes: Routes = [
       {
         path: 'ai/create',
         loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
+      },
+      {
+        path: 'ai/wallet',
+        loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
       }
     ]
   },
