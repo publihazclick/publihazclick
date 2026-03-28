@@ -274,6 +274,10 @@ export const routes: Routes = [
       {
         path: 'ai/register',
         loadComponent: () => import('./features/ai/components/ai-register/ai-register.component').then(m => m.AiRegisterComponent)
+      },
+      {
+        path: 'ai/login',
+        loadComponent: () => import('./features/ai/components/ai-login/ai-login.component').then(m => m.AiLoginComponent)
       }
     ]
   },
