@@ -108,7 +108,7 @@ export class AiWalletComponent implements OnInit {
       tax:          params.tax,
       country:      params.country,
       lang:         params.lang,
-      external:     'true',
+      external:     'false',
       confirmation: params.confirmation,
       response:     params.response,
       email_billing: params.email_billing,
