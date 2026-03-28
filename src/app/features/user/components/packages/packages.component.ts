@@ -123,11 +123,11 @@ export class UserPackagesComponent implements OnInit {
     const pkg = this.selectedPackage();
     const method = this.pendingPaymentMethod();
     if (!pkg) return;
-    this.pendingPaymentMethod.set(null);
     if (method === 'nequi') {
+      this.pendingPaymentMethod.set(null);
       this.openNequiPayment(pkg);
     } else {
-      this.payStep.set('idle');
+      // Mantener pendingPaymentMethod en 'epayco' para que startEpaycoCheckout no vuelva a mostrar el warning
       this.startEpaycoCheckout(pkg);
     }
   }
@@ -211,8 +211,8 @@ export class UserPackagesComponent implements OnInit {
       this.payStep.set('active-warning');
       return;
     }
-    this.pendingPaymentMethod.set(null);
 
+    this.pendingPaymentMethod.set(null);
     this.selectedPackage.set(pkg);
     this.payError.set(null);
     this.payStep.set('epayco-loading');
