@@ -282,6 +282,10 @@ export const routes: Routes = [
         path: 'video-generator',
         loadComponent: () => import('./features/ai/components/video-generator/video-generator.component').then(m => m.VideoGeneratorComponent)
       },
+      {
+        path: 'youtube-studio',
+        loadComponent: () => import('./features/ai/components/youtube-studio/youtube-studio.component').then(m => m.YoutubeStudioComponent)
+      },
     ]
   },
   // Registro y login IA — sin layout (pantalla completa)

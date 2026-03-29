@@ -87,6 +87,9 @@ export class VideoGeneratorComponent {
 
   selectPlatform(id: string): void {
     this.selectedPlatform.set(id);
+    if (id === 'youtube') {
+      this.router.navigate(['/advertiser/ai/youtube-studio']);
+    }
   }
 
   selectMonetization(id: string): void {
