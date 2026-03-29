@@ -251,25 +251,25 @@ export const routes: Routes = [
         path: 'cursos',
         loadChildren: () => import('./features/cursos/cursos.routes').then(m => m.cursosRoutes)
       },
-      {
-        path: 'ai',
-        loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
-      },
-      {
-        path: 'ai/creator',
-        loadComponent: () => import('./features/ai/components/creator-dashboard/creator-dashboard.component').then(m => m.CreatorDashboardComponent)
-      },
-      {
-        path: 'ai/image',
-        loadComponent: () => import('./features/ai/components/image-generator/image-generator.component').then(m => m.ImageGeneratorComponent)
-      },
-      {
-        path: 'ai/create',
-        loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
-      },
     ]
   },
-  // Rutas de Herramientas IA — sin authGuard para no perder sesión en redirects de ePayco
+  // Rutas de Herramientas IA — independientes del authGuard de advertiser
+  {
+    path: 'advertiser/ai',
+    loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
+  },
+  {
+    path: 'advertiser/ai/creator',
+    loadComponent: () => import('./features/ai/components/creator-dashboard/creator-dashboard.component').then(m => m.CreatorDashboardComponent)
+  },
+  {
+    path: 'advertiser/ai/image',
+    loadComponent: () => import('./features/ai/components/image-generator/image-generator.component').then(m => m.ImageGeneratorComponent)
+  },
+  {
+    path: 'advertiser/ai/create',
+    loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
+  },
   {
     path: 'advertiser/ai/wallet',
     loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
