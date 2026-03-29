@@ -4,6 +4,14 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+import { getSupabaseClient } from '../../../../core/supabase.client';
+
+interface HeyGenVoice {
+  voice_id: string;
+  name: string;
+  gender: string;
+  language: string;
+}
 
 @Component({
   selector: 'app-youtube-studio',
@@ -15,6 +23,7 @@ import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 export class YoutubeStudioComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly walletService = inject(AiWalletService);
+  private readonly supabase = getSupabaseClient();
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
@@ -50,7 +59,6 @@ export class YoutubeStudioComponent implements OnInit {
   readonly durationsShorts = [
     '15 segundos', '20 segundos', '30 segundos', '45 segundos', '60 segundos',
   ];
-
   readonly durations = computed(() =>
     this.contentType() === 'largo' ? this.durationsLargo : this.durationsShorts
   );
@@ -60,42 +68,41 @@ export class YoutubeStudioComponent implements OnInit {
   readonly visualStyles = ['Talking Head', 'B-Roll', 'Screencast', 'Animado', 'Documental', 'Vlog'];
   readonly selectedStyle = signal<string | null>(null);
 
-  // Voces
+  // Voces HeyGen reales
   readonly showVoicePanel = signal(false);
-  readonly voiceGender = signal<'hombre' | 'mujer'>('hombre');
-  readonly selectedVoice = signal<string | null>(null);
+  readonly voiceGender = signal<'male' | 'female'>('male');
+  readonly selectedVoice = signal<HeyGenVoice | null>(null);
+  readonly allVoices = signal<HeyGenVoice[]>([]);
+  readonly loadingVoices = signal(false);
 
-  readonly maleVoices = [
-    'Carlos - Español Colombia', 'Andrés - Español México', 'Miguel - Español España',
-    'Juan - Narrador Profesional', 'David - Tono Corporativo', 'Pedro - Joven Dinámico',
-    'Santiago - Documental', 'Diego - Conversacional', 'Luis - Motivacional', 'Mateo - Educativo',
-    'Sebastián - Comercial', 'Daniel - Noticiero', 'Alejandro - Storytelling', 'Felipe - Podcast',
-    'Gabriel - Deportivo', 'Ricardo - Grave Profundo', 'Fernando - Tutorial Tech',
-    'Nicolás - Energético', 'Tomás - Cálido Cercano', 'Pablo - Formal Elegante',
-    'Martín - Juvenil Urbano', 'Joaquín - Audiobook', 'Emilio - Meditación',
-    'Hugo - Gaming', 'Óscar - Infomercial', 'Iván - Dramático', 'Rafael - Científico',
-    'Sergio - Aventura', 'Manuel - Cocina', 'Esteban - Fitness',
-  ];
+  readonly maleVoices = computed(() => this.allVoices().filter(v => v.gender === 'male'));
+  readonly femaleVoices = computed(() => this.allVoices().filter(v => v.gender === 'female'));
+  readonly currentVoices = computed(() =>
+    this.voiceGender() === 'male' ? this.maleVoices() : this.femaleVoices()
+  );
 
-  readonly femaleVoices = [
-    'Valentina - Español Colombia', 'María - Español México', 'Sofía - Español España',
-    'Isabella - Narradora Profesional', 'Camila - Tono Corporativo', 'Laura - Joven Dinámica',
-    'Ana - Documental', 'Lucía - Conversacional', 'Paula - Motivacional', 'Daniela - Educativa',
-    'Mariana - Comercial', 'Carolina - Noticiero', 'Gabriela - Storytelling', 'Andrea - Podcast',
-    'Sara - Deportivo', 'Elena - Suave Elegante', 'Diana - Tutorial Tech',
-    'Natalia - Energética', 'Clara - Cálida Cercana', 'Victoria - Formal Elegante',
-    'Alejandra - Juvenil Urbana', 'Regina - Audiobook', 'Paz - Meditación',
-    'Luna - Gaming', 'Renata - Infomercial', 'Julia - Dramática', 'Catalina - Científica',
-    'Ximena - Aventura', 'Carmen - Cocina', 'Fernanda - Fitness',
-  ];
-
-  // Estados
+  // Generación de video
   readonly generatingIdeas = signal(false);
   readonly generatingScript = signal(false);
   readonly generatingVideo = signal(false);
+  readonly videoResult = signal<{ video_id: string; status: string; video_url?: string } | null>(null);
+  readonly videoError = signal<string | null>(null);
+  readonly checkingStatus = signal(false);
 
   async ngOnInit(): Promise<void> {
     await this.walletService.loadWallet();
+    await this.loadVoices();
+  }
+
+  async loadVoices(): Promise<void> {
+    this.loadingVoices.set(true);
+    try {
+      const { data, error } = await this.supabase.functions.invoke('list-heygen-voices');
+      if (!error && data?.voices) {
+        this.allVoices.set(data.voices);
+      }
+    } catch { /* silencioso */ }
+    this.loadingVoices.set(false);
   }
 
   selectContentType(type: 'largo' | 'shorts'): void {
@@ -108,21 +115,11 @@ export class YoutubeStudioComponent implements OnInit {
   toggleMemberships(): void { this.memberships.update(v => !v); }
   toggleSuperChat(): void { this.superChat.update(v => !v); }
 
-  selectStyle(style: string): void {
-    this.selectedStyle.set(style);
-  }
+  selectStyle(style: string): void { this.selectedStyle.set(style); }
 
-  toggleVoicePanel(): void {
-    this.showVoicePanel.update(v => !v);
-  }
+  toggleVoicePanel(): void { this.showVoicePanel.update(v => !v); }
 
-  selectVoice(voice: string): void {
-    this.selectedVoice.set(voice);
-  }
-
-  get currentVoices(): string[] {
-    return this.voiceGender() === 'hombre' ? this.maleVoices : this.femaleVoices;
-  }
+  selectVoice(voice: HeyGenVoice): void { this.selectedVoice.set(voice); }
 
   async generateIdeas(): Promise<void> {
     this.generatingIdeas.set(true);
@@ -146,10 +143,84 @@ export class YoutubeStudioComponent implements OnInit {
   }
 
   async generateVideo(): Promise<void> {
+    const voice = this.selectedVoice();
+    if (!voice) {
+      this.videoError.set('Selecciona una voz antes de generar el video');
+      return;
+    }
+    if (!this.scriptContent.trim()) {
+      this.videoError.set('Escribe o genera un guion antes de generar el video');
+      return;
+    }
+
+    this.videoError.set(null);
     this.generatingVideo.set(true);
-    setTimeout(() => {
+
+    try {
+      // Determinar dimensiones según formato
+      let dimension = { width: 1920, height: 1080 };
+      if (this.videoFormat.includes('9:16')) dimension = { width: 1080, height: 1920 };
+      if (this.videoFormat.includes('1:1')) dimension = { width: 1080, height: 1080 };
+
+      const { data, error } = await this.supabase.functions.invoke('generate-heygen-video', {
+        body: {
+          avatar_id: 'Anna_public_3_20240108',  // Avatar por defecto
+          voice_id: voice.voice_id,
+          script: this.scriptContent,
+          title: this.videoTopic || 'Video PubliHazClick',
+          dimension,
+        },
+      });
+
+      if (error || !data?.video_id) {
+        throw new Error(data?.error ?? 'Error al generar video');
+      }
+
+      this.videoResult.set(data);
+      // Iniciar polling del estado
+      this.pollVideoStatus(data.video_id);
+    } catch (e: unknown) {
+      this.videoError.set(e instanceof Error ? e.message : 'Error al generar video');
+    } finally {
       this.generatingVideo.set(false);
-    }, 3000);
+    }
+  }
+
+  private async pollVideoStatus(videoId: string): Promise<void> {
+    this.checkingStatus.set(true);
+    const maxAttempts = 60; // 5 minutos
+    let attempts = 0;
+
+    const check = async () => {
+      attempts++;
+      try {
+        const { data } = await this.supabase.functions.invoke('check-heygen-video', {
+          body: { video_id: videoId },
+        });
+
+        if (data?.status === 'completed' && data?.video_url) {
+          this.videoResult.set(data);
+          this.checkingStatus.set(false);
+          return;
+        }
+
+        if (data?.status === 'failed') {
+          this.videoError.set('El video falló al generarse. Intenta de nuevo.');
+          this.checkingStatus.set(false);
+          return;
+        }
+
+        if (attempts < maxAttempts) {
+          setTimeout(check, 5000);
+        } else {
+          this.checkingStatus.set(false);
+        }
+      } catch {
+        this.checkingStatus.set(false);
+      }
+    };
+
+    setTimeout(check, 10000); // Primera verificación a los 10s
   }
 
   getUserName(): string {

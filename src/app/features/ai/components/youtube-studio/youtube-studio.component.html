@@ -205,7 +205,7 @@
                 ? 'border-purple-500 bg-purple-50 text-purple-700'
                 : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'">
               <span class="material-symbols-outlined" style="font-size:14px">mic</span>
-              {{ selectedVoice() ? selectedVoice() : 'Seleccionar voz' }}
+              {{ selectedVoice() ? selectedVoice()!.name : 'Seleccionar voz' }}
             </button>
           </div>
 
@@ -224,49 +224,59 @@
 
               <!-- Botones Hombre / Mujer -->
               <div class="flex gap-2 mb-4">
-                <button (click)="voiceGender.set('hombre')"
+                <button (click)="voiceGender.set('male')"
                   class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all"
-                  [class]="voiceGender() === 'hombre'
+                  [class]="voiceGender() === 'male'
                     ? 'bg-blue-500 text-white shadow-md'
                     : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'">
                   <span class="material-symbols-outlined" style="font-size:18px">man</span>
-                  Voz Hombre
+                  Voz Hombre ({{ maleVoices().length }})
                 </button>
-                <button (click)="voiceGender.set('mujer')"
+                <button (click)="voiceGender.set('female')"
                   class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all"
-                  [class]="voiceGender() === 'mujer'
+                  [class]="voiceGender() === 'female'
                     ? 'bg-pink-500 text-white shadow-md'
                     : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'">
                   <span class="material-symbols-outlined" style="font-size:18px">woman</span>
-                  Voz Mujer
+                  Voz Mujer ({{ femaleVoices().length }})
                 </button>
               </div>
 
-              <!-- Lista de voces -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
-                @for (voice of currentVoices; track voice) {
-                  <button (click)="selectVoice(voice)"
-                    class="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all text-xs sm:text-sm"
-                    [class]="selectedVoice() === voice
-                      ? voiceGender() === 'hombre'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold'
-                        : 'border-pink-500 bg-pink-50 text-pink-700 font-bold'
-                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'">
-                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px"
-                          [class]="selectedVoice() === voice
-                            ? voiceGender() === 'hombre' ? 'text-blue-500' : 'text-pink-500'
-                            : 'text-gray-400'">
-                      {{ selectedVoice() === voice ? 'check_circle' : 'play_circle' }}
-                    </span>
-                    <span class="truncate">{{ voice }}</span>
-                  </button>
-                }
-              </div>
+              @if (loadingVoices()) {
+                <div class="flex items-center justify-center py-8 text-gray-400 text-sm gap-2">
+                  <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  Cargando voces...
+                </div>
+              } @else {
+                <!-- Lista de voces -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                  @for (voice of currentVoices(); track voice.voice_id) {
+                    <button (click)="selectVoice(voice)"
+                      class="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all text-xs sm:text-sm"
+                      [class]="selectedVoice()?.voice_id === voice.voice_id
+                        ? voiceGender() === 'male'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold'
+                          : 'border-pink-500 bg-pink-50 text-pink-700 font-bold'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'">
+                      <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px"
+                            [class]="selectedVoice()?.voice_id === voice.voice_id
+                              ? voiceGender() === 'male' ? 'text-blue-500' : 'text-pink-500'
+                              : 'text-gray-400'">
+                        {{ selectedVoice()?.voice_id === voice.voice_id ? 'check_circle' : 'play_circle' }}
+                      </span>
+                      <span class="truncate">{{ voice.name }}</span>
+                    </button>
+                  }
+                </div>
+              }
 
               @if (selectedVoice()) {
                 <div class="mt-3 flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
                   <span class="material-symbols-outlined text-green-500" style="font-size:16px">check_circle</span>
-                  <span class="text-xs sm:text-sm font-bold text-gray-700">Voz seleccionada: {{ selectedVoice() }}</span>
+                  <span class="text-xs sm:text-sm font-bold text-gray-700">Voz seleccionada: {{ selectedVoice()!.name }}</span>
                 </div>
               }
             </div>
@@ -323,6 +333,45 @@
             }
             Generar Video para YouTube
           </button>
+
+          <!-- Error -->
+          @if (videoError()) {
+            <div class="mt-4 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs sm:text-sm">
+              <span class="material-symbols-outlined mt-0.5" style="font-size:16px">error</span>
+              {{ videoError() }}
+            </div>
+          }
+
+          <!-- Video en proceso -->
+          @if (checkingStatus()) {
+            <div class="mt-4 flex items-center gap-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+              <svg class="animate-spin h-5 w-5 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <div>
+                <p class="text-sm font-bold text-purple-700">Generando tu video...</p>
+                <p class="text-xs text-purple-500">Esto puede tomar unos minutos. No cierres esta pagina.</p>
+              </div>
+            </div>
+          }
+
+          <!-- Video listo -->
+          @if (videoResult()?.video_url) {
+            <div class="mt-4 bg-green-50 border border-green-200 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-green-600" style="font-size:20px">check_circle</span>
+                <p class="text-sm font-black text-green-700">Video generado exitosamente</p>
+              </div>
+              <video controls class="w-full rounded-xl mb-3" [src]="videoResult()!.video_url">
+              </video>
+              <a [href]="videoResult()!.video_url" target="_blank" download
+                 class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-all">
+                <span class="material-symbols-outlined" style="font-size:18px">download</span>
+                Descargar Video
+              </a>
+            </div>
+          }
         </div>
       </div>
 
