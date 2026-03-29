@@ -73,7 +73,7 @@ export class CreatorDashboardComponent implements OnInit {
       iconColor: 'text-red-500',
       title: 'Generador de Video IA',
       description: 'Crea videos impresionantes desde texto o imágenes',
-      route: '/advertiser/ai/create',
+      route: '/advertiser/ai/video-generator',
     },
     {
       icon: 'image',

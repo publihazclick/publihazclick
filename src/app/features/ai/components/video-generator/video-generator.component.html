@@ -1,0 +1,295 @@
+<div class="min-h-screen bg-gray-50">
+
+  <!-- HEADER -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <div class="flex items-center gap-3 px-4 sm:px-6 h-14 sm:h-16">
+      <!-- Back -->
+      <a routerLink="/advertiser/ai/creator" class="p-1.5 rounded-lg hover:bg-gray-100 transition-all">
+        <span class="material-symbols-outlined text-gray-600" style="font-size:22px">arrow_back</span>
+      </a>
+
+      <!-- Search (desktop) -->
+      <div class="hidden sm:flex flex-1 max-w-md">
+        <div class="flex items-center gap-2 w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+          <span class="material-symbols-outlined text-gray-400" style="font-size:18px">search</span>
+          <span class="text-sm text-gray-400">Buscar cualquier cosa...</span>
+        </div>
+      </div>
+      <div class="flex-1 sm:hidden"></div>
+
+      <!-- Right side -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Billetera IA -->
+        <a routerLink="/advertiser/ai/wallet"
+           class="flex items-center gap-1.5 bg-purple-50 border border-purple-100 rounded-xl px-2.5 sm:px-3 py-1.5 hover:bg-purple-100 transition-all">
+          <span class="material-symbols-outlined text-purple-500" style="font-size:16px">account_balance_wallet</span>
+          <span class="text-xs sm:text-sm font-bold text-purple-700">{{ formatBalance() }}</span>
+        </a>
+        <!-- Notificaciones -->
+        <button class="relative p-2 rounded-xl hover:bg-gray-100 transition-all hidden sm:block">
+          <span class="material-symbols-outlined text-gray-500" style="font-size:20px">notifications</span>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <!-- Avatar -->
+        <div class="flex items-center gap-2 pl-1">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+               style="background: linear-gradient(135deg, #7e22ce, #d946ef);">
+            <span class="text-white font-black text-xs">{{ getUserName().charAt(0) }}</span>
+          </div>
+          <span class="text-sm font-bold text-gray-700 hidden sm:inline">{{ getUserName() }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+    <!-- TITLE -->
+    <div class="flex items-start justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+          <span class="material-symbols-outlined text-red-500" style="font-size:28px">videocam</span>
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-black text-gray-900">Generador de Video IA</h1>
+          <p class="text-gray-500 text-sm">Crea videos impresionantes desde texto o imagenes</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-xl px-3 py-1.5">
+        <span class="material-symbols-outlined text-purple-500" style="font-size:16px">bolt</span>
+        <span class="text-sm font-bold text-gray-700">50 Creditos</span>
+      </div>
+    </div>
+
+    <!-- STEPPER -->
+    <div class="flex items-center gap-0 mb-8 overflow-x-auto pb-2">
+      @for (step of steps; track step.label; let i = $index) {
+        <button (click)="goToStep(i)"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all flex-shrink-0"
+          [class]="currentStep() === i
+            ? 'bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-md'
+            : i < currentStep()
+              ? 'bg-white border border-gray-200 text-purple-600 hover:border-purple-300 cursor-pointer'
+              : 'bg-white border border-gray-200 text-gray-400 cursor-default'">
+          <span class="material-symbols-outlined" style="font-size:18px">{{ step.icon }}</span>
+          {{ step.label }}
+        </button>
+        @if (i < steps.length - 1) {
+          <span class="material-symbols-outlined text-gray-300 mx-1 flex-shrink-0" style="font-size:18px">chevron_right</span>
+        }
+      }
+    </div>
+
+    <!-- STEP CONTENT -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 mb-6">
+
+      <!-- ═══ STEP 0: Objetivo de Monetización ═══ -->
+      @if (currentStep() === 0) {
+        <div class="flex items-center gap-2 mb-6">
+          <span class="material-symbols-outlined text-purple-500" style="font-size:24px">attach_money</span>
+          <h2 class="text-xl font-black text-gray-900">Objetivo de Monetizacion</h2>
+        </div>
+
+        <!-- Plataforma -->
+        <h3 class="text-sm font-bold text-gray-700 mb-3">Plataforma</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
+          @for (p of platforms; track p.id) {
+            <button (click)="selectPlatform(p.id)"
+              class="rounded-xl border-2 p-4 text-center transition-all hover:shadow-md"
+              [class]="selectedPlatform() === p.id
+                ? 'border-purple-500 bg-purple-50 shadow-md'
+                : 'border-gray-200 bg-white hover:border-purple-200'">
+              <span class="material-symbols-outlined mb-2" [class]="getPlatformIconColor(p.id)" style="font-size:28px">{{ p.icon }}</span>
+              <p class="text-sm font-bold text-gray-900">{{ p.name }}</p>
+              <p class="text-[10px] text-gray-400 mt-1">{{ p.resolution }}, {{ p.aspect }}, {{ p.detail }}</p>
+            </button>
+          }
+        </div>
+
+        <!-- Tipo de Monetización -->
+        <h3 class="text-sm font-bold text-gray-700 mb-3">Tipo de Monetizacion</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          @for (m of monetizationTypes; track m.id) {
+            <button (click)="selectMonetization(m.id)"
+              class="flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all hover:shadow-md"
+              [class]="selectedMonetization() === m.id
+                ? 'border-purple-500 bg-purple-50 shadow-md'
+                : 'border-gray-200 bg-white hover:border-purple-200'">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                   [class]="selectedMonetization() === m.id ? 'bg-purple-500' : 'bg-purple-100'">
+                <span class="material-symbols-outlined" style="font-size:20px"
+                      [class]="selectedMonetization() === m.id ? 'text-white' : 'text-purple-500'">attach_money</span>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-gray-900">{{ m.name }}</p>
+                <p class="text-xs text-gray-400">{{ m.detail }}</p>
+              </div>
+            </button>
+          }
+        </div>
+      }
+
+      <!-- ═══ STEP 1: Tipo de Video ═══ -->
+      @if (currentStep() === 1) {
+        <div class="flex items-center gap-2 mb-6">
+          <span class="material-symbols-outlined text-purple-500" style="font-size:24px">smart_display</span>
+          <h2 class="text-xl font-black text-gray-900">Tipo de Video</h2>
+        </div>
+
+        <h3 class="text-sm font-bold text-gray-700 mb-3">Selecciona el tipo de contenido</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          @for (vt of videoTypes; track vt.id) {
+            <button (click)="selectVideoType(vt.id)"
+              class="flex items-center gap-3 rounded-xl border-2 p-5 text-left transition-all hover:shadow-md"
+              [class]="selectedVideoType() === vt.id
+                ? 'border-purple-500 bg-purple-50 shadow-md'
+                : 'border-gray-200 bg-white hover:border-purple-200'">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                   [class]="selectedVideoType() === vt.id ? 'bg-purple-500' : 'bg-purple-100'">
+                <span class="material-symbols-outlined" style="font-size:20px"
+                      [class]="selectedVideoType() === vt.id ? 'text-white' : 'text-purple-500'">smart_display</span>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-gray-900">{{ vt.name }}</p>
+                <p class="text-xs text-gray-400">{{ vt.detail }}</p>
+              </div>
+            </button>
+          }
+        </div>
+      }
+
+      <!-- ═══ STEP 2: Generador de Nicho ═══ -->
+      @if (currentStep() === 2) {
+        <div class="flex items-center gap-2 mb-6">
+          <span class="material-symbols-outlined text-purple-500" style="font-size:24px">target</span>
+          <h2 class="text-xl font-black text-gray-900">Generador de Nicho</h2>
+        </div>
+
+        <div class="mb-6">
+          <label class="text-sm font-bold text-gray-700 mb-2 block">Describe tu idea o tema (opcional)</label>
+          <div class="flex gap-3">
+            <input type="text" [(ngModel)]="nicheInput"
+                   placeholder="Ej: cocina saludable, fitness, tecnologia..."
+                   class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all">
+            <button (click)="generateNiches()"
+              [disabled]="generatingNiche()"
+              class="px-6 py-3 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-50"
+              style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef);">
+              @if (generatingNiche()) {
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+              } @else {
+                Generar
+              }
+            </button>
+          </div>
+        </div>
+
+        @if (generatedNiches().length > 0) {
+          <h3 class="text-sm font-bold text-gray-700 mb-3">Nichos sugeridos</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            @for (niche of generatedNiches(); track niche) {
+              <button (click)="selectNiche(niche)"
+                class="flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all hover:shadow-md"
+                [class]="selectedNiche() === niche
+                  ? 'border-purple-500 bg-purple-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-purple-200'">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                     [class]="selectedNiche() === niche ? 'bg-purple-500' : 'bg-purple-100'">
+                  <span class="material-symbols-outlined" style="font-size:20px"
+                        [class]="selectedNiche() === niche ? 'text-white' : 'text-purple-500'">lightbulb</span>
+                </div>
+                <p class="text-sm font-medium text-gray-900">{{ niche }}</p>
+              </button>
+            }
+          </div>
+        }
+      }
+
+      <!-- ═══ STEP 3: Generador de Guion ═══ -->
+      @if (currentStep() === 3) {
+        <div class="flex items-center gap-2 mb-6">
+          <span class="material-symbols-outlined text-purple-500" style="font-size:24px">description</span>
+          <h2 class="text-xl font-black text-gray-900">Generador de Guion</h2>
+        </div>
+
+        <!-- Resumen de selecciones -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Plataforma</p>
+            <p class="text-sm font-bold text-gray-900 capitalize">{{ selectedPlatform() }}</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Tipo</p>
+            <p class="text-sm font-bold text-gray-900 capitalize">{{ selectedVideoType() }}</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Nicho</p>
+            <p class="text-sm font-bold text-gray-900">{{ selectedNiche() }}</p>
+          </div>
+        </div>
+
+        @if (!generatedScript()) {
+          <button (click)="generateScript()"
+            [disabled]="generatingScript()"
+            class="w-full py-4 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef);">
+            @if (generatingScript()) {
+              <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <span>Generando guion con IA...</span>
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:20px">auto_awesome</span>
+              <span>Generar Guion con IA</span>
+            }
+          </button>
+        } @else {
+          <div class="bg-gray-50 border border-gray-200 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <span class="material-symbols-outlined text-purple-500" style="font-size:18px">description</span>
+                Guion Generado
+              </h3>
+              <button (click)="generateScript()" class="text-xs text-purple-600 font-bold hover:text-purple-700 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:14px">refresh</span>
+                Regenerar
+              </button>
+            </div>
+            <div class="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{{ generatedScript() }}</div>
+          </div>
+        }
+      }
+
+    </div>
+
+    <!-- NAVIGATION BUTTONS -->
+    <div class="flex items-center justify-between">
+      <div>
+        @if (currentStep() > 0) {
+          <button (click)="prevStep()"
+            class="flex items-center gap-2 px-5 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all">
+            <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span>
+            Atras
+          </button>
+        }
+      </div>
+      <div>
+        @if (currentStep() < steps.length - 1) {
+          <button (click)="nextStep()"
+            [disabled]="!canAdvance()"
+            class="flex items-center gap-2 px-6 py-3 rounded-full text-white font-bold text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90"
+            style="background: #1a1a1a;">
+            Generar
+            <span class="material-symbols-outlined" style="font-size:18px">chevron_right</span>
+          </button>
+        }
+      </div>
+    </div>
+
+  </div>
+
+</div>

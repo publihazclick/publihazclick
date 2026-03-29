@@ -278,6 +278,10 @@ export const routes: Routes = [
         path: 'wallet',
         loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
       },
+      {
+        path: 'video-generator',
+        loadComponent: () => import('./features/ai/components/video-generator/video-generator.component').then(m => m.VideoGeneratorComponent)
+      },
     ]
   },
   // Registro y login IA — sin layout (pantalla completa)
