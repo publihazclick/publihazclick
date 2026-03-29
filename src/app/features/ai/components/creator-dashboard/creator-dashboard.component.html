@@ -15,14 +15,6 @@
     </div>
 
     <div class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-      <!-- Nueva Creación -->
-      <a routerLink="/advertiser/ai/create"
-         (click)="sidebarOpen.set(false)"
-         class="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm mb-4 transition-all hover:opacity-90"
-         style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef);">
-        <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
-        Nueva Creación
-      </a>
 
       <!-- Menu items -->
       @for (item of menuItems; track item.label) {
