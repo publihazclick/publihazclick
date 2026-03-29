@@ -267,19 +267,20 @@ export const routes: Routes = [
         path: 'ai/create',
         loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
       },
-      {
-        path: 'ai/wallet',
-        loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
-      },
-      {
-        path: 'ai/register',
-        loadComponent: () => import('./features/ai/components/ai-register/ai-register.component').then(m => m.AiRegisterComponent)
-      },
-      {
-        path: 'ai/login',
-        loadComponent: () => import('./features/ai/components/ai-login/ai-login.component').then(m => m.AiLoginComponent)
-      }
     ]
+  },
+  // Rutas de Herramientas IA — sin authGuard para no perder sesión en redirects de ePayco
+  {
+    path: 'advertiser/ai/wallet',
+    loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
+  },
+  {
+    path: 'advertiser/ai/register',
+    loadComponent: () => import('./features/ai/components/ai-register/ai-register.component').then(m => m.AiRegisterComponent)
+  },
+  {
+    path: 'advertiser/ai/login',
+    loadComponent: () => import('./features/ai/components/ai-login/ai-login.component').then(m => m.AiLoginComponent)
   },
   // Rutas de usuario (dashboard) — solo rol 'guest'; advertiser/admin son redirigidos
   {
