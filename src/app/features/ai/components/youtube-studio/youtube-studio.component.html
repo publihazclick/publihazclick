@@ -199,11 +199,78 @@
             <button class="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-[10px] sm:text-sm hover:bg-gray-50 transition-all">
               Optimizar para Retencion
             </button>
-            <button class="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-[10px] sm:text-sm hover:bg-gray-50 transition-all">
+            <button (click)="toggleVoicePanel()"
+              class="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border transition-all font-medium text-[10px] sm:text-sm"
+              [class]="showVoicePanel()
+                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'">
               <span class="material-symbols-outlined" style="font-size:14px">mic</span>
-              Seleccionar voz
+              {{ selectedVoice() ? selectedVoice() : 'Seleccionar voz' }}
             </button>
           </div>
+
+          <!-- Panel de voces -->
+          @if (showVoicePanel()) {
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-5 mb-4 sm:mb-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-black text-gray-900 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-purple-500" style="font-size:18px">mic</span>
+                  Seleccionar Voz
+                </h3>
+                <button (click)="toggleVoicePanel()" class="p-1 rounded-lg hover:bg-gray-200 transition-all">
+                  <span class="material-symbols-outlined text-gray-400" style="font-size:18px">close</span>
+                </button>
+              </div>
+
+              <!-- Botones Hombre / Mujer -->
+              <div class="flex gap-2 mb-4">
+                <button (click)="voiceGender.set('hombre')"
+                  class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all"
+                  [class]="voiceGender() === 'hombre'
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'">
+                  <span class="material-symbols-outlined" style="font-size:18px">man</span>
+                  Voz Hombre
+                </button>
+                <button (click)="voiceGender.set('mujer')"
+                  class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all"
+                  [class]="voiceGender() === 'mujer'
+                    ? 'bg-pink-500 text-white shadow-md'
+                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'">
+                  <span class="material-symbols-outlined" style="font-size:18px">woman</span>
+                  Voz Mujer
+                </button>
+              </div>
+
+              <!-- Lista de voces -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                @for (voice of currentVoices; track voice) {
+                  <button (click)="selectVoice(voice)"
+                    class="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all text-xs sm:text-sm"
+                    [class]="selectedVoice() === voice
+                      ? voiceGender() === 'hombre'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold'
+                        : 'border-pink-500 bg-pink-50 text-pink-700 font-bold'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'">
+                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px"
+                          [class]="selectedVoice() === voice
+                            ? voiceGender() === 'hombre' ? 'text-blue-500' : 'text-pink-500'
+                            : 'text-gray-400'">
+                      {{ selectedVoice() === voice ? 'check_circle' : 'play_circle' }}
+                    </span>
+                    <span class="truncate">{{ voice }}</span>
+                  </button>
+                }
+              </div>
+
+              @if (selectedVoice()) {
+                <div class="mt-3 flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+                  <span class="material-symbols-outlined text-green-500" style="font-size:16px">check_circle</span>
+                  <span class="text-xs sm:text-sm font-bold text-gray-700">Voz seleccionada: {{ selectedVoice() }}</span>
+                </div>
+              }
+            </div>
+          }
 
           <!-- Aprobar y guardar -->
           <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-6">

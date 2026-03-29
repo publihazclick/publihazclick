@@ -60,6 +60,35 @@ export class YoutubeStudioComponent implements OnInit {
   readonly visualStyles = ['Talking Head', 'B-Roll', 'Screencast', 'Animado', 'Documental', 'Vlog'];
   readonly selectedStyle = signal<string | null>(null);
 
+  // Voces
+  readonly showVoicePanel = signal(false);
+  readonly voiceGender = signal<'hombre' | 'mujer'>('hombre');
+  readonly selectedVoice = signal<string | null>(null);
+
+  readonly maleVoices = [
+    'Carlos - Español Colombia', 'Andrés - Español México', 'Miguel - Español España',
+    'Juan - Narrador Profesional', 'David - Tono Corporativo', 'Pedro - Joven Dinámico',
+    'Santiago - Documental', 'Diego - Conversacional', 'Luis - Motivacional', 'Mateo - Educativo',
+    'Sebastián - Comercial', 'Daniel - Noticiero', 'Alejandro - Storytelling', 'Felipe - Podcast',
+    'Gabriel - Deportivo', 'Ricardo - Grave Profundo', 'Fernando - Tutorial Tech',
+    'Nicolás - Energético', 'Tomás - Cálido Cercano', 'Pablo - Formal Elegante',
+    'Martín - Juvenil Urbano', 'Joaquín - Audiobook', 'Emilio - Meditación',
+    'Hugo - Gaming', 'Óscar - Infomercial', 'Iván - Dramático', 'Rafael - Científico',
+    'Sergio - Aventura', 'Manuel - Cocina', 'Esteban - Fitness',
+  ];
+
+  readonly femaleVoices = [
+    'Valentina - Español Colombia', 'María - Español México', 'Sofía - Español España',
+    'Isabella - Narradora Profesional', 'Camila - Tono Corporativo', 'Laura - Joven Dinámica',
+    'Ana - Documental', 'Lucía - Conversacional', 'Paula - Motivacional', 'Daniela - Educativa',
+    'Mariana - Comercial', 'Carolina - Noticiero', 'Gabriela - Storytelling', 'Andrea - Podcast',
+    'Sara - Deportivo', 'Elena - Suave Elegante', 'Diana - Tutorial Tech',
+    'Natalia - Energética', 'Clara - Cálida Cercana', 'Victoria - Formal Elegante',
+    'Alejandra - Juvenil Urbana', 'Regina - Audiobook', 'Paz - Meditación',
+    'Luna - Gaming', 'Renata - Infomercial', 'Julia - Dramática', 'Catalina - Científica',
+    'Ximena - Aventura', 'Carmen - Cocina', 'Fernanda - Fitness',
+  ];
+
   // Estados
   readonly generatingIdeas = signal(false);
   readonly generatingScript = signal(false);
@@ -81,6 +110,18 @@ export class YoutubeStudioComponent implements OnInit {
 
   selectStyle(style: string): void {
     this.selectedStyle.set(style);
+  }
+
+  toggleVoicePanel(): void {
+    this.showVoicePanel.update(v => !v);
+  }
+
+  selectVoice(voice: string): void {
+    this.selectedVoice.set(voice);
+  }
+
+  get currentVoices(): string[] {
+    return this.voiceGender() === 'hombre' ? this.maleVoices : this.femaleVoices;
   }
 
   async generateIdeas(): Promise<void> {
