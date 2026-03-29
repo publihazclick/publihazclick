@@ -33,7 +33,7 @@ export class YoutubeStudioComponent implements OnInit {
 
   // Formulario
   videoTopic = '';
-  duration = '1:00 minuto';
+  readonly duration = signal('1:00 minuto');
   videoFormat = '16:9 (Horizontal) - Recomendado';
   scriptContent = '';
 
@@ -71,7 +71,7 @@ export class YoutubeStudioComponent implements OnInit {
 
   selectContentType(type: 'largo' | 'shorts'): void {
     this.contentType.set(type);
-    this.duration = type === 'largo' ? '1:00 minuto' : '15 segundos';
+    this.duration.set(type === 'largo' ? '1:00 minuto' : '15 segundos');
   }
 
   toggleAds(): void { this.youtubeAds.update(v => !v); }
