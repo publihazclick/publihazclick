@@ -1,14 +1,6 @@
-// =============================================================================
-// Edge Function: generate-heygen-video
-// Genera un video con HeyGen API usando avatar + voz + guion del usuario.
-// Deploy con: --no-verify-jwt
-// =============================================================================
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL         = Deno.env.get('SUPABASE_URL') ?? '';
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const HEYGEN_API_KEY       = Deno.env.get('HEYGEN_API_KEY') ?? '';
+const HEYGEN_API_KEY = Deno.env.get('HEYGEN_API_KEY') ?? '';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -22,11 +14,10 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function decodeJwtPayload(token: string): { sub: string; email?: string } {
+function decodeJwtPayload(token: string): { sub: string } {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Invalid JWT');
-  const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-  return JSON.parse(atob(b64));
+  return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
 }
 
 Deno.serve(async (req) => {
@@ -35,32 +26,29 @@ Deno.serve(async (req) => {
   try {
     if (!HEYGEN_API_KEY) return json({ error: 'HeyGen API key no configurada' }, 500);
 
-    // ── 1. Verificar JWT ─────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) return json({ error: 'No autorizado' }, 401);
 
-    const token = authHeader.replace('Bearer ', '');
-    const jwtPayload = decodeJwtPayload(token);
-    const userId = jwtPayload.sub;
+    const userId = decodeJwtPayload(authHeader.replace('Bearer ', '')).sub;
     if (!userId) return json({ error: 'Token sin user ID' }, 401);
 
-    // ── 2. Parsear body ──────────────────────────────────────────────────────
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: 'Body requerido' }, 400);
 
-    const { avatar_id, voice_id, script, title, dimension } = body as {
-      avatar_id: string;
-      voice_id: string;
-      script: string;
-      title?: string;
-      dimension?: { width: number; height: number };
-    };
+    const { avatar_id, talking_photo_id, voice_id, script, title, dimension, character_type } = body;
 
-    if (!avatar_id || !voice_id || !script) {
-      return json({ error: 'avatar_id, voice_id y script son requeridos' }, 400);
+    if (!voice_id || !script) return json({ error: 'voice_id y script son requeridos' }, 400);
+
+    // Construir character config según el tipo
+    let character: Record<string, unknown>;
+    if (character_type === 'talking_photo' && talking_photo_id) {
+      character = { type: 'talking_photo', talking_photo_id };
+    } else if (avatar_id) {
+      character = { type: 'avatar', avatar_id, avatar_style: 'normal' };
+    } else {
+      return json({ error: 'avatar_id o talking_photo_id requerido' }, 400);
     }
 
-    // ── 3. Crear video en HeyGen ────────────────────────────────────────────
     const heygenRes = await fetch('https://api.heygen.com/v2/video/generate', {
       method: 'POST',
       headers: {
@@ -70,21 +58,10 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         title: title ?? 'Video PubliHazClick',
         dimension: dimension ?? { width: 1920, height: 1080 },
-        video_inputs: [
-          {
-            character: {
-              type: 'avatar',
-              avatar_id,
-              avatar_style: 'normal',
-            },
-            voice: {
-              type: 'text',
-              input_text: script,
-              voice_id,
-              speed: 1.0,
-            },
-          },
-        ],
+        video_inputs: [{
+          character,
+          voice: { type: 'text', input_text: script, voice_id, speed: 1.0 },
+        }],
       }),
     });
 
@@ -92,22 +69,16 @@ Deno.serve(async (req) => {
 
     if (!heygenRes.ok || heygenData.error) {
       console.error('HeyGen error:', JSON.stringify(heygenData));
-      return json({ error: heygenData.error?.message ?? 'Error al generar video con HeyGen' }, 500);
+      return json({ error: heygenData.error?.message ?? 'Error al generar video' }, 500);
     }
 
     const videoId = heygenData.data?.video_id;
-    if (!videoId) return json({ error: 'No se obtuvo video_id de HeyGen' }, 500);
+    if (!videoId) return json({ error: 'No se obtuvo video_id' }, 500);
 
-    console.log(`Video HeyGen creado: ${videoId} para user: ${userId}`);
-
-    return json({
-      video_id: videoId,
-      status: 'processing',
-      message: 'Video en proceso de generación. Puede tomar unos minutos.',
-    });
+    return json({ video_id: videoId, status: 'processing', message: 'Video en proceso de generacion.' });
 
   } catch (err) {
-    console.error('Error inesperado:', err);
+    console.error('Error:', err);
     return json({ error: 'Error interno del servidor' }, 500);
   }
 });

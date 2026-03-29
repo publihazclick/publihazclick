@@ -47,7 +47,7 @@ export class CreatorDashboardComponent implements OnInit {
 
   readonly menuItems = [
     { icon: 'dashboard', label: 'Panel', route: '/advertiser/ai/creator', active: true },
-    { icon: 'videocam', label: 'Video IA', route: '/advertiser/ai/create', badge: 'Popular' },
+    { icon: 'videocam', label: 'Video IA', route: '/advertiser/ai/video-studio', badge: 'Popular' },
     { icon: 'image', label: 'Imagen IA', route: '/advertiser/ai/image' },
     { icon: 'description', label: 'Documento IA', route: '', soon: true },
     { icon: 'chat', label: 'Chatbot IA', route: '', soon: true },
@@ -73,7 +73,7 @@ export class CreatorDashboardComponent implements OnInit {
       iconColor: 'text-red-500',
       title: 'Generador de Video IA',
       description: 'Crea videos impresionantes desde texto o imágenes',
-      route: '/advertiser/ai/video-generator',
+      route: '/advertiser/ai/video-studio',
     },
     {
       icon: 'image',
