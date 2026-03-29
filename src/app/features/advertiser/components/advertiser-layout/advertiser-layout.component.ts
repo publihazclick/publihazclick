@@ -133,4 +133,8 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
   isTradingBotRoute(): boolean {
     return this.router.url.includes('/trading-bot');
   }
+
+  isCursosRoute(): boolean {
+    return this.router.url.includes('/cursos');
+  }
 }
