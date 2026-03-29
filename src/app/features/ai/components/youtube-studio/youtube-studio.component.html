@@ -136,24 +136,32 @@
             </button>
           </div>
 
-          <!-- Duración y Formato -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
-            <div>
-              <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-1.5 sm:mb-2">Duracion Objetivo</h3>
-              <select [ngModel]="duration()" (ngModelChange)="duration.set($event)" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 text-xs sm:text-sm bg-white focus:border-purple-500 outline-none">
-                @for (d of durations(); track d) {
-                  <option [value]="d">{{ d }}</option>
-                }
-              </select>
-            </div>
-            <div>
-              <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-1.5 sm:mb-2">Formato de Video</h3>
-              <select [(ngModel)]="videoFormat" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 text-xs sm:text-sm bg-white focus:border-purple-500 outline-none">
-                @for (f of formats; track f) {
-                  <option [value]="f">{{ f }}</option>
-                }
-              </select>
-            </div>
+          <!-- Duración Objetivo -->
+          <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-1.5 sm:mb-2">Duracion Objetivo: <span class="text-purple-600">{{ duration() }}</span></h3>
+          <div class="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-5">
+            @for (d of durations(); track d) {
+              <button (click)="duration.set(d)"
+                class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all"
+                [class]="duration() === d
+                  ? 'bg-red-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                {{ d }}
+              </button>
+            }
+          </div>
+
+          <!-- Formato de Video -->
+          <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-1.5 sm:mb-2">Formato de Video</h3>
+          <div class="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-5">
+            @for (f of formats; track f) {
+              <button (click)="videoFormat = f"
+                class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all"
+                [class]="videoFormat === f
+                  ? 'bg-red-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                {{ f }}
+              </button>
+            }
           </div>
 
           <!-- Generar Guion con IA -->
