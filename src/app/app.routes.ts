@@ -253,27 +253,34 @@ export const routes: Routes = [
       },
     ]
   },
-  // Rutas de Herramientas IA — independientes del authGuard de advertiser
+  // Rutas de Herramientas IA — con layout de advertiser pero sin authGuard
   {
     path: 'advertiser/ai',
-    loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
+    loadComponent: () => import('./features/advertiser/components/advertiser-layout/advertiser-layout.component').then(m => m.AdvertiserLayoutComponent),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent)
+      },
+      {
+        path: 'creator',
+        loadComponent: () => import('./features/ai/components/creator-dashboard/creator-dashboard.component').then(m => m.CreatorDashboardComponent)
+      },
+      {
+        path: 'image',
+        loadComponent: () => import('./features/ai/components/image-generator/image-generator.component').then(m => m.ImageGeneratorComponent)
+      },
+      {
+        path: 'create',
+        loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
+      },
+      {
+        path: 'wallet',
+        loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
+      },
+    ]
   },
-  {
-    path: 'advertiser/ai/creator',
-    loadComponent: () => import('./features/ai/components/creator-dashboard/creator-dashboard.component').then(m => m.CreatorDashboardComponent)
-  },
-  {
-    path: 'advertiser/ai/image',
-    loadComponent: () => import('./features/ai/components/image-generator/image-generator.component').then(m => m.ImageGeneratorComponent)
-  },
-  {
-    path: 'advertiser/ai/create',
-    loadComponent: () => import('./features/ai/components/video-create/video-create.component').then(m => m.VideoCreateComponent)
-  },
-  {
-    path: 'advertiser/ai/wallet',
-    loadComponent: () => import('./features/ai/components/ai-wallet/ai-wallet.component').then(m => m.AiWalletComponent)
-  },
+  // Registro y login IA — sin layout (pantalla completa)
   {
     path: 'advertiser/ai/register',
     loadComponent: () => import('./features/ai/components/ai-register/ai-register.component').then(m => m.AiRegisterComponent)
