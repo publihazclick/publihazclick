@@ -137,4 +137,8 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
   isCursosRoute(): boolean {
     return this.router.url.includes('/cursos');
   }
+
+  hideWalletAndCurrency(): boolean {
+    return this.isAndaGanaRoute() || this.isAiRoute() || this.isTradingBotRoute() || this.isCursosRoute();
+  }
 }
