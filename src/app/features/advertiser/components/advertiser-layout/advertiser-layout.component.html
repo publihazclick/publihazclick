@@ -363,7 +363,7 @@
       </div>
 
       <!-- Billetera real -->
-      @if (!isAndaGanaRoute() && !isAiRoute()) {
+      @if (!isAndaGanaRoute() && !isAiRoute() && !isTradingBotRoute()) {
         <a routerLink="/advertiser/wallet"
            class="hidden sm:flex items-center gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 hover:border-accent/40 rounded-xl px-3 py-2 transition-all">
           <div class="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
@@ -446,7 +446,7 @@
 
             <!-- Stats -->
             <div class="px-4 py-3 border-b border-white/5 space-y-2">
-              @if (!isAndaGanaRoute() && !isAiRoute()) {
+              @if (!isAndaGanaRoute() && !isAiRoute() && !isTradingBotRoute()) {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-accent" style="font-size:14px">account_balance_wallet</span>
@@ -536,7 +536,7 @@
           </div>
         }
       </div>
-      @if (!isAndaGanaRoute() && !isAiRoute()) {
+      @if (!isAndaGanaRoute() && !isAiRoute() && !isTradingBotRoute()) {
         <!-- Billetera -->
         <a routerLink="/advertiser/wallet"
            class="flex-1 flex items-center justify-center gap-1.5 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 transition-all">
