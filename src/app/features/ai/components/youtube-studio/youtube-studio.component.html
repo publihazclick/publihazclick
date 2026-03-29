@@ -2,7 +2,7 @@
 
   <!-- HEADER -->
   <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
-    <div class="flex items-center gap-3 px-4 sm:px-6 h-14 sm:h-16">
+    <div class="flex items-center gap-2 px-3 sm:px-6 h-12 sm:h-16">
       <div class="hidden sm:flex flex-1 max-w-md">
         <div class="flex items-center gap-2 w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
           <span class="material-symbols-outlined text-gray-400" style="font-size:18px">search</span>
@@ -10,19 +10,19 @@
         </div>
       </div>
       <div class="flex-1 sm:hidden"></div>
-      <div class="flex items-center gap-2 sm:gap-3">
+      <div class="flex items-center gap-1.5 sm:gap-3">
         <a routerLink="/advertiser/ai/wallet"
-           class="flex items-center gap-1.5 bg-purple-50 border border-purple-100 rounded-xl px-2.5 sm:px-3 py-1.5 hover:bg-purple-100 transition-all">
-          <span class="material-symbols-outlined text-purple-500" style="font-size:16px">account_balance_wallet</span>
-          <span class="text-xs sm:text-sm font-bold text-purple-700">{{ formatBalance() }}</span>
+           class="flex items-center gap-1 bg-purple-50 border border-purple-100 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 hover:bg-purple-100 transition-all">
+          <span class="material-symbols-outlined text-purple-500" style="font-size:14px">account_balance_wallet</span>
+          <span class="text-[10px] sm:text-sm font-bold text-purple-700">{{ formatBalance() }}</span>
         </a>
-        <button class="relative p-2 rounded-xl hover:bg-gray-100 transition-all hidden sm:block">
+        <button class="relative p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-all hidden sm:block">
           <span class="material-symbols-outlined text-gray-500" style="font-size:20px">notifications</span>
-          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+          <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
         </button>
-        <div class="flex items-center gap-2 pl-1">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #7e22ce, #d946ef);">
-            <span class="text-white font-black text-xs">{{ getUserName().charAt(0) }}</span>
+        <div class="flex items-center gap-1.5 pl-0.5">
+          <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #7e22ce, #d946ef);">
+            <span class="text-white font-black text-[10px] sm:text-xs">{{ getUserName().charAt(0) }}</span>
           </div>
           <span class="text-sm font-bold text-gray-700 hidden sm:inline">{{ getUserName() }}</span>
         </div>
@@ -31,26 +31,26 @@
   </header>
 
   <!-- BACK BUTTON -->
-  <div class="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
-    <a routerLink="/advertiser/ai/video-generator" class="inline-flex items-center gap-2 text-sm font-bold text-gray-700 hover:text-gray-900 transition-colors">
-      <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span>
+  <div class="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 sm:py-3">
+    <a routerLink="/advertiser/ai/video-generator" class="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-gray-700 hover:text-gray-900 transition-colors">
+      <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
       Volver a Seleccion de Plataforma
     </a>
   </div>
 
   <!-- RED HERO BANNER -->
-  <div class="px-4 sm:px-6 lg:px-8 py-6 sm:py-8" style="background: linear-gradient(135deg, #dc2626, #ef4444, #f87171);">
-    <div class="max-w-5xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-          <span class="material-symbols-outlined text-white" style="font-size:32px">play_circle</span>
+  <div class="px-3 sm:px-6 lg:px-8 py-4 sm:py-8" style="background: linear-gradient(135deg, #dc2626, #ef4444, #f87171);">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+        <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-white" style="font-size:24px">play_circle</span>
         </div>
-        <div>
-          <h1 class="text-2xl sm:text-3xl font-black text-white">YouTube Studio AI</h1>
-          <p class="text-white/80 text-sm">Centro de creacion de contenido completo</p>
+        <div class="min-w-0">
+          <h1 class="text-lg sm:text-3xl font-black text-white truncate">YouTube Studio AI</h1>
+          <p class="text-white/80 text-[10px] sm:text-sm">Centro de creacion de contenido completo</p>
         </div>
       </div>
-      <button class="hidden sm:flex items-center gap-2 bg-white text-gray-900 font-bold px-5 py-2.5 rounded-xl hover:bg-gray-100 transition-all text-sm">
+      <button class="hidden sm:flex items-center gap-2 bg-white text-gray-900 font-bold px-5 py-2.5 rounded-xl hover:bg-gray-100 transition-all text-sm flex-shrink-0">
         <span class="material-symbols-outlined" style="font-size:18px">upload</span>
         Subir Video
       </button>
@@ -58,21 +58,21 @@
   </div>
 
   <!-- TABS -->
-  <div class="bg-white border-b border-gray-200 px-4 sm:px-6">
-    <div class="max-w-5xl mx-auto flex items-center gap-1 overflow-x-auto">
+  <div class="bg-white border-b border-gray-200 px-3 sm:px-6">
+    <div class="max-w-5xl mx-auto flex items-center gap-0 overflow-x-auto scrollbar-none -mx-1">
       @for (tab of [
         { id: 'creacion', icon: 'smart_display', label: 'Creación' },
         { id: 'analiticas', icon: 'bar_chart', label: 'Analíticas' },
-        { id: 'seo', icon: 'tag', label: 'SEO Optimizer' },
+        { id: 'seo', icon: 'tag', label: 'SEO' },
         { id: 'miniaturas', icon: 'image', label: 'Miniaturas' },
         { id: 'playlists', icon: 'playlist_play', label: 'Playlists' }
       ]; track tab.id) {
         <button (click)="activeTab.set($any(tab.id))"
-          class="flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all"
+          class="flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium whitespace-nowrap border-b-2 transition-all flex-shrink-0"
           [class]="activeTab() === tab.id
             ? 'border-gray-900 text-gray-900 font-bold'
             : 'border-transparent text-gray-500 hover:text-gray-700'">
-          <span class="material-symbols-outlined" style="font-size:18px">{{ tab.icon }}</span>
+          <span class="material-symbols-outlined" style="font-size:16px">{{ tab.icon }}</span>
           {{ tab.label }}
         </button>
       }
@@ -80,75 +80,75 @@
   </div>
 
   <!-- CONTENT -->
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-    <div class="flex flex-col lg:flex-row gap-6">
+  <div class="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+    <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
 
       <!-- LEFT COLUMN -->
-      <div class="flex-1 space-y-6">
+      <div class="flex-1 min-w-0 space-y-4 sm:space-y-6">
 
         <!-- Crear Nuevo Video -->
-        <div class="bg-white border border-gray-200 rounded-2xl p-6">
-          <h2 class="text-lg font-black text-gray-900 flex items-center gap-2 mb-5">
-            <span class="material-symbols-outlined text-red-500" style="font-size:22px">smart_display</span>
+        <div class="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <h2 class="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2 mb-4 sm:mb-5">
+            <span class="material-symbols-outlined text-red-500" style="font-size:20px">smart_display</span>
             Crear Nuevo Video para YouTube
           </h2>
 
           <!-- Tipo de Contenido -->
-          <h3 class="text-sm font-bold text-gray-700 mb-3">Tipo de Contenido</h3>
-          <div class="grid grid-cols-2 gap-3 mb-6">
+          <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3">Tipo de Contenido</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
             <button (click)="selectContentType('largo')"
-              class="rounded-xl border-2 p-4 text-left transition-all"
+              class="rounded-xl border-2 p-3 sm:p-4 text-left transition-all"
               [class]="contentType() === 'largo'
                 ? 'border-red-500 bg-red-50'
                 : 'border-gray-200 hover:border-red-200'">
-              <div class="flex items-center justify-between mb-2">
-                <p class="font-bold" [class]="contentType() === 'largo' ? 'text-red-600' : 'text-gray-900'">Video Largo</p>
+              <div class="flex items-center justify-between mb-1 sm:mb-2">
+                <p class="text-sm font-bold" [class]="contentType() === 'largo' ? 'text-red-600' : 'text-gray-900'">Video Largo</p>
                 <div class="flex items-center gap-1">
                   @if (contentType() === 'largo') {
-                    <span class="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Recomendado</span>
-                    <span class="material-symbols-outlined text-green-500" style="font-size:20px">check_circle</span>
+                    <span class="bg-red-500 text-white text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full">Recomendado</span>
+                    <span class="material-symbols-outlined text-green-500" style="font-size:18px">check_circle</span>
                   }
                 </div>
               </div>
-              <p class="text-xs" [class]="contentType() === 'largo' ? 'text-red-500' : 'text-gray-400'">desde 1:01 minutos hasta 10 minutos</p>
+              <p class="text-[10px] sm:text-xs" [class]="contentType() === 'largo' ? 'text-red-500' : 'text-gray-400'">desde 1:01 minutos hasta 10 minutos</p>
             </button>
             <button (click)="selectContentType('shorts')"
-              class="rounded-xl border-2 p-4 text-left transition-all"
+              class="rounded-xl border-2 p-3 sm:p-4 text-left transition-all"
               [class]="contentType() === 'shorts'
                 ? 'border-red-500 bg-red-50'
                 : 'border-gray-200 hover:border-red-200'">
-              <p class="font-bold mb-2" [class]="contentType() === 'shorts' ? 'text-red-600' : 'text-gray-900'">YouTube Shorts</p>
-              <p class="text-xs" [class]="contentType() === 'shorts' ? 'text-red-500' : 'text-gray-400'">desde 15 segundos hasta 60 segundos</p>
+              <p class="text-sm font-bold mb-1 sm:mb-2" [class]="contentType() === 'shorts' ? 'text-red-600' : 'text-gray-900'">YouTube Shorts</p>
+              <p class="text-[10px] sm:text-xs" [class]="contentType() === 'shorts' ? 'text-red-500' : 'text-gray-400'">desde 15 segundos hasta 60 segundos</p>
             </button>
           </div>
 
           <!-- Sobre qué tratará tu video -->
-          <h3 class="text-sm font-bold text-gray-700 mb-2">Sobre que tratara tu video</h3>
-          <div class="flex gap-3 mb-5">
+          <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-2">Sobre que tratara tu video</h3>
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-5">
             <input type="text" [(ngModel)]="videoTopic"
                    placeholder="Ej: tecnología, finanzas, cocina..."
-                   class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all">
+                   class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all">
             <button (click)="generateIdeas()"
               [disabled]="generatingIdeas()"
-              class="flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white font-bold text-sm hover:bg-gray-800 transition-all disabled:opacity-50">
-              <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
+              class="flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-gray-900 text-white font-bold text-xs sm:text-sm hover:bg-gray-800 transition-all disabled:opacity-50">
+              <span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>
               Generar Ideas
             </button>
           </div>
 
           <!-- Duración y Formato -->
-          <div class="grid grid-cols-2 gap-4 mb-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
             <div>
-              <h3 class="text-sm font-bold text-gray-700 mb-2">Duracion Objetivo</h3>
-              <select [(ngModel)]="duration" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white focus:border-purple-500 outline-none">
+              <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-1.5 sm:mb-2">Duracion Objetivo</h3>
+              <select [(ngModel)]="duration" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 text-xs sm:text-sm bg-white focus:border-purple-500 outline-none">
                 @for (d of durations; track d) {
                   <option [value]="d">{{ d }}</option>
                 }
               </select>
             </div>
             <div>
-              <h3 class="text-sm font-bold text-gray-700 mb-2">Formato de Video</h3>
-              <select [(ngModel)]="videoFormat" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white focus:border-purple-500 outline-none">
+              <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-1.5 sm:mb-2">Formato de Video</h3>
+              <select [(ngModel)]="videoFormat" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 text-xs sm:text-sm bg-white focus:border-purple-500 outline-none">
                 @for (f of formats; track f) {
                   <option [value]="f">{{ f }}</option>
                 }
@@ -157,10 +157,10 @@
           </div>
 
           <!-- Generar Guion con IA -->
-          <div class="flex justify-center mb-5">
+          <div class="flex justify-center mb-4 sm:mb-5">
             <button (click)="generateScript()"
               [disabled]="generatingScript()"
-              class="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-50"
+              class="flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-white font-bold text-xs sm:text-sm transition-all disabled:opacity-50"
               style="background: linear-gradient(90deg, #7e22ce, #a855f7);">
               @if (generatingScript()) {
                 <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -168,42 +168,42 @@
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                 </svg>
               } @else {
-                <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
+                <span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>
               }
               Generar Guion con IA
             </button>
           </div>
 
           <!-- Guion del Video -->
-          <h3 class="text-sm font-bold text-gray-700 mb-2">Guion del Video</h3>
+          <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-1.5 sm:mb-2">Guion del Video</h3>
           <textarea [(ngModel)]="scriptContent"
                     placeholder="Describe el contenido de tu video o genera uno automaticamente..."
-                    rows="5"
-                    class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none mb-4"></textarea>
+                    rows="4"
+                    class="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 text-xs sm:text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none mb-3 sm:mb-4"></textarea>
 
           <!-- Botones bajo el guion -->
-          <div class="flex flex-wrap gap-3 mb-6">
+          <div class="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
             <button (click)="generateNewScript()"
-              class="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-sm hover:bg-gray-50 transition-all">
-              <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+              class="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-[10px] sm:text-sm hover:bg-gray-50 transition-all">
+              <span class="material-symbols-outlined" style="font-size:14px">refresh</span>
               Dame otro guion
             </button>
-            <button class="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-sm hover:bg-gray-50 transition-all">
+            <button class="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-[10px] sm:text-sm hover:bg-gray-50 transition-all">
               Optimizar para Retencion
             </button>
-            <button class="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-sm hover:bg-gray-50 transition-all">
-              <span class="material-symbols-outlined" style="font-size:16px">mic</span>
-              Seleccionar voz para este guion
+            <button class="flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-[10px] sm:text-sm hover:bg-gray-50 transition-all">
+              <span class="material-symbols-outlined" style="font-size:14px">mic</span>
+              Seleccionar voz
             </button>
           </div>
 
           <!-- Aprobar y guardar -->
-          <div class="flex flex-col sm:flex-row gap-3 mb-6">
-            <button class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all">
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <button class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold text-xs sm:text-sm hover:bg-gray-50 transition-all">
               <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
               Dame otro guion
             </button>
-            <button class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all"
+            <button class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl text-white font-bold text-xs sm:text-sm transition-all"
                     style="background: #16a34a;">
               <span class="material-symbols-outlined" style="font-size:16px">check</span>
               Aprobar y guardar
@@ -211,20 +211,20 @@
           </div>
 
           <!-- Crear imágenes -->
-          <div class="flex justify-center mb-6">
-            <button class="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold text-sm transition-all"
+          <div class="flex justify-center mb-4 sm:mb-6">
+            <button class="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-white font-bold text-[10px] sm:text-sm transition-all w-full sm:w-auto justify-center"
                     style="background: linear-gradient(90deg, #2563eb, #3b82f6);">
-              <span class="material-symbols-outlined" style="font-size:18px">image</span>
+              <span class="material-symbols-outlined" style="font-size:16px">image</span>
               Crear imagenes acorde al guion para este video
             </button>
           </div>
 
           <!-- Estilo Visual -->
-          <h3 class="text-sm font-bold text-gray-700 mb-3">Estilo Visual</h3>
-          <div class="grid grid-cols-3 gap-3 mb-6">
+          <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3">Estilo Visual</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
             @for (style of visualStyles; track style) {
               <button (click)="selectStyle(style)"
-                class="px-4 py-3 rounded-xl border-2 text-sm font-medium text-center transition-all"
+                class="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border-2 text-xs sm:text-sm font-medium text-center transition-all"
                 [class]="selectedStyle() === style
                   ? 'border-red-500 bg-red-50 text-red-600 font-bold'
                   : 'border-gray-200 text-gray-700 hover:border-red-200'">
@@ -236,7 +236,7 @@
           <!-- Generar Video -->
           <button (click)="generateVideo()"
             [disabled]="generatingVideo()"
-            class="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-50"
+            class="w-full flex items-center justify-center gap-2 py-3 sm:py-4 rounded-xl text-white font-bold text-xs sm:text-sm transition-all disabled:opacity-50"
             style="background: #dc2626;">
             @if (generatingVideo()) {
               <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -244,7 +244,7 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
             } @else {
-              <span class="material-symbols-outlined" style="font-size:20px">auto_awesome</span>
+              <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span>
             }
             Generar Video para YouTube
           </button>
@@ -252,69 +252,68 @@
       </div>
 
       <!-- RIGHT COLUMN -->
-      <div class="w-full lg:w-80 space-y-6">
+      <div class="w-full lg:w-72 xl:w-80 space-y-4 sm:space-y-6">
 
         <!-- Objetivo de Monetización -->
-        <div class="bg-white border border-gray-200 rounded-2xl p-5">
-          <h3 class="text-base font-black text-gray-900 flex items-center gap-2 mb-4">
-            <span class="material-symbols-outlined text-red-500" style="font-size:20px">adjust</span>
+        <div class="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm sm:text-base font-black text-gray-900 flex items-center gap-2 mb-3 sm:mb-4">
+            <span class="material-symbols-outlined text-red-500" style="font-size:18px">adjust</span>
             Objetivo de Monetizacion
           </h3>
           <div class="space-y-3">
             <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-700">YouTube Ads</span>
+              <span class="text-xs sm:text-sm text-gray-700">YouTube Ads</span>
               <button (click)="toggleAds()"
-                class="w-11 h-6 rounded-full transition-all relative"
+                class="w-10 sm:w-11 h-5 sm:h-6 rounded-full transition-all relative flex-shrink-0"
                 [class]="youtubeAds() ? 'bg-gray-900' : 'bg-gray-300'">
-                <span class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                      [class]="youtubeAds() ? 'left-5.5' : 'left-0.5'"
-                      [style.left]="youtubeAds() ? '22px' : '2px'"></span>
+                <span class="absolute top-0.5 w-4 sm:w-5 h-4 sm:h-5 bg-white rounded-full shadow transition-all"
+                      [style.left]="youtubeAds() ? '20px' : '2px'"></span>
               </button>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-700">Marketing de Afiliados</span>
+              <span class="text-xs sm:text-sm text-gray-700">Marketing de Afiliados</span>
               <button (click)="toggleAffiliate()"
-                class="w-11 h-6 rounded-full transition-all relative"
+                class="w-10 sm:w-11 h-5 sm:h-6 rounded-full transition-all relative flex-shrink-0"
                 [class]="affiliateMarketing() ? 'bg-gray-900' : 'bg-gray-300'">
-                <span class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                      [style.left]="affiliateMarketing() ? '22px' : '2px'"></span>
+                <span class="absolute top-0.5 w-4 sm:w-5 h-4 sm:h-5 bg-white rounded-full shadow transition-all"
+                      [style.left]="affiliateMarketing() ? '20px' : '2px'"></span>
               </button>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-700">Membresías</span>
+              <span class="text-xs sm:text-sm text-gray-700">Membresías</span>
               <button (click)="toggleMemberships()"
-                class="w-11 h-6 rounded-full transition-all relative"
+                class="w-10 sm:w-11 h-5 sm:h-6 rounded-full transition-all relative flex-shrink-0"
                 [class]="memberships() ? 'bg-gray-900' : 'bg-gray-300'">
-                <span class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                      [style.left]="memberships() ? '22px' : '2px'"></span>
+                <span class="absolute top-0.5 w-4 sm:w-5 h-4 sm:h-5 bg-white rounded-full shadow transition-all"
+                      [style.left]="memberships() ? '20px' : '2px'"></span>
               </button>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-700">Super Chat</span>
+              <span class="text-xs sm:text-sm text-gray-700">Super Chat</span>
               <button (click)="toggleSuperChat()"
-                class="w-11 h-6 rounded-full transition-all relative"
+                class="w-10 sm:w-11 h-5 sm:h-6 rounded-full transition-all relative flex-shrink-0"
                 [class]="superChat() ? 'bg-gray-900' : 'bg-gray-300'">
-                <span class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
-                      [style.left]="superChat() ? '22px' : '2px'"></span>
+                <span class="absolute top-0.5 w-4 sm:w-5 h-4 sm:h-5 bg-white rounded-full shadow transition-all"
+                      [style.left]="superChat() ? '20px' : '2px'"></span>
               </button>
             </div>
           </div>
         </div>
 
         <!-- Estimación de Ingresos -->
-        <div class="border border-red-200 rounded-2xl p-5" style="background: linear-gradient(180deg, #fef2f2, #fff);">
-          <h3 class="text-base font-black text-gray-900 flex items-center gap-2 mb-4">
-            <span class="material-symbols-outlined text-red-500" style="font-size:20px">attach_money</span>
+        <div class="border border-red-200 rounded-xl sm:rounded-2xl p-4 sm:p-5" style="background: linear-gradient(180deg, #fef2f2, #fff);">
+          <h3 class="text-sm sm:text-base font-black text-gray-900 flex items-center gap-2 mb-3 sm:mb-4">
+            <span class="material-symbols-outlined text-red-500" style="font-size:18px">attach_money</span>
             Estimacion de Ingresos
           </h3>
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-bold text-gray-700">CPM Estimado</span>
-            <span class="text-sm font-black text-red-600">$12-$25</span>
+            <span class="text-xs sm:text-sm font-bold text-gray-700">CPM Estimado</span>
+            <span class="text-xs sm:text-sm font-black text-red-600">$12-$25</span>
           </div>
-          <div class="w-full h-2 bg-gray-200 rounded-full mb-4">
+          <div class="w-full h-2 bg-gray-200 rounded-full mb-3 sm:mb-4">
             <div class="h-full bg-gray-900 rounded-full" style="width: 65%"></div>
           </div>
-          <ul class="space-y-1 text-xs text-gray-500">
+          <ul class="space-y-1 text-[10px] sm:text-xs text-gray-500">
             <li>10,000 views → $120-$250</li>
             <li>100,000 views → $1,200-$2,500</li>
             <li>1M views → $12,000-$25,000</li>
@@ -322,30 +321,30 @@
         </div>
 
         <!-- Mejor Momento -->
-        <div class="bg-white border border-gray-200 rounded-2xl p-5">
-          <h3 class="text-base font-black text-gray-900 flex items-center gap-2 mb-4">
-            <span class="material-symbols-outlined text-gray-700" style="font-size:20px">calendar_today</span>
+        <div class="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm sm:text-base font-black text-gray-900 flex items-center gap-2 mb-3 sm:mb-4">
+            <span class="material-symbols-outlined text-gray-700" style="font-size:18px">calendar_today</span>
             Mejor Momento
           </h3>
-          <div class="space-y-3">
+          <div class="space-y-2 sm:space-y-3">
             <div class="flex items-center justify-between">
-              <span class="text-sm font-bold text-red-600">Domingo 18:00</span>
-              <span class="bg-green-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full">Optimo</span>
+              <span class="text-xs sm:text-sm font-bold text-red-600">Domingo 18:00</span>
+              <span class="bg-green-500 text-white text-[8px] sm:text-[10px] font-black px-2 py-0.5 rounded-full">Optimo</span>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-700">Miercoles 20:00</span>
-              <span class="bg-gray-100 text-gray-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full">Bueno</span>
+              <span class="text-xs sm:text-sm text-gray-700">Miercoles 20:00</span>
+              <span class="bg-gray-100 text-gray-700 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full">Bueno</span>
             </div>
           </div>
         </div>
 
         <!-- Consejo Pro -->
-        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-          <h3 class="text-base font-black text-gray-900 flex items-center gap-2 mb-3">
-            <span class="material-symbols-outlined text-amber-500" style="font-size:20px">lightbulb</span>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl sm:rounded-2xl p-4 sm:p-5">
+          <h3 class="text-sm sm:text-base font-black text-gray-900 flex items-center gap-2 mb-2 sm:mb-3">
+            <span class="material-symbols-outlined text-amber-500" style="font-size:18px">lightbulb</span>
             Consejo Pro
           </h3>
-          <p class="text-sm text-gray-600 leading-relaxed">
+          <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
             Videos de 8-15 minutos tienen mejor retencion y mas ads. Incluye un "hook" en los primeros 8 segundos.
           </p>
         </div>
