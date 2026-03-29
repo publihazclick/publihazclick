@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -51,9 +51,9 @@ export class YoutubeStudioComponent implements OnInit {
     '15 segundos', '20 segundos', '30 segundos', '45 segundos', '60 segundos',
   ];
 
-  get durations(): string[] {
-    return this.contentType() === 'largo' ? this.durationsLargo : this.durationsShorts;
-  }
+  readonly durations = computed(() =>
+    this.contentType() === 'largo' ? this.durationsLargo : this.durationsShorts
+  );
   readonly formats = ['16:9 (Horizontal) - Recomendado', '9:16 (Vertical)', '1:1 (Cuadrado)'];
 
   // Estilo visual
