@@ -33,11 +33,27 @@ export class YoutubeStudioComponent implements OnInit {
 
   // Formulario
   videoTopic = '';
-  duration = '5:00 minutos';
+  duration = '1:00 minuto';
   videoFormat = '16:9 (Horizontal) - Recomendado';
   scriptContent = '';
 
-  readonly durations = ['1:00 minuto', '3:00 minutos', '5:00 minutos', '8:00 minutos', '10:00 minutos', '15:00 minutos'];
+  readonly durationsLargo = [
+    '1:00 minuto', '1:30 minutos', '2:00 minutos', '2:30 minutos',
+    '3:00 minutos', '3:30 minutos', '4:00 minutos', '4:30 minutos',
+    '5:00 minutos', '5:30 minutos', '6:00 minutos', '6:30 minutos',
+    '7:00 minutos', '7:30 minutos', '8:00 minutos', '8:30 minutos',
+    '9:00 minutos', '9:30 minutos', '10:00 minutos', '10:30 minutos',
+    '11:00 minutos', '11:30 minutos', '12:00 minutos', '12:30 minutos',
+    '13:00 minutos', '13:30 minutos', '14:00 minutos', '14:30 minutos',
+    '15:00 minutos',
+  ];
+  readonly durationsShorts = [
+    '15 segundos', '20 segundos', '30 segundos', '45 segundos', '60 segundos',
+  ];
+
+  get durations(): string[] {
+    return this.contentType() === 'largo' ? this.durationsLargo : this.durationsShorts;
+  }
   readonly formats = ['16:9 (Horizontal) - Recomendado', '9:16 (Vertical)', '1:1 (Cuadrado)'];
 
   // Estilo visual
@@ -55,6 +71,7 @@ export class YoutubeStudioComponent implements OnInit {
 
   selectContentType(type: 'largo' | 'shorts'): void {
     this.contentType.set(type);
+    this.duration = type === 'largo' ? '1:00 minuto' : '15 segundos';
   }
 
   toggleAds(): void { this.youtubeAds.update(v => !v); }
