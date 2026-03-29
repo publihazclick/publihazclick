@@ -95,12 +95,39 @@ export class VideoStudioComponent implements OnInit {
 
   // Step 5: Config
   readonly allVoices = signal<HeyGenVoice[]>([]);
+  readonly selectedLanguage = signal('Spanish');
   readonly voiceGender = signal<'male' | 'female'>('male');
   readonly selectedVoice = signal<HeyGenVoice | null>(null);
   readonly loadingVoices = signal(false);
 
-  readonly maleVoices = computed(() => this.allVoices().filter(v => v.gender === 'male'));
-  readonly femaleVoices = computed(() => this.allVoices().filter(v => v.gender === 'female'));
+  readonly availableLanguages = [
+    { code: 'Spanish', label: 'Español', flag: '🇪🇸' },
+    { code: 'English', label: 'Inglés', flag: '🇺🇸' },
+    { code: 'Portuguese', label: 'Portugués', flag: '🇧🇷' },
+    { code: 'French', label: 'Francés', flag: '🇫🇷' },
+    { code: 'German', label: 'Alemán', flag: '🇩🇪' },
+    { code: 'Italian', label: 'Italiano', flag: '🇮🇹' },
+    { code: 'Chinese', label: 'Chino', flag: '🇨🇳' },
+    { code: 'Japanese', label: 'Japonés', flag: '🇯🇵' },
+    { code: 'Korean', label: 'Coreano', flag: '🇰🇷' },
+    { code: 'Arabic', label: 'Árabe', flag: '🇸🇦' },
+    { code: 'Hindi', label: 'Hindi', flag: '🇮🇳' },
+    { code: 'Dutch', label: 'Holandés', flag: '🇳🇱' },
+    { code: 'Russian', label: 'Ruso', flag: '🇷🇺' },
+    { code: 'Turkish', label: 'Turco', flag: '🇹🇷' },
+    { code: 'Polish', label: 'Polaco', flag: '🇵🇱' },
+    { code: 'Swedish', label: 'Sueco', flag: '🇸🇪' },
+    { code: 'Indonesian', label: 'Indonesio', flag: '🇮🇩' },
+    { code: 'Vietnamese', label: 'Vietnamita', flag: '🇻🇳' },
+    { code: 'Thai', label: 'Tailandés', flag: '🇹🇭' },
+    { code: 'Filipino', label: 'Filipino', flag: '🇵🇭' },
+  ];
+
+  readonly languageVoices = computed(() =>
+    this.allVoices().filter(v => v.language?.toLowerCase() === this.selectedLanguage().toLowerCase())
+  );
+  readonly maleVoices = computed(() => this.languageVoices().filter(v => v.gender === 'male'));
+  readonly femaleVoices = computed(() => this.languageVoices().filter(v => v.gender === 'female'));
   readonly currentVoices = computed(() =>
     this.voiceGender() === 'male' ? this.maleVoices() : this.femaleVoices()
   );
@@ -226,10 +253,15 @@ export class VideoStudioComponent implements OnInit {
     if (this.allVoices().length > 0) return;
     this.loadingVoices.set(true);
     try {
-      const { data } = await this.supabase.functions.invoke('list-heygen-voices');
+      const { data } = await this.supabase.functions.invoke('list-heygen-voices-all');
       if (data?.voices) this.allVoices.set(data.voices);
     } catch { /* silencioso */ }
     this.loadingVoices.set(false);
+  }
+
+  selectLanguage(lang: string): void {
+    this.selectedLanguage.set(lang);
+    this.selectedVoice.set(null);
   }
 
   selectVoice(voice: HeyGenVoice): void {

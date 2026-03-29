@@ -243,11 +243,31 @@
       </div>
 
       <div class="space-y-4 sm:space-y-6">
+        <!-- Idioma -->
+        <div class="bg-white border border-gray-200 rounded-2xl p-4 sm:p-6">
+          <h3 class="text-sm font-black text-gray-900 flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-purple-500" style="font-size:20px">translate</span>
+            Idioma del Video
+          </h3>
+          <div class="flex flex-wrap gap-1.5 sm:gap-2">
+            @for (lang of availableLanguages; track lang.code) {
+              <button (click)="selectLanguage(lang.code)"
+                class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all"
+                [class]="selectedLanguage() === lang.code
+                  ? 'bg-purple-500 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                <span>{{ lang.flag }}</span>
+                {{ lang.label }}
+              </button>
+            }
+          </div>
+        </div>
+
         <!-- Voz -->
         <div class="bg-white border border-gray-200 rounded-2xl p-4 sm:p-6">
           <h3 class="text-sm font-black text-gray-900 flex items-center gap-2 mb-4">
             <span class="material-symbols-outlined text-purple-500" style="font-size:20px">mic</span>
-            Seleccionar Voz en Español
+            Voces en {{ selectedLanguage() }} ({{ languageVoices().length }})
           </h3>
 
           <div class="flex gap-2 mb-3">
