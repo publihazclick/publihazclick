@@ -20,7 +20,7 @@ interface HeyGenVoice {
   language: string;
 }
 
-type CreationMode = 'avatar' | 'photo' | 'product';
+type CreationMode = 'images' | 'avatar' | 'photo' | 'product';
 type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'shorts';
 type WizardStep = 'mode' | 'platform' | 'avatar' | 'script' | 'config' | 'generate';
 
@@ -54,6 +54,7 @@ export class VideoStudioComponent implements OnInit {
   // Step 1: Modo
   readonly selectedMode = signal<CreationMode | null>(null);
   readonly modes = [
+    { id: 'images' as CreationMode, icon: 'auto_awesome_motion', title: 'Videos con Imagenes en Movimiento', desc: 'Crea videos virales de historias con imagenes animadas y voz en off', color: 'red' },
     { id: 'avatar' as CreationMode, icon: 'smart_toy', title: 'Avatar del Sistema', desc: 'Elige entre 1,200+ avatares profesionales', color: 'purple' },
     { id: 'photo' as CreationMode, icon: 'face', title: 'Mi Avatar Personal', desc: 'Sube tu foto y crea un avatar con tu cara', color: 'blue' },
     { id: 'product' as CreationMode, icon: 'shopping_bag', title: 'Video de Producto', desc: 'Sube foto de tu producto y un avatar lo presenta', color: 'pink' },
@@ -135,14 +136,21 @@ export class VideoStudioComponent implements OnInit {
     if (targetIdx <= currentIdx) this.currentStep.set(step);
   }
 
+  private getStepOrder(): WizardStep[] {
+    if (this.selectedMode() === 'images') {
+      return ['mode', 'platform', 'script', 'config', 'generate'];
+    }
+    return ['mode', 'platform', 'avatar', 'script', 'config', 'generate'];
+  }
+
   nextStep(): void {
-    const order: WizardStep[] = ['mode', 'platform', 'avatar', 'script', 'config', 'generate'];
+    const order = this.getStepOrder();
     const idx = order.indexOf(this.currentStep());
     if (idx < order.length - 1) this.currentStep.set(order[idx + 1]);
   }
 
   prevStep(): void {
-    const order: WizardStep[] = ['mode', 'platform', 'avatar', 'script', 'config', 'generate'];
+    const order = this.getStepOrder();
     const idx = order.indexOf(this.currentStep());
     if (idx > 0) this.currentStep.set(order[idx - 1]);
   }
@@ -152,6 +160,7 @@ export class VideoStudioComponent implements OnInit {
       case 'mode': return !!this.selectedMode();
       case 'platform': return !!this.selectedPlatform();
       case 'avatar':
+        if (this.selectedMode() === 'images') return true;
         if (this.selectedMode() === 'avatar') return !!this.selectedAvatar();
         return !!this.talkingPhotoId();
       case 'script': return !!this.scriptContent.trim();
