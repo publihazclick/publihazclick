@@ -59,12 +59,12 @@ export class CreatorDashboardComponent implements OnInit {
     { icon: 'credit_card', label: 'Ver Paquetes', route: '/advertiser/packages' },
   ];
 
-  readonly stats = [
-    { icon: 'auto_awesome', value: '24', label: 'Proyectos Totales', change: '+12%' },
-    { icon: 'bolt', value: '8,750', label: 'Créditos Usados', change: '+23%' },
-    { icon: 'schedule', value: '156h', label: 'Tiempo Ahorrado', change: '+45%' },
-    { icon: 'trending_up', value: '98%', label: 'Tasa de Éxito', change: '+5%' },
-  ];
+  readonly stats = signal([
+    { icon: 'auto_awesome', value: '0', label: 'Proyectos Totales', change: '' },
+    { icon: 'bolt', value: '0', label: 'Créditos Usados', change: '' },
+    { icon: 'schedule', value: '0h', label: 'Tiempo Ahorrado', change: '' },
+    { icon: 'trending_up', value: '0%', label: 'Tasa de Éxito', change: '' },
+  ]);
 
   readonly quickActions: QuickAction[] = [
     {

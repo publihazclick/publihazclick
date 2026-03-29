@@ -119,13 +119,15 @@
 
       <!-- Stats -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        @for (stat of stats; track stat.label) {
+        @for (stat of stats(); track stat.label) {
           <div class="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5">
             <div class="flex items-center justify-between mb-3">
               <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-50 flex items-center justify-center">
                 <span class="material-symbols-outlined text-purple-500" style="font-size:20px">{{ stat.icon }}</span>
               </div>
-              <span class="text-[10px] sm:text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">{{ stat.change }}</span>
+              @if (stat.change) {
+                <span class="text-[10px] sm:text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">{{ stat.change }}</span>
+              }
             </div>
             <p class="text-2xl sm:text-3xl font-black text-gray-900">{{ stat.value }}</p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1">{{ stat.label }}</p>
