@@ -1,9 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY') ?? '';
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -23,30 +20,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verificar JWT
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return json({ error: 'No autorizado' });
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return json({ error: 'Token inválido o expirado' });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['advertiser', 'admin', 'dev'].includes(profile.role)) {
-      return json({ error: 'No tienes permisos para usar esta función' });
-    }
-
     // Parsear body
     const body = await req.json().catch(() => null);
     if (!body?.topic || body.topic.trim().length < 3) {
