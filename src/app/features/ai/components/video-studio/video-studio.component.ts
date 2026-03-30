@@ -93,7 +93,7 @@ export class VideoStudioComponent implements OnInit {
   readonly videoTopic = signal('');
   readonly generatingScript = signal(false);
   readonly generatingTitle = signal(false);
-  readonly suggestedTitles = signal<string[]>([]);
+  readonly suggestedTitles = signal<{ title: string; views: string; channel: string }[]>([]);
 
   // Step 5: Config
   readonly allVoices = signal<HeyGenVoice[]>([]);
@@ -280,12 +280,15 @@ export class VideoStudioComponent implements OnInit {
       const { data, error } = await this.supabase.functions.invoke('search-youtube-titles', {
         body: { topic: this.videoTopic().trim() },
       });
-      console.log('YouTube titles response:', { data, error });
       if (error) throw error;
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       if (parsed?.titles?.length) {
         this.suggestedTitles.set(
-          parsed.titles.map((t: { title: string }) => t.title)
+          parsed.titles.map((t: { title: string; viewsFormatted: string; channel: string }) => ({
+            title: t.title,
+            views: t.viewsFormatted,
+            channel: t.channel,
+          }))
         );
       }
     } catch (e) {
@@ -295,8 +298,8 @@ export class VideoStudioComponent implements OnInit {
     }
   }
 
-  selectTitle(title: string): void {
-    this.videoTopic.set(title);
+  selectTitle(t: { title: string }): void {
+    this.videoTopic.set(t.title);
     this.suggestedTitles.set([]);
   }
 

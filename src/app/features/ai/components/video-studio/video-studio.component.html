@@ -229,12 +229,21 @@
           <!-- Titulos sugeridos -->
           @if (suggestedTitles().length) {
             <div class="mt-3 space-y-1.5">
-              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Elige un titulo</p>
-              @for (title of suggestedTitles(); track title; let i = $index) {
-                <button (click)="selectTitle(title)"
-                  class="w-full flex items-start gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-left text-xs sm:text-sm text-gray-800 font-medium hover:border-purple-400 hover:bg-purple-50 transition-all group">
-                  <span class="w-5 h-5 rounded-full bg-purple-100 text-purple-600 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-purple-500 group-hover:text-white transition-all">{{ i + 1 }}</span>
-                  <span>{{ title }}</span>
+              <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Top 5 videos mas virales en YouTube</p>
+              @for (t of suggestedTitles(); track t.title; let i = $index) {
+                <button (click)="selectTitle(t)"
+                  class="w-full flex items-start gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-left hover:border-purple-400 hover:bg-purple-50 transition-all group">
+                  <span class="w-5 h-5 rounded-full bg-red-100 text-red-600 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-red-500 group-hover:text-white transition-all">{{ i + 1 }}</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs sm:text-sm text-gray-800 font-bold truncate">{{ t.title }}</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span class="text-[10px] text-red-500 font-bold flex items-center gap-0.5">
+                        <span class="material-symbols-outlined" style="font-size:12px">visibility</span>
+                        {{ t.views }} vistas
+                      </span>
+                      <span class="text-[10px] text-gray-400">{{ t.channel }}</span>
+                    </div>
+                  </div>
                 </button>
               }
             </div>
