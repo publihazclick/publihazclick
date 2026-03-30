@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
-import { environment } from '../../../../../environments/environment';
 
 interface HeyGenAvatar {
   avatar_id: string;
@@ -37,7 +36,6 @@ export class VideoStudioComponent implements OnInit {
   private readonly walletService = inject(AiWalletService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly supabase = getSupabaseClient();
-  private readonly functionsUrl = `${environment.supabase.url}/functions/v1`;
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
@@ -281,16 +279,12 @@ export class VideoStudioComponent implements OnInit {
     try {
       const platform = this.selectedPlatform() ?? 'youtube';
       const dur = this.duration();
-      const headers = await this.getAuthHeaders();
       const message = `Genera exactamente 5 títulos virales y ganadores para un video de ${platform} de ${dur} sobre: "${this.videoTopic().trim()}". Responde ÚNICAMENTE con los 5 títulos, uno por línea, numerados del 1 al 5 (formato: "1. Título aquí"). Sin explicaciones adicionales. Máximo 80 caracteres cada título.`;
-      const res = await fetch(`${this.functionsUrl}/chat-ai`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ message }),
+      const { data, error } = await this.supabase.functions.invoke('chat-ai', {
+        body: { message },
       });
-      if (!res.ok) throw new Error('Error generando títulos');
-      const data = await res.json();
-      if (data.reply) {
+      if (error) throw error;
+      if (data?.reply) {
         const titles = data.reply
           .split('\n')
           .map((line: string) => line.replace(/^\d+[\.\)\-]\s*/, '').trim())
@@ -309,22 +303,12 @@ export class VideoStudioComponent implements OnInit {
     this.suggestedTitles.set([]);
   }
 
-  private async getAuthHeaders(): Promise<Record<string, string>> {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) throw new Error('Sesión no encontrada');
-    return {
-      Authorization: `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    };
-  }
-
   async generateScript(): Promise<void> {
     this.generatingScript.set(true);
     const topic = this.videoTopic() || 'contenido viral';
     const platform = this.selectedPlatform() ?? 'youtube';
     const dur = this.duration();
     try {
-      const headers = await this.getAuthHeaders();
       const message = `Eres un guionista experto en videos virales. Genera un guion completo en español para un video de ${platform} con una duracion de ${dur} sobre: "${topic}".
 
 REGLAS:
@@ -338,14 +322,11 @@ REGLAS:
 - NO uses formato de lista ni numeración
 - Separa cada párrafo con doble salto de línea`;
 
-      const res = await fetch(`${this.functionsUrl}/chat-ai`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ message }),
+      const { data, error } = await this.supabase.functions.invoke('chat-ai', {
+        body: { message },
       });
-      if (!res.ok) throw new Error('Error generando guion');
-      const data = await res.json();
-      if (data.reply) {
+      if (error) throw error;
+      if (data?.reply) {
         this.scriptContent = data.reply.trim();
       }
     } catch (e) {
