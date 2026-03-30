@@ -421,10 +421,10 @@ export class AuthService implements OnDestroy {
           },
         })
         .then(async ({ data, error }) => {
-          // Error de red / función
-          if (error) throw error;
-          // Error devuelto por la función
+          // Error devuelto por la función (non-2xx con body descriptivo)
           if (data?.error) throw new Error(data.error);
+          // Error de red / función sin body
+          if (error) throw error;
 
           // Usuario creado → iniciar sesión para obtener sesión activa
           const { data: signInData, error: signInError } = await this.supabase.auth.signInWithPassword({
