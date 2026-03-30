@@ -273,26 +273,21 @@ export class VideoStudioComponent implements OnInit {
   // ── Script ──────────────────────────────────────────────────────────────
 
   async generateWinnerTitle(): Promise<void> {
-    if (!this.videoTopic().trim() || this.videoTopic().trim().length < 10) return;
+    if (!this.videoTopic().trim() || this.videoTopic().trim().length < 3) return;
     this.generatingTitle.set(true);
     this.suggestedTitles.set([]);
     try {
-      const platform = this.selectedPlatform() ?? 'youtube';
-      const dur = this.duration();
-      const message = `Genera exactamente 5 títulos virales y ganadores para un video de ${platform} de ${dur} sobre: "${this.videoTopic().trim()}". Responde ÚNICAMENTE con los 5 títulos, uno por línea, numerados del 1 al 5 (formato: "1. Título aquí"). Sin explicaciones adicionales. Máximo 80 caracteres cada título.`;
-      const { data, error } = await this.supabase.functions.invoke('chat-ai', {
-        body: { message },
+      const { data, error } = await this.supabase.functions.invoke('search-youtube-titles', {
+        body: { topic: this.videoTopic().trim() },
       });
       if (error) throw error;
-      if (data?.reply) {
-        const titles = data.reply
-          .split('\n')
-          .map((line: string) => line.replace(/^\d+[\.\)\-]\s*/, '').trim())
-          .filter((line: string) => line.length > 5);
-        this.suggestedTitles.set(titles.slice(0, 5));
+      if (data?.titles?.length) {
+        this.suggestedTitles.set(
+          data.titles.map((t: { title: string }) => t.title)
+        );
       }
     } catch (e) {
-      console.error('Error generando titulos:', e);
+      console.error('Error buscando titulos en YouTube:', e);
     } finally {
       this.generatingTitle.set(false);
     }

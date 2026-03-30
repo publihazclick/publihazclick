@@ -211,7 +211,7 @@
 
           <!-- Boton Generar titulo ganador IA -->
           <button (click)="generateWinnerTitle()"
-            [disabled]="generatingTitle() || videoTopic().trim().length < 10"
+            [disabled]="generatingTitle() || videoTopic().trim().length < 3"
             class="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-black text-xs transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90"
             style="background: linear-gradient(90deg, #f59e0b, #f97316);">
             @if (generatingTitle()) {
