@@ -322,10 +322,38 @@ export class VideoStudioComponent implements OnInit {
     this.generatingScript.set(true);
     const topic = this.videoTopic() || 'contenido viral';
     const platform = this.selectedPlatform() ?? 'youtube';
-    setTimeout(() => {
-      this.scriptContent = `¡Hola! Hoy vamos a hablar sobre ${topic}.\n\nEn este video te voy a mostrar todo lo que necesitas saber para empezar.\n\nPrimero, lo más importante es entender los conceptos básicos.\n\nSegundo, vamos a ver ejemplos prácticos que puedes aplicar hoy mismo.\n\nY tercero, te daré mis mejores consejos para que tengas éxito.\n\nSi te gusta este contenido, no olvides darle like y suscribirte para más videos como este.\n\n¡Nos vemos en el próximo video!`;
+    const dur = this.duration();
+    try {
+      const headers = await this.getAuthHeaders();
+      const message = `Eres un guionista experto en videos virales. Genera un guion completo en español para un video de ${platform} con una duracion de ${dur} sobre: "${topic}".
+
+REGLAS:
+- El guion debe ser SOLO el texto de narración/voz en off, párrafo por párrafo
+- Debe durar exactamente ${dur} al ser leído en voz alta
+- Empieza con un hook que atrape en los primeros 3 segundos
+- Desarrollo con contenido de valor
+- Cierre con CTA (call to action)
+- Tono natural, conversacional, como si hablaras a un amigo
+- NO incluyas indicaciones de escena, solo el texto que se dirá
+- NO uses formato de lista ni numeración
+- Separa cada párrafo con doble salto de línea`;
+
+      const res = await fetch(`${this.functionsUrl}/chat-ai`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok) throw new Error('Error generando guion');
+      const data = await res.json();
+      if (data.reply) {
+        this.scriptContent = data.reply.trim();
+      }
+    } catch (e) {
+      console.error('Error generando guion:', e);
+      this.scriptContent = '';
+    } finally {
       this.generatingScript.set(false);
-    }, 2000);
+    }
   }
 
   // ── Generate Video ──────────────────────────────────────────────────────
