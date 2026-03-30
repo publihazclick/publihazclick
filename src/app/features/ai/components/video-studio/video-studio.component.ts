@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, inject, signal, computed, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -36,6 +36,7 @@ export class VideoStudioComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly walletService = inject(AiWalletService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly supabase = getSupabaseClient();
   private readonly functionsUrl = `${environment.supabase.url}/functions/v1`;
 
@@ -276,6 +277,7 @@ export class VideoStudioComponent implements OnInit {
   async generateWinnerTitle(): Promise<void> {
     if (!this.videoTopic.trim() || this.videoTopic.trim().length < 10) return;
     this.generatingTitle.set(true);
+    this.cdr.markForCheck();
     try {
       const platform = this.selectedPlatform() ?? 'youtube';
       const dur = this.duration();
@@ -288,9 +290,15 @@ export class VideoStudioComponent implements OnInit {
       });
       if (!res.ok) throw new Error('Error generando título');
       const data = await res.json();
-      if (data.reply) this.videoTopic = data.reply.trim();
-    } catch { /* silencioso */ }
-    this.generatingTitle.set(false);
+      if (data.reply) {
+        this.videoTopic = data.reply.trim();
+      }
+    } catch (e) {
+      console.error('Error generando titulo:', e);
+    } finally {
+      this.generatingTitle.set(false);
+      this.cdr.markForCheck();
+    }
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
