@@ -95,6 +95,7 @@ export class VideoStudioComponent implements OnInit {
   readonly videoTopic = signal('');
   readonly generatingScript = signal(false);
   readonly generatingTitle = signal(false);
+  readonly suggestedTitles = signal<string[]>([]);
 
   // Step 5: Config
   readonly allVoices = signal<HeyGenVoice[]>([]);
@@ -276,26 +277,36 @@ export class VideoStudioComponent implements OnInit {
   async generateWinnerTitle(): Promise<void> {
     if (!this.videoTopic().trim() || this.videoTopic().trim().length < 10) return;
     this.generatingTitle.set(true);
+    this.suggestedTitles.set([]);
     try {
       const platform = this.selectedPlatform() ?? 'youtube';
       const dur = this.duration();
       const headers = await this.getAuthHeaders();
-      const message = `Genera SOLO un título viral y ganador para un video de ${platform} de ${dur} sobre: "${this.videoTopic().trim()}". Responde ÚNICAMENTE con el título, sin comillas, sin explicaciones, sin emojis extra. Máximo 80 caracteres.`;
+      const message = `Genera exactamente 5 títulos virales y ganadores para un video de ${platform} de ${dur} sobre: "${this.videoTopic().trim()}". Responde ÚNICAMENTE con los 5 títulos, uno por línea, numerados del 1 al 5 (formato: "1. Título aquí"). Sin explicaciones adicionales. Máximo 80 caracteres cada título.`;
       const res = await fetch(`${this.functionsUrl}/chat-ai`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ message }),
       });
-      if (!res.ok) throw new Error('Error generando título');
+      if (!res.ok) throw new Error('Error generando títulos');
       const data = await res.json();
       if (data.reply) {
-        this.videoTopic.set(data.reply.trim());
+        const titles = data.reply
+          .split('\n')
+          .map((line: string) => line.replace(/^\d+[\.\)\-]\s*/, '').trim())
+          .filter((line: string) => line.length > 5);
+        this.suggestedTitles.set(titles.slice(0, 5));
       }
     } catch (e) {
-      console.error('Error generando titulo:', e);
+      console.error('Error generando titulos:', e);
     } finally {
       this.generatingTitle.set(false);
     }
+  }
+
+  selectTitle(title: string): void {
+    this.videoTopic.set(title);
+    this.suggestedTitles.set([]);
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
