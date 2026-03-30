@@ -1,11 +1,8 @@
 // Edge function: chat-ai
 // Chatbot de marketing con Gemini - asistente especializado en contenido IA
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -42,30 +39,11 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'No autorizado' }, 401);
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authError || !user) return json({ error: 'Token inválido' }, 401);
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    if (!profile || !['advertiser', 'admin', 'dev'].includes(profile.role)) {
-      return json({ error: 'Sin permisos' }, 403);
-    }
-
     const body = await req.json().catch(() => null);
-    if (!body?.message?.trim()) return json({ error: 'Mensaje requerido' }, 400);
-    if (body.message.length > 1000)
-      return json({ error: 'Mensaje muy largo (máx 1000 chars)' }, 400);
-    if (!GEMINI_API_KEY) return json({ error: 'Servicio no configurado' }, 503);
+    if (!body?.message?.trim()) return json({ error: 'Mensaje requerido' });
+    if (body.message.length > 5000)
+      return json({ error: 'Mensaje muy largo (máx 5000 chars)' });
+    if (!GEMINI_API_KEY) return json({ error: 'Servicio no configurado' });
 
     const contents: unknown[] = [
       { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
@@ -97,17 +75,17 @@ serve(async (req) => {
 
     if (!res.ok) {
       if (res.status === 429)
-        return json({ error: 'Límite de uso alcanzado. Intenta en unos minutos.' }, 429);
-      return json({ error: 'Error de IA. Intenta de nuevo.' }, 502);
+        return json({ error: 'Límite de uso alcanzado. Intenta en unos minutos.' });
+      return json({ error: 'Error de IA. Intenta de nuevo.' });
     }
 
     const data = await res.json();
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!reply) return json({ error: 'Sin respuesta de la IA' }, 502);
+    if (!reply) return json({ error: 'Sin respuesta de la IA' });
 
     return json({ success: true, reply: reply.trim() });
   } catch (err) {
     console.error('Chat AI error:', err);
-    return json({ error: 'Error interno' }, 500);
+    return json({ error: 'Error interno' });
   }
 });
