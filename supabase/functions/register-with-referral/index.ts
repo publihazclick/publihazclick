@@ -24,13 +24,13 @@ Deno.serve(async (req: Request) => {
     if (!email || !password || !username) {
       return new Response(
         JSON.stringify({ error: "email, password y username son requeridos" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     if (!referral_code) {
       return new Response(
         JSON.stringify({ error: "Se requiere un código de referido válido" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     if (refError || !referrer) {
       return new Response(
         JSON.stringify({ error: "Código de referido inválido o no encontrado" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
     if (usernameConflict) {
       return new Response(
         JSON.stringify({ error: `El usuario '${cleanUsername}' ya está en uso. Elige otro nombre de usuario.` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     if (emailRows && emailRows.length > 0) {
       return new Response(
         JSON.stringify({ error: "Ya existe una cuenta con este correo electrónico" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
     if (createError) {
       return new Response(
         JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
     console.error("register-with-referral error:", message);
     return new Response(
       JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
