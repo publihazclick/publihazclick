@@ -203,11 +203,51 @@
       </div>
 
       <div class="bg-white border border-gray-200 rounded-2xl p-4 sm:p-6">
-        <!-- Generar con IA -->
-        <div class="flex flex-col sm:flex-row gap-2 mb-4">
+        <!-- Tema del video -->
+        <div class="mb-4">
           <input type="text" [(ngModel)]="videoTopic"
                  placeholder="De que trata tu video? Ej: cocina, fitness, tecnologia..."
-                 class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm outline-none focus:border-purple-500">
+                 class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm outline-none focus:border-purple-500">
+
+          <!-- Boton Generar titulo ganador IA -->
+          <button (click)="generateWinnerTitle()"
+            [disabled]="generatingTitle() || videoTopic.trim().length < 10"
+            class="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-black text-xs transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90"
+            style="background: linear-gradient(90deg, #f59e0b, #f97316);">
+            @if (generatingTitle()) {
+              <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Generando...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>
+              Generar titulo ganador IA
+            }
+          </button>
+        </div>
+
+        <!-- Selector de duracion -->
+        <div class="mb-4">
+          <h3 class="text-xs font-black text-gray-700 flex items-center gap-1.5 mb-2">
+            <span class="material-symbols-outlined text-purple-500" style="font-size:16px">schedule</span>
+            Duracion del video
+          </h3>
+          <div class="flex flex-wrap gap-1.5">
+            @for (d of durations(); track d) {
+              <button (click)="duration.set(d)"
+                class="px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all"
+                [class]="duration() === d
+                  ? 'bg-purple-500 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                {{ d }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Generar guion con IA -->
+        <div class="flex justify-end mb-4">
           <button (click)="generateScript()"
             [disabled]="generatingScript()"
             class="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-xs sm:text-sm disabled:opacity-50"

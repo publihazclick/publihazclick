@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
+import { environment } from '../../../../../environments/environment';
 
 interface HeyGenAvatar {
   avatar_id: string;
@@ -36,6 +37,7 @@ export class VideoStudioComponent implements OnInit {
   private readonly walletService = inject(AiWalletService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly supabase = getSupabaseClient();
+  private readonly functionsUrl = `${environment.supabase.url}/functions/v1`;
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
@@ -92,6 +94,7 @@ export class VideoStudioComponent implements OnInit {
   scriptContent = '';
   videoTopic = '';
   readonly generatingScript = signal(false);
+  readonly generatingTitle = signal(false);
 
   // Step 5: Config
   readonly allVoices = signal<HeyGenVoice[]>([]);
@@ -269,6 +272,35 @@ export class VideoStudioComponent implements OnInit {
   }
 
   // ── Script ──────────────────────────────────────────────────────────────
+
+  async generateWinnerTitle(): Promise<void> {
+    if (!this.videoTopic.trim() || this.videoTopic.trim().length < 10) return;
+    this.generatingTitle.set(true);
+    try {
+      const platform = this.selectedPlatform() ?? 'youtube';
+      const dur = this.duration();
+      const headers = await this.getAuthHeaders();
+      const message = `Genera SOLO un título viral y ganador para un video de ${platform} de ${dur} sobre: "${this.videoTopic.trim()}". Responde ÚNICAMENTE con el título, sin comillas, sin explicaciones, sin emojis extra. Máximo 80 caracteres.`;
+      const res = await fetch(`${this.functionsUrl}/chat-ai`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok) throw new Error('Error generando título');
+      const data = await res.json();
+      if (data.reply) this.videoTopic = data.reply.trim();
+    } catch { /* silencioso */ }
+    this.generatingTitle.set(false);
+  }
+
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) throw new Error('Sesión no encontrada');
+    return {
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    };
+  }
 
   async generateScript(): Promise<void> {
     this.generatingScript.set(true);
