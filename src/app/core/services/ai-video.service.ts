@@ -32,6 +32,30 @@ export class AiVideoService {
     };
   }
 
+  /** Genera un título ganador usando la Edge Function chat-ai */
+  async generateWinnerTitle(
+    topic: string,
+    platform: AiPlatform,
+    duration: number
+  ): Promise<string> {
+    const headers = await this.getAuthHeaders();
+    const message = `Genera SOLO un título viral y ganador para un video de ${platform} de ${duration} segundos sobre: "${topic}". Responde ÚNICAMENTE con el título, sin comillas, sin explicaciones, sin emojis extra. Máximo 80 caracteres.`;
+
+    const res = await fetch(`${FUNCTIONS_URL}/chat-ai`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Error del servidor' }));
+      throw new Error(err.error || `Error ${res.status}`);
+    }
+
+    const data = await res.json();
+    return data.reply?.trim() || 'No se pudo generar el título';
+  }
+
   /** Genera un guión usando la Edge Function generate-reel-script */
   async generateScript(
     topic: string,

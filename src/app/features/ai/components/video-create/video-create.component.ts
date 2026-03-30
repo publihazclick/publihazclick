@@ -22,8 +22,8 @@ import type {
 } from '../../../../core/models/ai-video.model';
 import { VideoPreviewComponent } from '../video-preview/video-preview.component';
 
-type WizardStep = 'topic' | 'platform' | 'script' | 'voice' | 'images' | 'preview';
-const STEPS: WizardStep[] = ['topic', 'platform', 'script', 'voice', 'images', 'preview'];
+type WizardStep = 'platform' | 'topic' | 'script' | 'voice' | 'images' | 'preview';
+const STEPS: WizardStep[] = ['platform', 'topic', 'script', 'voice', 'images', 'preview'];
 
 @Component({
   selector: 'app-video-create',
@@ -38,7 +38,7 @@ export class VideoCreateComponent implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
 
   // --- Wizard state ---
-  readonly currentStep = signal<WizardStep>('topic');
+  readonly currentStep = signal<WizardStep>('platform');
   readonly topic = signal('');
   readonly selectedPlatform = signal<AiPlatform | null>(null);
   readonly selectedDuration = signal<AiVideoDuration>(30);
@@ -54,6 +54,7 @@ export class VideoCreateComponent implements OnDestroy {
   readonly progress = signal(0);
   readonly error = signal<string | null>(null);
   readonly previewVoiceLoading = signal(false);
+  readonly generatingTitle = signal(false);
 
   // Track highest step reached to allow backwards navigation clicks
   private maxStepIndex = 0;
@@ -63,10 +64,10 @@ export class VideoCreateComponent implements OnDestroy {
 
   readonly canProceed = computed(() => {
     switch (this.currentStep()) {
-      case 'topic':
-        return this.topic().trim().length >= 10;
       case 'platform':
         return !!this.selectedPlatform();
+      case 'topic':
+        return this.topic().trim().length >= 10 && !!this.selectedDuration();
       case 'script':
         return !!this.script() && !this.isGenerating();
       case 'voice':
@@ -159,6 +160,28 @@ export class VideoCreateComponent implements OnDestroy {
   }
 
   // --- Generation ---
+  async generateWinnerTitle(): Promise<void> {
+    const platform = this.selectedPlatform();
+    if (!platform || this.topic().trim().length < 10) return;
+
+    this.generatingTitle.set(true);
+    this.error.set(null);
+
+    try {
+      const title = await this.aiVideoService.generateWinnerTitle(
+        this.topic(),
+        platform,
+        this.selectedDuration()
+      );
+      this.topic.set(title);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error generando título';
+      this.error.set(msg);
+    } finally {
+      this.generatingTitle.set(false);
+    }
+  }
+
   async generateScript(): Promise<void> {
     const platform = this.selectedPlatform();
     if (!platform) return;

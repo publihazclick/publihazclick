@@ -3,7 +3,7 @@
   <!-- Step indicator bar -->
   <div class="flex items-center justify-center mb-8 overflow-x-auto pb-2">
     <div class="flex items-center gap-0 min-w-max">
-      @for (step of ['topic', 'platform', 'script', 'voice', 'images', 'preview']; track step; let i = $index) {
+      @for (step of ['platform', 'topic', 'script', 'voice', 'images', 'preview']; track step; let i = $index) {
         <!-- Step circle + label -->
         <div class="flex flex-col items-center">
           <button
@@ -76,6 +76,30 @@
   <!-- Step content -->
   @switch (currentStep()) {
 
+    <!-- PLATFORM -->
+    @case ('platform') {
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-xl font-black text-white mb-1 text-center">Elige la plataforma</h2>
+        <p class="text-slate-500 text-sm mb-6 text-center">Selecciona donde publicaras tu video</p>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          @for (p of platforms; track p.id) {
+            <button
+              (click)="selectedPlatform.set(p.id); selectedDuration.set(p.durations[1] ?? p.durations[0])"
+              class="bg-card-dark border rounded-2xl p-4 text-center transition-all hover:scale-105"
+              [class]="selectedPlatform() === p.id
+                ? 'border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10'
+                : 'border-white/5 hover:border-white/20'"
+            >
+              <span class="text-3xl block mb-2">{{ p.icon }}</span>
+              <span class="text-sm font-bold text-white block">{{ p.name }}</span>
+              <span class="text-[10px] text-slate-500 block mt-1">{{ p.aspect }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
     <!-- TOPIC -->
     @case ('topic') {
       <div class="max-w-2xl mx-auto bg-card-dark border border-white/5 rounded-2xl p-6">
@@ -90,7 +114,40 @@
           placeholder="Ej: 5 tips para mejorar tu productividad trabajando desde casa..."
           maxlength="500"
         ></textarea>
-        <p class="text-right text-xs text-slate-600 mt-1">{{ topic().length }}/500</p>
+        <div class="flex items-center justify-between mt-1">
+          <button
+            (click)="generateWinnerTitle()"
+            [disabled]="generatingTitle() || topic().trim().length < 10"
+            class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-xs font-black hover:opacity-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+          >
+            @if (generatingTitle()) {
+              <span class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+              Generando...
+            } @else {
+              <span class="material-symbols-outlined text-sm">auto_awesome</span>
+              Generar titulo ganador IA
+            }
+          </button>
+          <p class="text-xs text-slate-600">{{ topic().length }}/500</p>
+        </div>
+
+        <!-- Duration selector -->
+        <div class="mt-5">
+          <h3 class="text-sm font-bold text-slate-400 mb-3">Duracion del video</h3>
+          <div class="flex items-center gap-2 flex-wrap">
+            @for (d of getSelectedPlatformDurations(); track d) {
+              <button
+                (click)="selectedDuration.set(d)"
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+                [class]="selectedDuration() === d
+                  ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/30'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/10'"
+              >
+                {{ d }}s
+              </button>
+            }
+          </div>
+        </div>
 
         <!-- Optional config -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
@@ -134,50 +191,6 @@
             </select>
           </div>
         </div>
-      </div>
-    }
-
-    <!-- PLATFORM -->
-    @case ('platform') {
-      <div class="max-w-3xl mx-auto">
-        <h2 class="text-xl font-black text-white mb-1 text-center">Elige la plataforma</h2>
-        <p class="text-slate-500 text-sm mb-6 text-center">Selecciona donde publicaras tu video</p>
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          @for (p of platforms; track p.id) {
-            <button
-              (click)="selectedPlatform.set(p.id); selectedDuration.set(p.durations[1] ?? p.durations[0])"
-              class="bg-card-dark border rounded-2xl p-4 text-center transition-all hover:scale-105"
-              [class]="selectedPlatform() === p.id
-                ? 'border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10'
-                : 'border-white/5 hover:border-white/20'"
-            >
-              <span class="text-3xl block mb-2">{{ p.icon }}</span>
-              <span class="text-sm font-bold text-white block">{{ p.name }}</span>
-              <span class="text-[10px] text-slate-500 block mt-1">{{ p.aspect }}</span>
-            </button>
-          }
-        </div>
-
-        <!-- Duration selector -->
-        @if (selectedPlatform()) {
-          <div class="mt-6 text-center">
-            <h3 class="text-sm font-bold text-slate-400 mb-3">Duracion del video</h3>
-            <div class="flex items-center justify-center gap-2 flex-wrap">
-              @for (d of getSelectedPlatformDurations(); track d) {
-                <button
-                  (click)="selectedDuration.set(d)"
-                  class="px-4 py-2 rounded-xl text-sm font-bold transition-all"
-                  [class]="selectedDuration() === d
-                    ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/30'
-                    : 'bg-white/5 text-slate-400 hover:bg-white/10'"
-                >
-                  {{ d }}s
-                </button>
-              }
-            </div>
-          </div>
-        }
       </div>
     }
 
