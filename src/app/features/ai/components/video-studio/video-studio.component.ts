@@ -326,8 +326,9 @@ REGLAS:
         body: { message },
       });
       if (error) throw error;
-      if (data?.reply) {
-        this.scriptContent = data.reply.trim();
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (parsed?.reply) {
+        this.scriptContent = parsed.reply.trim();
       }
     } catch (e) {
       console.error('Error generando guion:', e);
