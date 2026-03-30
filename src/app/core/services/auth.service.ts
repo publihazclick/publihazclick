@@ -228,24 +228,51 @@ export class AuthService implements OnDestroy {
    * Parsea mensajes de error de Supabase
    */
   private parseErrorMessage(error: AuthError): string {
-    // Mapeo de errores comunes a mensajes más amigables
+    const msg = error.message || '';
+
+    // Mapeo exacto
     const errorMessages: Record<string, string> = {
-      'Invalid login credentials': 'Credenciales de inicio de sesión inválidas',
-      'Email not confirmed': 'Correo electrónico no confirmado',
+      'Invalid login credentials': 'Correo o contraseña incorrectos',
+      'Email not confirmed': 'Debes confirmar tu correo electrónico antes de iniciar sesión',
       'User already registered': 'Ya existe una cuenta con este correo electrónico',
       'already registered': 'Ya existe una cuenta con este correo electrónico',
       'already exists': 'Ya existe una cuenta con este correo electrónico',
-      'Password does not meet requirements': 'La contraseña no cumple los requisitos mínimos',
-      'Invalid email': 'Correo electrónico inválido',
-      'Network error': 'Error de conexión. Verifica tu conexión a internet',
-      'Too many requests': 'Demasiados intentos. Por favor, espera unos minutos',
-      'email rate limit exceeded': 'Límite de registros excedido. Intenta de nuevo en unos minutos',
+      'Password does not meet requirements': 'La contraseña debe tener al menos 6 caracteres',
+      'Invalid email': 'El correo electrónico no es válido',
+      'Network error': 'Error de conexión. Verifica tu internet',
+      'Too many requests': 'Demasiados intentos. Espera unos minutos e intenta de nuevo',
+      'email rate limit exceeded': 'Límite de registros excedido. Intenta en unos minutos',
       'Invalid password': 'Contraseña incorrecta',
-      'User not found': 'Usuario no encontrado',
-      'Código de referido inválido': 'Código de referido inválido o no encontrado',
+      'User not found': 'No se encontró una cuenta con estos datos',
+      'Signup requires a valid password': 'Debes ingresar una contraseña válida',
+      'Unable to validate email address: invalid format': 'El formato del correo electrónico no es válido',
+      'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres',
+      'A user with this email address has already been registered': 'Ya existe una cuenta con este correo electrónico',
+      'User banned': 'Tu cuenta ha sido suspendida. Contacta soporte',
+      'Invalid Refresh Token: Refresh Token Not Found': 'Tu sesión expiró. Inicia sesión de nuevo',
+      'New password should be different from the old password.': 'La nueva contraseña debe ser diferente a la anterior',
+      'Auth session missing!': 'Tu sesión expiró. Inicia sesión de nuevo',
     };
 
-    return errorMessages[error.message] || error.message;
+    if (errorMessages[msg]) return errorMessages[msg];
+
+    // Mapeo parcial (contiene)
+    const partialMap: [string, string][] = [
+      ['rate limit', 'Demasiados intentos. Espera unos minutos'],
+      ['already registered', 'Ya existe una cuenta con este correo electrónico'],
+      ['not authorized', 'No tienes permisos para realizar esta acción'],
+      ['session expired', 'Tu sesión expiró. Inicia sesión de nuevo'],
+      ['network', 'Error de conexión. Verifica tu internet'],
+      ['fetch', 'Error de conexión. Verifica tu internet'],
+      ['Edge Function returned a non-2xx status code', 'Error en el servidor. Intenta de nuevo'],
+    ];
+
+    const lower = msg.toLowerCase();
+    for (const [key, val] of partialMap) {
+      if (lower.includes(key.toLowerCase())) return val;
+    }
+
+    return msg;
   }
 
   /**
