@@ -280,10 +280,12 @@ export class VideoStudioComponent implements OnInit {
       const { data, error } = await this.supabase.functions.invoke('search-youtube-titles', {
         body: { topic: this.videoTopic().trim() },
       });
+      console.log('YouTube titles response:', { data, error });
       if (error) throw error;
-      if (data?.titles?.length) {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (parsed?.titles?.length) {
         this.suggestedTitles.set(
-          data.titles.map((t: { title: string }) => t.title)
+          parsed.titles.map((t: { title: string }) => t.title)
         );
       }
     } catch (e) {
