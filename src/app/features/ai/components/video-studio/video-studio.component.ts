@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, inject, signal, computed, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -36,7 +36,6 @@ export class VideoStudioComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly walletService = inject(AiWalletService);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly supabase = getSupabaseClient();
   private readonly functionsUrl = `${environment.supabase.url}/functions/v1`;
 
@@ -93,7 +92,7 @@ export class VideoStudioComponent implements OnInit {
 
   // Step 4: Guion
   scriptContent = '';
-  videoTopic = '';
+  readonly videoTopic = signal('');
   readonly generatingScript = signal(false);
   readonly generatingTitle = signal(false);
 
@@ -275,14 +274,13 @@ export class VideoStudioComponent implements OnInit {
   // ── Script ──────────────────────────────────────────────────────────────
 
   async generateWinnerTitle(): Promise<void> {
-    if (!this.videoTopic.trim() || this.videoTopic.trim().length < 10) return;
+    if (!this.videoTopic().trim() || this.videoTopic().trim().length < 10) return;
     this.generatingTitle.set(true);
-    this.cdr.markForCheck();
     try {
       const platform = this.selectedPlatform() ?? 'youtube';
       const dur = this.duration();
       const headers = await this.getAuthHeaders();
-      const message = `Genera SOLO un título viral y ganador para un video de ${platform} de ${dur} sobre: "${this.videoTopic.trim()}". Responde ÚNICAMENTE con el título, sin comillas, sin explicaciones, sin emojis extra. Máximo 80 caracteres.`;
+      const message = `Genera SOLO un título viral y ganador para un video de ${platform} de ${dur} sobre: "${this.videoTopic().trim()}". Responde ÚNICAMENTE con el título, sin comillas, sin explicaciones, sin emojis extra. Máximo 80 caracteres.`;
       const res = await fetch(`${this.functionsUrl}/chat-ai`, {
         method: 'POST',
         headers,
@@ -291,13 +289,12 @@ export class VideoStudioComponent implements OnInit {
       if (!res.ok) throw new Error('Error generando título');
       const data = await res.json();
       if (data.reply) {
-        this.videoTopic = data.reply.trim();
+        this.videoTopic.set(data.reply.trim());
       }
     } catch (e) {
       console.error('Error generando titulo:', e);
     } finally {
       this.generatingTitle.set(false);
-      this.cdr.markForCheck();
     }
   }
 
@@ -312,7 +309,7 @@ export class VideoStudioComponent implements OnInit {
 
   async generateScript(): Promise<void> {
     this.generatingScript.set(true);
-    const topic = this.videoTopic || 'contenido viral';
+    const topic = this.videoTopic() || 'contenido viral';
     const platform = this.selectedPlatform() ?? 'youtube';
     setTimeout(() => {
       this.scriptContent = `¡Hola! Hoy vamos a hablar sobre ${topic}.\n\nEn este video te voy a mostrar todo lo que necesitas saber para empezar.\n\nPrimero, lo más importante es entender los conceptos básicos.\n\nSegundo, vamos a ver ejemplos prácticos que puedes aplicar hoy mismo.\n\nY tercero, te daré mis mejores consejos para que tengas éxito.\n\nSi te gusta este contenido, no olvides darle like y suscribirte para más videos como este.\n\n¡Nos vemos en el próximo video!`;
@@ -352,7 +349,7 @@ export class VideoStudioComponent implements OnInit {
           talking_photo_id: mode !== 'avatar' ? this.talkingPhotoId() : undefined,
           voice_id: voice.voice_id,
           script: this.scriptContent,
-          title: this.videoTopic || 'Video PubliHazClick',
+          title: this.videoTopic() || 'Video PubliHazClick',
           dimension: this.getDimension(),
           character_type: mode === 'avatar' ? 'avatar' : 'talking_photo',
         },
