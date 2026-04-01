@@ -70,29 +70,29 @@
         }
       </div>
 
-      <!-- Billetera (DEMO) -->
-      <button (click)="openDemoModal()" class="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all cursor-pointer group relative">
-        <span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded-full leading-none tracking-wider">DEMO</span>
-        <div class="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-          <span class="material-symbols-outlined text-primary" style="font-size:15px">account_balance_wallet</span>
-        </div>
-        <div class="leading-tight text-left">
-          <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Billetera</p>
-          <p class="text-xs text-primary font-black">{{ formatCurrency(walletBalance()) }}</p>
-        </div>
-      </button>
+      @if (authService.isAuthenticated()) {
+        <!-- Billetera -->
+        <button (click)="openDemoModal()" class="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all cursor-pointer group relative">
+          <div class="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-primary" style="font-size:15px">account_balance_wallet</span>
+          </div>
+          <div class="leading-tight text-left">
+            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Billetera</p>
+            <p class="text-xs text-primary font-black">{{ formatCurrency(walletBalance()) }}</p>
+          </div>
+        </button>
 
-      <!-- Donaciones (DEMO) -->
-      <button (click)="openDemoModal()" class="flex items-center gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 hover:border-accent/40 rounded-xl px-3 py-2 transition-all cursor-pointer group relative">
-        <span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded-full leading-none tracking-wider">DEMO</span>
-        <div class="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-          <span class="material-symbols-outlined text-accent" style="font-size:15px">volunteer_activism</span>
-        </div>
-        <div class="leading-tight text-left">
-          <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Donaciones</p>
-          <p class="text-xs text-accent font-black">{{ formatCurrency(donatedAmount()) }}</p>
-        </div>
-      </button>
+        <!-- Donaciones -->
+        <button (click)="openDemoModal()" class="flex items-center gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 hover:border-accent/40 rounded-xl px-3 py-2 transition-all cursor-pointer group relative">
+          <div class="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-accent" style="font-size:15px">volunteer_activism</span>
+          </div>
+          <div class="leading-tight text-left">
+            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Donaciones</p>
+            <p class="text-xs text-accent font-black">{{ formatCurrency(donatedAmount()) }}</p>
+          </div>
+        </button>
+      }
 
       <!-- Login -->
       <button
@@ -134,25 +134,25 @@
         }
       </div>
 
-      <!-- Billetera (DEMO) -->
-      <button (click)="openDemoModal()" class="flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 min-w-0 relative cursor-pointer">
-        <span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-black text-[6px] font-black px-1 py-0.5 rounded-full leading-none tracking-wider">DEMO</span>
-        <span class="material-symbols-outlined text-primary flex-shrink-0" style="font-size:13px">account_balance_wallet</span>
-        <div class="leading-tight min-w-0 text-left">
-          <p class="text-[7px] text-slate-400 uppercase font-bold tracking-wider">Billetera</p>
-          <p class="text-[10px] text-primary font-black truncate">{{ formatCurrency(walletBalance()) }}</p>
-        </div>
-      </button>
+      @if (authService.isAuthenticated()) {
+        <!-- Billetera -->
+        <button (click)="openDemoModal()" class="flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 min-w-0 cursor-pointer">
+          <span class="material-symbols-outlined text-primary flex-shrink-0" style="font-size:13px">account_balance_wallet</span>
+          <div class="leading-tight min-w-0 text-left">
+            <p class="text-[7px] text-slate-400 uppercase font-bold tracking-wider">Billetera</p>
+            <p class="text-[10px] text-primary font-black truncate">{{ formatCurrency(walletBalance()) }}</p>
+          </div>
+        </button>
 
-      <!-- Donaciones (DEMO) -->
-      <button (click)="openDemoModal()" class="flex items-center gap-1 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 min-w-0 relative cursor-pointer">
-        <span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-black text-[6px] font-black px-1 py-0.5 rounded-full leading-none tracking-wider">DEMO</span>
-        <span class="material-symbols-outlined text-accent flex-shrink-0" style="font-size:13px">volunteer_activism</span>
-        <div class="leading-tight min-w-0 text-left">
-          <p class="text-[7px] text-slate-400 uppercase font-bold tracking-wider">Donado</p>
-          <p class="text-[10px] text-accent font-black truncate">{{ formatCurrency(donatedAmount()) }}</p>
-        </div>
-      </button>
+        <!-- Donaciones -->
+        <button (click)="openDemoModal()" class="flex items-center gap-1 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 min-w-0 cursor-pointer">
+          <span class="material-symbols-outlined text-accent flex-shrink-0" style="font-size:13px">volunteer_activism</span>
+          <div class="leading-tight min-w-0 text-left">
+            <p class="text-[7px] text-slate-400 uppercase font-bold tracking-wider">Donado</p>
+            <p class="text-[10px] text-accent font-black truncate">{{ formatCurrency(donatedAmount()) }}</p>
+          </div>
+        </button>
+      }
     </div>
   </div>
 

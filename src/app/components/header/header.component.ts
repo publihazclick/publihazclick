@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { CurrencyService, Currency } from '../../core/services/currency.service';
 import { WalletStateService } from '../../core/services/wallet-state.service';
+import { AuthService } from '../../core/services/auth.service';
 import { environment } from '../../../environments/environment';
 
 interface NavItem {
@@ -25,6 +26,7 @@ export class HeaderComponent implements OnInit {
 
   protected readonly currencyService = inject(CurrencyService);
   protected readonly walletService = inject(WalletStateService);
+  protected readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   // Expose signals for template
