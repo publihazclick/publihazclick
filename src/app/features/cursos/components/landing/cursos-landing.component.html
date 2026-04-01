@@ -21,16 +21,21 @@
         Por solo <strong class="text-white">$25 USD</strong> al mes obtienes acceso a todas las herramientas de Publihazclick para monetizar desde el primer día. Si sigues nuestras recomendaciones, <strong class="text-cyan-300">solo pagarás de tu bolsillo una única vez</strong>.
       </p>
 
-      <!-- VIDEO PLACEHOLDER -->
+      <!-- VIDEO HERO -->
       <div class="max-w-3xl mx-auto mb-10">
         <div class="relative rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl shadow-violet-500/20 bg-black/40 backdrop-blur"
              style="padding-top:56.25%">
-          <div class="absolute inset-0 flex flex-col items-center justify-center gap-4">
-            <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-              <span class="material-symbols-outlined text-white" style="font-size:40px">play_arrow</span>
+          @if (heroVideoUrl()) {
+            <iframe [src]="heroVideoUrl()" class="absolute inset-0 w-full h-full" frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          } @else {
+            <div class="absolute inset-0 flex flex-col items-center justify-center gap-4">
+              <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+                <span class="material-symbols-outlined text-white" style="font-size:40px">play_arrow</span>
+              </div>
+              <p class="text-white/60 text-sm font-semibold">Video de presentación</p>
             </div>
-            <p class="text-white/60 text-sm font-semibold">Video de presentación</p>
-          </div>
+          }
         </div>
       </div>
 

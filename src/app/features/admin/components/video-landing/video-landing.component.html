@@ -11,6 +11,92 @@
       <span class="text-sm">Cargando configuración...</span>
     </div>
   } @else {
+    <!-- ═══ Video Hero (arriba de "Activar mi cuenta ahora") ═══ -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
+      <div class="bg-card-dark border border-violet-500/20 rounded-2xl p-6 space-y-6">
+        <div class="flex items-center gap-3 pb-4 border-b border-white/10">
+          <div class="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-violet-400">movie</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm">Video Hero (Arriba de "Activar mi cuenta")</h3>
+            <p class="text-xs text-slate-500">Se muestra en la sección principal de la landing</p>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest">Enlace de YouTube</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xl pointer-events-none">link</span>
+            <input
+              type="url"
+              [(ngModel)]="heroVideoUrl"
+              (ngModelChange)="onHeroUrlChange()"
+              placeholder="https://www.youtube.com/watch?v=..."
+              class="w-full bg-white/5 border border-white/10 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        @if (errorHero()) {
+          <div class="flex items-start gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-rose-400 text-lg flex-shrink-0 mt-0.5">error</span>
+            <p class="text-xs text-rose-400">{{ errorHero() }}</p>
+          </div>
+        }
+        @if (savedHero()) {
+          <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+            <p class="text-xs text-emerald-400 font-bold">¡Video hero guardado!</p>
+          </div>
+        }
+
+        <div class="flex gap-3 pt-2">
+          <button (click)="saveHero()" [disabled]="savingHero()"
+            class="flex-1 flex items-center justify-center gap-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm py-3 px-6 rounded-xl transition-all">
+            @if (savingHero()) {
+              <span class="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+              <span>Guardando...</span>
+            } @else {
+              <span class="material-symbols-outlined text-lg">save</span>
+              <span>Guardar</span>
+            }
+          </button>
+          <button (click)="clearHero()" [disabled]="savingHero()"
+            class="flex items-center gap-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 border border-white/10 text-slate-400 hover:text-white font-bold text-sm py-3 px-4 rounded-xl transition-all">
+            <span class="material-symbols-outlined text-lg">delete_outline</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview Hero -->
+      <div class="bg-card-dark border border-white/10 rounded-2xl p-6 space-y-4">
+        <div class="flex items-center gap-3 pb-4 border-b border-white/10">
+          <div class="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-violet-400">preview</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm">Vista Previa Hero</h3>
+            <p class="text-xs text-slate-500">Así se verá arriba de "Activar mi cuenta"</p>
+          </div>
+        </div>
+        <div class="relative aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-white/5">
+          @if (heroPreviewUrl()) {
+            <iframe [src]="heroPreviewUrl()" class="w-full h-full" frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          } @else {
+            <div class="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-600">
+              <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-500 text-4xl translate-x-0.5">play_arrow</span>
+              </div>
+              <p class="text-xs text-slate-500">Ingresa una URL para ver la vista previa</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Video Landing (sección inferior) ═══ -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
 
       <!-- Panel de configuración -->
@@ -20,7 +106,7 @@
             <span class="material-symbols-outlined text-primary">smart_display</span>
           </div>
           <div>
-            <h3 class="font-bold text-white text-sm">URL del Video</h3>
+            <h3 class="font-bold text-white text-sm">Video Landing (Sección inferior)</h3>
             <p class="text-xs text-slate-500">Solo se aceptan enlaces de YouTube</p>
           </div>
         </div>

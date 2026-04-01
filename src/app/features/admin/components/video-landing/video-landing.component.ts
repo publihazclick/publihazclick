@@ -20,13 +20,27 @@ export class AdminVideoLandingComponent implements OnInit {
   readonly saved = signal(false);
   readonly error = signal<string | null>(null);
 
+  // Video de abajo (sección video-section)
   videoUrl = '';
   previewUrl = signal<SafeResourceUrl | null>(null);
 
+  // Video hero (arriba de "Activar mi cuenta ahora")
+  heroVideoUrl = '';
+  heroPreviewUrl = signal<SafeResourceUrl | null>(null);
+  readonly savingHero = signal(false);
+  readonly savedHero = signal(false);
+  readonly errorHero = signal<string | null>(null);
+
   async ngOnInit(): Promise<void> {
     try {
-      this.videoUrl = await this.settings.getSetting('landing_video_url');
+      const [landing, hero] = await Promise.all([
+        this.settings.getSetting('landing_video_url'),
+        this.settings.getSetting('hero_video_url'),
+      ]);
+      this.videoUrl = landing;
+      this.heroVideoUrl = hero;
       this.updatePreview();
+      this.updateHeroPreview();
     } finally {
       this.loading.set(false);
     }
@@ -38,9 +52,20 @@ export class AdminVideoLandingComponent implements OnInit {
     this.updatePreview();
   }
 
+  onHeroUrlChange(): void {
+    this.errorHero.set(null);
+    this.savedHero.set(false);
+    this.updateHeroPreview();
+  }
+
   private updatePreview(): void {
     const embedUrl = this.toEmbedUrl(this.videoUrl.trim());
     this.previewUrl.set(embedUrl ? this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl) : null);
+  }
+
+  private updateHeroPreview(): void {
+    const embedUrl = this.toEmbedUrl(this.heroVideoUrl.trim());
+    this.heroPreviewUrl.set(embedUrl ? this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl) : null);
   }
 
   private toEmbedUrl(url: string): string | null {
@@ -88,5 +113,34 @@ export class AdminVideoLandingComponent implements OnInit {
     this.previewUrl.set(null);
     this.error.set(null);
     this.saved.set(false);
+  }
+
+  async saveHero(): Promise<void> {
+    this.errorHero.set(null);
+    this.savedHero.set(false);
+
+    const url = this.heroVideoUrl.trim();
+    if (url && !this.toEmbedUrl(url)) {
+      this.errorHero.set('URL no válida. Usa un enlace de YouTube (youtube.com/watch?v=... o youtu.be/...)');
+      return;
+    }
+
+    this.savingHero.set(true);
+    try {
+      await this.settings.setSetting('hero_video_url', url);
+      this.savedHero.set(true);
+      setTimeout(() => this.savedHero.set(false), 3000);
+    } catch (err: any) {
+      this.errorHero.set(err.message || 'Error al guardar');
+    } finally {
+      this.savingHero.set(false);
+    }
+  }
+
+  clearHero(): void {
+    this.heroVideoUrl = '';
+    this.heroPreviewUrl.set(null);
+    this.errorHero.set(null);
+    this.savedHero.set(false);
   }
 }
