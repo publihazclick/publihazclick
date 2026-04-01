@@ -25,11 +25,15 @@ export class CursosLandingComponent implements OnInit {
     if (embed) this.heroVideoUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(embed));
   }
 
-  getReferralLink(): string {
+  getRegisterLink(): string {
     if (!isPlatformBrowser(this.platformId)) return '/register';
-    const code = this.profile()?.referral_code ?? '';
-    if (!code) return '/register';
-    return `${window.location.origin}/ref/${code}`;
+    // Si el usuario está logueado, usar su código de referido
+    const profileCode = this.profile()?.referral_code ?? '';
+    // Si no, usar el código guardado en localStorage (de quien compartió el link)
+    const savedCode = localStorage.getItem('phc_referral_code') ?? '';
+    const code = profileCode || savedCode;
+    if (code) return `/register?ref=${code}`;
+    return '/register';
   }
 
   private toEmbedUrl(url: string): string | null {
