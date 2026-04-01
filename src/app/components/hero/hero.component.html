@@ -19,32 +19,32 @@
 
   </div>
 
-  <!-- Ticker de empresas colombianas -->
-  <div class="overflow-hidden border-y border-white/5 bg-zinc-950/60 backdrop-blur-sm py-2.5">
-    <div class="animate-scroll flex gap-3 w-max">
-      @for (c of tickerCompanies; track c.name) {
-        <div class="shrink-0 flex items-center gap-2 rounded-lg px-3 py-2 shadow-md"
-             [style.background]="c.bg"
-             style="min-width:150px;max-width:150px">
-          <span class="text-base leading-none select-none">{{ c.icon }}</span>
-          <div class="min-w-0 flex-1">
-            <p class="text-white font-black text-[11px] leading-tight truncate">{{ c.name }}</p>
-            <p class="text-white/55 text-[9px] leading-tight uppercase tracking-wider mt-0.5">{{ c.type }}</p>
-          </div>
-        </div>
-      }
-      @for (c of tickerCompanies; track c.name + '_2') {
-        <div class="shrink-0 flex items-center gap-2 rounded-lg px-3 py-2 shadow-md"
-             [style.background]="c.bg"
-             style="min-width:150px;max-width:150px">
-          <span class="text-base leading-none select-none">{{ c.icon }}</span>
-          <div class="min-w-0 flex-1">
-            <p class="text-white font-black text-[11px] leading-tight truncate">{{ c.name }}</p>
-            <p class="text-white/55 text-[9px] leading-tight uppercase tracking-wider mt-0.5">{{ c.type }}</p>
-          </div>
-        </div>
-      }
-    </div>
-  </div>
-
 </section>
+
+<!-- Ticker de empresas colombianas (fuera del overflow-hidden) -->
+<div class="relative z-10 overflow-hidden border-y border-white/5 bg-zinc-950/60 backdrop-blur-sm py-2.5">
+  <div class="animate-scroll flex gap-3 w-max">
+    @for (c of tickerCompanies; track c.name) {
+      <div class="shrink-0 flex items-center gap-2 rounded-lg px-3 py-2 shadow-md"
+           [style.background]="c.bg"
+           style="min-width:150px;max-width:150px">
+        <span class="text-base leading-none select-none">{{ c.icon }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-white font-black text-[11px] leading-tight truncate">{{ c.name }}</p>
+          <p class="text-white/55 text-[9px] leading-tight uppercase tracking-wider mt-0.5">{{ c.type }}</p>
+        </div>
+      </div>
+    }
+    @for (c of tickerCompanies; track c.name + '_2') {
+      <div class="shrink-0 flex items-center gap-2 rounded-lg px-3 py-2 shadow-md"
+           [style.background]="c.bg"
+           style="min-width:150px;max-width:150px">
+        <span class="text-base leading-none select-none">{{ c.icon }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-white font-black text-[11px] leading-tight truncate">{{ c.name }}</p>
+          <p class="text-white/55 text-[9px] leading-tight uppercase tracking-wider mt-0.5">{{ c.type }}</p>
+        </div>
+      </div>
+    }
+  </div>
+</div>
