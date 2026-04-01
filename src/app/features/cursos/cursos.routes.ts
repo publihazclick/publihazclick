@@ -5,7 +5,11 @@ export const cursosRoutes: Routes = [
     path: '',
     loadComponent: () => import('./cursos.component').then(m => m.CursosComponent),
     children: [
-      { path: '', redirectTo: 'explorar', pathMatch: 'full' },
+      { path: '', redirectTo: 'gratis', pathMatch: 'full' },
+      {
+        path: 'gratis',
+        loadComponent: () => import('./components/gratis/cursos-gratis.component').then(m => m.CursosGratisComponent),
+      },
       {
         path: 'explorar',
         loadComponent: () => import('./components/marketplace/cursos-marketplace.component').then(m => m.CursosMarketplaceComponent),
@@ -25,6 +29,14 @@ export const cursosRoutes: Routes = [
       {
         path: 'ganancias',
         loadComponent: () => import('./components/earnings/cursos-ganancias.component').then(m => m.CursosGananciasComponent),
+      },
+      {
+        path: 'landing',
+        loadComponent: () => import('./components/landing/cursos-landing.component').then(m => m.CursosLandingComponent),
+      },
+      {
+        path: 'pagos',
+        loadComponent: () => import('./components/payment-config/cursos-payment-config.component').then(m => m.CursosPaymentConfigComponent),
       },
       {
         path: 'admin',

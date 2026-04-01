@@ -1,0 +1,312 @@
+<div class="space-y-6">
+
+  <!-- Player Modal -->
+  @if (selectedCourse(); as course) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+         (click)="closePlayer()">
+      <div class="bg-white border border-gray-200 rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-y-auto overflow-hidden shadow-2xl"
+           (click)="$event.stopPropagation()">
+        <!-- Video -->
+        <div class="relative w-full" style="padding-top:56.25%">
+          <iframe class="absolute inset-0 w-full h-full"
+                  [src]="'https://www.youtube-nocookie.com/embed/' + course.id + '?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&showinfo=0&disablekb=0' | safe"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen>
+          </iframe>
+          <!-- Block top bar (title + share link) -->
+          <div class="absolute top-0 left-0 right-0 h-12 z-10" style="pointer-events:auto; background:linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)"></div>
+          <!-- Block YouTube logo bottom-right -->
+          <div class="absolute bottom-0 right-0 w-40 h-10 z-10" style="pointer-events:auto"></div>
+        </div>
+        <!-- Info -->
+        <div class="p-4 sm:p-5 space-y-2 sm:space-y-3">
+          <div class="flex items-start justify-between gap-3">
+            <h3 class="text-sm sm:text-lg font-black text-gray-900 leading-tight">{{ course.title }}</h3>
+            <button (click)="closePlayer()"
+                    class="flex-shrink-0 p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 transition-all">
+              <span class="material-symbols-outlined" style="font-size:20px">close</span>
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-xs text-gray-500">
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:14px">person</span>
+              {{ course.channelName }}
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:14px">visibility</span>
+              {{ ytService.formatViews(course.viewCount) }}
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined" style="font-size:14px">thumb_up</span>
+              {{ ytService.formatViews(course.likeCount) }}
+            </span>
+            @if (course.duration) {
+              <span class="flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:14px">schedule</span>
+                {{ course.duration }}
+              </span>
+            }
+          </div>
+          <p class="text-[10px] sm:text-xs text-gray-400 line-clamp-2 sm:line-clamp-3">{{ course.description }}</p>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-black text-gray-900 flex items-center gap-2">
+        <span class="material-symbols-outlined text-emerald-500" style="font-size:22px">auto_stories</span>
+        Cursos Gratuitos
+      </h2>
+      <p class="text-xs text-gray-400 mt-1">Aprende gratis: marketing, dropshipping, marca y más</p>
+    </div>
+    <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl">
+      <span class="material-symbols-outlined text-emerald-500" style="font-size:16px">school</span>
+      <span class="text-xs font-bold text-emerald-600">100% Gratis</span>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-3">
+    <div class="relative w-full sm:flex-1 sm:min-w-[180px]">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" style="font-size:16px">search</span>
+      <input type="text" placeholder="Buscar cursos gratuitos..."
+             [value]="search()"
+             (input)="onSearch($any($event.target).value)"
+             class="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 shadow-sm">
+    </div>
+    <div class="grid grid-cols-2 sm:flex gap-2 sm:gap-3">
+      <select [value]="category()" (change)="onCategory($any($event.target).value)"
+              class="bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-gray-600 focus:outline-none focus:border-emerald-400 shadow-sm w-full sm:w-auto">
+        <option value="">Elegir Categoría</option>
+        @for (cat of categories; track cat) {
+          <option [value]="cat">{{ cat }}</option>
+        }
+      </select>
+      <select [value]="ordering()" (change)="onSort($any($event.target).value)"
+              class="bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-gray-600 focus:outline-none focus:border-emerald-400 shadow-sm w-full sm:w-auto">
+        @for (key of sortKeys; track key) {
+          <option [value]="key">{{ sortOptions[key] }}</option>
+        }
+      </select>
+      <select [value]="duration()" (change)="onDuration($any($event.target).value)"
+              class="bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-gray-600 focus:outline-none focus:border-emerald-400 shadow-sm w-full sm:w-auto">
+        @for (key of durationKeys; track key) {
+          <option [value]="key">{{ durationOptions[key] }}</option>
+        }
+      </select>
+      @if (hasFilters) {
+        <button (click)="clearFilters()"
+                class="px-3 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 transition-all shadow-sm w-full sm:w-auto">
+          Limpiar
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Comparison: Free vs Premium -->
+  @if (showComparison()) {
+    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <h3 class="text-sm font-black text-gray-800 flex items-center gap-2">
+          <span class="material-symbols-outlined text-sky-500" style="font-size:18px">compare</span>
+          ¿Cursos Gratis o Premium?
+        </h3>
+        <button (click)="showComparison.set(false)"
+                class="p-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-400 transition-all">
+          <span class="material-symbols-outlined" style="font-size:16px">close</span>
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-0 md:divide-x divide-gray-100">
+        <!-- Free column -->
+        <div class="p-4 sm:p-5 space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <span class="material-symbols-outlined text-emerald-600" style="font-size:18px">auto_stories</span>
+            </div>
+            <div>
+              <p class="text-sm font-black text-emerald-600">Cursos Gratis</p>
+              <p class="text-[10px] text-gray-400">Ideal para empezar</p>
+            </div>
+          </div>
+          <ul class="space-y-2 text-xs text-gray-600">
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-emerald-500" style="font-size:14px">check_circle</span>
+              Acceso inmediato sin registro adicional
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-emerald-500" style="font-size:14px">check_circle</span>
+              Gran variedad de temas y categorías
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-emerald-500" style="font-size:14px">check_circle</span>
+              Aprende a tu ritmo sin costo
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-gray-300" style="font-size:14px">cancel</span>
+              <span class="text-gray-400">Sin certificado oficial</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-gray-300" style="font-size:14px">cancel</span>
+              <span class="text-gray-400">Sin soporte personalizado</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-gray-300" style="font-size:14px">cancel</span>
+              <span class="text-gray-400">Sin material descargable</span>
+            </li>
+          </ul>
+        </div>
+        <!-- Premium column -->
+        <div class="p-4 sm:p-5 space-y-3 bg-gradient-to-br from-sky-50/50 to-white border-t md:border-t-0 border-gray-100">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center">
+              <span class="material-symbols-outlined text-sky-600" style="font-size:18px">workspace_premium</span>
+            </div>
+            <div>
+              <p class="text-sm font-black text-sky-600">Cursos Premium</p>
+              <p class="text-[10px] text-gray-400">Para profesionales</p>
+            </div>
+          </div>
+          <ul class="space-y-2 text-xs text-gray-600">
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-sky-500" style="font-size:14px">check_circle</span>
+              Certificado oficial de Publihazclick
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-sky-500" style="font-size:14px">check_circle</span>
+              Contenido exclusivo y actualizado
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-sky-500" style="font-size:14px">check_circle</span>
+              Soporte directo con el instructor
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-sky-500" style="font-size:14px">check_circle</span>
+              Material descargable y recursos extra
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-sky-500" style="font-size:14px">check_circle</span>
+              Seguimiento de progreso detallado
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-sky-500" style="font-size:14px">check_circle</span>
+              Gana el 20% recomendando cursos
+            </li>
+          </ul>
+          <a routerLink="../explorar"
+             class="flex items-center justify-center gap-2 w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs transition-all shadow-md mt-2">
+            <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+            Ver cursos Premium
+          </a>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Grid -->
+  @if (ytService.loading()) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+        <div class="bg-white border border-gray-100 rounded-2xl overflow-hidden animate-pulse shadow-sm">
+          <div class="h-40 bg-gray-100"></div>
+          <div class="p-4 space-y-2">
+            <div class="h-4 bg-gray-100 rounded w-3/4"></div>
+            <div class="h-3 bg-gray-100 rounded w-1/2"></div>
+            <div class="h-3 bg-gray-100 rounded w-1/3"></div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (ytService.courses().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 text-center gap-4">
+      <span class="material-symbols-outlined text-gray-300" style="font-size:56px">search_off</span>
+      <div>
+        <p class="text-gray-800 font-bold">No se encontraron cursos</p>
+        <p class="text-gray-400 text-sm mt-1">Intenta con otra búsqueda o cambia los filtros</p>
+      </div>
+      <button (click)="clearFilters()"
+              class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl text-sm transition-all shadow-md">
+        Limpiar filtros
+      </button>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      @for (course of ytService.courses(); track course.id) {
+        <div (click)="openPlayer(course)"
+             class="bg-white border border-gray-100 hover:border-emerald-300 rounded-2xl overflow-hidden transition-all hover:scale-[1.01] hover:shadow-lg group cursor-pointer shadow-sm">
+          <!-- Thumbnail -->
+          <div class="relative h-40 bg-gray-100 overflow-hidden">
+            @if (course.thumbnail) {
+              <img [src]="course.thumbnail" [alt]="course.title"
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                   loading="lazy">
+            } @else {
+              <div class="w-full h-full flex items-center justify-center">
+                <span class="material-symbols-outlined text-gray-300" style="font-size:56px">school</span>
+              </div>
+            }
+            <!-- Badge GRATIS -->
+            <div class="absolute top-2 left-2">
+              <span class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-500 text-white shadow-md">
+                GRATIS
+              </span>
+            </div>
+            <!-- Duration -->
+            @if (course.duration) {
+              <div class="absolute bottom-2 right-2 bg-black/75 px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
+                {{ course.duration }}
+              </div>
+            }
+            <!-- Play overlay -->
+            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+              <span class="material-symbols-outlined text-white drop-shadow-lg" style="font-size:48px">play_circle</span>
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="p-4 space-y-2">
+            <h3 class="font-bold text-gray-800 text-sm leading-tight line-clamp-2 group-hover:text-emerald-600 transition-colors">
+              {{ course.title }}
+            </h3>
+
+            <p class="text-xs text-gray-400 truncate">
+              {{ course.channelName }}
+            </p>
+
+            <div class="flex items-center gap-3 pt-1">
+              <div class="flex items-center gap-1 text-[10px] text-gray-400">
+                <span class="material-symbols-outlined" style="font-size:12px">visibility</span>
+                {{ ytService.formatViews(course.viewCount) }}
+              </div>
+              <div class="flex items-center gap-1 text-[10px] text-gray-400">
+                <span class="material-symbols-outlined" style="font-size:12px">thumb_up</span>
+                {{ ytService.formatViews(course.likeCount) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-center gap-4 pt-4">
+      @if (ytService.prevPageToken()) {
+        <button (click)="prevPage()"
+                class="flex items-center gap-1 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 transition-all shadow-sm">
+          <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
+          Anterior
+        </button>
+      }
+      @if (ytService.nextPageToken()) {
+        <button (click)="nextPage()"
+                class="flex items-center gap-1 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 transition-all shadow-sm">
+          Siguiente
+          <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+        </button>
+      }
+    </div>
+  }
+</div>

@@ -131,6 +131,29 @@
           <p class="text-xs text-slate-600">{{ topic().length }}/500</p>
         </div>
 
+        <!-- Titulos sugeridos de YouTube -->
+        @if (suggestedTitles().length) {
+          <div class="mt-3 space-y-1.5">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Top 5 titulos mas virales en YouTube — Elige uno</p>
+            @for (t of suggestedTitles(); track t.title; let i = $index) {
+              <button (click)="selectTitle(t)"
+                class="w-full flex items-start gap-2 px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-left hover:border-violet-500/50 hover:bg-violet-500/10 transition-all group">
+                <span class="w-5 h-5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-red-500 group-hover:text-white transition-all">{{ i + 1 }}</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs sm:text-sm text-white font-bold truncate">{{ t.title }}</p>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-[10px] text-red-400 font-bold flex items-center gap-0.5">
+                      <span class="material-symbols-outlined" style="font-size:12px">visibility</span>
+                      {{ t.views }} vistas
+                    </span>
+                    <span class="text-[10px] text-slate-500">{{ t.channel }}</span>
+                  </div>
+                </div>
+              </button>
+            }
+          </div>
+        }
+
         <!-- Duration selector -->
         <div class="mt-5">
           <h3 class="text-sm font-bold text-slate-400 mb-3">Duracion del video</h3>
@@ -203,6 +226,34 @@
           <div class="bg-card-dark border border-white/5 rounded-2xl p-10 text-center">
             <span class="material-symbols-outlined text-5xl text-violet-500/40 animate-pulse block mb-3">auto_awesome</span>
             <p class="text-slate-500 text-sm">Creando tu guion con IA...</p>
+          </div>
+        }
+
+        @if (!script() && !isGenerating() && error()) {
+          <div class="bg-card-dark border border-red-500/20 rounded-2xl p-10 text-center">
+            <span class="material-symbols-outlined text-5xl text-red-500/40 block mb-3">error</span>
+            <p class="text-red-400 text-sm font-bold mb-2">{{ error() }}</p>
+            <button
+              (click)="generateScript()"
+              class="mt-3 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl text-sm font-black hover:opacity-90 transition-all inline-flex items-center gap-1.5"
+            >
+              <span class="material-symbols-outlined text-sm">refresh</span>
+              Reintentar
+            </button>
+          </div>
+        }
+
+        @if (!script() && !isGenerating() && !error()) {
+          <div class="bg-card-dark border border-white/5 rounded-2xl p-10 text-center">
+            <span class="material-symbols-outlined text-5xl text-slate-600 block mb-3">description</span>
+            <p class="text-slate-500 text-sm mb-3">No se ha generado el guion aun</p>
+            <button
+              (click)="generateScript()"
+              class="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl text-sm font-black hover:opacity-90 transition-all inline-flex items-center gap-1.5"
+            >
+              <span class="material-symbols-outlined text-sm">auto_awesome</span>
+              Generar guion con IA
+            </button>
           </div>
         }
 

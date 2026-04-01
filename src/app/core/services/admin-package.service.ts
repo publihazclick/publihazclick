@@ -617,7 +617,6 @@ export class AdminPackageService {
         .from('profiles')
         .select('id, username, email, role, is_active')
         .or(`username.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%,phone.ilike.%${safeQuery}%`)
-        .eq('is_active', true)
         .order('username', { ascending: true })
         .limit(10);
 

@@ -36,8 +36,12 @@ export const authInterceptor: HttpInterceptorFn = (
   // Verificar si es una ruta pública
   const isPublicUrl = publicUrls.some(url => req.url.includes(url));
 
-  // Si es una ruta pública, continuar sin modificar
-  if (isPublicUrl) {
+  // Skip auth headers for external APIs (YouTube, etc.)
+  const isExternalApi = !req.url.includes('supabase.co') && req.url.startsWith('https://');
+  const isSupabaseUrl = req.url.includes('supabase.co');
+
+  // Si es una ruta pública o API externa no-Supabase, continuar sin modificar
+  if (isPublicUrl || (isExternalApi && !isSupabaseUrl)) {
     return next(req);
   }
 

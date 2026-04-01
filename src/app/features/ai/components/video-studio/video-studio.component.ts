@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
+import { environment } from '../../../../../environments/environment';
 
 interface HeyGenAvatar {
   avatar_id: string;
@@ -89,11 +90,12 @@ export class VideoStudioComponent implements OnInit {
   });
 
   // Step 4: Guion
-  scriptContent = '';
+  readonly scriptContent = signal('');
   readonly videoTopic = signal('');
   readonly generatingScript = signal(false);
   readonly generatingTitle = signal(false);
   readonly suggestedTitles = signal<{ title: string; views: string; channel: string }[]>([]);
+  readonly scriptError = signal<string | null>(null);
 
   // Step 5: Config
   readonly allVoices = signal<HeyGenVoice[]>([]);
@@ -192,7 +194,7 @@ export class VideoStudioComponent implements OnInit {
         if (this.selectedMode() === 'images') return true;
         if (this.selectedMode() === 'avatar') return !!this.selectedAvatar();
         return !!this.talkingPhotoId();
-      case 'script': return !!this.scriptContent.trim();
+      case 'script': return !!this.scriptContent().trim();
       case 'config': return !!this.selectedVoice();
       default: return false;
     }
@@ -303,36 +305,65 @@ export class VideoStudioComponent implements OnInit {
     this.suggestedTitles.set([]);
   }
 
+  /** Parsea la duración seleccionada (ej: "1:30 minutos", "30 segundos") a segundos */
+  private parseDurationToSeconds(): number {
+    const dur = this.duration();
+    const secMatch = dur.match(/(\d+)\s*segundo/i);
+    if (secMatch) return parseInt(secMatch[1], 10);
+    const minMatch = dur.match(/(\d+):(\d+)\s*minuto/i);
+    if (minMatch) return parseInt(minMatch[1], 10) * 60 + parseInt(minMatch[2], 10);
+    const simpleMinMatch = dur.match(/(\d+)\s*minuto/i);
+    if (simpleMinMatch) return parseInt(simpleMinMatch[1], 10) * 60;
+    return 60;
+  }
+
   async generateScript(): Promise<void> {
     this.generatingScript.set(true);
+    this.scriptError.set(null);
     const topic = this.videoTopic() || 'contenido viral';
     const platform = this.selectedPlatform() ?? 'youtube';
-    const dur = this.duration();
+    const durationSec = this.parseDurationToSeconds();
+
     try {
-      const message = `Eres un guionista experto en videos virales. Genera un guion completo en español para un video de ${platform} con una duracion de ${dur} sobre: "${topic}".
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
 
-REGLAS:
-- El guion debe ser SOLO el texto de narración/voz en off, párrafo por párrafo
-- Debe durar exactamente ${dur} al ser leído en voz alta
-- Empieza con un hook que atrape en los primeros 3 segundos
-- Desarrollo con contenido de valor
-- Cierre con CTA (call to action)
-- Tono natural, conversacional, como si hablaras a un amigo
-- NO incluyas indicaciones de escena, solo el texto que se dirá
-- NO uses formato de lista ni numeración
-- Separa cada párrafo con doble salto de línea`;
+      const res = await fetch(
+        `${environment.supabase.url}/functions/v1/generate-reel-script`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            description: topic,
+            platform,
+            duration: durationSec,
+            tone: 'professional',
+            video_type: 'educational',
+            monetization: 'personal_brand',
+          }),
+        }
+      );
 
-      const { data, error } = await this.supabase.functions.invoke('chat-ai', {
-        body: { message },
-      });
-      if (error) throw error;
-      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-      if (parsed?.reply) {
-        this.scriptContent = parsed.reply.trim();
+      const parsed = await res.json();
+
+      if (!res.ok) {
+        throw new Error(parsed?.error || `Error ${res.status}`);
       }
-    } catch (e) {
+
+      if (parsed?.script?.scenes?.length) {
+        const narration = parsed.script.scenes
+          .map((s: { narration: string }) => s.narration)
+          .join('\n\n');
+        this.scriptContent.set(narration);
+      } else {
+        throw new Error('No se generaron escenas');
+      }
+    } catch (e: unknown) {
       console.error('Error generando guion:', e);
-      this.scriptContent = '';
+      const msg = e instanceof Error ? e.message : 'Error generando el guión';
+      this.scriptError.set(msg);
+      this.scriptContent.set('');
     } finally {
       this.generatingScript.set(false);
     }
@@ -342,7 +373,7 @@ REGLAS:
 
   async generateVideo(): Promise<void> {
     const voice = this.selectedVoice();
-    if (!voice || !this.scriptContent.trim()) return;
+    if (!voice || !this.scriptContent().trim()) return;
 
     this.videoError.set(null);
     this.generatingVideo.set(true);
@@ -369,7 +400,7 @@ REGLAS:
           avatar_id: mode === 'avatar' ? this.selectedAvatar()!.avatar_id : undefined,
           talking_photo_id: mode !== 'avatar' ? this.talkingPhotoId() : undefined,
           voice_id: voice.voice_id,
-          script: this.scriptContent,
+          script: this.scriptContent(),
           title: this.videoTopic() || 'Video PubliHazClick',
           dimension: this.getDimension(),
           character_type: mode === 'avatar' ? 'avatar' : 'talking_photo',

@@ -31,15 +31,15 @@ function json(data: unknown, status = 200) {
 interface PlatformConfig {
   name: string;
   format: 'short-form' | 'long-form';
-  duration: number;         // segundos totales del video
+  duration: number;
   min_scenes: number;
   max_scenes: number;
-  hook_seconds: number;     // segundos máx para el hook
-  cta: string;              // CTA sugerida
-  hashtag_count: number;    // cuántos hashtags generar
-  overlay_max_words: number; // palabras máx en text overlay
-  tips: string;             // consejos específicos de la plataforma
-  seo_label: string;        // nombre del campo SEO principal
+  hook_seconds: number;
+  cta: string;
+  hashtag_count: number;
+  overlay_max_words: number;
+  tips: string;
+  seo_label: string;
 }
 
 const PLATFORM_CONFIGS: Record<string, PlatformConfig> = {
@@ -138,8 +138,8 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    if (!profile || !['advertiser', 'admin', 'dev'].includes(profile.role)) {
-      return json({ error: 'No tienes permisos para usar esta función' }, 403);
+    if (!profile) {
+      return json({ error: 'Perfil no encontrado' }, 403);
     }
 
     // ── 2. Parsear body ───────────────────────────────────────────────────
@@ -154,6 +154,7 @@ serve(async (req) => {
       video_type,
       niche,
       monetization,
+      duration: userDuration,
     } = body as {
       description: string;
       tone?: string;
@@ -162,15 +163,33 @@ serve(async (req) => {
       video_type?: string;
       niche?: string;
       monetization?: string;
+      duration?: number;
     };
 
     if (!description || description.trim().length < 10) {
       return json({ error: 'La descripción debe tener al menos 10 caracteres' }, 400);
     }
 
+    const safeDescription = description.trim().replace(/"/g, '\\"');
+
     // ── 3. Resolver config de plataforma ──────────────────────────────────
     const platformKey = platform?.toLowerCase() ?? 'shorts';
-    const cfg = PLATFORM_CONFIGS[platformKey] ?? PLATFORM_CONFIGS['shorts'];
+    const baseCfg = PLATFORM_CONFIGS[platformKey] ?? PLATFORM_CONFIGS['shorts'];
+
+    const finalDuration = userDuration && userDuration > 0 ? userDuration : baseCfg.duration;
+
+    const durationRatio = finalDuration / baseCfg.duration;
+    const minScenes = Math.max(2, Math.round(baseCfg.min_scenes * durationRatio));
+    const maxScenes = Math.max(minScenes + 1, Math.round(baseCfg.max_scenes * durationRatio));
+    const hookSeconds = finalDuration <= 30 ? Math.min(baseCfg.hook_seconds, 2) : baseCfg.hook_seconds;
+
+    const cfg = {
+      ...baseCfg,
+      duration: finalDuration,
+      min_scenes: minScenes,
+      max_scenes: maxScenes,
+      hook_seconds: hookSeconds,
+    };
 
     const toneText = tone || 'profesional';
     const audienceText = audience || 'público general';
@@ -178,107 +197,107 @@ serve(async (req) => {
     const monetizationText = monetization || 'marca personal';
     const videoTypeText = video_type || 'tutorial';
 
-    const isLongForm = cfg.format === 'long-form';
+    const isLongForm = finalDuration >= 180;
 
-    // ── 4. Construir prompt para Gemini ───────────────────────────────────
+    // ── 4. Construir prompt ───────────────────────────────────────────────
 
-    const shortFormPrompt = `Eres un director creativo experto en videos cortos virales para ${cfg.name}.
+    const shortFormPrompt = `Eres un guionista de clase mundial para videos virales de ${cfg.name}.
 
-Genera un guión para un video de ${cfg.name} de exactamente ${cfg.duration} segundos sobre:
-"${description.trim()}"
+Genera un guión PROFESIONAL para un video de ${cfg.name} de exactamente ${cfg.duration} segundos.
+
+TÍTULO DEL VIDEO (usa este título exacto): "${safeDescription}"
 
 CONTEXTO:
 - Plataforma: ${cfg.name}
-- Tipo de video: ${videoTypeText}
-- Nicho: ${nicheText}
-- Monetización: ${monetizationText}
-- Tono: ${toneText}
-- Audiencia: ${audienceText}
+- Duración EXACTA: ${cfg.duration} segundos
+- Tipo: ${videoTypeText} | Nicho: ${nicheText} | Tono: ${toneText} | Audiencia: ${audienceText} | Monetización: ${monetizationText}
+
+ESTRATEGIA DE RETENCIÓN:
+1. HOOK (0-${cfg.hook_seconds}s): Curiosidad extrema. PROHIBIDO "Hola" o "En este video".
+2. DESARROLLO: Micro-ganchos entre escenas. Ritmo dinámico.
+3. CIERRE: Resolución + CTA natural.
 
 REGLAS DE ${cfg.name.toUpperCase()}:
 - ${cfg.tips}
-- El hook debe captar atención en los primeros ${cfg.hook_seconds} segundo(s) — CRÍTICO
-- Genera entre ${cfg.min_scenes} y ${cfg.max_scenes} escenas
-- La suma de duraciones debe ser exactamente ${cfg.duration} segundos
+- Entre ${cfg.min_scenes} y ${cfg.max_scenes} escenas
+- Suma de duration_seconds = EXACTAMENTE ${cfg.duration}s
+- Narración natural en español (2.5 palabras/segundo)
 - Text overlay máximo ${cfg.overlay_max_words} palabras
-- Las descripciones visuales SIEMPRE en inglés (para generación IA)
-- CTA final sugerida: "${cfg.cta}"
+- Descripciones visuales en inglés cinematográfico
+- CTA: "${cfg.cta}"
 
 RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
 {
-  "title": "Título atractivo del video",
-  "hook": "Frase gancho — máximo ${cfg.hook_seconds}s para captar atención",
+  "title": "${safeDescription}",
+  "hook": "frase gancho",
   "scenes": [
     {
       "scene": 1,
       "duration_seconds": 5,
-      "narration": "Texto que se dice en español, natural y fluido",
-      "visual_description": "Cinematic visual description in English for AI image generation",
-      "camera_direction": "Close-up / Wide shot / POV / etc",
-      "text_overlay": "Texto overlay corto"
+      "narration": "texto narración español",
+      "visual_description": "cinematic English description",
+      "camera_direction": "Close-up / Wide shot / POV",
+      "text_overlay": "texto corto"
     }
   ],
   "total_duration": ${cfg.duration},
   "cta": "${cfg.cta}",
-  "music_suggestion": "Tipo de música o sonido trending para ${cfg.name}",
+  "music_suggestion": "género + mood",
   "seo": {
-    "title": "Título optimizado con palabra clave principal",
-    "hashtags": ["hashtag1", "hashtag2"],
-    "description": "Descripción/caption optimizado para ${cfg.name} con CTA"
+    "title": "título SEO",
+    "hashtags": ["tag1", "tag2"],
+    "description": "caption viral"
   }
 }`;
 
-    const longFormPrompt = `Eres un guionista experto en videos de YouTube de larga duración.
+    const durationMinutes = Math.round(cfg.duration / 60);
+    const longFormPrompt = `Eres un guionista profesional de YouTube experto en retención.
 
-Genera un guión detallado para un video de YouTube de ${Math.round(cfg.duration / 60)} minutos sobre:
-"${description.trim()}"
+Genera un guión PROFESIONAL para un video de ${durationMinutes} minuto${durationMinutes > 1 ? 's' : ''} (${cfg.duration} segundos).
+
+TÍTULO DEL VIDEO (usa este título exacto): "${safeDescription}"
 
 CONTEXTO:
-- Tipo de video: ${videoTypeText}
-- Nicho: ${nicheText}
-- Monetización: ${monetizationText}
-- Tono: ${toneText}
-- Audiencia: ${audienceText}
+- Duración EXACTA: ${cfg.duration} segundos
+- Tipo: ${videoTypeText} | Nicho: ${nicheText} | Tono: ${toneText} | Audiencia: ${audienceText} | Monetización: ${monetizationText}
 
-ESTRUCTURA DE YOUTUBE (${Math.round(cfg.duration / 60)} min):
-- Hook (0-${cfg.hook_seconds}s): Promesa de valor y por qué quedarse
-- Intro (15-45s): Quién eres, de qué trata el video
-- Desarrollo: ${cfg.min_scenes}-${cfg.max_scenes} secciones con contenido de valor
-- Cierre: Resumen + CTA múltiple (like + suscribirse + comentar)
+ESTRUCTURA:
+1. HOOK (0-${cfg.hook_seconds}s): Promesa irresistible. NUNCA "Hola, bienvenidos".
+2. INTRO: Contexto + por qué quedarse.
+3. DESARROLLO (${cfg.min_scenes}-${cfg.max_scenes} secciones): Contenido profundo con micro-ganchos.
+4. CIERRE: Resumen + CTA triple.
 - ${cfg.tips}
 
 REGLAS:
-- Genera entre ${cfg.min_scenes} y ${cfg.max_scenes} escenas/secciones
-- La suma de duraciones debe ser ~${cfg.duration} segundos
+- Entre ${cfg.min_scenes} y ${cfg.max_scenes} escenas
+- Suma de duration_seconds = EXACTAMENTE ${cfg.duration}s
+- Narración conversacional en español (2.5 palabras/segundo)
 - Text overlay máximo ${cfg.overlay_max_words} palabras
-- Descripciones visuales SIEMPRE en inglés
+- Descripciones visuales en inglés
 - Incluir capítulos con timestamps
 
 RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
 {
-  "title": "Título con palabra clave + número o promesa",
-  "hook": "Promesa de valor de los primeros ${cfg.hook_seconds} segundos",
+  "title": "${safeDescription}",
+  "hook": "promesa de valor",
   "scenes": [
     {
       "scene": 1,
       "duration_seconds": 15,
-      "narration": "Texto de narración detallado en español",
-      "visual_description": "Detailed cinematic visual description in English",
-      "camera_direction": "Talking head / Screen recording / B-roll / etc",
-      "text_overlay": "Texto overlay o título de capítulo"
+      "narration": "narración español",
+      "visual_description": "English description",
+      "camera_direction": "Talking head / B-roll",
+      "text_overlay": "capítulo"
     }
   ],
   "total_duration": ${cfg.duration},
   "cta": "${cfg.cta}",
-  "music_suggestion": "Música de fondo recomendada para YouTube",
-  "chapters": [
-    { "timestamp": "0:00", "title": "Intro" },
-    { "timestamp": "0:30", "title": "Sección 1" }
-  ],
+  "music_suggestion": "género",
+  "chapters": [{"timestamp": "0:00", "title": "Intro"}],
   "seo": {
-    "title": "Título SEO con keyword principal + atractivo click",
-    "hashtags": ["hashtag1", "keyword2"],
-    "description": "Descripción larga para YouTube con keywords, timestamps y CTA"
+    "title": "título SEO",
+    "hashtags": ["tag1"],
+    "description": "descripción YouTube"
   }
 }`;
 
@@ -286,7 +305,7 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
 
     // ── 5. Llamar a Gemini API ────────────────────────────────────────────
     if (!GEMINI_API_KEY) {
-      return json({ error: 'Servicio de IA no configurado. Contacta al administrador.' }, 503);
+      return json({ error: 'Servicio de IA no configurado.' }, 503);
     }
 
     const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
@@ -305,13 +324,7 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
     if (!geminiRes.ok) {
       const errBody = await geminiRes.text().catch(() => '');
       console.error('Gemini error:', geminiRes.status, errBody);
-      if (geminiRes.status === 400 || geminiRes.status === 403) {
-        return json({ error: 'API Key de Gemini inválida o sin permisos.' }, 502);
-      }
-      if (geminiRes.status === 429) {
-        return json({ error: 'Límite de uso de IA alcanzado. Intenta en unos minutos.' }, 502);
-      }
-      return json({ error: 'Error al generar el guión. Intenta de nuevo.' }, 502);
+      return json({ error: `Error IA (${geminiRes.status}): ${errBody.substring(0, 150)}` }, 502);
     }
 
     const geminiData = await geminiRes.json();
@@ -332,8 +345,8 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
       return json({ error: 'La IA generó una respuesta inválida. Intenta de nuevo.' }, 502);
     }
 
-    if (!script.scenes || !Array.isArray(script.scenes) || script.scenes.length < cfg.min_scenes) {
-      return json({ error: 'El guión generado no tiene suficientes escenas. Intenta de nuevo.' }, 502);
+    if (!script.scenes || !Array.isArray(script.scenes) || script.scenes.length < 2) {
+      return json({ error: 'El guión no tiene suficientes escenas. Intenta de nuevo.' }, 502);
     }
 
     // ── 7. Responder ──────────────────────────────────────────────────────
@@ -343,7 +356,7 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
       platform_config: {
         name: cfg.name,
         format: cfg.format,
-        duration: cfg.duration,
+        duration: finalDuration,
         aspect: platformKey === 'youtube' ? '16:9' : (platformKey === 'facebook' ? '16:9' : '9:16'),
         hashtag_count: cfg.hashtag_count,
         seo_label: cfg.seo_label,

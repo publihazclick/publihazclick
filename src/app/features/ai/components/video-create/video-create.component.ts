@@ -55,6 +55,7 @@ export class VideoCreateComponent implements OnDestroy {
   readonly error = signal<string | null>(null);
   readonly previewVoiceLoading = signal(false);
   readonly generatingTitle = signal(false);
+  readonly suggestedTitles = signal<{ title: string; views: string; channel: string }[]>([]);
 
   // Track highest step reached to allow backwards navigation clicks
   private maxStepIndex = 0;
@@ -161,25 +162,26 @@ export class VideoCreateComponent implements OnDestroy {
 
   // --- Generation ---
   async generateWinnerTitle(): Promise<void> {
-    const platform = this.selectedPlatform();
-    if (!platform || this.topic().trim().length < 10) return;
+    if (this.topic().trim().length < 10) return;
 
     this.generatingTitle.set(true);
+    this.suggestedTitles.set([]);
     this.error.set(null);
 
     try {
-      const title = await this.aiVideoService.generateWinnerTitle(
-        this.topic(),
-        platform,
-        this.selectedDuration()
-      );
-      this.topic.set(title);
+      const titles = await this.aiVideoService.searchViralYouTubeTitles(this.topic());
+      this.suggestedTitles.set(titles);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error generando título';
+      const msg = e instanceof Error ? e.message : 'Error buscando títulos virales';
       this.error.set(msg);
     } finally {
       this.generatingTitle.set(false);
     }
+  }
+
+  selectTitle(t: { title: string }): void {
+    this.topic.set(t.title);
+    this.suggestedTitles.set([]);
   }
 
   async generateScript(): Promise<void> {

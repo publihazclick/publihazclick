@@ -91,6 +91,8 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   readonly selectedAd = signal<PtcAd | null>(null);
   readonly rewardStatus = signal<RewardStatus>('idle');
   readonly rewardDisplayAmount = signal('');
+  readonly rewardErrorMessage = signal<string | null>(null);
+  readonly rewardErrorRetryable = signal(true);
   private pendingRewardAd: PtcAd | null = null;
   private pendingRewardDuration = 0;
   private destroyed = false;
@@ -412,12 +414,33 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
         if (!this.destroyed) this.rewardStatus.set('credited');
       } else {
         console.warn('[PTC] Reward rejected:', result?.error ?? 'unknown reason');
-        if (!this.destroyed) this.rewardStatus.set('failed');
+        if (!this.destroyed) {
+          const errorMsg = result?.error || 'Error desconocido';
+          const isBusinessError = this.isNonRetryableError(errorMsg);
+          this.rewardErrorMessage.set(errorMsg);
+          this.rewardErrorRetryable.set(!isBusinessError);
+          this.rewardStatus.set('failed');
+        }
       }
     } catch (err) {
       console.error('[PTC] creditRewardToDb error:', err);
-      if (!this.destroyed) this.rewardStatus.set('failed');
+      if (!this.destroyed) {
+        this.rewardErrorMessage.set('Error de conexión. Verifica tu internet e intenta de nuevo.');
+        this.rewardErrorRetryable.set(true);
+        this.rewardStatus.set('failed');
+      }
     }
+  }
+
+  private isNonRetryableError(errorMsg: string): boolean {
+    const nonRetryable = [
+      'Ya viste este anuncio hoy',
+      'Límite diario',
+      'no está asignado',
+      'Necesitas afiliados activos',
+      'Anuncio no disponible',
+    ];
+    return nonRetryable.some(keyword => errorMsg.includes(keyword));
   }
 
   formatReward(cop: number): string {

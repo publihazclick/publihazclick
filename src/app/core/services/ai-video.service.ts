@@ -56,6 +56,27 @@ export class AiVideoService {
     return data.reply?.trim() || 'No se pudo generar el título';
   }
 
+  /** Busca los 5 títulos más virales de YouTube sobre un tema */
+  async searchViralYouTubeTitles(
+    topic: string
+  ): Promise<{ title: string; views: string; channel: string }[]> {
+    const { data, error } = await this.supabase.functions.invoke('search-youtube-titles', {
+      body: { topic: topic.trim() },
+    });
+    if (error) throw error;
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    if (parsed?.titles?.length) {
+      return parsed.titles.map(
+        (t: { title: string; viewsFormatted: string; channel: string }) => ({
+          title: t.title,
+          views: t.viewsFormatted,
+          channel: t.channel,
+        })
+      );
+    }
+    return [];
+  }
+
   /** Genera un guión usando la Edge Function generate-reel-script */
   async generateScript(
     topic: string,

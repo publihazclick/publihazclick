@@ -517,15 +517,17 @@
           <span class="material-symbols-outlined text-rose-400" style="font-size:44px">error</span>
         </div>
         <p class="text-white font-black text-lg mb-1">No se pudo acreditar</p>
-        <p class="text-slate-400 text-sm mb-5">Hubo un error al procesar tu recompensa. Puedes intentar de nuevo.</p>
+        <p class="text-slate-400 text-sm mb-5">{{ rewardErrorMessage() || 'Hubo un error al procesar tu recompensa.' }}</p>
         <div class="flex gap-3">
           <button (click)="closeRewardOverlay()" class="flex-1 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl font-bold text-sm transition-all">
-            Cerrar
+            {{ rewardErrorRetryable() ? 'Cerrar' : 'Entendido' }}
           </button>
-          <button (click)="onRetryReward()" class="flex-1 py-3 bg-primary hover:bg-primary/90 text-black rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-base">refresh</span>
-            Reintentar
-          </button>
+          @if (rewardErrorRetryable()) {
+            <button (click)="onRetryReward()" class="flex-1 py-3 bg-primary hover:bg-primary/90 text-black rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-base">refresh</span>
+              Reintentar
+            </button>
+          }
         </div>
       </div>
     </div>
