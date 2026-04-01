@@ -82,9 +82,10 @@ export class RegisterComponent implements OnInit {
   returnUrl: string = '/dashboard';
 
   ngOnInit(): void {
-    // Obtener código de referido de la URL (puede venir como parámetro de ruta o query param)
+    // Obtener código de referido de la URL, query param o localStorage
     this.referralCode = this.route.snapshot.params['code'] ||
-                       this.route.snapshot.queryParams['ref'] || '';
+                       this.route.snapshot.queryParams['ref'] ||
+                       (typeof localStorage !== 'undefined' ? localStorage.getItem('phc_referral_code') : '') || '';
 
     if (this.referralCode) {
       // Validar el código de referido que viene de la URL

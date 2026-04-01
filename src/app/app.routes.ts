@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { Routes, Router } from '@angular/router';
+import { inject } from '@angular/core';
 import { adminGuard } from './core/guards/admin.guard';
 import { socialGuard } from './core/guards/social.guard';
 import { aiGuard } from './core/guards/ai.guard';
@@ -20,11 +21,19 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent),
     canActivate: [guestGuard]
   },
-  // Ruta corta de referido /ref/:code - solo para usuarios NO autenticados
+  // Ruta corta de referido /ref/:code - guarda el código y redirige a la landing
   {
     path: 'ref/:code',
-    loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent),
-    canActivate: [guestGuard]
+    canActivate: [
+      (route: any) => {
+        const code = route.params['code'];
+        if (code && typeof localStorage !== 'undefined') {
+          localStorage.setItem('phc_referral_code', code);
+        }
+        return inject(Router).createUrlTree(['/']);
+      }
+    ],
+    children: []
   },
   // Rutas de admin
   {

@@ -89,13 +89,13 @@ export class ReferralLinkComponent implements OnInit {
         const defaultCode = 'adm00001';
         this.referralCode.set(defaultCode);
         const origin = window.location.origin;
-        this.referralLink.set(origin + '/register?ref=' + defaultCode);
+        this.referralLink.set(origin + '/ref/' + defaultCode);
       }
     } catch {
       const defaultCode = 'adm00001';
       this.referralCode.set(defaultCode);
       const origin = window.location.origin;
-      this.referralLink.set(origin + '/register?ref=' + defaultCode);
+      this.referralLink.set(origin + '/ref/' + defaultCode);
     }
   }
 
