@@ -9,6 +9,18 @@
   } @else if (isLandingRoute()) {
     <!-- Mostrar contenido principal de la landing page -->
     <app-banner-slider location="landing" />
+
+    <!-- Texto debajo del banner -->
+    <div class="bg-black py-3 text-center">
+      <div class="inline-flex items-center gap-2 px-4">
+        <span class="material-symbols-outlined text-amber-400 animate-bounce" style="font-size:20px">arrow_upward</span>
+        <p class="text-xs sm:text-sm font-bold text-slate-300">
+          Al activar tu cuenta tienes derecho a <span class="text-amber-400 font-black">anunciarte aquí</span>
+        </p>
+        <span class="material-symbols-outlined text-amber-400 animate-bounce" style="font-size:20px">arrow_upward</span>
+      </div>
+    </div>
+
     <app-hero />
     <app-cursos-landing />
     <app-video-section />
