@@ -42,21 +42,21 @@
 
       <!-- Estadísticas rápidas -->
       @if (stats(); as s) {
-        <div class="flex flex-wrap gap-3">
-          <div class="bg-white border border-gray-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
-            <span class="material-symbols-rounded text-cyan-500 text-lg">contacts</span>
+        <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
+          <div class="bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-2 flex items-center gap-2 shadow-sm">
+            <span class="material-symbols-rounded text-cyan-500 text-base sm:text-lg">contacts</span>
             <div class="text-xs"><span class="font-bold text-gray-900">{{ s.total_contacts }}</span> <span class="text-gray-400">contactos</span></div>
           </div>
-          <div class="bg-white border border-gray-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
-            <span class="material-symbols-rounded text-violet-500 text-lg">campaign</span>
+          <div class="bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-2 flex items-center gap-2 shadow-sm">
+            <span class="material-symbols-rounded text-violet-500 text-base sm:text-lg">campaign</span>
             <div class="text-xs"><span class="font-bold text-gray-900">{{ s.total_campaigns }}</span> <span class="text-gray-400">campañas</span></div>
           </div>
-          <div class="bg-white border border-gray-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
-            <span class="material-symbols-rounded text-emerald-500 text-lg">verified</span>
+          <div class="bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-2 flex items-center gap-2 shadow-sm">
+            <span class="material-symbols-rounded text-emerald-500 text-base sm:text-lg">verified</span>
             <div class="text-xs"><span class="font-bold text-gray-900">{{ s.delivered_rate | number:'1.1-1' }}%</span> <span class="text-gray-400">entrega</span></div>
           </div>
-          <div class="bg-white border border-gray-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
-            <span class="material-symbols-rounded text-amber-500 text-lg">payments</span>
+          <div class="bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-2 flex items-center gap-2 shadow-sm">
+            <span class="material-symbols-rounded text-amber-500 text-base sm:text-lg">payments</span>
             <div class="text-xs"><span class="font-bold text-gray-900">${{ s.total_cost | number:'1.2-2' }}</span> <span class="text-gray-400">costo</span></div>
           </div>
         </div>
@@ -198,22 +198,23 @@
           } @else {
             <div class="space-y-2">
               @for (c of recentCampaigns(); track c.id) {
-                <div class="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 hover:bg-gray-100 transition-colors">
-                  <div class="flex items-center gap-3 min-w-0">
-                    <span class="material-symbols-rounded text-gray-300">mail</span>
-                    <div class="min-w-0">
+                <div class="bg-gray-50 rounded-xl px-4 py-3 hover:bg-gray-100 transition-colors">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <span class="material-symbols-rounded text-gray-300 shrink-0">mail</span>
                       <p class="font-semibold text-sm text-gray-900 truncate">{{ c.name }}</p>
-                      <p class="text-gray-400 text-xs">{{ c.created_at | date:'dd/MM/yyyy HH:mm' }}</p>
                     </div>
-                  </div>
-                  <div class="flex items-center gap-3 shrink-0">
-                    <span class="text-xs text-gray-400">{{ c.total_recipients }} dest.</span>
                     <span
-                      class="text-xs font-bold rounded-full px-2.5 py-0.5 border"
+                      class="text-[10px] sm:text-xs font-bold rounded-full px-2 py-0.5 border shrink-0"
                       [class]="getStatusColor(c.status)"
                       [class.animate-pulse]="c.status === 'sending'">
                       {{ getStatusLabel(c.status) }}
                     </span>
+                  </div>
+                  <div class="flex items-center gap-3 mt-1 ml-9">
+                    <span class="text-xs text-gray-400">{{ c.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+                    <span class="text-xs text-gray-400">·</span>
+                    <span class="text-xs text-gray-400">{{ c.total_recipients }} destinatarios</span>
                   </div>
                 </div>
               }
@@ -473,14 +474,12 @@
                 placeholder="Escribe tu mensaje aquí..."
                 class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none transition-all text-sm resize-none"></textarea>
               <!-- Contador de caracteres -->
-              <div class="flex items-center justify-between mt-2 text-xs text-gray-400">
-                <div class="flex items-center gap-2">
-                  <span>{{ smsInfo().chars }}/{{ smsInfo().maxPerSegment }} caracteres</span>
-                  <span class="text-gray-300">·</span>
-                  <span class="font-semibold" [class.text-amber-500]="smsInfo().segments > 1">{{ smsInfo().segments }} segmento(s)</span>
-                  <span class="text-gray-300">·</span>
-                  <span class="font-mono">{{ smsInfo().encoding }}</span>
-                </div>
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-xs text-gray-400">
+                <span>{{ smsInfo().chars }}/{{ smsInfo().maxPerSegment }} caracteres</span>
+                <span class="text-gray-300 hidden sm:inline">·</span>
+                <span class="font-semibold" [class.text-amber-500]="smsInfo().segments > 1">{{ smsInfo().segments }} segmento(s)</span>
+                <span class="text-gray-300 hidden sm:inline">·</span>
+                <span class="font-mono">{{ smsInfo().encoding }}</span>
                 @if (smsInfo().segments > 1) {
                   <span class="text-amber-500 flex items-center gap-1">
                     <span class="material-symbols-rounded text-xs">warning</span>
@@ -617,44 +616,40 @@
         } @else {
           <div class="space-y-3">
             @for (c of campaigns(); track c.id) {
-              <div class="bg-white border border-gray-200 rounded-2xl p-5 hover:bg-gray-50 transition-colors shadow-sm">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-3 mb-1">
-                      <h4 class="font-bold text-sm text-gray-900 truncate">{{ c.name }}</h4>
-                      <span
-                        class="text-xs font-bold rounded-full px-2.5 py-0.5 border shrink-0"
-                        [class]="getStatusColor(c.status)"
-                        [class.animate-pulse]="c.status === 'sending'">
-                        {{ getStatusLabel(c.status) }}
-                      </span>
-                    </div>
-                    <p class="text-gray-400 text-xs">{{ c.created_at | date:'dd MMM yyyy, HH:mm' }}</p>
-                  </div>
+              <div class="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 hover:bg-gray-50 transition-colors shadow-sm">
+                <!-- Nombre y estado -->
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                  <h4 class="font-bold text-sm text-gray-900 truncate">{{ c.name }}</h4>
+                  <span
+                    class="text-[10px] sm:text-xs font-bold rounded-full px-2 py-0.5 border shrink-0"
+                    [class]="getStatusColor(c.status)"
+                    [class.animate-pulse]="c.status === 'sending'">
+                    {{ getStatusLabel(c.status) }}
+                  </span>
+                </div>
+                <p class="text-gray-400 text-xs mb-3">{{ c.created_at | date:'dd MMM yyyy, HH:mm' }}</p>
 
-                  <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-4 text-xs">
-                      <div class="text-center">
-                        <p class="text-gray-400">Dest.</p>
-                        <p class="font-bold text-gray-900">{{ c.total_recipients }}</p>
-                      </div>
-                      <div class="text-center">
-                        <p class="text-gray-400">Enviados</p>
-                        <p class="font-bold text-blue-500">{{ c.sent_count }}</p>
-                      </div>
-                      <div class="text-center">
-                        <p class="text-gray-400">Entregados</p>
-                        <p class="font-bold text-emerald-500">{{ c.delivered_count }}</p>
-                      </div>
-                      <div class="text-center">
-                        <p class="text-gray-400">Fallidos</p>
-                        <p class="font-bold text-red-500">{{ c.failed_count }}</p>
-                      </div>
-                    </div>
-                    <div class="text-right pl-4 border-l border-gray-200">
-                      <p class="text-xs text-gray-400">Costo</p>
-                      <p class="font-bold text-sm text-amber-600">${{ c.total_cost | number:'1.2-2' }}</p>
-                    </div>
+                <!-- Estadísticas en grid responsive -->
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 text-xs">
+                  <div class="bg-gray-50 rounded-lg p-2 text-center">
+                    <p class="text-gray-400 text-[10px]">Destinatarios</p>
+                    <p class="font-bold text-gray-900">{{ c.total_recipients }}</p>
+                  </div>
+                  <div class="bg-gray-50 rounded-lg p-2 text-center">
+                    <p class="text-gray-400 text-[10px]">Enviados</p>
+                    <p class="font-bold text-blue-500">{{ c.sent_count }}</p>
+                  </div>
+                  <div class="bg-gray-50 rounded-lg p-2 text-center">
+                    <p class="text-gray-400 text-[10px]">Entregados</p>
+                    <p class="font-bold text-emerald-500">{{ c.delivered_count }}</p>
+                  </div>
+                  <div class="bg-gray-50 rounded-lg p-2 text-center">
+                    <p class="text-gray-400 text-[10px]">Fallidos</p>
+                    <p class="font-bold text-red-500">{{ c.failed_count }}</p>
+                  </div>
+                  <div class="bg-amber-50 rounded-lg p-2 text-center">
+                    <p class="text-gray-400 text-[10px]">Costo</p>
+                    <p class="font-bold text-amber-600">${{ c.total_cost | number:'1.2-2' }}</p>
                   </div>
                 </div>
 

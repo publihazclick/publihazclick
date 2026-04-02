@@ -427,12 +427,12 @@ export class SmsMasivosComponent implements OnInit {
 
   getStatusColor(status: string): string {
     const map: Record<string, string> = {
-      draft: 'bg-gray-500/20 border-gray-500/30 text-gray-400',
-      scheduled: 'bg-amber-500/20 border-amber-500/30 text-amber-400',
-      sending: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
-      completed: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400',
-      failed: 'bg-red-500/20 border-red-500/30 text-red-400',
-      cancelled: 'bg-slate-500/20 border-slate-500/30 text-slate-400',
+      draft: 'bg-gray-100 border-gray-200 text-gray-500',
+      scheduled: 'bg-amber-50 border-amber-200 text-amber-600',
+      sending: 'bg-blue-50 border-blue-200 text-blue-600',
+      completed: 'bg-emerald-50 border-emerald-200 text-emerald-600',
+      failed: 'bg-red-50 border-red-200 text-red-600',
+      cancelled: 'bg-gray-100 border-gray-200 text-gray-500',
     };
     return map[status] ?? map['draft'];
   }
