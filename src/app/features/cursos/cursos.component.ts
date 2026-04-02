@@ -13,75 +13,8 @@ import { ProfileService } from '../../core/services/profile.service';
       <!-- Top bar -->
       <div class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 -mx-4 lg:-mx-8 px-4 lg:px-8 mb-6 shadow-sm">
         <div class="flex items-center justify-between py-2">
-          <!-- Desktop: tabs visibles -->
-          <nav class="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-hide">
-            <a routerLink="gratis" routerLinkActive="bg-emerald-50 text-emerald-600 border-emerald-200"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">auto_stories</span>
-              Cursos Gratis
-            </a>
-            <a routerLink="explorar" routerLinkActive="bg-sky-50 text-sky-600 border-sky-200"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">explore</span>
-              Explorar
-            </a>
-            <a routerLink="mis-cursos" routerLinkActive="bg-sky-50 text-sky-600 border-sky-200"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">play_circle</span>
-              Mis Cursos
-            </a>
-            <a routerLink="vender" routerLinkActive="bg-sky-50 text-sky-600 border-sky-200"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">upload</span>
-              Vender Curso
-            </a>
-            <a routerLink="ganancias" routerLinkActive="bg-sky-50 text-sky-600 border-sky-200"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">trending_up</span>
-              Ganancias
-            </a>
-            <button (click)="referralModal.set(true)"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-amber-600 hover:bg-amber-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">card_giftcard</span>
-              Recomienda y Gana
-            </button>
-            <a routerLink="landing" routerLinkActive="bg-violet-50 text-violet-600 border-violet-200"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-violet-600 hover:bg-violet-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">web</span>
-              Landing Cursos
-            </a>
-            <a routerLink="pagos" routerLinkActive="bg-sky-50 text-sky-600 border-sky-200"
-               class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-              <span class="material-symbols-outlined" style="font-size:16px">payments</span>
-              Configuración de Pagos
-            </a>
-            @if (isAdmin()) {
-              <a routerLink="admin" routerLinkActive="bg-sky-50 text-sky-600 border-sky-200"
-                 class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 border border-transparent transition-all whitespace-nowrap flex-shrink-0">
-                <span class="material-symbols-outlined" style="font-size:16px">admin_panel_settings</span>
-                Admin
-              </a>
-            }
-          </nav>
-
-          <!-- User name + Wallet (desktop) -->
-          <div class="hidden md:flex items-center gap-3" [class.!hidden]="isLanding()">
-            <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-              <span class="material-symbols-outlined text-sky-500" style="font-size:24px">waving_hand</span>
-              <span class="text-base font-black text-gray-800 truncate max-w-[220px]">Hola, {{ profile()?.full_name || profile()?.username || 'Usuario' }}</span>
-            </div>
-            <button (click)="walletModal.set(true)"
-                    class="flex items-center gap-3 px-5 py-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl transition-all cursor-pointer shadow-sm">
-              <span class="material-symbols-outlined text-emerald-500" style="font-size:24px">account_balance_wallet</span>
-              <div class="text-left">
-                <p class="text-[10px] text-emerald-500 font-semibold leading-none">Saldo</p>
-                <p class="text-lg font-black text-emerald-600 leading-tight">$0</p>
-              </div>
-            </button>
-          </div>
-
-          <!-- Mobile: hamburger + wallet -->
-          <div class="flex md:hidden flex-col w-full gap-2">
+          <!-- Hamburger + titulo + wallet (todas las resoluciones) -->
+          <div class="flex flex-col w-full gap-2">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <button (click)="menuOpen.set(!menuOpen())"
@@ -91,6 +24,8 @@ import { ProfileService } from '../../core/services/profile.service';
                   </span>
                 </button>
                 <span class="text-sm font-bold text-gray-700">Cursos</span>
+                <!-- Desktop: nombre del usuario -->
+                <span class="hidden md:inline text-sm font-black text-gray-800 ml-2">· Hola, {{ profile()?.full_name || profile()?.username || 'Usuario' }}</span>
               </div>
               @if (!isLanding()) {
                 <button (click)="walletModal.set(true)"
@@ -104,16 +39,16 @@ import { ProfileService } from '../../core/services/profile.service';
               }
             </div>
             @if (!isLanding()) {
-              <p class="text-sm font-black text-gray-800 text-center truncate">Hola, {{ profile()?.full_name || profile()?.username || '' }}</p>
+              <p class="text-sm font-black text-gray-800 text-center truncate md:hidden">Hola, {{ profile()?.full_name || profile()?.username || '' }}</p>
             }
           </div>
         </div>
       </div>
 
-      <!-- Mobile menu overlay -->
+      <!-- Menu sidebar overlay (todas las resoluciones) -->
       @if (menuOpen()) {
-        <div class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden" (click)="menuOpen.set(false)"></div>
-        <div class="fixed top-0 left-0 z-50 w-72 h-full bg-white shadow-2xl md:hidden animate-slide-in">
+        <div class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" (click)="menuOpen.set(false)"></div>
+        <div class="fixed top-0 left-0 z-50 w-72 h-full bg-white shadow-2xl animate-slide-in">
           <!-- Menu header -->
           <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <span class="text-base font-black text-gray-800">Cursos</span>
