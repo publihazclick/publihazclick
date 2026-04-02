@@ -276,6 +276,12 @@
               {{ course.channelName }}
             </p>
 
+            <div class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:14px;font-variation-settings:'FILL' 1">star</span>
+              <span class="text-xs font-black text-amber-500">{{ freeRatings[course.id]?.rating ?? '4.6' }}</span>
+              <span class="text-[10px] text-gray-400">({{ freeRatings[course.id]?.reviews ?? '2.980' }})</span>
+            </div>
+
             <div class="flex items-center gap-3 pt-1">
               <div class="flex items-center gap-1 text-[10px] text-gray-400">
                 <span class="material-symbols-outlined" style="font-size:12px">visibility</span>

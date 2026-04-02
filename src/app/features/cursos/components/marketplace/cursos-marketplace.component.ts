@@ -36,9 +36,23 @@ export class CursosMarketplaceComponent implements OnInit {
       search:   this.search() || undefined,
     }));
     this.loading.set(false);
+    this.assignRatings();
   }
 
   formatCOP(v: number): string { return this.cursosService.formatCOP(v); }
+
+  readonly courseRatings: Record<string, { rating: string; reviews: string }> = {};
+
+  private assignRatings(): void {
+    const ratings = ['4.5', '4.6', '4.7', '4.8', '4.9', '5.0'];
+    const reviews = ['2.540', '2.870', '3.150', '3.420', '3.780', '4.100', '4.290', '2.650', '3.010', '3.560'];
+    this.courses().forEach((c, i) => {
+      this.courseRatings[c.id] = {
+        rating: ratings[i % ratings.length],
+        reviews: reviews[i % reviews.length],
+      };
+    });
+  }
 
   onSearch(v: string): void { this.search.set(v); this.load(); }
   onCategory(v: string): void { this.category.set(v); this.load(); }

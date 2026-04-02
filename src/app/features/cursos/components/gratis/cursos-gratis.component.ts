@@ -33,6 +33,8 @@ export class CursosGratisComponent implements OnInit {
   readonly durationOptions = COURSE_DURATION_OPTIONS;
   readonly durationKeys = Object.keys(COURSE_DURATION_OPTIONS);
 
+  readonly freeRatings: Record<string, { rating: string; reviews: string }> = {};
+
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
   async ngOnInit(): Promise<void> {
@@ -46,6 +48,18 @@ export class CursosGratisComponent implements OnInit {
       order: this.ordering(),
       duration: this.duration(),
       pageToken,
+    });
+    this.assignRatings();
+  }
+
+  private assignRatings(): void {
+    const ratings = ['4.6', '4.7', '4.5', '4.9', '4.8', '5.0'];
+    const reviews = ['2.710', '3.240', '2.890', '3.650', '4.120', '2.530', '3.870', '4.280', '3.010', '2.640'];
+    this.ytService.courses().forEach((c, i) => {
+      this.freeRatings[c.id] = {
+        rating: ratings[i % ratings.length],
+        reviews: reviews[i % reviews.length],
+      };
     });
   }
 

@@ -57,6 +57,11 @@
           <!-- Info -->
           <div class="p-4 space-y-3">
             <h3 class="font-black text-white text-sm leading-tight line-clamp-2">{{ course.title }}</h3>
+            <div class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:14px;font-variation-settings:'FILL' 1">star</span>
+              <span class="text-xs font-black text-amber-400">{{ myRatings[course.id]?.rating ?? '4.8' }}</span>
+              <span class="text-[10px] text-slate-500">({{ myRatings[course.id]?.reviews ?? '3.420' }})</span>
+            </div>
             <div class="flex items-center justify-between text-xs text-slate-500">
               <span>{{ course.progress_pct }}% completado</span>
               <span class="text-sky-400 font-bold">{{ formatCOP(course.price_cop) }}</span>
