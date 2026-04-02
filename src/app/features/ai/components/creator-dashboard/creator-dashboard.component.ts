@@ -55,7 +55,7 @@ export class CreatorDashboardComponent implements OnInit {
     { icon: 'mic', label: 'Voz IA', route: '', soon: true },
     { icon: 'music_note', label: 'Música IA', route: '', soon: true },
     { icon: 'storefront', label: 'Marketplace', route: '', soon: true },
-    { icon: 'account_balance_wallet', label: 'Billetera IA', route: '/advertiser/ai/wallet' },
+    { icon: 'account_balance_wallet', label: 'Billetera recargable', route: '/advertiser/ai/wallet' },
     { icon: 'credit_card', label: 'Ver Paquetes', route: '/advertiser/packages' },
   ];
 
