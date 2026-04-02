@@ -50,6 +50,14 @@ interface TradingPackage {
         </p>
       </div>
 
+      <!-- Wallet button -->
+      <button
+        (click)="showWallet.set(true)"
+        class="mb-6 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black text-sm hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all">
+        <span class="material-symbols-outlined" style="font-size:20px">account_balance_wallet</span>
+        Billetera
+      </button>
+
       <!-- Feature pills -->
       <div class="flex flex-wrap justify-center gap-2 mb-8">
         <span class="px-3 py-1 text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center gap-1">
@@ -131,6 +139,86 @@ interface TradingPackage {
         [packagePrice]="demoPackage.price"
         [monthlyReturn]="demoPackage.monthlyReturn"
         (closed)="showDemo = false; demoPackage = null" />
+    }
+
+    <!-- ═══════════════════════════════════════════════════════
+         MODAL BILLETERA
+    ═══════════════════════════════════════════════════════ -->
+    @if (showWallet()) {
+      <div
+        class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        (click)="showWallet.set(false)">
+
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+
+        <div
+          class="relative z-10 w-full max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl shadow-black/60 mx-auto max-h-[92vh] overflow-y-auto"
+          (click)="$event.stopPropagation()">
+
+          <!-- Header -->
+          <div class="bg-gradient-to-br from-[#0a0a0a] via-[#111827] to-[#0a0a0a] border border-emerald-500/20 px-5 sm:px-6 pt-5 pb-4">
+            <button
+              (click)="showWallet.set(false)"
+              class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all z-10">
+              <span class="material-symbols-outlined" style="font-size:16px">close</span>
+            </button>
+
+            <div class="flex items-center gap-3 mb-2 pr-8">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:22px">account_balance_wallet</span>
+              </div>
+              <div>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Trading Bot AI</p>
+                <h3 class="text-white font-black text-lg leading-tight">Billetera</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="bg-[#0d0d0d] border-x border-emerald-500/10 px-5 sm:px-6 py-5 space-y-5">
+
+            <div class="flex items-start gap-3">
+              <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">info</span>
+              </div>
+              <p class="text-slate-300 text-sm leading-relaxed">
+                Aquí verás reflejadas tus ganancias, las cuales podrás retirar cada vez que alguno de tus invitados adquiera un paquete de servicio en nuestro
+                <span class="text-emerald-400 font-semibold">Bot de Trading Automático</span>, el cual funciona con
+                <span class="text-cyan-400 font-semibold">inteligencia artificial las 24 horas del día</span> y genera una rentabilidad que va desde el
+                <span class="text-emerald-400 font-bold">2.5%</span> hasta el
+                <span class="text-emerald-400 font-bold">30% mensual</span> sobre el valor del paquete de trading adquirido.
+              </p>
+            </div>
+
+            <div class="border-t border-emerald-500/10 pt-4">
+              <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">payments</span>
+                </div>
+                <p class="text-slate-300 text-sm leading-relaxed">
+                  Tú recibes <span class="text-cyan-400 font-bold">mes a mes el 1%</span> sobre el valor del paquete de trading que haya adquirido tu invitado, siempre y cuando tu invitado tenga dicho paquete de servicio activo.
+                </p>
+              </div>
+            </div>
+
+            <!-- Balance -->
+            <div class="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-center">
+              <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Balance disponible</p>
+              <p class="text-3xl font-black text-emerald-400">$0.00</p>
+              <p class="text-xs text-slate-600 mt-1">USD</p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="bg-[#0d0d0d] border border-emerald-500/10 rounded-b-2xl px-5 sm:px-6 pb-5 pt-2">
+            <button
+              (click)="showWallet.set(false)"
+              class="w-full py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black text-sm hover:bg-emerald-500/20 transition-all">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
     }
 
     <!-- ═══════════════════════════════════════════════════════
@@ -276,6 +364,7 @@ export class TradingBotComponent {
   showDemo = false;
   demoPackage: TradingPackage | null = null;
   readonly selectedPackage = signal<TradingPackage | null>(null);
+  readonly showWallet = signal(false);
 
   openPaymentModal(pkg: TradingPackage): void {
     this.selectedPackage.set(pkg);

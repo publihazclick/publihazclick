@@ -175,14 +175,6 @@
               }
             </a>
           </li>
-          <li>
-            <a routerLink="/dashboard/trading-wallet" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-emerald-500/5 text-slate-400 hover:text-emerald-300 transition-all border border-transparent"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined text-emerald-400">account_balance_wallet</span>
-              @if (!sidebarCollapsed()) { <span>Billetera Trading</span> }
-            </a>
-          </li>
           @for (tp of activeTrading(); track tp.id) {
             <li>
               <a [routerLink]="['/dashboard/trading-operation', tp.id]"
