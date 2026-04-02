@@ -11,6 +11,7 @@ import { isPlatformBrowser, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SmsService, calculateSmsSegments } from '../../../../core/services/sms.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { environment } from '../../../../../environments/environment';
 import type {
   SmsContact,
   SmsCampaign,
@@ -81,6 +82,25 @@ export class SmsMasivosComponent implements OnInit {
 
   // ── Confirm modal ──────────────────────────────────────────
   readonly showConfirmModal = signal(false);
+
+  // ── Billetera modals ───────────────────────────────────────
+  readonly showRecargaModal = signal(false);
+  readonly showRetiroModal = signal(false);
+  readonly selectedRecharge = signal<number | null>(null);
+  readonly rechargeLoading = signal(false);
+  readonly rechargeError = signal<string | null>(null);
+
+  readonly smsRechargeOptions = [
+    { usd: 10,    cop: 10 * 3_700 },
+    { usd: 20,    cop: 20 * 3_700 },
+    { usd: 50,    cop: 50 * 3_700 },
+    { usd: 150,   cop: 150 * 3_700 },
+    { usd: 250,   cop: 250 * 3_700 },
+    { usd: 500,   cop: 500 * 3_700 },
+    { usd: 1_000, cop: 1_000 * 3_700 },
+    { usd: 1_500, cop: 1_500 * 3_700 },
+    { usd: 2_000, cop: 2_000 * 3_700 },
+  ];
 
   // ── Operation state ─────────────────────────────────────────
   readonly sending = signal(false);
@@ -412,6 +432,83 @@ export class SmsMasivosComponent implements OnInit {
     } finally {
       this.sending.set(false);
     }
+  }
+
+  // ── Billetera Recargable (ePayco) ────────────────────────────
+
+  selectRecharge(usd: number): void {
+    this.selectedRecharge.set(usd);
+  }
+
+  async startSmsRecharge(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const opt = this.smsRechargeOptions.find(o => o.usd === this.selectedRecharge());
+    if (!opt) return;
+
+    this.rechargeError.set(null);
+    this.rechargeLoading.set(true);
+
+    try {
+      const supabase = (await import('../../../../core/supabase.client')).getSupabaseClient();
+      const { data, error } = await supabase.functions.invoke('create-sms-wallet-recharge', {
+        body: { amount: opt.cop },
+      });
+
+      if (error || !data?.invoice) {
+        throw new Error(data?.error ?? 'Error al preparar pago con ePayco');
+      }
+
+      await this.loadEpaycoScript();
+
+      const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
+        checkout: { configure: (cfg: unknown) => { open: (params: unknown) => void } };
+      };
+
+      const handler = epayco.checkout.configure({
+        key: data.publicKey,
+        test: data.test,
+      });
+
+      handler.open({
+        name:          data.name,
+        description:   data.description,
+        invoice:       data.invoice,
+        currency:      data.currency,
+        amount:        data.amount,
+        tax_base:      data.tax_base,
+        tax:           data.tax,
+        country:       data.country,
+        lang:          data.lang,
+        external:      'false',
+        confirmation:  data.confirmation,
+        response:      `${window.location.origin}/dashboard/sms-masivos?epayco=result`,
+        email_billing: data.email_billing,
+        name_billing:  data.name_billing,
+        extra1:        data.extra1,
+        extra2:        data.extra2,
+        extra3:        data.extra3,
+      });
+
+      this.showRecargaModal.set(false);
+    } catch (e: unknown) {
+      this.rechargeError.set(e instanceof Error ? e.message : 'Error al iniciar pago');
+    } finally {
+      this.rechargeLoading.set(false);
+    }
+  }
+
+  private loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as unknown as Record<string, unknown>)['ePayco']) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.epayco.co/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar ePayco'));
+      document.head.appendChild(script);
+    });
   }
 
   // ── Excel upload ────────────────────────────────────────────

@@ -288,7 +288,7 @@
       </div>
 
       <!-- ── Divisa ── -->
-      <div class="relative hidden sm:block">
+      <div class="relative hidden sm:block" [class.!hidden]="isSmsRoute()">
         <button
           (click)="toggleCurrencyMenuAndClose()"
           class="hidden sm:flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl px-3 py-2 transition-all"
@@ -320,7 +320,7 @@
       </div>
 
       <!-- ── Billetera ── -->
-      @if (!isAndaGanaRoute()) {
+      @if (!isAndaGanaRoute() && !isSmsRoute()) {
         <a routerLink="/dashboard/wallet"
            class="hidden sm:flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all">
           <div class="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -415,7 +415,7 @@
 
             <!-- Stats -->
             <div class="px-4 py-3 border-b border-white/5 space-y-2">
-              @if (!isAndaGanaRoute()) {
+              @if (!isAndaGanaRoute() && !isSmsRoute()) {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
@@ -433,7 +433,7 @@
                 </div>
                 <span class="text-xs font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</span>
               </div>
-              @if (!isAndaGanaRoute()) {
+              @if (!isAndaGanaRoute() && !isSmsRoute()) {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-accent" style="font-size:14px">volunteer_activism</span>
@@ -488,7 +488,7 @@
     </div>
 
     <!-- Barra móvil: Divisas · Billetera · Donaciones (solo mobile) -->
-    <div class="sm:hidden flex items-center gap-2 px-4 py-2 border-t border-white/5">
+    <div class="sm:hidden flex items-center gap-2 px-4 py-2 border-t border-white/5" [class.!hidden]="isSmsRoute()">
       <!-- Convertidor de Divisas -->
       <div class="relative flex-1">
         <button

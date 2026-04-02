@@ -114,26 +114,28 @@
       <!-- Billeteras -->
       <div class="flex flex-wrap gap-3">
         <!-- Billetera Recargable -->
-        <div class="flex items-center gap-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-3 shadow-lg shadow-violet-200">
+        <button (click)="showRecargaModal.set(true)"
+          class="flex items-center gap-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-3 shadow-lg shadow-violet-200 hover:shadow-violet-300 hover:scale-[1.02] transition-all cursor-pointer">
           <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
             <span class="material-symbols-outlined text-white text-2xl">account_balance_wallet</span>
           </div>
-          <div>
+          <div class="text-left">
             <p class="text-[10px] text-white/70 font-bold uppercase tracking-wider">Billetera Recargable</p>
             <p class="text-xl font-black text-white">$0.00 <span class="text-xs font-bold text-white/60">USD</span></p>
           </div>
-        </div>
+        </button>
 
         <!-- Billetera de Retiro -->
-        <div class="flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl px-5 py-3 shadow-lg shadow-emerald-200">
+        <button (click)="showRetiroModal.set(true)"
+          class="flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl px-5 py-3 shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.02] transition-all cursor-pointer">
           <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
             <span class="material-symbols-outlined text-white text-2xl">savings</span>
           </div>
-          <div>
+          <div class="text-left">
             <p class="text-[10px] text-white/70 font-bold uppercase tracking-wider">Billetera de Retiro</p>
             <p class="text-xl font-black text-white">$0.00 <span class="text-xs font-bold text-white/60">USD</span></p>
           </div>
-        </div>
+        </button>
       </div>
 
       <!-- Estadísticas rápidas -->
@@ -1123,6 +1125,156 @@
             class="bg-violet-500 hover:bg-violet-600 disabled:bg-violet-200 disabled:text-violet-400 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors shadow-lg shadow-violet-200 disabled:shadow-none flex items-center gap-2">
             <span class="material-symbols-outlined text-lg">upload</span>
             Importar {{ getImportLineCount() }} contactos
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       MODAL BILLETERA RECARGABLE (ePayco)
+       ══════════════════════════════════════════════════════════════════ -->
+  @if (showRecargaModal()) {
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+         (click)="showRecargaModal.set(false)">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative bg-white border border-gray-200 rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+           (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-5 rounded-t-2xl sm:rounded-t-2xl">
+          <button (click)="showRecargaModal.set(false)"
+            class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+            <span class="material-symbols-outlined" style="font-size:18px">close</span>
+          </button>
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-white text-2xl">account_balance_wallet</span>
+            </div>
+            <div>
+              <p class="text-white/70 text-xs font-bold uppercase tracking-wider">Billetera Recargable</p>
+              <p class="text-2xl font-black text-white">$0.00 <span class="text-sm text-white/60">USD</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paquetes de recarga -->
+        <div class="p-5 space-y-4">
+          <p class="text-gray-500 text-sm">Selecciona el monto que deseas recargar:</p>
+
+          <div class="grid grid-cols-3 gap-2">
+            @for (opt of smsRechargeOptions; track opt.usd) {
+              <button (click)="selectRecharge(opt.usd)"
+                class="relative rounded-xl border-2 p-3 text-center transition-all hover:shadow-md"
+                [class]="selectedRecharge() === opt.usd
+                  ? 'border-violet-500 bg-violet-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-violet-200'">
+                @if (selectedRecharge() === opt.usd) {
+                  <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white" style="font-size:12px">check</span>
+                  </span>
+                }
+                <p class="text-lg font-black"
+                   [class]="selectedRecharge() === opt.usd ? 'text-violet-700' : 'text-gray-900'">
+                  ${{ opt.usd | number:'1.0-0' }}
+                </p>
+                <p class="text-[10px] font-bold"
+                   [class]="selectedRecharge() === opt.usd ? 'text-violet-400' : 'text-gray-400'">
+                  USD
+                </p>
+              </button>
+            }
+          </div>
+
+          @if (rechargeError()) {
+            <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2">
+              <span class="material-symbols-outlined" style="font-size:18px">error</span>
+              {{ rechargeError() }}
+            </div>
+          }
+
+          <button (click)="startSmsRecharge()"
+            [disabled]="!selectedRecharge() || rechargeLoading()"
+            class="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-200"
+            style="background: linear-gradient(90deg, #7c3aed, #a855f7, #d946ef);">
+            @if (rechargeLoading()) {
+              <div class="flex items-center justify-center gap-2">
+                <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Preparando pago...
+              </div>
+            } @else {
+              <div class="flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined" style="font-size:20px">payment</span>
+                Pagar con ePayco
+              </div>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       MODAL BILLETERA DE RETIRO
+       ══════════════════════════════════════════════════════════════════ -->
+  @if (showRetiroModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         (click)="showRetiroModal.set(false)">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+           (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-5 text-center">
+          <div class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-white" style="font-size:28px">savings</span>
+          </div>
+          <h3 class="text-white font-black text-lg">Billetera de Retiro</h3>
+          <p class="text-2xl font-black text-white mt-1">$0.00 <span class="text-sm text-white/60">USD</span></p>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 py-5 space-y-4">
+          <p class="text-gray-600 text-sm leading-relaxed">
+            Este será el dinero que retiras cada vez que alguien que venga por tu link de recomendación recargue su billetera para usar la herramienta <span class="font-bold text-gray-900">SMS Masivos</span>.
+          </p>
+
+          <div>
+            <p class="text-gray-900 font-bold text-sm mb-3">¿Cómo funciona?</p>
+            <div class="space-y-2">
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">1</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Comparte tu link de recomendación</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">2</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Un usuario recarga su billetera SMS</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">3</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Recibes tu comisión en esta billetera</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">4</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Retira tu dinero cuando quieras</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 pb-5">
+          <button (click)="showRetiroModal.set(false)"
+            class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm transition-colors">
+            Entendido
           </button>
         </div>
       </div>
