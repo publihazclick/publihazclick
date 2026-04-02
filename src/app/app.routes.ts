@@ -371,6 +371,10 @@ export const routes: Routes = [
       {
         path: 'cursos',
         loadChildren: () => import('./features/cursos/cursos.routes').then(m => m.cursosRoutes)
+      },
+      {
+        path: 'sms-masivos',
+        loadComponent: () => import('./features/user/components/sms-masivos/sms-masivos.component').then(m => m.SmsMasivosComponent)
       }
     ]
   },

@@ -1,0 +1,988 @@
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SMS Masivos – Professional Mass Messaging Interface
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="min-h-screen bg-gray-900 text-white p-4 md:p-6 lg:p-8">
+
+  <!-- ── Success Toast ──────────────────────────────────────────────── -->
+  @if (success()) {
+    <div class="fixed top-4 right-4 z-50 flex items-center gap-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl px-5 py-3 shadow-lg shadow-emerald-500/10 backdrop-blur-sm animate-pulse">
+      <span class="material-symbols-rounded text-xl">check_circle</span>
+      <span class="font-medium text-sm">{{ success() }}</span>
+      <button (click)="clearSuccess()" class="ml-2 hover:text-white transition-colors">
+        <span class="material-symbols-rounded text-lg">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- ── Error Toast ────────────────────────────────────────────────── -->
+  @if (error()) {
+    <div class="fixed top-4 right-4 z-50 flex items-center gap-3 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl px-5 py-3 shadow-lg shadow-red-500/10 backdrop-blur-sm">
+      <span class="material-symbols-rounded text-xl">error</span>
+      <span class="font-medium text-sm">{{ error() }}</span>
+      <button (click)="clearError()" class="ml-2 hover:text-white transition-colors">
+        <span class="material-symbols-rounded text-lg">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       HEADER
+       ══════════════════════════════════════════════════════════════════ -->
+  <div class="mb-8">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+          <span class="material-symbols-rounded text-3xl text-violet-400">sms</span>
+        </div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">SMS Masivos</h1>
+          <p class="text-white/40 text-sm mt-0.5">Plataforma de mensajería masiva profesional</p>
+        </div>
+      </div>
+
+      <!-- Mini stats in header -->
+      @if (stats(); as s) {
+        <div class="flex flex-wrap gap-3">
+          <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
+            <span class="material-symbols-rounded text-cyan-400 text-lg">contacts</span>
+            <div class="text-xs"><span class="font-bold text-white">{{ s.total_contacts }}</span> <span class="text-white/40">contactos</span></div>
+          </div>
+          <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
+            <span class="material-symbols-rounded text-violet-400 text-lg">campaign</span>
+            <div class="text-xs"><span class="font-bold text-white">{{ s.total_campaigns }}</span> <span class="text-white/40">campañas</span></div>
+          </div>
+          <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
+            <span class="material-symbols-rounded text-emerald-400 text-lg">verified</span>
+            <div class="text-xs"><span class="font-bold text-white">{{ s.delivered_rate | number:'1.1-1' }}%</span> <span class="text-white/40">entrega</span></div>
+          </div>
+          <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
+            <span class="material-symbols-rounded text-amber-400 text-lg">payments</span>
+            <div class="text-xs"><span class="font-bold text-white">${{ s.total_cost | number:'1.2-2' }}</span> <span class="text-white/40">costo</span></div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- ── Tab navigation ─────────────────────────────────────────── -->
+    <div class="flex gap-1 bg-white/5 border border-white/10 rounded-2xl p-1.5 overflow-x-auto">
+      <button
+        (click)="setTab('dashboard')"
+        [class]="activeTab() === 'dashboard'
+          ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30 shadow-sm shadow-violet-500/10'
+          : 'text-white/50 hover:text-white/80 hover:bg-white/5 border border-transparent'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap">
+        <span class="material-symbols-rounded text-lg">dashboard</span>
+        Dashboard
+      </button>
+      <button
+        (click)="setTab('contacts')"
+        [class]="activeTab() === 'contacts'
+          ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30 shadow-sm shadow-violet-500/10'
+          : 'text-white/50 hover:text-white/80 hover:bg-white/5 border border-transparent'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap">
+        <span class="material-symbols-rounded text-lg">contacts</span>
+        Contactos
+      </button>
+      <button
+        (click)="setTab('compose')"
+        [class]="activeTab() === 'compose'
+          ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30 shadow-sm shadow-violet-500/10'
+          : 'text-white/50 hover:text-white/80 hover:bg-white/5 border border-transparent'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap">
+        <span class="material-symbols-rounded text-lg">edit_note</span>
+        Componer
+      </button>
+      <button
+        (click)="setTab('campaigns')"
+        [class]="activeTab() === 'campaigns'
+          ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30 shadow-sm shadow-violet-500/10'
+          : 'text-white/50 hover:text-white/80 hover:bg-white/5 border border-transparent'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap">
+        <span class="material-symbols-rounded text-lg">campaign</span>
+        Campañas
+      </button>
+      <button
+        (click)="setTab('templates')"
+        [class]="activeTab() === 'templates'
+          ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30 shadow-sm shadow-violet-500/10'
+          : 'text-white/50 hover:text-white/80 hover:bg-white/5 border border-transparent'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap">
+        <span class="material-symbols-rounded text-lg">description</span>
+        Plantillas
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Loading ────────────────────────────────────────────────── -->
+  @if (loading()) {
+    <div class="flex items-center justify-center py-20">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-10 h-10 border-3 border-violet-500/30 border-t-violet-400 rounded-full animate-spin"></div>
+        <p class="text-white/40 text-sm">Cargando datos...</p>
+      </div>
+    </div>
+  } @else {
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       TAB CONTENT
+       ══════════════════════════════════════════════════════════════════ -->
+  @switch (activeTab()) {
+
+    <!-- ─────────────────────────────────────────────────────────────
+         DASHBOARD
+         ───────────────────────────────────────────────────────────── -->
+    @case ('dashboard') {
+      <div class="space-y-6">
+        <!-- Stat cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Total Contactos -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-colors group">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <span class="material-symbols-rounded text-cyan-400">contacts</span>
+              </div>
+              <span class="material-symbols-rounded text-white/20 group-hover:text-cyan-400/40 transition-colors">trending_up</span>
+            </div>
+            <p class="text-2xl font-extrabold text-white">{{ stats()?.total_contacts ?? 0 }}</p>
+            <p class="text-xs text-white/40 mt-1">Total Contactos</p>
+          </div>
+
+          <!-- Campañas Enviadas -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-violet-500/30 transition-colors group">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                <span class="material-symbols-rounded text-violet-400">campaign</span>
+              </div>
+              <span class="material-symbols-rounded text-white/20 group-hover:text-violet-400/40 transition-colors">send</span>
+            </div>
+            <p class="text-2xl font-extrabold text-white">{{ stats()?.total_campaigns ?? 0 }}</p>
+            <p class="text-xs text-white/40 mt-1">Campañas Enviadas</p>
+          </div>
+
+          <!-- Tasa de Entrega -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-emerald-500/30 transition-colors group">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                <span class="material-symbols-rounded text-emerald-400">verified</span>
+              </div>
+              <span class="material-symbols-rounded text-white/20 group-hover:text-emerald-400/40 transition-colors">percent</span>
+            </div>
+            <p class="text-2xl font-extrabold text-white">{{ (stats()?.delivered_rate ?? 0) | number:'1.1-1' }}%</p>
+            <p class="text-xs text-white/40 mt-1">Tasa de Entrega</p>
+          </div>
+
+          <!-- Costo Total -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-amber-500/30 transition-colors group">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                <span class="material-symbols-rounded text-amber-400">payments</span>
+              </div>
+              <span class="material-symbols-rounded text-white/20 group-hover:text-amber-400/40 transition-colors">attach_money</span>
+            </div>
+            <p class="text-2xl font-extrabold text-white">${{ (stats()?.total_cost ?? 0) | number:'1.2-2' }}</p>
+            <p class="text-xs text-white/40 mt-1">Costo Total</p>
+          </div>
+        </div>
+
+        <!-- Recent Campaigns -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="material-symbols-rounded text-violet-400">history</span>
+            <h3 class="font-bold text-lg">Campañas Recientes</h3>
+          </div>
+          @if (recentCampaigns().length === 0) {
+            <div class="text-center py-8">
+              <span class="material-symbols-rounded text-4xl text-white/10">campaign</span>
+              <p class="text-white/30 text-sm mt-2">No hay campañas todavía</p>
+            </div>
+          } @else {
+            <div class="space-y-2">
+              @for (c of recentCampaigns(); track c.id) {
+                <div class="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 hover:bg-white/10 transition-colors">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="material-symbols-rounded text-white/30">mail</span>
+                    <div class="min-w-0">
+                      <p class="font-semibold text-sm truncate">{{ c.name }}</p>
+                      <p class="text-white/30 text-xs">{{ c.created_at | date:'dd/MM/yyyy HH:mm' }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3 shrink-0">
+                    <span class="text-xs text-white/40">{{ c.total_recipients }} dest.</span>
+                    <span
+                      class="text-xs font-bold rounded-full px-2.5 py-0.5 border"
+                      [class]="getStatusColor(c.status)"
+                      [class.animate-pulse]="c.status === 'sending'">
+                      {{ getStatusLabel(c.status) }}
+                    </span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <button
+            (click)="setTab('compose')"
+            class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all group text-left">
+            <div class="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center mb-3">
+              <span class="material-symbols-rounded text-violet-400">edit_note</span>
+            </div>
+            <p class="font-bold text-sm">Nuevo mensaje</p>
+            <p class="text-white/30 text-xs mt-1">Crear y enviar una nueva campaña SMS</p>
+          </button>
+          <button
+            (click)="openImportModal()"
+            class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all group text-left">
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center mb-3">
+              <span class="material-symbols-rounded text-cyan-400">upload_file</span>
+            </div>
+            <p class="font-bold text-sm">Importar contactos</p>
+            <p class="text-white/30 text-xs mt-1">Importar contactos desde CSV</p>
+          </button>
+          <button
+            (click)="openTemplateModal()"
+            class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group text-left">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-3">
+              <span class="material-symbols-rounded text-emerald-400">description</span>
+            </div>
+            <p class="font-bold text-sm">Crear plantilla</p>
+            <p class="text-white/30 text-xs mt-1">Guardar mensajes reutilizables</p>
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────────
+         CONTACTOS
+         ───────────────────────────────────────────────────────────── -->
+    @case ('contacts') {
+      <div class="space-y-4">
+        <!-- Action bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <span class="material-symbols-rounded text-cyan-400">contacts</span>
+            Contactos
+            <span class="text-white/30 text-sm font-normal">({{ contacts().length }})</span>
+          </h2>
+          <div class="flex gap-2">
+            <button
+              (click)="openImportModal()"
+              class="bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center gap-2 transition-colors">
+              <span class="material-symbols-rounded text-lg">upload_file</span>
+              Importar CSV
+            </button>
+            <button
+              (click)="openContactModal()"
+              class="bg-violet-500 hover:bg-violet-400 text-white font-bold rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition-colors shadow-lg shadow-violet-500/20">
+              <span class="material-symbols-rounded text-lg">person_add</span>
+              Agregar Contacto
+            </button>
+          </div>
+        </div>
+
+        <!-- Contacts list -->
+        @if (contacts().length === 0) {
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
+            <span class="material-symbols-rounded text-6xl text-white/10">contacts</span>
+            <p class="text-white/40 font-semibold mt-4">No hay contactos</p>
+            <p class="text-white/20 text-sm mt-1">Agrega contactos manualmente o importa un archivo CSV</p>
+            <div class="flex justify-center gap-3 mt-6">
+              <button
+                (click)="openContactModal()"
+                class="bg-violet-500 hover:bg-violet-400 text-white font-bold rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition-colors">
+                <span class="material-symbols-rounded text-lg">person_add</span>
+                Agregar
+              </button>
+              <button
+                (click)="openImportModal()"
+                class="bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition-colors">
+                <span class="material-symbols-rounded text-lg">upload_file</span>
+                Importar
+              </button>
+            </div>
+          </div>
+        } @else {
+          <!-- Desktop table -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hidden md:block">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-white/10">
+                  <th class="text-left text-xs text-white/40 font-semibold px-5 py-3 uppercase tracking-wider">Nombre</th>
+                  <th class="text-left text-xs text-white/40 font-semibold px-5 py-3 uppercase tracking-wider">Teléfono</th>
+                  <th class="text-left text-xs text-white/40 font-semibold px-5 py-3 uppercase tracking-wider">País</th>
+                  <th class="text-left text-xs text-white/40 font-semibold px-5 py-3 uppercase tracking-wider">Tags</th>
+                  <th class="text-right text-xs text-white/40 font-semibold px-5 py-3 uppercase tracking-wider">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of contacts(); track c.id) {
+                  <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td class="px-5 py-3">
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
+                          <span class="text-xs font-bold text-violet-400">{{ c.full_name.charAt(0).toUpperCase() }}</span>
+                        </div>
+                        <span class="font-semibold text-sm">{{ c.full_name }}</span>
+                      </div>
+                    </td>
+                    <td class="px-5 py-3 text-sm text-white/70 font-mono">{{ c.phone_number }}</td>
+                    <td class="px-5 py-3 text-sm text-white/50">{{ c.country_code }}</td>
+                    <td class="px-5 py-3">
+                      <div class="flex flex-wrap gap-1">
+                        @for (tag of c.tags; track tag) {
+                          <span class="bg-violet-500/15 text-violet-400 text-xs rounded-full px-2 py-0.5 border border-violet-500/20">{{ tag }}</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="px-5 py-3">
+                      <div class="flex items-center justify-end gap-1">
+                        <button
+                          (click)="editContact(c)"
+                          class="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                          title="Editar">
+                          <span class="material-symbols-rounded text-lg">edit</span>
+                        </button>
+                        <button
+                          (click)="deleteContact(c.id)"
+                          class="p-2 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-colors"
+                          title="Eliminar">
+                          <span class="material-symbols-rounded text-lg">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mobile cards -->
+          <div class="space-y-2 md:hidden">
+            @for (c of contacts(); track c.id) {
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center">
+                      <span class="font-bold text-violet-400">{{ c.full_name.charAt(0).toUpperCase() }}</span>
+                    </div>
+                    <div>
+                      <p class="font-semibold text-sm">{{ c.full_name }}</p>
+                      <p class="text-white/40 text-xs font-mono">{{ c.country_code }} {{ c.phone_number }}</p>
+                    </div>
+                  </div>
+                  <div class="flex gap-1">
+                    <button (click)="editContact(c)" class="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+                      <span class="material-symbols-rounded text-lg">edit</span>
+                    </button>
+                    <button (click)="deleteContact(c.id)" class="p-2 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-colors">
+                      <span class="material-symbols-rounded text-lg">delete</span>
+                    </button>
+                  </div>
+                </div>
+                @if (c.tags && c.tags.length > 0) {
+                  <div class="flex flex-wrap gap-1 mt-3">
+                    @for (tag of c.tags; track tag) {
+                      <span class="bg-violet-500/15 text-violet-400 text-xs rounded-full px-2 py-0.5 border border-violet-500/20">{{ tag }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────────
+         COMPONER
+         ───────────────────────────────────────────────────────────── -->
+    @case ('compose') {
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Composer main -->
+        <div class="lg:col-span-2 space-y-5">
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <h3 class="font-bold text-lg flex items-center gap-2 mb-5">
+              <span class="material-symbols-rounded text-violet-400">edit_note</span>
+              Componer Mensaje
+            </h3>
+
+            <!-- Campaign name -->
+            <div class="mb-4">
+              <label class="block text-sm text-white/50 font-semibold mb-2">Nombre de la campaña</label>
+              <input
+                type="text"
+                [(ngModel)]="composeCampaignName"
+                placeholder="Ej: Promoción Abril 2026"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm" />
+            </div>
+
+            <!-- Recipients -->
+            <div class="mb-4">
+              <label class="block text-sm text-white/50 font-semibold mb-2">Destinatarios</label>
+              <div class="flex flex-col sm:flex-row gap-3">
+                <label class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors flex-1"
+                  [class.border-violet-500/50]="composeRecipients === 'all'"
+                  [class.bg-violet-500/10]="composeRecipients === 'all'">
+                  <input type="radio" name="recipients" value="all" [(ngModel)]="composeRecipients" class="accent-violet-500" />
+                  <div>
+                    <span class="text-sm font-semibold">Todos mis contactos</span>
+                    <span class="text-white/30 text-xs ml-1">({{ contacts().length }})</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors flex-1"
+                  [class.border-violet-500/50]="composeRecipients === 'manual'"
+                  [class.bg-violet-500/10]="composeRecipients === 'manual'">
+                  <input type="radio" name="recipients" value="manual" [(ngModel)]="composeRecipients" class="accent-violet-500" />
+                  <span class="text-sm font-semibold">Números manuales</span>
+                </label>
+              </div>
+            </div>
+
+            @if (composeRecipients === 'manual') {
+              <div class="mb-4">
+                <textarea
+                  [(ngModel)]="composePhones"
+                  rows="4"
+                  placeholder="Un número por línea con código de país&#10;+573001234567&#10;+573109876543"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm font-mono resize-none"></textarea>
+              </div>
+            }
+
+            <!-- Message body -->
+            <div class="mb-4">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm text-white/50 font-semibold">Mensaje</label>
+                <div class="flex gap-1">
+                  <button
+                    (click)="insertVariable('nombre')"
+                    class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/50 hover:text-white transition-colors">
+                    &#123;nombre&#125;
+                  </button>
+                  <button
+                    (click)="insertVariable('telefono')"
+                    class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/50 hover:text-white transition-colors">
+                    &#123;telefono&#125;
+                  </button>
+                </div>
+              </div>
+              <textarea
+                [(ngModel)]="composeMessage"
+                rows="5"
+                placeholder="Escribe tu mensaje aquí..."
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm resize-none"></textarea>
+              <!-- Character counter -->
+              <div class="flex items-center justify-between mt-2 text-xs text-white/40">
+                <div class="flex items-center gap-2">
+                  <span>{{ smsInfo().chars }}/{{ smsInfo().maxPerSegment }} caracteres</span>
+                  <span class="text-white/20">·</span>
+                  <span class="font-semibold" [class.text-amber-400]="smsInfo().segments > 1">{{ smsInfo().segments }} segmento(s)</span>
+                  <span class="text-white/20">·</span>
+                  <span class="font-mono">{{ smsInfo().encoding }}</span>
+                </div>
+                @if (smsInfo().segments > 1) {
+                  <span class="text-amber-400/80 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-xs">warning</span>
+                    Multi-segmento
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- Templates quick use -->
+            @if (templates().length > 0) {
+              <div class="mb-4">
+                <label class="block text-sm text-white/50 font-semibold mb-2">Usar plantilla</label>
+                <div class="flex flex-wrap gap-2">
+                  @for (t of templates(); track t.id) {
+                    <button
+                      (click)="useTemplate(t)"
+                      class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white/60 hover:text-white transition-colors flex items-center gap-1.5">
+                      <span class="material-symbols-rounded text-sm text-violet-400">description</span>
+                      {{ t.name }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Send button -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-white/10">
+              <p class="text-xs text-white/30 flex items-center gap-1">
+                <span class="material-symbols-rounded text-sm">info</span>
+                Costo estimado: ${{ (recipientCount() * 0.03) | number:'1.2-2' }} USD ({{ recipientCount() }} x $0.03)
+              </p>
+              <button
+                (click)="sendCampaign()"
+                [disabled]="sending() || composeMessage.length === 0 || recipientCount() === 0"
+                class="bg-violet-500 hover:bg-violet-400 disabled:bg-violet-500/30 disabled:text-white/30 text-white font-bold rounded-xl px-6 py-3 text-sm flex items-center gap-2 transition-all shadow-lg shadow-violet-500/20 disabled:shadow-none">
+                @if (sending()) {
+                  <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Enviando...
+                } @else {
+                  <span class="material-symbols-rounded text-lg">send</span>
+                  Enviar campaña ({{ recipientCount() }} destinatarios)
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview sidebar -->
+        <div class="space-y-5">
+          <!-- Message preview -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <h4 class="font-bold text-sm flex items-center gap-2 mb-4">
+              <span class="material-symbols-rounded text-emerald-400 text-lg">smartphone</span>
+              Vista Previa
+            </h4>
+            <div class="bg-gray-800 rounded-2xl p-4 border border-white/5">
+              <div class="flex items-center gap-2 mb-3 pb-3 border-b border-white/10">
+                <div class="w-6 h-6 rounded-full bg-violet-500/30 flex items-center justify-center">
+                  <span class="material-symbols-rounded text-xs text-violet-400">sms</span>
+                </div>
+                <span class="text-xs text-white/50">SMS</span>
+              </div>
+              @if (composeMessage.length > 0) {
+                <div class="bg-violet-500/20 rounded-xl rounded-tl-sm px-3 py-2.5 text-sm leading-relaxed break-words">
+                  {{ composeMessage }}
+                </div>
+              } @else {
+                <div class="text-white/20 text-sm italic text-center py-4">Tu mensaje aparecerá aquí</div>
+              }
+            </div>
+          </div>
+
+          <!-- Compose stats -->
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <h4 class="font-bold text-sm flex items-center gap-2 mb-4">
+              <span class="material-symbols-rounded text-amber-400 text-lg">analytics</span>
+              Resumen
+            </h4>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-white/40">Destinatarios</span>
+                <span class="font-bold">{{ recipientCount() }}</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-white/40">Segmentos</span>
+                <span class="font-bold">{{ smsInfo().segments }}</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-white/40">Encoding</span>
+                <span class="font-bold font-mono text-xs">{{ smsInfo().encoding }}</span>
+              </div>
+              <div class="flex items-center justify-between text-sm border-t border-white/10 pt-3">
+                <span class="text-white/40">Costo total</span>
+                <span class="font-bold text-amber-400">${{ (recipientCount() * smsInfo().segments * 0.03) | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────────
+         CAMPANAS
+         ───────────────────────────────────────────────────────────── -->
+    @case ('campaigns') {
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <span class="material-symbols-rounded text-violet-400">campaign</span>
+            Campañas
+            <span class="text-white/30 text-sm font-normal">({{ campaigns().length }})</span>
+          </h2>
+          <button
+            (click)="setTab('compose')"
+            class="bg-violet-500 hover:bg-violet-400 text-white font-bold rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition-colors shadow-lg shadow-violet-500/20">
+            <span class="material-symbols-rounded text-lg">add</span>
+            Nueva Campaña
+          </button>
+        </div>
+
+        @if (campaigns().length === 0) {
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
+            <span class="material-symbols-rounded text-6xl text-white/10">campaign</span>
+            <p class="text-white/40 font-semibold mt-4">No hay campañas</p>
+            <p class="text-white/20 text-sm mt-1">Crea tu primera campaña SMS para empezar</p>
+            <button
+              (click)="setTab('compose')"
+              class="mt-6 bg-violet-500 hover:bg-violet-400 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors inline-flex items-center gap-2">
+              <span class="material-symbols-rounded text-lg">edit_note</span>
+              Componer mensaje
+            </button>
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (c of campaigns(); track c.id) {
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/[0.07] transition-colors">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-3 mb-1">
+                      <h4 class="font-bold text-sm truncate">{{ c.name }}</h4>
+                      <span
+                        class="text-xs font-bold rounded-full px-2.5 py-0.5 border shrink-0"
+                        [class]="getStatusColor(c.status)"
+                        [class.animate-pulse]="c.status === 'sending'">
+                        {{ getStatusLabel(c.status) }}
+                      </span>
+                    </div>
+                    <p class="text-white/30 text-xs">{{ c.created_at | date:'dd MMM yyyy, HH:mm' }}</p>
+                  </div>
+
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4 text-xs">
+                      <div class="text-center">
+                        <p class="text-white/30">Dest.</p>
+                        <p class="font-bold">{{ c.total_recipients }}</p>
+                      </div>
+                      <div class="text-center">
+                        <p class="text-white/30">Enviados</p>
+                        <p class="font-bold text-blue-400">{{ c.sent_count }}</p>
+                      </div>
+                      <div class="text-center">
+                        <p class="text-white/30">Entregados</p>
+                        <p class="font-bold text-emerald-400">{{ c.delivered_count }}</p>
+                      </div>
+                      <div class="text-center">
+                        <p class="text-white/30">Fallidos</p>
+                        <p class="font-bold text-red-400">{{ c.failed_count }}</p>
+                      </div>
+                    </div>
+                    <div class="text-right pl-4 border-l border-white/10">
+                      <p class="text-xs text-white/30">Costo</p>
+                      <p class="font-bold text-sm text-amber-400">${{ c.total_cost | number:'1.2-2' }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Progress bar -->
+                @if (c.total_recipients > 0) {
+                  <div class="mt-3 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all duration-500"
+                      [class]="c.status === 'failed' ? 'bg-red-500' : 'bg-emerald-500'"
+                      [style.width.%]="c.total_recipients > 0 ? ((c.delivered_count + c.failed_count) / c.total_recipients) * 100 : 0">
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────────
+         PLANTILLAS
+         ───────────────────────────────────────────────────────────── -->
+    @case ('templates') {
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <span class="material-symbols-rounded text-emerald-400">description</span>
+            Plantillas
+            <span class="text-white/30 text-sm font-normal">({{ templates().length }})</span>
+          </h2>
+          <button
+            (click)="openTemplateModal()"
+            class="bg-violet-500 hover:bg-violet-400 text-white font-bold rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 transition-colors shadow-lg shadow-violet-500/20">
+            <span class="material-symbols-rounded text-lg">add</span>
+            Crear Plantilla
+          </button>
+        </div>
+
+        @if (templates().length === 0) {
+          <div class="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
+            <span class="material-symbols-rounded text-6xl text-white/10">description</span>
+            <p class="text-white/40 font-semibold mt-4">No hay plantillas</p>
+            <p class="text-white/20 text-sm mt-1">Crea plantillas para reutilizar mensajes frecuentes</p>
+            <button
+              (click)="openTemplateModal()"
+              class="mt-6 bg-violet-500 hover:bg-violet-400 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors inline-flex items-center gap-2">
+              <span class="material-symbols-rounded text-lg">add</span>
+              Crear Plantilla
+            </button>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (t of templates(); track t.id) {
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-emerald-500/20 transition-all group">
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                      <span class="material-symbols-rounded text-emerald-400 text-lg">description</span>
+                    </div>
+                    <h4 class="font-bold text-sm">{{ t.name }}</h4>
+                  </div>
+                  <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      (click)="editTemplate(t)"
+                      class="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+                      <span class="material-symbols-rounded text-sm">edit</span>
+                    </button>
+                    <button
+                      (click)="deleteTemplate(t.id)"
+                      class="p-1.5 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-colors">
+                      <span class="material-symbols-rounded text-sm">delete</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="text-white/40 text-sm leading-relaxed line-clamp-3 mb-3">{{ t.body }}</p>
+                <div class="flex items-center justify-between">
+                  @if (getVariableCount(t.body) > 0) {
+                    <span class="text-xs text-violet-400/70 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-xs">data_object</span>
+                      {{ getVariableCount(t.body) }} variable(s)
+                    </span>
+                  } @else {
+                    <span></span>
+                  }
+                  <button
+                    (click)="useTemplate(t)"
+                    class="text-xs text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1 transition-colors">
+                    <span class="material-symbols-rounded text-sm">send</span>
+                    Usar
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+  } <!-- end @switch -->
+  } <!-- end @else loading -->
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       MODALS
+       ══════════════════════════════════════════════════════════════════ -->
+
+  <!-- ── Contact Modal ──────────────────────────────────────────── -->
+  @if (showContactModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeContactModal()"></div>
+      <div class="relative bg-gray-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
+        <!-- Modal header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <span class="material-symbols-rounded text-violet-400">{{ editingContact() ? 'edit' : 'person_add' }}</span>
+            {{ editingContact() ? 'Editar Contacto' : 'Nuevo Contacto' }}
+          </h3>
+          <button (click)="closeContactModal()" class="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <!-- Modal body -->
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm text-white/50 font-semibold mb-1.5">Nombre completo</label>
+            <input
+              type="text"
+              [(ngModel)]="contactName"
+              placeholder="Juan Pérez"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm" />
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-sm text-white/50 font-semibold mb-1.5">País</label>
+              <select
+                [(ngModel)]="contactCountryCode"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm appearance-none">
+                @for (cc of countryCodes; track cc.code) {
+                  <option [value]="cc.code" class="bg-gray-900">{{ cc.code }} {{ cc.country }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm text-white/50 font-semibold mb-1.5">Teléfono</label>
+              <input
+                type="tel"
+                [(ngModel)]="contactPhone"
+                placeholder="3001234567"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm font-mono" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm text-white/50 font-semibold mb-1.5">Tags <span class="text-white/20">(separados por coma)</span></label>
+            <input
+              type="text"
+              [(ngModel)]="contactTags"
+              placeholder="cliente, vip, bogotá"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm" />
+          </div>
+
+          <div>
+            <label class="block text-sm text-white/50 font-semibold mb-1.5">Notas</label>
+            <textarea
+              [(ngModel)]="contactNotes"
+              rows="3"
+              placeholder="Notas adicionales sobre el contacto..."
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm resize-none"></textarea>
+          </div>
+        </div>
+
+        <!-- Modal footer -->
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+          <button
+            (click)="closeContactModal()"
+            class="bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors">
+            Cancelar
+          </button>
+          <button
+            (click)="saveContact()"
+            [disabled]="!contactName || !contactPhone"
+            class="bg-violet-500 hover:bg-violet-400 disabled:bg-violet-500/30 disabled:text-white/30 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors shadow-lg shadow-violet-500/20 disabled:shadow-none flex items-center gap-2">
+            <span class="material-symbols-rounded text-lg">save</span>
+            {{ editingContact() ? 'Actualizar' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── Template Modal ─────────────────────────────────────────── -->
+  @if (showTemplateModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeTemplateModal()"></div>
+      <div class="relative bg-gray-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
+        <!-- Modal header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <span class="material-symbols-rounded text-emerald-400">{{ editingTemplate() ? 'edit' : 'note_add' }}</span>
+            {{ editingTemplate() ? 'Editar Plantilla' : 'Nueva Plantilla' }}
+          </h3>
+          <button (click)="closeTemplateModal()" class="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <!-- Modal body -->
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm text-white/50 font-semibold mb-1.5">Nombre de la plantilla</label>
+            <input
+              type="text"
+              [(ngModel)]="templateName"
+              placeholder="Ej: Bienvenida, Promoción, Recordatorio"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm" />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-sm text-white/50 font-semibold">Cuerpo del mensaje</label>
+              <div class="flex gap-1">
+                <button
+                  (click)="templateBody = templateBody + '{nombre}'"
+                  class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/50 hover:text-white transition-colors">
+                  &#123;nombre&#125;
+                </button>
+                <button
+                  (click)="templateBody = templateBody + '{telefono}'"
+                  class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/50 hover:text-white transition-colors">
+                  &#123;telefono&#125;
+                </button>
+                <button
+                  (click)="templateBody = templateBody + '{empresa}'"
+                  class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/50 hover:text-white transition-colors">
+                  &#123;empresa&#125;
+                </button>
+              </div>
+            </div>
+            <textarea
+              [(ngModel)]="templateBody"
+              rows="5"
+              placeholder="Hola {nombre}, te contactamos de parte de..."
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm resize-none"></textarea>
+            <p class="text-xs text-white/20 mt-1">Usa &#123;variable&#125; para insertar datos dinámicos en el mensaje</p>
+          </div>
+        </div>
+
+        <!-- Modal footer -->
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+          <button
+            (click)="closeTemplateModal()"
+            class="bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors">
+            Cancelar
+          </button>
+          <button
+            (click)="saveTemplate()"
+            [disabled]="!templateName || !templateBody"
+            class="bg-violet-500 hover:bg-violet-400 disabled:bg-violet-500/30 disabled:text-white/30 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors shadow-lg shadow-violet-500/20 disabled:shadow-none flex items-center gap-2">
+            <span class="material-symbols-rounded text-lg">save</span>
+            {{ editingTemplate() ? 'Actualizar' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── Import Modal ───────────────────────────────────────────── -->
+  @if (showImportModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeImportModal()"></div>
+      <div class="relative bg-gray-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
+        <!-- Modal header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <span class="material-symbols-rounded text-cyan-400">upload_file</span>
+            Importar Contactos
+          </h3>
+          <button (click)="closeImportModal()" class="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <!-- Modal body -->
+        <div class="p-6 space-y-4">
+          <div class="bg-cyan-500/10 border border-cyan-500/20 rounded-xl px-4 py-3">
+            <p class="text-sm text-cyan-400 flex items-center gap-2">
+              <span class="material-symbols-rounded text-lg">info</span>
+              Formato: <span class="font-mono">nombre,telefono</span> (una línea por contacto)
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm text-white/50 font-semibold mb-1.5">Datos CSV</label>
+            <textarea
+              [ngModel]="importCsvText()"
+              (ngModelChange)="importCsvText.set($event)"
+              rows="8"
+              placeholder="Juan Pérez,+573001234567&#10;María García,+573109876543&#10;Carlos López,+573201112233"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 outline-none transition-all text-sm font-mono resize-none"></textarea>
+          </div>
+
+          @if (getImportLineCount() > 0) {
+            <div class="flex items-center gap-2 text-sm">
+              <span class="material-symbols-rounded text-emerald-400 text-lg">check_circle</span>
+              <span class="text-white/60">Se importarán <span class="font-bold text-white">{{ getImportLineCount() }}</span> contactos</span>
+            </div>
+          }
+        </div>
+
+        <!-- Modal footer -->
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+          <button
+            (click)="closeImportModal()"
+            class="bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors">
+            Cancelar
+          </button>
+          <button
+            (click)="processImport()"
+            [disabled]="getImportLineCount() === 0"
+            class="bg-violet-500 hover:bg-violet-400 disabled:bg-violet-500/30 disabled:text-white/30 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors shadow-lg shadow-violet-500/20 disabled:shadow-none flex items-center gap-2">
+            <span class="material-symbols-rounded text-lg">upload</span>
+            Importar {{ getImportLineCount() }} contactos
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>
