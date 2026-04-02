@@ -55,7 +55,7 @@ interface TradingPackage {
         (click)="showWallet.set(true)"
         class="mb-6 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black text-sm hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all">
         <span class="material-symbols-outlined" style="font-size:20px">account_balance_wallet</span>
-        Billetera
+        Billetera de Retiro
       </button>
 
       <!-- Feature pills -->
@@ -169,7 +169,7 @@ interface TradingPackage {
               </div>
               <div>
                 <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Trading Bot AI</p>
-                <h3 class="text-white font-black text-lg leading-tight">Billetera</h3>
+                <h3 class="text-white font-black text-lg leading-tight">Billetera de Retiro</h3>
               </div>
             </div>
           </div>
