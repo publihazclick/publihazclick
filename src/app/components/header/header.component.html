@@ -25,20 +25,20 @@
     </a>
 
     <!-- Desktop Navigation -->
-    <nav class="hidden md:flex items-center space-x-6 lg:space-x-10 text-[11px] font-extrabold uppercase tracking-[0.2em] text-white/70">
-      <a class="hover:text-primary transition-colors cursor-pointer" routerLink="/">Inicio</a>
-      <a class="hover:text-primary transition-colors cursor-pointer" routerLink="/quienes-somos">¿Qué es Publihazclick?</a>
-      <a class="hover:text-primary transition-colors cursor-pointer" (click)="goToTestimonials()">Pagos y Testimonios</a>
+    <nav class="hidden md:flex flex-col items-center">
+      <div class="flex items-center space-x-6 lg:space-x-10 text-[11px] font-extrabold uppercase tracking-[0.2em] text-white/70">
+        <a class="hover:text-primary transition-colors cursor-pointer" routerLink="/">Inicio</a>
+        <a class="hover:text-primary transition-colors cursor-pointer" routerLink="/quienes-somos">¿Qué es Publihazclick?</a>
+        <a class="hover:text-primary transition-colors cursor-pointer" (click)="goToTestimonials()">Pagos y Testimonios</a>
+      </div>
+      <div class="flex items-center gap-2 mt-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-1 animate-pulse">
+        <span class="material-symbols-outlined text-amber-400" style="font-size:14px">campaign</span>
+        <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest">Empresas Anunciantes</span>
+      </div>
     </nav>
 
-    <!-- Desktop: Empresas Anunciantes + Billetera + Donaciones + Login -->
+    <!-- Desktop: Billetera + Donaciones + Login -->
     <div class="hidden md:flex items-center gap-2 lg:gap-3">
-      <!-- Empresas Anunciantes -->
-      <div class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 animate-pulse">
-        <span class="material-symbols-outlined text-amber-400" style="font-size:18px">campaign</span>
-        <span class="text-xs font-black text-amber-400 uppercase tracking-widest">Empresas Anunciantes</span>
-      </div>
-
       @if (authService.isAuthenticated()) {
         <!-- Billetera -->
         <button (click)="openDemoModal()" class="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all cursor-pointer group relative">
