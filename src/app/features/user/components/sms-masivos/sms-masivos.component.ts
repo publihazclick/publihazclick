@@ -71,6 +71,8 @@ export class SmsMasivosComponent implements OnInit {
   // ── Excel upload ────────────────────────────────────────────
   readonly excelPhones = signal<string[]>([]);
   readonly excelFileName = signal('');
+  readonly excelTotalRows = signal(0);
+  readonly excelInvalid = signal<{ row: number; value: string; reason: string }[]>([]);
 
   // ── Distribution mode ───────────────────────────────────────
   distributionMode: 'all' | 'split' = 'all';
@@ -397,6 +399,8 @@ export class SmsMasivosComponent implements OnInit {
       this.composeCampaignName = '';
       this.excelPhones.set([]);
       this.excelFileName.set('');
+      this.excelTotalRows.set(0);
+      this.excelInvalid.set([]);
       this.distributionMode = 'all';
       this.splitParts = 2;
       this.splitSchedules = ['', ''];
@@ -422,16 +426,41 @@ export class SmsMasivosComponent implements OnInit {
     reader.onload = () => {
       const text = reader.result as string;
       const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-      // Skip header if first line doesn't start with + or digit
-      const start = lines.length > 0 && !/^[\+\d]/.test(lines[0]) ? 1 : 0;
+      const hasHeader = lines.length > 0 && !/^[\+\d]/.test(lines[0]);
+      const start = hasHeader ? 1 : 0;
+      const dataRows = lines.length - start;
+      this.excelTotalRows.set(dataRows);
+
       const phones: string[] = [];
+      const invalid: { row: number; value: string; reason: string }[] = [];
+      const seen = new Set<string>();
+
       for (let i = start; i < lines.length; i++) {
-        // Take first column (comma or semicolon separated)
+        const rowNum = i + 1;
         const cols = lines[i].split(/[,;\t]/);
-        const phone = cols[0].trim().replace(/[^+\d]/g, '');
-        if (phone.length >= 7) phones.push(phone);
+        const raw = cols[0].trim();
+        const phone = raw.replace(/[^+\d]/g, '');
+
+        if (!raw || raw.length === 0) {
+          invalid.push({ row: rowNum, value: raw, reason: 'Celda vacía' });
+        } else if (!/\d/.test(raw)) {
+          invalid.push({ row: rowNum, value: raw, reason: 'No contiene números' });
+        } else if (phone.length < 7) {
+          invalid.push({ row: rowNum, value: raw, reason: 'Número muy corto (mínimo 7 dígitos)' });
+        } else if (phone.length > 15) {
+          invalid.push({ row: rowNum, value: raw, reason: 'Número muy largo (máximo 15 dígitos)' });
+        } else if (!/^\+?\d+$/.test(phone)) {
+          invalid.push({ row: rowNum, value: raw, reason: 'Formato inválido' });
+        } else if (seen.has(phone)) {
+          invalid.push({ row: rowNum, value: raw, reason: 'Número duplicado' });
+        } else {
+          seen.add(phone);
+          phones.push(phone);
+        }
       }
+
       this.excelPhones.set(phones);
+      this.excelInvalid.set(invalid);
     };
     reader.readAsText(file);
     input.value = '';
@@ -440,6 +469,8 @@ export class SmsMasivosComponent implements OnInit {
   removeExcelFile(): void {
     this.excelPhones.set([]);
     this.excelFileName.set('');
+    this.excelTotalRows.set(0);
+    this.excelInvalid.set([]);
   }
 
   // ── Distribution ───────────────────────────────────────────
