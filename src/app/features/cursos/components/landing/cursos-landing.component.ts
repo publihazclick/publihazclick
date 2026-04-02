@@ -27,9 +27,8 @@ export class CursosLandingComponent implements OnInit {
 
   getRegisterLink(): string {
     if (!isPlatformBrowser(this.platformId)) return '/register';
-    // Si el usuario está logueado, usar su código de referido
+    // Prioridad: 1) código del perfil logueado, 2) código guardado en localStorage
     const profileCode = this.profile()?.referral_code ?? '';
-    // Si no, usar el código guardado en localStorage (de quien compartió el link)
     const savedCode = localStorage.getItem('phc_referral_code') ?? '';
     const code = profileCode || savedCode;
     if (code) return `/register?ref=${code}`;
