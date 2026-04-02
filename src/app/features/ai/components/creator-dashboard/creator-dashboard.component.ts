@@ -40,6 +40,7 @@ export class CreatorDashboardComponent implements OnInit {
   readonly walletBalance = this.walletService.balance;
 
   readonly sidebarOpen = signal(false);
+  readonly showRetiroModal = signal(false);
 
   async ngOnInit(): Promise<void> {
     await this.walletService.loadWallet();

@@ -22,6 +22,19 @@ interface TradingPackage {
   template: `
     <div class="flex flex-col items-center py-10 px-4 w-full">
 
+      <!-- Billetera de Retiro (superior derecha) -->
+      <div class="w-full max-w-6xl flex justify-end mb-4">
+        <button
+          (click)="showWallet.set(true)"
+          class="flex items-center gap-3 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all">
+          <span class="material-symbols-outlined" style="font-size:22px">savings</span>
+          <div class="text-left">
+            <p class="text-[10px] text-white/70 font-bold uppercase tracking-wider leading-none">Billetera de Retiro</p>
+            <p class="text-lg font-black leading-tight">$0.00 <span class="text-xs font-bold text-white/60">USD</span></p>
+          </div>
+        </button>
+      </div>
+
       <!-- Header -->
       <div class="relative mb-4">
         <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center">
@@ -49,14 +62,6 @@ interface TradingPackage {
           <span class="text-white font-bold">Creemos firmemente en ofrecer resultados sostenibles en el tiempo. Nuestro enfoque prioriza la estabilidad y el crecimiento constante por encima de promesas poco realistas. No es casualidad: llevamos más de 9 años operando como empresa, construyendo resultados sólidos y relaciones de confianza a largo plazo.</span>
         </p>
       </div>
-
-      <!-- Wallet button -->
-      <button
-        (click)="showWallet.set(true)"
-        class="mb-6 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black text-sm hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all">
-        <span class="material-symbols-outlined" style="font-size:20px">account_balance_wallet</span>
-        Billetera de Retiro
-      </button>
 
       <!-- Feature pills -->
       <div class="flex flex-wrap justify-center gap-2 mb-8">

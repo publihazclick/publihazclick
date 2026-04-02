@@ -91,12 +91,13 @@
             <span class="material-symbols-outlined text-purple-400" style="font-size:14px">add_circle</span>
           </a>
           <!-- Billetera de retiro -->
-          <a routerLink="/advertiser/ai/wallet"
-             class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 sm:px-3 py-1.5 hover:bg-emerald-100 hover:border-emerald-200 transition-all cursor-pointer">
+          <button
+            (click)="showRetiroModal.set(true)"
+            class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 sm:px-3 py-1.5 hover:bg-emerald-100 hover:border-emerald-200 transition-all cursor-pointer">
             <span class="material-symbols-outlined text-emerald-500" style="font-size:16px">savings</span>
             <span class="text-[10px] text-emerald-400 font-bold uppercase leading-none hidden sm:inline">Billetera<br>de Retiro</span>
             <span class="text-xs sm:text-sm font-bold text-emerald-700">$0.00</span>
-          </a>
+          </button>
           <!-- Notificaciones -->
           <button class="relative p-2 rounded-xl hover:bg-gray-100 transition-all hidden sm:block">
             <span class="material-symbols-outlined text-gray-500" style="font-size:20px">notifications</span>
@@ -228,5 +229,71 @@
 
     </div>
   </div>
+
+  <!-- Modal Billetera de Retiro -->
+  @if (showRetiroModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         (click)="showRetiroModal.set(false)">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+           (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-5 text-center">
+          <div class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-white" style="font-size:28px">savings</span>
+          </div>
+          <h3 class="text-white font-black text-lg">Billetera de Retiro</h3>
+          <p class="text-2xl font-black text-white mt-1">$0.00 <span class="text-sm text-white/60">USD</span></p>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 py-5 space-y-4">
+          <p class="text-gray-600 text-sm leading-relaxed">
+            Este será el dinero que retiras cada vez que alguien que venga por tu link de recomendación recargue su billetera para usar la herramienta IA.
+          </p>
+
+          <div>
+            <p class="text-gray-900 font-bold text-sm mb-3">¿Cómo funciona?</p>
+            <div class="space-y-2">
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">1</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Comparte tu link de recomendación</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">2</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Un usuario compra un curso pagado</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">3</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Recibes tu comisión en esta billetera</p>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span class="text-xs font-black text-emerald-600">4</span>
+                </div>
+                <p class="text-sm text-gray-600 pt-0.5">Retira tu dinero cuando quieras</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 pb-5">
+          <button
+            (click)="showRetiroModal.set(false)"
+            class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm transition-colors">
+            Entendido
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 
 </div>
