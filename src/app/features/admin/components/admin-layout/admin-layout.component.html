@@ -221,6 +221,17 @@
               @if (!sidebarCollapsed()) { <span>Cpra-Vde Cursos</span> }
             </a>
           </li>
+          <li>
+            <a routerLink="/admin/sms-masivos" routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-violet-400">sms</span>
+              @if (!sidebarCollapsed()) {
+                <span>SMS Masivos</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[8px] font-black bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded uppercase">New</span>
+              }
+            </a>
+          </li>
         </ul>
       </div>
       <div>
