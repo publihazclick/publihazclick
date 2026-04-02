@@ -449,13 +449,26 @@ export class SmsMasivosComponent implements OnInit {
     this.rechargeLoading.set(true);
 
     try {
-      const supabase = (await import('../../../../core/supabase.client')).getSupabaseClient();
-      const { data, error } = await supabase.functions.invoke('create-sms-wallet-recharge', {
+      const { getSupabaseClient } = await import('../../../../core/supabase.client');
+      const supabase = getSupabaseClient();
+
+      // Verificar sesión activa
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No autenticado. Inicia sesión de nuevo.');
+
+      const response = await supabase.functions.invoke('create-sms-wallet-recharge', {
         body: { amount: opt.cop },
       });
 
-      if (error || !data?.invoice) {
-        throw new Error(data?.error ?? 'Error al preparar pago con ePayco');
+      // supabase-js v2: en error HTTP, data puede tener el body o error tiene el mensaje
+      const data = response.data ?? response.error;
+
+      if (!data?.invoice) {
+        const errMsg = data?.error
+          ?? (typeof response.error === 'string' ? response.error : null)
+          ?? (response.error as any)?.message
+          ?? 'Error al preparar el pago';
+        throw new Error(errMsg);
       }
 
       await this.loadEpaycoScript();
