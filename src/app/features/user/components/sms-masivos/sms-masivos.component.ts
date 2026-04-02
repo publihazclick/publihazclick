@@ -18,7 +18,7 @@ import type {
   SmsDashboardStats,
 } from '../../../../core/models/sms.model';
 
-type TabId = 'dashboard' | 'contacts' | 'compose' | 'campaigns' | 'templates';
+type TabId = 'dashboard' | 'compose' | 'templates' | 'contacts' | 'saved-lists' | 'campaigns' | 'sent-messages' | 'recharge-history';
 
 @Component({
   selector: 'app-sms-masivos',

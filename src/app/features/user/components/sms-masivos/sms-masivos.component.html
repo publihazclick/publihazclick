@@ -43,7 +43,7 @@
 
           @if (menuOpen()) {
             <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
-            <div class="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-2xl shadow-xl z-40 overflow-hidden">
+            <div class="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-40 overflow-hidden max-h-[80vh] overflow-y-auto">
               <button
                 (click)="setTab('dashboard')"
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors"
@@ -52,32 +52,53 @@
                 Panel
               </button>
               <button
-                (click)="setTab('contacts')"
-                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
-                [class]="activeTab() === 'contacts' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
-                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'contacts'">contacts</span>
-                Contactos
-              </button>
-              <button
                 (click)="setTab('compose')"
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
                 [class]="activeTab() === 'compose' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
-                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'compose'">edit_note</span>
-                Componer
-              </button>
-              <button
-                (click)="setTab('campaigns')"
-                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
-                [class]="activeTab() === 'campaigns' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
-                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'campaigns'">campaign</span>
-                Campañas
+                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'compose'">send</span>
+                Crear y Enviar
               </button>
               <button
                 (click)="setTab('templates')"
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
                 [class]="activeTab() === 'templates' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
                 <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'templates'">description</span>
-                Plantillas
+                Crear Plantilla
+              </button>
+              <button
+                (click)="setTab('contacts')"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+                [class]="activeTab() === 'contacts' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'contacts'">person_add</span>
+                Crear Lista
+              </button>
+              <button
+                (click)="setTab('saved-lists')"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+                [class]="activeTab() === 'saved-lists' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'saved-lists'">folder_open</span>
+                Listas Guardadas
+              </button>
+              <button
+                (click)="setTab('campaigns')"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+                [class]="activeTab() === 'campaigns' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'campaigns'">campaign</span>
+                Campañas Enviadas
+              </button>
+              <button
+                (click)="setTab('sent-messages')"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+                [class]="activeTab() === 'sent-messages' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'sent-messages'">chat</span>
+                Mensajes Enviados
+              </button>
+              <button
+                (click)="setTab('recharge-history')"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+                [class]="activeTab() === 'recharge-history' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+                <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'recharge-history'">receipt_long</span>
+                Historial Recargas
               </button>
             </div>
           }
@@ -746,6 +767,69 @@
             }
           </div>
         }
+      </div>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────────
+         LISTAS GUARDADAS
+         ───────────────────────────────────────────────────────────── -->
+    @case ('saved-lists') {
+      <div class="space-y-4">
+        <h2 class="text-lg font-bold flex items-center gap-2 text-gray-900">
+          <span class="material-symbols-outlined text-violet-500">folder_open</span>
+          Listas Guardadas
+        </h2>
+        <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
+          <span class="material-symbols-outlined text-6xl text-gray-200">folder_open</span>
+          <p class="text-gray-500 font-semibold mt-4">No hay listas guardadas</p>
+          <p class="text-gray-400 text-sm mt-1">Las listas de contactos que guardes aparecerán aquí</p>
+          <button
+            (click)="setTab('contacts')"
+            class="mt-6 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors inline-flex items-center gap-2">
+            <span class="material-symbols-outlined text-lg">person_add</span>
+            Crear lista
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────────
+         MENSAJES ENVIADOS
+         ───────────────────────────────────────────────────────────── -->
+    @case ('sent-messages') {
+      <div class="space-y-4">
+        <h2 class="text-lg font-bold flex items-center gap-2 text-gray-900">
+          <span class="material-symbols-outlined text-violet-500">chat</span>
+          Mensajes Enviados
+        </h2>
+        <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
+          <span class="material-symbols-outlined text-6xl text-gray-200">chat</span>
+          <p class="text-gray-500 font-semibold mt-4">No hay mensajes enviados</p>
+          <p class="text-gray-400 text-sm mt-1">El historial de todos tus mensajes SMS enviados aparecerá aquí</p>
+          <button
+            (click)="setTab('compose')"
+            class="mt-6 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors inline-flex items-center gap-2">
+            <span class="material-symbols-outlined text-lg">send</span>
+            Crear y enviar
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- ─────────────────────────────────────────────────────────────
+         HISTORIAL RECARGAS
+         ───────────────────────────────────────────────────────────── -->
+    @case ('recharge-history') {
+      <div class="space-y-4">
+        <h2 class="text-lg font-bold flex items-center gap-2 text-gray-900">
+          <span class="material-symbols-outlined text-violet-500">receipt_long</span>
+          Historial de Recargas
+        </h2>
+        <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
+          <span class="material-symbols-outlined text-6xl text-gray-200">receipt_long</span>
+          <p class="text-gray-500 font-semibold mt-4">No hay recargas registradas</p>
+          <p class="text-gray-400 text-sm mt-1">El historial de tus recargas de saldo SMS aparecerá aquí</p>
+        </div>
       </div>
     }
 
