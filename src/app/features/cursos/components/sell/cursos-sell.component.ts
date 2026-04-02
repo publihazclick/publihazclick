@@ -15,6 +15,7 @@ type SellView = 'list' | 'edit';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule],
   templateUrl: './cursos-sell.component.html',
+  host: { class: 'block bg-gray-900 rounded-2xl p-4 lg:p-6' },
 })
 export class CursosSellComponent implements OnInit {
   private readonly cursosService = inject(CursosService);
