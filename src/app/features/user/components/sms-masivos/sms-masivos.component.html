@@ -31,8 +31,14 @@
   <div class="mb-8">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
       <div class="flex items-start gap-3">
-        <!-- Menú hamburguesa (izquierda) -->
-        <div class="relative mt-1">
+        <!-- Título -->
+        <div class="mt-3">
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900">SMS Masivos</h1>
+          <p class="text-gray-400 text-sm mt-0.5">Plataforma de mensajería masiva profesional</p>
+        </div>
+
+        <!-- Menú hamburguesa (derecha) -->
+        <div class="relative mt-1 ml-auto">
           <button
             (click)="menuOpen.set(!menuOpen())"
             class="w-12 h-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl shadow-sm hover:bg-gray-50 transition-colors">
@@ -43,7 +49,7 @@
 
           @if (menuOpen()) {
             <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
-            <div class="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-40 overflow-hidden max-h-[80vh] overflow-y-auto">
+            <div class="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-40 overflow-hidden max-h-[80vh] overflow-y-auto">
               <button
                 (click)="setTab('dashboard')"
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors"
@@ -102,12 +108,6 @@
               </button>
             </div>
           }
-        </div>
-
-        <!-- Título -->
-        <div class="mt-3">
-          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900">SMS Masivos</h1>
-          <p class="text-gray-400 text-sm mt-0.5">Plataforma de mensajería masiva profesional</p>
         </div>
       </div>
 
