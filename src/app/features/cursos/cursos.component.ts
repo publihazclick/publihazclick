@@ -32,7 +32,7 @@ import { ProfileService } from '../../core/services/profile.service';
                         class="flex items-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-sm">
                   <span class="material-symbols-outlined text-emerald-500" style="font-size:20px">account_balance_wallet</span>
                   <div class="text-left">
-                    <p class="text-[9px] text-emerald-500 font-semibold leading-none">Saldo</p>
+                    <p class="text-[9px] text-emerald-500 font-semibold leading-none">Billetera de Retiro</p>
                     <p class="text-sm font-black text-emerald-600 leading-tight">$0</p>
                   </div>
                 </button>
@@ -132,7 +132,7 @@ import { ProfileService } from '../../core/services/profile.service';
                     <span class="material-symbols-outlined text-white" style="font-size:22px">account_balance_wallet</span>
                   </div>
                   <div>
-                    <p class="text-xs text-emerald-600 font-semibold">Mi saldo en cursos</p>
+                    <p class="text-xs text-emerald-600 font-semibold">Billetera de Retiro</p>
                     <p class="text-2xl font-black text-emerald-700">$0</p>
                   </div>
                 </div>
