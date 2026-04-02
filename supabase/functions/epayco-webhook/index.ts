@@ -274,6 +274,31 @@ Deno.serve(async (req) => {
       return ok('ai_wallet_approved');
     }
 
+    // ── 4A-3. Si es recarga de billetera SMS ──────────────────────────────────
+    if (x_extra3 === 'sms_wallet' && x_extra1) {
+      // Actualizar pago como aprobado
+      await supabase.from('sms_wallet_payments')
+        .update({ status: 'approved', epayco_ref: x_ref_payco, approved_at: new Date().toISOString() })
+        .eq('id', x_extra1);
+
+      // Obtener el monto del pago
+      const { data: smsPay } = await supabase.from('sms_wallet_payments')
+        .select('user_id, amount')
+        .eq('id', x_extra1)
+        .single();
+
+      if (smsPay) {
+        // Acreditar en la billetera SMS
+        await supabase.rpc('sms_wallet_credit', {
+          p_user_id: smsPay.user_id,
+          p_amount: smsPay.amount,
+        });
+      }
+
+      console.log(`Recarga billetera SMS aprobada — payment: ${x_extra1}, ref: ${x_ref_payco}`);
+      return ok('sms_wallet_approved');
+    }
+
     // ── 4B. Si es compra de curso ────────────────────────────────────────────
     if (x_extra3 === 'curso_purchase' && x_extra1) {
       // Obtener datos de la compra antes de completar
