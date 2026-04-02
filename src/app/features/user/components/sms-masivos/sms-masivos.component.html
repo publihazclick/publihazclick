@@ -67,22 +67,16 @@
     <div class="relative">
       <button
         (click)="menuOpen.set(!menuOpen())"
-        class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
-        <div class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-violet-500 text-lg">
-            {{ activeTab() === 'dashboard' ? 'dashboard' :
-               activeTab() === 'contacts' ? 'contacts' :
-               activeTab() === 'compose' ? 'edit_note' :
-               activeTab() === 'campaigns' ? 'campaign' : 'description' }}
-          </span>
-          <span class="font-semibold text-sm text-gray-900">
-            {{ activeTab() === 'dashboard' ? 'Panel' :
-               activeTab() === 'contacts' ? 'Contactos' :
-               activeTab() === 'compose' ? 'Componer' :
-               activeTab() === 'campaigns' ? 'Campañas' : 'Plantillas' }}
-          </span>
-        </div>
-        <span class="material-symbols-outlined text-gray-400 transition-transform" [class.rotate-180]="menuOpen()">expand_more</span>
+        class="flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm hover:bg-gray-50 transition-colors">
+        <span class="material-symbols-outlined text-violet-600 text-2xl">
+          {{ menuOpen() ? 'close' : 'menu' }}
+        </span>
+        <span class="font-semibold text-sm text-gray-900">
+          {{ activeTab() === 'dashboard' ? 'Panel' :
+             activeTab() === 'contacts' ? 'Contactos' :
+             activeTab() === 'compose' ? 'Componer' :
+             activeTab() === 'campaigns' ? 'Campañas' : 'Plantillas' }}
+        </span>
       </button>
 
       @if (menuOpen()) {
