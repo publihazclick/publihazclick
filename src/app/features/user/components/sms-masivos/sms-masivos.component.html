@@ -63,8 +63,74 @@
       }
     </div>
 
-    <!-- ── Navegación por pestañas ────────────────────────────────── -->
-    <div class="flex gap-1 bg-white border border-gray-200 rounded-2xl p-1.5 overflow-x-auto shadow-sm">
+    <!-- ── Menú hamburguesa (móvil) ─────────────────────────────── -->
+    <div class="relative md:hidden">
+      <button
+        (click)="menuOpen.set(!menuOpen())"
+        class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-violet-500 text-lg">
+            {{ activeTab() === 'dashboard' ? 'dashboard' :
+               activeTab() === 'contacts' ? 'contacts' :
+               activeTab() === 'compose' ? 'edit_note' :
+               activeTab() === 'campaigns' ? 'campaign' : 'description' }}
+          </span>
+          <span class="font-semibold text-sm text-gray-900">
+            {{ activeTab() === 'dashboard' ? 'Panel' :
+               activeTab() === 'contacts' ? 'Contactos' :
+               activeTab() === 'compose' ? 'Componer' :
+               activeTab() === 'campaigns' ? 'Campañas' : 'Plantillas' }}
+          </span>
+        </div>
+        <span class="material-symbols-outlined text-gray-400 transition-transform" [class.rotate-180]="menuOpen()">expand_more</span>
+      </button>
+
+      @if (menuOpen()) {
+        <!-- Fondo para cerrar -->
+        <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
+        <!-- Menú desplegable -->
+        <div class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-40 overflow-hidden">
+          <button
+            (click)="setTab('dashboard')"
+            class="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors"
+            [class]="activeTab() === 'dashboard' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+            <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'dashboard'">dashboard</span>
+            Panel
+          </button>
+          <button
+            (click)="setTab('contacts')"
+            class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+            [class]="activeTab() === 'contacts' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+            <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'contacts'">contacts</span>
+            Contactos
+          </button>
+          <button
+            (click)="setTab('compose')"
+            class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+            [class]="activeTab() === 'compose' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+            <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'compose'">edit_note</span>
+            Componer
+          </button>
+          <button
+            (click)="setTab('campaigns')"
+            class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+            [class]="activeTab() === 'campaigns' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+            <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'campaigns'">campaign</span>
+            Campañas
+          </button>
+          <button
+            (click)="setTab('templates')"
+            class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors"
+            [class]="activeTab() === 'templates' ? 'bg-violet-50 text-violet-700 font-bold' : 'text-gray-600 hover:bg-gray-50'">
+            <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'templates'">description</span>
+            Plantillas
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- ── Pestañas (escritorio) ─────────────────────────────────── -->
+    <div class="hidden md:flex gap-1 bg-white border border-gray-200 rounded-2xl p-1.5 shadow-sm">
       <button
         (click)="setTab('dashboard')"
         [class]="activeTab() === 'dashboard'

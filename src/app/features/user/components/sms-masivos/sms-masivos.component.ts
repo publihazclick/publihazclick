@@ -43,7 +43,8 @@ export class SmsMasivosComponent implements OnInit {
   readonly templates = signal<SmsTemplate[]>([]);
   readonly stats = signal<SmsDashboardStats | null>(null);
 
-  // ── Modal visibility ────────────────────────────────────────
+  // ── Menu & Modal visibility ─────────────────────────────────
+  readonly menuOpen = signal(false);
   readonly showContactModal = signal(false);
   readonly showTemplateModal = signal(false);
   readonly showImportModal = signal(false);
@@ -146,6 +147,7 @@ export class SmsMasivosComponent implements OnInit {
 
   setTab(tab: TabId): void {
     this.activeTab.set(tab);
+    this.menuOpen.set(false);
   }
 
   // ── Contact CRUD ────────────────────────────────────────────
