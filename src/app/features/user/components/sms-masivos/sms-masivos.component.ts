@@ -66,9 +66,19 @@ export class SmsMasivosComponent implements OnInit {
 
   // ── Compose fields ──────────────────────────────────────────
   composeMessage = '';
-  composeRecipients: 'all' | 'manual' = 'all';
-  composePhones = '';
   composeCampaignName = '';
+
+  // ── Excel upload ────────────────────────────────────────────
+  readonly excelPhones = signal<string[]>([]);
+  readonly excelFileName = signal('');
+
+  // ── Distribution mode ───────────────────────────────────────
+  distributionMode: 'all' | 'split' = 'all';
+  splitParts = 2;
+  splitSchedules: string[] = ['', ''];
+
+  // ── Confirm modal ──────────────────────────────────────────
+  readonly showConfirmModal = signal(false);
 
   // ── Operation state ─────────────────────────────────────────
   readonly sending = signal(false);
@@ -81,15 +91,7 @@ export class SmsMasivosComponent implements OnInit {
   // ── Computed ────────────────────────────────────────────────
   readonly smsInfo = computed(() => calculateSmsSegments(this.composeMessage));
 
-  readonly recipientCount = computed(() => {
-    if (this.composeRecipients === 'all') {
-      return this.contacts().length;
-    }
-    return this.composePhones
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0).length;
-  });
+  readonly recipientCount = computed(() => this.excelPhones().length);
 
   // ── Country codes ───────────────────────────────────────────
   readonly countryCodes = [
@@ -348,16 +350,8 @@ export class SmsMasivosComponent implements OnInit {
     this.error.set(null);
 
     try {
-      // Determine recipients
-      let phones: string[];
-      if (this.composeRecipients === 'all') {
-        phones = this.contacts().map((c) => c.phone_number);
-      } else {
-        phones = this.composePhones
-          .split('\n')
-          .map((l) => l.trim())
-          .filter((l) => l.length > 0);
-      }
+      // Determine recipients from Excel upload
+      const phones = [...this.excelPhones()];
 
       if (phones.length === 0) {
         this.error.set('No hay destinatarios seleccionados');
@@ -400,8 +394,12 @@ export class SmsMasivosComponent implements OnInit {
 
       // Reset compose
       this.composeMessage = '';
-      this.composePhones = '';
       this.composeCampaignName = '';
+      this.excelPhones.set([]);
+      this.excelFileName.set('');
+      this.distributionMode = 'all';
+      this.splitParts = 2;
+      this.splitSchedules = ['', ''];
 
       this.showSuccess(`Campaña enviada a ${phones.length} destinatarios`);
       this.setTab('campaigns');
@@ -410,6 +408,67 @@ export class SmsMasivosComponent implements OnInit {
     } finally {
       this.sending.set(false);
     }
+  }
+
+  // ── Excel upload ────────────────────────────────────────────
+
+  onExcelFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.excelFileName.set(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+      // Skip header if first line doesn't start with + or digit
+      const start = lines.length > 0 && !/^[\+\d]/.test(lines[0]) ? 1 : 0;
+      const phones: string[] = [];
+      for (let i = start; i < lines.length; i++) {
+        // Take first column (comma or semicolon separated)
+        const cols = lines[i].split(/[,;\t]/);
+        const phone = cols[0].trim().replace(/[^+\d]/g, '');
+        if (phone.length >= 7) phones.push(phone);
+      }
+      this.excelPhones.set(phones);
+    };
+    reader.readAsText(file);
+    input.value = '';
+  }
+
+  removeExcelFile(): void {
+    this.excelPhones.set([]);
+    this.excelFileName.set('');
+  }
+
+  // ── Distribution ───────────────────────────────────────────
+
+  onSplitPartsChange(value: number): void {
+    this.splitParts = Math.max(2, Math.min(10, value));
+    this.splitSchedules = Array.from({ length: this.splitParts }, (_, i) => this.splitSchedules[i] ?? '');
+  }
+
+  getPartSize(partIndex: number): number {
+    const total = this.excelPhones().length;
+    const base = Math.floor(total / this.splitParts);
+    const remainder = total % this.splitParts;
+    return base + (partIndex < remainder ? 1 : 0);
+  }
+
+  // ── Confirm & Send ─────────────────────────────────────────
+
+  requestSend(): void {
+    this.showConfirmModal.set(true);
+  }
+
+  cancelSend(): void {
+    this.showConfirmModal.set(false);
+  }
+
+  async confirmSend(): Promise<void> {
+    this.showConfirmModal.set(false);
+    await this.sendCampaign();
   }
 
   // ── Helpers ─────────────────────────────────────────────────

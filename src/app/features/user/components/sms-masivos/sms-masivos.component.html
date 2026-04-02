@@ -418,189 +418,194 @@
     }
 
     <!-- ─────────────────────────────────────────────────────────────
-         COMPONER
+         CREAR Y ENVIAR
          ───────────────────────────────────────────────────────────── -->
     @case ('compose') {
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Compositor principal -->
-        <div class="lg:col-span-2 space-y-5">
-          <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-            <h3 class="font-bold text-lg flex items-center gap-2 mb-5 text-gray-900">
-              <span class="material-symbols-outlined text-violet-500">edit_note</span>
-              Componer mensaje
-            </h3>
+      <div class="max-w-3xl mx-auto space-y-5">
+        <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+          <h3 class="font-bold text-lg flex items-center gap-2 mb-5 text-gray-900">
+            <span class="material-symbols-outlined text-violet-500">edit_note</span>
+            Crear y Enviar
+          </h3>
 
-            <!-- Nombre de la campaña -->
-            <div class="mb-4">
-              <label class="block text-sm text-gray-500 font-semibold mb-2">Nombre de la campaña</label>
-              <input
-                type="text"
-                [(ngModel)]="composeCampaignName"
-                placeholder="Ej: Promoción Abril 2026"
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none transition-all text-sm" />
-            </div>
+          <!-- Nombre de la campaña -->
+          <div class="mb-4">
+            <label class="block text-sm text-gray-500 font-semibold mb-2">Nombre de la campaña</label>
+            <input
+              type="text"
+              [(ngModel)]="composeCampaignName"
+              placeholder="Ej: Promoción Abril 2026"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none transition-all text-sm" />
+          </div>
 
-            <!-- Destinatarios -->
-            <div class="mb-4">
-              <label class="block text-sm text-gray-500 font-semibold mb-2">Destinatarios</label>
-              <div class="flex flex-col sm:flex-row gap-3">
-                <label class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors flex-1"
-                  [class.border-violet-400]="composeRecipients === 'all'"
-                  [class.bg-violet-50]="composeRecipients === 'all'">
-                  <input type="radio" name="recipients" value="all" [(ngModel)]="composeRecipients" class="accent-violet-500" />
-                  <div>
-                    <span class="text-sm font-semibold text-gray-900">Todos mis contactos</span>
-                    <span class="text-gray-400 text-xs ml-1">({{ contacts().length }})</span>
-                  </div>
-                </label>
-                <label class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors flex-1"
-                  [class.border-violet-400]="composeRecipients === 'manual'"
-                  [class.bg-violet-50]="composeRecipients === 'manual'">
-                  <input type="radio" name="recipients" value="manual" [(ngModel)]="composeRecipients" class="accent-violet-500" />
-                  <span class="text-sm font-semibold text-gray-900">Números manuales</span>
-                </label>
-              </div>
-            </div>
-
-            @if (composeRecipients === 'manual') {
-              <div class="mb-4">
-                <textarea
-                  [(ngModel)]="composePhones"
-                  rows="4"
-                  placeholder="Un número por línea con código de país&#10;+573001234567&#10;+573109876543"
-                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none transition-all text-sm font-mono resize-none"></textarea>
-              </div>
-            }
-
-            <!-- Cuerpo del mensaje -->
-            <div class="mb-4">
-              <div class="flex items-center justify-between mb-2">
-                <label class="text-sm text-gray-500 font-semibold">Mensaje</label>
-                <div class="flex gap-1">
-                  <button
-                    (click)="insertVariable('nombre')"
-                    class="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
-                    &#123;nombre&#125;
-                  </button>
-                  <button
-                    (click)="insertVariable('telefono')"
-                    class="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
-                    &#123;telefono&#125;
-                  </button>
-                </div>
-              </div>
-              <textarea
-                [(ngModel)]="composeMessage"
-                rows="5"
-                placeholder="Escribe tu mensaje aquí..."
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none transition-all text-sm resize-none"></textarea>
-              <!-- Contador de caracteres -->
-              <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-xs text-gray-400">
-                <span>{{ smsInfo().chars }}/{{ smsInfo().maxPerSegment }} caracteres</span>
-                <span class="text-gray-300 hidden sm:inline">·</span>
-                <span class="font-semibold" [class.text-amber-500]="smsInfo().segments > 1">{{ smsInfo().segments }} segmento(s)</span>
-                <span class="text-gray-300 hidden sm:inline">·</span>
-                <span class="font-mono">{{ smsInfo().encoding }}</span>
-                @if (smsInfo().segments > 1) {
-                  <span class="text-amber-500 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-xs">warning</span>
-                    Multi-segmento
-                  </span>
-                }
-              </div>
-            </div>
-
-            <!-- Plantillas rápidas -->
-            @if (templates().length > 0) {
-              <div class="mb-4">
-                <label class="block text-sm text-gray-500 font-semibold mb-2">Usar plantilla</label>
-                <div class="flex flex-wrap gap-2">
-                  @for (t of templates(); track t.id) {
-                    <button
-                      (click)="useTemplate(t)"
-                      class="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-sm text-violet-500">description</span>
-                      {{ t.name }}
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-
-            <!-- Botón enviar -->
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-100">
-              <p class="text-xs text-gray-400 flex items-center gap-1">
-                <span class="material-symbols-outlined text-sm">info</span>
-                Costo estimado: ${{ (recipientCount() * 0.03) | number:'1.2-2' }} USD ({{ recipientCount() }} x $0.03)
-              </p>
-              <button
-                (click)="sendCampaign()"
-                [disabled]="sending() || composeMessage.length === 0 || recipientCount() === 0"
-                class="bg-violet-500 hover:bg-violet-600 disabled:bg-violet-200 disabled:text-violet-400 text-white font-bold rounded-xl px-6 py-3 text-sm flex items-center gap-2 transition-all shadow-lg shadow-violet-200 disabled:shadow-none">
-                @if (sending()) {
-                  <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Enviando...
-                } @else {
-                  <span class="material-symbols-outlined text-lg">send</span>
-                  Enviar campaña ({{ recipientCount() }} destinatarios)
-                }
-              </button>
+          <!-- Mensaje -->
+          <div class="mb-4">
+            <label class="block text-sm text-gray-500 font-semibold mb-2">Mensaje</label>
+            <textarea
+              [(ngModel)]="composeMessage"
+              rows="5"
+              placeholder="Escribe tu mensaje aquí..."
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none transition-all text-sm resize-none"></textarea>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-xs text-gray-400">
+              <span>{{ smsInfo().chars }}/{{ smsInfo().maxPerSegment }} caracteres</span>
+              <span class="text-gray-300 hidden sm:inline">·</span>
+              <span class="font-semibold" [class.text-amber-500]="smsInfo().segments > 1">{{ smsInfo().segments }} segmento(s)</span>
             </div>
           </div>
-        </div>
 
-        <!-- Barra lateral de vista previa -->
-        <div class="space-y-5">
-          <!-- Vista previa del mensaje -->
-          <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-            <h4 class="font-bold text-sm flex items-center gap-2 mb-4 text-gray-900">
-              <span class="material-symbols-outlined text-emerald-500 text-lg">smartphone</span>
-              Vista previa
-            </h4>
-            <div class="bg-gray-100 rounded-2xl p-4 border border-gray-200">
-              <div class="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200">
-                <div class="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-xs text-violet-500">sms</span>
-                </div>
-                <span class="text-xs text-gray-500">SMS</span>
-              </div>
-              @if (composeMessage.length > 0) {
-                <div class="bg-violet-100 text-violet-900 rounded-xl rounded-tl-sm px-3 py-2.5 text-sm leading-relaxed break-words">
-                  {{ composeMessage }}
-                </div>
+          <!-- Subir lista Excel -->
+          <div class="mb-4">
+            <label class="block text-sm text-gray-500 font-semibold mb-2">Subir lista de destinatarios (Excel / CSV)</label>
+            <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-violet-400 hover:bg-violet-50/30 transition-colors">
+              @if (excelPhones().length === 0) {
+                <span class="material-symbols-outlined text-4xl text-gray-300 mb-2">upload_file</span>
+                <p class="text-gray-500 text-sm mb-3">Arrastra tu archivo aquí o haz clic para seleccionar</p>
+                <p class="text-gray-400 text-xs mb-4">Formatos aceptados: .csv, .xls, .xlsx — Los números deben estar en la primera columna</p>
+                <label class="inline-flex items-center gap-2 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl px-5 py-2.5 text-sm cursor-pointer transition-colors shadow-lg shadow-violet-200">
+                  <span class="material-symbols-outlined text-lg">folder_open</span>
+                  Seleccionar archivo
+                  <input type="file" accept=".csv,.xls,.xlsx,.txt" class="hidden" (change)="onExcelFileSelected($event)" />
+                </label>
               } @else {
-                <div class="text-gray-400 text-sm italic text-center py-4">Tu mensaje aparecerá aquí</div>
+                <div class="flex items-center justify-center gap-3">
+                  <span class="material-symbols-outlined text-2xl text-emerald-500">check_circle</span>
+                  <div class="text-left">
+                    <p class="text-sm font-bold text-gray-900">{{ excelFileName() }}</p>
+                    <p class="text-xs text-emerald-600 font-semibold">{{ excelPhones().length }} números cargados</p>
+                  </div>
+                  <button
+                    (click)="removeExcelFile()"
+                    class="ml-2 p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
               }
             </div>
           </div>
 
-          <!-- Resumen -->
-          <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-            <h4 class="font-bold text-sm flex items-center gap-2 mb-4 text-gray-900">
-              <span class="material-symbols-outlined text-amber-500 text-lg">analytics</span>
-              Resumen
-            </h4>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-400">Destinatarios</span>
-                <span class="font-bold text-gray-900">{{ recipientCount() }}</span>
+          <!-- Modo de distribución -->
+          @if (excelPhones().length > 0) {
+            <div class="mb-4">
+              <label class="block text-sm text-gray-500 font-semibold mb-2">Modo de envío</label>
+              <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                <label class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors flex-1"
+                  [class.border-violet-400]="distributionMode === 'all'"
+                  [class.bg-violet-50]="distributionMode === 'all'">
+                  <input type="radio" name="distMode" value="all" [(ngModel)]="distributionMode" class="accent-violet-500" />
+                  <div>
+                    <span class="text-sm font-semibold text-gray-900">Enviar todo de un golpe</span>
+                    <p class="text-xs text-gray-400">Los {{ excelPhones().length }} números recibirán el mensaje al mismo tiempo</p>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors flex-1"
+                  [class.border-violet-400]="distributionMode === 'split'"
+                  [class.bg-violet-50]="distributionMode === 'split'">
+                  <input type="radio" name="distMode" value="split" [(ngModel)]="distributionMode" class="accent-violet-500" />
+                  <div>
+                    <span class="text-sm font-semibold text-gray-900">Dividir en partes</span>
+                    <p class="text-xs text-gray-400">Programa el envío en diferentes horarios</p>
+                  </div>
+                </label>
               </div>
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-400">Segmentos</span>
-                <span class="font-bold text-gray-900">{{ smsInfo().segments }}</span>
-              </div>
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-400">Codificación</span>
-                <span class="font-bold font-mono text-xs text-gray-900">{{ smsInfo().encoding }}</span>
-              </div>
-              <div class="flex items-center justify-between text-sm border-t border-gray-100 pt-3">
-                <span class="text-gray-400">Costo total</span>
-                <span class="font-bold text-amber-600">${{ (recipientCount() * smsInfo().segments * 0.03) | number:'1.2-2' }}</span>
-              </div>
+
+              @if (distributionMode === 'split') {
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+                  <!-- Cantidad de partes -->
+                  <div>
+                    <label class="block text-sm text-gray-500 font-semibold mb-2">¿En cuántas partes dividir la lista?</label>
+                    <div class="flex items-center gap-3">
+                      <input
+                        type="number"
+                        [ngModel]="splitParts"
+                        (ngModelChange)="onSplitPartsChange($event)"
+                        min="2" max="10"
+                        class="w-20 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm text-center focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none" />
+                      <span class="text-sm text-gray-400">partes ({{ excelPhones().length }} números en total)</span>
+                    </div>
+                  </div>
+
+                  <!-- Horarios por parte -->
+                  <div class="space-y-3">
+                    @for (schedule of splitSchedules; track $index) {
+                      <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                        <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+                          <span class="text-xs font-black text-violet-600">{{ $index + 1 }}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-gray-500">Parte {{ $index + 1 }} — <span class="font-bold text-gray-700">{{ getPartSize($index) }} números</span></p>
+                        </div>
+                        <input
+                          type="datetime-local"
+                          [ngModel]="splitSchedules[$index]"
+                          (ngModelChange)="splitSchedules[$index] = $event"
+                          class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none" />
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
             </div>
+          }
+
+          <!-- Botón enviar -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400 flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">info</span>
+              Costo estimado: ${{ (recipientCount() * 0.03) | number:'1.2-2' }} USD ({{ recipientCount() }} x $0.03)
+            </p>
+            <button
+              (click)="requestSend()"
+              [disabled]="sending() || composeMessage.length === 0 || recipientCount() === 0"
+              class="bg-violet-500 hover:bg-violet-600 disabled:bg-violet-200 disabled:text-violet-400 text-white font-bold rounded-xl px-6 py-3 text-sm flex items-center gap-2 transition-all shadow-lg shadow-violet-200 disabled:shadow-none">
+              @if (sending()) {
+                <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Enviando...
+              } @else {
+                <span class="material-symbols-outlined text-lg">send</span>
+                Enviar campaña ({{ recipientCount() }} destinatarios)
+              }
+            </button>
           </div>
         </div>
       </div>
+
+      <!-- Modal de confirmación -->
+      @if (showConfirmModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" (click)="cancelSend()"></div>
+          <div class="relative bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-2xl p-6 text-center">
+            <div class="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center mx-auto mb-4">
+              <span class="material-symbols-outlined text-violet-600 text-3xl">send</span>
+            </div>
+            <h3 class="font-bold text-lg text-gray-900 mb-2">Confirmar envío</h3>
+            <p class="text-gray-500 text-sm mb-6">
+              ¿Confirmas que tu mensaje salga a distribución?
+            </p>
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-6 text-left">
+              <div class="flex justify-between text-sm mb-1">
+                <span class="text-gray-400">Destinatarios</span>
+                <span class="font-bold text-gray-900">{{ recipientCount() }}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-400">Modo</span>
+                <span class="font-bold text-gray-900">{{ distributionMode === 'all' ? 'Envío inmediato' : 'Dividido en ' + splitParts + ' partes' }}</span>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <button
+                (click)="cancelSend()"
+                class="flex-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 font-bold rounded-xl py-3 text-sm transition-colors">
+                Cancelar
+              </button>
+              <button
+                (click)="confirmSend()"
+                class="flex-1 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl py-3 text-sm transition-colors shadow-lg shadow-violet-200">
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     }
 
     <!-- ─────────────────────────────────────────────────────────────
