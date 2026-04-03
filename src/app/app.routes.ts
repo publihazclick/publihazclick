@@ -418,8 +418,7 @@ export const routes: Routes = [
   },
   {
     path: 'cursos',
-    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
-    data: { moduleSlug: 'cursos' }
+    loadComponent: () => import('./pages/module-landing/cursos-landing.component').then(m => m.CursosPublicLandingComponent),
   },
   {
     path: 'sms-masivos',

@@ -1,0 +1,285 @@
+<div class="bg-black text-white">
+
+  <!-- ═══ HERO ═══════════════════════════════════════════════════════════ -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-sky-950 via-black to-indigo-950"></div>
+    <div class="absolute inset-0">
+      <div class="absolute top-10 right-20 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-10 left-10 w-96 h-96 bg-indigo-500/8 rounded-full blur-3xl"></div>
+      <div class="absolute top-1/2 left-1/3 w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-3xl"></div>
+    </div>
+    <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px); background-size: 60px 60px;"></div>
+
+    <div class="relative z-10 max-w-6xl mx-auto px-4 py-20 sm:py-28 md:py-36">
+      <div class="text-center">
+        <!-- Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-sky-500/10 border border-sky-500/20 rounded-full mb-8">
+          <span class="material-symbols-outlined text-sky-400" style="font-size:16px">school</span>
+          <span class="text-sky-400 text-xs font-black uppercase tracking-widest">Marketplace de Cursos Online</span>
+        </div>
+
+        <!-- Icon -->
+        <div class="flex justify-center mb-8">
+          <div class="relative">
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center backdrop-blur-sm">
+              <span class="material-symbols-outlined text-sky-400" style="font-size:56px">school</span>
+            </div>
+            <div class="absolute -top-2 -right-2 w-10 h-10 rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/40">
+              <span class="material-symbols-outlined text-white" style="font-size:20px">sell</span>
+            </div>
+          </div>
+        </div>
+
+        <h1 class="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-none mb-4">
+          Compra-Vende <span class="bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">Cursos</span>
+        </h1>
+        <p class="text-xl sm:text-2xl md:text-3xl text-sky-400 font-black mb-6">
+          Aprende, enseña y monetiza tu conocimiento
+        </p>
+        <p class="text-slate-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+          Marketplace donde puedes comprar cursos premium, aprender con cursos gratuitos, crear y vender tus propios cursos,
+          o ganar <span class="text-sky-400 font-black">20% de comisión</span> como afiliado por cada venta que generes.
+        </p>
+
+        <!-- CTAs -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+          <a routerLink="/register"
+             class="group px-8 py-4 bg-gradient-to-r from-sky-500 to-blue-600 text-white font-black text-sm sm:text-base rounded-2xl uppercase tracking-wider shadow-2xl shadow-sky-500/30 hover:shadow-sky-500/50 transition-all hover:scale-105 flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:20px">rocket_launch</span>
+            Empezar Gratis
+          </a>
+          <a routerLink="/login"
+             class="px-8 py-4 bg-white/5 text-white font-bold text-sm sm:text-base rounded-2xl border border-white/10 hover:bg-white/10 transition-all flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:20px">login</span>
+            Ya tengo cuenta
+          </a>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto">
+          @for (stat of stats; track stat.label) {
+            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-4 sm:p-5 text-center backdrop-blur-sm">
+              <span class="material-symbols-outlined text-sky-400 mb-2" style="font-size:24px">{{ stat.icon }}</span>
+              <p class="text-2xl sm:text-3xl font-black text-white">{{ stat.value }}</p>
+              <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">{{ stat.label }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ REVENUE SPLIT ══════════════════════════════════════════════════ -->
+  <section class="py-10 px-4 bg-sky-500/[0.03] border-y border-sky-500/10">
+    <div class="max-w-4xl mx-auto">
+      <p class="text-center text-sm sm:text-base text-slate-300 mb-6">
+        <span class="text-sky-400 font-black">Modelo justo para todos.</span> Por cada venta de un curso:
+      </p>
+      <div class="grid grid-cols-3 gap-3 sm:gap-4 max-w-xl mx-auto">
+        <div class="text-center bg-black/30 rounded-2xl p-4 border border-sky-500/10">
+          <p class="text-2xl sm:text-3xl font-black text-sky-400">70%</p>
+          <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Creador</p>
+        </div>
+        <div class="text-center bg-black/30 rounded-2xl p-4 border border-indigo-500/10">
+          <p class="text-2xl sm:text-3xl font-black text-indigo-400">20%</p>
+          <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Afiliado</p>
+        </div>
+        <div class="text-center bg-black/30 rounded-2xl p-4 border border-white/5">
+          <p class="text-2xl sm:text-3xl font-black text-slate-400">10%</p>
+          <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Plataforma</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FOR BUYERS ═════════════════════════════════════════════════════ -->
+  <section class="py-16 sm:py-24 px-4">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-12 sm:mb-16">
+        <span class="text-sky-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Para estudiantes</span>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4">Aprende a tu ritmo</h2>
+        <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
+          Miles de cursos gratuitos y premium para desarrollar las habilidades que necesitas
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        @for (f of forBuyers; track f.title) {
+          <div class="group bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 sm:p-8 hover:border-sky-500/20 transition-all duration-300">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-500/20 to-blue-500/10 border border-sky-500/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <span class="material-symbols-outlined text-sky-400" style="font-size:28px">{{ f.icon }}</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-black text-white mb-3">{{ f.title }}</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">{{ f.desc }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FOR SELLERS ════════════════════════════════════════════════════ -->
+  <section class="py-16 sm:py-24 px-4 bg-[#050505]">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-12 sm:mb-16">
+        <span class="text-indigo-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Para creadores</span>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4">Monetiza lo que sabes</h2>
+        <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
+          Crea tu curso, pon tu precio y gana el 70% de cada venta. Publicar es gratis.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        @for (f of forSellers; track f.title) {
+          <div class="group bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 sm:p-8 hover:border-indigo-500/20 transition-all duration-300">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-violet-500/10 border border-indigo-500/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <span class="material-symbols-outlined text-indigo-400" style="font-size:28px">{{ f.icon }}</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-black text-white mb-3">{{ f.title }}</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">{{ f.desc }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CATEGORIES ═════════════════════════════════════════════════════ -->
+  <section class="py-16 sm:py-20 px-4">
+    <div class="max-w-5xl mx-auto text-center">
+      <span class="text-sky-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Variedad de temas</span>
+      <h2 class="text-2xl sm:text-3xl font-black tracking-tight mb-8">13 Categorías disponibles</h2>
+      <div class="flex flex-wrap justify-center gap-2 sm:gap-3">
+        @for (cat of categories; track cat) {
+          <span class="px-4 py-2 bg-white/[0.03] border border-white/10 rounded-full text-xs sm:text-sm font-bold text-slate-300 hover:border-sky-500/30 hover:text-sky-400 transition-all">
+            {{ cat }}
+          </span>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ HOW IT WORKS ═══════════════════════════════════════════════════ -->
+  <section class="py-16 sm:py-24 px-4 bg-[#050505]">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-12 sm:mb-16">
+        <span class="text-blue-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Paso a paso</span>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4">Empieza en minutos</h2>
+        <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
+          Ya sea que quieras aprender, enseñar o ganar como afiliado
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        @for (step of steps; track step.num) {
+          <div class="flex items-start gap-4 sm:gap-6 bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 sm:p-6 hover:border-sky-500/20 transition-all">
+            <div class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+              <span class="text-white font-black text-lg sm:text-xl">{{ step.num }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-base sm:text-lg font-black text-white mb-1">{{ step.title }}</h3>
+              <p class="text-sm text-slate-400">{{ step.desc }}</p>
+            </div>
+            <span class="material-symbols-outlined text-sky-500/30 hidden sm:block" style="font-size:28px">{{ step.icon }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ EARNINGS EXAMPLE ═══════════════════════════════════════════════ -->
+  <section class="py-16 sm:py-24 px-4">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-12">
+        <span class="text-primary text-xs font-black uppercase tracking-[0.2em] block mb-2">Ejemplo real</span>
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">¿Cuánto puedes ganar?</h2>
+        <p class="text-slate-400 text-sm max-w-lg mx-auto">Supongamos que creas un curso de $100,000 COP y generas 50 ventas al mes</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-[#0a0a0a] border border-sky-500/20 rounded-2xl p-6 text-center">
+          <span class="material-symbols-outlined text-sky-400 mb-2" style="font-size:32px">person</span>
+          <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Como creador (70%)</p>
+          <p class="text-3xl font-black text-sky-400">$3.500.000</p>
+          <p class="text-xs text-slate-500 mt-1">COP / mes</p>
+        </div>
+        <div class="bg-[#0a0a0a] border border-indigo-500/20 rounded-2xl p-6 text-center">
+          <span class="material-symbols-outlined text-indigo-400 mb-2" style="font-size:32px">handshake</span>
+          <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Como afiliado (20%)</p>
+          <p class="text-3xl font-black text-indigo-400">$1.000.000</p>
+          <p class="text-xs text-slate-500 mt-1">COP / mes</p>
+        </div>
+        <div class="bg-[#0a0a0a] border border-emerald-500/20 rounded-2xl p-6 text-center">
+          <span class="material-symbols-outlined text-emerald-400 mb-2" style="font-size:32px">add_circle</span>
+          <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Creador + Afiliado</p>
+          <p class="text-3xl font-black text-emerald-400">$4.500.000</p>
+          <p class="text-xs text-slate-500 mt-1">COP / mes combinado</p>
+        </div>
+      </div>
+
+      <p class="text-center text-[10px] text-slate-600 mt-6">
+        * Ejemplo ilustrativo basado en 50 ventas mensuales de un curso de $100,000 COP.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ FAQ ════════════════════════════════════════════════════════════ -->
+  <section class="py-16 sm:py-24 px-4 bg-[#050505]">
+    <div class="max-w-3xl mx-auto">
+      <div class="text-center mb-12">
+        <span class="text-sky-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Resolvemos tus dudas</span>
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight">Preguntas Frecuentes</h2>
+      </div>
+
+      <div class="space-y-3">
+        @for (faq of faqs; track faq.q; let i = $index) {
+          <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden transition-all"
+               [class.border-sky-500/20]="expandedFaq === i">
+            <button
+              (click)="toggleFaq(i)"
+              class="w-full flex items-center justify-between p-5 text-left">
+              <span class="font-black text-sm sm:text-base text-white pr-4">{{ faq.q }}</span>
+              <span class="material-symbols-outlined text-sky-400 shrink-0 transition-transform duration-300"
+                    [style.transform]="expandedFaq === i ? 'rotate(180deg)' : 'rotate(0)'">
+                expand_more
+              </span>
+            </button>
+            @if (expandedFaq === i) {
+              <div class="px-5 pb-5">
+                <p class="text-sm text-slate-400 leading-relaxed">{{ faq.a }}</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FINAL CTA ═════════════════════════════════════════════════════ -->
+  <section class="py-16 sm:py-24 px-4 relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-t from-sky-950/50 to-transparent"></div>
+    <div class="relative z-10 max-w-3xl mx-auto text-center">
+      <div class="bg-gradient-to-br from-[#0a0a0a] to-[#0a0f1a] border border-sky-500/20 rounded-3xl p-8 sm:p-14">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-sky-500/30">
+          <span class="material-symbols-outlined text-white" style="font-size:40px">school</span>
+        </div>
+        <h2 class="text-2xl sm:text-4xl font-black mb-4">
+          Tu conocimiento tiene <span class="text-sky-400">valor</span>
+        </h2>
+        <p class="text-slate-400 text-sm sm:text-base mb-8 max-w-md mx-auto">
+          Aprende de los mejores, crea tu propio curso o gana comisiones como afiliado. Todo en un solo lugar.
+        </p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a routerLink="/register"
+             class="px-10 py-4 bg-gradient-to-r from-sky-500 to-blue-600 text-white font-black text-sm sm:text-base rounded-2xl uppercase tracking-wider shadow-2xl shadow-sky-500/30 hover:shadow-sky-500/50 transition-all hover:scale-105">
+            Crear Cuenta Gratis
+          </a>
+          <a routerLink="/login"
+             class="px-10 py-4 text-white font-bold text-sm rounded-2xl border border-white/10 hover:bg-white/5 transition-all">
+            Iniciar Sesión
+          </a>
+        </div>
+        <p class="text-[10px] text-slate-600 mt-6 uppercase tracking-wider">Publicar cursos es gratis. Sin comisiones ocultas.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
