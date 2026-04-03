@@ -83,9 +83,11 @@ export class SmsMasivosComponent implements OnInit {
   // ── Confirm modal ──────────────────────────────────────────
   readonly showConfirmModal = signal(false);
 
-  // ── Billetera modals ───────────────────────────────────────
+  // ── Billetera & Referral modals ─────────────────────────────
   readonly showRecargaModal = signal(false);
   readonly showRetiroModal = signal(false);
+  readonly showReferralModal = signal(false);
+  readonly referralCopied = signal(false);
   readonly selectedRecharge = signal<number | null>(null);
   readonly rechargeLoading = signal(false);
   readonly rechargeError = signal<string | null>(null);
@@ -435,6 +437,21 @@ export class SmsMasivosComponent implements OnInit {
       this.error.set(err.message ?? 'Error enviando campaña');
     } finally {
       this.sending.set(false);
+    }
+  }
+
+  // ── Referral ────────────────────────────────────────────────
+  get referralLink(): string {
+    const code = this.profileService.profile()?.referral_code ?? '';
+    const origin = isPlatformBrowser(this.platformId) ? window.location.origin : 'https://www.publihazclick.com';
+    return code ? `${origin}/ref/${code}` : '';
+  }
+
+  copyReferralLink(): void {
+    if (this.referralLink && isPlatformBrowser(this.platformId)) {
+      navigator.clipboard.writeText(this.referralLink);
+      this.referralCopied.set(true);
+      setTimeout(() => this.referralCopied.set(false), 2000);
     }
   }
 

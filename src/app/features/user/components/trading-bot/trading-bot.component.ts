@@ -1,6 +1,7 @@
-import { Component, ChangeDetectionStrategy, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { Component, ChangeDetectionStrategy, signal, inject, PLATFORM_ID } from '@angular/core';
+import { DecimalPipe, isPlatformBrowser } from '@angular/common';
 import { TradingDemoComponent } from './trading-demo.component';
+import { ProfileService } from '../../../../core/services/profile.service';
 
 interface TradingPackage {
   name: string;
@@ -69,6 +70,12 @@ interface TradingPackage {
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
                 <span class="material-symbols-outlined text-lg text-amber-400">history</span>
                 Historial
+              </button>
+              <button
+                (click)="showReferral.set(true); menuOpen.set(false)"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
+                <span class="material-symbols-outlined text-lg text-accent">card_giftcard</span>
+                Recomienda y Gana
               </button>
               <button
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
@@ -408,14 +415,60 @@ interface TradingPackage {
         </div>
       </div>
     }
+
+    <!-- Modal Recomienda y Gana -->
+    @if (showReferral()) {
+      <div class="fixed inset-0 z-[60] flex items-center justify-center p-4" (click)="showReferral.set(false)">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-[#0d0d0d] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl p-6" (click)="$event.stopPropagation()">
+          <button (click)="showReferral.set(false)" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white">
+            <span class="material-symbols-outlined" style="font-size:16px">close</span>
+          </button>
+          <div class="text-center mb-5">
+            <div class="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-3">
+              <span class="material-symbols-outlined text-accent" style="font-size:28px">card_giftcard</span>
+            </div>
+            <h3 class="text-white font-black text-lg">Recomienda y Gana</h3>
+            <p class="text-slate-400 text-sm mt-1">Comparte tu link y gana comisiones por cada referido</p>
+          </div>
+          <div class="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-2">
+            <input type="text" [value]="referralLink" readonly class="flex-1 bg-transparent text-white text-xs font-mono truncate outline-none" />
+            <button (click)="copyReferralLink()"
+              class="shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition-all"
+              [class]="referralCopied() ? 'bg-emerald-500 text-white' : 'bg-accent text-white hover:bg-accent/80'">
+              {{ referralCopied() ? 'Copiado!' : 'Copiar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class TradingBotComponent {
+  private readonly profileService = inject(ProfileService);
+  private readonly platformId = inject(PLATFORM_ID);
+
   showDemo = false;
   demoPackage: TradingPackage | null = null;
   readonly selectedPackage = signal<TradingPackage | null>(null);
   readonly showWallet = signal(false);
   readonly menuOpen = signal(false);
+  readonly showReferral = signal(false);
+  readonly referralCopied = signal(false);
+
+  get referralLink(): string {
+    const code = this.profileService.profile()?.referral_code ?? '';
+    const origin = isPlatformBrowser(this.platformId) ? window.location.origin : 'https://www.publihazclick.com';
+    return code ? `${origin}/ref/${code}` : '';
+  }
+
+  copyReferralLink(): void {
+    if (this.referralLink && isPlatformBrowser(this.platformId)) {
+      navigator.clipboard.writeText(this.referralLink);
+      this.referralCopied.set(true);
+      setTimeout(() => this.referralCopied.set(false), 2000);
+    }
+  }
 
   openPaymentModal(pkg: TradingPackage): void {
     this.selectedPackage.set(pkg);

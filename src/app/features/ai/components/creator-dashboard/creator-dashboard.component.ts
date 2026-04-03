@@ -41,6 +41,22 @@ export class CreatorDashboardComponent implements OnInit {
 
   readonly sidebarOpen = signal(false);
   readonly showRetiroModal = signal(false);
+  readonly showReferralModal = signal(false);
+  readonly referralCopied = signal(false);
+
+  get referralLink(): string {
+    const code = this.profileService.profile()?.referral_code ?? '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.publihazclick.com';
+    return code ? `${origin}/ref/${code}` : '';
+  }
+
+  copyReferralLink(): void {
+    if (this.referralLink && typeof window !== 'undefined') {
+      navigator.clipboard.writeText(this.referralLink);
+      this.referralCopied.set(true);
+      setTimeout(() => this.referralCopied.set(false), 2000);
+    }
+  }
 
   async ngOnInit(): Promise<void> {
     await this.walletService.loadWallet();
