@@ -6,12 +6,13 @@ import { AdminDashboardService } from '../../../../core/services/admin-dashboard
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AdminReferralModalComponent } from '../admin-referral-modal/admin-referral-modal.component';
+import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, AdminReferralModalComponent],
+  imports: [CommonModule, RouterModule, AdminReferralModalComponent, BannerSliderComponent],
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss'
 })

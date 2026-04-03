@@ -34,7 +34,7 @@ export class BannerSliderComponent implements OnInit, OnDestroy {
 
   private async loadBanners(): Promise<void> {
     try {
-      const result = await this.bannerService.getActiveBannersByLocation(undefined, this.location);
+      const result = await this.bannerService.getActiveBannersByLocation(undefined, undefined);
       this.banners.set(result);
       if (result.length > 1) this.startAutoPlay();
     } catch {
