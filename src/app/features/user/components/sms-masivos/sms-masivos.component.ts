@@ -11,6 +11,7 @@ import { isPlatformBrowser, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SmsService, calculateSmsSegments } from '../../../../core/services/sms.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { CurrencyService } from '../../../../core/services/currency.service';
 import { environment } from '../../../../../environments/environment';
 import type {
   SmsContact,
@@ -32,6 +33,7 @@ type TabId = 'dashboard' | 'compose' | 'templates' | 'contacts' | 'saved-lists' 
 export class SmsMasivosComponent implements OnInit {
   private readonly smsService = inject(SmsService);
   private readonly profileService = inject(ProfileService);
+  readonly currencyService = inject(CurrencyService);
   readonly profile = this.profileService.profile;
   private readonly platformId = inject(PLATFORM_ID);
 
@@ -93,21 +95,12 @@ export class SmsMasivosComponent implements OnInit {
   readonly rechargeLoading = signal(false);
   readonly rechargeError = signal<string | null>(null);
 
-  // Precios con comisión ePayco incluida (2.99% + $900 + IVA 19%)
-  readonly smsRechargeOptions = (() => {
-    const rate = 0.035581;
-    const fixed = 1071;
-    const calc = (base: number) => Math.ceil((base + fixed) / (1 - rate));
-    return [
-      { usd: 10,    cop: 10 * 3_700,    total: calc(10 * 3_700) },
-      { usd: 20,    cop: 20 * 3_700,    total: calc(20 * 3_700) },
-      { usd: 50,    cop: 50 * 3_700,    total: calc(50 * 3_700) },
-      { usd: 150,   cop: 150 * 3_700,   total: calc(150 * 3_700) },
-      { usd: 250,   cop: 250 * 3_700,   total: calc(250 * 3_700) },
-      { usd: 500,   cop: 500 * 3_700,   total: calc(500 * 3_700) },
-      { usd: 1_000, cop: 1_000 * 3_700, total: calc(1_000 * 3_700) },
-    ];
-  })();
+  readonly smsRechargeUsd = [10, 20, 50, 150, 250, 500, 1_000];
+
+  /** COP base (sin comisión) con tasa en tiempo real */
+  getSmsBaseCop(usd: number): number { return this.currencyService.usdToCop(usd); }
+  /** COP total (con comisión ePayco) con tasa en tiempo real */
+  getSmsTotalCop(usd: number): number { return this.currencyService.usdToFinalCop(usd); }
 
   // ── Operation state ─────────────────────────────────────────
   readonly sending = signal(false);
@@ -464,8 +457,9 @@ export class SmsMasivosComponent implements OnInit {
 
   async startSmsRecharge(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
-    const opt = this.smsRechargeOptions.find(o => o.usd === this.selectedRecharge());
-    if (!opt) return;
+    const usd = this.selectedRecharge();
+    if (!usd) return;
+    const cop = this.getSmsBaseCop(usd);
 
     this.rechargeError.set(null);
     this.rechargeLoading.set(true);
@@ -479,7 +473,7 @@ export class SmsMasivosComponent implements OnInit {
       if (!session) throw new Error('No autenticado. Inicia sesión de nuevo.');
 
       const response = await supabase.functions.invoke('create-sms-wallet-recharge', {
-        body: { amount: opt.cop },
+        body: { amount: cop },
       });
 
       // supabase-js v2: en error HTTP, data puede tener el body o error tiene el mensaje
@@ -693,7 +687,7 @@ export class SmsMasivosComponent implements OnInit {
   }
 
   getSelectedTotal(): number {
-    const opt = this.smsRechargeOptions.find(o => o.usd === this.selectedRecharge());
-    return opt?.total ?? 0;
+    const usd = this.selectedRecharge();
+    return usd ? this.getSmsTotalCop(usd) : 0;
   }
 }

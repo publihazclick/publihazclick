@@ -289,11 +289,10 @@ export class UserPackagesComponent implements OnInit {
 
   // ── Utilidades ────────────────────────────────────────────────────────────
 
-  /** Precio COP directo del paquete (price_cop), sin calcular */
+  /** Precio COP dinámico con tasa en tiempo real + comisión ePayco incluida */
   getPriceCOP(pkg: Package | null): string {
     if (!pkg) return '';
-    if (pkg.price_cop) return COP_FORMATTER.format(pkg.price_cop);
-    return COP_FORMATTER.format(Math.round(pkg.price * 4200));
+    return COP_FORMATTER.format(this.currencyService.usdToFinalCop(pkg.price));
   }
 
   /** Precio USD directo del paquete (price en USD) */

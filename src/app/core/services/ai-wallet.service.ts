@@ -34,22 +34,8 @@ export interface AiWalletPayment {
   approved_at: string | null;
 }
 
-/** Montos de recarga en USD con equivalente en COP (tasa 1 USD = 3,700 COP) */
-export const USD_TO_COP = 3_700;
-// Comisión ePayco: 2.99% + $900 fijo + IVA 19% sobre comisión
-const EPAYCO_RATE = 0.035581;
-const EPAYCO_FIXED = 1071;
-function calcFee(base: number): number {
-  return Math.ceil((base + EPAYCO_FIXED) / (1 - EPAYCO_RATE)) - base;
-}
-
-export const RECHARGE_OPTIONS = [
-  { usd: 25,   cop: 25 * 3_700,   fee: calcFee(25 * 3_700) },
-  { usd: 100,  cop: 100 * 3_700,  fee: calcFee(100 * 3_700) },
-  { usd: 200,  cop: 200 * 3_700,  fee: calcFee(200 * 3_700) },
-  { usd: 500,  cop: 500 * 3_700,  fee: calcFee(500 * 3_700) },
-  { usd: 1000, cop: 1000 * 3_700, fee: calcFee(1000 * 3_700) },
-];
+/** Valores de recarga disponibles en USD */
+export const RECHARGE_USD_VALUES = [25, 100, 200, 500, 1000];
 
 @Injectable({ providedIn: 'root' })
 export class AiWalletService {

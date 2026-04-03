@@ -1,7 +1,8 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { AiWalletService, RECHARGE_OPTIONS } from '../../../../core/services/ai-wallet.service';
+import { AiWalletService, RECHARGE_USD_VALUES } from '../../../../core/services/ai-wallet.service';
+import { CurrencyService } from '../../../../core/services/currency.service';
 
 type PayStep = 'idle' | 'epayco-loading' | 'epayco-opening' | 'error' | 'success';
 
@@ -19,6 +20,7 @@ const COP = new Intl.NumberFormat('es-CO', {
 })
 export class AiWalletComponent implements OnInit {
   private readonly walletService = inject(AiWalletService);
+  readonly currencyService = inject(CurrencyService);
   private readonly route = inject(ActivatedRoute);
   private readonly platformId = inject(PLATFORM_ID);
 
@@ -28,8 +30,12 @@ export class AiWalletComponent implements OnInit {
   readonly loading = this.walletService.loading;
   readonly balance = this.walletService.balance;
 
-  readonly rechargeOptions = RECHARGE_OPTIONS;
-  readonly selectedOption = signal(RECHARGE_OPTIONS[0]);
+  readonly rechargeUsdValues = RECHARGE_USD_VALUES;
+  readonly selectedUsd = signal(RECHARGE_USD_VALUES[0]);
+
+  /** Calcula opciones dinámicamente con tasa en tiempo real */
+  getOptionCop(usd: number): number { return this.currencyService.usdToCop(usd); }
+  getOptionTotal(usd: number): number { return this.currencyService.usdToFinalCop(usd); }
   readonly payStep = signal<PayStep>('idle');
   readonly payError = signal<string | null>(null);
 
@@ -49,8 +55,8 @@ export class AiWalletComponent implements OnInit {
     }
   }
 
-  selectOption(opt: typeof RECHARGE_OPTIONS[number]): void {
-    this.selectedOption.set(opt);
+  selectOption(usd: number): void {
+    this.selectedUsd.set(usd);
   }
 
   // ── Pago ePayco — MISMO patrón que packages.component.ts ──────────────────
@@ -62,7 +68,8 @@ export class AiWalletComponent implements OnInit {
     this.payStep.set('epayco-loading');
 
     try {
-      const params = await this.walletService.createEpaycoRecharge(this.selectedOption().cop);
+      const cop = this.getOptionCop(this.selectedUsd());
+      const params = await this.walletService.createEpaycoRecharge(cop);
       this.payStep.set('epayco-opening');
       await this.openEpaycoCheckout(params);
     } catch (e: unknown) {

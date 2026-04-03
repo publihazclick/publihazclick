@@ -292,6 +292,32 @@ export class CurrencyService {
     }
   }
 
+  /** Tasa COP actual (USD → COP) */
+  get copRate(): number {
+    return this._rates()['COP'] || 3850;
+  }
+
+  /** Convierte USD a COP con tasa en tiempo real */
+  usdToCop(usd: number): number {
+    return Math.round(usd * this.copRate);
+  }
+
+  /**
+   * Calcula el monto total que el cliente paga incluyendo comisión ePayco.
+   * ePayco cobra: 2.99% + $900 COP fijo + IVA 19% sobre la comisión.
+   * Fórmula: chargeAmount = (baseCOP + 1071) / (1 - 0.035581)
+   */
+  calcEpaycoTotal(baseCOP: number): number {
+    const RATE = 0.035581;
+    const FIXED = 1071;
+    return Math.ceil((baseCOP + FIXED) / (1 - RATE));
+  }
+
+  /** Precio final que paga el cliente: USD → COP + comisión ePayco */
+  usdToFinalCop(usd: number): number {
+    return this.calcEpaycoTotal(this.usdToCop(usd));
+  }
+
   // Get currency by code
   getCurrencyByCode(code: string): Currency | undefined {
     return this.currencies.find(c => c.code === code);

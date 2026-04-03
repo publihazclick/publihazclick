@@ -1169,26 +1169,26 @@
           <p class="text-gray-500 text-sm">Selecciona el monto que deseas recargar:</p>
 
           <div class="grid grid-cols-3 gap-2">
-            @for (opt of smsRechargeOptions; track opt.usd) {
-              <button (click)="selectRecharge(opt.usd)"
+            @for (usd of smsRechargeUsd; track usd) {
+              <button (click)="selectRecharge(usd)"
                 class="relative rounded-xl border-2 p-3 text-center transition-all hover:shadow-md"
-                [class]="selectedRecharge() === opt.usd
+                [class]="selectedRecharge() === usd
                   ? 'border-violet-500 bg-violet-50 shadow-md'
                   : 'border-gray-200 bg-white hover:border-violet-200'">
-                @if (selectedRecharge() === opt.usd) {
+                @if (selectedRecharge() === usd) {
                   <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white" style="font-size:12px">check</span>
                   </span>
                 }
                 <p class="text-lg font-black"
-                   [class]="selectedRecharge() === opt.usd ? 'text-violet-700' : 'text-gray-900'">
-                  ${{ opt.usd | number:'1.0-0' }}
+                   [class]="selectedRecharge() === usd ? 'text-violet-700' : 'text-gray-900'">
+                  ${{ usd | number:'1.0-0' }}
                 </p>
                 <p class="text-[10px] font-bold"
-                   [class]="selectedRecharge() === opt.usd ? 'text-violet-400' : 'text-gray-400'">
+                   [class]="selectedRecharge() === usd ? 'text-violet-400' : 'text-gray-400'">
                   USD
                 </p>
-                <p class="text-[9px] text-gray-400 mt-0.5">{{ formatCOP(opt.total) }}</p>
+                <p class="text-[9px] text-gray-400 mt-0.5">{{ formatCOP(getSmsTotalCop(usd)) }}</p>
               </button>
             }
           </div>

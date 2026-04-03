@@ -31,8 +31,9 @@ function decodeJwtPayload(token: string): { sub: string; email?: string } {
   return JSON.parse(atob(b64));
 }
 
-// Montos válidos de recarga en COP (equivalentes a 25, 100, 200, 500, 1000 USD × 3700)
-const VALID_AMOUNTS = [92500, 370000, 740000, 1850000, 3700000];
+// Rango válido de montos en COP (mínimo ~$25 USD, máximo ~$1000 USD)
+const MIN_AMOUNT = 50_000;
+const MAX_AMOUNT = 5_000_000;
 
 // ── Comisión ePayco: 2.99% + $900 COP fijo + IVA 19% sobre la comisión ─────
 // Para que al vendedor le llegue el monto completo, el cliente paga:
@@ -88,8 +89,8 @@ Deno.serve(async (req) => {
     if (!body?.amount) return json({ error: 'amount requerido' }, 400);
 
     const amount = Number(body.amount);
-    if (!VALID_AMOUNTS.includes(amount)) {
-      return json({ error: `Monto inválido. Valores válidos: ${VALID_AMOUNTS.join(', ')} COP` }, 400);
+    if (!amount || amount < MIN_AMOUNT || amount > MAX_AMOUNT) {
+      return json({ error: `Monto inválido. Debe estar entre ${MIN_AMOUNT} y ${MAX_AMOUNT} COP` }, 400);
     }
 
     // ── 4. Asegurar billetera ────────────────────────────────────────────────
