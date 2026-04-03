@@ -26,8 +26,8 @@
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
               [ngClass]="getCardNgClass(i, 'mega')"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-gray-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -46,7 +46,10 @@
                   </div>
                   <span class="text-xs font-bold text-gray-600 truncate">{{ ad.advertiserName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-gray-800 mb-2 line-clamp-2 leading-tight">{{ ad.title }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 leading-snug">{{ ad.title }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-gray-500 mb-2 line-clamp-2 leading-relaxed">{{ ad.description }}</p>
+                }
                 <div class="flex items-center justify-between text-[10px] text-gray-500 mb-3 mt-auto">
                   <span class="flex items-center space-x-1">
                     <span class="material-symbols-outlined text-xs">visibility</span>
@@ -117,8 +120,8 @@
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
               [ngClass]="getCardNgClass(i, 'standard_600')"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-gray-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -137,7 +140,10 @@
                   </div>
                   <span class="text-xs font-bold text-gray-600 truncate">{{ ad.advertiserName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-gray-800 mb-2 line-clamp-2 leading-tight">{{ ad.title }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 leading-snug">{{ ad.title }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-gray-500 mb-2 line-clamp-2 leading-relaxed">{{ ad.description }}</p>
+                }
                 <div class="flex items-center justify-between text-[10px] text-gray-500 mb-3 mt-auto">
                   <span class="flex items-center space-x-1">
                     <span class="material-symbols-outlined text-xs">visibility</span>
@@ -208,8 +214,8 @@
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
               [ngClass]="getCardNgClass(i, 'standard_400')"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-gray-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -228,7 +234,10 @@
                   </div>
                   <span class="text-xs font-bold text-gray-600 truncate">{{ ad.advertiserName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-gray-800 mb-2 line-clamp-2 leading-tight">{{ ad.title }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 leading-snug">{{ ad.title }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-gray-500 mb-2 line-clamp-2 leading-relaxed">{{ ad.description }}</p>
+                }
                 <div class="flex items-center justify-between text-[10px] text-gray-500 mb-3 mt-auto">
                   <span class="flex items-center space-x-1">
                     <span class="material-symbols-outlined text-xs">visibility</span>
@@ -299,8 +308,8 @@
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
               [ngClass]="getCardNgClass(i, 'mini')"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-gray-900">
+                <img [alt]="ad.title" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -319,7 +328,10 @@
                   </div>
                   <span class="text-xs font-bold text-gray-600 truncate">{{ ad.advertiserName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-gray-800 mb-2 line-clamp-2 leading-tight">{{ ad.title }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 leading-snug">{{ ad.title }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-gray-500 mb-2 line-clamp-2 leading-relaxed">{{ ad.description }}</p>
+                }
                 <div class="flex items-center justify-between text-[10px] text-gray-500 mb-3 mt-auto">
                   <span class="flex items-center space-x-1">
                     <span class="material-symbols-outlined text-xs">visibility</span>

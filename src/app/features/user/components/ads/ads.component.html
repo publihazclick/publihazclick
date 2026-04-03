@@ -136,8 +136,8 @@
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
-                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -154,7 +154,10 @@
                   </div>
                   <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.companyName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ truncate(ad.description, 35) }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-white mb-1 line-clamp-2 leading-snug">{{ ad.companyName }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-slate-400 mb-2 line-clamp-2 leading-relaxed flex-grow">{{ ad.description }}</p>
+                }
                 <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
                   <span class="material-symbols-outlined text-xs">visibility</span>
                   <span>{{ ad.totalClicks }} vistas</span>
@@ -190,8 +193,8 @@
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
-                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -208,7 +211,10 @@
                   </div>
                   <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.companyName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ truncate(ad.description, 35) }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-white mb-1 line-clamp-2 leading-snug">{{ ad.companyName }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-slate-400 mb-2 line-clamp-2 leading-relaxed flex-grow">{{ ad.description }}</p>
+                }
                 <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
                   <span class="material-symbols-outlined text-xs">visibility</span>
                   <span>{{ ad.totalClicks }} vistas</span>
@@ -244,8 +250,8 @@
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
-                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -262,7 +268,10 @@
                   </div>
                   <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.companyName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ truncate(ad.description, 35) }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-white mb-1 line-clamp-2 leading-snug">{{ ad.companyName }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-slate-400 mb-2 line-clamp-2 leading-relaxed flex-grow">{{ ad.description }}</p>
+                }
                 <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
                   <span class="material-symbols-outlined text-xs">visibility</span>
                   <span>{{ ad.totalClicks }} vistas</span>
@@ -298,8 +307,8 @@
               [class.opacity-50]="isAdViewed(ad.id)"
               [class.cursor-not-allowed]="isAdViewed(ad.id)"
             >
-              <div class="relative aspect-[4/3] overflow-hidden bg-zinc-900">
-                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <div class="relative aspect-[5/3] overflow-hidden bg-zinc-900">
+                <img [alt]="ad.companyName" [src]="ad.imageUrl" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                 @if (isAdViewed(ad.id)) {
                   <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white text-4xl">check_circle</span>
@@ -316,7 +325,10 @@
                   </div>
                   <span class="text-[10px] font-bold text-slate-500 truncate">{{ ad.companyName }}</span>
                 </div>
-                <h4 class="font-bold text-sm text-white mb-2 line-clamp-2 leading-tight flex-grow">{{ truncate(ad.description, 35) }}</h4>
+                <h4 class="font-black text-sm sm:text-base text-white mb-1 line-clamp-2 leading-snug">{{ ad.companyName }}</h4>
+                @if (ad.description) {
+                  <p class="text-[11px] sm:text-xs text-slate-400 mb-2 line-clamp-2 leading-relaxed flex-grow">{{ ad.description }}</p>
+                }
                 <div class="text-[10px] text-slate-600 mb-3 flex items-center gap-1">
                   <span class="material-symbols-outlined text-xs">visibility</span>
                   <span>{{ ad.totalClicks }} vistas</span>
