@@ -298,7 +298,7 @@ export class CursosComponent {
   getReferralLink(): string {
     if (!isPlatformBrowser(this.platformId)) return '';
     const code = this.profile()?.referral_code ?? '';
-    return `${window.location.origin}/ref/${code}`;
+    return `${window.location.origin}/ref/${code}?to=/cursos`;
   }
 
   encodeLink(): string {

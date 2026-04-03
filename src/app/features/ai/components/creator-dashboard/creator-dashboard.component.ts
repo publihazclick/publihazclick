@@ -47,7 +47,7 @@ export class CreatorDashboardComponent implements OnInit {
   get referralLink(): string {
     const code = this.profileService.profile()?.referral_code ?? '';
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.publihazclick.com';
-    return code ? `${origin}/ref/${code}` : '';
+    return code ? `${origin}/ref/${code}?to=/herramientas-ia` : '';
   }
 
   copyReferralLink(): void {

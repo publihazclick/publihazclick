@@ -21,7 +21,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/components/register/register.component').then(m => m.RegisterComponent),
     canActivate: [guestGuard]
   },
-  // Ruta corta de referido /ref/:code - guarda el código y redirige a la landing
+  // Ruta corta de referido /ref/:code - guarda el código y redirige a la landing (o al módulo si viene ?to=)
   {
     path: 'ref/:code',
     canActivate: [
@@ -30,7 +30,10 @@ export const routes: Routes = [
         if (code && typeof localStorage !== 'undefined') {
           localStorage.setItem('phc_referral_code', code);
         }
-        return inject(Router).createUrlTree(['/']);
+        const allowedLandings = ['/trading-bot', '/herramientas-ia', '/anda-y-gana', '/cursos', '/sms-masivos'];
+        const to = route.queryParams['to'] ?? '';
+        const target = allowedLandings.includes(to) ? to : '/';
+        return inject(Router).createUrlTree([target]);
       }
     ],
     children: []

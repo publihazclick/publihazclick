@@ -63,14 +63,16 @@
         </button>
       }
 
-      <!-- Login -->
-      <button
-        routerLink="/login"
-        class="bg-white hover:bg-primary hover:text-black text-black font-black px-5 lg:px-7 py-2.5 rounded-full flex items-center gap-2 transition-all hover:scale-105 text-[10px] tracking-widest uppercase"
-      >
-        Iniciar / Registrar
-        <span class="material-symbols-outlined text-base">login</span>
-      </button>
+      <!-- Login (oculto en landings de módulos) -->
+      @if (!isModuleLanding()) {
+        <button
+          routerLink="/login"
+          class="bg-white hover:bg-primary hover:text-black text-black font-black px-5 lg:px-7 py-2.5 rounded-full flex items-center gap-2 transition-all hover:scale-105 text-[10px] tracking-widest uppercase"
+        >
+          Iniciar / Registrar
+          <span class="material-symbols-outlined text-base">login</span>
+        </button>
+      }
     </div>
   </div>
 
@@ -115,15 +117,17 @@
         <a class="hover:text-primary hover:bg-white/5 transition-colors cursor-pointer py-2.5 px-3 rounded-lg text-sm font-extrabold uppercase tracking-[0.15em] text-white/70" (click)="goToTestimonials()">Pagos y Testimonios</a>
       </nav>
 
-      <!-- Login button -->
-      <button
-        routerLink="/login"
-        class="w-full bg-white hover:bg-primary hover:text-black text-black font-black px-6 py-3 rounded-full flex items-center justify-center gap-2 transition-all mt-4 text-[10px] tracking-widest uppercase"
-        (click)="toggleMobileMenu()"
-      >
-        Iniciar Sesión
-        <span class="material-symbols-outlined text-base">login</span>
-      </button>
+      <!-- Login button (oculto en landings de módulos) -->
+      @if (!isModuleLanding()) {
+        <button
+          routerLink="/login"
+          class="w-full bg-white hover:bg-primary hover:text-black text-black font-black px-6 py-3 rounded-full flex items-center justify-center gap-2 transition-all mt-4 text-[10px] tracking-widest uppercase"
+          (click)="toggleMobileMenu()"
+        >
+          Iniciar Sesión
+          <span class="material-symbols-outlined text-base">login</span>
+        </button>
+      }
     </div>
   }
 </header>

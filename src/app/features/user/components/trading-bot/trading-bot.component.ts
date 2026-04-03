@@ -460,7 +460,7 @@ export class TradingBotComponent {
   get referralLink(): string {
     const code = this.profileService.profile()?.referral_code ?? '';
     const origin = isPlatformBrowser(this.platformId) ? window.location.origin : 'https://www.publihazclick.com';
-    return code ? `${origin}/ref/${code}` : '';
+    return code ? `${origin}/ref/${code}?to=/trading-bot` : '';
   }
 
   copyReferralLink(): void {

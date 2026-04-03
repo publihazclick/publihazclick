@@ -1,6 +1,8 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, Router } from '@angular/router';
+import { RouterLink, Router, NavigationEnd } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs/operators';
 import { CurrencyService, Currency } from '../../core/services/currency.service';
 import { WalletStateService } from '../../core/services/wallet-state.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -10,6 +12,15 @@ interface NavItem {
   label: string;
   href: string;
 }
+
+/** Rutas de landings de módulos donde NO se muestra el botón de login/registro */
+const MODULE_LANDING_ROUTES = [
+  '/trading-bot',
+  '/herramientas-ia',
+  '/anda-y-gana',
+  '/cursos',
+  '/sms-masivos',
+];
 
 @Component({
   selector: 'app-header',
@@ -23,11 +34,13 @@ export class HeaderComponent implements OnInit {
   protected readonly mobileMenuOpen = signal(false);
   protected readonly currencyMenuOpen = signal(false);
   protected readonly demoModalOpen = signal(false);
+  protected readonly isModuleLanding = signal(false);
 
   protected readonly currencyService = inject(CurrencyService);
   protected readonly walletService = inject(WalletStateService);
   protected readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Expose signals for template
   readonly selectedCurrency = this.currencyService.selectedCurrency;
@@ -39,7 +52,21 @@ export class HeaderComponent implements OnInit {
   readonly donatedAmount = this.walletService.donatedAmount;
 
   ngOnInit(): void {
-    // Los datos ya se cargan en el constructor del servicio
+    // Detectar ruta actual al inicio
+    this.checkModuleLanding(this.router.url);
+
+    // Escuchar cambios de ruta
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((event) => {
+      this.checkModuleLanding((event as NavigationEnd).urlAfterRedirects);
+    });
+  }
+
+  private checkModuleLanding(url: string): void {
+    const path = url.split('?')[0].split('#')[0];
+    this.isModuleLanding.set(MODULE_LANDING_ROUTES.includes(path));
   }
 
   protected readonly navItems: NavItem[] = [
