@@ -16,27 +16,28 @@ import { ProfileService } from '../../core/services/profile.service';
           <!-- Hamburger + titulo + wallet (todas las resoluciones) -->
           <div class="flex flex-col w-full gap-2">
             <div class="flex items-center justify-between">
+              <!-- Billetera (izquierda) -->
               <div class="flex items-center gap-3">
-                <button (click)="menuOpen.set(!menuOpen())"
-                        class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all">
-                  <span class="material-symbols-outlined" style="font-size:22px">
-                    {{ menuOpen() ? 'close' : 'menu' }}
-                  </span>
-                </button>
+                @if (!isLanding()) {
+                  <button (click)="walletModal.set(true)"
+                          class="flex items-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-sm">
+                    <span class="material-symbols-outlined text-emerald-500" style="font-size:20px">account_balance_wallet</span>
+                    <div class="text-left">
+                      <p class="text-[9px] text-emerald-500 font-semibold leading-none">Billetera de Retiro</p>
+                      <p class="text-sm font-black text-emerald-600 leading-tight">$0</p>
+                    </div>
+                  </button>
+                }
                 <span class="text-sm font-bold text-gray-700">Cursos</span>
-                <!-- Desktop: nombre del usuario -->
                 <span class="hidden md:inline text-sm font-black text-gray-800 ml-2">· Hola, {{ profile()?.full_name || profile()?.username || 'Usuario' }}</span>
               </div>
-              @if (!isLanding()) {
-                <button (click)="walletModal.set(true)"
-                        class="flex items-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-sm">
-                  <span class="material-symbols-outlined text-emerald-500" style="font-size:20px">account_balance_wallet</span>
-                  <div class="text-left">
-                    <p class="text-[9px] text-emerald-500 font-semibold leading-none">Billetera de Retiro</p>
-                    <p class="text-sm font-black text-emerald-600 leading-tight">$0</p>
-                  </div>
-                </button>
-              }
+              <!-- Menú hamburguesa (derecha) -->
+              <button (click)="menuOpen.set(!menuOpen())"
+                      class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all">
+                <span class="material-symbols-outlined" style="font-size:22px">
+                  {{ menuOpen() ? 'close' : 'menu' }}
+                </span>
+              </button>
             </div>
             @if (!isLanding()) {
               <p class="text-sm font-black text-gray-800 text-center truncate md:hidden">Hola, {{ profile()?.full_name || profile()?.username || '' }}</p>
