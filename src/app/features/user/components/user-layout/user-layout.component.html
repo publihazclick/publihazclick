@@ -513,7 +513,7 @@
           </div>
         }
       </div>
-      @if (!isAndaGanaRoute()) {
+      @if (!isAndaGanaRoute() && !isSmsRoute()) {
         <!-- Billetera -->
         <a routerLink="/dashboard/wallet"
            class="flex-1 flex items-center justify-center gap-1.5 bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 transition-all">
