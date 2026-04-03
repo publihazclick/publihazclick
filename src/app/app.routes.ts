@@ -422,8 +422,7 @@ export const routes: Routes = [
   },
   {
     path: 'sms-masivos',
-    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
-    data: { moduleSlug: 'sms-masivos' }
+    loadComponent: () => import('./pages/module-landing/sms-landing.component').then(m => m.SmsPublicLandingComponent),
   },
   // 404
   {
