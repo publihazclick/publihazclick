@@ -90,17 +90,23 @@ export class SmsMasivosComponent implements OnInit {
   readonly rechargeLoading = signal(false);
   readonly rechargeError = signal<string | null>(null);
 
-  readonly smsRechargeOptions = [
-    { usd: 10,    cop: 10 * 3_700 },
-    { usd: 20,    cop: 20 * 3_700 },
-    { usd: 50,    cop: 50 * 3_700 },
-    { usd: 150,   cop: 150 * 3_700 },
-    { usd: 250,   cop: 250 * 3_700 },
-    { usd: 500,   cop: 500 * 3_700 },
-    { usd: 1_000, cop: 1_000 * 3_700 },
-    { usd: 1_500, cop: 1_500 * 3_700 },
-    { usd: 2_000, cop: 2_000 * 3_700 },
-  ];
+  // Precios con comisión ePayco incluida (2.99% + $900 + IVA 19%)
+  readonly smsRechargeOptions = (() => {
+    const rate = 0.035581;
+    const fixed = 1071;
+    const calc = (base: number) => Math.ceil((base + fixed) / (1 - rate));
+    return [
+      { usd: 10,    cop: 10 * 3_700,    total: calc(10 * 3_700) },
+      { usd: 20,    cop: 20 * 3_700,    total: calc(20 * 3_700) },
+      { usd: 50,    cop: 50 * 3_700,    total: calc(50 * 3_700) },
+      { usd: 150,   cop: 150 * 3_700,   total: calc(150 * 3_700) },
+      { usd: 250,   cop: 250 * 3_700,   total: calc(250 * 3_700) },
+      { usd: 500,   cop: 500 * 3_700,   total: calc(500 * 3_700) },
+      { usd: 1_000, cop: 1_000 * 3_700, total: calc(1_000 * 3_700) },
+      { usd: 1_500, cop: 1_500 * 3_700, total: calc(1_500 * 3_700) },
+      { usd: 2_000, cop: 2_000 * 3_700, total: calc(2_000 * 3_700) },
+    ];
+  })();
 
   // ── Operation state ─────────────────────────────────────────
   readonly sending = signal(false);
@@ -664,5 +670,14 @@ export class SmsMasivosComponent implements OnInit {
 
   getVariableCount(body: string): number {
     return (body.match(/\{(\w+)\}/g) ?? []).length;
+  }
+
+  formatCOP(amount: number): string {
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+  }
+
+  getSelectedTotal(): number {
+    const opt = this.smsRechargeOptions.find(o => o.usd === this.selectedRecharge());
+    return opt?.total ?? 0;
   }
 }

@@ -1182,6 +1182,7 @@
                    [class]="selectedRecharge() === opt.usd ? 'text-violet-400' : 'text-gray-400'">
                   USD
                 </p>
+                <p class="text-[9px] text-gray-400 mt-0.5">{{ formatCOP(opt.total) }}</p>
               </button>
             }
           </div>
@@ -1205,7 +1206,7 @@
             } @else {
               <div class="flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined" style="font-size:20px">payment</span>
-                Pagar con ePayco
+                Pagar {{ selectedRecharge() ? formatCOP(getSelectedTotal()) : '' }} con ePayco
               </div>
             }
           </button>
