@@ -98,6 +98,7 @@ interface TradingPackage {
       </div>
 
       <h2 class="text-3xl font-black text-white mb-2 text-center">Trading Bot <span class="text-primary">AI</span></h2>
+      <p class="text-emerald-400 text-sm font-black text-center mb-2">Hola, {{ profileService.profile()?.full_name || profileService.profile()?.username || 'Usuario' }}</p>
       <p class="text-slate-300 text-sm text-center max-w-xl mb-3 leading-relaxed">
         Compra un paquete de servicio para trading automático monitoreado las 24/7 y genera ganancias
         estimadas mensualmente que van entre un <span class="text-emerald-400 font-black">2.5%</span> y un
@@ -445,7 +446,7 @@ interface TradingPackage {
   `,
 })
 export class TradingBotComponent {
-  private readonly profileService = inject(ProfileService);
+  readonly profileService = inject(ProfileService);
   private readonly platformId = inject(PLATFORM_ID);
 
   showDemo = false;

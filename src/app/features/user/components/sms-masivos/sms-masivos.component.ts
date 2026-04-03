@@ -32,6 +32,7 @@ type TabId = 'dashboard' | 'compose' | 'templates' | 'contacts' | 'saved-lists' 
 export class SmsMasivosComponent implements OnInit {
   private readonly smsService = inject(SmsService);
   private readonly profileService = inject(ProfileService);
+  readonly profile = this.profileService.profile;
   private readonly platformId = inject(PLATFORM_ID);
 
   // ── Tab state ───────────────────────────────────────────────
