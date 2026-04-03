@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#F58220"/><stop offset="100%" style="stop-color:#E06B10"/></linearGradient></defs>
+  <rect width="1200" height="400" fill="url(#bg)"/>
+  <rect x="850" y="0" width="350" height="400" fill="white" opacity="0.06"/>
+  <rect x="900" y="0" width="300" height="400" fill="white" opacity="0.04"/>
+  <rect x="950" y="0" width="250" height="400" fill="white" opacity="0.02"/>
+  <text x="80" y="180" font-family="Arial,Helvetica,sans-serif" font-size="56" font-weight="900" fill="white">HOMECENTER</text>
+  <text x="80" y="225" font-family="Arial,Helvetica,sans-serif" font-size="22" fill="rgba(255,255,255,0.9)">Construye el hogar de tus sueños</text>
+  <text x="80" y="255" font-family="Arial,Helvetica,sans-serif" font-size="15" fill="#FFF3E0">Descuentos hasta del 40%</text>
+  <rect x="80" y="275" width="150" height="36" rx="18" fill="white"/>
+  <text x="115" y="299" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="800" fill="#E06B10" letter-spacing="1">COMPRAR</text>
+</svg>

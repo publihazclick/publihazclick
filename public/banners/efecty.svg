@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <rect width="1200" height="400" fill="#FFD100"/>
+  <circle cx="1050" cy="200" r="200" fill="#003DA5" opacity="0.06"/>
+  <rect x="0" y="0" width="1200" height="4" fill="#003DA5"/>
+  <text x="80" y="195" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="900" fill="#003DA5">EFECTY</text>
+  <text x="80" y="245" font-family="Arial,Helvetica,sans-serif" font-size="22" fill="#003DA5" opacity="0.7">Fácil, rápido y seguro</text>
+  <rect x="80" y="270" width="170" height="36" rx="18" fill="#003DA5"/>
+  <text x="115" y="294" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="800" fill="#FFD100" letter-spacing="1">CONOCER MÁS</text>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#003B71"/><stop offset="100%" style="stop-color:#005299"/></linearGradient></defs>
+  <rect width="1200" height="400" fill="url(#bg)"/>
+  <rect x="0" y="365" width="1200" height="35" fill="#F7941D"/>
+  <circle cx="1100" cy="100" r="200" fill="#F7941D" opacity="0.06"/>
+  <text x="80" y="180" font-family="Arial,Helvetica,sans-serif" font-size="48" font-weight="900" fill="white">BANCO DE BOGOTÁ</text>
+  <text x="80" y="228" font-family="Arial,Helvetica,sans-serif" font-size="21" fill="#F7941D" font-weight="600">Tu aliado financiero desde 1870</text>
+  <rect x="80" y="250" width="180" height="36" rx="18" fill="#F7941D"/>
+  <text x="115" y="274" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="800" fill="#003B71" letter-spacing="1">CONOCER MÁS</text>
+</svg>

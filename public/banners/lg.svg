@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#A50034"/><stop offset="100%" style="stop-color:#6E0023"/></linearGradient></defs>
+  <rect width="1200" height="400" fill="url(#bg)"/>
+  <circle cx="200" cy="200" r="350" fill="white" opacity="0.02"/>
+  <text x="80" y="200" font-family="Arial,Helvetica,sans-serif" font-size="100" font-weight="900" fill="white">LG</text>
+  <text x="80" y="250" font-family="Arial,Helvetica,sans-serif" font-size="26" fill="rgba(255,255,255,0.8)" font-weight="600">Life is Good</text>
+  <text x="80" y="285" font-family="Arial,Helvetica,sans-serif" font-size="15" fill="rgba(255,255,255,0.45)">Innovación para una vida mejor</text>
+  <rect x="80" y="305" width="180" height="36" rx="18" fill="white"/>
+  <text x="118" y="329" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="800" fill="#A50034" letter-spacing="1">VER PRODUCTOS</text>
+</svg>

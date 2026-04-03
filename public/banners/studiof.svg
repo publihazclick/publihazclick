@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <rect width="1200" height="400" fill="#F5F0E8"/>
+  <rect x="55" y="120" width="3" height="160" fill="#1a1a1a"/>
+  <rect x="0" y="380" width="1200" height="20" fill="#1a1a1a"/>
+  <text x="80" y="200" font-family="Georgia,Times,serif" font-size="56" fill="#1a1a1a" letter-spacing="12">STUDIO F</text>
+  <text x="80" y="245" font-family="Arial,Helvetica,sans-serif" font-size="14" fill="#888" letter-spacing="6">FASHION FOR WOMEN</text>
+  <rect x="80" y="270" width="180" height="36" rx="18" fill="#1a1a1a"/>
+  <text x="115" y="294" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="800" fill="#F5F0E8" letter-spacing="1">VER COLECCIÓN</text>
+</svg>

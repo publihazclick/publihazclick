@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <rect width="1200" height="400" fill="#3E2723"/>
+  <circle cx="1050" cy="200" r="180" fill="#5D4037" opacity="0.4"/>
+  <circle cx="1050" cy="200" r="120" fill="#4E342E" opacity="0.3"/>
+  <circle cx="100" cy="350" r="150" fill="#5D4037" opacity="0.2"/>
+  <text x="80" y="185" font-family="Georgia,Times,serif" font-size="52" font-weight="700" fill="#D7CCC8">CAFÉ GALAVIS</text>
+  <text x="80" y="235" font-family="Arial,Helvetica,sans-serif" font-size="20" fill="#A1887F">Tradición cafetera de Norte de Santander</text>
+  <rect x="80" y="260" width="160" height="36" rx="18" fill="#D7CCC8"/>
+  <text x="115" y="284" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="800" fill="#3E2723" letter-spacing="1">COMPRAR</text>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0277BD"/><stop offset="100%" style="stop-color:#01579B"/></linearGradient></defs>
+  <rect width="1200" height="400" fill="url(#bg)"/>
+  <rect x="900" y="60" width="250" height="280" rx="20" fill="white" opacity="0.04"/>
+  <text x="80" y="160" font-family="Georgia,Times,serif" font-size="28" fill="rgba(255,255,255,0.65)">Fundación</text>
+  <text x="80" y="215" font-family="Georgia,Times,serif" font-size="50" font-weight="700" fill="white">VALLE DEL LILI</text>
+  <text x="80" y="260" font-family="Arial,Helvetica,sans-serif" font-size="18" fill="rgba(255,255,255,0.6)">Centro médico de excelencia — Cali, Colombia</text>
+  <rect x="80" y="285" width="170" height="34" rx="17" fill="white"/>
+  <text x="113" y="307" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="800" fill="#01579B" letter-spacing="1">CONOCER MÁS</text>
+</svg>
