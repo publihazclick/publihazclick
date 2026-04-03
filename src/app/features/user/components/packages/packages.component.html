@@ -210,12 +210,13 @@
                 }
               </div>
               <div class="flex items-baseline gap-1.5">
-                <span class="text-3xl font-black text-white">{{ formatPrice(pkg.price, pkg.currency) }}</span>
+                <span class="text-3xl font-black text-white">{{ getPriceUSD(pkg) }}</span>
+                <span class="text-sm text-slate-400 font-bold">USD</span>
                 @if (pkg.duration_days) {
                   <span class="text-sm text-slate-500">/ {{ pkg.duration_days }} días</span>
                 }
               </div>
-              <p class="text-xs text-primary/70 font-bold mt-0.5">{{ getPriceCOP(pkg) }} COP</p>
+              <p class="text-xs text-primary/70 font-bold mt-0.5">{{ getPriceCOP(pkg) }}</p>
               @if (pkg.description) {
                 <p class="text-xs text-slate-400 mt-2 leading-relaxed">{{ pkg.description }}</p>
               }

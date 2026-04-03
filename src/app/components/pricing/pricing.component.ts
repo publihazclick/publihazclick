@@ -221,6 +221,12 @@ export class PricingComponent implements OnInit {
     }
   }
 
+  getPriceCOP(priceUsd: number): string {
+    if (priceUsd === 0) return 'GRATIS';
+    const total = this.currencyService.usdToFinalCop(priceUsd);
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(total);
+  }
+
   getPriceDisplay(price: number, currency: string): string {
     if (price === 0) return 'GRATIS';
     
