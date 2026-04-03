@@ -22,8 +22,9 @@ interface TradingPackage {
   template: `
     <div class="flex flex-col items-center py-10 px-4 w-full">
 
-      <!-- Billetera de Retiro (superior derecha) -->
-      <div class="w-full max-w-6xl flex justify-end mb-4">
+      <!-- Barra superior: Billetera (izquierda) + Menú (derecha) -->
+      <div class="w-full max-w-6xl flex items-center justify-between mb-4">
+        <!-- Billetera de Retiro -->
         <button
           (click)="showWallet.set(true)"
           class="flex items-center gap-3 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all">
@@ -33,6 +34,50 @@ interface TradingPackage {
             <p class="text-lg font-black leading-tight">$0.00 <span class="text-xs font-bold text-white/60">USD</span></p>
           </div>
         </button>
+
+        <!-- Menú hamburguesa -->
+        <div class="relative">
+          <button
+            (click)="menuOpen.set(!menuOpen())"
+            class="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
+            <span class="material-symbols-outlined text-emerald-400 text-2xl">
+              {{ menuOpen() ? 'close' : 'menu' }}
+            </span>
+          </button>
+
+          @if (menuOpen()) {
+            <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
+            <div class="absolute top-full right-0 mt-2 w-64 bg-[#0d0d0d] border border-white/10 rounded-2xl shadow-xl z-40 overflow-hidden">
+              <button
+                (click)="menuOpen.set(false)"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-emerald-400 font-bold bg-emerald-500/10">
+                <span class="material-symbols-outlined text-lg">trending_up</span>
+                Paquetes de Trading
+              </button>
+              <button
+                (click)="showWallet.set(true); menuOpen.set(false)"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
+                <span class="material-symbols-outlined text-lg text-emerald-400">savings</span>
+                Billetera de Retiro
+              </button>
+              <button
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
+                <span class="material-symbols-outlined text-lg text-cyan-400">bar_chart_4_bars</span>
+                Mis Operaciones
+              </button>
+              <button
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
+                <span class="material-symbols-outlined text-lg text-amber-400">history</span>
+                Historial
+              </button>
+              <button
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
+                <span class="material-symbols-outlined text-lg text-violet-400">support_agent</span>
+                Soporte
+              </button>
+            </div>
+          }
+        </div>
       </div>
 
       <!-- Header -->
@@ -370,6 +415,7 @@ export class TradingBotComponent {
   demoPackage: TradingPackage | null = null;
   readonly selectedPackage = signal<TradingPackage | null>(null);
   readonly showWallet = signal(false);
+  readonly menuOpen = signal(false);
 
   openPaymentModal(pkg: TradingPackage): void {
     this.selectedPackage.set(pkg);
