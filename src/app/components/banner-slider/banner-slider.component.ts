@@ -35,13 +35,48 @@ export class BannerSliderComponent implements OnInit, OnDestroy {
   private async loadBanners(): Promise<void> {
     try {
       const result = await this.bannerService.getActiveBannersByLocation(undefined, undefined);
-      this.banners.set(result);
-      if (result.length > 1) this.startAutoPlay();
+      const unique = this.deduplicateAndShuffle(result);
+      this.banners.set(unique);
+      if (unique.length > 1) this.startAutoPlay();
     } catch {
       this.banners.set([]);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Remove duplicate images, then shuffle so same advertiser doesn't appear back-to-back */
+  private deduplicateAndShuffle(banners: BannerAd[]): BannerAd[] {
+    // 1. Keep only one banner per unique image_url
+    const seen = new Set<string>();
+    const unique: BannerAd[] = [];
+    for (const b of banners) {
+      if (!seen.has(b.image_url)) {
+        seen.add(b.image_url);
+        unique.push(b);
+      }
+    }
+
+    // 2. Fisher-Yates shuffle
+    for (let i = unique.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [unique[i], unique[j]] = [unique[j], unique[i]];
+    }
+
+    // 3. Spread same-name banners apart (avoid consecutive same advertiser)
+    for (let i = 1; i < unique.length; i++) {
+      if (unique[i].name === unique[i - 1].name) {
+        // Find next different banner to swap with
+        for (let j = i + 1; j < unique.length; j++) {
+          if (unique[j].name !== unique[i - 1].name) {
+            [unique[i], unique[j]] = [unique[j], unique[i]];
+            break;
+          }
+        }
+      }
+    }
+
+    return unique;
   }
 
   next(): void {
