@@ -683,7 +683,7 @@ export class SmsMasivosComponent implements OnInit {
   }
 
   formatCOP(amount: number): string {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount) + ' COP';
   }
 
   getSelectedTotal(): number {

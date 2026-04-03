@@ -241,24 +241,31 @@ export class CurrencyService {
   // Internal helper to format the converted value
   private formatValue(converted: number, decimals: number = 2): string {
     const currency = this._selectedCurrency();
+    let formatted: string;
 
     switch (currency.code) {
       case 'COP':
       case 'CLP':
       case 'ARS':
-        return `${currency.symbol}${converted.toLocaleString('es-CO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        formatted = `${currency.symbol}${converted.toLocaleString('es-CO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        break;
       case 'MXN':
       case 'PEN':
-        return `${currency.symbol}${converted.toLocaleString('es-MX', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        formatted = `${currency.symbol}${converted.toLocaleString('es-MX', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        break;
       case 'EUR':
       case 'GBP':
       case 'BRL':
-        return `${currency.symbol}${converted.toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        formatted = `${currency.symbol}${converted.toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        break;
       case 'VES':
-        return `${currency.symbol}${converted.toLocaleString('es-VE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        formatted = `${currency.symbol}${converted.toLocaleString('es-VE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        break;
       default:
-        return `${currency.symbol}${converted.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+        formatted = `${currency.symbol}${converted.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
     }
+
+    return `${formatted} ${currency.code}`;
   }
 
   // Format amount in selected currency (converts from USD)
@@ -271,25 +278,31 @@ export class CurrencyService {
   formatLocalValue(amountInLocalCurrency: number): string {
     const currency = this._selectedCurrency();
     const value = amountInLocalCurrency;
+    let formatted: string;
 
     switch (currency.code) {
       case 'COP':
       case 'CLP':
       case 'ARS':
-        // Para valores con decimales como 88.33 COP
-        return `${currency.symbol}${value.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        formatted = `${currency.symbol}${value.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        break;
       case 'MXN':
       case 'PEN':
-        return `${currency.symbol}${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        formatted = `${currency.symbol}${value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        break;
       case 'EUR':
       case 'GBP':
       case 'BRL':
-        return `${currency.symbol}${value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        formatted = `${currency.symbol}${value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        break;
       case 'VES':
-        return `${currency.symbol}${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        formatted = `${currency.symbol}${value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        break;
       default:
-        return `${currency.symbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        formatted = `${currency.symbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
+
+    return `${formatted} ${currency.code}`;
   }
 
   /** Tasa COP actual (USD → COP) */

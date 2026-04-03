@@ -3192,7 +3192,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Trip request ──────────────────────────────────────────────
   formatCOP(n: number): string {
-    return '$\u00a0' + n.toLocaleString('es-CO');
+    return '$\u00a0' + n.toLocaleString('es-CO') + ' COP';
   }
 
   requiredCommission(price: number): number {

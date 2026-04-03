@@ -6,7 +6,7 @@ import { CurrencyService } from '../../../../core/services/currency.service';
 
 type PayStep = 'idle' | 'epayco-loading' | 'epayco-opening' | 'error' | 'success';
 
-const COP = new Intl.NumberFormat('es-CO', {
+const _COP = new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP',
   minimumFractionDigits: 0, maximumFractionDigits: 0,
 });
@@ -137,7 +137,7 @@ export class AiWalletComponent implements OnInit {
   }
 
   formatCOP(amount: number): string {
-    return COP.format(amount);
+    return _COP.format(amount) + ' COP';
   }
 
   getTransactionIcon(type: string): string {

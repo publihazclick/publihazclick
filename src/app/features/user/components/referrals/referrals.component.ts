@@ -105,6 +105,6 @@ export class UserReferralsComponent implements OnInit {
   }
 
   formatCOP(amount: number): string {
-    return 'COP ' + amount.toLocaleString('es-CO');
+    return '$' + amount.toLocaleString('es-CO') + ' COP';
   }
 }
