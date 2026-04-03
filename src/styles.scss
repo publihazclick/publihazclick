@@ -284,11 +284,110 @@ html:not(.dark) {
     border-color: #e2e8f0 !important;
   }
 
-  /* Dark mode toggle button in light mode */
-  .bg-card-dark.shadow-xl {
+  /* More text overrides */
+  .text-white\/40 {
+    color: #94a3b8 !important;
+  }
+  .text-white\/30 {
+    color: #94a3b8 !important;
+  }
+  .text-white\/50 {
+    color: #64748b !important;
+  }
+  .text-white\/60 {
+    color: #64748b !important;
+  }
+  .text-white\/70 {
+    color: #475569 !important;
+  }
+  .text-white\/80 {
+    color: #334155 !important;
+  }
+
+  /* Hover text */
+  .hover\:text-white:hover {
+    color: #0f172a !important;
+  }
+
+  /* More background overrides */
+  .bg-white\/\[0\.03\] {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+  }
+  .bg-black\/20 {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+  .bg-black\/80 {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+  }
+  .bg-gray-800 {
+    background-color: #f1f5f9 !important;
+  }
+  .bg-gray-900 {
+    background-color: #f8fafc !important;
+  }
+  .bg-\[\#0d0d0d\] {
+    background-color: #ffffff !important;
+  }
+  .bg-\[\#0a0a0a\] {
+    background-color: #f8fafc !important;
+  }
+  .bg-\[\#121212\] {
+    background-color: #ffffff !important;
+  }
+
+  /* Border overrides */
+  .border-white\/20 {
+    border-color: rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Hover bg */
+  .hover\:bg-white\/20:hover {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* Specific dark backgrounds in modals/cards */
+  .bg-gradient-to-br.from-\[\#0a0a0a\] {
+    background: linear-gradient(to bottom right, #ffffff, #f8fafc) !important;
+  }
+
+  /* Make sure colored text remains visible */
+  .text-primary {
+    color: #0891b2 !important;
+  }
+  .text-accent {
+    color: #e11d7f !important;
+  }
+
+  /* Footer in light */
+  .text-slate-600 {
+    color: #475569 !important;
+  }
+
+  /* Dropdown menus */
+  .bg-\[\#0d0d0d\] {
     background-color: #ffffff !important;
     border-color: #e2e8f0 !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Overlay mobile sidebar */
+  .bg-black\/50 {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Trading Bot dark page override */
+  .bg-emerald-500\/5 {
+    background-color: rgba(16, 185, 129, 0.08) !important;
+  }
+  .bg-emerald-500\/10 {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+  }
+
+  /* Active route highlights - keep accent colors */
+  .bg-primary\/15 {
+    background-color: rgba(0, 229, 255, 0.12) !important;
+  }
+  .bg-accent\/10 {
+    background-color: rgba(255, 0, 127, 0.08) !important;
   }
 
   /* Scrollbar light */

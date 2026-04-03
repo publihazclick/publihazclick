@@ -591,11 +591,18 @@
 <!-- Dark mode toggle -->
 <div class="fixed bottom-6 right-6 z-50">
   <button (click)="toggleDarkMode()"
-          class="group relative w-11 h-11 rounded-xl bg-card-dark shadow-xl border border-white/10 flex items-center justify-center text-accent transition-all hover:scale-110 active:scale-95 hover:border-accent/30">
+          class="group relative w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+          [class]="isDarkMode
+            ? 'bg-[#1a1a2e] border border-white/10 text-amber-400 hover:border-amber-400/30 hover:shadow-amber-400/20'
+            : 'bg-white border border-gray-200 text-indigo-600 hover:border-indigo-300 hover:shadow-indigo-200/40'">
     @if (isDarkMode) {
-      <span class="material-symbols-outlined" style="font-size:20px">light_mode</span>
+      <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">light_mode</span>
     } @else {
-      <span class="material-symbols-outlined" style="font-size:20px">dark_mode</span>
+      <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">dark_mode</span>
     }
+    <span class="absolute right-full mr-3 text-[10px] font-bold px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+          [class]="isDarkMode ? 'bg-white text-gray-900 shadow-lg' : 'bg-gray-900 text-white shadow-lg'">
+      {{ isDarkMode ? 'Modo claro' : 'Modo oscuro' }}
+    </span>
   </button>
 </div>

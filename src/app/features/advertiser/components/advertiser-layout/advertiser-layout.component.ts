@@ -23,7 +23,9 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
 
   readonly activeTrading = signal<UserTradingPackage[]>([]);
 
-  isDarkMode = true;
+  isDarkMode = typeof window !== 'undefined'
+    ? (localStorage.getItem('theme') ?? 'dark') === 'dark'
+    : true;
 
   protected readonly sidebarCollapsed = signal(
     isPlatformBrowser(this.platformId) && window.innerWidth < 1024
@@ -37,6 +39,11 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     if (isPlatformBrowser(this.platformId)) {
+      if (this.isDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
       document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
       document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
     }
@@ -111,7 +118,13 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
 
   toggleDarkMode(): void {
     this.isDarkMode = !this.isDarkMode;
-    document.documentElement.classList.toggle('dark');
+    if (this.isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
   }
 
   logout(): void {
