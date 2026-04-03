@@ -86,24 +86,18 @@
         <span class="material-symbols-outlined text-white" style="font-size:18px">chevron_right</span>
       </button>
 
-      <!-- Dot indicators (max 10 visible, then show counter) -->
-      @if (banners().length <= 10) {
-        <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-          @for (banner of banners(); track banner.id; let i = $index) {
-            <button
-              (click)="goTo(i)"
-              class="h-1.5 rounded-full transition-all duration-300"
-              [class.bg-primary]="currentIndex() === i"
-              [class.bg-white/40]="currentIndex() !== i"
-              [style.width]="currentIndex() === i ? '20px' : '6px'"
-            ></button>
-          }
-        </div>
-      } @else {
-        <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full">
-          <span class="text-white text-[10px] font-bold">{{ currentIndex() + 1 }} / {{ banners().length }}</span>
-        </div>
-      }
+      <!-- Dot indicators -->
+      <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+        @for (banner of banners(); track banner.id; let i = $index) {
+          <button
+            (click)="goTo(i)"
+            class="h-1.5 rounded-full transition-all duration-300"
+            [class.bg-primary]="currentIndex() === i"
+            [class.bg-white/40]="currentIndex() !== i"
+            [style.width]="currentIndex() === i ? '20px' : '6px'"
+          ></button>
+        }
+      </div>
     }
 
   </div>
