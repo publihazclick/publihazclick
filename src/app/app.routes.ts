@@ -411,8 +411,7 @@ export const routes: Routes = [
   },
   {
     path: 'herramientas-ia',
-    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
-    data: { moduleSlug: 'herramientas-ia' }
+    loadComponent: () => import('./pages/module-landing/ia-landing.component').then(m => m.IaPublicLandingComponent),
   },
   {
     path: 'anda-y-gana',
