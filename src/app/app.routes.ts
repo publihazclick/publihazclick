@@ -401,6 +401,32 @@ export const routes: Routes = [
     path: 'terminos',
     loadComponent: () => import('./pages/terms/terms.component').then(m => m.TermsComponent)
   },
+  // Landing pages públicas de módulos
+  {
+    path: 'trading-bot',
+    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
+    data: { moduleSlug: 'trading-bot' }
+  },
+  {
+    path: 'herramientas-ia',
+    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
+    data: { moduleSlug: 'herramientas-ia' }
+  },
+  {
+    path: 'anda-y-gana',
+    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
+    data: { moduleSlug: 'anda-y-gana' }
+  },
+  {
+    path: 'cursos',
+    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
+    data: { moduleSlug: 'cursos' }
+  },
+  {
+    path: 'sms-masivos',
+    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
+    data: { moduleSlug: 'sms-masivos' }
+  },
   // 404
   {
     path: '**',
