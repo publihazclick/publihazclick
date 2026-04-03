@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <rect width="800" height="480" fill="#2C1810"/>
+  <rect x="0" y="440" width="800" height="40" fill="#8B6914"/>
+  <rect x="580" y="0" width="220" height="440" fill="#3E2723" opacity="0.5"/>
+  <text x="70" y="240" font-family="Georgia,Times,serif" font-size="72" font-weight="700" fill="#E8D5A0" letter-spacing="12">VELEZ</text>
+  <text x="70" y="300" font-family="Arial,Helvetica,sans-serif" font-size="22" fill="rgba(232,213,160,0.6)">El arte del cuero colombiano desde 1986</text>
+  <rect x="70" y="330" width="200" height="46" rx="23" fill="#E8D5A0"/>
+  <text x="110" y="359" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="800" fill="#2C1810" letter-spacing="1">VER CATALOGO</text>
+</svg>

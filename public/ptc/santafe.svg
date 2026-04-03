@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <rect width="800" height="480" fill="#1A237E"/>
+  <rect x="48" y="130" width="4" height="220" fill="#43A047"/>
+  <text x="72" y="200" font-family="Georgia,Times,serif" font-size="28" fill="rgba(255,255,255,0.65)">Fundacion</text>
+  <text x="72" y="260" font-family="Georgia,Times,serif" font-size="52" font-weight="700" fill="white">SANTA FE</text>
+  <text x="72" y="310" font-family="Georgia,Times,serif" font-size="52" font-weight="700" fill="white">DE BOGOTA</text>
+  <text x="72" y="350" font-family="Arial,Helvetica,sans-serif" font-size="18" fill="#81C784">Hospital universitario de referencia</text>
+  <rect x="72" y="380" width="210" height="46" rx="23" fill="#43A047"/>
+  <text x="118" y="409" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="800" fill="white" letter-spacing="1">CONOCER MAS</text>
+</svg>

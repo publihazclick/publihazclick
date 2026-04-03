@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8430A"/>
+      <stop offset="100%" style="stop-color:#C93000"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="480" fill="url(#bg)"/>
+  <circle cx="660" cy="60" r="220" fill="#FFD700" opacity="0.06"/>
+  <circle cx="150" cy="440" r="200" fill="white" opacity="0.04"/>
+  <text x="70" y="225" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="900" fill="white">POSTOBON</text>
+  <text x="70" y="280" font-family="Arial,Helvetica,sans-serif" font-size="24" fill="rgba(255,255,255,0.9)">El sabor de Colombia desde 1904</text>
+  <rect x="70" y="310" width="200" height="48" rx="24" fill="white"/>
+  <text x="120" y="340" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="800" fill="#E8430A" letter-spacing="1">DESCUBRIR</text>
+</svg>

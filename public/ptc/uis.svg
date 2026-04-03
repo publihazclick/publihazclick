@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <rect width="800" height="480" fill="#004D40"/>
+  <rect x="0" y="0" width="800" height="6" fill="#FFD600"/>
+  <rect x="0" y="474" width="800" height="6" fill="#FFD600"/>
+  <text x="70" y="210" font-family="Georgia,Times,serif" font-size="72" font-weight="700" fill="#FFD600">UIS</text>
+  <text x="70" y="270" font-family="Georgia,Times,serif" font-size="28" fill="white">Universidad Industrial de Santander</text>
+  <text x="70" y="315" font-family="Arial,Helvetica,sans-serif" font-size="18" fill="rgba(255,255,255,0.55)">Formando lideres en ciencia y tecnologia desde 1948</text>
+  <rect x="70" y="350" width="190" height="46" rx="23" fill="#FFD600"/>
+  <text x="118" y="379" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="800" fill="#004D40" letter-spacing="1">EXPLORAR</text>
+</svg>

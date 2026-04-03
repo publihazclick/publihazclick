@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <rect width="800" height="480" fill="#111111"/>
+  <rect x="0" y="458" width="800" height="22" fill="#C4A01C"/>
+  <rect x="600" y="0" width="4" height="480" fill="#C4A01C" opacity="0.3"/>
+  <rect x="650" y="0" width="2" height="480" fill="#C4A01C" opacity="0.15"/>
+  <circle cx="700" cy="240" r="140" fill="#C4A01C" opacity="0.04"/>
+  <text x="70" y="215" font-family="Arial,Helvetica,sans-serif" font-size="68" font-weight="900" fill="white">CHEVROLET</text>
+  <text x="70" y="270" font-family="Arial,Helvetica,sans-serif" font-size="24" fill="#C4A01C" font-weight="700">FIND NEW ROADS</text>
+  <text x="70" y="310" font-family="Arial,Helvetica,sans-serif" font-size="17" fill="rgba(255,255,255,0.45)">Tecnologia que te mueve hacia adelante</text>
+  <rect x="70" y="340" width="200" height="48" rx="24" fill="#C4A01C"/>
+  <text x="112" y="370" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="800" fill="#111" letter-spacing="1">VER MODELOS</text>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#005C2D"/>
+      <stop offset="50%" style="stop-color:#007A3D"/>
+      <stop offset="100%" style="stop-color:#009B4E"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="480" fill="url(#bg)"/>
+  <circle cx="720" cy="90" r="180" fill="#FFD700" opacity="0.08"/>
+  <circle cx="680" cy="400" r="120" fill="#FFD700" opacity="0.05"/>
+  <rect x="50" y="140" width="7" height="200" rx="4" fill="#FFD700"/>
+  <text x="78" y="230" font-family="Arial,Helvetica,sans-serif" font-size="66" font-weight="900" fill="white">ECOPETROL</text>
+  <text x="78" y="285" font-family="Arial,Helvetica,sans-serif" font-size="24" fill="rgba(255,255,255,0.85)">Energia que transforma a Colombia</text>
+  <rect x="78" y="315" width="210" height="48" rx="24" fill="#FFD700"/>
+  <text x="125" y="345" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="800" fill="#005C2D" letter-spacing="1">CONOCER MAS</text>
+</svg>

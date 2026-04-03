@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <rect width="800" height="480" fill="#880E4F"/>
+  <circle cx="700" cy="240" r="240" fill="white" opacity="0.03"/>
+  <circle cx="700" cy="240" r="160" fill="white" opacity="0.02"/>
+  <text x="70" y="210" font-family="Georgia,Times,serif" font-size="72" font-weight="700" fill="#F48FB1">UFPS</text>
+  <text x="70" y="268" font-family="Georgia,Times,serif" font-size="24" fill="white">Universidad Francisco de Paula Santander</text>
+  <text x="70" y="315" font-family="Arial,Helvetica,sans-serif" font-size="18" fill="rgba(255,255,255,0.55)">Excelencia academica en Norte de Santander</text>
+  <rect x="70" y="350" width="190" height="46" rx="23" fill="#F48FB1"/>
+  <text x="118" y="379" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="800" fill="#880E4F" letter-spacing="1">EXPLORAR</text>
+</svg>
