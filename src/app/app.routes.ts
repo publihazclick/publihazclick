@@ -404,8 +404,7 @@ export const routes: Routes = [
   // Landing pages públicas de módulos
   {
     path: 'trading-bot',
-    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
-    data: { moduleSlug: 'trading-bot' }
+    loadComponent: () => import('./pages/module-landing/trading-bot-landing.component').then(m => m.TradingBotLandingComponent),
   },
   {
     path: 'herramientas-ia',
