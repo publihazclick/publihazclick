@@ -83,7 +83,13 @@ Deno.serve(async (req) => {
       .single();
 
     // ── 6. Calcular monto en COP ─────────────────────────────────────────────
-    const copAmount = pkg.price_cop ?? Math.round(Number(pkg.price) * 4200);
+    // Si el frontend envía cop_amount (calculado con tasa real + fee ePayco), usarlo
+    // De lo contrario, fallback al price_cop de la DB o cálculo con tasa por defecto
+    const EPAYCO_RATE = 0.035581;
+    const EPAYCO_FIXED = 1071;
+    const fallbackCop = pkg.price_cop ?? Math.round(Number(pkg.price) * 4200);
+    const fallbackWithFee = Math.ceil((fallbackCop + EPAYCO_FIXED) / (1 - EPAYCO_RATE));
+    const copAmount = body.cop_amount ? Number(body.cop_amount) : fallbackWithFee;
     const invoice   = `PHC-${Date.now()}-${userId.substring(0, 8).toUpperCase()}`;
 
     // ── 7. Guardar pago pendiente en DB ──────────────────────────────────────

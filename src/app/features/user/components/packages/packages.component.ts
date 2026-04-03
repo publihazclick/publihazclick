@@ -133,7 +133,8 @@ export class UserPackagesComponent implements OnInit {
       this.payError.set(null);
       this.payStep.set('epayco-loading');
       try {
-        const params = await this.packageService.createEpaycoPayment(pkg.id);
+        const copTotal = this.currencyService.usdToFinalCop(pkg.price);
+        const params = await this.packageService.createEpaycoPayment(pkg.id, copTotal);
         this.payStep.set('epayco-opening');
         await this.openEpaycoCheckout(params);
       } catch (e: unknown) {
@@ -230,7 +231,8 @@ export class UserPackagesComponent implements OnInit {
     this.payStep.set('epayco-loading');
 
     try {
-      const params = await this.packageService.createEpaycoPayment(pkg.id);
+      const copTotal = this.currencyService.usdToFinalCop(pkg.price);
+        const params = await this.packageService.createEpaycoPayment(pkg.id, copTotal);
       this.payStep.set('epayco-opening');
       await this.openEpaycoCheckout(params);
     } catch (e: unknown) {

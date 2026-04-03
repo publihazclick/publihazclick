@@ -215,6 +215,7 @@
                   <span class="text-sm text-slate-500">/ {{ pkg.duration_days }} días</span>
                 }
               </div>
+              <p class="text-xs text-primary/70 font-bold mt-0.5">{{ getPriceCOP(pkg) }} COP</p>
               @if (pkg.description) {
                 <p class="text-xs text-slate-400 mt-2 leading-relaxed">{{ pkg.description }}</p>
               }
@@ -318,7 +319,7 @@
                     Preparando...
                   } @else {
                     <span class="material-symbols-outlined" style="font-size:18px">credit_card</span>
-                    Pagar con ePayco
+                    Pagar {{ getPriceCOP(pkg) }} con ePayco
                   }
                 </button>
                 <!-- Botón secundario Nequi (si disponible) -->

@@ -357,7 +357,7 @@ export class AdminPackageService {
   /**
    * Crear pago con ePayco (llama a Edge Function, devuelve params para checkout.js)
    */
-  async createEpaycoPayment(packageId: string): Promise<{
+  async createEpaycoPayment(packageId: string, copAmount?: number): Promise<{
     publicKey: string;
     test: boolean;
     name: string;
@@ -383,7 +383,7 @@ export class AdminPackageService {
 
     const { data, error } = await this.supabase.functions.invoke(
       'create-epayco-payment',
-      { body: { package_id: packageId } },
+      { body: { package_id: packageId, cop_amount: copAmount } },
     );
 
     if (error || !data?.invoice) {
