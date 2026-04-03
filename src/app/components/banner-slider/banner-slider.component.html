@@ -9,46 +9,51 @@
       @for (banner of banners(); track banner.id) {
         <div class="relative min-w-full shrink-0" style="aspect-ratio: 3 / 1;">
 
-          <!-- Background: image or custom gradient or default gradient -->
-          @if (banner.image_url && !banner.image_url.startsWith('gradient:')) {
-            <img
-              [src]="banner.image_url"
-              [alt]="banner.name"
-              class="absolute inset-0 w-full h-full object-cover block"
+          @if (hasRealImage(banner)) {
+            <!-- Banner con imagen: la imagen ES el anuncio completo, no agregar texto encima -->
+            <a
+              [href]="banner.url || '#'"
+              [target]="banner.url ? '_blank' : '_self'"
+              rel="noopener noreferrer"
+              class="absolute inset-0 block"
             >
+              <img
+                [src]="banner.image_url"
+                [alt]="banner.name"
+                class="w-full h-full object-cover block"
+              >
+            </a>
           } @else {
+            <!-- Banner sin imagen (gradiente): mostrar texto -->
             <div class="absolute inset-0" [style.background]="banner.gradient_css || (banner.image_url?.startsWith('gradient:') ? banner.image_url.substring(9) : 'linear-gradient(135deg, #0891b2, #1e40af)')"></div>
-          }
 
-          <!-- Overlay for text readability -->
-          <div class="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
-
-          <!-- Content -->
-          <div class="absolute inset-0 flex flex-col justify-center p-4 sm:p-6 md:p-10">
-            <div class="flex items-center justify-between gap-3 sm:gap-4">
-              <div class="flex-1 min-w-0">
-                <h3 class="text-sm sm:text-xl md:text-3xl lg:text-4xl font-black text-white leading-tight drop-shadow-lg tracking-tight line-clamp-2">
-                  {{ banner.name }}
-                </h3>
-                @if (banner.description) {
-                  <p class="text-white/80 text-[10px] sm:text-xs md:text-base mt-1 md:mt-2 line-clamp-1 font-medium drop-shadow">
-                    {{ banner.description }}
-                  </p>
+            <!-- Content overlay solo para gradientes -->
+            <div class="absolute inset-0 flex flex-col justify-center p-4 sm:p-6 md:p-10">
+              <div class="flex items-center justify-between gap-3 sm:gap-4">
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-sm sm:text-xl md:text-3xl lg:text-4xl font-black text-white leading-tight drop-shadow-lg tracking-tight line-clamp-2">
+                    {{ banner.name }}
+                  </h3>
+                  @if (banner.description) {
+                    <p class="text-white/80 text-[10px] sm:text-xs md:text-base mt-1 md:mt-2 line-clamp-1 font-medium drop-shadow">
+                      {{ banner.description }}
+                    </p>
+                  }
+                </div>
+                @if (banner.url) {
+                  <a
+                    [href]="banner.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="shrink-0 bg-white text-gray-900 text-[9px] sm:text-[10px] md:text-xs font-black px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 rounded-xl uppercase tracking-wider shadow-xl hover:bg-white/90 transition-all hover:scale-105"
+                    (click)="$event.stopPropagation()"
+                  >
+                    Visitar
+                  </a>
                 }
               </div>
-              @if (banner.url) {
-                <a
-                  [href]="banner.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="shrink-0 bg-white text-gray-900 text-[9px] sm:text-[10px] md:text-xs font-black px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 rounded-xl uppercase tracking-wider shadow-xl hover:bg-white/90 transition-all hover:scale-105"
-                  (click)="$event.stopPropagation()"
-                >
-                  Visitar
-                </a>
-              }
             </div>
-          </div>
+          }
 
         </div>
       }
@@ -69,18 +74,24 @@
         <span class="material-symbols-outlined text-white" style="font-size:18px">chevron_right</span>
       </button>
 
-      <!-- Dot indicators -->
-      <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-        @for (banner of banners(); track banner.id; let i = $index) {
-          <button
-            (click)="goTo(i)"
-            class="h-1.5 rounded-full transition-all duration-300"
-            [class.bg-primary]="currentIndex() === i"
-            [class.bg-white/40]="currentIndex() !== i"
-            [style.width]="currentIndex() === i ? '20px' : '6px'"
-          ></button>
-        }
-      </div>
+      <!-- Dot indicators (max 10 visible, then show counter) -->
+      @if (banners().length <= 10) {
+        <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+          @for (banner of banners(); track banner.id; let i = $index) {
+            <button
+              (click)="goTo(i)"
+              class="h-1.5 rounded-full transition-all duration-300"
+              [class.bg-primary]="currentIndex() === i"
+              [class.bg-white/40]="currentIndex() !== i"
+              [style.width]="currentIndex() === i ? '20px' : '6px'"
+            ></button>
+          }
+        </div>
+      } @else {
+        <div class="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full">
+          <span class="text-white text-[10px] font-bold">{{ currentIndex() + 1 }} / {{ banners().length }}</span>
+        </div>
+      }
     }
 
   </div>

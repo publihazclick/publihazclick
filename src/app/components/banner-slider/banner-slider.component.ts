@@ -56,6 +56,10 @@ export class BannerSliderComponent implements OnInit, OnDestroy {
     this.currentIndex.update((v) => (v - 1 + len) % len);
   }
 
+  hasRealImage(banner: BannerAd): boolean {
+    return !!banner.image_url && !banner.image_url.startsWith('gradient:');
+  }
+
   goTo(index: number): void {
     this.currentIndex.set(index);
     this.resetAutoPlay();
