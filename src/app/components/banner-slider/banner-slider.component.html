@@ -9,29 +9,29 @@
       @for (banner of banners(); track banner.id) {
         <div class="w-full flex-shrink-0 relative aspect-[3/1]">
 
-          <!-- Background: image or gradient fallback -->
-          @if (banner.image_url) {
+          <!-- Background: image or custom gradient or default gradient -->
+          @if (banner.image_url && !banner.image_url.startsWith('gradient:')) {
             <img
               [src]="banner.image_url"
               [alt]="banner.name"
               class="absolute inset-0 w-full h-full object-cover block"
             >
           } @else {
-            <div class="absolute inset-0 bg-gradient-to-r from-cyan-700 to-blue-800"></div>
+            <div class="absolute inset-0" [style.background]="banner.gradient_css || (banner.image_url?.startsWith('gradient:') ? banner.image_url.substring(9) : 'linear-gradient(135deg, #0891b2, #1e40af)')"></div>
           }
 
           <!-- Overlay -->
-          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+          <div class="absolute inset-0" [class]="banner.gradient_css ? 'bg-gradient-to-t from-black/60 via-black/20 to-black/10' : 'bg-gradient-to-t from-black/80 via-transparent to-transparent'"></div>
 
           <!-- Content -->
-          <div class="absolute inset-0 flex flex-col justify-end p-4 md:p-6">
-            <div class="flex items-end justify-between gap-4">
+          <div class="absolute inset-0 flex flex-col justify-center p-6 md:p-10">
+            <div class="flex items-center justify-between gap-4">
               <div class="flex-1 min-w-0">
-                <h3 class="text-base md:text-2xl font-black text-white leading-tight drop-shadow-lg">
+                <h3 class="text-xl md:text-4xl font-black text-white leading-tight drop-shadow-lg tracking-tight">
                   {{ banner.name }}
                 </h3>
                 @if (banner.description) {
-                  <p class="text-white/60 text-xs md:text-sm mt-0.5 line-clamp-1">
+                  <p class="text-white/70 text-xs md:text-base mt-1 md:mt-2 line-clamp-1 font-medium">
                     {{ banner.description }}
                   </p>
                 }
@@ -41,10 +41,10 @@
                   [href]="banner.url"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="shrink-0 bg-primary text-black text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider shadow-lg hover:bg-primary/90 transition-colors"
+                  class="shrink-0 bg-white text-gray-900 text-[10px] md:text-xs font-black px-4 md:px-5 py-2 md:py-2.5 rounded-xl uppercase tracking-wider shadow-xl hover:bg-white/90 transition-all hover:scale-105"
                   (click)="$event.stopPropagation()"
                 >
-                  Ver más
+                  Visitar
                 </a>
               }
             </div>

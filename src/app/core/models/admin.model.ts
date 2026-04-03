@@ -579,6 +579,7 @@ export interface BannerAd {
   ctr: number;
   status: BannerStatus;
   location?: AdLocation;
+  gradient_css?: string | null;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
