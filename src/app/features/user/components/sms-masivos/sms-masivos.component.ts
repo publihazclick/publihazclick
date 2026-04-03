@@ -103,8 +103,6 @@ export class SmsMasivosComponent implements OnInit {
       { usd: 250,   cop: 250 * 3_700,   total: calc(250 * 3_700) },
       { usd: 500,   cop: 500 * 3_700,   total: calc(500 * 3_700) },
       { usd: 1_000, cop: 1_000 * 3_700, total: calc(1_000 * 3_700) },
-      { usd: 1_500, cop: 1_500 * 3_700, total: calc(1_500 * 3_700) },
-      { usd: 2_000, cop: 2_000 * 3_700, total: calc(2_000 * 3_700) },
     ];
   })();
 

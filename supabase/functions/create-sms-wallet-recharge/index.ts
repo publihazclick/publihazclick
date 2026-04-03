@@ -33,7 +33,7 @@ function decodeJwtPayload(token: string): { sub: string; email?: string } {
 // Montos válidos de recarga en COP (10,20,50,150,250,500,1000,1500,2000 USD × 3700)
 const VALID_AMOUNTS = [
   37_000, 74_000, 185_000, 555_000, 925_000,
-  1_850_000, 3_700_000, 5_550_000, 7_400_000,
+  1_850_000, 3_700_000,
 ];
 
 // ── Comisión ePayco: 2.99% + $900 COP fijo + IVA 19% sobre la comisión ─────
