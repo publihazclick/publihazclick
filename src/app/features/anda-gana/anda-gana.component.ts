@@ -19,12 +19,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   <!-- ═══════════ SPLASH ═══════════ -->
   @if (screen() === 'splash') {
     <div class="fixed inset-0 z-[999] flex items-center justify-center"
-      style="background:linear-gradient(135deg,#0f0a2e 0%,#1a1145 40%,#0c1a3a 100%)">
-      <img src="movi-logo.svg" alt="Movi"
-        class="rounded-3xl"
+      style="background:linear-gradient(135deg,#6C3AED 0%,#2563EB 100%)">
+      <img src="movi-splash.svg" alt="Movi"
         [style.width.px]="splashSize()"
         [style.height.px]="splashSize()"
-        style="transition:width 3.5s cubic-bezier(0.05,0.6,0.3,1),height 3.5s cubic-bezier(0.05,0.6,0.3,1);filter:drop-shadow(0 0 80px rgba(108,58,237,0.5))" />
+        style="transition:width 3.5s cubic-bezier(0.05,0.6,0.3,1),height 3.5s cubic-bezier(0.05,0.6,0.3,1)" />
     </div>
   }
 
