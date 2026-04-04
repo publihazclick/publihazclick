@@ -1878,20 +1878,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ HOME ═══════════ -->
   @if (screen() === 'home') {
-    <div class="flex flex-col items-center gap-6 text-center max-w-sm w-full pt-10">
-      <img src="movi-logo.svg" alt="Movi" class="w-24 h-24 rounded-3xl shadow-lg shadow-purple-500/20" />
-      <div>
-        <h1 class="text-white font-black text-2xl mb-2">Movi</h1>
-        <p class="text-slate-400 text-sm leading-relaxed">Selecciona cómo quieres participar</p>
-      </div>
-      <div class="flex flex-col gap-3 w-full mt-2">
+    <div class="flex flex-col items-center gap-5 text-center w-full px-5 sm:px-8"
+      style="max-width:420px;padding-top:clamp(1.5rem,6vh,3rem)">
+      <img src="movi-logo.svg" alt="Movi"
+        class="rounded-[2rem] shadow-xl shadow-purple-500/25"
+        style="width:clamp(160px,45vw,220px);height:clamp(160px,45vw,220px)" />
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">Selecciona cómo quieres participar</p>
+      <div class="flex flex-col gap-3 w-full mt-1">
         <button (click)="screen.set('passenger-form')"
-          class="w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider bg-gradient-to-r from-orange-500 to-amber-500 text-black shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
+          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-orange-500 to-amber-500 text-black shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
           <span class="material-symbols-outlined" style="font-size:20px">person</span>
           Crear cuenta pasajero
         </button>
         <button (click)="screen.set('driver-form'); driverStep.set(1)"
-          class="w-full py-4 rounded-2xl font-black text-base uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-500 text-black shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2">
+          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-500 text-black shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
           <span class="material-symbols-outlined" style="font-size:20px">directions_car</span>
           Crear cuenta conductor
         </button>
