@@ -980,6 +980,67 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
+        <!-- ── RECOMIENDA Y GANA (Pasajero) ── -->
+        @if (passengerSection() === 'referrals') {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-white font-black text-lg flex items-center gap-2">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:24px">card_giftcard</span>
+              Recomienda y Gana
+            </h2>
+
+            <div class="rounded-2xl p-4 flex flex-col gap-3"
+              style="background:linear-gradient(135deg,rgba(108,58,237,0.15),rgba(37,99,235,0.15));border:1px solid rgba(108,58,237,0.3)">
+              <p class="text-white font-black text-base">Gana el 2% vitalicio</p>
+              <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                Cada vez que alguien se registre en <span class="text-white font-bold">Movi</span> con tu link y use nuestro servicio,
+                tú ganas el <span class="text-amber-400 font-black">2% del valor de cada servicio</span> de por vida.
+                No importa si tus invitados son pasajeros o conductores.
+              </p>
+            </div>
+
+            <!-- Link de referido -->
+            <div class="rounded-2xl p-4 flex flex-col gap-3"
+              style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1)">
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Tu link de invitación</p>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 rounded-xl px-3 py-2.5 text-xs text-white font-mono truncate"
+                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)">
+                  {{ agReferralLink() }}
+                </div>
+                <button (click)="copyReferralLink()"
+                  class="px-4 py-2.5 rounded-xl text-xs font-black text-black flex items-center gap-1 active:scale-95 transition-transform"
+                  style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                  <span class="material-symbols-outlined" style="font-size:16px">content_copy</span>
+                  {{ referralCopied() ? '¡Copiado!' : 'Copiar' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Cómo funciona -->
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">¿Cómo funciona?</p>
+            <div class="flex flex-col gap-2">
+              <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.2)">
+                  <span class="text-purple-400 font-black text-xs">1</span>
+                </div>
+                <p class="text-slate-300 text-xs leading-relaxed">Comparte tu link con amigos, familiares o en redes sociales</p>
+              </div>
+              <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.2)">
+                  <span class="text-purple-400 font-black text-xs">2</span>
+                </div>
+                <p class="text-slate-300 text-xs leading-relaxed">Ellos se registran como pasajero o conductor usando tu link</p>
+              </div>
+              <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(245,158,11,0.2)">
+                  <span class="text-amber-400 font-black text-xs">3</span>
+                </div>
+                <p class="text-slate-300 text-xs leading-relaxed">Cada vez que usen Movi, tú ganas el <span class="text-amber-400 font-bold">2% del valor del servicio</span> de forma vitalicia</p>
+              </div>
+            </div>
+          </div>
+        }
+
       </div>
       }
 
@@ -1384,6 +1445,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                  driverSection() === 'status' ? 'Estado' :
                  driverSection() === 'earnings' ? 'Ganancias' :
                  driverSection() === 'trips' ? 'Mis Viajes' :
+                 driverSection() === 'referrals' ? 'Recomienda y Gana' :
                  driverSection() === 'preferences' ? 'Preferencias' :
                  driverSection() === 'security' ? 'Seguridad' :
                  driverSection() === 'support' ? 'Soporte' :
@@ -1801,6 +1863,62 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
                 Guardar configuración
               </button>
+            </div>
+          }
+
+          <!-- ── RECOMIENDA Y GANA (Conductor) ── -->
+          @if (!loadingSection() && driverSection() === 'referrals') {
+            <div class="flex flex-col gap-4">
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:linear-gradient(135deg,rgba(108,58,237,0.15),rgba(37,99,235,0.15));border:1px solid rgba(108,58,237,0.3)">
+                <p class="text-white font-black text-base">Gana el 2% vitalicio</p>
+                <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                  Cada vez que alguien se registre en <span class="text-white font-bold">Movi</span> con tu link y use nuestro servicio,
+                  tú ganas el <span class="text-amber-400 font-black">2% del valor de cada servicio</span> de por vida.
+                  No importa si tus invitados son pasajeros o conductores.
+                </p>
+              </div>
+
+              <!-- Link de referido -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1)">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Tu link de invitación</p>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 rounded-xl px-3 py-2.5 text-xs text-white font-mono truncate"
+                    style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)">
+                    {{ agReferralLink() }}
+                  </div>
+                  <button (click)="copyReferralLink()"
+                    class="px-4 py-2.5 rounded-xl text-xs font-black text-black flex items-center gap-1 active:scale-95 transition-transform"
+                    style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                    <span class="material-symbols-outlined" style="font-size:16px">content_copy</span>
+                    {{ referralCopied() ? '¡Copiado!' : 'Copiar' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Cómo funciona -->
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">¿Cómo funciona?</p>
+              <div class="flex flex-col gap-2">
+                <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
+                  <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.2)">
+                    <span class="text-purple-400 font-black text-xs">1</span>
+                  </div>
+                  <p class="text-slate-300 text-xs leading-relaxed">Comparte tu link con amigos, familiares o en redes sociales</p>
+                </div>
+                <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
+                  <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.2)">
+                    <span class="text-purple-400 font-black text-xs">2</span>
+                  </div>
+                  <p class="text-slate-300 text-xs leading-relaxed">Ellos se registran como pasajero o conductor usando tu link</p>
+                </div>
+                <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
+                  <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(245,158,11,0.2)">
+                    <span class="text-amber-400 font-black text-xs">3</span>
+                  </div>
+                  <p class="text-slate-300 text-xs leading-relaxed">Cada vez que usen Movi, tú ganas el <span class="text-amber-400 font-bold">2% del valor del servicio</span> de forma vitalicia</p>
+                </div>
+              </div>
             </div>
           }
 
@@ -2482,6 +2600,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverStatus          = signal<string>('');
   driverRejectionReason = signal<string | null>(null);
 
+  // Referidos
+  referralCopied = signal(false);
+  agReferralLink = signal('');
+
   // Mapa / GPS
   gpsStatus      = signal<GpsStatus>('idle');
   currentAddress = signal('');
@@ -2600,6 +2722,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'local_shipping',   label: 'Entregas',                 action: 'service:domicilio', divider: false, section: '' },
     { icon: 'directions_bus',   label: 'Ciudad a Ciudad',          action: 'service:ciudad',    divider: false, section: '' },
     { icon: 'airport_shuttle',  label: 'Flete',                    action: 'service:fletes',    divider: false, section: '' },
+    { divider: true,  section: 'Ganancias', icon: '', label: '', action: '' },
+    { icon: 'card_giftcard',    label: 'Recomienda y Gana',        action: 'referrals',         divider: false, section: '' },
     { divider: true,  section: 'Cuenta', icon: '', label: '', action: '' },
     { icon: 'notifications',    label: 'Notificaciones',           action: 'notifications',     divider: false, section: '' },
     { icon: 'shield',           label: 'Seguridad',                action: 'security',          divider: false, section: '' },
@@ -2616,6 +2740,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'wifi_tethering', label: 'Estado / En Línea', action: 'status',       sectionLabel: '',          danger: false, divider: false },
     { icon: 'payments',       label: 'Ganancias',         action: 'earnings',     sectionLabel: '',          danger: false, divider: false },
     { icon: 'route',          label: 'Mis Viajes',        action: 'trips',        sectionLabel: '',          danger: false, divider: false },
+    { icon: '',               label: '',                  action: '',             sectionLabel: 'Ganancias',     danger: false, divider: true },
+    { icon: 'card_giftcard',  label: 'Recomienda y Gana', action: 'referrals',    sectionLabel: '',          danger: false, divider: false },
     { icon: '',               label: '',                  action: '',             sectionLabel: 'Configuración', danger: false, divider: true },
     { icon: 'tune',           label: 'Preferencias',      action: 'preferences',  sectionLabel: '',          danger: false, divider: false },
     { icon: 'shield',         label: 'Seguridad',         action: 'security',     sectionLabel: '',          danger: false, divider: false },
@@ -2660,6 +2786,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     const profile = await this.agService.getMyAgProfile();
     this.agProfile.set(profile);
+    if (profile && isPlatformBrowser(this.platformId)) {
+      this.agReferralLink.set(`${window.location.origin}/dashboard/anda-gana?ref=${profile.id}`);
+    }
 
     // Esperar a que la animación del splash termine (3.8s)
     await new Promise(r => setTimeout(r, 3800));
@@ -4014,6 +4143,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   // ── Passenger menu methods ─────────────────────────────────────
+  async copyReferralLink() {
+    if (isPlatformBrowser(this.platformId)) {
+      await navigator.clipboard.writeText(this.agReferralLink());
+      this.referralCopied.set(true);
+      setTimeout(() => this.referralCopied.set(false), 2000);
+    }
+  }
+
   openPassengerSection(action: string) {
     this.agMenuOpen.set(false);
     if (action.startsWith('service:')) {
