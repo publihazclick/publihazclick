@@ -5,7 +5,7 @@ import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 
-type AgScreen = 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
+type AgScreen = 'splash' | 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
 type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
 @Component({
@@ -15,6 +15,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4">
+
+  <!-- ═══════════ SPLASH ═══════════ -->
+  @if (screen() === 'splash') {
+    <div class="fixed inset-0 z-[999] flex items-center justify-center"
+      style="background:linear-gradient(135deg,#0f0a2e 0%,#1a1145 40%,#0c1a3a 100%)">
+      <img src="movi-logo.svg" alt="Movi"
+        class="rounded-3xl"
+        [style.width.px]="splashSize()"
+        [style.height.px]="splashSize()"
+        style="transition:width 1.8s cubic-bezier(0.22,1,0.36,1),height 1.8s cubic-bezier(0.22,1,0.36,1),opacity 0.4s ease;opacity:1;filter:drop-shadow(0 0 60px rgba(108,58,237,0.4))" />
+    </div>
+  }
 
   <!-- ═══════════ LOADING ═══════════ -->
   @if (screen() === 'loading') {
@@ -2434,7 +2446,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly agService  = inject(AndaGanaService);
   private readonly platformId = inject(PLATFORM_ID);
 
-  screen     = signal<AgScreen>('loading');
+  screen     = signal<AgScreen>('splash');
+  splashSize = signal(60);
   driverStep = signal<number>(1);
 
   // Perfil actual
@@ -2611,10 +2624,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   firstName() { return this.agProfile()?.full_name?.split(' ')[0] ?? ''; }
 
-  // ── Lifecycle ──────────────────────────────────────────────────
+  // ── Lifecycle ────────────────────────────────���─────────────────
   async ngOnInit() {
+    // Splash: logo crece de 60px hasta llenar la pantalla
+    if (isPlatformBrowser(this.platformId)) {
+      const maxDim = Math.max(window.innerWidth, window.innerHeight) * 1.5;
+      setTimeout(() => this.splashSize.set(maxDim), 80);
+    }
+
     const profile = await this.agService.getMyAgProfile();
     this.agProfile.set(profile);
+
+    // Esperar a que la animación del splash termine (2s)
+    await new Promise(r => setTimeout(r, 2000));
 
     if (!profile) { this.screen.set('home'); return; }
 
