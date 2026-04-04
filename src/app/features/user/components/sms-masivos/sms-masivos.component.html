@@ -106,6 +106,12 @@
                 <span class="material-symbols-outlined text-lg" [class.text-violet-500]="activeTab() === 'recharge-history'">receipt_long</span>
                 Historial Recargas
               </button>
+              <a href="/sms-masivos" target="_blank" rel="noopener noreferrer"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors text-gray-600 hover:bg-gray-50"
+                (click)="menuOpen.set(false)">
+                <span class="material-symbols-outlined text-lg text-violet-500">language</span>
+                Landing SMS
+              </a>
               <button
                 (click)="showReferralModal.set(true); menuOpen.set(false)"
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm border-t border-gray-100 transition-colors text-gray-600 hover:bg-gray-50">

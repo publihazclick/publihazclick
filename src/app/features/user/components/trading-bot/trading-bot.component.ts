@@ -71,6 +71,12 @@ interface TradingPackage {
                 <span class="material-symbols-outlined text-lg text-amber-400">history</span>
                 Historial
               </button>
+              <a href="/trading-bot" target="_blank" rel="noopener noreferrer"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors"
+                (click)="menuOpen.set(false)">
+                <span class="material-symbols-outlined text-lg text-primary">language</span>
+                Landing Trading
+              </a>
               <button
                 (click)="showReferral.set(true); menuOpen.set(false)"
                 class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
