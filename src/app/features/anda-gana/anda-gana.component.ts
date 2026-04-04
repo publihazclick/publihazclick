@@ -3259,7 +3259,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.000055 : 0.000040,
+        speed:   isMoto ? 0.00055 : 0.00040,
         forward: true,
         marker,
         heading: h0,
