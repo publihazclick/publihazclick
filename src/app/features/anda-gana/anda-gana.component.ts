@@ -3224,8 +3224,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // ── Demo animado — rutas sintéticas (no dependen de API) ──────
-    const paths = this._generateCityPaths(lat, lng);
+    // ── Demo animado — rutas reales por calles (Mapbox Directions API) ──────
+    const paths = await this._generateRoadPaths(lat, lng);
 
     const configs = [
       { isMoto: false, color: '#1D4ED8' },  // azul rey
@@ -3270,22 +3270,70 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Genera 12 rutas en cuadrícula 4×3 completamente disjuntas.
-   * Cada vehículo tiene su propia celda exclusiva → nunca se superponen.
-   * cw × ch = tamaño de cada celda en grados.
+   * Genera rutas reales por calles usando la API de Directions de Mapbox.
+   * Cada vehículo recibe una ruta circular de 3 waypoints aleatorios cercanos
+   * que sigue el trazado real de calles y avenidas.
    */
-  private _generateCityPaths(lat: number, lng: number): [number, number][][] {
-    const N  = 30;   // puntos por arista
-    const cw = 0.007; // ancho de celda en lng (~780 m)
-    const ch = 0.006; // alto de celda en lat (~667 m)
+  private async _generateRoadPaths(lat: number, lng: number): Promise<[number, number][][]> {
+    const paths: [number, number][][] = [];
+    const angles = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
+
+    const fetchRoute = async (waypoints: [number, number][]): Promise<[number, number][]> => {
+      const coords = waypoints.map(w => `${w[0]},${w[1]}`).join(';');
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}`
+        + `?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.routes?.[0]?.geometry?.coordinates) {
+          return data.routes[0].geometry.coordinates as [number, number][];
+        }
+      } catch { /* fallback below */ }
+      return [];
+    };
+
+    // Generar 12 rutas circulares (ida y vuelta) por calles reales
+    const promises = angles.map(async (angle, i) => {
+      const rad1 = (angle * Math.PI) / 180;
+      const rad2 = ((angle + 120) * Math.PI) / 180;
+      const dist = 0.004 + Math.random() * 0.004; // 400-800m aprox
+      const dist2 = 0.003 + Math.random() * 0.003;
+
+      const wp1: [number, number] = [lng + Math.cos(rad1) * dist, lat + Math.sin(rad1) * dist];
+      const wp2: [number, number] = [lng + Math.cos(rad2) * dist2, lat + Math.sin(rad2) * dist2];
+
+      // Ruta circular: origen → wp1 → wp2 → origen
+      const route = await fetchRoute([wp1, wp2, wp1]);
+      return route.length >= 2 ? route : null;
+    });
+
+    const results = await Promise.all(promises);
+    for (const r of results) {
+      if (r) paths.push(r);
+    }
+
+    // Fallback: si no se obtuvo ninguna ruta, generar rectángulos simples
+    if (paths.length === 0) {
+      return this._generateFallbackPaths(lat, lng);
+    }
+
+    // Rellenar hasta 12 si faltan rutas
+    while (paths.length < 12) {
+      paths.push(paths[paths.length % paths.length]);
+    }
+
+    return paths;
+  }
+
+  /** Fallback rectangular si la API de rutas falla */
+  private _generateFallbackPaths(lat: number, lng: number): [number, number][][] {
+    const N = 30;
+    const cw = 0.007;
+    const ch = 0.006;
     const cols = 4, rows = 3;
+    const startLng = lng - (cols / 2) * cw;
+    const startLat = lat - (rows / 2) * ch;
 
-    // Centrar la cuadrícula en el usuario
-    const startLng = lng - (cols / 2) * cw;  // usuario queda entre col 1 y col 2
-    const startLat = lat - (rows / 2) * ch;  // usuario queda entre fila 1 y fila 2
-
-    /** Loop rectangular cerrado dentro de una celda, con gap de 0.0003° respecto al borde
-     *  para que dos celdas adyacentes nunca compartan coordenadas exactas. */
     const cell = (col: number, row: number): [number, number][] => {
       const gap = 0.0002;
       const x0 = startLng + col * cw + gap;
@@ -3293,19 +3341,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const x1 = x0 + cw - gap * 2;
       const y1 = y0 + ch - gap * 2;
       const p: [number, number][] = [];
-      for (let i = 0; i < N; i++) p.push([x0 + (x1 - x0) * i / N, y1]); // N W→E
-      for (let i = 0; i < N; i++) p.push([x1, y1 - (y1 - y0) * i / N]); // E N→S
-      for (let i = 0; i < N; i++) p.push([x1 - (x1 - x0) * i / N, y0]); // S E→W
-      for (let i = 0; i < N; i++) p.push([x0, y0 + (y1 - y0) * i / N]); // W S→N
+      for (let i = 0; i < N; i++) p.push([x0 + (x1 - x0) * i / N, y1]);
+      for (let i = 0; i < N; i++) p.push([x1, y1 - (y1 - y0) * i / N]);
+      for (let i = 0; i < N; i++) p.push([x1 - (x1 - x0) * i / N, y0]);
+      for (let i = 0; i < N; i++) p.push([x0, y0 + (y1 - y0) * i / N]);
       p.push(p[0]);
       return p;
     };
 
-    // 12 celdas — orden: recorre la cuadrícula fila a fila
     return [
-      cell(0, 0), cell(1, 0), cell(2, 0), cell(3, 0),  // fila superior
-      cell(0, 1), cell(1, 1), cell(2, 1), cell(3, 1),  // fila media
-      cell(0, 2), cell(1, 2), cell(2, 2), cell(3, 2),  // fila inferior
+      cell(0, 0), cell(1, 0), cell(2, 0), cell(3, 0),
+      cell(0, 1), cell(1, 1), cell(2, 1), cell(3, 1),
+      cell(0, 2), cell(1, 2), cell(2, 2), cell(3, 2),
     ];
   }
 
