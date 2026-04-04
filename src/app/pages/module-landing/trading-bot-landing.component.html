@@ -1,60 +1,56 @@
-<div class="bg-black text-white">
+<div class="min-h-screen bg-white">
 
   <!-- ═══ HERO ═══════════════════════════════════════════════════════════ -->
   <section class="relative overflow-hidden">
-    <!-- Animated background -->
-    <div class="absolute inset-0 bg-gradient-to-br from-emerald-950 via-black to-cyan-950"></div>
+    <!-- Background -->
+    <div class="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-teal-50"></div>
     <div class="absolute inset-0">
-      <div class="absolute top-20 left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/8 rounded-full blur-3xl"></div>
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-3xl"></div>
+      <div class="absolute top-20 left-10 w-72 h-72 bg-emerald-200/30 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-20 right-10 w-96 h-96 bg-teal-200/20 rounded-full blur-3xl"></div>
     </div>
-
-    <!-- Grid pattern overlay -->
-    <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px); background-size: 60px 60px;"></div>
 
     <div class="relative z-10 max-w-6xl mx-auto px-4 py-20 sm:py-28 md:py-36">
       <div class="text-center">
         <!-- Badge -->
-        <div class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-8">
-          <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-          <span class="text-emerald-400 text-xs font-black uppercase tracking-widest">Operando 24/7 con IA</span>
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full mb-8">
+          <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+          <span class="text-emerald-700 text-xs font-black uppercase tracking-widest">Operando 24/7 con IA</span>
         </div>
 
         <!-- Icon -->
         <div class="flex justify-center mb-8">
           <div class="relative">
-            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center backdrop-blur-sm">
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:56px">trending_up</span>
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-emerald-100 to-teal-100 border border-emerald-200 flex items-center justify-center">
+              <span class="material-symbols-outlined text-emerald-600" style="font-size:56px">trending_up</span>
             </div>
-            <div class="absolute -top-2 -right-2 w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/40">
-              <span class="material-symbols-outlined text-black" style="font-size:20px">smart_toy</span>
+            <div class="absolute -top-2 -right-2 w-10 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <span class="material-symbols-outlined text-white" style="font-size:20px">smart_toy</span>
             </div>
           </div>
         </div>
 
         <!-- Title -->
-        <h1 class="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-none mb-4">
-          Trading Bot <span class="bg-gradient-to-r from-emerald-400 via-primary to-cyan-400 bg-clip-text text-transparent">AI</span>
+        <h1 class="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-none mb-4 text-gray-900">
+          Trading Bot <span class="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 bg-clip-text text-transparent">AI</span>
         </h1>
-        <p class="text-xl sm:text-2xl md:text-3xl text-emerald-400 font-black mb-6">
+        <p class="text-xl sm:text-2xl md:text-3xl font-black mb-6" style="background: linear-gradient(90deg, #059669, #0d9488, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
           Tu dinero trabaja por ti las 24 horas
         </p>
-        <p class="text-slate-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+        <p class="text-gray-500 text-sm sm:text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
           Algoritmos de inteligencia artificial que analizan el mercado de criptomonedas en tiempo real,
           ejecutan operaciones automáticas y generan ganancias estimadas de
-          <span class="text-emerald-400 font-black">2.5% a 30% mensual</span> sobre tu inversión.
+          <span class="text-emerald-600 font-black">2.5% a 30% mensual</span> sobre el paquete de servicio de trading automático que adquieras.
         </p>
 
         <!-- CTAs -->
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
           <a routerLink="/register"
-             class="group px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm sm:text-base rounded-2xl uppercase tracking-wider shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all hover:scale-105 flex items-center gap-2">
+             class="group px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm sm:text-base rounded-2xl uppercase tracking-wider shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-105 flex items-center gap-2">
             <span class="material-symbols-outlined" style="font-size:20px">rocket_launch</span>
-            Empezar a Invertir
+            Comprar Bot
           </a>
           <a routerLink="/login"
-             class="px-8 py-4 bg-white/5 text-white font-bold text-sm sm:text-base rounded-2xl border border-white/10 hover:bg-white/10 transition-all flex items-center gap-2">
+             class="px-8 py-4 bg-white text-gray-700 font-bold text-sm sm:text-base rounded-2xl border border-gray-200 hover:border-emerald-300 hover:shadow-md transition-all flex items-center gap-2">
             <span class="material-symbols-outlined" style="font-size:20px">login</span>
             Ya tengo cuenta
           </a>
@@ -63,10 +59,10 @@
         <!-- Stats row -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto">
           @for (stat of stats; track stat.label) {
-            <div class="bg-white/[0.03] border border-white/5 rounded-2xl p-4 sm:p-5 text-center backdrop-blur-sm">
-              <span class="material-symbols-outlined text-emerald-400 mb-2" style="font-size:24px">{{ stat.icon }}</span>
-              <p class="text-2xl sm:text-3xl font-black text-white">{{ stat.value }}</p>
-              <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">{{ stat.label }}</p>
+            <div class="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 text-center shadow-sm">
+              <span class="material-symbols-outlined text-emerald-500 mb-2" style="font-size:24px">{{ stat.icon }}</span>
+              <p class="text-2xl sm:text-3xl font-black text-gray-900">{{ stat.value }}</p>
+              <p class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider mt-1">{{ stat.label }}</p>
             </div>
           }
         </div>
@@ -75,17 +71,17 @@
   </section>
 
   <!-- ═══ TRUST BANNER ═══════════════════════════════════════════════════ -->
-  <section class="py-10 px-4 bg-amber-500/[0.03] border-y border-amber-500/10">
+  <section class="py-10 px-4 bg-amber-50/80 border-y border-amber-200/50">
     <div class="max-w-4xl mx-auto text-center">
       <div class="inline-flex items-center gap-2 mb-3">
-        <span class="material-symbols-outlined text-amber-400" style="font-size:24px">verified_user</span>
-        <span class="text-amber-400 font-black uppercase tracking-widest text-sm">Transparencia ante todo</span>
+        <span class="material-symbols-outlined text-amber-500" style="font-size:24px">verified_user</span>
+        <span class="text-amber-700 font-black uppercase tracking-widest text-sm">Transparencia ante todo</span>
       </div>
-      <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto">
+      <p class="text-gray-600 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto">
         Sabemos que algunos sistemas venden humo y te ofrecen más del 100%... pero luego pierdes tu dinero.
-        <span class="text-white font-bold">Creemos firmemente en ofrecer resultados sostenibles en el tiempo.</span>
+        <span class="text-gray-900 font-bold">Creemos firmemente en ofrecer resultados sostenibles en el tiempo.</span>
         Nuestro enfoque prioriza la estabilidad y el crecimiento constante.
-        <span class="text-amber-400 font-bold">Llevamos más de 9 años operando como empresa,</span>
+        <span class="text-amber-600 font-bold">Llevamos más de 9 años operando como empresa,</span>
         construyendo resultados sólidos y relaciones de confianza a largo plazo.
       </p>
     </div>
@@ -95,21 +91,24 @@
   <section class="py-16 sm:py-24 px-4">
     <div class="max-w-6xl mx-auto">
       <div class="text-center mb-12 sm:mb-16">
-        <span class="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Tecnología de punta</span>
-        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4">¿Cómo funciona el Bot?</h2>
-        <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
+        <span class="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium mb-4">
+          <span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>
+          Tecnología de punta
+        </span>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900 mb-4">¿Cómo funciona el Bot?</h2>
+        <p class="text-gray-500 text-sm sm:text-base max-w-lg mx-auto">
           Inteligencia artificial de última generación trabajando por ti mientras duermes
         </p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         @for (f of features; track f.title) {
-          <div class="group bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 sm:p-8 hover:border-emerald-500/20 transition-all duration-300">
-            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/10 border border-emerald-500/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:28px">{{ f.icon }}</span>
+          <div class="group bg-white border border-gray-100 rounded-2xl p-6 sm:p-8 hover:border-emerald-200 hover:shadow-lg transition-all duration-300">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-100 to-teal-50 border border-emerald-200 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <span class="material-symbols-outlined text-emerald-600" style="font-size:28px">{{ f.icon }}</span>
             </div>
-            <h3 class="text-lg sm:text-xl font-black text-white mb-3">{{ f.title }}</h3>
-            <p class="text-sm text-slate-400 leading-relaxed">{{ f.desc }}</p>
+            <h3 class="text-lg sm:text-xl font-black text-gray-900 mb-3">{{ f.title }}</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">{{ f.desc }}</p>
           </div>
         }
       </div>
@@ -117,27 +116,30 @@
   </section>
 
   <!-- ═══ HOW IT WORKS ═══════════════════════════════════════════════════ -->
-  <section class="py-16 sm:py-24 px-4 bg-[#050505]">
+  <section class="py-16 sm:py-24 px-4 bg-gradient-to-b from-gray-50/80 to-white">
     <div class="max-w-4xl mx-auto">
       <div class="text-center mb-12 sm:mb-16">
-        <span class="text-cyan-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Paso a paso</span>
-        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4">Empieza en 5 minutos</h2>
-        <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
+        <span class="inline-flex items-center gap-1.5 bg-teal-50 border border-teal-200 text-teal-700 rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium mb-4">
+          <span class="material-symbols-outlined" style="font-size:16px">route</span>
+          Paso a paso
+        </span>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900 mb-4">Empieza en 5 minutos</h2>
+        <p class="text-gray-500 text-sm sm:text-base max-w-lg mx-auto">
           No necesitas experiencia previa en trading ni criptomonedas
         </p>
       </div>
 
       <div class="space-y-4">
         @for (step of steps; track step.num) {
-          <div class="flex items-start gap-4 sm:gap-6 bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 sm:p-6 hover:border-emerald-500/20 transition-all">
+          <div class="flex items-start gap-4 sm:gap-6 bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 hover:border-emerald-200 hover:shadow-md transition-all">
             <div class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <span class="text-white font-black text-lg sm:text-xl">{{ step.num }}</span>
             </div>
             <div class="flex-1 min-w-0">
-              <h3 class="text-base sm:text-lg font-black text-white mb-1">{{ step.title }}</h3>
-              <p class="text-sm text-slate-400">{{ step.desc }}</p>
+              <h3 class="text-base sm:text-lg font-black text-gray-900 mb-1">{{ step.title }}</h3>
+              <p class="text-sm text-gray-500">{{ step.desc }}</p>
             </div>
-            <span class="material-symbols-outlined text-emerald-500/30 hidden sm:block" style="font-size:28px">{{ step.icon }}</span>
+            <span class="material-symbols-outlined text-emerald-200 hidden sm:block" style="font-size:28px">{{ step.icon }}</span>
           </div>
         }
       </div>
@@ -148,67 +150,73 @@
   <section class="py-16 sm:py-24 px-4">
     <div class="max-w-5xl mx-auto">
       <div class="text-center mb-12">
-        <span class="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">42 niveles de inversión</span>
-        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4">Paquetes desde $100 USD</h2>
-        <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
-          Invierte según tu capacidad. Todos los paquetes operan con la misma tecnología IA
+        <span class="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium mb-4">
+          <span class="material-symbols-outlined" style="font-size:16px">inventory_2</span>
+          42 paquetes de servicio trading bot
+        </span>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900 mb-4">Paquetes desde $100 USD</h2>
+        <p class="text-gray-500 text-sm sm:text-base max-w-lg mx-auto">
+          Todos los paquetes operan con la misma tecnología IA
         </p>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
         @for (tier of tiers; track tier.price) {
-          <div class="bg-[#0a0a0a] border border-white/10 rounded-2xl p-4 sm:p-5 text-center hover:border-emerald-500/30 hover:scale-105 transition-all duration-300">
-            <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">{{ tier.name }}</p>
-            <p class="text-xl sm:text-2xl font-black text-white">${{ tier.price | number }}</p>
-            <p class="text-[10px] text-slate-600 uppercase tracking-wider mt-1">USD</p>
-            <div class="mt-3 flex items-center justify-center gap-1 bg-emerald-500/10 rounded-lg px-2 py-1">
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:12px">trending_up</span>
-              <span class="text-emerald-400 font-black text-[11px]">2.5% - 30%</span>
+          <div class="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 text-center hover:border-emerald-300 hover:shadow-lg hover:scale-105 transition-all duration-300">
+            <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">{{ tier.name }}</p>
+            <p class="text-xl sm:text-2xl font-black text-gray-900">${{ tier.price | number }}</p>
+            <p class="text-[10px] text-gray-400 uppercase tracking-wider mt-1">USD</p>
+            <div class="mt-3 flex items-center justify-center gap-1 bg-emerald-50 border border-emerald-200/50 rounded-lg px-2 py-1">
+              <span class="material-symbols-outlined text-emerald-500" style="font-size:12px">trending_up</span>
+              <span class="text-emerald-600 font-black text-[11px]">2.5% - 30%</span>
             </div>
           </div>
         }
       </div>
 
-      <p class="text-center text-slate-500 text-xs">
+      <p class="text-center text-gray-400 text-xs">
         Mostrando 6 de 42 paquetes disponibles. Desde Semilla ($100) hasta Apex ($20,000).
       </p>
     </div>
   </section>
 
   <!-- ═══ EARNINGS CALCULATOR ════════════════════════════════════════════ -->
-  <section class="py-16 sm:py-24 px-4 bg-[#050505]">
+  <section class="py-16 sm:py-24 px-4 bg-gradient-to-b from-gray-50/80 to-white">
     <div class="max-w-4xl mx-auto">
       <div class="text-center mb-12">
-        <span class="text-primary text-xs font-black uppercase tracking-[0.2em] block mb-2">Proyección de ganancias</span>
-        <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4">¿Cuánto podrías ganar?</h2>
+        <span class="inline-flex items-center gap-1.5 bg-teal-50 border border-teal-200 text-teal-700 rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium mb-4">
+          <span class="material-symbols-outlined" style="font-size:16px">calculate</span>
+          Proyección de ganancias
+        </span>
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 mb-4">¿Cuánto podrías ganar?</h2>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-[#0a0a0a] border border-emerald-500/20 rounded-2xl p-6 text-center">
-          <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Inversión de $100</p>
-          <p class="text-3xl font-black text-emerald-400">$2.50 - $30</p>
-          <p class="text-xs text-slate-500 mt-1">Ganancia mensual estimada</p>
-          <div class="mt-3 h-px bg-white/5"></div>
-          <p class="text-xs text-slate-400 mt-3">$30 - $360 al año</p>
+        <div class="bg-white border border-emerald-200 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg transition-all">
+          <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">Inversión de $100</p>
+          <p class="text-3xl font-black" style="background: linear-gradient(90deg, #059669, #0d9488); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$2.50 - $30</p>
+          <p class="text-xs text-gray-400 mt-1">Ganancia mensual estimada</p>
+          <div class="mt-3 h-px bg-gray-100"></div>
+          <p class="text-xs text-gray-500 mt-3">$30 - $360 al año</p>
         </div>
-        <div class="bg-[#0a0a0a] border border-cyan-500/20 rounded-2xl p-6 text-center">
-          <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Inversión de $1,000</p>
-          <p class="text-3xl font-black text-cyan-400">$25 - $300</p>
-          <p class="text-xs text-slate-500 mt-1">Ganancia mensual estimada</p>
-          <div class="mt-3 h-px bg-white/5"></div>
-          <p class="text-xs text-slate-400 mt-3">$300 - $3,600 al año</p>
+        <div class="bg-white border border-teal-200 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg transition-all">
+          <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">Inversión de $1,000</p>
+          <p class="text-3xl font-black" style="background: linear-gradient(90deg, #0d9488, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$25 - $300</p>
+          <p class="text-xs text-gray-400 mt-1">Ganancia mensual estimada</p>
+          <div class="mt-3 h-px bg-gray-100"></div>
+          <p class="text-xs text-gray-500 mt-3">$300 - $3,600 al año</p>
         </div>
-        <div class="bg-[#0a0a0a] border border-violet-500/20 rounded-2xl p-6 text-center">
-          <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Inversión de $10,000</p>
-          <p class="text-3xl font-black text-violet-400">$250 - $3,000</p>
-          <p class="text-xs text-slate-500 mt-1">Ganancia mensual estimada</p>
-          <div class="mt-3 h-px bg-white/5"></div>
-          <p class="text-xs text-slate-400 mt-3">$3,000 - $36,000 al año</p>
+        <div class="bg-white border border-cyan-200 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg transition-all">
+          <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">Inversión de $10,000</p>
+          <p class="text-3xl font-black" style="background: linear-gradient(90deg, #0891b2, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$250 - $3,000</p>
+          <p class="text-xs text-gray-400 mt-1">Ganancia mensual estimada</p>
+          <div class="mt-3 h-px bg-gray-100"></div>
+          <p class="text-xs text-gray-500 mt-3">$3,000 - $36,000 al año</p>
         </div>
       </div>
 
-      <p class="text-center text-[10px] text-slate-600 mt-6">
-        * Las ganancias son estimadas y dependen de las condiciones del mercado. Rendimientos pasados no garantizan resultados futuros.
+      <p class="text-center text-[10px] text-gray-400 mt-6">
+        * Las ganancias son estimadas y dependen de las condiciones del mercado.
       </p>
     </div>
   </section>
@@ -217,59 +225,63 @@
   <section class="py-16 sm:py-24 px-4">
     <div class="max-w-3xl mx-auto">
       <div class="text-center mb-12">
-        <span class="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] block mb-2">Resolvemos tus dudas</span>
-        <h2 class="text-3xl sm:text-4xl font-black tracking-tight">Preguntas Frecuentes</h2>
+        <span class="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium mb-4">
+          <span class="material-symbols-outlined" style="font-size:16px">help</span>
+          Resolvemos tus dudas
+        </span>
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight text-gray-900">Preguntas Frecuentes</h2>
       </div>
 
       <div class="space-y-3">
         @for (faq of faqs; track faq.q; let i = $index) {
-          <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden transition-all"
-               [class.border-emerald-500/20]="expandedFaq === i">
-            <button
-              (click)="toggleFaq(i)"
-              class="w-full flex items-center justify-between p-5 text-left">
-              <span class="font-black text-sm sm:text-base text-white pr-4">{{ faq.q }}</span>
-              <span class="material-symbols-outlined text-emerald-400 shrink-0 transition-transform duration-300"
-                    [style.transform]="expandedFaq === i ? 'rotate(180deg)' : 'rotate(0)'">
+          <details class="group bg-white border border-gray-100 rounded-2xl overflow-hidden hover:border-emerald-200 transition-all">
+            <summary class="flex items-center justify-between p-5 cursor-pointer">
+              <span class="font-black text-sm sm:text-base text-gray-900 pr-4">{{ faq.q }}</span>
+              <span class="material-symbols-outlined text-emerald-500 shrink-0 group-open:rotate-180 transition-transform duration-300" style="font-size:20px">
                 expand_more
               </span>
-            </button>
-            @if (expandedFaq === i) {
-              <div class="px-5 pb-5">
-                <p class="text-sm text-slate-400 leading-relaxed">{{ faq.a }}</p>
-              </div>
-            }
-          </div>
+            </summary>
+            <div class="px-5 pb-5">
+              <p class="text-sm text-gray-500 leading-relaxed">{{ faq.a }}</p>
+            </div>
+          </details>
         }
       </div>
     </div>
   </section>
 
   <!-- ═══ FINAL CTA ═════════════════════════════════════════════════════ -->
-  <section class="py-16 sm:py-24 px-4 relative overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-t from-emerald-950/50 to-transparent"></div>
-    <div class="relative z-10 max-w-3xl mx-auto text-center">
-      <div class="bg-gradient-to-br from-[#0a0a0a] to-[#0d1a0f] border border-emerald-500/20 rounded-3xl p-8 sm:p-14">
-        <div class="w-20 h-20 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-500/30">
-          <span class="material-symbols-outlined text-white" style="font-size:40px">rocket_launch</span>
+  <section class="py-16 sm:py-24 px-4">
+    <div class="max-w-3xl mx-auto text-center">
+      <div class="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 border border-emerald-200 rounded-3xl p-8 sm:p-14 shadow-xl shadow-emerald-500/5">
+        <!-- Glow -->
+        <div class="absolute inset-0 pointer-events-none opacity-30">
+          <div class="absolute top-10 left-10 w-40 h-40 bg-emerald-200 rounded-full blur-3xl"></div>
+          <div class="absolute bottom-10 right-10 w-40 h-40 bg-teal-200 rounded-full blur-3xl"></div>
         </div>
-        <h2 class="text-2xl sm:text-4xl font-black mb-4">
-          Empieza a generar ganancias <span class="text-emerald-400">hoy</span>
-        </h2>
-        <p class="text-slate-400 text-sm sm:text-base mb-8 max-w-md mx-auto">
-          Crea tu cuenta gratis, elige tu paquete desde $100 USD y deja que la inteligencia artificial trabaje por ti.
-        </p>
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a routerLink="/register"
-             class="px-10 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm sm:text-base rounded-2xl uppercase tracking-wider shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all hover:scale-105">
-            Crear Cuenta Gratis
-          </a>
-          <a routerLink="/login"
-             class="px-10 py-4 text-white font-bold text-sm rounded-2xl border border-white/10 hover:bg-white/5 transition-all">
-            Iniciar Sesión
-          </a>
+
+        <div class="relative z-10">
+          <div class="w-20 h-20 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-500/25">
+            <span class="material-symbols-outlined text-white" style="font-size:40px">rocket_launch</span>
+          </div>
+          <h2 class="text-2xl sm:text-4xl font-black text-gray-900 mb-4">
+            Empieza a generar ganancias <span class="bg-gradient-to-r from-emerald-500 to-teal-600 bg-clip-text text-transparent">hoy</span>
+          </h2>
+          <p class="text-gray-500 text-sm sm:text-base mb-8 max-w-md mx-auto">
+            Crea tu cuenta gratis, elige tu paquete desde $100 USD y deja que la inteligencia artificial trabaje por ti.
+          </p>
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a routerLink="/register"
+               class="px-10 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm sm:text-base rounded-2xl uppercase tracking-wider shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-105">
+              Comprar Bot
+            </a>
+            <a routerLink="/login"
+               class="px-10 py-4 text-gray-700 font-bold text-sm rounded-2xl border border-gray-200 hover:border-emerald-300 hover:shadow-md transition-all">
+              Iniciar Sesión
+            </a>
+          </div>
+          <p class="text-[10px] text-gray-400 mt-6 uppercase tracking-wider">Sin comisiones ocultas. Sin tarjeta de crédito.</p>
         </div>
-        <p class="text-[10px] text-slate-600 mt-6 uppercase tracking-wider">Sin comisiones ocultas. Sin tarjeta de crédito.</p>
       </div>
     </div>
   </section>

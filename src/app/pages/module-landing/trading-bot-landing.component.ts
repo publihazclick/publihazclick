@@ -22,37 +22,31 @@ export class TradingBotLandingComponent {
       icon: 'auto_graph',
       title: 'Análisis de Mercado 24/7',
       desc: 'Nuestros algoritmos de machine learning analizan Bitcoin, Ethereum, Solana y más criptomonedas en tiempo real, identificando patrones y oportunidades que un humano jamás detectaría.',
-      color: 'emerald',
     },
     {
       icon: 'bolt',
       title: 'Ejecución en Milisegundos',
       desc: 'El bot ejecuta operaciones de compra y venta automáticamente en milisegundos. Sin intervención humana, sin emociones, sin errores. Solo lógica pura y velocidad.',
-      color: 'cyan',
     },
     {
       icon: 'shield_with_heart',
       title: 'Gestión Inteligente de Riesgo',
       desc: 'Sistema de stop-loss inteligente que protege tu capital en mercados volátiles. Tu inversión está resguardada con protocolos de seguridad de nivel institucional.',
-      color: 'violet',
     },
     {
       icon: 'payments',
       title: 'Retiros Flexibles',
       desc: 'Después de los primeros 30 días, retira tus ganancias cuando quieras. Sin penalidades, sin tiempos de espera. Tu dinero, tus reglas.',
-      color: 'amber',
     },
     {
       icon: 'card_giftcard',
       title: 'Recomienda y Gana',
-      desc: 'Invita amigos y gana el 1% mensual sobre el valor del paquete que adquiera tu referido. Mientras su paquete esté activo, tú sigues ganando cada mes.',
-      color: 'rose',
+      desc: 'Invita amigos y gana el 1% mensual sobre el valor del paquete que adquiera cada invitado. Mientras su paquete esté activo, tú sigues ganando cada mes.',
     },
     {
       icon: 'monitoring',
       title: 'Terminal de Trading en Vivo',
-      desc: 'Accede a un simulador interactivo con datos del mercado real. Observa el libro de órdenes, gráficos de velas, historial de operaciones y tasa de aciertos del bot.',
-      color: 'blue',
+      desc: 'Accede a Tu oficina virtual y veras los eventos en vivo las órdenes, gráficos de velas, historial de operaciones y tasa de aciertos del bot.',
     },
   ];
 
@@ -78,7 +72,7 @@ export class TradingBotLandingComponent {
     { q: '¿Cuál es la inversión mínima?', a: 'Puedes empezar desde $100 USD con el paquete Semilla. Tenemos 42 niveles hasta $20,000 USD para que inviertas según tu capacidad.' },
     { q: '¿Cuándo puedo retirar mis ganancias?', a: 'Después de los primeros 30 días de activación de tu paquete, puedes solicitar retiros cuando quieras sin penalidades.' },
     { q: '¿Qué criptomonedas opera el bot?', a: 'El bot opera principalmente con Bitcoin (BTC), Ethereum (ETH), Solana (SOL) y Ripple (XRP), diversificando para minimizar riesgos.' },
-    { q: '¿Cómo gano con referidos?', a: 'Recibes el 1% mensual sobre el valor del paquete de cada persona que invites y que adquiera un paquete de trading activo.' },
+    { q: '¿Cómo gano por mis invitados?', a: 'Recibes el 1% mensual sobre el valor del paquete de cada persona que invites y que adquiera un paquete de trading activo.' },
     { q: '¿Es seguro? ¿No es una estafa?', a: 'Llevamos más de 9 años operando como empresa con resultados sólidos. Priorizamos la transparencia y la sostenibilidad sobre las promesas irreales. No ofrecemos +100% porque eso no es sostenible.' },
   ];
 
