@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, signal, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
@@ -988,6 +989,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               Recomienda y Gana
             </h2>
 
+            <!-- Billetera de retiro -->
+            <div class="rounded-2xl p-4 flex flex-col gap-2"
+              style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.2)">
+              <p class="text-white/70 text-xs font-bold uppercase tracking-widest">Billetera de retiro</p>
+              <p class="text-white font-black text-2xl">{{ '$' + referralBalance().toLocaleString() }}</p>
+              <div class="flex items-center gap-4 mt-1">
+                <div class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-emerald-300" style="font-size:14px">trending_up</span>
+                  <span class="text-emerald-300 text-xs font-bold">Total ganado: {{ '$' + referralTotalEarned().toLocaleString() }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-amber-300" style="font-size:14px">group</span>
+                  <span class="text-amber-300 text-xs font-bold">{{ referralCount() }} invitados</span>
+                </div>
+              </div>
+            </div>
+
             <div class="rounded-2xl p-4 flex flex-col gap-3"
               style="background:linear-gradient(135deg,rgba(108,58,237,0.15),rgba(37,99,235,0.15));border:1px solid rgba(108,58,237,0.3)">
               <p class="text-white font-black text-base">Gana el 2% vitalicio</p>
@@ -1008,13 +1026,30 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   {{ agReferralLink() }}
                 </div>
                 <button (click)="copyReferralLink()"
-                  class="px-4 py-2.5 rounded-xl text-xs font-black text-black flex items-center gap-1 active:scale-95 transition-transform"
+                  class="px-4 py-2.5 rounded-xl text-xs font-black text-black flex items-center gap-1 active:scale-95 transition-transform flex-shrink-0"
                   style="background:linear-gradient(135deg,#f59e0b,#d97706)">
                   <span class="material-symbols-outlined" style="font-size:16px">content_copy</span>
                   {{ referralCopied() ? '¡Copiado!' : 'Copiar' }}
                 </button>
               </div>
             </div>
+
+            <!-- Historial de comisiones -->
+            @if (referralTransactions().length > 0) {
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Historial de comisiones</p>
+              <div class="flex flex-col gap-2">
+                @for (tx of referralTransactions(); track tx.id) {
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
+                    style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06)">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-white text-xs font-bold truncate">{{ tx.description }}</p>
+                      <p class="text-slate-500 text-[10px]">{{ tx.created_at?.slice(0,10) }}</p>
+                    </div>
+                    <span class="text-emerald-400 font-black text-sm flex-shrink-0 ml-2">{{ '+$' + tx.commission_amount?.toLocaleString() }}</span>
+                  </div>
+                }
+              </div>
+            }
 
             <!-- Cómo funciona -->
             <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">¿Cómo funciona?</p>
@@ -1035,7 +1070,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(245,158,11,0.2)">
                   <span class="text-amber-400 font-black text-xs">3</span>
                 </div>
-                <p class="text-slate-300 text-xs leading-relaxed">Cada vez que usen Movi, tú ganas el <span class="text-amber-400 font-bold">2% del valor del servicio</span> de forma vitalicia</p>
+                <p class="text-slate-300 text-xs leading-relaxed">Cada vez que usen Movi, tú ganas el <span class="text-amber-400 font-bold">2% del valor del servicio</span> en tu billetera de retiro</p>
               </div>
             </div>
           </div>
@@ -1869,13 +1904,30 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- ── RECOMIENDA Y GANA (Conductor) ── -->
           @if (!loadingSection() && driverSection() === 'referrals') {
             <div class="flex flex-col gap-4">
+
+              <!-- Billetera de retiro -->
+              <div class="rounded-2xl p-4 flex flex-col gap-2"
+                style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.2)">
+                <p class="text-white/70 text-xs font-bold uppercase tracking-widest">Billetera de retiro</p>
+                <p class="text-white font-black text-2xl">{{ '$' + referralBalance().toLocaleString() }}</p>
+                <div class="flex items-center gap-4 mt-1">
+                  <div class="flex items-center gap-1">
+                    <span class="material-symbols-outlined text-emerald-300" style="font-size:14px">trending_up</span>
+                    <span class="text-emerald-300 text-xs font-bold">Total: {{ '$' + referralTotalEarned().toLocaleString() }}</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="material-symbols-outlined text-amber-300" style="font-size:14px">group</span>
+                    <span class="text-amber-300 text-xs font-bold">{{ referralCount() }} invitados</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="rounded-2xl p-4 flex flex-col gap-3"
                 style="background:linear-gradient(135deg,rgba(108,58,237,0.15),rgba(37,99,235,0.15));border:1px solid rgba(108,58,237,0.3)">
                 <p class="text-white font-black text-base">Gana el 2% vitalicio</p>
                 <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
                   Cada vez que alguien se registre en <span class="text-white font-bold">Movi</span> con tu link y use nuestro servicio,
                   tú ganas el <span class="text-amber-400 font-black">2% del valor de cada servicio</span> de por vida.
-                  No importa si tus invitados son pasajeros o conductores.
                 </p>
               </div>
 
@@ -1889,13 +1941,30 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     {{ agReferralLink() }}
                   </div>
                   <button (click)="copyReferralLink()"
-                    class="px-4 py-2.5 rounded-xl text-xs font-black text-black flex items-center gap-1 active:scale-95 transition-transform"
+                    class="px-4 py-2.5 rounded-xl text-xs font-black text-black flex items-center gap-1 active:scale-95 transition-transform flex-shrink-0"
                     style="background:linear-gradient(135deg,#f59e0b,#d97706)">
                     <span class="material-symbols-outlined" style="font-size:16px">content_copy</span>
                     {{ referralCopied() ? '¡Copiado!' : 'Copiar' }}
                   </button>
                 </div>
               </div>
+
+              <!-- Historial de comisiones -->
+              @if (referralTransactions().length > 0) {
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Historial de comisiones</p>
+                <div class="flex flex-col gap-2">
+                  @for (tx of referralTransactions(); track tx.id) {
+                    <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
+                      style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06)">
+                      <div class="flex-1 min-w-0">
+                        <p class="text-white text-xs font-bold truncate">{{ tx.description }}</p>
+                        <p class="text-slate-500 text-[10px]">{{ tx.created_at?.slice(0,10) }}</p>
+                      </div>
+                      <span class="text-emerald-400 font-black text-sm flex-shrink-0 ml-2">{{ '+$' + tx.commission_amount?.toLocaleString() }}</span>
+                    </div>
+                  }
+                </div>
+              }
 
               <!-- Cómo funciona -->
               <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">¿Cómo funciona?</p>
@@ -1916,7 +1985,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(245,158,11,0.2)">
                     <span class="text-amber-400 font-black text-xs">3</span>
                   </div>
-                  <p class="text-slate-300 text-xs leading-relaxed">Cada vez que usen Movi, tú ganas el <span class="text-amber-400 font-bold">2% del valor del servicio</span> de forma vitalicia</p>
+                  <p class="text-slate-300 text-xs leading-relaxed">Cada vez que usen Movi, tú ganas el <span class="text-amber-400 font-bold">2% del valor del servicio</span> en tu billetera de retiro</p>
                 </div>
               </div>
             </div>
@@ -2589,6 +2658,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private readonly agService  = inject(AndaGanaService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly route      = inject(ActivatedRoute);
+  private referredBy: string | null = null;
 
   screen     = signal<AgScreen>('splash');
   splashSize = signal(10);
@@ -2601,8 +2672,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverRejectionReason = signal<string | null>(null);
 
   // Referidos
-  referralCopied = signal(false);
-  agReferralLink = signal('');
+  referralCopied     = signal(false);
+  agReferralLink     = signal('');
+  referralBalance    = signal(0);
+  referralTotalEarned = signal(0);
+  referralCount      = signal(0);
+  referralTransactions = signal<any[]>([]);
 
   // Mapa / GPS
   gpsStatus      = signal<GpsStatus>('idle');
@@ -2778,6 +2853,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ────────────────────────────────���─────────────────
   async ngOnInit() {
+    // Capturar referido desde query param ?ref=
+    this.referredBy = this.route.snapshot.queryParamMap.get('ref');
+
     // Splash: logo empieza en 10px y crece lentamente hasta llenar la pantalla
     if (isPlatformBrowser(this.platformId)) {
       const maxDim = Math.max(window.innerWidth, window.innerHeight) * 1.6;
@@ -3522,6 +3600,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         notifySound:      driver.notify_sound      ?? true,
         notifyVibration:  driver.notify_vibration  ?? true,
       });
+    } else if (action === 'referrals') {
+      await this.loadReferralData();
     }
     this.loadingSection.set(false);
   }
@@ -4047,6 +4127,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       emergencyName: p.emergencyName,
       emergencyPhone: p.emergencyPhone,
       selfieFile: this._pfFiles['selfie'],
+      referredBy: this.referredBy ?? undefined,
     });
     this.passengerLoading.set(false);
     if (result.success) {
@@ -4091,6 +4172,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       vehicleYear: this.df.vehicleYear,
       vehicleColor: this.df.vehicleColor,
       files: this._dfFiles,
+      referredBy: this.referredBy ?? undefined,
     });
     this.driverLoading.set(false);
     if (result.success) {
@@ -4143,6 +4225,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   // ── Passenger menu methods ─────────────────────────────────────
+  async loadReferralData() {
+    const profile = this.agProfile();
+    if (!profile) return;
+    const [wallet, count, txs] = await Promise.all([
+      this.agService.getReferralWallet(profile.id),
+      this.agService.getReferralCount(profile.id),
+      this.agService.getReferralTransactions(profile.id),
+    ]);
+    this.referralBalance.set(wallet?.balance ?? 0);
+    this.referralTotalEarned.set(wallet?.total_earned ?? 0);
+    this.referralCount.set(count);
+    this.referralTransactions.set(txs);
+  }
+
   async copyReferralLink() {
     if (isPlatformBrowser(this.platformId)) {
       await navigator.clipboard.writeText(this.agReferralLink());
@@ -4164,6 +4260,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
     this.passengerSection.set(action);
     if (action === 'history') this.loadPassengerHistory();
+    if (action === 'referrals') this.loadReferralData();
   }
 
   async loadPassengerHistory() {

@@ -8,6 +8,7 @@ export interface PassengerFormData {
   phone: string; email: string; password: string;
   emergencyName: string; emergencyPhone: string;
   selfieFile?: File;
+  referredBy?: string;
 }
 
 export interface DriverFormData {
@@ -18,6 +19,7 @@ export interface DriverFormData {
   plate: string; vehicleType: string; vehicleBrand: string;
   vehicleModel: string; vehicleYear: string; vehicleColor: string;
   files: Record<string, File>;
+  referredBy?: string;
 }
 
 export interface AgUser {
@@ -141,7 +143,7 @@ export class AndaGanaService {
         selfieUrl = await this.uploadFile('ag-passengers', uid, form.selfieFile);
       }
 
-      const { error } = await this.supabase.from('ag_users').insert({
+      const insertData: any = {
         auth_user_id: uid,
         role: 'passenger',
         full_name: form.fullName,
@@ -153,7 +155,10 @@ export class AndaGanaService {
         emergency_contact_name: form.emergencyName,
         emergency_contact_phone: form.emergencyPhone,
         selfie_url: selfieUrl,
-      });
+      };
+      if (form.referredBy) insertData.referred_by = form.referredBy;
+
+      const { error } = await this.supabase.from('ag_users').insert(insertData);
 
       if (error) return { success: false, error: error.message };
       return { success: true };
@@ -178,20 +183,23 @@ export class AndaGanaService {
       const documents: Record<string, string> = {};
       for (const [key, url] of results) { if (url) documents[key] = url; }
 
+      const driverInsert: any = {
+        auth_user_id: uid,
+        role: 'driver',
+        full_name: form.fullName,
+        birth_date: form.birthDate,
+        city: form.city,
+        id_number: form.idNumber,
+        phone: form.phone,
+        email: form.email,
+        emergency_contact_name: form.emergencyName,
+        emergency_contact_phone: form.emergencyPhone,
+      };
+      if (form.referredBy) driverInsert.referred_by = form.referredBy;
+
       const { data: agUser, error: userError } = await this.supabase
         .from('ag_users')
-        .insert({
-          auth_user_id: uid,
-          role: 'driver',
-          full_name: form.fullName,
-          birth_date: form.birthDate,
-          city: form.city,
-          id_number: form.idNumber,
-          phone: form.phone,
-          email: form.email,
-          emergency_contact_name: form.emergencyName,
-          emergency_contact_phone: form.emergencyPhone,
-        })
+        .insert(driverInsert)
         .select('id')
         .single();
 
@@ -548,6 +556,40 @@ export class AndaGanaService {
       .order('updated_at', { ascending: false })
       .limit(10);
     return data ?? [];
+  }
+
+  // ── Billetera de retiro por referidos ───────────────────────────
+  async getReferralWallet(agUserId: string): Promise<{ balance: number; total_earned: number } | null> {
+    const { data } = await this.supabase
+      .from('ag_referral_wallet')
+      .select('balance, total_earned')
+      .eq('ag_user_id', agUserId)
+      .maybeSingle();
+    return data ?? null;
+  }
+
+  async getReferralTransactions(agUserId: string): Promise<any[]> {
+    const { data: wallet } = await this.supabase
+      .from('ag_referral_wallet')
+      .select('id')
+      .eq('ag_user_id', agUserId)
+      .maybeSingle();
+    if (!wallet) return [];
+    const { data } = await this.supabase
+      .from('ag_referral_transactions')
+      .select('*')
+      .eq('wallet_id', wallet.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    return data ?? [];
+  }
+
+  async getReferralCount(agUserId: string): Promise<number> {
+    const { count } = await this.supabase
+      .from('ag_users')
+      .select('id', { count: 'exact', head: true })
+      .eq('referred_by', agUserId);
+    return count ?? 0;
   }
 
   async getStats(): Promise<{ passengers: number; pending: number; approved: number; rejected: number }> {
