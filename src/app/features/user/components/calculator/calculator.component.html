@@ -83,62 +83,34 @@
             <span class="text-sm font-black text-white">{{ currencyService.formatFromCOP(ownClicksEarningsCOP()) }}</span>
           </div>
 
-          @if (currentTier().commissionPerStd400) {
-            <!-- Comisión std_400 por invitado -->
-            <div class="px-4 py-3 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  [ngClass]="currentTier().bgColorClass + '/15'">
-                  <span class="material-symbols-outlined text-sm" [ngClass]="currentTier().color">ads_click</span>
-                </div>
-                <div>
-                  <span class="text-[11px] text-slate-400 block">Comisión por anuncio</span>
-                  <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} inv × 5 anuncios × {{ currentTier().commissionPerStd400 }} COP × 30</span>
-                </div>
+          <!-- Ganancias por invitados -->
+          <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                [ngClass]="currentTier().bgColorClass + '/15'">
+                <span class="material-symbols-outlined text-sm" [ngClass]="currentTier().color">group</span>
               </div>
-              <span class="text-sm font-black" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(std400CommissionCOP()) }}</span>
+              <div>
+                <span class="text-[11px] text-slate-400 block">Comisión por invitados</span>
+                <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} inv × {{ currentTier().referralBonusPct }}% de sus ganancias</span>
+              </div>
             </div>
+            <span class="text-sm font-black" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(referralEarningsCOP()) }}</span>
+          </div>
 
-            <!-- Mini anuncios por invitar -->
-            <div class="px-4 py-3 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  [ngClass]="currentTier().bgColorClass + '/15'">
-                  <span class="material-symbols-outlined text-sm" [ngClass]="currentTier().color">featured_play_list</span>
-                </div>
-                <div>
-                  <span class="text-[11px] text-slate-400 block">Mini ads por invitar</span>
-                  <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} inv × {{ currentTier().miniSlotsPerInvitee }} slots × 100 COP × 30</span>
-                </div>
+          <!-- Info de clicks diarios -->
+          <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-amber-400 text-sm">bolt</span>
               </div>
-              <span class="text-sm font-black" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(miniReferralCOP()) }}</span>
-            </div>
-
-            <!-- Bonus activación -->
-            <div class="px-4 py-3 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                  <span class="material-symbols-outlined text-amber-400 text-sm">bolt</span>
-                </div>
-                <div>
-                  <span class="text-[11px] text-slate-400 block">Bonus activación</span>
-                  <span class="text-[9px] text-slate-600">{{ simulatedRefs() }} inv × 5 mega ads × 2.000 COP</span>
-                </div>
+              <div>
+                <span class="text-[11px] text-slate-400 block">Clicks diarios</span>
+                <span class="text-[9px] text-slate-600">{{ currentTier().dailyPtcLimit }} clicks × ~400 COP × 30 días</span>
               </div>
-              <span class="text-sm font-black text-amber-400">{{ currencyService.formatFromCOP(activationBonusCOP()) }}</span>
             </div>
-          } @else {
-            <div class="px-4 py-3 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  [ngClass]="currentTier().bgColorClass + '/15'">
-                  <span class="material-symbols-outlined text-sm" [ngClass]="currentTier().color">group</span>
-                </div>
-                <span class="text-[11px] text-slate-400">Ganancias por invitados</span>
-              </div>
-              <span class="text-sm font-black" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(referralEarningsCOP()) }}</span>
-            </div>
-          }
+            <span class="text-sm font-black text-amber-400">{{ currentTier().dailyPtcLimit }}/día</span>
+          </div>
 
         </div>
 
@@ -163,7 +135,7 @@
         } @else {
           <div class="px-4 py-3 bg-black/30 border-t border-white/5 flex items-center gap-2">
             <span class="material-symbols-outlined text-amber-400 text-base">military_tech</span>
-            <span class="text-[10px] text-amber-400 font-bold">Tier máximo alcanzado — DIAMANTE CORONA (40+)</span>
+            <span class="text-[10px] text-amber-400 font-bold">Tier máximo alcanzado — VIP (500+)</span>
           </div>
         }
       </div>
