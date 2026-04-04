@@ -184,7 +184,7 @@ export class CalculatorComponent implements OnInit {
     },
   ];
 
-  readonly simulatedRefs = signal(5);
+  readonly simulatedRefs = signal(1);
 
   readonly currentTier = computed<PlatformTier>(() => {
     const refs = this.simulatedRefs();
