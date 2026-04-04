@@ -36,7 +36,10 @@
   </text>
 
   <!-- Tagline -->
-  <text x="200" y="312" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="rgba(255,255,255,0.7)" text-anchor="middle" letter-spacing="4">
-    MUEVETE Y GANA
+  <text x="200" y="310" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="rgba(255,255,255,0.85)" text-anchor="middle" letter-spacing="2">
+    La aplicación de transporte
+  </text>
+  <text x="200" y="330" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">
+    Más segura a nivel mundial
   </text>
 </svg>
