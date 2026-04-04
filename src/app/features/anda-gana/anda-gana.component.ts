@@ -4047,8 +4047,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private _calcPrice(km: number, vehicle: 'carro' | 'moto'): number {
     const raw = vehicle === 'carro'
-      ? Math.max(8000, 8000 + km * 2000)
-      : Math.max(5000, 5000 + km * 1300);
+      ? Math.max(4500, 4500 + km * 1200)
+      : Math.max(3000, 3000 + km * 800);
     return Math.round(raw / 500) * 500;
   }
 
