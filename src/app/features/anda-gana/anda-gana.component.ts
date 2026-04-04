@@ -124,6 +124,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
+      <!-- ══ Billetera de retiro (siempre visible) ══ -->
+      <button (click)="openPassengerSection('referrals')"
+        class="w-full rounded-2xl p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+        style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.15)">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style="background:rgba(255,255,255,0.15)">
+          <span class="material-symbols-outlined text-white" style="font-size:22px">account_balance_wallet</span>
+        </div>
+        <div class="flex-1 min-w-0 text-left">
+          <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest">Billetera de retiro</p>
+          <p class="text-white font-black text-lg leading-tight">{{ '$' + referralBalance().toLocaleString() }}</p>
+        </div>
+        <div class="flex flex-col items-end gap-0.5 flex-shrink-0">
+          <span class="text-emerald-300 text-[10px] font-bold">{{ referralCount() }} invitados</span>
+          <span class="material-symbols-outlined text-white/40" style="font-size:18px">chevron_right</span>
+        </div>
+      </button>
+
       @if (passengerSection() === null) {
       <!-- Mapa con overlays flotantes -->
       <div class="relative rounded-2xl overflow-hidden" style="height:520px;border:1px solid rgba(255,255,255,0.08)">
@@ -1172,6 +1190,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         </div>
       }
+
+      <!-- ══ Billetera de retiro conductor (siempre visible) ══ -->
+      <button (click)="openDriverSection('referrals')"
+        class="w-full rounded-2xl p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+        style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.15)">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style="background:rgba(255,255,255,0.15)">
+          <span class="material-symbols-outlined text-white" style="font-size:22px">account_balance_wallet</span>
+        </div>
+        <div class="flex-1 min-w-0 text-left">
+          <p class="text-white/60 text-[10px] font-bold uppercase tracking-widest">Billetera de retiro</p>
+          <p class="text-white font-black text-lg leading-tight">{{ '$' + referralBalance().toLocaleString() }}</p>
+        </div>
+        <div class="flex flex-col items-end gap-0.5 flex-shrink-0">
+          <span class="text-emerald-300 text-[10px] font-bold">{{ referralCount() }} invitados</span>
+          <span class="material-symbols-outlined text-white/40" style="font-size:18px">chevron_right</span>
+        </div>
+      </button>
 
       @if (driverSection() === null) {
       <div class="flex flex-col items-center gap-3 text-center pt-2 pb-2">
@@ -2872,6 +2908,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     await new Promise(r => setTimeout(r, 3800));
 
     if (!profile) { this.screen.set('home'); return; }
+
+    // Cargar datos de billetera de retiro
+    this.loadReferralData();
 
     if (profile.role === 'passenger') {
       this.screen.set('passenger-home');
