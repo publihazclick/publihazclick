@@ -132,6 +132,12 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
     this.sidebarCollapsed.update((v) => !v);
   }
 
+  closeSidebarOnMobile(): void {
+    if (isPlatformBrowser(this.platformId) && window.innerWidth < 1024) {
+      this.sidebarCollapsed.set(true);
+    }
+  }
+
   private touchStartX = 0;
 
   private readonly handleTouchStart = (e: TouchEvent): void => {
