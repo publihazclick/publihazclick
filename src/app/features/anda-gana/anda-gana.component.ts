@@ -24,7 +24,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         class="rounded-3xl"
         [style.width.px]="splashSize()"
         [style.height.px]="splashSize()"
-        style="transition:width 1.8s cubic-bezier(0.22,1,0.36,1),height 1.8s cubic-bezier(0.22,1,0.36,1),opacity 0.4s ease;opacity:1;filter:drop-shadow(0 0 60px rgba(108,58,237,0.4))" />
+        style="transition:width 3.5s cubic-bezier(0.05,0.6,0.3,1),height 3.5s cubic-bezier(0.05,0.6,0.3,1);filter:drop-shadow(0 0 80px rgba(108,58,237,0.5))" />
     </div>
   }
 
@@ -2447,7 +2447,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
 
   screen     = signal<AgScreen>('splash');
-  splashSize = signal(60);
+  splashSize = signal(10);
   driverStep = signal<number>(1);
 
   // Perfil actual
@@ -2626,17 +2626,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ────────────────────────────────���─────────────────
   async ngOnInit() {
-    // Splash: logo crece de 60px hasta llenar la pantalla
+    // Splash: logo empieza en 10px y crece lentamente hasta llenar la pantalla
     if (isPlatformBrowser(this.platformId)) {
-      const maxDim = Math.max(window.innerWidth, window.innerHeight) * 1.5;
-      setTimeout(() => this.splashSize.set(maxDim), 80);
+      const maxDim = Math.max(window.innerWidth, window.innerHeight) * 1.6;
+      setTimeout(() => this.splashSize.set(maxDim), 50);
     }
 
     const profile = await this.agService.getMyAgProfile();
     this.agProfile.set(profile);
 
-    // Esperar a que la animación del splash termine (2s)
-    await new Promise(r => setTimeout(r, 2000));
+    // Esperar a que la animación del splash termine (3.8s)
+    await new Promise(r => setTimeout(r, 3800));
 
     if (!profile) { this.screen.set('home'); return; }
 
