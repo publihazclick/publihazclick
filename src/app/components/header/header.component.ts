@@ -17,7 +17,6 @@ interface NavItem {
 const MODULE_LANDING_ROUTES = [
   '/trading-bot',
   '/herramientas-ia',
-  '/anda-y-gana',
   '/cursos',
   '/sms-masivos',
 ];

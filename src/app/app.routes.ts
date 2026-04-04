@@ -30,7 +30,7 @@ export const routes: Routes = [
         if (code && typeof localStorage !== 'undefined') {
           localStorage.setItem('phc_referral_code', code);
         }
-        const allowedLandings = ['/trading-bot', '/herramientas-ia', '/anda-y-gana', '/cursos', '/sms-masivos'];
+        const allowedLandings = ['/trading-bot', '/herramientas-ia', '/cursos', '/sms-masivos'];
         const to = route.queryParams['to'] ?? '';
         const target = allowedLandings.includes(to) ? to : '/';
         return inject(Router).createUrlTree([target]);
@@ -412,11 +412,6 @@ export const routes: Routes = [
   {
     path: 'herramientas-ia',
     loadComponent: () => import('./pages/module-landing/ia-landing.component').then(m => m.IaPublicLandingComponent),
-  },
-  {
-    path: 'anda-y-gana',
-    loadComponent: () => import('./pages/module-landing/module-landing.component').then(m => m.ModuleLandingComponent),
-    data: { moduleSlug: 'anda-y-gana' }
   },
   {
     path: 'cursos',

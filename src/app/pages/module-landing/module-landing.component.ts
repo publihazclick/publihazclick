@@ -47,22 +47,6 @@ const MODULES: Record<string, ModuleConfig> = {
       { icon: 'play_circle', title: 'YouTube Studio', desc: 'Herramientas especializadas para crear y optimizar contenido de YouTube.' },
     ]
   },
-  'anda-y-gana': {
-    slug: 'anda-y-gana',
-    name: 'Anda y Gana',
-    tagline: 'Conduce, viaja y gana dinero en cada trayecto',
-    description: 'Plataforma de transporte colaborativo donde puedes trabajar como conductor o solicitar viajes como pasajero. Gana dinero con cada trayecto que realizas.',
-    icon: 'directions_car',
-    color: 'orange',
-    gradient: 'linear-gradient(135deg, #ea580c, #9a3412)',
-    dashboardPath: '/dashboard/anda-gana',
-    features: [
-      { icon: 'local_taxi', title: 'Sé Conductor', desc: 'Regístrate como conductor, establece tu disponibilidad y empieza a ganar por cada viaje.' },
-      { icon: 'person_pin_circle', title: 'Solicita Viajes', desc: 'Pide un viaje desde tu ubicación y llega a tu destino de forma segura y económica.' },
-      { icon: 'account_balance_wallet', title: 'Billetera Integrada', desc: 'Recibe pagos directamente en tu billetera digital. Retira cuando quieras.' },
-      { icon: 'group', title: 'Red de Referidos', desc: 'Invita conductores y pasajeros. Gana comisiones por cada referido activo.' },
-    ]
-  },
   'cursos': {
     slug: 'cursos',
     name: 'Compra-Vende Cursos',
