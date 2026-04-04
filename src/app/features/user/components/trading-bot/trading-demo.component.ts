@@ -51,64 +51,70 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
        (click)="$event.stopPropagation()">
 
     <!-- ═══ TOP BAR ═══════════════════════════════════════════════════════ -->
-    <div class="flex items-center justify-between px-3 sm:px-4 py-2 shrink-0 border-b border-white/6"
-         style="background:#0f1117;">
-      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-        <!-- Logo area -->
-        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div class="w-6 h-6 rounded bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shadow-lg shadow-primary/30">
-            <span class="material-symbols-outlined text-black" style="font-size:13px;font-weight:900">smart_toy</span>
+    <div class="shrink-0 border-b border-white/6" style="background:#0f1117;">
+      <div class="flex items-center justify-between px-3 sm:px-4 py-2">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <!-- Logo area -->
+          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div class="w-6 h-6 rounded bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shadow-lg shadow-primary/30">
+              <span class="material-symbols-outlined text-black" style="font-size:13px;font-weight:900">smart_toy</span>
+            </div>
+            <span class="text-white font-black text-xs sm:text-sm tracking-tight">Trading<span class="text-primary">Bot</span> AI</span>
           </div>
-          <span class="text-white font-black text-xs sm:text-sm tracking-tight">Trading<span class="text-primary">Bot</span> AI</span>
+          <div class="w-px h-4 bg-white/10 shrink-0"></div>
+          <!-- Bot status -->
+          <div class="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/8">
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></div>
+            <span class="text-emerald-400 font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Activo</span>
+          </div>
+          @if (isLive) {
+            <span class="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-black border border-rose-500/60 bg-rose-500/15 text-rose-400 uppercase tracking-wider shrink-0 animate-pulse">EN VIVO</span>
+          } @else {
+            <span class="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-black border border-primary/40 bg-primary/8 text-primary uppercase tracking-wider shrink-0">DEMO</span>
+          }
         </div>
-        <div class="w-px h-4 bg-white/10 shrink-0"></div>
-        <!-- Bot status -->
-        <div class="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/8">
-          <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></div>
-          <span class="text-emerald-400 font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Activo</span>
-        </div>
-        @if (isLive) {
-          <span class="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black border border-rose-500/60 bg-rose-500/15 text-rose-400 uppercase tracking-wider shrink-0 animate-pulse">EN VIVO</span>
-        } @else {
-          <span class="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black border border-primary/40 bg-primary/8 text-primary uppercase tracking-wider shrink-0">DEMO</span>
-        }
-      </div>
 
-      <div class="flex items-center gap-2 sm:gap-4 shrink-0">
-        <!-- Mobile: balance + pnl compact -->
-        <div class="flex sm:hidden items-center gap-2">
-          <div class="text-right">
-            <p class="text-[8px] text-slate-600 uppercase">P&L</p>
-            <p class="font-black text-[11px]" [ngClass]="totalPnl >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
-              {{ totalPnl >= 0 ? '+' : '' }}\${{ totalPnl | number:'1.2-2' }}
-            </p>
+        <div class="flex items-center gap-2 sm:gap-4 shrink-0">
+          <!-- Desktop stats -->
+          <div class="hidden sm:flex items-center gap-4">
+            <div class="text-right">
+              <p class="text-[9px] text-slate-600 uppercase tracking-wider">Balance</p>
+              <p class="text-white font-black text-sm">\${{ balance | number:'1.2-2' }}</p>
+            </div>
+            <div class="text-right">
+              <p class="text-[9px] text-slate-600 uppercase tracking-wider">P&L Session</p>
+              <p class="font-black text-sm" [ngClass]="totalPnl >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
+                {{ totalPnl >= 0 ? '+' : '' }}\${{ totalPnl | number:'1.2-2' }}
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="text-[9px] text-slate-600 uppercase tracking-wider">Win Rate</p>
+              <p class="text-[#0ecb81] font-black text-sm">{{ winRate }}%</p>
+            </div>
           </div>
-          <div class="text-right">
-            <p class="text-[8px] text-slate-600 uppercase">Win</p>
-            <p class="text-[#0ecb81] font-black text-[11px]">{{ winRate }}%</p>
-          </div>
+          <button (click)="closed.emit()"
+            class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-all shrink-0">
+            <span class="material-symbols-outlined" style="font-size:14px">close</span>
+          </button>
         </div>
-        <!-- Desktop stats -->
-        <div class="hidden sm:flex items-center gap-4">
-          <div class="text-right">
-            <p class="text-[9px] text-slate-600 uppercase tracking-wider">Balance</p>
-            <p class="text-white font-black text-sm">\${{ balance | number:'1.2-2' }}</p>
-          </div>
-          <div class="text-right">
-            <p class="text-[9px] text-slate-600 uppercase tracking-wider">P&L Session</p>
-            <p class="font-black text-sm" [ngClass]="totalPnl >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
-              {{ totalPnl >= 0 ? '+' : '' }}\${{ totalPnl | number:'1.2-2' }}
-            </p>
-          </div>
-          <div class="text-right">
-            <p class="text-[9px] text-slate-600 uppercase tracking-wider">Win Rate</p>
-            <p class="text-[#0ecb81] font-black text-sm">{{ winRate }}%</p>
-          </div>
+      </div>
+      <!-- Mobile stats bar -->
+      <div class="flex sm:hidden items-center gap-2 px-3 pb-2">
+        @if (isLive) {
+          <span class="px-1.5 py-0.5 rounded text-[9px] font-black border border-rose-500/60 bg-rose-500/15 text-rose-400 uppercase tracking-wider shrink-0 animate-pulse">EN VIVO</span>
+        } @else {
+          <span class="px-1.5 py-0.5 rounded text-[9px] font-black border border-primary/40 bg-primary/8 text-primary uppercase tracking-wider shrink-0">DEMO</span>
+        }
+        <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 border border-white/8">
+          <span class="text-[9px] text-slate-500 font-bold">P&L</span>
+          <span class="font-black text-[11px]" [ngClass]="totalPnl >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'">
+            {{ totalPnl >= 0 ? '+' : '' }}\${{ totalPnl | number:'1.2-2' }}
+          </span>
         </div>
-        <button (click)="closed.emit()"
-          class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition-all shrink-0">
-          <span class="material-symbols-outlined" style="font-size:14px">close</span>
-        </button>
+        <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 border border-white/8">
+          <span class="text-[9px] text-slate-500 font-bold">Win</span>
+          <span class="text-[#0ecb81] font-black text-[11px]">{{ winRate }}%</span>
+        </div>
       </div>
     </div>
 
@@ -276,7 +282,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
         </div>
 
         <!-- SVG Chart -->
-        <div class="flex-1 overflow-hidden" style="min-height:0; background:#0b0d14; padding:4px 2px 0;">
+        <div class="flex-1 overflow-hidden" style="min-height:0; background:#0b0d14; padding:4px 0 0;">
           <svg class="w-full h-full" [attr.viewBox]="'0 0 ' + svgW + ' ' + svgH"
                preserveAspectRatio="none" style="display:block;">
 

@@ -77,11 +77,12 @@ interface TradingPackage {
                 <span class="material-symbols-outlined text-lg text-accent">card_giftcard</span>
                 Recomienda y Gana
               </button>
-              <button
-                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors">
-                <span class="material-symbols-outlined text-lg text-violet-400">support_agent</span>
+              <a href="https://wa.me/573181800264?text=Hola%2C%20necesito%20soporte%20con%20Trading%20Bot%20AI" target="_blank" rel="noopener noreferrer"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:bg-white/5 border-t border-white/5 transition-colors"
+                (click)="menuOpen.set(false)">
+                <span class="material-symbols-outlined text-lg text-[#25D366]">support_agent</span>
                 Soporte
-              </button>
+              </a>
             </div>
           }
         </div>
