@@ -327,6 +327,10 @@ interface TradingPackage {
                   \${{ selectedPackage()!.price | number:'1.0-0' }}
                   <span class="text-xs font-bold text-slate-500">USD</span>
                 </p>
+                <p class="text-primary font-black text-sm truncate">
+                  \${{ selectedPackage()!.price * 4000 | number:'1.0-0' }}
+                  <span class="text-[10px] font-bold text-slate-500">COP</span>
+                </p>
               </div>
               <div class="w-px h-8 bg-white/10 shrink-0"></div>
               <div class="flex-1 text-right min-w-0">
