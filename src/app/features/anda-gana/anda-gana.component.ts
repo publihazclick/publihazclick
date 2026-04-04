@@ -3196,6 +3196,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         .addTo(this._map);
 
       this._map.resize();
+      // Centrar el mapa en la ubicación del usuario después de renderizar todo
+      setTimeout(() => {
+        if (this._map) {
+          this._map.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
+        }
+      }, 500);
     });
   }
 
