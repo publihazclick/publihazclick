@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
@@ -9,6 +9,4 @@ import { RouterModule } from '@angular/router';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './ia-landing.component.html',
 })
-export class IaPublicLandingComponent {
-  readonly billingCycle = signal<'monthly' | 'annual'>('monthly');
-}
+export class IaPublicLandingComponent {}

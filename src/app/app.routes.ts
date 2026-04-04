@@ -411,7 +411,7 @@ export const routes: Routes = [
   },
   {
     path: 'herramientas-ia',
-    loadComponent: () => import('./features/ai/components/ai-dashboard/ai-dashboard.component').then(m => m.AiDashboardComponent),
+    loadComponent: () => import('./pages/module-landing/ia-landing.component').then(m => m.IaPublicLandingComponent),
   },
   {
     path: 'anda-y-gana',
