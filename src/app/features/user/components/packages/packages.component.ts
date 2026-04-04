@@ -278,7 +278,8 @@ export class UserPackagesComponent implements OnInit {
       tax:          params.tax,
       country:      params.country,
       lang:         params.lang,
-      external:     'true',           // redirect (similar a dLocal)
+      external:     'true',
+      methodConfirmation: 'GET',
       confirmation: params.confirmation,
       response:     params.response,
       email_billing: params.email_billing,

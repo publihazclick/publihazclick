@@ -111,7 +111,7 @@ export class PackagePromoModalComponent implements OnInit {
       name: params.name, description: params.description, invoice: params.invoice,
       currency: params.currency, amount: params.amount, tax_base: params.tax_base,
       tax: params.tax, country: params.country, lang: params.lang, external: 'true',
-      confirmation: params.confirmation, response: params.response,
+      methodConfirmation: 'GET', confirmation: params.confirmation, response: params.response,
       email_billing: params.email_billing, name_billing: params.name_billing,
       extra1: params.extra1, extra2: params.extra2, extra3: params.extra3,
     });

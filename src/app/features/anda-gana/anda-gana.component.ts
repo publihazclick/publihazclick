@@ -4443,6 +4443,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       tax:           params['tax'],
       country:       params['country'],
       lang:          params['lang'],
+      external:      'true',
+      methodConfirmation: 'GET',
       confirmation:  params['confirmation'],
       response:      params['response'],
       email_billing: params['email_billing'],
