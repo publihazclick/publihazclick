@@ -66,12 +66,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="flex items-center justify-between px-5 pt-10 pb-5"
             style="border-bottom:1px solid rgba(255,255,255,0.07)">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-                style="background:linear-gradient(135deg,#f97316,#fb923c)">
-                <span class="material-symbols-outlined text-white" style="font-size:18px">directions_car</span>
-              </div>
+              <img src="movi-logo.svg" alt="Movi" class="w-8 h-8 rounded-xl" />
               <div>
-                <p class="text-white font-black text-sm">Anda y Gana</p>
+                <p class="text-white font-black text-sm">Movi</p>
                 <p class="text-slate-400 text-xs font-medium">{{ agProfile()?.full_name }}</p>
               </div>
             </div>
@@ -109,7 +106,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Footer del menú -->
           <div class="px-5 py-5" style="border-top:1px solid rgba(255,255,255,0.07)">
-            <p class="text-slate-600 text-xs text-center">Anda y Gana · v1.0</p>
+            <p class="text-slate-600 text-xs text-center">Movi · v1.0</p>
           </div>
         </div>
       }
@@ -915,7 +912,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
               <p class="text-slate-400 text-xs">Versión de la app</p>
-              <p class="text-white font-bold text-sm">Anda y Gana v1.0.0</p>
+              <p class="text-white font-bold text-sm">Movi v1.0.0</p>
               <button class="text-slate-500 text-xs text-left hover:text-slate-300 transition-colors">Ver términos y condiciones</button>
               <button class="text-slate-500 text-xs text-left hover:text-slate-300 transition-colors">Política de privacidad</button>
             </div>
@@ -1012,12 +1009,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="flex items-center justify-between px-5 pt-10 pb-5"
             style="border-bottom:1px solid rgba(255,255,255,0.07)">
             <div class="flex items-center gap-2.5">
-              <div class="w-9 h-9 rounded-xl flex items-center justify-center"
-                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                <span class="material-symbols-outlined text-white" style="font-size:18px">directions_car</span>
-              </div>
+              <img src="movi-logo.svg" alt="Movi" class="w-9 h-9 rounded-xl" />
               <div>
-                <p class="text-white font-black text-sm">Conductor</p>
+                <p class="text-white font-black text-sm">Movi · Conductor</p>
                 <p class="text-slate-400 text-xs font-medium">{{ agProfile()?.full_name }}</p>
               </div>
             </div>
@@ -1066,7 +1060,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Footer -->
           <div class="px-5 py-5" style="border-top:1px solid rgba(255,255,255,0.07)">
-            <p class="text-slate-600 text-xs text-center">Anda y Gana · Conductor v1.0</p>
+            <p class="text-slate-600 text-xs text-center">Movi · Conductor v1.0</p>
           </div>
         </div>
       }
@@ -1873,11 +1867,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   <!-- ═══════════ HOME ═══════════ -->
   @if (screen() === 'home') {
     <div class="flex flex-col items-center gap-6 text-center max-w-sm w-full pt-10">
-      <div class="w-20 h-20 rounded-3xl bg-orange-500/10 border-2 border-orange-500/20 flex items-center justify-center">
-        <span class="material-symbols-outlined text-orange-400" style="font-size:40px">directions_car</span>
-      </div>
+      <img src="movi-logo.svg" alt="Movi" class="w-24 h-24 rounded-3xl shadow-lg shadow-purple-500/20" />
       <div>
-        <h1 class="text-white font-black text-2xl mb-2">Anda y Gana</h1>
+        <h1 class="text-white font-black text-2xl mb-2">Movi</h1>
         <p class="text-slate-400 text-sm leading-relaxed">Selecciona cómo quieres participar</p>
       </div>
       <div class="flex flex-col gap-3 w-full mt-2">
@@ -2008,7 +2000,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Términos -->
           <label class="flex items-start gap-3 cursor-pointer">
             <input [(ngModel)]="pf.terms" name="terms" type="checkbox" class="mt-1 accent-orange-500"/>
-            <span class="text-slate-400 text-xs leading-relaxed">Acepto los <span class="text-orange-400 font-bold">Términos y Condiciones</span> y la <span class="text-orange-400 font-bold">Política de Privacidad</span> de Anda y Gana. *</span>
+            <span class="text-slate-400 text-xs leading-relaxed">Acepto los <span class="text-orange-400 font-bold">Términos y Condiciones</span> y la <span class="text-orange-400 font-bold">Política de Privacidad</span> de Movi. *</span>
           </label>
 
           @if (passengerError()) {
@@ -2361,7 +2353,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="flex flex-col items-center gap-3 py-4 text-center">
             <span class="material-symbols-outlined text-emerald-400" style="font-size:48px">check_circle</span>
             <p class="text-white font-black text-lg">¡Viaje finalizado!</p>
-            <p class="text-slate-500 text-sm">Gracias por usar Anda y Gana</p>
+            <p class="text-slate-500 text-sm">Gracias por usar Movi</p>
             <button (click)="closeRatingModal()"
               class="mt-2 px-8 py-3 rounded-xl text-white font-black text-sm"
               style="background:linear-gradient(135deg,#f97316,#fb923c)">
