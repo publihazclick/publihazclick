@@ -1929,6 +1929,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       </div>
 
+      <div class="rounded-2xl p-3 mb-4"
+        style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2)">
+        <p class="text-slate-300 text-xs leading-relaxed">
+          <span class="material-symbols-outlined text-blue-400 align-middle" style="font-size:14px">verified_user</span>
+          En <span class="text-white font-bold">Movi</span> verificamos cada registro para garantizar tu seguridad y la de los conductores. Escribe tus datos exactamente como figuran en tu documento de identidad. Así activamos tu cuenta más rápido.
+        </p>
+      </div>
+
       @if (passengerSuccess()) {
         <div class="flex flex-col items-center gap-4 py-16 text-center">
           <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center">
@@ -2063,9 +2071,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       </div>
 
       <!-- Progress bar -->
-      <div class="w-full h-1.5 bg-white/5 rounded-full mb-5 overflow-hidden">
+      <div class="w-full h-1.5 bg-white/5 rounded-full mb-4 overflow-hidden">
         <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-500"
           [style.width]="(driverStep() / 4 * 100) + '%'"></div>
+      </div>
+
+      <div class="rounded-2xl p-3 mb-4"
+        style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2)">
+        <p class="text-slate-300 text-xs leading-relaxed">
+          <span class="material-symbols-outlined text-cyan-400 align-middle" style="font-size:14px">shield</span>
+          En <span class="text-white font-bold">Movi</span> aplicamos un proceso riguroso de verificación para tu seguridad y la de los pasajeros. Todos los datos serán validados con fuentes oficiales antes de activarte como conductor. Escribe <span class="text-white font-black">EXACTAMENTE</span> como aparece en tu cédula y tarjeta de propiedad. La precisión evita rechazos.
+        </p>
       </div>
 
       @if (driverSuccess()) {
