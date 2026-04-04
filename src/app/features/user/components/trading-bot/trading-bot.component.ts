@@ -431,7 +431,7 @@ interface TradingPackage {
               <span class="material-symbols-outlined text-accent" style="font-size:28px">card_giftcard</span>
             </div>
             <h3 class="text-white font-black text-lg">Recomienda y Gana</h3>
-            <p class="text-slate-400 text-sm mt-1">Comparte tu link y gana comisiones por cada referido</p>
+            <p class="text-slate-400 text-sm mt-1">Comparte tu link y gana comisiones por cada invitado</p>
           </div>
           <div class="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-2">
             <input type="text" [value]="referralLink" readonly class="flex-1 bg-transparent text-white text-xs font-mono truncate outline-none" />
