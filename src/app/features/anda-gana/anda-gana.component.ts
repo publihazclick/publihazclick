@@ -2984,11 +2984,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     let lng = this.DEFAULT_LNG;
 
     try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+      const getPos = () => new Promise<GeolocationPosition>((resolve, reject) =>
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true, timeout: 15000, maximumAge: 0,
         })
       );
+      let pos = await getPos();
+      // Si la precisión es mala (>100m), reintentar para dar tiempo al GPS real
+      if (pos.coords.accuracy > 100) {
+        try { pos = await getPos(); } catch { /* usar la primera lectura */ }
+      }
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
       this.gpsStatus.set('granted');
