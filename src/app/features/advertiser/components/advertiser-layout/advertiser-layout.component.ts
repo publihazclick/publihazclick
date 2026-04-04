@@ -151,7 +151,11 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
     return this.router.url.includes('/cursos');
   }
 
+  isSmsRoute(): boolean {
+    return this.router.url.includes('/sms-masivos');
+  }
+
   hideWalletAndCurrency(): boolean {
-    return this.isAndaGanaRoute() || this.isAiRoute() || this.isTradingBotRoute() || this.isCursosRoute();
+    return this.isAndaGanaRoute() || this.isAiRoute() || this.isTradingBotRoute() || this.isCursosRoute() || this.isSmsRoute();
   }
 }
