@@ -40,6 +40,26 @@ const ROUTE_SEO: Record<string, SeoConfig> = {
     description:
       'Lee los términos y condiciones de uso de la plataforma Publihazclick. Información legal sobre pagos, referidos y uso del servicio.',
   },
+  '/trading-bot': {
+    title: 'Trading Bot AI — Publihazclick | Ganancias Automáticas con IA',
+    description:
+      'Trading Bot AI de Publihazclick. Algoritmos de inteligencia artificial que operan criptomonedas 24/7 y generan ganancias estimadas de 2.5% a 30% mensual. Paquetes desde $100 USD.',
+  },
+  '/herramientas-ia': {
+    title: 'Herramientas IA — Publihazclick | CreatorAI para Creadores de Contenido',
+    description:
+      'Suite de herramientas de IA para generar videos, imágenes, documentos y más. Potencia tu negocio digital con CreatorAI de Publihazclick.',
+  },
+  '/sms-masivos': {
+    title: 'SMS Masivos — Publihazclick | Envía SMS a Todo el Mundo',
+    description:
+      'Plataforma de SMS masivos de Publihazclick. Envía mensajes de texto a más de 15 países desde $0.03 por SMS. Campañas, contactos y reportes en tiempo real.',
+  },
+  '/cursos': {
+    title: 'Academia — Publihazclick | Cursos Online para Emprendedores',
+    description:
+      'Marketplace de cursos online de Publihazclick. Aprende marketing digital, trading, IA y más. Publica tus cursos y gana comisiones del 70%.',
+  },
   '/dashboard': {
     title: 'Mi Panel — Publihazclick',
     description: 'Accede a tu panel de usuario en Publihazclick. Visualiza tu balance, tareas disponibles y red de referidos.',

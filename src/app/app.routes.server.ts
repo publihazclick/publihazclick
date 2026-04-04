@@ -24,6 +24,22 @@ export const serverRoutes: ServerRoute[] = [
     path: 'terminos',
     renderMode: RenderMode.Prerender,
   },
+  {
+    path: 'trading-bot',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'herramientas-ia',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'sms-masivos',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'cursos',
+    renderMode: RenderMode.Prerender,
+  },
 
   // ── Rutas dinámicas: Client-side ────────────────────────────────────────
   {

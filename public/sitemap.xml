@@ -5,15 +5,47 @@
   <!-- Landing Page (prioridad máxima) -->
   <url>
     <loc>https://www.publihazclick.com/</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-04-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+
+  <!-- Trading Bot AI -->
+  <url>
+    <loc>https://www.publihazclick.com/trading-bot</loc>
+    <lastmod>2026-04-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Herramientas IA / CreatorAI -->
+  <url>
+    <loc>https://www.publihazclick.com/herramientas-ia</loc>
+    <lastmod>2026-04-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- SMS Masivos -->
+  <url>
+    <loc>https://www.publihazclick.com/sms-masivos</loc>
+    <lastmod>2026-04-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Academia / Cursos -->
+  <url>
+    <loc>https://www.publihazclick.com/cursos</loc>
+    <lastmod>2026-04-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
 
   <!-- Login -->
   <url>
     <loc>https://www.publihazclick.com/login</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-04-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -21,7 +53,7 @@
   <!-- Registro -->
   <url>
     <loc>https://www.publihazclick.com/register</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-04-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -29,7 +61,7 @@
   <!-- Quiénes Somos -->
   <url>
     <loc>https://www.publihazclick.com/quienes-somos</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-04-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -37,7 +69,7 @@
   <!-- Términos y Condiciones -->
   <url>
     <loc>https://www.publihazclick.com/terminos</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-04-04</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>

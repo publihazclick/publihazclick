@@ -18,6 +18,10 @@ Allow: /register
 Allow: /quienes-somos
 Allow: /terminos
 Allow: /ref/
+Allow: /trading-bot
+Allow: /herramientas-ia
+Allow: /sms-masivos
+Allow: /cursos
 
 # Sitemap
 Sitemap: https://www.publihazclick.com/sitemap.xml
