@@ -3150,9 +3150,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     mapboxgl.accessToken = this.MAPBOX_TOKEN;
     this._map = new mapboxgl.Map({
       container,
-      style:   'mapbox://styles/mapbox/navigation-day-v1',  // estilo profesional de navegación (claro, como Uber/Lyft)
+      style:   'mapbox://styles/mapbox/navigation-day-v1',
       center:  [lng, lat],
-      zoom:    16,
+      zoom:    15,
       attributionControl: false,
       failIfMajorPerformanceCaveat: false,
     });
@@ -3167,15 +3167,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       // Marcador de posición del usuario
       const el = document.createElement('div');
       el.style.cssText = `
-        width:48px; height:48px; border-radius:50%;
+        width:32px; height:32px; border-radius:50%;
         background: radial-gradient(circle, #FF6600 0%, rgba(255,102,0,0.3) 60%, transparent 70%);
-        border: 3px solid #FF6600;
-        box-shadow: 0 0 0 6px rgba(255,102,0,0.2);
+        border: 2px solid #FF6600;
+        box-shadow: 0 0 0 4px rgba(255,102,0,0.2);
         display:flex; align-items:center; justify-content:center;
         animation: pulse-ring 1.5s ease-out infinite;
       `;
       const dot = document.createElement('div');
-      dot.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#FF6600;border:2px solid #fff;';
+      dot.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#FF6600;border:2px solid #fff;';
       el.appendChild(dot);
 
       // Inyectar keyframes una sola vez
@@ -3259,7 +3259,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.000033 : 0.000024,
+        speed:   isMoto ? 0.000055 : 0.000040,
         forward: true,
         marker,
         heading: h0,
@@ -3400,7 +3400,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         if (dH > 180)  dH -= 360;
         if (dH < -180) dH += 360;
         // Giro suave proporcional a la velocidad — más rápido = giro más ágil
-        vs.heading += dH * Math.min(1, dt * 0.08);
+        vs.heading += dH * Math.min(1, dt * 0.15);
 
         // No colocar vehículo encima del marcador del usuario
         const uLng = this._currentLng, uLat = this._currentLat;
@@ -3426,13 +3426,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Íconos estilo inDrive — vista superior (top-down) ────────────────────
 
   private _carElement(heading: number, color: string): HTMLElement {
-    // outer: Mapbox controla su transform para posicionamiento en el mapa
     const outer = document.createElement('div');
-    outer.style.cssText = 'width:28px;height:46px;';
-    // inner: nosotros controlamos la rotación del icono
+    outer.style.cssText = 'width:18px;height:30px;';
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:28px;height:46px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 12px rgba(0,0,0,0.50)) drop-shadow(0 1px 4px rgba(0,0,0,0.35));will-change:transform;`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 46" width="28" height="46">
+    wrap.style.cssText = `width:18px;height:30px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45));will-change:transform;`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 46" width="18" height="30">
       <!-- Sombra exterior -->
       <ellipse cx="14" cy="44.5" rx="10" ry="2" fill="rgba(0,0,0,0.22)"/>
       <!-- Borde blanco (contraste sobre mapa claro) -->
@@ -3475,11 +3473,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private _motoElement(heading: number, color: string): HTMLElement {
     const outer = document.createElement('div');
-    outer.style.cssText = 'width:14px;height:36px;';
+    outer.style.cssText = 'width:10px;height:24px;';
     const wrap = document.createElement('div');
-    // Más estrecha y alargada que el carro — claramente diferenciable
-    wrap.style.cssText = `width:14px;height:36px;transform:rotate(${heading}deg);filter:drop-shadow(0 3px 10px rgba(0,0,0,0.50)) drop-shadow(0 1px 3px rgba(0,0,0,0.35));will-change:transform;`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 36" width="14" height="36">
+    wrap.style.cssText = `width:10px;height:24px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45));will-change:transform;`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 36" width="10" height="24">
       <!-- Sombra exterior -->
       <ellipse cx="7" cy="35" rx="5" ry="1.5" fill="rgba(0,0,0,0.22)"/>
       <!-- Rueda trasera (oscura, pequeña) -->
