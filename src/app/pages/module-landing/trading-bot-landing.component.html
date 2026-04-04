@@ -44,12 +44,12 @@
 
         <!-- CTAs -->
         <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-12 px-4 sm:px-0">
-          <a routerLink="/register"
+          <a routerLink="/register" [queryParams]="{ returnUrl: '/dashboard/trading-bot' }"
              class="w-full sm:w-auto group px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm sm:text-base rounded-xl sm:rounded-2xl uppercase tracking-wider shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-105 flex items-center justify-center gap-2">
             <span class="material-symbols-outlined" style="font-size:20px">rocket_launch</span>
             Comprar Bot
           </a>
-          <a routerLink="/login"
+          <a routerLink="/login" [queryParams]="{ returnUrl: '/dashboard/trading-bot' }"
              class="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white text-gray-700 font-bold text-sm sm:text-base rounded-xl sm:rounded-2xl border border-gray-200 hover:border-emerald-300 hover:shadow-md transition-all flex items-center justify-center gap-2">
             <span class="material-symbols-outlined" style="font-size:20px">login</span>
             Ya tengo cuenta
@@ -271,11 +271,11 @@
             Crea tu cuenta gratis, elige tu paquete desde $100 USD y deja que la inteligencia artificial trabaje por ti.
           </p>
           <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-            <a routerLink="/register"
+            <a routerLink="/register" [queryParams]="{ returnUrl: '/dashboard/trading-bot' }"
                class="w-full sm:w-auto px-8 sm:px-10 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm sm:text-base rounded-xl sm:rounded-2xl uppercase tracking-wider shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-105 text-center">
               Comprar Bot
             </a>
-            <a routerLink="/login"
+            <a routerLink="/login" [queryParams]="{ returnUrl: '/dashboard/trading-bot' }"
                class="w-full sm:w-auto px-8 sm:px-10 py-3.5 sm:py-4 text-gray-700 font-bold text-sm rounded-xl sm:rounded-2xl border border-gray-200 hover:border-emerald-300 hover:shadow-md transition-all text-center">
               Iniciar Sesión
             </a>

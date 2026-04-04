@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AuthAdsComponent } from '../auth-ads/auth-ads.component';
@@ -19,11 +19,14 @@ export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly profileService = inject(ProfileService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly isLoading = signal(false);
   readonly showPassword = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
+
+  private returnUrl = '';
 
   loginForm: FormGroup = this.fb.group({
     identifier: ['', [Validators.required]],
@@ -31,7 +34,13 @@ export class LoginComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '';
+
     if (this.authService.isAuthenticated()) {
+      if (this.returnUrl) {
+        this.router.navigate([this.returnUrl]);
+        return;
+      }
       this.profileService.getCurrentProfile().then(profile => {
         const role = profile?.role;
         if (role === 'admin' || role === 'dev') {
@@ -69,18 +78,22 @@ export class LoginComponent implements OnInit {
         this.isLoading.set(false);
         if (result.success) {
           this.successMessage.set('Inicio de sesión exitoso. Redirigiendo...');
-          this.profileService.getCurrentProfile().then(profile => {
-            const role = profile?.role;
-            if (role === 'admin' || role === 'dev') {
-              this.router.navigate(['/admin']);
-            } else if (role === 'advertiser') {
-              this.router.navigate(['/advertiser']);
-            } else {
+          if (this.returnUrl) {
+            this.router.navigate([this.returnUrl]);
+          } else {
+            this.profileService.getCurrentProfile().then(profile => {
+              const role = profile?.role;
+              if (role === 'admin' || role === 'dev') {
+                this.router.navigate(['/admin']);
+              } else if (role === 'advertiser') {
+                this.router.navigate(['/advertiser']);
+              } else {
+                this.router.navigate(['/dashboard']);
+              }
+            }).catch(() => {
               this.router.navigate(['/dashboard']);
-            }
-          }).catch(() => {
-            this.router.navigate(['/dashboard']);
-          });
+            });
+          }
         } else {
           this.errorMessage.set(result.message || 'Credenciales incorrectas. Verifica tu usuario, correo o celular y contraseña.');
         }
