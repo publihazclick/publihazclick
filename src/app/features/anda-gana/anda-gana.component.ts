@@ -14,7 +14,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   imports: [FormsModule, SlicePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-<div class="min-h-screen w-full flex flex-col items-center py-6 px-4">
+<div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
+  [style.background]="screen() === 'home' ? 'linear-gradient(135deg,#6C3AED 0%,#2563EB 100%)' : ''">
 
   <!-- ═══════════ SPLASH ═══════════ -->
   @if (screen() === 'splash') {
@@ -1877,36 +1878,38 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ HOME ═══════════ -->
   @if (screen() === 'home') {
-    <div class="flex flex-col items-center gap-5 text-center w-full px-5 sm:px-8"
-      style="max-width:420px;padding-top:clamp(1.5rem,6vh,3rem)">
-      <img src="movi-logo.svg" alt="Movi"
-        class="rounded-[2rem] shadow-xl shadow-purple-500/25"
-        style="width:clamp(160px,45vw,220px);height:clamp(160px,45vw,220px)" />
-      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">Selecciona cómo quieres participar</p>
+    <div class="flex flex-col items-center gap-4 text-center w-full px-5 sm:px-8"
+      style="max-width:420px;padding-top:clamp(0.5rem,2vh,1rem)">
+      <img src="movi-splash.svg" alt="Movi"
+        style="width:clamp(200px,55vw,280px);height:clamp(200px,55vw,280px)" />
+      <p class="text-white/70 text-sm sm:text-base leading-relaxed font-medium">Selecciona cómo quieres participar</p>
 
       <!-- Info referidos -->
       <div class="w-full rounded-2xl p-4 text-left"
-        style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
-        <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
-          En <span class="text-purple-400 font-black">Movi</span> tu ganas dinero tanto si te registras como
-          <span class="text-orange-400 font-bold">pasajero</span> o como
-          <span class="text-cyan-400 font-bold">conductor</span>. En ambos encontrarás en el menú un botón llamado
-          <span class="text-emerald-400 font-black">"Recomienda y gana"</span>: cada vez que alguien se cree una cuenta en Movi
-          con tu link y use nuestro servicio, tú ganas el <span class="text-amber-400 font-black">2% vitalicio</span>
+        style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px)">
+        <p class="text-white/90 text-xs sm:text-sm leading-relaxed">
+          En <span class="text-white font-black">Movi</span> tu ganas dinero tanto si te registras como
+          <span class="text-amber-300 font-bold">pasajero</span> o como
+          <span class="text-amber-300 font-bold">conductor</span>. En ambos encontrarás en el menú un botón llamado
+          <span class="text-yellow-300 font-black">"Recomienda y gana"</span>: cada vez que alguien se cree una cuenta en Movi
+          con tu link y use nuestro servicio, tú ganas el <span class="text-yellow-300 font-black">2% vitalicio</span>
           del valor de cada servicio, sin importar si tus invitados son pasajeros o conductores.
         </p>
       </div>
 
       <div class="flex flex-col gap-3 w-full mt-1">
         <button (click)="screen.set('passenger-form')"
-          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-orange-500 to-amber-500 text-black shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
+          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-white text-black shadow-lg shadow-black/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
           <span class="material-symbols-outlined" style="font-size:20px">person</span>
           Crear cuenta pasajero
         </button>
         <button (click)="screen.set('driver-form'); driverStep.set(1)"
-          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-500 text-black shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
+          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider text-white shadow-lg shadow-black/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+          style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px)">
           <span class="material-symbols-outlined" style="font-size:20px">directions_car</span>
-          Crear cuenta conductor
+          <span class="material-symbols-outlined" style="font-size:20px">local_shipping</span>
+          <span class="material-symbols-outlined" style="font-size:20px">two_wheeler</span>
+          Conductor
         </button>
       </div>
     </div>
