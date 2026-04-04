@@ -6,8 +6,10 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { WalletStateService } from '../../../../core/services/wallet-state.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
 import { TradingPackageService, UserTradingPackage } from '../../../../core/services/trading-package.service';
+import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { UserReferralModalComponent } from '../user-referral-modal/user-referral-modal.component';
 import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
+import { getSupabaseClient } from '../../../../core/supabase.client';
 
 @Component({
   selector: 'app-user-layout',
@@ -22,10 +24,12 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
   readonly walletState = inject(WalletStateService);
   readonly currencyService = inject(CurrencyService);
   private readonly tradingPkgSvc = inject(TradingPackageService);
+  private readonly packageService = inject(AdminPackageService);
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly activeTrading = signal<UserTradingPackage[]>([]);
+  readonly showPackagePromo = signal(false);
 
   isDarkMode = typeof window !== 'undefined'
     ? (localStorage.getItem('theme') ?? 'dark') === 'dark'
@@ -88,6 +92,8 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
         this.profileService.getCurrentProfile().catch(() => {});
         // Cargar paquetes de trading activos
         this.tradingPkgSvc.getMyActivePackages().then(pkgs => this.activeTrading.set(pkgs)).catch(() => {});
+        // Verificar si el usuario alguna vez compró un paquete
+        this.checkPackagePromo(userId);
       }
     });
   }
@@ -130,6 +136,27 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
 
   toggleSidebarCollapse(): void {
     this.sidebarCollapsed.update((v) => !v);
+  }
+
+  private async checkPackagePromo(userId: string): Promise<void> {
+    try {
+      const { count } = await getSupabaseClient()
+        .from('user_packages')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      if (count === 0) {
+        this.showPackagePromo.set(true);
+      }
+    } catch { /* silencioso */ }
+  }
+
+  dismissPackagePromo(): void {
+    this.showPackagePromo.set(false);
+  }
+
+  goToPackages(): void {
+    this.showPackagePromo.set(false);
+    this.router.navigate(['/dashboard/packages']);
   }
 
   closeSidebarOnMobile(): void {
