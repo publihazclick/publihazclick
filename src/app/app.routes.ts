@@ -248,6 +248,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
       },
       {
+        path: 'dinamicas',
+        loadComponent: () => import('./features/dinamicas/components/dinamicas/dinamicas.component').then(m => m.DinamicasComponent)
+      },
+      {
         path: 'trading-bot',
         loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
       },
@@ -362,6 +366,10 @@ export const routes: Routes = [
       {
         path: 'calculator',
         loadComponent: () => import('./features/user/components/calculator/calculator.component').then(m => m.CalculatorComponent)
+      },
+      {
+        path: 'dinamicas',
+        loadComponent: () => import('./features/dinamicas/components/dinamicas/dinamicas.component').then(m => m.DinamicasComponent)
       },
       {
         path: 'trading-bot',
