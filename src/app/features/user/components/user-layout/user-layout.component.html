@@ -51,11 +51,16 @@
               {{ tier.name }}
             </p>
           }
-          @if (!profile()!.has_active_package) {
-            <div class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 rounded-lg">
-              <span class="material-symbols-outlined text-rose-400" style="font-size:12px">cancel</span>
-              <span class="text-[10px] text-rose-400 font-black uppercase tracking-wider">Paquete Inactivo</span>
+          @if (profile()!.has_active_package || profile()!.current_package_id) {
+            <div class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:12px">verified</span>
+              <span class="text-[10px] text-emerald-400 font-black uppercase tracking-wider">Cuenta Activa</span>
             </div>
+          } @else {
+            <a routerLink="/dashboard/packages" class="flex items-center gap-1 mt-2 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-all">
+              <span class="material-symbols-outlined text-amber-400" style="font-size:12px">warning</span>
+              <span class="text-[10px] text-amber-400 font-black uppercase tracking-wider">Activar Cuenta</span>
+            </a>
           }
         } @else {
           <h3 class="font-bold text-center text-sm">Mi Cuenta</h3>
