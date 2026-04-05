@@ -32,12 +32,17 @@ import { ProfileService } from '../../core/services/profile.service';
                 <span class="hidden md:inline text-sm font-black text-gray-800 ml-2">· Hola, {{ profile()?.full_name || profile()?.username || 'Usuario' }}</span>
               </div>
               <!-- Menú hamburguesa (derecha) -->
-              <button (click)="menuOpen.set(!menuOpen())"
-                      class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all">
-                <span class="material-symbols-outlined" style="font-size:22px">
-                  {{ menuOpen() ? 'close' : 'menu' }}
-                </span>
-              </button>
+              <div class="flex flex-col items-center gap-1">
+                <button (click)="menuOpen.set(!menuOpen())"
+                        class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all">
+                  <span class="material-symbols-outlined" style="font-size:22px">
+                    {{ menuOpen() ? 'close' : 'menu' }}
+                  </span>
+                </button>
+                @if (profile()?.has_active_package || profile()?.current_package_id) {
+                  <span class="text-[8px] text-emerald-500 font-black uppercase tracking-wider leading-none">Cuenta Activa</span>
+                }
+              </div>
             </div>
             @if (!isLanding()) {
               <p class="text-sm font-black text-gray-800 text-center truncate md:hidden">Hola, {{ profile()?.full_name || profile()?.username || '' }}</p>
@@ -58,13 +63,6 @@ import { ProfileService } from '../../core/services/profile.service';
               <span class="material-symbols-outlined" style="font-size:20px">close</span>
             </button>
           </div>
-          <!-- Cuenta activa badge -->
-          @if (profile()?.has_active_package || profile()?.current_package_id) {
-            <div class="flex items-center gap-2 mx-4 mt-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl">
-              <span class="material-symbols-outlined text-emerald-500" style="font-size:14px">verified</span>
-              <span class="text-[11px] text-emerald-600 font-black uppercase tracking-wider">Cuenta Activa</span>
-            </div>
-          }
           <!-- Menu items -->
           <nav class="flex flex-col py-2">
             <a routerLink="gratis" routerLinkActive="bg-emerald-50 text-emerald-600 border-l-emerald-500"
