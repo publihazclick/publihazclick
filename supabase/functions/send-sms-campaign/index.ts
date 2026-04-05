@@ -94,13 +94,13 @@ serve(async (req) => {
       return json({ error: 'No hay destinatarios pendientes' }, 400);
     }
 
-    // Verificar saldo suficiente
-    const costPerSms = campaign.cost_per_sms ?? 0.019;
+    // Verificar saldo suficiente (wallet y costos en COP)
+    const costPerSms = campaign.cost_per_sms ?? 80;
     const totalCost = recipients.length * costPerSms;
 
     if (balance < totalCost) {
       return json({
-        error: `Saldo insuficiente. Necesitas $${totalCost.toFixed(2)} USD, tienes $${balance.toFixed(2)} USD`,
+        error: `Saldo insuficiente. Necesitas $${totalCost.toLocaleString('es-CO')} COP, tienes $${balance.toLocaleString('es-CO')} COP`,
       }, 400);
     }
 

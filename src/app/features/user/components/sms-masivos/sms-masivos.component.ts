@@ -103,15 +103,40 @@ export class SmsMasivosComponent implements OnInit {
   readonly rechargeHistory = signal<any[]>([]);
   readonly sentMessages = signal<any[]>([]);
 
-  readonly smsRechargeUsd = [10, 20, 50, 150, 250, 500, 1_000];
+  /** Escala de precios: a mayor recarga, menor costo por SMS */
+  readonly smsRechargeTiers = [
+    { usd: 15,    copPerSms: 80 },
+    { usd: 50,    copPerSms: 76 },
+    { usd: 100,   copPerSms: 72 },
+    { usd: 250,   copPerSms: 68 },
+    { usd: 500,   copPerSms: 64 },
+    { usd: 1_000, copPerSms: 60 },
+  ];
 
-  /** Costo por SMS cobrado al cliente (~$80 COP) */
-  readonly COST_PER_SMS = 0.019;
+  /** Costo base por SMS en COP (tier más pequeño) */
+  readonly COST_PER_SMS = 80;
 
   /** COP base (sin comisión) con tasa en tiempo real */
   getSmsBaseCop(usd: number): number { return this.currencyService.usdToCop(usd); }
   /** COP total (con comisión ePayco) con tasa en tiempo real */
   getSmsTotalCop(usd: number): number { return this.currencyService.usdToFinalCop(usd); }
+
+  /** Obtener el tier para un monto USD */
+  getTier(usd: number) {
+    return this.smsRechargeTiers.find(t => t.usd === usd) ?? this.smsRechargeTiers[0];
+  }
+
+  /** SMS que obtiene el usuario para un tier (con bonificación) */
+  getSmsCountForTier(tier: { usd: number; copPerSms: number }): number {
+    const cop = this.getSmsBaseCop(tier.usd);
+    return Math.floor(cop / tier.copPerSms);
+  }
+
+  /** COP acreditados al wallet (incluye bonus por volumen) */
+  getCreditAmountForTier(tier: { usd: number; copPerSms: number }): number {
+    const smsCount = this.getSmsCountForTier(tier);
+    return smsCount * this.COST_PER_SMS;
+  }
 
   // ── Operation state ─────────────────────────────────────────
   readonly sending = signal(false);
@@ -507,7 +532,9 @@ export class SmsMasivosComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     const usd = this.selectedRecharge();
     if (!usd) return;
+    const tier = this.getTier(usd);
     const cop = this.getSmsBaseCop(usd);
+    const creditAmount = this.getCreditAmountForTier(tier);
 
     this.rechargeError.set(null);
     this.rechargeLoading.set(true);
@@ -521,7 +548,7 @@ export class SmsMasivosComponent implements OnInit {
       if (!session) throw new Error('No autenticado. Inicia sesión de nuevo.');
 
       const response = await supabase.functions.invoke('create-sms-wallet-recharge', {
-        body: { amount: cop },
+        body: { amount: cop, credit_amount: creditAmount },
       });
 
       // supabase-js v2: en error HTTP, data puede tener el body o error tiene el mensaje

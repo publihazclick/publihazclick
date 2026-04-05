@@ -88,6 +88,9 @@ Deno.serve(async (req) => {
       return json({ error: `Monto inválido. Debe estar entre ${MIN_AMOUNT} y ${MAX_AMOUNT} COP` }, 400);
     }
 
+    // credit_amount incluye bonificación por volumen (si aplica)
+    const creditAmount = Number(body.credit_amount) || amount;
+
     // ── 4. Crear registro de pago pendiente ─────────────────────────────────
     const invoice = `SMSWALLET-${Date.now()}-${userId.substring(0, 8).toUpperCase()}`;
 
@@ -96,6 +99,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: userId,
         amount,
+        credit_amount: creditAmount,
         status: 'pending',
         invoice,
       })

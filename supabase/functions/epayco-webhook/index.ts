@@ -281,17 +281,17 @@ Deno.serve(async (req) => {
         .update({ status: 'approved', epayco_ref: x_ref_payco, approved_at: new Date().toISOString() })
         .eq('id', x_extra1);
 
-      // Obtener el monto del pago
+      // Obtener el monto del pago (credit_amount incluye bonus por volumen)
       const { data: smsPay } = await supabase.from('sms_wallet_payments')
-        .select('user_id, amount')
+        .select('user_id, amount, credit_amount')
         .eq('id', x_extra1)
         .single();
 
       if (smsPay) {
-        // Acreditar en la billetera SMS
+        // Acreditar en la billetera SMS (credit_amount o amount como fallback)
         await supabase.rpc('sms_wallet_credit', {
           p_user_id: smsPay.user_id,
-          p_amount: smsPay.amount,
+          p_amount: smsPay.credit_amount ?? smsPay.amount,
         });
       }
 

@@ -141,7 +141,7 @@
           </div>
           <div class="text-left">
             <p class="text-[10px] text-white/70 font-bold uppercase tracking-wider">Billetera Recargable</p>
-            <p class="text-xl font-black text-white">$0.00 <span class="text-xs font-bold text-white/60">USD</span></p>
+            <p class="text-xl font-black text-white">{{ formatCOP(walletBalance()) }}</p>
           </div>
         </button>
 
@@ -633,7 +633,7 @@
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-100">
             <p class="text-xs text-gray-400 flex items-center gap-1">
               <span class="material-symbols-outlined text-sm">info</span>
-              Costo estimado: ${{ (recipientCount() * 0.03) | number:'1.2-2' }} USD ({{ recipientCount() }} x $0.03)
+              Costo estimado: {{ formatCOP(recipientCount() * COST_PER_SMS) }} ({{ recipientCount() }} x {{ formatCOP(COST_PER_SMS) }}) — Saldo: {{ formatCOP(walletBalance()) }}
             </p>
             <button
               (click)="requestSend()"
@@ -888,18 +888,52 @@
         <h2 class="text-lg font-bold flex items-center gap-2 text-gray-900">
           <span class="material-symbols-outlined text-violet-500">chat</span>
           Mensajes Enviados
+          <span class="text-gray-400 text-sm font-normal">({{ sentMessages().length }})</span>
         </h2>
-        <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
-          <span class="material-symbols-outlined text-6xl text-gray-200">chat</span>
-          <p class="text-gray-500 font-semibold mt-4">No hay mensajes enviados</p>
-          <p class="text-gray-400 text-sm mt-1">El historial de todos tus mensajes SMS enviados aparecerá aquí</p>
-          <button
-            (click)="setTab('compose')"
-            class="mt-6 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors inline-flex items-center gap-2">
-            <span class="material-symbols-outlined text-lg">send</span>
-            Crear y enviar
-          </button>
-        </div>
+        @if (sentMessages().length === 0) {
+          <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
+            <span class="material-symbols-outlined text-6xl text-gray-200">chat</span>
+            <p class="text-gray-500 font-semibold mt-4">No hay mensajes enviados</p>
+            <p class="text-gray-400 text-sm mt-1">El historial de todos tus mensajes SMS enviados aparecerá aquí</p>
+            <button
+              (click)="setTab('compose')"
+              class="mt-6 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors inline-flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg">send</span>
+              Crear y enviar
+            </button>
+          </div>
+        } @else {
+          <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-100">
+                  <th class="text-left text-xs text-gray-400 font-semibold px-4 py-3 uppercase tracking-wider">Destinatario</th>
+                  <th class="text-left text-xs text-gray-400 font-semibold px-4 py-3 uppercase tracking-wider hidden sm:table-cell">Campaña</th>
+                  <th class="text-left text-xs text-gray-400 font-semibold px-4 py-3 uppercase tracking-wider">Estado</th>
+                  <th class="text-left text-xs text-gray-400 font-semibold px-4 py-3 uppercase tracking-wider hidden sm:table-cell">Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (m of sentMessages(); track m.id) {
+                  <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3">
+                      <p class="font-semibold text-gray-900">{{ m.contact_name || 'Sin nombre' }}</p>
+                      <p class="text-gray-400 text-xs font-mono">{{ m.phone_number }}</p>
+                    </td>
+                    <td class="px-4 py-3 text-gray-500 hidden sm:table-cell">{{ m.sms_campaigns?.name ?? '—' }}</td>
+                    <td class="px-4 py-3">
+                      <span class="text-xs font-bold rounded-full px-2 py-0.5 border"
+                        [class]="m.status === 'sent' || m.status === 'delivered' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : m.status === 'pending' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-red-50 border-red-200 text-red-600'">
+                        {{ m.status === 'sent' ? 'Enviado' : m.status === 'delivered' ? 'Entregado' : m.status === 'pending' ? 'Pendiente' : m.status === 'failed' ? 'Fallido' : m.status }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs hidden sm:table-cell">{{ m.sent_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       </div>
     }
 
@@ -911,12 +945,43 @@
         <h2 class="text-lg font-bold flex items-center gap-2 text-gray-900">
           <span class="material-symbols-outlined text-violet-500">receipt_long</span>
           Historial de Recargas
+          <span class="text-gray-400 text-sm font-normal">({{ rechargeHistory().length }})</span>
         </h2>
-        <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
-          <span class="material-symbols-outlined text-6xl text-gray-200">receipt_long</span>
-          <p class="text-gray-500 font-semibold mt-4">No hay recargas registradas</p>
-          <p class="text-gray-400 text-sm mt-1">El historial de tus recargas de saldo SMS aparecerá aquí</p>
-        </div>
+        @if (rechargeHistory().length === 0) {
+          <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
+            <span class="material-symbols-outlined text-6xl text-gray-200">receipt_long</span>
+            <p class="text-gray-500 font-semibold mt-4">No hay recargas registradas</p>
+            <p class="text-gray-400 text-sm mt-1">El historial de tus recargas de saldo SMS aparecerá aquí</p>
+            <button
+              (click)="showRecargaModal.set(true)"
+              class="mt-6 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors inline-flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg">account_balance_wallet</span>
+              Recargar billetera
+            </button>
+          </div>
+        } @else {
+          <div class="space-y-2">
+            @for (r of rechargeHistory(); track r.id) {
+              <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center gap-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  [class]="r.status === 'approved' ? 'bg-emerald-100' : r.status === 'pending' ? 'bg-amber-100' : 'bg-red-100'">
+                  <span class="material-symbols-outlined"
+                    [class]="r.status === 'approved' ? 'text-emerald-600' : r.status === 'pending' ? 'text-amber-600' : 'text-red-600'">
+                    {{ r.status === 'approved' ? 'check_circle' : r.status === 'pending' ? 'schedule' : 'cancel' }}
+                  </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-sm text-gray-900">Recarga de ${{ r.amount | number:'1.0-0' }} COP</p>
+                  <p class="text-xs text-gray-400">{{ r.created_at | date:'dd/MM/yyyy HH:mm' }} · Ref: {{ r.invoice || r.epayco_ref || '—' }}</p>
+                </div>
+                <span class="text-xs font-bold rounded-full px-2 py-0.5 border shrink-0"
+                  [class]="r.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : r.status === 'pending' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-red-50 border-red-200 text-red-600'">
+                  {{ r.status === 'approved' ? 'Aprobada' : r.status === 'pending' ? 'Pendiente' : 'Fallida' }}
+                </span>
+              </div>
+            }
+          </div>
+        }
       </div>
     }
 
@@ -1173,36 +1238,40 @@
             </div>
             <div>
               <p class="text-white/70 text-xs font-bold uppercase tracking-wider">Billetera Recargable</p>
-              <p class="text-2xl font-black text-white">$0.00 <span class="text-sm text-white/60">USD</span></p>
+              <p class="text-2xl font-black text-white">{{ formatCOP(walletBalance()) }}</p>
             </div>
           </div>
         </div>
 
         <!-- Paquetes de recarga -->
         <div class="p-5 space-y-4">
-          <p class="text-gray-500 text-sm">Selecciona el monto que deseas recargar:</p>
+          <p class="text-gray-500 text-sm">Selecciona un paquete — a mayor recarga, menor costo por SMS:</p>
 
           <div class="grid grid-cols-3 gap-2">
-            @for (usd of smsRechargeUsd; track usd) {
-              <button (click)="selectRecharge(usd)"
+            @for (tier of smsRechargeTiers; track tier.usd) {
+              <button (click)="selectRecharge(tier.usd)"
                 class="relative rounded-xl border-2 p-3 text-center transition-all hover:shadow-md"
-                [class]="selectedRecharge() === usd
+                [class]="selectedRecharge() === tier.usd
                   ? 'border-violet-500 bg-violet-50 shadow-md'
                   : 'border-gray-200 bg-white hover:border-violet-200'">
-                @if (selectedRecharge() === usd) {
+                @if (selectedRecharge() === tier.usd) {
                   <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white" style="font-size:12px">check</span>
                   </span>
                 }
                 <p class="text-lg font-black"
-                   [class]="selectedRecharge() === usd ? 'text-violet-700' : 'text-gray-900'">
-                  ${{ usd | number:'1.0-0' }}
+                   [class]="selectedRecharge() === tier.usd ? 'text-violet-700' : 'text-gray-900'">
+                  ${{ tier.usd | number:'1.0-0' }}
                 </p>
                 <p class="text-[10px] font-bold"
-                   [class]="selectedRecharge() === usd ? 'text-violet-400' : 'text-gray-400'">
+                   [class]="selectedRecharge() === tier.usd ? 'text-violet-400' : 'text-gray-400'">
                   USD
                 </p>
-                <p class="text-[9px] text-gray-400 mt-0.5">{{ formatCOP(getSmsTotalCop(usd)) }}</p>
+                <p class="text-[9px] text-emerald-600 font-bold mt-0.5">~{{ getSmsCountForTier(tier) | number:'1.0-0' }} SMS</p>
+                <p class="text-[9px] text-gray-400">{{ formatCOP(tier.copPerSms) }}/SMS</p>
+                @if (tier.copPerSms < COST_PER_SMS) {
+                  <p class="text-[8px] text-pink-500 font-bold">{{ (((COST_PER_SMS - tier.copPerSms) / COST_PER_SMS) * 100) | number:'1.0-0' }}% ahorro</p>
+                }
               </button>
             }
           </div>
@@ -1296,6 +1365,94 @@
           <button (click)="showRetiroModal.set(false)"
             class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm transition-colors">
             Entendido
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       MODAL SIN SALDO
+       ══════════════════════════════════════════════════════════════════ -->
+  @if (showNoBalanceModal()) {
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+         (click)="showNoBalanceModal.set(false)">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative bg-white border border-gray-200 rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+           (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-red-500 to-orange-500 px-6 py-5 rounded-t-2xl sm:rounded-t-2xl text-center">
+          <button (click)="showNoBalanceModal.set(false)"
+            class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+            <span class="material-symbols-outlined" style="font-size:18px">close</span>
+          </button>
+          <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-white" style="font-size:32px">account_balance_wallet</span>
+          </div>
+          <h3 class="text-white font-black text-lg">No tienes saldo en tu billetera recargable</h3>
+          <p class="text-white/70 text-sm mt-1">
+            Necesitas {{ formatCOP(recipientCount() * COST_PER_SMS) }} para enviar {{ recipientCount() }} SMS.
+            Tu saldo actual es <span class="font-bold text-white">{{ formatCOP(walletBalance()) }}</span>
+          </p>
+        </div>
+
+        <!-- Paquetes de recarga -->
+        <div class="p-5 space-y-4">
+          <p class="text-gray-700 text-sm font-bold">Selecciona un paquete de recarga:</p>
+          <p class="text-[11px] text-gray-400 -mt-2">A mayor recarga, menor costo por SMS</p>
+
+          <div class="grid grid-cols-3 gap-2">
+            @for (tier of smsRechargeTiers; track tier.usd) {
+              <button (click)="selectRecharge(tier.usd)"
+                class="relative rounded-xl border-2 p-3 text-center transition-all hover:shadow-md"
+                [class]="selectedRecharge() === tier.usd
+                  ? 'border-violet-500 bg-violet-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-violet-200'">
+                @if (selectedRecharge() === tier.usd) {
+                  <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white" style="font-size:12px">check</span>
+                  </span>
+                }
+                <p class="text-lg font-black"
+                   [class]="selectedRecharge() === tier.usd ? 'text-violet-700' : 'text-gray-900'">
+                  ${{ tier.usd | number:'1.0-0' }}
+                </p>
+                <p class="text-[10px] font-bold"
+                   [class]="selectedRecharge() === tier.usd ? 'text-violet-400' : 'text-gray-400'">
+                  USD
+                </p>
+                <p class="text-[9px] text-emerald-600 font-bold mt-0.5">~{{ getSmsCountForTier(tier) | number:'1.0-0' }} SMS</p>
+                <p class="text-[9px] text-gray-400">{{ formatCOP(tier.copPerSms) }}/SMS</p>
+                @if (tier.copPerSms < COST_PER_SMS) {
+                  <p class="text-[8px] text-pink-500 font-bold">{{ (((COST_PER_SMS - tier.copPerSms) / COST_PER_SMS) * 100) | number:'1.0-0' }}% ahorro</p>
+                }
+              </button>
+            }
+          </div>
+
+          @if (rechargeError()) {
+            <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2">
+              <span class="material-symbols-outlined" style="font-size:18px">error</span>
+              {{ rechargeError() }}
+            </div>
+          }
+
+          <button (click)="startSmsRecharge()"
+            [disabled]="!selectedRecharge() || rechargeLoading()"
+            class="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-200"
+            style="background: linear-gradient(90deg, #7c3aed, #a855f7, #d946ef);">
+            @if (rechargeLoading()) {
+              <div class="flex items-center justify-center gap-2">
+                <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Preparando pago...
+              </div>
+            } @else {
+              <div class="flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined" style="font-size:20px">payment</span>
+                Recargar {{ selectedRecharge() ? formatCOP(getSelectedTotal()) : '' }} con ePayco
+              </div>
+            }
           </button>
         </div>
       </div>
