@@ -38,13 +38,21 @@ interface TradingPackage {
 
         <!-- Menú hamburguesa -->
         <div class="relative">
-          <button
-            (click)="menuOpen.set(!menuOpen())"
-            class="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
-            <span class="material-symbols-outlined text-emerald-400 text-2xl">
-              {{ menuOpen() ? 'close' : 'menu' }}
-            </span>
-          </button>
+          <div class="flex flex-col items-center gap-1">
+            <button
+              (click)="menuOpen.set(!menuOpen())"
+              class="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
+              <span class="material-symbols-outlined text-emerald-400 text-2xl">
+                {{ menuOpen() ? 'close' : 'menu' }}
+              </span>
+            </button>
+            @if (profileService.profile()?.has_active_package || profileService.profile()?.current_package_id) {
+              <div class="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:10px">verified</span>
+                <span class="text-[8px] text-emerald-400 font-black uppercase tracking-wider leading-none">Cuenta Activa</span>
+              </div>
+            }
+          </div>
 
           @if (menuOpen()) {
             <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
