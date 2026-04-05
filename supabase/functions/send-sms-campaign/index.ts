@@ -1,4 +1,4 @@
-// Edge Function: Enviar campaña SMS vía Twilio
+// Edge Function: Enviar campaña SMS vía Telnyx
 // Recibe campaign_id, obtiene destinatarios, envía SMS y actualiza contadores
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -14,31 +14,39 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-const TWILIO_SID   = Deno.env.get('TWILIO_ACCOUNT_SID')!;
-const TWILIO_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
-const TWILIO_FROM  = Deno.env.get('TWILIO_PHONE_NUMBER')!;
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const TELNYX_API_KEY = Deno.env.get('TELNYX_API_KEY')!;
+const TELNYX_FROM    = Deno.env.get('TELNYX_SENDER_ID') ?? Deno.env.get('TELNYX_PHONE_NUMBER')!;
+const TELNYX_MSG_PROFILE = Deno.env.get('TELNYX_MESSAGING_PROFILE_ID') ?? '';
+const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-async function sendOneSms(to: string, body: string): Promise<{ ok: boolean; sid?: string; error?: string }> {
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
-  const params = new URLSearchParams({ To: to, From: TWILIO_FROM, Body: body });
+async function sendOneSms(to: string, body: string): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+  const payload: Record<string, string> = {
+    from: TELNYX_FROM,
+    to,
+    text: body,
+    type: 'SMS',
+  };
+  if (TELNYX_MSG_PROFILE) {
+    payload.messaging_profile_id = TELNYX_MSG_PROFILE;
+  }
 
-  const resp = await fetch(url, {
+  const resp = await fetch('https://api.telnyx.com/v2/messages', {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`)}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Bearer ${TELNYX_API_KEY}`,
+      'Content-Type': 'application/json',
     },
-    body: params.toString(),
+    body: JSON.stringify(payload),
   });
 
   if (resp.ok) {
     const data = await resp.json();
-    return { ok: true, sid: data.sid };
+    return { ok: true, messageId: data.data?.id };
   }
-  const err = await resp.json().catch(() => ({ message: 'Unknown error' }));
-  return { ok: false, error: err.message ?? `HTTP ${resp.status}` };
+  const err = await resp.json().catch(() => ({ errors: [{ detail: 'Unknown error' }] }));
+  const detail = err.errors?.[0]?.detail ?? `HTTP ${resp.status}`;
+  return { ok: false, error: detail };
 }
 
 serve(async (req) => {
@@ -87,7 +95,7 @@ serve(async (req) => {
     }
 
     // Verificar saldo suficiente
-    const costPerSms = campaign.cost_per_sms ?? 0.03;
+    const costPerSms = campaign.cost_per_sms ?? 0.019;
     const totalCost = recipients.length * costPerSms;
 
     if (balance < totalCost) {
@@ -96,7 +104,7 @@ serve(async (req) => {
       }, 400);
     }
 
-    // Enviar SMS en lote (máximo 50 concurrentes para no saturar Twilio)
+    // Enviar SMS en lote (máximo 50 concurrentes para no saturar Telnyx)
     let sentCount = 0;
     let failedCount = 0;
     const batchSize = 50;
@@ -112,7 +120,7 @@ serve(async (req) => {
             sent_at: new Date().toISOString(),
           };
           if (result.error) updateData.error_message = result.error;
-          if (result.sid) updateData.gateway_message_id = result.sid;
+          if (result.messageId) updateData.provider_message_id = result.messageId;
 
           await supabase
             .from('sms_campaign_recipients')

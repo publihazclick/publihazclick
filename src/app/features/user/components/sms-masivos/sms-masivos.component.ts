@@ -90,12 +90,23 @@ export class SmsMasivosComponent implements OnInit {
   readonly showRecargaModal = signal(false);
   readonly showRetiroModal = signal(false);
   readonly showReferralModal = signal(false);
+  readonly showNoBalanceModal = signal(false);
   readonly referralCopied = signal(false);
   readonly selectedRecharge = signal<number | null>(null);
   readonly rechargeLoading = signal(false);
   readonly rechargeError = signal<string | null>(null);
 
+  // ── Wallet balance ─────────────────────────────────────────
+  readonly walletBalance = signal(0);
+
+  // ── Recharge history & Sent messages ───────────────────────
+  readonly rechargeHistory = signal<any[]>([]);
+  readonly sentMessages = signal<any[]>([]);
+
   readonly smsRechargeUsd = [10, 20, 50, 150, 250, 500, 1_000];
+
+  /** Costo por SMS cobrado al cliente (~$80 COP) */
+  readonly COST_PER_SMS = 0.019;
 
   /** COP base (sin comisión) con tasa en tiempo real */
   getSmsBaseCop(usd: number): number { return this.currencyService.usdToCop(usd); }
@@ -150,16 +161,22 @@ export class SmsMasivosComponent implements OnInit {
 
     this.loading.set(true);
     try {
-      const [contacts, campaigns, templates, stats] = await Promise.all([
+      const [contacts, campaigns, templates, stats, balance, recharges, sent] = await Promise.all([
         this.smsService.getContacts(profile.id),
         this.smsService.getCampaigns(profile.id),
         this.smsService.getTemplates(profile.id),
         this.smsService.getDashboardStats(profile.id),
+        this.smsService.getWalletBalance(profile.id),
+        this.smsService.getRechargeHistory(profile.id),
+        this.smsService.getAllSentMessages(profile.id),
       ]);
       this.contacts.set(contacts);
       this.campaigns.set(campaigns);
       this.templates.set(templates);
       this.stats.set(stats);
+      this.walletBalance.set(balance);
+      this.rechargeHistory.set(recharges);
+      this.sentMessages.set(sent);
     } catch (err: any) {
       this.error.set(err.message ?? 'Error cargando datos');
     } finally {
@@ -381,6 +398,16 @@ export class SmsMasivosComponent implements OnInit {
         return;
       }
 
+      // Check wallet balance before sending
+      const balance = this.walletBalance();
+      const totalCost = phones.length * this.COST_PER_SMS;
+
+      if (balance < totalCost) {
+        this.sending.set(false);
+        this.showNoBalanceModal.set(true);
+        return;
+      }
+
       // Create campaign
       const campaign = await this.smsService.createCampaign({
         user_id: profile.id,
@@ -391,8 +418,8 @@ export class SmsMasivosComponent implements OnInit {
         sent_count: 0,
         delivered_count: 0,
         failed_count: 0,
-        cost_per_sms: 0.03,
-        total_cost: phones.length * 0.03,
+        cost_per_sms: this.COST_PER_SMS,
+        total_cost: totalCost,
       });
 
       // Add recipients
@@ -402,7 +429,7 @@ export class SmsMasivosComponent implements OnInit {
         contact_name:
           this.contacts().find((c) => c.phone_number === phone)?.full_name ?? undefined,
         status: 'pending' as const,
-        cost: 0.03,
+        cost: this.COST_PER_SMS,
       }));
 
       await this.smsService.addCampaignRecipients(recipients);
@@ -410,12 +437,20 @@ export class SmsMasivosComponent implements OnInit {
       // Update status to sending
       await this.smsService.updateCampaign(campaign.id, { status: 'sending' });
 
-      // Enviar SMS reales vía Twilio
+      // Enviar SMS reales vía Telnyx
       const sendResult = await this.smsService.sendCampaignSms(campaign.id);
 
-      // Refresh data
-      this.campaigns.set(await this.smsService.getCampaigns(profile.id));
-      this.stats.set(await this.smsService.getDashboardStats(profile.id));
+      // Refresh all data including balance
+      const [campaignsData, statsData, newBalance, sentData] = await Promise.all([
+        this.smsService.getCampaigns(profile.id),
+        this.smsService.getDashboardStats(profile.id),
+        this.smsService.getWalletBalance(profile.id),
+        this.smsService.getAllSentMessages(profile.id),
+      ]);
+      this.campaigns.set(campaignsData);
+      this.stats.set(statsData);
+      this.walletBalance.set(newBalance);
+      this.sentMessages.set(sentData);
 
       // Reset compose
       this.composeMessage = '';
@@ -439,6 +474,12 @@ export class SmsMasivosComponent implements OnInit {
     } finally {
       this.sending.set(false);
     }
+  }
+
+  /** Opens recharge modal from the no-balance modal */
+  goToRecharge(): void {
+    this.showNoBalanceModal.set(false);
+    this.showRecargaModal.set(true);
   }
 
   // ── Referral ────────────────────────────────────────────────
@@ -527,11 +568,26 @@ export class SmsMasivosComponent implements OnInit {
       });
 
       this.showRecargaModal.set(false);
+      this.showNoBalanceModal.set(false);
     } catch (e: unknown) {
       this.rechargeError.set(e instanceof Error ? e.message : 'Error al iniciar pago');
     } finally {
       this.rechargeLoading.set(false);
     }
+  }
+
+  /** Refresh wallet balance (called after payment callback) */
+  async refreshBalance(): Promise<void> {
+    const profile = this.profileService.profile();
+    if (!profile) return;
+    try {
+      const [balance, recharges] = await Promise.all([
+        this.smsService.getWalletBalance(profile.id),
+        this.smsService.getRechargeHistory(profile.id),
+      ]);
+      this.walletBalance.set(balance);
+      this.rechargeHistory.set(recharges);
+    } catch {}
   }
 
   private loadEpaycoScript(): Promise<void> {
