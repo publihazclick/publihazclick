@@ -6,7 +6,6 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
 import { TradingPackageService, UserTradingPackage } from '../../../../core/services/trading-package.service';
 import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
-import { getSupabaseClient } from '../../../../core/supabase.client';
 
 @Component({
   selector: 'app-advertiser-layout',
@@ -63,21 +62,16 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
       this.profileService.getCurrentProfile().catch(() => {});
       // Cargar paquetes de trading activos
       this.tradingPkgSvc.getMyActivePackages().then(pkgs => this.activeTrading.set(pkgs)).catch(() => {});
-      // Verificar si el usuario alguna vez compró un paquete
-      this.checkPackagePromo(userId);
+      // Mostrar promo solo si nunca compró paquete
+      this.checkPackagePromo();
     }
   }
 
-  private async checkPackagePromo(userId: string): Promise<void> {
-    try {
-      const { count } = await getSupabaseClient()
-        .from('user_packages')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId);
-      if (count === 0) {
-        this.showPackagePromo.set(true);
-      }
-    } catch { /* silencioso */ }
+  private checkPackagePromo(): void {
+    const p = this.profile();
+    if (p && !p.has_active_package && !p.current_package_id) {
+      this.showPackagePromo.set(true);
+    }
   }
 
   dismissPackagePromo(): void {

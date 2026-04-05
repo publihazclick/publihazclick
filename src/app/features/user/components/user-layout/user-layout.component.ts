@@ -9,7 +9,6 @@ import { TradingPackageService, UserTradingPackage } from '../../../../core/serv
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { UserReferralModalComponent } from '../user-referral-modal/user-referral-modal.component';
 import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
-import { getSupabaseClient } from '../../../../core/supabase.client';
 
 @Component({
   selector: 'app-user-layout',
@@ -92,8 +91,8 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
         this.profileService.getCurrentProfile().catch(() => {});
         // Cargar paquetes de trading activos
         this.tradingPkgSvc.getMyActivePackages().then(pkgs => this.activeTrading.set(pkgs)).catch(() => {});
-        // Verificar si el usuario alguna vez compró un paquete
-        this.checkPackagePromo(userId);
+        // Mostrar promo solo si nunca compró paquete
+        this.checkPackagePromo();
       }
     });
   }
@@ -138,16 +137,11 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
     this.sidebarCollapsed.update((v) => !v);
   }
 
-  private async checkPackagePromo(userId: string): Promise<void> {
-    try {
-      const { count } = await getSupabaseClient()
-        .from('user_packages')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId);
-      if (count === 0) {
-        this.showPackagePromo.set(true);
-      }
-    } catch { /* silencioso */ }
+  private checkPackagePromo(): void {
+    const p = this.profile();
+    if (p && !p.has_active_package && !p.current_package_id) {
+      this.showPackagePromo.set(true);
+    }
   }
 
   dismissPackagePromo(): void {
