@@ -39,13 +39,21 @@
 
         <!-- Menú hamburguesa (derecha) -->
         <div class="relative mt-1 ml-auto">
-          <button
-            (click)="menuOpen.set(!menuOpen())"
-            class="w-12 h-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl shadow-sm hover:bg-gray-50 transition-colors">
-            <span class="material-symbols-outlined text-violet-600 text-2xl">
-              {{ menuOpen() ? 'close' : 'menu' }}
-            </span>
-          </button>
+          <div class="flex flex-col items-center gap-1">
+            <button
+              (click)="menuOpen.set(!menuOpen())"
+              class="w-12 h-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl shadow-sm hover:bg-gray-50 transition-colors">
+              <span class="material-symbols-outlined text-violet-600 text-2xl">
+                {{ menuOpen() ? 'close' : 'menu' }}
+              </span>
+            </button>
+            @if (profile()?.has_active_package || profile()?.current_package_id) {
+              <div class="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                <span class="material-symbols-outlined text-emerald-500" style="font-size:10px">verified</span>
+                <span class="text-[8px] text-emerald-600 font-black uppercase tracking-wider leading-none">Cuenta Activa</span>
+              </div>
+            }
+          </div>
 
           @if (menuOpen()) {
             <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
