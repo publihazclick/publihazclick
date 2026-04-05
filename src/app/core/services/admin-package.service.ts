@@ -781,4 +781,33 @@ export class AdminPackageService {
       return false;
     }
   }
+
+  /**
+   * Renovar paquete usando el saldo acumulado (real_balance).
+   * Transacción atómica en DB: descuenta saldo, crea user_package, actualiza perfil.
+   */
+  async renewWithBalance(packageId: string): Promise<{ success: boolean; error?: string; new_balance?: number; expires_at?: string; amount_charged?: number }> {
+    try {
+      const user = await this.supabase.auth.getUser();
+      const userId = user.data.user?.id;
+      if (!userId) return { success: false, error: 'No autenticado' };
+
+      const { data, error } = await this.supabase.rpc('renew_package_with_balance', {
+        p_user_id: userId,
+        p_package_id: packageId,
+      });
+
+      if (error) return { success: false, error: error.message };
+      if (!data?.success) return { success: false, error: data?.error ?? 'Error desconocido' };
+
+      return {
+        success: true,
+        new_balance: data.new_balance,
+        expires_at: data.expires_at,
+        amount_charged: data.amount_charged,
+      };
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : 'Error al renovar' };
+    }
+  }
 }

@@ -79,6 +79,57 @@
             </div>
           </div>
 
+          <!-- Renovar con saldo -->
+          <div class="mb-6 bg-white/5 border border-white/10 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary" style="font-size:18px">autorenew</span>
+                <span class="text-sm font-black text-white">Renovar paquete</span>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-slate-400">Tu saldo</p>
+                <p class="text-sm font-black text-primary">{{ formatPrice(profile()?.real_balance ?? 0, 'COP') }}</p>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">
+              Renueva tu paquete <span class="text-white font-bold">{{ currentPackage()!.name }}</span> por
+              <span class="text-primary font-bold">{{ formatPrice(getRenewalPriceCOP(), 'COP') }}</span>
+              usando tu saldo acumulado. Se sumarán {{ currentPackage()!.duration_days }} días a tu paquete actual.
+            </p>
+            @if (renewSuccess()) {
+              <div class="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg mb-2">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span>
+                <span class="text-emerald-400 text-xs font-bold">Paquete renovado exitosamente</span>
+              </div>
+            }
+            @if (renewError()) {
+              <div class="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg mb-2">
+                <span class="material-symbols-outlined text-red-400" style="font-size:16px">error</span>
+                <span class="text-red-400 text-xs font-bold">{{ renewError() }}</span>
+              </div>
+            }
+            <button
+              (click)="renewWithBalance()"
+              [disabled]="!canRenewWithBalance() || renewLoading()"
+              class="w-full py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+              [class]="canRenewWithBalance() && !renewLoading()
+                ? 'bg-gradient-to-r from-primary to-cyan-500 text-black hover:shadow-lg hover:shadow-primary/25 hover:scale-[1.01]'
+                : 'bg-white/5 text-slate-600 cursor-not-allowed'">
+              @if (renewLoading()) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:16px">progress_activity</span>
+                Procesando...
+              } @else {
+                <span class="material-symbols-outlined" style="font-size:16px">autorenew</span>
+                Renovar con saldo
+              }
+            </button>
+            @if (!canRenewWithBalance() && !renewLoading()) {
+              <p class="text-[10px] text-slate-600 text-center mt-2">
+                Saldo insuficiente. Necesitas {{ formatPrice(getRenewalPriceCOP(), 'COP') }} para renovar.
+              </p>
+            }
+          </div>
+
           <!-- 3 métricas base — fijas para todos los planes -->
           <div class="mb-4">
             <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Lo que incluye tu plan</p>

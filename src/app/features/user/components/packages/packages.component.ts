@@ -52,6 +52,45 @@ export class UserPackagesComponent implements OnInit {
   readonly payError = signal<string | null>(null);
   readonly verifyMessage = signal<string>('');
 
+  // ── Renovación con saldo ───────────────────────────────────────────────────
+  readonly renewLoading = signal(false);
+  readonly renewSuccess = signal(false);
+  readonly renewError = signal<string | null>(null);
+
+  async renewWithBalance(): Promise<void> {
+    const pkg = this.currentPackage();
+    if (!pkg) return;
+    this.renewLoading.set(true);
+    this.renewError.set(null);
+    this.renewSuccess.set(false);
+
+    const result = await this.packageService.renewWithBalance(pkg.id);
+
+    this.renewLoading.set(false);
+    if (result.success) {
+      this.renewSuccess.set(true);
+      // Recargar perfil para reflejar nuevo saldo y fecha
+      const profile = await this.profileService.getCurrentProfile();
+      this.profile.set(profile);
+      setTimeout(() => this.renewSuccess.set(false), 5000);
+    } else {
+      this.renewError.set(result.error ?? 'Error al renovar');
+      setTimeout(() => this.renewError.set(null), 5000);
+    }
+  }
+
+  getRenewalPriceCOP(): number {
+    const pkg = this.currentPackage();
+    if (!pkg) return 0;
+    return (pkg as any).price_cop ?? Math.round(pkg.price * 4200);
+  }
+
+  canRenewWithBalance(): boolean {
+    const price = this.getRenewalPriceCOP();
+    const balance = this.profile()?.real_balance ?? 0;
+    return balance >= price && price > 0;
+  }
+
   // Paquete activo: flujo de advertencia antes de comprar otro
   readonly pendingPaymentMethod = signal<'epayco' | 'nequi' | null>(null);
 
