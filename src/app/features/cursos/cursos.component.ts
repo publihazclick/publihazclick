@@ -40,7 +40,10 @@ import { ProfileService } from '../../core/services/profile.service';
                   </span>
                 </button>
                 @if (profile()?.has_active_package || profile()?.current_package_id) {
-                  <span class="text-[8px] text-emerald-500 font-black uppercase tracking-wider leading-none">Cuenta Activa</span>
+                  <div class="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                    <span class="material-symbols-outlined text-emerald-500" style="font-size:10px">verified</span>
+                    <span class="text-[8px] text-emerald-600 font-black uppercase tracking-wider leading-none">Cuenta Activa</span>
+                  </div>
                 }
               </div>
             </div>
