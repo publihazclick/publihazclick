@@ -205,13 +205,13 @@
 
     } @else {
 
-      <!-- Sin paquete activo -->
+      <!-- Sin cuenta activa -->
       <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 flex items-start gap-4">
         <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
           <span class="material-symbols-outlined text-amber-400" style="font-size:24px">info</span>
         </div>
         <div>
-          <p class="font-black text-white">Sin paquete activo</p>
+          <p class="font-black text-white">Sin cuenta activa</p>
           <p class="text-sm text-slate-400 mt-1 leading-relaxed">
             Adquiere un paquete para desbloquear bonificaciones, aumentar tus límites diarios y potenciar tus ganancias con referidos.
           </p>
@@ -449,7 +449,7 @@
                  : payStep() === 'approved'       ? '¡Paquete activado!'
                  : payStep() === 'epayco-loading' ? 'Preparando pago...'
                  : payStep() === 'epayco-opening' ? 'Redirigiendo a ePayco...'
-                 : payStep() === 'active-warning' ? 'Paquete activo'
+                 : payStep() === 'active-warning' ? 'Cuenta activa'
                  : payStep() === 'error'          ? 'Error en el pago'
                  : 'Pago' }}
             </p>
