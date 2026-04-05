@@ -23,7 +23,7 @@ serve(async (req) => {
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken  = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
+    const fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER') ?? Deno.env.get('TWILIO_FROM_NUMBER');
 
     if (!accountSid || !authToken || !fromNumber) {
       // Twilio not configured — return success so dev mode still works

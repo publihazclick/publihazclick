@@ -206,6 +206,17 @@ export class SmsService {
     return data as SmsCampaignRecipient[];
   }
 
+  // ── Enviar campaña vía Twilio ────────────────────────────────
+
+  async sendCampaignSms(campaignId: string): Promise<{ success: boolean; sent?: number; failed?: number; cost?: number; error?: string }> {
+    const { data, error } = await this.supabase.functions.invoke('send-sms-campaign', {
+      body: { campaign_id: campaignId },
+    });
+    if (error) return { success: false, error: error.message };
+    if (data?.error) return { success: false, error: data.error };
+    return { success: true, sent: data.sent, failed: data.failed, cost: data.cost };
+  }
+
   // ── Dashboard Stats ─────────────────────────────────────────
 
   async getDashboardStats(userId: string): Promise<SmsDashboardStats> {

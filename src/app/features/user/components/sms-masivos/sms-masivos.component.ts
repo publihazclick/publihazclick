@@ -410,6 +410,9 @@ export class SmsMasivosComponent implements OnInit {
       // Update status to sending
       await this.smsService.updateCampaign(campaign.id, { status: 'sending' });
 
+      // Enviar SMS reales vía Twilio
+      const sendResult = await this.smsService.sendCampaignSms(campaign.id);
+
       // Refresh data
       this.campaigns.set(await this.smsService.getCampaigns(profile.id));
       this.stats.set(await this.smsService.getDashboardStats(profile.id));
@@ -425,7 +428,11 @@ export class SmsMasivosComponent implements OnInit {
       this.splitParts = 2;
       this.splitSchedules = ['', ''];
 
-      this.showSuccess(`Campaña enviada a ${phones.length} destinatarios`);
+      if (sendResult.success) {
+        this.showSuccess(`Campaña enviada: ${sendResult.sent} entregados, ${sendResult.failed} fallidos`);
+      } else {
+        this.showSuccess(`Campaña creada pero hubo un error al enviar: ${sendResult.error}`);
+      }
       this.setTab('campaigns');
     } catch (err: any) {
       this.error.set(err.message ?? 'Error enviando campaña');
