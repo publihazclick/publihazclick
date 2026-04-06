@@ -206,7 +206,42 @@ export class SmsService {
     return data as SmsCampaignRecipient[];
   }
 
-  // ── Enviar campaña vía Twilio ────────────────────────────────
+  // ── Wallet ───────────────────────────────────────────────────
+
+  async getWalletBalance(userId: string): Promise<number> {
+    // Ensure wallet exists
+    await this.supabase.rpc('sms_ensure_wallet', { p_user_id: userId });
+    const { data, error } = await this.supabase
+      .from('sms_wallets')
+      .select('balance')
+      .eq('user_id', userId)
+      .single();
+    if (error) throw error;
+    return data?.balance ?? 0;
+  }
+
+  async getRechargeHistory(userId: string) {
+    const { data, error } = await this.supabase
+      .from('sms_wallet_payments')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async getAllSentMessages(userId: string) {
+    const { data, error } = await this.supabase
+      .from('sms_campaign_recipients')
+      .select('*, sms_campaigns!inner(user_id, name)')
+      .eq('sms_campaigns.user_id', userId)
+      .order('sent_at', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  // ── Enviar campaña vía Telnyx ────────────────────────────────
 
   async sendCampaignSms(campaignId: string): Promise<{ success: boolean; sent?: number; failed?: number; cost?: number; error?: string }> {
     const { data, error } = await this.supabase.functions.invoke('send-sms-campaign', {
