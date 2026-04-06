@@ -1,5 +1,5 @@
-// Supabase Edge Function: Send SMS via Twilio
-// Env vars required: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+// Supabase Edge Function: Send SMS via Telnyx
+// Env vars required: TELNYX_API_KEY, TELNYX_PHONE_NUMBER, TELNYX_MESSAGING_PROFILE_ID (optional)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
@@ -21,35 +21,37 @@ serve(async (req) => {
     const { phone, code } = await req.json();
     if (!phone || !code) return json({ error: 'phone and code required' }, 400);
 
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const authToken  = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER') ?? Deno.env.get('TWILIO_FROM_NUMBER');
+    const apiKey     = Deno.env.get('TELNYX_API_KEY');
+    const fromNumber = Deno.env.get('TELNYX_PHONE_NUMBER');
+    const profileId  = Deno.env.get('TELNYX_MESSAGING_PROFILE_ID');
 
-    if (!accountSid || !authToken || !fromNumber) {
-      // Twilio not configured — return success so dev mode still works
-      console.warn('Twilio not configured, SMS not sent');
+    if (!apiKey || !fromNumber) {
+      // Telnyx not configured — return success so dev mode still works
+      console.warn('Telnyx not configured, SMS not sent');
       return json({ sent: false, dev: true });
     }
 
-    const url  = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-    const body = new URLSearchParams({
-      To:   phone,
-      From: fromNumber,
-      Body: `Tu código de verificación Anda y Gana es: ${code}. Válido por 10 minutos.`,
-    });
+    const payload: Record<string, string> = {
+      from: fromNumber,
+      to: phone,
+      text: `Tu código de verificación Anda y Gana es: ${code}. Válido por 10 minutos.`,
+    };
+    if (profileId) {
+      payload.messaging_profile_id = profileId;
+    }
 
-    const resp = await fetch(url, {
+    const resp = await fetch('https://api.telnyx.com/v2/messages', {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      body: body.toString(),
+      body: JSON.stringify(payload),
     });
 
     if (!resp.ok) {
       const err = await resp.text();
-      console.error('Twilio error:', err);
+      console.error('Telnyx error:', err);
       return json({ sent: false, error: 'SMS provider error' }, 500);
     }
 
