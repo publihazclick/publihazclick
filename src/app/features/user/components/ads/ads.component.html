@@ -128,6 +128,9 @@
           <span class="material-symbols-outlined text-purple-400">star</span>
           <h3 class="text-lg font-black uppercase tracking-tight text-purple-400">Mega Anuncios</h3>
           <span class="px-2 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(2000) }}</span>
+          @if (adLimits()?.['mega']) {
+            <span class="px-2 py-0.5 bg-purple-500/10 text-purple-300 text-[10px] font-bold rounded-full">{{ adLimits()!['mega']['remaining'] }}/{{ adLimits()!['mega']['monthly_limit'] }} mes</span>
+          }
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           @for (ad of getAdsByType('mega'); track ad.id) {
@@ -185,6 +188,9 @@
           <span class="material-symbols-outlined text-cyan-400">looks_6</span>
           <h3 class="text-lg font-black uppercase tracking-tight text-cyan-400">Anuncios 600</h3>
           <span class="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(600) }}</span>
+          @if (adLimits()?.['standard_600']) {
+            <span class="px-2 py-0.5 bg-cyan-500/10 text-cyan-300 text-[10px] font-bold rounded-full">{{ adLimits()!['standard_600']['remaining'] }}/{{ adLimits()!['standard_600']['limit'] }} hoy</span>
+          }
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           @for (ad of getAdsByType('standard_600'); track ad.id) {
@@ -240,8 +246,11 @@
       <div>
         <div class="flex items-center gap-3 mb-4">
           <span class="material-symbols-outlined text-blue-400">looks_4</span>
-          <h3 class="text-lg font-black uppercase tracking-tight text-blue-400">Anuncios 400</h3>
+          <h3 class="text-lg font-black uppercase tracking-tight text-blue-400">Anuncios</h3>
           <span class="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(400) }}</span>
+          @if (adLimits()?.['standard_400']) {
+            <span class="px-2 py-0.5 bg-blue-500/10 text-blue-300 text-[10px] font-bold rounded-full">{{ adLimits()!['standard_400']['remaining'] }}/{{ adLimits()!['standard_400']['limit'] }} hoy</span>
+          }
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           @for (ad of getAdsByType('standard_400'); track ad.id) {
@@ -299,6 +308,9 @@
           <span class="material-symbols-outlined text-emerald-400">remove_circle</span>
           <h3 class="text-lg font-black uppercase tracking-tight text-emerald-400">Mini Anuncios</h3>
           <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-full">{{ getRewardDisplay(83.33) }}</span>
+          @if (adLimits()?.['mini']) {
+            <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 text-[10px] font-bold rounded-full">{{ adLimits()!['mini']['remaining'] }}/{{ adLimits()!['mini']['limit'] }} hoy</span>
+          }
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           @for (ad of getAdsByType('mini'); track ad.id) {

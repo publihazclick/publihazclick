@@ -53,6 +53,9 @@ export class UserAdsComponent implements OnInit, OnDestroy {
   readonly error = signal<string | null>(null);
   readonly successToast = signal<string | null>(null);
 
+  /** Límites de anuncios del usuario (desde BD) */
+  readonly adLimits = signal<Record<string, any> | null>(null);
+
   // Ad view modal
   readonly isModalOpen = signal(false);
   readonly selectedAd = signal<PtcAd | null>(null);
@@ -111,31 +114,77 @@ export class UserAdsComponent implements OnInit, OnDestroy {
     try {
       this.loading.set(true);
       this.error.set(null);
+
+      const { getSupabaseClient } = await import('../../../../core/supabase.client');
+      const supabase = getSupabaseClient();
+
+      // 1. Obtener límites del usuario desde la BD
+      const userId = this.profile()?.id;
+      if (userId) {
+        const { data: limits } = await supabase.rpc('get_user_ad_limits', { p_user_id: userId });
+        this.adLimits.set(limits);
+      }
+
+      // 2. Cargar todos los anuncios activos
       const result = await this.ptcService.getPtcTasks(
         { status: 'active', location: 'app' },
-        { page: 1, pageSize: 50 }
+        { page: 1, pageSize: 200 }
       );
-      this.ads.set(
-        (result.data || []).map(task => ({
-          id: task.id,
-          companyName: task.title,
-          description: task.description || '',
-          advertiserType: 'company' as const,
-          imageUrl: task.image_url || '',
-          videoUrl: task.youtube_url || '',
-          destinationUrl: task.url || '',
-          adType: task.ad_type || 'mini',
-          rewardCOP: this.adTypeRewards[task.ad_type || 'mini'] ?? task.reward ?? 0,
-          dailyLimit: task.daily_limit || 0,
-          totalClicks: task.total_clicks || 0,
-          status: task.status,
-        }))
-      );
-      // Sincronizar anuncios vistos HOY desde la BD (fuente de verdad).
-      // Garantiza que cambiar navegador, dispositivo o borrar caché no muestre
-      // anuncios ya cobrados como disponibles.
-      const { getSupabaseClient } = await import('../../../../core/supabase.client');
-      await this.userTracking.loadTodayClicksFromDb(getSupabaseClient());
+
+      const allAds = (result.data || []).map(task => ({
+        id: task.id,
+        companyName: task.title,
+        description: task.description || '',
+        advertiserType: 'company' as const,
+        imageUrl: task.image_url || '',
+        videoUrl: task.youtube_url || '',
+        destinationUrl: task.url || '',
+        adType: task.ad_type || 'mini',
+        rewardCOP: this.adTypeRewards[task.ad_type || 'mini'] ?? task.reward ?? 0,
+        dailyLimit: task.daily_limit || 0,
+        totalClicks: task.total_clicks || 0,
+        status: task.status,
+      }));
+
+      // 3. Filtrar: solo mostrar la cantidad exacta que le corresponde al usuario
+      const limits = this.adLimits();
+      if (limits && limits['has_package']) {
+        const filtered: PtcAdCard[] = [];
+        const byType: Record<string, PtcAdCard[]> = {};
+        for (const ad of allAds) {
+          if (!byType[ad.adType]) byType[ad.adType] = [];
+          byType[ad.adType].push(ad);
+        }
+
+        // Mezclar aleatoriamente cada tipo para variedad
+        for (const type of Object.keys(byType)) {
+          byType[type].sort(() => Math.random() - 0.5);
+        }
+
+        // standard_400 (Anuncios): remaining diario
+        const std400Remaining = limits['standard_400']?.remaining ?? 0;
+        filtered.push(...(byType['standard_400'] || []).slice(0, std400Remaining));
+
+        // mini: remaining diario
+        const miniRemaining = limits['mini']?.remaining ?? 0;
+        filtered.push(...(byType['mini'] || []).slice(0, miniRemaining));
+
+        // standard_600: remaining diario
+        const std600Remaining = limits['standard_600']?.remaining ?? 0;
+        filtered.push(...(byType['standard_600'] || []).slice(0, std600Remaining));
+
+        // mega: remaining mensual
+        const megaRemaining = limits['mega']?.remaining ?? 0;
+        filtered.push(...(byType['mega'] || []).slice(0, megaRemaining));
+
+        this.ads.set(filtered);
+      } else {
+        // Sin paquete activo: no mostrar nada
+        this.ads.set([]);
+      }
+
+      // 4. Sincronizar anuncios vistos hoy
+      await this.userTracking.loadTodayClicksFromDb(supabase);
     } catch {
       this.error.set('Error al cargar los anuncios');
     } finally {
@@ -245,7 +294,11 @@ export class UserAdsComponent implements OnInit, OnDestroy {
         const donation = data.donation ?? 0;
         this.profileService.patchBalance(reward, donation);
         this.profileService.getCurrentProfile().catch(() => {});
-        if (!this.destroyed) this.rewardStatus.set('credited');
+        if (!this.destroyed) {
+          this.rewardStatus.set('credited');
+          // Recargar anuncios para actualizar los que le quedan
+          this.loadAds();
+        }
       } else if (data && !data.success) {
         console.warn('RPC record_ptc_click rejected:', data.error);
         if (!this.destroyed) {
