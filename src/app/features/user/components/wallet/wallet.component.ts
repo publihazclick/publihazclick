@@ -7,7 +7,7 @@ import {
   computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
@@ -201,6 +201,7 @@ export class UserWalletComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   readonly currencyService = inject(CurrencyService);
   private readonly supabase = getSupabaseClient();
+  private readonly route = inject(ActivatedRoute);
 
   readonly profile = this.profileService.profile;
   readonly withdrawals = signal<WithdrawalRecord[]>([]);
@@ -371,6 +372,12 @@ export class UserWalletComponent implements OnInit {
     await this.profileService.getCurrentProfile().catch(() => {});
     await Promise.all([this.loadSavedMethods(), this.loadWithdrawals(), this.checkActiveAffiliate()]);
     this.loading.set(false);
+
+    // Si viene con ?action=retiro, abrir modal automáticamente
+    const action = this.route.snapshot.queryParamMap.get('action');
+    if (action === 'retiro') {
+      setTimeout(() => this.onRetiroCardClick(), 100);
+    }
   }
 
   private async loadSavedMethods(): Promise<void> {

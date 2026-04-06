@@ -358,15 +358,15 @@
       </div>
       }
 
-      <!-- ── Billetera ── -->
+      <!-- ── Billetera (click abre modal retiro) ── -->
       @if (!isAndaGanaRoute() && !isSmsRoute()) {
-        <a routerLink="/dashboard/wallet"
-           class="hidden sm:flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all">
+        <a routerLink="/dashboard/wallet" [queryParams]="{action: 'retiro'}"
+           class="hidden sm:flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all cursor-pointer">
           <div class="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
             <span class="material-symbols-outlined text-primary" style="font-size:15px">account_balance_wallet</span>
           </div>
           <div class="leading-tight">
-            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Billetera</p>
+            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Acumulado Retiro</p>
             <p class="text-xs text-primary font-black">
               {{ formatCOP(profile()?.real_balance ?? 0) }}
             </p>
@@ -503,15 +503,16 @@
             <!-- Stats -->
             <div class="px-4 py-3 border-b border-white/5 space-y-2">
               @if (!isAndaGanaRoute() && !isSmsRoute()) {
-                <div class="flex items-center justify-between">
+                <a routerLink="/dashboard/wallet" [queryParams]="{action: 'retiro'}" (click)="closeProfileMenu()"
+                   class="flex items-center justify-between hover:bg-primary/5 -mx-1 px-1 py-0.5 rounded-lg transition-colors cursor-pointer">
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
-                    <span class="text-xs text-slate-400">Billetera</span>
+                    <span class="text-xs text-slate-400">Acumulado Retiro</span>
                   </div>
                   <span class="text-xs font-black text-primary">
                     {{ formatCOP(profile()?.real_balance ?? 0) }}
                   </span>
-                </div>
+                </a>
               }
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
@@ -602,8 +603,8 @@
         }
       </div>
       @if (!isAndaGanaRoute() && !isSmsRoute()) {
-        <!-- Billetera -->
-        <a routerLink="/dashboard/wallet"
+        <!-- Acumulado Retiro -->
+        <a routerLink="/dashboard/wallet" [queryParams]="{action: 'retiro'}"
            class="flex-1 flex items-center justify-center gap-1.5 bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 transition-all">
           <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
           <span class="text-xs text-primary font-black truncate">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
