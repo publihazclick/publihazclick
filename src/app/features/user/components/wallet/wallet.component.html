@@ -26,6 +26,7 @@
       <!-- Acumulado Retiro (clickeable) -->
       <div (click)="onRetiroCardClick()"
         class="bg-gradient-to-br from-primary/15 to-cyan-500/5 border border-primary/20 rounded-2xl p-5 cursor-pointer hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all active:scale-[0.98] group">
+        <p class="text-sm font-black text-primary group-hover:text-white transition-colors mb-3">Haz click para retirar comisiones</p>
         <div class="flex items-center justify-between mb-3">
           <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
             <span class="material-symbols-outlined text-primary" style="font-size:20px">account_balance_wallet</span>
@@ -36,7 +37,6 @@
           {{ formatCOP(profile()?.real_balance ?? 0) }}
         </p>
         <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Acumulado Retiro</p>
-        <p class="text-[9px] text-primary/60 mt-0.5 group-hover:text-primary/80 transition-colors">Haz click para retirar comisiones</p>
       </div>
 
       <!-- Pendiente -->
