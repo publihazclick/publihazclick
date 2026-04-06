@@ -10,7 +10,7 @@
 
   <!-- Header -->
   <div>
-    <h2 class="text-xl font-black text-white">Mi Billetera</h2>
+    <h2 class="text-xl font-black text-white">Mi Billetera de Retiro</h2>
     <p class="text-xs text-slate-400">Tus saldos reales conectados a la plataforma</p>
   </div>
 
@@ -36,7 +36,7 @@
           {{ formatCOP(profile()?.real_balance ?? 0) }}
         </p>
         <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Acumulado Retiro</p>
-        <p class="text-[9px] text-primary/60 mt-0.5 group-hover:text-primary/80 transition-colors">Toca para {{ hasEnoughBalance && hasSavedMethod ? 'retirar' : 'ver detalles' }}</p>
+        <p class="text-[9px] text-primary/60 mt-0.5 group-hover:text-primary/80 transition-colors">Haz click para retirar comisiones</p>
       </div>
 
       <!-- Pendiente -->
