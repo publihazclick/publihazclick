@@ -543,29 +543,36 @@ export class SmsMasivosComponent implements OnInit {
       const { getSupabaseClient } = await import('../../../../core/supabase.client');
       const supabase = getSupabaseClient();
 
-      // Verificar sesión activa (refrescar token si es necesario)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        // Intentar refrescar la sesión
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError || !refreshData.session) {
-          throw new Error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
-        }
+      // Forzar validación de sesión contra el servidor
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        // Sesión inválida — redirigir a login
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+        return;
       }
 
       const response = await supabase.functions.invoke('create-sms-wallet-recharge', {
         body: { amount: cop, credit_amount: creditAmount },
       });
 
-      // supabase-js v2: en error HTTP, data puede tener el body o error tiene el mensaje
-      const data = response.data ?? response.error;
-
-      if (!data?.invoice) {
-        const errMsg = data?.error
-          ?? (typeof response.error === 'string' ? response.error : null)
-          ?? (response.error as any)?.message
-          ?? 'Error al preparar el pago';
+      if (response.error) {
+        // Extraer mensaje de error del response body o del error genérico
+        let errMsg = 'Error al preparar el pago';
+        if (response.data?.error) {
+          errMsg = response.data.error;
+        } else if (typeof response.error === 'object' && 'message' in response.error) {
+          errMsg = (response.error as any).message;
+          if (errMsg === 'Edge Function returned a non-2xx status code' && response.data) {
+            errMsg = response.data.error || errMsg;
+          }
+        }
         throw new Error(errMsg);
+      }
+
+      const data = response.data;
+      if (!data?.invoice) {
+        throw new Error(data?.error || 'Error al preparar el pago');
       }
 
       await this.loadEpaycoScript();
