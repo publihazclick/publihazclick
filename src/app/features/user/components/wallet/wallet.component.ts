@@ -207,7 +207,7 @@ export class UserWalletComponent implements OnInit {
   readonly loading = signal(true);
   readonly hasActiveAffiliate = signal(false);
 
-  readonly MIN_WITHDRAWAL = 80_000;
+  readonly MIN_WITHDRAWAL = 100_000;
 
   // ── Country-based method sections ──
   readonly userCountryCode = computed(() => this.profile()?.country_code ?? '+57');
@@ -267,6 +267,28 @@ export class UserWalletComponent implements OnInit {
   // ── Saved payment methods (Supabase) ──
   readonly savedMethods = signal<SavedPaymentMethod[]>([]);
   readonly savingMethod = signal(false);
+
+  // ── Acumulado retiro modal ──
+  readonly showRetiroInfoModal = signal(false);
+
+  /** Click en la card "Acumulado Retiro" */
+  onRetiroCardClick(): void {
+    if (this.hasEnoughBalance && this.hasSavedMethod && this.hasActiveAffiliate()) {
+      this.openWithdrawModal();
+    } else {
+      this.showRetiroInfoModal.set(true);
+    }
+  }
+
+  closeRetiroInfoModal(): void {
+    this.showRetiroInfoModal.set(false);
+  }
+
+  /** Desde el modal de info, ir a agregar método */
+  retiroInfoAddMethod(): void {
+    this.showRetiroInfoModal.set(false);
+    this.openMethodModal();
+  }
 
   // ── Add method modal state ──
   readonly showMethodModal = signal(false);

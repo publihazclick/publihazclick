@@ -23,18 +23,20 @@
     <!-- Balance cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-      <!-- Balance disponible -->
-      <div class="bg-gradient-to-br from-primary/15 to-cyan-500/5 border border-primary/20 rounded-2xl p-5">
+      <!-- Acumulado Retiro (clickeable) -->
+      <div (click)="onRetiroCardClick()"
+        class="bg-gradient-to-br from-primary/15 to-cyan-500/5 border border-primary/20 rounded-2xl p-5 cursor-pointer hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all active:scale-[0.98] group">
         <div class="flex items-center justify-between mb-3">
           <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
             <span class="material-symbols-outlined text-primary" style="font-size:20px">account_balance_wallet</span>
           </div>
-          <span class="text-[10px] font-black text-primary uppercase tracking-widest px-2 py-0.5 bg-primary/10 rounded-full border border-primary/20">Real</span>
+          <span class="material-symbols-outlined text-primary/50 group-hover:text-primary transition-colors" style="font-size:18px">arrow_forward</span>
         </div>
         <p class="text-2xl font-black text-white leading-tight">
           {{ formatCOP(profile()?.real_balance ?? 0) }}
         </p>
-        <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Saldo Disponible</p>
+        <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Acumulado Retiro</p>
+        <p class="text-[9px] text-primary/60 mt-0.5 group-hover:text-primary/80 transition-colors">Toca para {{ hasEnoughBalance && hasSavedMethod ? 'retirar' : 'ver detalles' }}</p>
       </div>
 
       <!-- Pendiente -->
@@ -663,6 +665,166 @@
         </div>
       }
 
+    </div>
+  </div>
+}
+
+<!-- ═══════════ MODAL ACUMULADO RETIRO (info + setup) ═══════════ -->
+@if (showRetiroInfoModal()) {
+  <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeRetiroInfoModal()"></div>
+
+    <div class="relative w-full max-w-md bg-zinc-900 rounded-t-2xl sm:rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+         (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-primary/20 to-cyan-500/10 px-6 py-5 border-b border-white/5">
+        <button (click)="closeRetiroInfoModal()"
+          class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+          <span class="material-symbols-outlined text-white" style="font-size:18px">close</span>
+        </button>
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
+          </div>
+          <div>
+            <p class="text-[10px] text-primary/70 font-bold uppercase tracking-wider">Acumulado Retiro</p>
+            <p class="text-2xl font-black text-white">{{ formatCOP(profile()?.real_balance ?? 0) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6 space-y-5">
+
+        <!-- Mensaje motivacional -->
+        @if (!hasEnoughBalance) {
+          <div class="bg-primary/5 border border-primary/15 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+              <span class="material-symbols-outlined text-primary flex-shrink-0 mt-0.5" style="font-size:20px">info</span>
+              <p class="text-[13px] text-slate-300 leading-relaxed">
+                Configura el método de pago a donde quieres recibir el dinero de tus comisiones. En PubliHazClick es muy fácil retirar tus comisiones, puedes retirar desde
+                <strong class="text-primary">$100.000 COP</strong> en adelante si tienes por lo menos
+                <strong class="text-primary">1 invitado activo</strong>.
+              </p>
+            </div>
+          </div>
+        }
+
+        <!-- Checklist de requisitos -->
+        <div class="space-y-2">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Requisitos para retirar</p>
+
+          <!-- Req 1: Saldo -->
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl"
+               [class]="hasEnoughBalance ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+            <span class="material-symbols-outlined text-base flex-shrink-0"
+                  [class]="hasEnoughBalance ? 'text-emerald-400' : 'text-slate-600'">
+              {{ hasEnoughBalance ? 'check_circle' : 'radio_button_unchecked' }}
+            </span>
+            <div class="flex-1">
+              <p class="text-xs font-bold" [class]="hasEnoughBalance ? 'text-emerald-400' : 'text-slate-400'">
+                Saldo mínimo $100.000 COP
+              </p>
+              <p class="text-[10px] text-slate-500">
+                Tienes {{ formatCOP(profile()?.real_balance ?? 0) }}
+                @if (!hasEnoughBalance) {
+                  — te faltan {{ formatCOP(MIN_WITHDRAWAL - (profile()?.real_balance ?? 0)) }}
+                }
+              </p>
+            </div>
+          </div>
+
+          <!-- Req 2: Invitado activo -->
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl"
+               [class]="hasActiveAffiliate() ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+            <span class="material-symbols-outlined text-base flex-shrink-0"
+                  [class]="hasActiveAffiliate() ? 'text-emerald-400' : 'text-slate-600'">
+              {{ hasActiveAffiliate() ? 'check_circle' : 'radio_button_unchecked' }}
+            </span>
+            <div>
+              <p class="text-xs font-bold" [class]="hasActiveAffiliate() ? 'text-emerald-400' : 'text-slate-400'">
+                Al menos 1 invitado activo
+              </p>
+              <p class="text-[10px] text-slate-500">
+                {{ hasActiveAffiliate() ? 'Tienes invitados activos' : 'Invita a alguien que active su paquete' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Req 3: Método de pago -->
+          <div class="flex items-center gap-3 px-4 py-3 rounded-xl"
+               [class]="hasSavedMethod ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+            <span class="material-symbols-outlined text-base flex-shrink-0"
+                  [class]="hasSavedMethod ? 'text-emerald-400' : 'text-slate-600'">
+              {{ hasSavedMethod ? 'check_circle' : 'radio_button_unchecked' }}
+            </span>
+            <div class="flex-1">
+              <p class="text-xs font-bold" [class]="hasSavedMethod ? 'text-emerald-400' : 'text-slate-400'">
+                Método de pago configurado
+              </p>
+              <p class="text-[10px] text-slate-500">
+                @if (hasSavedMethod) {
+                  {{ savedMethods()[0].label }}: {{ formatMethodData(savedMethods()[0].data) }}
+                } @else {
+                  Agrega cómo quieres recibir tu dinero
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Métodos de pago disponibles (si no tiene uno guardado) -->
+        @if (!hasSavedMethod) {
+          <div class="space-y-3">
+            <p class="text-xs font-bold text-white">Selecciona tu método de pago preferido:</p>
+
+            @for (section of methodSections(); track section.id) {
+              <div class="space-y-2">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  @if (section.flag) {
+                    <span class="text-sm">{{ section.flag }}</span>
+                  }
+                  {{ section.name }}
+                </p>
+                <div class="grid grid-cols-2 gap-2">
+                  @for (method of section.methods; track method.id) {
+                    <button
+                      (click)="closeRetiroInfoModal(); selectMethodDef(method); showMethodModal.set(true); methodModalStep.set('fields')"
+                      class="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/5 hover:border-primary/20 transition-all text-left group">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors" style="font-size:18px">{{ method.icon }}</span>
+                        <span class="text-xs font-bold text-white">{{ method.name }}</span>
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Botón de acción -->
+        @if (hasSavedMethod && hasEnoughBalance && hasActiveAffiliate()) {
+          <button
+            (click)="closeRetiroInfoModal(); openWithdrawModal()"
+            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 text-white transition-all">
+            <span class="material-symbols-outlined" style="font-size:18px">download</span>
+            Retirar fondos
+          </button>
+        } @else if (hasSavedMethod && !hasEnoughBalance) {
+          <div class="text-center py-2">
+            <p class="text-xs text-slate-500">Sigue viendo anuncios e invitando personas para alcanzar el mínimo de retiro</p>
+          </div>
+        } @else if (!hasSavedMethod) {
+          <button
+            (click)="retiroInfoAddMethod()"
+            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-primary hover:bg-primary/90 text-black transition-all">
+            <span class="material-symbols-outlined" style="font-size:18px">add_card</span>
+            Configurar método de pago
+          </button>
+        }
+
+      </div>
     </div>
   </div>
 }
