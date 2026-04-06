@@ -2,12 +2,19 @@
 -- Migration 072: Fix mega anuncios (mensual) y mini referral (1 por referido)
 -- =============================================================================
 
--- 1. Mini referral: ahora es exactamente 1 slot por referido activo (no escalonado)
+-- 1. Mini referral: slots por referido según categoría
+--    Jade (1-2): 1, Perla (3-5): 2, Zafiro (6-9): 3, Ruby (10-19): 4, Esmeralda (20+): 5
 CREATE OR REPLACE FUNCTION get_mini_referral_slots_per_affiliate(p_affiliate_count INT)
 RETURNS INT
 LANGUAGE plpgsql IMMUTABLE AS $$
 BEGIN
-  RETURN p_affiliate_count;
+  IF    p_affiliate_count BETWEEN 1  AND 2  THEN RETURN 1;  -- JADE
+  ELSIF p_affiliate_count BETWEEN 3  AND 5  THEN RETURN 2;  -- PERLA
+  ELSIF p_affiliate_count BETWEEN 6  AND 9  THEN RETURN 3;  -- ZAFIRO
+  ELSIF p_affiliate_count BETWEEN 10 AND 19 THEN RETURN 4;  -- RUBY
+  ELSIF p_affiliate_count >= 20             THEN RETURN 5;  -- ESMERALDA+
+  ELSE RETURN 0;
+  END IF;
 END;
 $$;
 
