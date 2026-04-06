@@ -373,11 +373,12 @@ export class UserWalletComponent implements OnInit {
     await Promise.all([this.loadSavedMethods(), this.loadWithdrawals(), this.checkActiveAffiliate()]);
     this.loading.set(false);
 
-    // Si viene con ?action=retiro, abrir modal automáticamente
-    const action = this.route.snapshot.queryParamMap.get('action');
-    if (action === 'retiro') {
-      setTimeout(() => this.onRetiroCardClick(), 100);
-    }
+    // Escuchar ?action=retiro (funciona al navegar y al recargar)
+    this.route.queryParamMap.subscribe(params => {
+      if (params.get('action') === 'retiro') {
+        setTimeout(() => this.onRetiroCardClick(), 100);
+      }
+    });
   }
 
   private async loadSavedMethods(): Promise<void> {
