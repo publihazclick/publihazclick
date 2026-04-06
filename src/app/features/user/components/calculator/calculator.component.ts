@@ -26,6 +26,13 @@ interface PlatformTier {
   commissionPerStd400?: number;
   miniSlotsPerInvitee?: number;
   requiredPackage?: string;
+  /** Desglose de clicks propios para tiers 20+ refs */
+  ownAdsPerDay?: number;
+  ownAdPriceCOP?: number;
+  ownAdRetiroCOP?: number;
+  ownAdDonacionCOP?: number;
+  ownMiniPerDay?: number;
+  ownMiniPriceCOP?: number;
 }
 
 @Component({
@@ -117,6 +124,12 @@ export class CalculatorComponent implements OnInit {
       commissionPerStd400: 400,
       miniSlotsPerInvitee: 5,
       requiredPackage: 'enterprise',
+      ownAdsPerDay: 5,
+      ownAdPriceCOP: 1_130,
+      ownAdRetiroCOP: 1_120,
+      ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4,
+      ownMiniPriceCOP: 100,
     },
     {
       name: 'DIAMANTE',
@@ -133,6 +146,12 @@ export class CalculatorComponent implements OnInit {
       commissionPerStd400: 400,
       miniSlotsPerInvitee: 5,
       requiredPackage: 'enterprise',
+      ownAdsPerDay: 5,
+      ownAdPriceCOP: 1_130,
+      ownAdRetiroCOP: 1_120,
+      ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4,
+      ownMiniPriceCOP: 100,
     },
     {
       name: 'DIAMANTE AZUL',
@@ -149,6 +168,12 @@ export class CalculatorComponent implements OnInit {
       commissionPerStd400: 400,
       miniSlotsPerInvitee: 5,
       requiredPackage: 'enterprise',
+      ownAdsPerDay: 5,
+      ownAdPriceCOP: 1_130,
+      ownAdRetiroCOP: 1_120,
+      ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4,
+      ownMiniPriceCOP: 100,
     },
     {
       name: 'DIAMANTE NEGRO',
@@ -165,6 +190,12 @@ export class CalculatorComponent implements OnInit {
       commissionPerStd400: 400,
       miniSlotsPerInvitee: 5,
       requiredPackage: 'enterprise',
+      ownAdsPerDay: 5,
+      ownAdPriceCOP: 1_130,
+      ownAdRetiroCOP: 1_120,
+      ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4,
+      ownMiniPriceCOP: 100,
     },
     {
       name: 'DIAMANTE CORONA',
@@ -181,6 +212,12 @@ export class CalculatorComponent implements OnInit {
       commissionPerStd400: 400,
       miniSlotsPerInvitee: 5,
       requiredPackage: 'enterprise',
+      ownAdsPerDay: 5,
+      ownAdPriceCOP: 1_130,
+      ownAdRetiroCOP: 1_120,
+      ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4,
+      ownMiniPriceCOP: 100,
     },
   ];
 
@@ -195,6 +232,20 @@ export class CalculatorComponent implements OnInit {
   });
 
   readonly ownClicksEarningsCOP = computed(() => this.currentTier().ownClicksCOP);
+
+  readonly isSuperiorTier = computed(() => this.currentTier().category === 'superior');
+
+  readonly ownRetiroCOP = computed(() => {
+    const tier = this.currentTier();
+    if (!tier.ownAdRetiroCOP) return tier.ownClicksCOP;
+    return tier.ownAdRetiroCOP * tier.ownAdsPerDay! * 30 + tier.ownMiniPriceCOP! * tier.ownMiniPerDay! * 30;
+  });
+
+  readonly ownDonacionCOP = computed(() => {
+    const tier = this.currentTier();
+    if (!tier.ownAdDonacionCOP) return 0;
+    return tier.ownAdDonacionCOP * tier.ownAdsPerDay! * 30;
+  });
 
   readonly std400CommissionCOP = computed(() => {
     const tier = this.currentTier();

@@ -78,9 +78,22 @@
               <div class="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span class="material-symbols-outlined text-primary text-sm">person</span>
               </div>
-              <span class="text-[11px] text-slate-400">Tus propios clicks</span>
+              <div>
+                <span class="text-[11px] text-slate-400 block">Tus propios clicks</span>
+                @if (isSuperiorTier()) {
+                  <span class="text-[9px] text-slate-600">5 Anuncios × $1.120 retiro + 4 Mini × $100 × 30 días</span>
+                } @else {
+                  <span class="text-[9px] text-slate-600">5 std_400 × $400 + 4 mini × $83 × 30 días</span>
+                }
+              </div>
             </div>
-            <span class="text-sm font-black text-white">{{ currencyService.formatFromCOP(ownClicksEarningsCOP()) }}</span>
+            <div class="text-right">
+              <span class="text-sm font-black text-white">{{ currencyService.formatFromCOP(ownClicksEarningsCOP()) }}</span>
+              @if (isSuperiorTier()) {
+                <span class="text-[9px] text-emerald-400 block">retiro: {{ currencyService.formatFromCOP(ownRetiroCOP()) }}</span>
+                <span class="text-[9px] text-amber-400 block">donación: {{ currencyService.formatFromCOP(ownDonacionCOP()) }}</span>
+              }
+            </div>
           </div>
 
           @if (currentTier().commissionPerStd400) {
@@ -214,8 +227,8 @@
       <div class="flex items-start gap-3 bg-primary/5 border border-primary/10 rounded-xl p-4">
         <span class="material-symbols-outlined text-primary text-lg flex-shrink-0 mt-0.5">info</span>
         <div class="text-[11px] text-slate-400 leading-relaxed space-y-1">
-          <p>Ganancias propias: <strong class="text-white">$70.000 COP/mes</strong> (Básicas) o <strong class="text-white">$180.000 COP/mes</strong> (Superiores — requiere paquete Avanzado+).</p>
-          <p>Cada invitado activo genera: <strong class="text-white">comisión std_400 + mini ads por invitar + bonus de activación</strong>. Todo escala con cada invitado que sumas.</p>
+          <p>Ganancias propias: <strong class="text-white">$70.000 COP/mes</strong> (Jade–Ruby) o <strong class="text-white">$180.000 COP/mes</strong> (Esmeralda+ con Anuncios a $1.130: $1.120 retiro + $10 donación).</p>
+          <p>Cada invitado activo genera: <strong class="text-white">comisión por anuncio + mini ads por invitar + bonus de activación</strong>. Todo escala con cada invitado que sumas.</p>
           <p>Haz clic en cualquier nivel para simular esa cantidad de invitados.</p>
         </div>
       </div>
