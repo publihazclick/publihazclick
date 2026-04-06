@@ -235,33 +235,67 @@ export class CalculatorComponent implements OnInit {
 
   readonly isSuperiorTier = computed(() => this.currentTier().category === 'superior');
 
-  readonly ownRetiroCOP = computed(() => {
+  // ── Desglose diario de clicks propios ──
+
+  readonly ownAdsDaily = computed(() => {
     const tier = this.currentTier();
-    if (!tier.ownAdRetiroCOP) return tier.ownClicksCOP;
-    return tier.ownAdRetiroCOP * tier.ownAdsPerDay! * 30 + tier.ownMiniPriceCOP! * tier.ownMiniPerDay! * 30;
+    if (tier.ownAdPriceCOP) return tier.ownAdsPerDay! * tier.ownAdPriceCOP;
+    return 5 * 400;
   });
 
-  readonly ownDonacionCOP = computed(() => {
+  readonly ownAdsDailyRetiro = computed(() => {
     const tier = this.currentTier();
-    if (!tier.ownAdDonacionCOP) return 0;
-    return tier.ownAdDonacionCOP * tier.ownAdsPerDay! * 30;
+    if (tier.ownAdRetiroCOP) return tier.ownAdsPerDay! * tier.ownAdRetiroCOP;
+    return 5 * 400;
   });
 
-  readonly std400CommissionCOP = computed(() => {
+  readonly ownAdsDailyDonacion = computed(() => {
+    const tier = this.currentTier();
+    if (tier.ownAdDonacionCOP) return tier.ownAdsPerDay! * tier.ownAdDonacionCOP;
+    return 0;
+  });
+
+  readonly ownAdsMonthlyRetiro = computed(() => this.ownAdsDailyRetiro() * 30);
+  readonly ownAdsMonthlyDonacion = computed(() => this.ownAdsDailyDonacion() * 30);
+
+  readonly ownMiniDaily = computed(() => {
+    const tier = this.currentTier();
+    if (tier.ownMiniPriceCOP) return tier.ownMiniPerDay! * tier.ownMiniPriceCOP;
+    return 4 * 83.33;
+  });
+
+  readonly ownMiniMonthly = computed(() => Math.round(this.ownMiniDaily() * 30));
+
+  readonly ownRetiroCOP = computed(() => this.ownAdsMonthlyRetiro() + this.ownMiniMonthly());
+  readonly ownDonacionCOP = computed(() => this.ownAdsMonthlyDonacion());
+
+  // ── Desglose de ganancias por referidos ──
+
+  readonly std400CommissionDaily = computed(() => {
     const tier = this.currentTier();
     if (!tier.commissionPerStd400) return 0;
-    return this.simulatedRefs() * 5 * tier.commissionPerStd400 * 30;
+    return this.simulatedRefs() * 5 * tier.commissionPerStd400;
   });
 
-  readonly miniReferralCOP = computed(() => {
+  readonly std400CommissionCOP = computed(() => this.std400CommissionDaily() * 30);
+
+  readonly miniReferralDaily = computed(() => {
     const tier = this.currentTier();
     if (!tier.miniSlotsPerInvitee) return 0;
-    return this.simulatedRefs() * tier.miniSlotsPerInvitee * 100 * 30;
+    return this.simulatedRefs() * tier.miniSlotsPerInvitee * 100;
+  });
+
+  readonly miniReferralCOP = computed(() => this.miniReferralDaily() * 30);
+
+  readonly totalMiniSlotsDaily = computed(() => {
+    const tier = this.currentTier();
+    if (!tier.miniSlotsPerInvitee) return 0;
+    return this.simulatedRefs() * tier.miniSlotsPerInvitee;
   });
 
   readonly activationBonusCOP = computed(() => {
     const tier = this.currentTier();
-    if (!tier.commissionPerStd400 && tier.category !== 'basic') return 0;
+    if (!tier.commissionPerStd400) return 0;
     return this.simulatedRefs() * 10_000;
   });
 
