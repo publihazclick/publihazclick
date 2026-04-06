@@ -543,9 +543,15 @@ export class SmsMasivosComponent implements OnInit {
       const { getSupabaseClient } = await import('../../../../core/supabase.client');
       const supabase = getSupabaseClient();
 
-      // Verificar sesión activa
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No autenticado. Inicia sesión de nuevo.');
+      // Verificar sesión activa (refrescar token si es necesario)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        // Intentar refrescar la sesión
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session) {
+          throw new Error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+        }
+      }
 
       const response = await supabase.functions.invoke('create-sms-wallet-recharge', {
         body: { amount: cop, credit_amount: creditAmount },
