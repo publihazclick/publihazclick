@@ -392,10 +392,58 @@
       <div class="h-8 w-px bg-white/10 hidden sm:block flex-shrink-0"></div>
 
       <!-- Notifications -->
-      <button class="relative p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all flex-shrink-0">
-        <span class="material-symbols-outlined" style="font-size:20px">notifications</span>
-        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-accent border-2 border-card-dark rounded-full"></span>
-      </button>
+      <div class="relative flex-shrink-0">
+        <button (click)="toggleNotifPanel()" class="relative p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+          <span class="material-symbols-outlined" style="font-size:20px">notifications</span>
+          @if (unreadCount() > 0) {
+            <span class="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-accent text-[10px] font-bold text-white rounded-full flex items-center justify-center border-2 border-card-dark">{{ unreadCount() }}</span>
+          }
+        </button>
+
+        @if (showNotifPanel()) {
+          <div class="fixed inset-0 z-40" (click)="showNotifPanel.set(false)"></div>
+          <div class="absolute right-0 top-12 w-80 sm:w-96 bg-card-dark border border-white/10 rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden" (click)="$event.stopPropagation()">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <h4 class="text-sm font-bold text-white">Notificaciones</h4>
+              @if (unreadCount() > 0) {
+                <button (click)="markAllRead()" class="text-[11px] text-primary hover:text-white transition-colors font-bold">Marcar todas leídas</button>
+              }
+            </div>
+
+            <!-- Lista -->
+            <div class="max-h-80 overflow-y-auto">
+              @if (notifications().length === 0) {
+                <div class="p-6 text-center">
+                  <span class="material-symbols-outlined text-slate-600" style="font-size:32px">notifications_off</span>
+                  <p class="text-slate-500 text-sm mt-2">Sin notificaciones</p>
+                </div>
+              } @else {
+                @for (notif of notifications(); track notif.id) {
+                  <div
+                    (click)="markAsRead(notif.id)"
+                    class="px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+                    [class.bg-white/[0.02]]="!notif.is_read">
+                    <div class="flex items-start gap-3">
+                      <span class="material-symbols-outlined mt-0.5" [class]="getNotifColor(notif.type)" style="font-size:18px">{{ getNotifIcon(notif.type) }}</span>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <p class="text-xs font-bold text-white truncate">{{ notif.title }}</p>
+                          @if (!notif.is_read) {
+                            <span class="w-2 h-2 rounded-full bg-primary flex-shrink-0"></span>
+                          }
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1 line-clamp-3">{{ notif.message }}</p>
+                        <p class="text-[10px] text-slate-600 mt-1">{{ notif.created_at | date:'dd/MM/yyyy HH:mm' }}</p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
 
       <!-- Avatar + Profile dropdown -->
       <div class="relative flex-shrink-0">

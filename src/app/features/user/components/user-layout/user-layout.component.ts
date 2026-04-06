@@ -1,5 +1,5 @@
 import { Component, signal, ViewChild, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser, DatePipe } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -13,7 +13,7 @@ import { BannerSliderComponent } from '../../../../components/banner-slider/bann
 @Component({
   selector: 'app-user-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, UserReferralModalComponent, BannerSliderComponent],
+  imports: [CommonModule, RouterModule, DatePipe, UserReferralModalComponent, BannerSliderComponent],
   templateUrl: './user-layout.component.html',
   styleUrl: './user-layout.component.scss',
 })
@@ -50,6 +50,11 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
   dailyProgress = 65;
   dailyGoal = 10;
   dailyClicks = 7;
+
+  // Notificaciones
+  readonly notifications = signal<any[]>([]);
+  readonly unreadCount = signal(0);
+  readonly showNotifPanel = signal(false);
 
   // Toast de activación de cuenta
   readonly upgradeToast = signal(false);
@@ -93,6 +98,8 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
         this.tradingPkgSvc.getMyActivePackages().then(pkgs => this.activeTrading.set(pkgs)).catch(() => {});
         // Mostrar promo solo si nunca compró paquete
         this.checkPackagePromo();
+        // Cargar notificaciones
+        this.loadNotifications();
       }
     });
   }
@@ -224,6 +231,72 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
 
   isSmsRoute(): boolean {
     return this.router.url.includes('/sms-masivos');
+  }
+
+  // ── Notificaciones ──────────────────────────────────────────
+
+  toggleNotifPanel(): void {
+    this.showNotifPanel.update(v => !v);
+    if (this.showNotifPanel()) {
+      this.profileMenuOpen.set(false);
+      this.currencyMenuOpen.set(false);
+    }
+  }
+
+  async loadNotifications(): Promise<void> {
+    try {
+      const { getSupabaseClient } = await import('../../../../core/supabase.client');
+      const supabase = getSupabaseClient();
+      const userId = this.profile()?.id;
+      if (!userId) return;
+
+      const { data } = await supabase
+        .from('user_notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      this.notifications.set(data ?? []);
+      this.unreadCount.set((data ?? []).filter((n: any) => !n.is_read).length);
+    } catch {}
+  }
+
+  async markAsRead(notifId: string): Promise<void> {
+    try {
+      const { getSupabaseClient } = await import('../../../../core/supabase.client');
+      await getSupabaseClient()
+        .from('user_notifications')
+        .update({ is_read: true })
+        .eq('id', notifId);
+      this.notifications.update(list =>
+        list.map(n => n.id === notifId ? { ...n, is_read: true } : n)
+      );
+      this.unreadCount.update(c => Math.max(0, c - 1));
+    } catch {}
+  }
+
+  async markAllRead(): Promise<void> {
+    try {
+      const userId = this.profile()?.id;
+      if (!userId) return;
+      const { getSupabaseClient } = await import('../../../../core/supabase.client');
+      await getSupabaseClient()
+        .from('user_notifications')
+        .update({ is_read: true })
+        .eq('user_id', userId)
+        .eq('is_read', false);
+      this.notifications.update(list => list.map(n => ({ ...n, is_read: true })));
+      this.unreadCount.set(0);
+    } catch {}
+  }
+
+  getNotifIcon(type: string): string {
+    return type === 'warning' ? 'warning' : type === 'success' ? 'check_circle' : 'info';
+  }
+
+  getNotifColor(type: string): string {
+    return type === 'warning' ? 'text-amber-400' : type === 'success' ? 'text-emerald-400' : 'text-blue-400';
   }
 
   getTierInfo(referrals: number, hasActivePackage: boolean): { name: string; color: string } | null {
