@@ -586,7 +586,7 @@ export class SmsMasivosComponent implements OnInit {
         external:      'true',
         confirmation:  data.confirmation,
         response:      `${window.location.origin}/dashboard/sms-masivos?epayco=result`,
-        methodConfirmation: 'GET',
+        methodConfirmation: 'POST',
         email_billing: data.email_billing,
         name_billing:  data.name_billing,
         extra1:        data.extra1,
