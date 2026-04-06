@@ -543,36 +543,15 @@ export class SmsMasivosComponent implements OnInit {
       const { getSupabaseClient } = await import('../../../../core/supabase.client');
       const supabase = getSupabaseClient();
 
-      // Forzar validación de sesión contra el servidor
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        // Sesión inválida — redirigir a login
-        await supabase.auth.signOut();
-        window.location.href = '/login';
-        return;
-      }
-
+      // Llamar directo a la edge function sin verificaciones intermedias
       const response = await supabase.functions.invoke('create-sms-wallet-recharge', {
         body: { amount: cop, credit_amount: creditAmount },
       });
 
-      if (response.error) {
-        // Extraer mensaje de error del response body o del error genérico
-        let errMsg = 'Error al preparar el pago';
-        if (response.data?.error) {
-          errMsg = response.data.error;
-        } else if (typeof response.error === 'object' && 'message' in response.error) {
-          errMsg = (response.error as any).message;
-          if (errMsg === 'Edge Function returned a non-2xx status code' && response.data) {
-            errMsg = response.data.error || errMsg;
-          }
-        }
-        throw new Error(errMsg);
-      }
-
       const data = response.data;
       if (!data?.invoice) {
-        throw new Error(data?.error || 'Error al preparar el pago');
+        const errMsg = data?.error || 'Error al preparar el pago. Intenta cerrar sesión y volver a entrar.';
+        throw new Error(errMsg);
       }
 
       await this.loadEpaycoScript();
