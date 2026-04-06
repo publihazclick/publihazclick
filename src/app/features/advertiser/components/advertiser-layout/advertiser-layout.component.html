@@ -209,7 +209,7 @@
                  class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
                  [class.justify-center]="sidebarCollapsed()">
                 <span class="material-symbols-outlined">account_balance_wallet</span>
-                @if (!sidebarCollapsed()) { <span>Billetera</span> }
+                @if (!sidebarCollapsed()) { <span>Retiro</span> }
               </a>
             </li>
           }
@@ -395,7 +395,7 @@
       </div>
       }
 
-      <!-- Billetera real -->
+      <!-- Acumulado Retiro -->
       @if (!hideWalletAndCurrency()) {
         <a routerLink="/advertiser/wallet"
            class="hidden sm:flex items-center gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 hover:border-accent/40 rounded-xl px-3 py-2 transition-all">
@@ -403,7 +403,7 @@
             <span class="material-symbols-outlined text-accent" style="font-size:15px">account_balance_wallet</span>
           </div>
           <div class="leading-tight">
-            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Billetera</p>
+            <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Retiro</p>
             <p class="text-xs text-accent font-black">{{ formatCOP(profile()?.real_balance ?? 0) }}</p>
           </div>
         </a>
@@ -483,7 +483,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-accent" style="font-size:14px">account_balance_wallet</span>
-                    <span class="text-xs text-slate-400">Billetera</span>
+                    <span class="text-xs text-slate-400">Retiro</span>
                   </div>
                   <span class="text-xs font-black text-accent">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
                 </div>
@@ -571,17 +571,17 @@
         }
       </div>
       @if (!hideWalletAndCurrency()) {
-        <!-- Billetera -->
+        <!-- Retiro -->
         <a routerLink="/advertiser/wallet"
-           class="flex-1 flex items-center justify-center gap-1.5 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 transition-all">
-          <span class="material-symbols-outlined text-accent" style="font-size:14px">account_balance_wallet</span>
-          <span class="text-xs text-accent font-black truncate">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
+           class="flex-1 flex flex-col items-center gap-0.5 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 transition-all">
+          <span class="text-[8px] text-accent/70 font-bold uppercase tracking-wider">Retiro</span>
+          <span class="text-[11px] text-accent font-black truncate">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
         </a>
         <!-- Donaciones -->
         <a routerLink="/advertiser/wallet"
-           class="flex-1 flex items-center justify-center gap-1.5 bg-violet-500/10 border border-violet-500/20 rounded-lg px-2 py-1.5 transition-all">
-          <span class="material-symbols-outlined text-violet-400" style="font-size:14px">volunteer_activism</span>
-          <span class="text-xs text-violet-400 font-black truncate">{{ formatCOP(profile()?.total_donated ?? 0) }}</span>
+           class="flex-1 flex flex-col items-center gap-0.5 bg-violet-500/10 border border-violet-500/20 rounded-lg px-2 py-1.5 transition-all">
+          <span class="text-[8px] text-violet-400/70 font-bold uppercase tracking-wider">Donaciones</span>
+          <span class="text-[11px] text-violet-400 font-black truncate">{{ formatCOP(profile()?.total_donated ?? 0) }}</span>
         </a>
       }
     </div>
