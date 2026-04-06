@@ -1,6 +1,7 @@
-import { Component, signal, ViewChild, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
+import { Component, signal, computed, ViewChild, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser, DatePipe } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { WalletStateService } from '../../../../core/services/wallet-state.service';
@@ -9,11 +10,40 @@ import { TradingPackageService, UserTradingPackage } from '../../../../core/serv
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { UserReferralModalComponent } from '../user-referral-modal/user-referral-modal.component';
 import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
+import { getSupabaseClient } from '../../../../core/supabase.client';
+
+interface LayoutPaymentMethod {
+  id: string;
+  name: string;
+  icon: string;
+  category: string;
+  countries: string[];
+  fields: { key: string; label: string; placeholder: string; type: 'text' | 'email' | 'tel' }[];
+}
+
+interface LayoutSavedMethod {
+  id: string;
+  methodId: string;
+  label: string;
+  data: Record<string, string>;
+}
+
+const LAYOUT_PAYMENT_METHODS: LayoutPaymentMethod[] = [
+  { id: 'nequi', name: 'Nequi', icon: 'smartphone', category: 'Colombia', countries: ['+57'], fields: [{ key: 'phone', label: 'Numero Nequi', placeholder: 'Ej: 3001234567', type: 'tel' }] },
+  { id: 'daviplata', name: 'Daviplata', icon: 'phone_android', category: 'Colombia', countries: ['+57'], fields: [{ key: 'phone', label: 'Numero Daviplata', placeholder: 'Ej: 3001234567', type: 'tel' }] },
+  { id: 'bancolombia', name: 'Bancolombia', icon: 'account_balance', category: 'Colombia', countries: ['+57'], fields: [{ key: 'account', label: 'Numero de cuenta', placeholder: 'Cuenta ahorros o corriente', type: 'text' }, { key: 'holder', label: 'Titular', placeholder: 'Nombre completo', type: 'text' }] },
+  { id: 'transfiya', name: 'Transfiya', icon: 'swap_horiz', category: 'Colombia', countries: ['+57'], fields: [{ key: 'phone', label: 'Numero celular', placeholder: 'Ej: 3001234567', type: 'tel' }] },
+  { id: 'pago_movil', name: 'Pago Movil', icon: 'smartphone', category: 'Venezuela', countries: ['+58'], fields: [{ key: 'phone', label: 'Telefono', placeholder: 'Ej: 04121234567', type: 'tel' }, { key: 'cedula', label: 'Cedula', placeholder: 'V12345678', type: 'text' }, { key: 'bank', label: 'Banco', placeholder: 'Banesco, Mercantil...', type: 'text' }] },
+  { id: 'binance_ve', name: 'Binance P2P', icon: 'currency_exchange', category: 'Venezuela', countries: ['+58'], fields: [{ key: 'email', label: 'Email Binance', placeholder: 'tu@email.com', type: 'email' }] },
+  { id: 'paypal', name: 'PayPal', icon: 'account_balance_wallet', category: 'Internacional', countries: [], fields: [{ key: 'email', label: 'Email PayPal', placeholder: 'tu@email.com', type: 'email' }] },
+  { id: 'binance', name: 'Binance Pay', icon: 'currency_exchange', category: 'Crypto', countries: [], fields: [{ key: 'binance_id', label: 'Binance Pay ID / Email', placeholder: 'ID o email', type: 'text' }] },
+  { id: 'usdt_trc20', name: 'USDT (TRC-20)', icon: 'token', category: 'Crypto', countries: [], fields: [{ key: 'wallet', label: 'Wallet TRC-20', placeholder: 'T...', type: 'text' }] },
+];
 
 @Component({
   selector: 'app-user-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, DatePipe, UserReferralModalComponent, BannerSliderComponent],
+  imports: [CommonModule, RouterModule, DatePipe, FormsModule, UserReferralModalComponent, BannerSliderComponent],
   templateUrl: './user-layout.component.html',
   styleUrl: './user-layout.component.scss',
 })
@@ -297,6 +327,178 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
 
   getNotifColor(type: string): string {
     return type === 'warning' ? 'text-amber-400' : type === 'success' ? 'text-emerald-400' : 'text-blue-400';
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // MODAL ACUMULADO RETIRO (global — se abre desde cualquier vista)
+  // ══════════════════════════════════════════════════════════════
+
+  readonly showRetiroModal = signal(false);
+  readonly retiroModalStep = signal<'info' | 'select-method' | 'fields' | 'withdraw'>('info');
+  readonly retiroSavedMethods = signal<LayoutSavedMethod[]>([]);
+  readonly retiroHasAffiliate = signal(false);
+  readonly retiroSelectedMethod = signal<LayoutPaymentMethod | null>(null);
+  readonly retiroFieldValues = signal<Record<string, string>>({});
+  readonly retiroSaving = signal(false);
+  readonly retiroError = signal<string | null>(null);
+  readonly retiroWithdrawAmount = signal(0);
+  readonly retiroWithdrawMethod = signal<string | null>(null);
+  readonly retiroWithdrawAccount = signal('');
+  readonly retiroWithdrawStep = signal<'form' | 'confirm' | 'processing' | 'done'>('form');
+  readonly retiroSuccessMsg = signal<string | null>(null);
+
+  readonly MIN_WITHDRAWAL = 100_000;
+
+  readonly retiroHasEnoughBalance = computed(() => (this.profile()?.real_balance ?? 0) >= this.MIN_WITHDRAWAL);
+  readonly retiroHasSavedMethod = computed(() => this.retiroSavedMethods().length > 0);
+
+  readonly retiroAvailableMethods = computed(() => {
+    const cc = this.profile()?.country_code ?? '+57';
+    return LAYOUT_PAYMENT_METHODS.filter(m => m.countries.length === 0 || m.countries.includes(cc));
+  });
+
+  readonly retiroCanSaveFields = computed(() => {
+    const def = this.retiroSelectedMethod();
+    const vals = this.retiroFieldValues();
+    if (!def) return false;
+    return def.fields.every(f => (vals[f.key] ?? '').trim().length >= 3);
+  });
+
+  async openRetiroModal(): Promise<void> {
+    this.retiroError.set(null);
+    this.retiroSuccessMsg.set(null);
+    this.showRetiroModal.set(true);
+
+    // Cargar datos
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const [methodsRes, affiliateRes] = await Promise.all([
+      supabase.from('user_payment_methods').select('id, method_id, label, data').eq('user_id', user.id),
+      supabase.from('profiles').select('id').eq('referred_by', user.id).eq('role', 'advertiser').limit(1),
+    ]);
+
+    this.retiroSavedMethods.set((methodsRes.data ?? []).map(m => ({
+      id: m.id, methodId: m.method_id, label: m.label, data: m.data as Record<string, string>,
+    })));
+    this.retiroHasAffiliate.set((affiliateRes.data?.length ?? 0) > 0);
+
+    // Decidir step inicial
+    if (this.retiroHasSavedMethod() && this.retiroHasEnoughBalance() && this.retiroHasAffiliate()) {
+      this.retiroModalStep.set('withdraw');
+      this.retiroWithdrawStep.set('form');
+      this.retiroWithdrawAmount.set(this.profile()?.real_balance ?? 0);
+      const saved = this.retiroSavedMethods()[0];
+      this.retiroWithdrawMethod.set(saved.methodId);
+      this.retiroWithdrawAccount.set(saved.data['primary_value'] || Object.values(saved.data)[0] || '');
+    } else {
+      this.retiroModalStep.set('info');
+    }
+  }
+
+  closeRetiroModal(): void {
+    this.showRetiroModal.set(false);
+  }
+
+  retiroGoToSelectMethod(): void {
+    this.retiroModalStep.set('select-method');
+  }
+
+  retiroSelectMethodDef(method: LayoutPaymentMethod): void {
+    this.retiroSelectedMethod.set(method);
+    const vals: Record<string, string> = {};
+    method.fields.forEach(f => vals[f.key] = '');
+    this.retiroFieldValues.set(vals);
+    this.retiroModalStep.set('fields');
+  }
+
+  retiroUpdateField(key: string, value: string): void {
+    this.retiroFieldValues.update(v => ({ ...v, [key]: value }));
+  }
+
+  async retiroSaveMethod(): Promise<void> {
+    const def = this.retiroSelectedMethod();
+    if (!def || !this.retiroCanSaveFields()) return;
+
+    this.retiroSaving.set(true);
+    this.retiroError.set(null);
+
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const vals = this.retiroFieldValues();
+      const primaryValue = Object.values(vals)[0] ?? '';
+
+      const { error } = await supabase.from('user_payment_methods').insert({
+        user_id: user.id,
+        method_id: def.id,
+        label: def.name,
+        icon: def.icon,
+        category: def.category,
+        data: { ...vals, primary_value: primaryValue },
+        is_default: true,
+      });
+
+      if (error) throw error;
+
+      // Recargar métodos
+      const { data } = await supabase.from('user_payment_methods').select('id, method_id, label, data').eq('user_id', user.id);
+      this.retiroSavedMethods.set((data ?? []).map(m => ({
+        id: m.id, methodId: m.method_id, label: m.label, data: m.data as Record<string, string>,
+      })));
+
+      this.retiroSuccessMsg.set(`${def.name} guardado correctamente`);
+
+      // Si tiene saldo suficiente, ir a retirar
+      if (this.retiroHasEnoughBalance() && this.retiroHasAffiliate()) {
+        this.retiroModalStep.set('withdraw');
+        this.retiroWithdrawStep.set('form');
+        this.retiroWithdrawAmount.set(this.profile()?.real_balance ?? 0);
+        const saved = this.retiroSavedMethods()[0];
+        this.retiroWithdrawMethod.set(saved.methodId);
+        this.retiroWithdrawAccount.set(saved.data['primary_value'] || Object.values(saved.data)[0] || '');
+      } else {
+        this.retiroModalStep.set('info');
+      }
+    } catch (e: any) {
+      this.retiroError.set(e.message || 'Error al guardar');
+    } finally {
+      this.retiroSaving.set(false);
+    }
+  }
+
+  async retiroSubmitWithdrawal(): Promise<void> {
+    this.retiroWithdrawStep.set('processing');
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const saved = this.retiroSavedMethods()[0];
+      const { error } = await supabase.from('withdrawal_requests').insert({
+        user_id: user.id,
+        amount: this.retiroWithdrawAmount(),
+        method: saved.methodId,
+        details: { method: saved.label, account: saved.data['primary_value'] || Object.values(saved.data)[0], ...saved.data },
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      await new Promise(r => setTimeout(r, 2500));
+      this.retiroWithdrawStep.set('done');
+      this.profileService.getCurrentProfile().catch(() => {});
+    } catch (e: any) {
+      this.retiroError.set(e.message || 'Error al procesar');
+      this.retiroWithdrawStep.set('form');
+    }
+  }
+
+  retiroFinish(): void {
+    this.showRetiroModal.set(false);
+    this.retiroSuccessMsg.set(null);
   }
 
   getTierInfo(referrals: number, hasActivePackage: boolean): { name: string; color: string } | null {

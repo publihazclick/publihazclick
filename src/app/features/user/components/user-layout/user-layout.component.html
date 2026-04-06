@@ -360,18 +360,18 @@
 
       <!-- ── Billetera (click abre modal retiro) ── -->
       @if (!isAndaGanaRoute() && !isSmsRoute()) {
-        <a routerLink="/dashboard/wallet" [queryParams]="{action: 'retiro'}"
+        <button (click)="openRetiroModal()"
            class="hidden sm:flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all cursor-pointer">
           <div class="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
             <span class="material-symbols-outlined text-primary" style="font-size:15px">account_balance_wallet</span>
           </div>
-          <div class="leading-tight">
+          <div class="leading-tight text-left">
             <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Acumulado Retiro</p>
             <p class="text-xs text-primary font-black">
               {{ formatCOP(profile()?.real_balance ?? 0) }}
             </p>
           </div>
-        </a>
+        </button>
 
         <!-- ── Donaciones ── -->
         <a routerLink="/dashboard/wallet"
@@ -503,8 +503,8 @@
             <!-- Stats -->
             <div class="px-4 py-3 border-b border-white/5 space-y-2">
               @if (!isAndaGanaRoute() && !isSmsRoute()) {
-                <a routerLink="/dashboard/wallet" [queryParams]="{action: 'retiro'}" (click)="closeProfileMenu()"
-                   class="flex items-center justify-between hover:bg-primary/5 -mx-1 px-1 py-0.5 rounded-lg transition-colors cursor-pointer">
+                <button (click)="closeProfileMenu(); openRetiroModal()"
+                   class="w-full flex items-center justify-between hover:bg-primary/5 -mx-1 px-1 py-0.5 rounded-lg transition-colors cursor-pointer">
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
                     <span class="text-xs text-slate-400">Acumulado Retiro</span>
@@ -512,7 +512,7 @@
                   <span class="text-xs font-black text-primary">
                     {{ formatCOP(profile()?.real_balance ?? 0) }}
                   </span>
-                </a>
+                </button>
               }
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
@@ -604,11 +604,11 @@
       </div>
       @if (!isAndaGanaRoute() && !isSmsRoute()) {
         <!-- Acumulado Retiro -->
-        <a routerLink="/dashboard/wallet" [queryParams]="{action: 'retiro'}"
+        <button (click)="openRetiroModal()"
            class="flex-1 flex items-center justify-center gap-1.5 bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 transition-all">
           <span class="material-symbols-outlined text-primary" style="font-size:14px">account_balance_wallet</span>
           <span class="text-xs text-primary font-black truncate">{{ formatCOP(profile()?.real_balance ?? 0) }}</span>
-        </a>
+        </button>
         <!-- Donaciones -->
         <a routerLink="/dashboard/wallet"
            class="flex-1 flex items-center justify-center gap-1.5 bg-accent/10 border border-accent/20 rounded-lg px-2 py-1.5 transition-all">
@@ -719,6 +719,261 @@
     </span>
   </button>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODAL GLOBAL: ACUMULADO RETIRO
+     ═══════════════════════════════════════════════════════════════════ -->
+@if (showRetiroModal()) {
+  <div class="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" (click)="closeRetiroModal()"></div>
+    <div class="relative w-full max-w-md bg-zinc-900 rounded-t-2xl sm:rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+         (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-primary/20 to-cyan-500/10 px-6 py-5 border-b border-white/5">
+        <button (click)="closeRetiroModal()"
+          class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors z-10">
+          <span class="material-symbols-outlined text-white" style="font-size:18px">close</span>
+        </button>
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
+          </div>
+          <div>
+            <p class="text-[10px] text-primary/70 font-bold uppercase tracking-wider">Acumulado Retiro</p>
+            <p class="text-2xl font-black text-white">{{ formatCOP(profile()?.real_balance ?? 0) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ STEP: INFO (requisitos) ═══ -->
+      @if (retiroModalStep() === 'info') {
+        <div class="p-6 space-y-5">
+
+          @if (!retiroHasEnoughBalance()) {
+            <div class="bg-primary/5 border border-primary/15 rounded-xl p-4">
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-primary flex-shrink-0 mt-0.5" style="font-size:20px">info</span>
+                <p class="text-[13px] text-slate-300 leading-relaxed">
+                  Configura el método de pago a donde quieres recibir el dinero de tus comisiones. En PubliHazClick es muy fácil retirar tus comisiones, puedes retirar desde
+                  <strong class="text-primary">$100.000 COP</strong> en adelante si tienes por lo menos
+                  <strong class="text-primary">1 invitado activo</strong>.
+                </p>
+              </div>
+            </div>
+          }
+
+          <!-- Checklist -->
+          <div class="space-y-2">
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Requisitos para retirar</p>
+
+            <div class="flex items-center gap-3 px-4 py-3 rounded-xl"
+                 [class]="retiroHasEnoughBalance() ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+              <span class="material-symbols-outlined text-base" [class]="retiroHasEnoughBalance() ? 'text-emerald-400' : 'text-slate-600'">
+                {{ retiroHasEnoughBalance() ? 'check_circle' : 'radio_button_unchecked' }}
+              </span>
+              <div class="flex-1">
+                <p class="text-xs font-bold" [class]="retiroHasEnoughBalance() ? 'text-emerald-400' : 'text-slate-400'">Saldo mínimo $100.000 COP</p>
+                <p class="text-[10px] text-slate-500">Tienes {{ formatCOP(profile()?.real_balance ?? 0) }}
+                  @if (!retiroHasEnoughBalance()) { — te faltan {{ formatCOP(MIN_WITHDRAWAL - (profile()?.real_balance ?? 0)) }} }
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 px-4 py-3 rounded-xl"
+                 [class]="retiroHasAffiliate() ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+              <span class="material-symbols-outlined text-base" [class]="retiroHasAffiliate() ? 'text-emerald-400' : 'text-slate-600'">
+                {{ retiroHasAffiliate() ? 'check_circle' : 'radio_button_unchecked' }}
+              </span>
+              <div>
+                <p class="text-xs font-bold" [class]="retiroHasAffiliate() ? 'text-emerald-400' : 'text-slate-400'">Al menos 1 invitado activo</p>
+                <p class="text-[10px] text-slate-500">{{ retiroHasAffiliate() ? 'Tienes invitados activos' : 'Invita a alguien que active su paquete' }}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 px-4 py-3 rounded-xl"
+                 [class]="retiroHasSavedMethod() ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-white/3 border border-white/5'">
+              <span class="material-symbols-outlined text-base" [class]="retiroHasSavedMethod() ? 'text-emerald-400' : 'text-slate-600'">
+                {{ retiroHasSavedMethod() ? 'check_circle' : 'radio_button_unchecked' }}
+              </span>
+              <div>
+                <p class="text-xs font-bold" [class]="retiroHasSavedMethod() ? 'text-emerald-400' : 'text-slate-400'">Método de pago configurado</p>
+                <p class="text-[10px] text-slate-500">
+                  @if (retiroHasSavedMethod()) { {{ retiroSavedMethods()[0].label }} } @else { Configura cómo recibir tu dinero }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          @if (!retiroHasSavedMethod()) {
+            <button (click)="retiroGoToSelectMethod()"
+              class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-primary hover:bg-primary/90 text-black transition-all">
+              <span class="material-symbols-outlined" style="font-size:18px">add_card</span>
+              Configurar método de pago
+            </button>
+          } @else if (!retiroHasEnoughBalance()) {
+            <p class="text-center text-xs text-slate-500">Sigue viendo anuncios e invitando personas para alcanzar el mínimo</p>
+          } @else if (!retiroHasAffiliate()) {
+            <p class="text-center text-xs text-slate-500">Necesitas al menos 1 invitado activo para retirar</p>
+          }
+        </div>
+      }
+
+      <!-- ═══ STEP: SELECT METHOD ═══ -->
+      @if (retiroModalStep() === 'select-method') {
+        <div class="p-6 space-y-4">
+          <p class="text-sm font-bold text-white">Selecciona tu método de pago:</p>
+          @for (method of retiroAvailableMethods(); track method.id) {
+            <button (click)="retiroSelectMethodDef(method)"
+              class="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/5 hover:border-primary/20 transition-all text-left">
+              <span class="material-symbols-outlined text-slate-400" style="font-size:20px">{{ method.icon }}</span>
+              <div>
+                <p class="text-xs font-bold text-white">{{ method.name }}</p>
+                <p class="text-[10px] text-slate-500">{{ method.category }}</p>
+              </div>
+            </button>
+          }
+          <button (click)="retiroModalStep.set('info')" class="w-full py-2 text-xs text-slate-500 hover:text-white transition-colors">Volver</button>
+        </div>
+      }
+
+      <!-- ═══ STEP: FIELDS ═══ -->
+      @if (retiroModalStep() === 'fields') {
+        <div class="p-6 space-y-4">
+          <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+            <span class="material-symbols-outlined text-primary" style="font-size:24px">{{ retiroSelectedMethod()?.icon }}</span>
+            <p class="text-sm font-bold text-white">{{ retiroSelectedMethod()?.name }}</p>
+          </div>
+
+          @if (retiroError()) {
+            <div class="px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 font-bold">{{ retiroError() }}</div>
+          }
+
+          @for (field of retiroSelectedMethod()?.fields ?? []; track field.key) {
+            <div>
+              <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">{{ field.label }}</label>
+              <input [type]="field.type" [placeholder]="field.placeholder"
+                [value]="retiroFieldValues()[field.key]"
+                (input)="retiroUpdateField(field.key, $any($event.target).value)"
+                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-primary/50 transition-colors" />
+            </div>
+          }
+
+          <div class="flex gap-2 pt-2">
+            <button (click)="retiroModalStep.set('select-method')" class="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-bold transition-colors">Volver</button>
+            <button (click)="retiroSaveMethod()" [disabled]="!retiroCanSaveFields() || retiroSaving()"
+              class="flex-1 py-3 rounded-xl bg-primary hover:bg-primary/90 text-black text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              @if (retiroSaving()) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span> Guardando...
+              } @else {
+                <span class="material-symbols-outlined" style="font-size:16px">check</span> Guardar
+              }
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- ═══ STEP: WITHDRAW ═══ -->
+      @if (retiroModalStep() === 'withdraw') {
+
+        @if (retiroWithdrawStep() === 'form') {
+          <div class="p-6 space-y-5">
+            @if (retiroSuccessMsg()) {
+              <div class="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined" style="font-size:16px">check_circle</span> {{ retiroSuccessMsg() }}
+              </div>
+            }
+
+            <div>
+              <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Método de retiro</label>
+              <div class="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
+                <span class="material-symbols-outlined text-primary" style="font-size:20px">account_balance_wallet</span>
+                <div>
+                  <p class="text-xs font-bold text-white">{{ retiroSavedMethods()[0]?.label }}</p>
+                  <p class="text-[10px] text-slate-500">{{ retiroSavedMethods()[0]?.data?.['primary_value'] || '' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Monto a retirar (COP)</label>
+              <input type="number" [ngModel]="retiroWithdrawAmount()" (ngModelChange)="retiroWithdrawAmount.set($event)"
+                [min]="MIN_WITHDRAWAL" [max]="profile()?.real_balance ?? 0"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors" />
+              <p class="text-[10px] text-slate-600 mt-1">Mínimo {{ formatCOP(MIN_WITHDRAWAL) }} · Disponible {{ formatCOP(profile()?.real_balance ?? 0) }}</p>
+            </div>
+
+            @if (retiroError()) {
+              <div class="px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 font-bold">{{ retiroError() }}</div>
+            }
+
+            <button (click)="retiroWithdrawStep.set('confirm')"
+              [disabled]="retiroWithdrawAmount() < MIN_WITHDRAWAL || retiroWithdrawAmount() > (profile()?.real_balance ?? 0)"
+              class="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+              <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span> Continuar
+            </button>
+          </div>
+        }
+
+        @if (retiroWithdrawStep() === 'confirm') {
+          <div class="p-6 space-y-5">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-amber-400" style="font-size:20px">warning</span>
+              </div>
+              <div>
+                <h3 class="text-base font-black text-white">Confirmar Retiro</h3>
+                <p class="text-[10px] text-slate-500">Verifica los datos antes de enviar</p>
+              </div>
+            </div>
+            <div class="bg-white/3 border border-white/5 rounded-xl p-4 space-y-3">
+              <div class="flex justify-between"><span class="text-xs text-slate-500">Monto</span><span class="text-sm font-black text-white">{{ formatCOP(retiroWithdrawAmount()) }}</span></div>
+              <div class="h-px bg-white/5"></div>
+              <div class="flex justify-between"><span class="text-xs text-slate-500">Método</span><span class="text-xs font-bold text-white">{{ retiroSavedMethods()[0]?.label }}</span></div>
+              <div class="h-px bg-white/5"></div>
+              <div class="flex justify-between"><span class="text-xs text-slate-500">Cuenta</span><span class="text-xs font-bold text-white">{{ retiroSavedMethods()[0]?.data?.['primary_value'] || '' }}</span></div>
+            </div>
+            <div class="flex gap-3">
+              <button (click)="retiroWithdrawStep.set('form')" class="flex-1 py-3 rounded-xl font-black text-sm bg-white/5 hover:bg-white/10 text-slate-300 transition-all">Volver</button>
+              <button (click)="retiroSubmitWithdrawal()" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 text-white transition-all">
+                <span class="material-symbols-outlined" style="font-size:18px">send</span> Enviar
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (retiroWithdrawStep() === 'processing') {
+          <div class="p-10 flex flex-col items-center gap-5">
+            <div class="w-16 h-16 rounded-full bg-accent/10 border-2 border-accent/40 flex items-center justify-center">
+              <span class="material-symbols-outlined text-accent animate-spin" style="font-size:28px">sync</span>
+            </div>
+            <div class="text-center">
+              <h3 class="text-lg font-black text-white">Procesando retiro...</h3>
+              <p class="text-sm text-slate-400">{{ formatCOP(retiroWithdrawAmount()) }}</p>
+            </div>
+          </div>
+        }
+
+        @if (retiroWithdrawStep() === 'done') {
+          <div class="p-10 flex flex-col items-center gap-5">
+            <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:36px">check_circle</span>
+            </div>
+            <div class="text-center space-y-2">
+              <h3 class="text-lg font-black text-white">Solicitud Enviada</h3>
+              <p class="text-sm text-slate-400">Tu retiro de {{ formatCOP(retiroWithdrawAmount()) }} está siendo procesado</p>
+              <p class="text-xs text-slate-600">Recibirás tu dinero en las próximas 24-48 horas</p>
+            </div>
+            <button (click)="retiroFinish()" class="flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 text-white transition-all">
+              <span class="material-symbols-outlined" style="font-size:18px">done</span> Entendido
+            </button>
+          </div>
+        }
+      }
+
+    </div>
+  </div>
+}
 
 <!-- ══ Toast: cuenta activada como Anunciante ════════════════════════════ -->
 @if (upgradeToast()) {
