@@ -133,6 +133,15 @@
               @if (!sidebarCollapsed()) { <span class="font-semibold">Red Social</span> }
             </a>
           </li>
+          <li>
+            <a routerLink="/social/marketplace" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()"
+               title="Marketplace">
+              <span class="material-symbols-outlined">storefront</span>
+              @if (!sidebarCollapsed()) { <span>Marketplace</span> }
+            </a>
+          </li>
         </ul>
       </div>
 
