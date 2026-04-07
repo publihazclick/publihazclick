@@ -35,6 +35,67 @@
     </p>
   </section>
 
+  <!-- WALLET BANNER -->
+  @if (walletLoaded()) {
+    <section class="px-4 sm:px-6 lg:px-8 pb-4">
+      <div class="max-w-3xl mx-auto rounded-2xl border overflow-hidden"
+        [class]="walletBalance() > 0 ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200' : 'bg-gradient-to-r from-purple-50 to-fuchsia-50 border-purple-200'">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-5">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+              [class]="walletBalance() > 0 ? 'bg-emerald-100' : 'bg-purple-100'">
+              <span class="material-symbols-outlined" style="font-size:24px"
+                [class]="walletBalance() > 0 ? 'text-emerald-600' : 'text-purple-600'">
+                account_balance_wallet
+              </span>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-gray-900">
+                @if (walletBalance() > 0) {
+                  Tu saldo: <span class="text-emerald-600">{{ formatCOP(walletBalance()) }}</span>
+                } @else {
+                  Recarga tu billetera para empezar a crear
+                }
+              </p>
+              <p class="text-xs text-gray-500 mt-0.5">
+                @if (walletBalance() > 0) {
+                  Listo para crear contenido con IA
+                } @else {
+                  Necesitas saldo en tu billetera IA para usar las herramientas. Recarga desde $25 USD.
+                }
+              </p>
+            </div>
+          </div>
+          <a routerLink="/advertiser/ai/wallet"
+            class="flex-shrink-0 inline-flex items-center gap-2 font-bold px-5 py-2.5 rounded-xl text-sm transition-all"
+            [class]="walletBalance() > 0
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'text-white shadow-lg shadow-purple-300/50 hover:scale-105'"
+            [style]="walletBalance() > 0 ? '' : 'background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef)'">
+            <span class="material-symbols-outlined" style="font-size:18px">
+              {{ walletBalance() > 0 ? 'add' : 'bolt' }}
+            </span>
+            {{ walletBalance() > 0 ? 'Recargar más' : 'Recargar ahora' }}
+          </a>
+        </div>
+
+        @if (walletBalance() === 0) {
+          <div class="px-6 pb-5 pt-0">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              @for (item of [{icon:'edit_note',label:'Guión IA',price:'$500'},{icon:'image',label:'Imagen',price:'$500'},{icon:'mic',label:'Voz Pro',price:'$2.500'},{icon:'videocam',label:'Video Avatar',price:'$20.000'},{icon:'movie',label:'Video Producto',price:'$3.500'}]; track item.label) {
+                <div class="bg-white/70 rounded-xl p-2.5 text-center border border-white">
+                  <span class="material-symbols-outlined text-purple-500" style="font-size:18px">{{ item.icon }}</span>
+                  <p class="text-[10px] font-bold text-gray-700 mt-1">{{ item.label }}</p>
+                  <p class="text-[9px] text-purple-600 font-bold">{{ item.price }} COP</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
   <!-- STATS BAR -->
   <section class="bg-gradient-to-b from-fuchsia-50/60 via-purple-50/40 to-white py-8 sm:py-12 px-4 border-y border-purple-100/50">
     <div class="max-w-5xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-center">
