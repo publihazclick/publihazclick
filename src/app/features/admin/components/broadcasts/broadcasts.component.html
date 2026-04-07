@@ -1,0 +1,171 @@
+<div class="space-y-6">
+
+  <!-- Toast -->
+  @if (successMsg()) {
+    <div class="fixed top-6 right-6 z-[100] bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-bold flex items-center gap-2">
+      <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+      {{ successMsg() }}
+    </div>
+  }
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-black text-white">Mensajes Masivos</h2>
+      <p class="text-xs text-slate-400">Envía mensajes a la campanita de notificaciones de todos los usuarios</p>
+    </div>
+    <button (click)="cleanupExpired()"
+      class="text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-400 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+      <span class="material-symbols-outlined" style="font-size:14px">delete_sweep</span>
+      Limpiar expirados
+    </button>
+  </div>
+
+  <!-- Formulario de envío -->
+  <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-white/5 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary" style="font-size:20px">campaign</span>
+      </div>
+      <div>
+        <h3 class="font-black text-white text-sm">Nuevo mensaje</h3>
+        <p class="text-[10px] text-slate-500">Se enviará a la campanita de todos los usuarios. Acepta texto y enlaces.</p>
+      </div>
+    </div>
+
+    <div class="p-5 space-y-4">
+
+      <!-- Título -->
+      <div>
+        <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Título del mensaje</label>
+        <input type="text" [(ngModel)]="title" placeholder="Ej: Nueva funcionalidad disponible"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50 transition-colors" />
+      </div>
+
+      <!-- Mensaje -->
+      <div>
+        <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Mensaje (acepta enlaces)</label>
+        <textarea [(ngModel)]="message" rows="4" placeholder="Escribe tu mensaje aquí. Puedes incluir enlaces como https://publihazclick.com/..."
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50 transition-colors resize-none"></textarea>
+      </div>
+
+      <!-- Tipo + Expiración -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Tipo</label>
+          <div class="flex gap-2">
+            <button (click)="type = 'info'"
+              class="flex-1 py-2 rounded-lg text-xs font-bold transition-all border"
+              [class]="type === 'info' ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/10 text-slate-400'">
+              Info
+            </button>
+            <button (click)="type = 'success'"
+              class="flex-1 py-2 rounded-lg text-xs font-bold transition-all border"
+              [class]="type === 'success' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-400'">
+              Exito
+            </button>
+            <button (click)="type = 'warning'"
+              class="flex-1 py-2 rounded-lg text-xs font-bold transition-all border"
+              [class]="type === 'warning' ? 'bg-amber-500/20 border-amber-500/30 text-amber-400' : 'bg-white/5 border-white/10 text-slate-400'">
+              Alerta
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Expira en (días)</label>
+          <input type="number" [(ngModel)]="expiresDays" min="1" max="30"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white text-center font-bold focus:outline-none focus:border-primary/50 transition-colors" />
+        </div>
+      </div>
+
+      @if (errorMsg()) {
+        <div class="px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400 font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size:16px">error</span>
+          {{ errorMsg() }}
+        </div>
+      }
+
+      <!-- Enviar -->
+      <button (click)="sendBroadcast()"
+        [disabled]="!title.trim() || !message.trim() || sending()"
+        class="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm bg-primary hover:bg-primary/90 text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        @if (sending()) {
+          <span class="material-symbols-outlined animate-spin" style="font-size:18px">sync</span>
+          Enviando...
+        } @else {
+          <span class="material-symbols-outlined" style="font-size:18px">send</span>
+          Enviar a todos los usuarios
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- Historial de broadcasts -->
+  <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-white/5">
+      <h3 class="font-black text-white text-sm uppercase tracking-wider">Mensajes enviados</h3>
+    </div>
+
+    @if (loading()) {
+      <div class="flex items-center justify-center py-12">
+        <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    } @else if (broadcasts().length === 0) {
+      <div class="flex flex-col items-center justify-center py-12 gap-3">
+        <span class="material-symbols-outlined text-slate-700" style="font-size:44px">campaign</span>
+        <p class="text-white font-bold text-sm">Sin mensajes enviados</p>
+        <p class="text-slate-500 text-xs">Los mensajes que envíes aparecerán aquí</p>
+      </div>
+    } @else {
+      <div class="divide-y divide-white/5">
+        @for (b of broadcasts(); track b.id) {
+          <div class="px-5 py-4">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="material-symbols-outlined text-sm"
+                    [class]="b.type === 'warning' ? 'text-amber-400' : b.type === 'success' ? 'text-emerald-400' : 'text-blue-400'">
+                    {{ b.type === 'warning' ? 'warning' : b.type === 'success' ? 'check_circle' : 'info' }}
+                  </span>
+                  <p class="text-sm font-bold text-white truncate">{{ b.title }}</p>
+                  @if (isExpired(b.expires_at)) {
+                    <span class="px-1.5 py-0.5 bg-rose-500/10 text-rose-400 text-[8px] font-bold rounded-full border border-rose-500/20">EXPIRADO</span>
+                  }
+                </div>
+                <p class="text-xs text-slate-400 line-clamp-2 mb-2">{{ b.message }}</p>
+                <div class="flex items-center gap-4 text-[10px] text-slate-500">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined" style="font-size:12px">group</span>
+                    {{ b.recipient_count }} usuarios
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined" style="font-size:12px">schedule</span>
+                    {{ formatDate(b.created_at) }}
+                  </span>
+                  <span class="flex items-center gap-1"
+                    [class]="isExpired(b.expires_at) ? 'text-rose-400' : 'text-slate-500'">
+                    <span class="material-symbols-outlined" style="font-size:12px">timer</span>
+                    {{ timeLeft(b.expires_at) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Eliminar -->
+              <button (click)="deleteBroadcast(b.id)"
+                [disabled]="deleting() === b.id"
+                class="w-9 h-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 flex items-center justify-center transition-colors flex-shrink-0">
+                @if (deleting() === b.id) {
+                  <span class="material-symbols-outlined text-rose-400 animate-spin" style="font-size:16px">sync</span>
+                } @else {
+                  <span class="material-symbols-outlined text-rose-400" style="font-size:16px">delete</span>
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+</div>

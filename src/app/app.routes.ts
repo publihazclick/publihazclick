@@ -125,6 +125,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/components/commissions/commissions.component').then(m => m.AdminCommissionsComponent)
       },
       {
+        path: 'broadcasts',
+        loadComponent: () => import('./features/admin/components/broadcasts/broadcasts.component').then(m => m.AdminBroadcastsComponent)
+      },
+      {
         path: 'anda-gana',
         loadComponent: () => import('./features/admin/components/anda-gana-admin/anda-gana-admin.component').then(m => m.AndaGanaAdminComponent)
       },
