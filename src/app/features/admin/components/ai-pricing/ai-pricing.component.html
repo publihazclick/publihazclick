@@ -1,0 +1,131 @@
+<div class="space-y-6">
+
+  @if (successMsg()) {
+    <div class="fixed top-6 right-6 z-[100] bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-bold flex items-center gap-2">
+      <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+      {{ successMsg() }}
+    </div>
+  }
+
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-black text-white">Precios Herramientas IA</h2>
+      <p class="text-xs text-slate-400">Configura cuánto cobras y cuánto te cuesta cada acción. Tu ganancia es automática.</p>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="flex items-center justify-center py-20">
+      <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  } @else {
+
+    <!-- Resumen de márgenes -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-card-dark border border-emerald-500/20 rounded-2xl p-5">
+        <p class="text-[10px] text-slate-500 uppercase font-bold">Promedio cobro al usuario</p>
+        <p class="text-xl font-black text-emerald-400 mt-1">{{ formatCOP(totalRevenue() / (actions().length || 1)) }}</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">por acción</p>
+      </div>
+      <div class="bg-card-dark border border-rose-500/20 rounded-2xl p-5">
+        <p class="text-[10px] text-slate-500 uppercase font-bold">Promedio costo real</p>
+        <p class="text-xl font-black text-rose-400 mt-1">{{ formatCOP(totalCost() / (actions().length || 1)) }}</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">por acción</p>
+      </div>
+      <div class="bg-card-dark border border-primary/20 rounded-2xl p-5">
+        <p class="text-[10px] text-slate-500 uppercase font-bold">Margen promedio</p>
+        <p class="text-xl font-black text-primary mt-1">{{ formatCOP((totalRevenue() - totalCost()) / (actions().length || 1)) }}</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">ganancia por acción</p>
+      </div>
+    </div>
+
+    <!-- Precios por categoría -->
+    @for (cat of categories; track cat) {
+      @if (getActionsByCategory(cat).length > 0) {
+        <div class="bg-card-dark border border-white/5 rounded-2xl overflow-hidden">
+          <div class="px-5 py-4 border-b border-white/5 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary" style="font-size:20px">{{ getCategoryIcon(cat) }}</span>
+            </div>
+            <h3 class="font-black text-white text-sm uppercase tracking-wider">{{ getCategoryLabel(cat) }}</h3>
+          </div>
+
+          <div class="divide-y divide-white/5">
+            @for (action of getActionsByCategory(cat); track action.id) {
+              <div class="px-5 py-4">
+                <div class="flex items-center gap-4 mb-3">
+                  <!-- Info -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm font-bold text-white">{{ action.label }}</p>
+                      @if (!action.is_active) {
+                        <span class="px-1.5 py-0.5 bg-rose-500/10 text-rose-400 text-[8px] font-bold rounded-full border border-rose-500/20">INACTIVO</span>
+                      }
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-0.5">{{ action.description }}</p>
+                  </div>
+
+                  <!-- Toggle -->
+                  <button (click)="toggleActive(action)"
+                    class="w-10 h-6 rounded-full transition-colors flex-shrink-0 relative"
+                    [class]="action.is_active ? 'bg-emerald-500' : 'bg-white/10'">
+                    <div class="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
+                      [style.left]="action.is_active ? '22px' : '4px'"></div>
+                  </button>
+                </div>
+
+                <!-- Precios -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <!-- Precio usuario -->
+                  <div>
+                    <label class="block text-[9px] text-slate-500 uppercase font-bold mb-1">Cobras al usuario</label>
+                    <div class="flex items-center gap-1">
+                      <span class="text-[10px] text-slate-500">$</span>
+                      <input type="number" [ngModel]="action.price_cop" (ngModelChange)="updatePrice(action, $event)"
+                        min="0" step="100"
+                        class="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-2 py-1.5 text-sm text-emerald-400 font-bold text-center focus:outline-none focus:border-emerald-500/50" />
+                    </div>
+                  </div>
+
+                  <!-- Costo real -->
+                  <div>
+                    <label class="block text-[9px] text-slate-500 uppercase font-bold mb-1">Te cuesta</label>
+                    <div class="flex items-center gap-1">
+                      <span class="text-[10px] text-slate-500">$</span>
+                      <input type="number" [ngModel]="action.cost_cop" (ngModelChange)="updateCost(action, $event)"
+                        min="0" step="1"
+                        class="w-full bg-rose-500/5 border border-rose-500/20 rounded-lg px-2 py-1.5 text-sm text-rose-400 font-bold text-center focus:outline-none focus:border-rose-500/50" />
+                    </div>
+                  </div>
+
+                  <!-- Ganancia -->
+                  <div>
+                    <label class="block text-[9px] text-slate-500 uppercase font-bold mb-1">Tu ganancia</label>
+                    <p class="text-sm font-black text-primary text-center py-1.5">{{ formatCOP(getMargin(action)) }}</p>
+                  </div>
+
+                  <!-- Margen % -->
+                  <div>
+                    <label class="block text-[9px] text-slate-500 uppercase font-bold mb-1">Margen</label>
+                    <p class="text-sm font-black text-center py-1.5"
+                      [class]="getMarginPercent(action) >= 50 ? 'text-emerald-400' : getMarginPercent(action) >= 20 ? 'text-amber-400' : 'text-rose-400'">
+                      {{ getMarginPercent(action) }}%
+                    </p>
+                  </div>
+                </div>
+
+                @if (saving() === action.id) {
+                  <div class="flex items-center gap-1 mt-2">
+                    <span class="material-symbols-outlined text-primary animate-spin" style="font-size:14px">sync</span>
+                    <span class="text-[10px] text-primary">Guardando...</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+
+  }
+</div>

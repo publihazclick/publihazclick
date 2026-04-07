@@ -32,6 +32,38 @@ export class AiVideoService {
     };
   }
 
+  /**
+   * Cobra una acción IA del wallet del usuario antes de ejecutarla.
+   * Si no tiene saldo suficiente, lanza un error descriptivo.
+   */
+  async chargeAction(actionId: string, metadata: Record<string, unknown> = {}): Promise<{ charged: number; balance_after: number }> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) throw new Error('No autenticado');
+
+    const { data, error } = await this.supabase.rpc('charge_ai_action', {
+      p_user_id: user.id,
+      p_action_id: actionId,
+      p_metadata: metadata,
+    });
+
+    if (error) throw new Error(error.message);
+    if (!data?.ok) {
+      const err = data?.error ?? 'Error al procesar cobro';
+      if (data?.need_recharge) {
+        throw new Error(`💰 ${err} Recarga tu billetera IA para continuar.`);
+      }
+      throw new Error(err);
+    }
+
+    return { charged: data.charged, balance_after: data.balance_after };
+  }
+
+  /** Obtener precios de todas las acciones IA */
+  async getActionPricing(): Promise<{ id: string; label: string; category: string; price_cop: number }[]> {
+    const { data } = await this.supabase.rpc('get_ai_pricing');
+    return data ?? [];
+  }
+
   /** Genera un título ganador usando la Edge Function chat-ai */
   async generateWinnerTitle(
     topic: string,
@@ -95,6 +127,9 @@ export class AiVideoService {
     this.error.set(null);
 
     try {
+      // Cobrar antes de ejecutar
+      await this.chargeAction('script_gemini', { topic, platform });
+
       const headers = await this.getAuthHeaders();
       const res = await fetch(`${FUNCTIONS_URL}/generate-reel-script`, {
         method: 'POST',
@@ -256,6 +291,7 @@ export class AiVideoService {
 
   /** Generar audio TTS con ElevenLabs */
   async generateElevenLabsTTS(text: string, voiceId: string, stability = 0.5, similarityBoost = 0.75): Promise<string> {
+    await this.chargeAction('tts_elevenlabs', { voice_id: voiceId, chars: text.length });
     const headers = await this.getAuthHeaders();
     const res = await fetch(`${FUNCTIONS_URL}/generate-elevenlabs-tts`, {
       method: 'POST', headers,
@@ -268,6 +304,7 @@ export class AiVideoService {
 
   /** Clonar voz del usuario (enviar archivo de audio) */
   async cloneVoice(name: string, audioFile: File): Promise<{ voice_id: string }> {
+    await this.chargeAction('voice_clone', { name });
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) throw new Error('Sesión no encontrada');
     const form = new FormData();
@@ -288,6 +325,8 @@ export class AiVideoService {
 
   /** Generar video cinematográfico desde imagen o texto */
   async generateRunwayVideo(prompt: string, imageUrl?: string, duration = 5, ratio = '16:9'): Promise<{ task_id: string }> {
+    const actionId = duration <= 5 ? 'video_runway_5s' : 'video_runway_10s';
+    await this.chargeAction(actionId, { prompt, duration });
     const headers = await this.getAuthHeaders();
     const res = await fetch(`${FUNCTIONS_URL}/generate-runway-video`, {
       method: 'POST', headers,
@@ -314,6 +353,7 @@ export class AiVideoService {
 
   /** Face swap: poner la cara del usuario en un avatar/template */
   async faceSwap(sourceImage: string, targetImage: string): Promise<{ status: string; result_url: string }> {
+    await this.chargeAction('face_swap');
     const headers = await this.getAuthHeaders();
     const res = await fetch(`${FUNCTIONS_URL}/generate-face-swap`, {
       method: 'POST', headers,
@@ -325,6 +365,10 @@ export class AiVideoService {
 
   /** Generar imágenes fotorrealistas con Flux Pro */
   async generateFluxImage(prompt: string, aspectRatio = '16:9', numOutputs = 1, negativePrompt?: string): Promise<string[]> {
+    // Cobrar por cada imagen
+    for (let i = 0; i < numOutputs; i++) {
+      await this.chargeAction('image_flux', { prompt, image_number: i + 1 });
+    }
     const headers = await this.getAuthHeaders();
     const res = await fetch(`${FUNCTIONS_URL}/generate-flux-image`, {
       method: 'POST', headers,
@@ -341,6 +385,7 @@ export class AiVideoService {
 
   /** Generar guión con GPT-4o (alternativa a Gemini) */
   async generateOpenAIScript(topic: string, platform: AiPlatform, duration?: number, tone?: string, productInfo?: string): Promise<AiScript> {
+    await this.chargeAction('script_openai', { topic, platform });
     const headers = await this.getAuthHeaders();
     const res = await fetch(`${FUNCTIONS_URL}/generate-openai-script`, {
       method: 'POST', headers,
