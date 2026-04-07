@@ -156,6 +156,14 @@
             </a>
           </li>
           <li>
+            <a routerLink="/admin/commissions" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all" [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">paid</span>
+              @if (!sidebarCollapsed()) {
+                <span>Comisiones Referidos</span>
+              }
+            </a>
+          </li>
+          <li>
             <button
               (click)="openReferralModal()"
               class="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"

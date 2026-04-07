@@ -270,6 +270,23 @@ Deno.serve(async (req) => {
       await supabase.from('ai_wallet_payments')
         .update({ epayco_ref: x_ref_payco })
         .eq('id', x_extra1);
+
+      // ── Comisión por referido: Herramientas IA ──
+      try {
+        const { data: aiPay } = await supabase.from('ai_wallet_payments')
+          .select('user_id, amount').eq('id', x_extra1).single();
+        if (aiPay) {
+          const res = await supabase.rpc('credit_referral_commission', {
+            p_referred_id: aiPay.user_id,
+            p_module: 'herramientas_ia',
+            p_source_amount: aiPay.amount,
+            p_source_id: x_extra1,
+            p_description: 'Comisión por recarga Herramientas IA de invitado',
+          });
+          console.log('Comisión IA referido:', JSON.stringify(res.data));
+        }
+      } catch (e) { console.error('Error comisión IA referido:', e); }
+
       console.log(`Recarga billetera IA aprobada — payment: ${x_extra1}, ref: ${x_ref_payco}`);
       return ok('ai_wallet_approved');
     }
@@ -293,6 +310,18 @@ Deno.serve(async (req) => {
           p_user_id: smsPay.user_id,
           p_amount: smsPay.credit_amount ?? smsPay.amount,
         });
+
+        // ── Comisión por referido: SMS Masivos ──
+        try {
+          const res = await supabase.rpc('credit_referral_commission', {
+            p_referred_id: smsPay.user_id,
+            p_module: 'sms_masivos',
+            p_source_amount: smsPay.amount,
+            p_source_id: x_extra1,
+            p_description: 'Comisión por recarga SMS Masivos de invitado',
+          });
+          console.log('Comisión SMS referido:', JSON.stringify(res.data));
+        } catch (e) { console.error('Error comisión SMS referido:', e); }
       }
 
       console.log(`Recarga billetera SMS aprobada — payment: ${x_extra1}, ref: ${x_ref_payco}`);
@@ -366,6 +395,25 @@ Deno.serve(async (req) => {
           console.error('Error enviando email de confirmación de curso:', emailErr);
         }
       }
+
+      // ── Comisión por referido: Cursos (Academia) ──
+      try {
+        const { data: purchaseForComm } = await supabase
+          .from('course_purchases')
+          .select('buyer_id, amount_cop')
+          .eq('id', x_extra1)
+          .single();
+        if (purchaseForComm) {
+          const res = await supabase.rpc('credit_referral_commission', {
+            p_referred_id: purchaseForComm.buyer_id,
+            p_module: 'cursos',
+            p_source_amount: purchaseForComm.amount_cop,
+            p_source_id: x_extra1,
+            p_description: 'Comisión por compra de curso de invitado',
+          });
+          console.log('Comisión curso referido:', JSON.stringify(res.data));
+        }
+      } catch (e) { console.error('Error comisión curso referido:', e); }
 
       console.log(`Compra de curso ${x_extra1} completada — ref: ${x_ref_payco}`);
       return ok('curso_purchase_approved');

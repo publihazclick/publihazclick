@@ -121,6 +121,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/components/trading-config/trading-config.component').then(m => m.TradingConfigComponent)
       },
       {
+        path: 'commissions',
+        loadComponent: () => import('./features/admin/components/commissions/commissions.component').then(m => m.AdminCommissionsComponent)
+      },
+      {
         path: 'anda-gana',
         loadComponent: () => import('./features/admin/components/anda-gana-admin/anda-gana-admin.component').then(m => m.AndaGanaAdminComponent)
       },
