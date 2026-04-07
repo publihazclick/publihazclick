@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
+import { getSupabaseClient } from '../../core/supabase.client';
 
 type AgScreen = 'splash' | 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
 type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
@@ -2206,8 +2207,44 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Número de teléfono *</label>
-              <input [(ngModel)]="pf.phone" name="phone" type="tel" required placeholder="+57 300 000 0000"
-                class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
+              <div class="flex gap-2">
+                <input [(ngModel)]="pf.phone" name="phone" type="tel" required placeholder="+57 300 000 0000"
+                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors flex-1"
+                  [disabled]="smsVerified()"/>
+                @if (!smsVerified()) {
+                  <button type="button" (click)="sendSmsCode(pf.phone)"
+                    [disabled]="smsSending() || smsCountdown() > 0 || !pf.phone"
+                    class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex-shrink-0 disabled:opacity-40"
+                    [class]="smsCodeSent() ? 'bg-white/5 text-slate-400 border border-white/10' : 'bg-orange-500 text-black'">
+                    @if (smsSending()) {
+                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">sync</span>
+                    } @else if (smsCountdown() > 0) {
+                      {{ smsCountdown() }}s
+                    } @else {
+                      {{ smsCodeSent() ? 'Reenviar' : 'Verificar' }}
+                    }
+                  </button>
+                } @else {
+                  <span class="flex items-center gap-1 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-bold">
+                    <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Verificado
+                  </span>
+                }
+              </div>
+              @if (smsCodeSent() && !smsVerified()) {
+                <div class="mt-2 flex gap-2">
+                  <input [(ngModel)]="smsCodeInput" name="smsCode" type="text" maxlength="6" placeholder="Código de 6 dígitos"
+                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm text-center tracking-[0.3em] font-bold placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors flex-1"/>
+                  <button type="button" (click)="verifySmsCode()"
+                    [disabled]="smsCodeInput.length < 6"
+                    class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold disabled:opacity-40 transition-all">
+                    Confirmar
+                  </button>
+                </div>
+                <p class="text-slate-500 text-[10px] mt-1">Ingresa el código que recibiste por SMS</p>
+              }
+              @if (smsError()) {
+                <p class="text-rose-400 text-xs mt-1">{{ smsError() }}</p>
+              }
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
@@ -2348,8 +2385,44 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Teléfono *</label>
-                <input [(ngModel)]="df.phone" name="d_phone" type="tel" placeholder="+57 300 000 0000"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                <div class="flex gap-2">
+                  <input [(ngModel)]="df.phone" name="d_phone" type="tel" placeholder="+57 300 000 0000"
+                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors flex-1"
+                    [disabled]="smsVerified()"/>
+                  @if (!smsVerified()) {
+                    <button type="button" (click)="sendSmsCode(df.phone)"
+                      [disabled]="smsSending() || smsCountdown() > 0 || !df.phone"
+                      class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex-shrink-0 disabled:opacity-40"
+                      [class]="smsCodeSent() ? 'bg-white/5 text-slate-400 border border-white/10' : 'bg-cyan-500 text-black'">
+                      @if (smsSending()) {
+                        <span class="material-symbols-outlined animate-spin" style="font-size:14px">sync</span>
+                      } @else if (smsCountdown() > 0) {
+                        {{ smsCountdown() }}s
+                      } @else {
+                        {{ smsCodeSent() ? 'Reenviar' : 'Verificar' }}
+                      }
+                    </button>
+                  } @else {
+                    <span class="flex items-center gap-1 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-bold">
+                      <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Verificado
+                    </span>
+                  }
+                </div>
+                @if (smsCodeSent() && !smsVerified()) {
+                  <div class="mt-2 flex gap-2">
+                    <input [(ngModel)]="smsCodeInput" name="dSmsCode" type="text" maxlength="6" placeholder="Código de 6 dígitos"
+                      class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm text-center tracking-[0.3em] font-bold placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors flex-1"/>
+                    <button type="button" (click)="verifySmsCode()"
+                      [disabled]="smsCodeInput.length < 6"
+                      class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold disabled:opacity-40 transition-all">
+                      Confirmar
+                    </button>
+                  </div>
+                  <p class="text-slate-500 text-[10px] mt-1">Ingresa el código que recibiste por SMS</p>
+                }
+                @if (smsError()) {
+                  <p class="text-rose-400 text-xs mt-1">{{ smsError() }}</p>
+                }
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
@@ -2695,6 +2768,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly agService  = inject(AndaGanaService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route      = inject(ActivatedRoute);
+  private readonly supabase   = getSupabaseClient();
   private referredBy: string | null = null;
 
   screen     = signal<AgScreen>('splash');
@@ -4113,6 +4187,73 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   };
   private _pfFiles: Record<string, File> = {};
 
+  // ── SMS verification state ──
+  smsCodeSent = signal(false);
+  smsCodeInput = '';
+  smsGeneratedCode = '';
+  smsSending = signal(false);
+  smsVerified = signal(false);
+  smsError = signal('');
+  smsCountdown = signal(0);
+  private _smsTimer: ReturnType<typeof setInterval> | null = null;
+
+  async sendSmsCode(phone: string): Promise<void> {
+    if (!phone || phone.length < 10) {
+      this.smsError.set('Ingresa un número de teléfono válido');
+      return;
+    }
+    this.smsSending.set(true);
+    this.smsError.set('');
+
+    // Generar código de 6 dígitos
+    this.smsGeneratedCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    try {
+      const { data, error } = await this.supabase.functions.invoke('ag-sms', {
+        body: { phone, code: this.smsGeneratedCode },
+      });
+
+      if (error) throw error;
+
+      this.smsCodeSent.set(true);
+      // Timer de 60 segundos para reenviar
+      this.smsCountdown.set(60);
+      this._smsTimer = setInterval(() => {
+        this.smsCountdown.update(v => {
+          if (v <= 1) {
+            if (this._smsTimer) clearInterval(this._smsTimer);
+            return 0;
+          }
+          return v - 1;
+        });
+      }, 1000);
+    } catch (e: any) {
+      this.smsError.set('Error al enviar SMS. Verifica tu número.');
+    } finally {
+      this.smsSending.set(false);
+    }
+  }
+
+  verifySmsCode(): void {
+    if (this.smsCodeInput === this.smsGeneratedCode) {
+      this.smsVerified.set(true);
+      this.smsError.set('');
+      if (this._smsTimer) clearInterval(this._smsTimer);
+    } else {
+      this.smsError.set('Código incorrecto. Intenta de nuevo.');
+    }
+  }
+
+  resetSmsState(): void {
+    this.smsCodeSent.set(false);
+    this.smsCodeInput = '';
+    this.smsGeneratedCode = '';
+    this.smsVerified.set(false);
+    this.smsError.set('');
+    this.smsCountdown.set(0);
+    if (this._smsTimer) clearInterval(this._smsTimer);
+  }
+
   // ── Driver form state ──
   driverLoading = signal(false);
   driverSuccess = signal(false);
@@ -4205,6 +4346,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.passengerError.set('Por favor completa todos los campos obligatorios.');
       return;
     }
+    if (!this.smsVerified()) {
+      this.passengerError.set('Debes verificar tu número de teléfono con el código SMS.');
+      return;
+    }
     if (!p.terms) {
       this.passengerError.set('Debes aceptar los términos y condiciones.');
       return;
@@ -4239,6 +4384,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!this.df.plate || !this.df.vehicleType || !this.df.vehicleBrand ||
         !this.df.vehicleModel || !this.df.vehicleYear || !this.df.vehicleColor) {
       this.driverError.set('Completa todos los datos del vehículo.');
+      return;
+    }
+    if (!this.smsVerified()) {
+      this.driverError.set('Debes verificar tu número de teléfono con el código SMS.');
       return;
     }
     if (!this.df.terms) {
