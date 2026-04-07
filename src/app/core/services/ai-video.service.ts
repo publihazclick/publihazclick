@@ -240,4 +240,114 @@ export class AiVideoService {
       }
     }
   }
+
+  // ══════════════════════════════════════════════════════════════
+  // ELEVENLABS — Voces ultra-realistas + clonación
+  // ══════════════════════════════════════════════════════════════
+
+  /** Listar voces de ElevenLabs */
+  async listElevenLabsVoices(): Promise<{ voice_id: string; name: string; category: string; preview_url: string; language: string }[]> {
+    const headers = await this.getAuthHeaders();
+    const res = await fetch(`${FUNCTIONS_URL}/list-elevenlabs-voices`, { method: 'POST', headers, body: '{}' });
+    if (!res.ok) throw new Error('Error al cargar voces ElevenLabs');
+    const data = await res.json();
+    return data.voices ?? [];
+  }
+
+  /** Generar audio TTS con ElevenLabs */
+  async generateElevenLabsTTS(text: string, voiceId: string, stability = 0.5, similarityBoost = 0.75): Promise<string> {
+    const headers = await this.getAuthHeaders();
+    const res = await fetch(`${FUNCTIONS_URL}/generate-elevenlabs-tts`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ text, voice_id: voiceId, stability, similarity_boost: similarityBoost }),
+    });
+    if (!res.ok) throw new Error('Error al generar audio ElevenLabs');
+    const data = await res.json();
+    return data.audio_url;
+  }
+
+  /** Clonar voz del usuario (enviar archivo de audio) */
+  async cloneVoice(name: string, audioFile: File): Promise<{ voice_id: string }> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) throw new Error('Sesión no encontrada');
+    const form = new FormData();
+    form.append('name', name);
+    form.append('audio', audioFile);
+    const res = await fetch(`${FUNCTIONS_URL}/clone-elevenlabs-voice`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}` },
+      body: form,
+    });
+    if (!res.ok) throw new Error('Error al clonar voz');
+    return res.json();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // RUNWAY ML — Video desde imagen/texto
+  // ══════════════════════════════════════════════════════════════
+
+  /** Generar video cinematográfico desde imagen o texto */
+  async generateRunwayVideo(prompt: string, imageUrl?: string, duration = 5, ratio = '16:9'): Promise<{ task_id: string }> {
+    const headers = await this.getAuthHeaders();
+    const res = await fetch(`${FUNCTIONS_URL}/generate-runway-video`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ prompt, image_url: imageUrl, duration, ratio }),
+    });
+    if (!res.ok) throw new Error('Error al iniciar generación de video');
+    return res.json();
+  }
+
+  /** Verificar estado del video de Runway */
+  async checkRunwayVideo(taskId: string): Promise<{ status: string; video_url: string | null; progress: number }> {
+    const headers = await this.getAuthHeaders();
+    const res = await fetch(`${FUNCTIONS_URL}/check-runway-video`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ task_id: taskId }),
+    });
+    if (!res.ok) throw new Error('Error al verificar estado del video');
+    return res.json();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // REPLICATE — Face swap + Flux Pro imágenes
+  // ══════════════════════════════════════════════════════════════
+
+  /** Face swap: poner la cara del usuario en un avatar/template */
+  async faceSwap(sourceImage: string, targetImage: string): Promise<{ status: string; result_url: string }> {
+    const headers = await this.getAuthHeaders();
+    const res = await fetch(`${FUNCTIONS_URL}/generate-face-swap`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ source_image: sourceImage, target_image: targetImage }),
+    });
+    if (!res.ok) throw new Error('Error en face swap');
+    return res.json();
+  }
+
+  /** Generar imágenes fotorrealistas con Flux Pro */
+  async generateFluxImage(prompt: string, aspectRatio = '16:9', numOutputs = 1, negativePrompt?: string): Promise<string[]> {
+    const headers = await this.getAuthHeaders();
+    const res = await fetch(`${FUNCTIONS_URL}/generate-flux-image`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ prompt, aspect_ratio: aspectRatio, num_outputs: numOutputs, negative_prompt: negativePrompt }),
+    });
+    if (!res.ok) throw new Error('Error al generar imagen Flux Pro');
+    const data = await res.json();
+    return data.images ?? [];
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // OPENAI GPT-4o — Guiones creativos superiores
+  // ══════════════════════════════════════════════════════════════
+
+  /** Generar guión con GPT-4o (alternativa a Gemini) */
+  async generateOpenAIScript(topic: string, platform: AiPlatform, duration?: number, tone?: string, productInfo?: string): Promise<AiScript> {
+    const headers = await this.getAuthHeaders();
+    const res = await fetch(`${FUNCTIONS_URL}/generate-openai-script`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ topic, platform, duration, tone, product_info: productInfo }),
+    });
+    if (!res.ok) throw new Error('Error al generar guión OpenAI');
+    const data = await res.json();
+    return data.script;
+  }
 }
