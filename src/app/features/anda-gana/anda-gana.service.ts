@@ -227,6 +227,26 @@ export class AndaGanaService {
     }
   }
 
+  // ── GPS Tracking — actualizar ubicación del conductor ─────────
+  async updateDriverLocation(driverId: string, lat: number, lng: number, heading: number | null): Promise<void> {
+    await this.supabase
+      .from('ag_driver_locations')
+      .upsert({
+        driver_id: driverId,
+        lat,
+        lng,
+        heading: heading ?? 0,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'driver_id' });
+  }
+
+  async removeDriverLocation(driverId: string): Promise<void> {
+    await this.supabase
+      .from('ag_driver_locations')
+      .delete()
+      .eq('driver_id', driverId);
+  }
+
   // ── Mapa — vehículos cercanos ─────────────────────────────────
   async getNearbyVehicles(lat: number, lng: number): Promise<
     { id: string; lat: number; lng: number; heading: number; vehicle_type: string }[]

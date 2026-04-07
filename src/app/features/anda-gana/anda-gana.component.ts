@@ -2988,6 +2988,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     if (profile.role === 'passenger') {
       this.screen.set('passenger-home');
+      // Suscribirse a ubicaciones de conductores en tiempo real
+      this._subscribeToDriverLocations();
     } else {
       const drivers = await this.agService.getDrivers();
       const mine = drivers.find(d => d.ag_user_id === profile.id) ?? null;
@@ -3006,6 +3008,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.driverWalletBalance.set(balance);
         this.driverActiveTrips.set(activeTrips);
         this.driverOnline.set(mine.is_online ?? false);
+        // Si ya estaba online, iniciar tracking GPS
+        if (mine.is_online) {
+          this.startGpsTracking(mine.id);
+        }
       }
     }
 
@@ -3013,11 +3019,67 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
   }
 
+  private _locationChannel: RealtimeChannel | null = null;
+
   ngOnDestroy() {
     this._destroyMap();
     this._stopWaiting();
     this._unsubscribeOffers();
+    this.stopGpsTracking();
+    this._unsubscribeLocations();
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+  }
+
+  /** Suscribirse a cambios en ubicación de conductores (para el mapa del pasajero) */
+  private _subscribeToDriverLocations(): void {
+    this._unsubscribeLocations();
+    this._locationChannel = this.supabase
+      .channel('driver-locations-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'ag_driver_locations',
+      }, (payload: any) => {
+        if (!this._map) return;
+        const mapboxgl = (window as any).mapboxgl;
+        if (!mapboxgl) return;
+
+        const record = payload.new as { driver_id: string; lat: number; lng: number; heading: number } | undefined;
+        if (!record) return;
+
+        // Buscar marcador existente o crear uno nuevo
+        const existingIdx = this._vehicleMarkers.findIndex((m: any) => m._agDriverId === record.driver_id);
+        if (existingIdx >= 0) {
+          // Actualizar posición del marcador existente
+          this._vehicleMarkers[existingIdx].setLngLat([record.lng, record.lat]);
+        } else {
+          // Crear nuevo marcador
+          const el = this._carElement(record.heading ?? 0, '#10b981');
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+            .setLngLat([record.lng, record.lat])
+            .addTo(this._map);
+          (marker as any)._agDriverId = record.driver_id;
+          this._vehicleMarkers.push(marker);
+        }
+
+        // Si fue DELETE, remover marcador
+        if (payload.eventType === 'DELETE' && payload.old) {
+          const delId = (payload.old as any).driver_id;
+          const idx = this._vehicleMarkers.findIndex((m: any) => m._agDriverId === delId);
+          if (idx >= 0) {
+            try { this._vehicleMarkers[idx].remove(); } catch {}
+            this._vehicleMarkers.splice(idx, 1);
+          }
+        }
+      })
+      .subscribe();
+  }
+
+  private _unsubscribeLocations(): void {
+    if (this._locationChannel) {
+      this._locationChannel.unsubscribe();
+      this._locationChannel = null;
+    }
   }
 
   // ── Mapbox loader (CDN con caché) ──────────────────────────────
@@ -3774,6 +3836,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.loadingSection.set(false);
   }
 
+  private _gpsWatchId: number | null = null;
+
   async toggleOnline() {
     const driver = this.driverData();
     if (!driver) return;
@@ -3781,7 +3845,46 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const next = !this.driverOnline();
     await this.agService.setDriverOnline(driver.id, next);
     this.driverOnline.set(next);
+
+    if (next) {
+      // Iniciar tracking GPS
+      this.startGpsTracking(driver.id);
+    } else {
+      // Detener tracking y eliminar ubicación
+      this.stopGpsTracking();
+      await this.agService.removeDriverLocation(driver.id);
+    }
+
     this.togglingOnline.set(false);
+  }
+
+  private startGpsTracking(driverId: string): void {
+    if (!navigator.geolocation) return;
+
+    // Enviar posición inicial
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
+      },
+      () => {},
+      { enableHighAccuracy: true }
+    );
+
+    // Tracking continuo cada vez que se mueve
+    this._gpsWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    );
+  }
+
+  private stopGpsTracking(): void {
+    if (this._gpsWatchId !== null) {
+      navigator.geolocation.clearWatch(this._gpsWatchId);
+      this._gpsWatchId = null;
+    }
   }
 
   async savePreferences() {
