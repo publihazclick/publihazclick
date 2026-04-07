@@ -437,6 +437,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].label }}</p>
                   </div>
                 </div>
+                <!-- Aviso de pago digital -->
+                @if (tripPayment() !== 'efectivo') {
+                  <div class="rounded-xl px-3 py-2.5 flex items-start gap-2"
+                    style="background:#fefce8;border:1px solid #fde68a">
+                    <span class="material-symbols-outlined text-amber-600 flex-shrink-0 mt-0.5" style="font-size:16px">info</span>
+                    <div>
+                      <p class="text-amber-800 text-xs font-bold">Paga por {{ paymentMethodMap[tripPayment()].label }}</p>
+                      <p class="text-amber-700 text-[10px]">Transfiere {{ formatCOP(tripAccepted()!.offered_price) }} al conductor. Usa el chat para coordinar los datos de pago.</p>
+                    </div>
+                  </div>
+                }
+
                 <!-- Chat + Finalizar / Cancelar -->
                 <div class="flex gap-2">
                   <button (click)="openTripChat()"
@@ -1287,6 +1299,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <div class="flex-1 min-w-0">
                     <p class="text-white font-bold text-sm truncate">{{ trip.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}</p>
                     <p class="text-slate-500 text-xs truncate">→ {{ trip.ag_trip_requests?.dest_name }}</p>
+                    <!-- Método de pago -->
+                    <div class="flex items-center gap-2 mt-1">
+                      <div class="flex items-center gap-1 px-2 py-0.5 rounded-full"
+                        [style.background]="getPaymentInfo(trip.ag_trip_requests?.payment_method).bgDark"
+                        [style.border]="'1px solid ' + getPaymentInfo(trip.ag_trip_requests?.payment_method).colorDark">
+                        <span class="material-symbols-outlined" style="font-size:10px"
+                          [style.color]="getPaymentInfo(trip.ag_trip_requests?.payment_method).colorDark">{{ getPaymentInfo(trip.ag_trip_requests?.payment_method).icon }}</span>
+                        <span class="text-[9px] font-bold"
+                          [style.color]="getPaymentInfo(trip.ag_trip_requests?.payment_method).colorDark">{{ getPaymentInfo(trip.ag_trip_requests?.payment_method).label }}</span>
+                      </div>
+                      @if (trip.ag_trip_requests?.ag_users?.phone) {
+                        <a [href]="'tel:' + trip.ag_trip_requests.ag_users.phone" class="flex items-center gap-1 text-[9px] text-slate-500 hover:text-white transition-colors">
+                          <span class="material-symbols-outlined" style="font-size:10px">call</span>
+                          {{ trip.ag_trip_requests.ag_users.phone }}
+                        </a>
+                      }
+                    </div>
                   </div>
                   <p class="text-emerald-400 font-black text-sm flex-shrink-0">{{ formatCOP(trip.offered_price) }}</p>
                 </div>
@@ -2974,6 +3003,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   readonly paymentMethodMap = Object.fromEntries(
     this.paymentMethods.map(p => [p.value, p])
   ) as Record<AgPaymentMethod, typeof this.paymentMethods[0]>;
+
+  /** Helper para obtener método de pago (evita error TS con any) */
+  getPaymentInfo(method: unknown) {
+    return this.paymentMethodMap[(method as AgPaymentMethod) ?? 'efectivo'] ?? this.paymentMethodMap['efectivo'];
+  }
 
   readonly agMenuItems = [
     { icon: 'location_city',    label: 'Ciudad',                   action: 'service:viaje',    divider: false, section: '' },
