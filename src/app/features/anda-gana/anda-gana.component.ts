@@ -437,8 +437,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].label }}</p>
                   </div>
                 </div>
-                <!-- Finalizar / Cancelar -->
+                <!-- Chat + Finalizar / Cancelar -->
                 <div class="flex gap-2">
+                  <button (click)="openTripChat()"
+                    class="px-4 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+                    style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                    <span class="material-symbols-outlined" style="font-size:15px">chat</span>
+                    Chat
+                    @if (chatUnread() > 0) {
+                      <span class="min-w-[16px] h-4 px-1 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center">{{ chatUnread() }}</span>
+                    }
+                  </button>
                   <button (click)="finishTrip()"
                     class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
                     style="background:linear-gradient(135deg,#16a34a,#15803d)">
@@ -1281,9 +1290,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                   <p class="text-emerald-400 font-black text-sm flex-shrink-0">{{ formatCOP(trip.offered_price) }}</p>
                 </div>
-                <div class="px-4 pb-3">
+                <div class="px-4 pb-3 flex gap-2">
+                  <button (click)="openDriverChat(trip)"
+                    class="px-4 py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+                    style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                    <span class="material-symbols-outlined" style="font-size:16px">chat</span>
+                    Chat
+                  </button>
                   <button (click)="finishDriverTrip(trip)"
-                    class="w-full py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                    class="flex-1 py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                     style="background:linear-gradient(135deg,#16a34a,#15803d)">
                     <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
                     Finalizar viaje
@@ -2756,6 +2771,65 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </button>
           </div>
         }
+      </div>
+    </div>
+  }
+
+  <!-- ═══ MODAL CHAT ═══ -->
+  @if (showChatModal()) {
+    <div class="fixed inset-0 z-[200] flex flex-col">
+      <div class="absolute inset-0 bg-black/80" (click)="closeChatModal()"></div>
+      <div class="relative flex flex-col w-full max-w-md mx-auto mt-auto sm:my-auto bg-[#0d0d0d] rounded-t-2xl sm:rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+           style="max-height:80vh" (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0"
+          style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-white" style="font-size:20px">chat</span>
+            <p class="text-white font-black text-sm">Chat del viaje</p>
+          </div>
+          <button (click)="closeChatModal()" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-white" style="font-size:18px">close</span>
+          </button>
+        </div>
+
+        <!-- Mensajes -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-2" style="min-height:200px">
+          @if (chatMessages().length === 0) {
+            <div class="flex flex-col items-center justify-center py-10 text-center">
+              <span class="material-symbols-outlined text-slate-700" style="font-size:40px">chat_bubble_outline</span>
+              <p class="text-slate-500 text-sm mt-2">Sin mensajes aún</p>
+              <p class="text-slate-600 text-xs">Envía un mensaje para comunicarte</p>
+            </div>
+          } @else {
+            @for (msg of chatMessages(); track msg.id) {
+              <div class="flex" [class]="isMyChatMessage(msg) ? 'justify-end' : 'justify-start'">
+                <div class="max-w-[75%] rounded-2xl px-3 py-2"
+                  [class]="isMyChatMessage(msg) ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white/10 text-white rounded-bl-sm'">
+                  <p class="text-sm leading-relaxed">{{ msg.message }}</p>
+                  <p class="text-[9px] mt-0.5 opacity-60">{{ formatChatTime(msg.created_at) }}</p>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Input -->
+        <div class="flex items-center gap-2 px-3 py-3 border-t border-white/10 flex-shrink-0" style="background:#111">
+          <input [(ngModel)]="chatInput" name="chatInput"
+            placeholder="Escribe un mensaje..."
+            (keydown.enter)="sendChatMsg()"
+            class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50"/>
+          <button (click)="sendChatMsg()" [disabled]="!chatInput.trim() || chatSending()"
+            class="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition-all disabled:opacity-40">
+            @if (chatSending()) {
+              <span class="material-symbols-outlined text-white animate-spin" style="font-size:18px">sync</span>
+            } @else {
+              <span class="material-symbols-outlined text-white" style="font-size:18px">send</span>
+            }
+          </button>
+        </div>
       </div>
     </div>
   }
@@ -4344,6 +4418,82 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (this._smsTimer) clearInterval(this._smsTimer);
     } else {
       this.smsError.set('Código incorrecto. Intenta de nuevo.');
+    }
+  }
+
+  // ── Chat en viaje ────────────────────────────────────────────
+  showChatModal = signal(false);
+  chatMessages = signal<{ id: string; sender_ag_user_id: string; message: string; created_at: string }[]>([]);
+  chatInput = '';
+  chatSending = signal(false);
+  chatRequestId = signal<string | null>(null);
+  chatUnread = signal(0);
+  private _chatChannel: RealtimeChannel | null = null;
+
+  async openTripChat(): Promise<void> {
+    const offer = this.tripAccepted();
+    if (!offer?.trip_request_id) return;
+    const requestId = offer.trip_request_id;
+    this.chatRequestId.set(requestId);
+    this.chatUnread.set(0);
+
+    // Cargar mensajes existentes
+    const messages = await this.agService.getChatMessages(requestId);
+    this.chatMessages.set(messages);
+    this.showChatModal.set(true);
+
+    // Suscribirse a nuevos mensajes
+    this._unsubscribeChat();
+    this._chatChannel = this.agService.subscribeToChatMessages(requestId, (msg) => {
+      this.chatMessages.update(list => [...list, msg]);
+    });
+  }
+
+  async openDriverChat(trip: any): Promise<void> {
+    const requestId = trip.ag_trip_requests?.id ?? trip.trip_request_id;
+    if (!requestId) return;
+    this.chatRequestId.set(requestId);
+    this.chatUnread.set(0);
+
+    const messages = await this.agService.getChatMessages(requestId);
+    this.chatMessages.set(messages);
+    this.showChatModal.set(true);
+
+    this._unsubscribeChat();
+    this._chatChannel = this.agService.subscribeToChatMessages(requestId, (msg) => {
+      this.chatMessages.update(list => [...list, msg]);
+    });
+  }
+
+  closeChatModal(): void {
+    this.showChatModal.set(false);
+    this._unsubscribeChat();
+  }
+
+  async sendChatMsg(): Promise<void> {
+    const text = this.chatInput.trim();
+    const reqId = this.chatRequestId();
+    const myProfile = this.agProfile();
+    if (!text || !reqId || !myProfile) return;
+
+    this.chatSending.set(true);
+    await this.agService.sendChatMessage(reqId, myProfile.id, text);
+    this.chatInput = '';
+    this.chatSending.set(false);
+  }
+
+  isMyChatMessage(msg: { sender_ag_user_id: string }): boolean {
+    return msg.sender_ag_user_id === this.agProfile()?.id;
+  }
+
+  formatChatTime(dateStr: string): string {
+    return new Date(dateStr).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  private _unsubscribeChat(): void {
+    if (this._chatChannel) {
+      this._chatChannel.unsubscribe();
+      this._chatChannel = null;
     }
   }
 

@@ -227,6 +227,36 @@ export class AndaGanaService {
     }
   }
 
+  // ── Chat pasajero-conductor ───────────────────────────────────
+  async getChatMessages(requestId: string): Promise<{ id: string; sender_ag_user_id: string; message: string; created_at: string }[]> {
+    const { data } = await this.supabase
+      .from('ag_chat_messages')
+      .select('id, sender_ag_user_id, message, created_at')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: true });
+    return data ?? [];
+  }
+
+  async sendChatMessage(requestId: string, senderAgUserId: string, message: string): Promise<void> {
+    await this.supabase.from('ag_chat_messages').insert({
+      request_id: requestId,
+      sender_ag_user_id: senderAgUserId,
+      message: message.trim(),
+    });
+  }
+
+  subscribeToChatMessages(requestId: string, callback: (msg: any) => void): RealtimeChannel {
+    return this.supabase
+      .channel(`ag-chat-${requestId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ag_chat_messages',
+        filter: `request_id=eq.${requestId}`,
+      }, (payload) => callback(payload.new))
+      .subscribe();
+  }
+
   // ── GPS Tracking — actualizar ubicación del conductor ─────────
   async updateDriverLocation(driverId: string, lat: number, lng: number, heading: number | null): Promise<void> {
     await this.supabase
