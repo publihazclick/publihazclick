@@ -248,6 +248,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/advertiser/components/tasks/advertiser-tasks.component').then(m => m.AdvertiserTasksComponent)
       },
       {
+        path: 'marketplace',
+        loadComponent: () => import('./features/social/components/marketplace/marketplace.component').then(m => m.MarketplaceComponent)
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./features/user/components/settings/settings.component').then(m => m.UserSettingsComponent)
       },
