@@ -227,6 +227,27 @@ export class AndaGanaService {
     }
   }
 
+  // ── Auto-asignación conductor más cercano ─────────────────────
+  async findNearestDrivers(tripRequestId: string, lat: number, lng: number, vehicleType?: string): Promise<any[]> {
+    const { data } = await this.supabase.rpc('ag_find_nearest_drivers', {
+      p_trip_request_id: tripRequestId,
+      p_lat: lat,
+      p_lng: lng,
+      p_vehicle_type: vehicleType ?? null,
+      p_limit: 5,
+    });
+    return data?.drivers ?? [];
+  }
+
+  async autoOfferNearest(tripRequestId: string, driverId: string, offeredPrice: number): Promise<boolean> {
+    const { data } = await this.supabase.rpc('ag_auto_offer_nearest', {
+      p_trip_request_id: tripRequestId,
+      p_driver_id: driverId,
+      p_offered_price: offeredPrice,
+    });
+    return data?.ok ?? false;
+  }
+
   // ── Chat pasajero-conductor ───────────────────────────────────
   async getChatMessages(requestId: string): Promise<{ id: string; sender_ag_user_id: string; message: string; created_at: string }[]> {
     const { data } = await this.supabase

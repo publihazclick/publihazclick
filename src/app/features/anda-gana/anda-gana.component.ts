@@ -4183,6 +4183,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.receivedOffers.set([]);
         this.tripAccepted.set(null);
         this._subscribeToOffers(result.tripId);
+
+        // Auto-buscar conductores cercanos y enviarles la solicitud
+        this._autoAssignNearestDrivers(result.tripId, this._currentLat, this._currentLng, this.tripVehicle(), this.tripPrice());
       }
     }
     this.tripSending.set(false);
@@ -4452,6 +4455,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (this._smsTimer) clearInterval(this._smsTimer);
     } else {
       this.smsError.set('Código incorrecto. Intenta de nuevo.');
+    }
+  }
+
+  // ── Auto-asignación conductor más cercano ────────────────────
+  private async _autoAssignNearestDrivers(tripId: string, lat: number, lng: number, vehicleType: string, price: number): Promise<void> {
+    try {
+      const drivers = await this.agService.findNearestDrivers(tripId, lat, lng, vehicleType);
+      if (drivers.length === 0) return;
+
+      // Enviar oferta al conductor más cercano con el precio del pasajero
+      for (const driver of drivers) {
+        await this.agService.autoOfferNearest(tripId, driver.driver_id, price);
+      }
+    } catch {
+      // Silencioso — no afecta el flujo del pasajero, los conductores
+      // también pueden ver la solicitud manualmente en su feed
     }
   }
 
