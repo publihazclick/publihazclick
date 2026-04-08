@@ -1,0 +1,92 @@
+<div class="min-h-screen bg-black text-white flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-lg">
+    <div class="bg-card-dark rounded-2xl p-8 border border-white/10">
+      <h1 class="text-2xl font-bold text-center mb-2">Eliminar Cuenta</h1>
+      <p class="text-gray-400 text-center text-sm mb-8">
+        Solicita la eliminación permanente de tu cuenta y todos los datos asociados en Movi - Transporte Urbano.
+      </p>
+
+      @if (!submitted()) {
+        <form (ngSubmit)="onSubmit()" class="space-y-5">
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-300 mb-1">
+              Correo electrónico de tu cuenta
+            </label>
+            <input
+              id="email"
+              type="email"
+              [(ngModel)]="email"
+              name="email"
+              required
+              placeholder="tucorreo&#64;ejemplo.com"
+              class="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          <div>
+            <label for="reason" class="block text-sm font-medium text-gray-300 mb-1">
+              Motivo (opcional)
+            </label>
+            <textarea
+              id="reason"
+              [(ngModel)]="reason"
+              name="reason"
+              rows="3"
+              placeholder="Cuéntanos por qué deseas eliminar tu cuenta..."
+              class="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary resize-none"
+            ></textarea>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <input
+              id="confirm"
+              type="checkbox"
+              [(ngModel)]="confirm"
+              name="confirm"
+              class="mt-1 w-4 h-4 accent-primary"
+            />
+            <label for="confirm" class="text-sm text-gray-300">
+              Entiendo que esta acción es <strong class="text-white">irreversible</strong> y que todos mis datos, incluyendo historial, saldo y configuración, serán eliminados permanentemente.
+            </label>
+          </div>
+
+          @if (error()) {
+            <p class="text-red-400 text-sm">{{ error() }}</p>
+          }
+
+          <button
+            type="submit"
+            [disabled]="loading()"
+            class="w-full py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
+          >
+            @if (loading()) {
+              Enviando solicitud...
+            } @else {
+              Solicitar eliminación de cuenta
+            }
+          </button>
+        </form>
+
+        <p class="text-gray-500 text-xs text-center mt-6">
+          Tu solicitud será procesada en un plazo máximo de 30 días. Recibirás una confirmación por correo electrónico.
+        </p>
+      } @else {
+        <div class="text-center py-8">
+          <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <h2 class="text-xl font-semibold mb-2">Solicitud enviada</h2>
+          <p class="text-gray-400 text-sm">
+            Hemos recibido tu solicitud de eliminación de cuenta. Procesaremos tu solicitud en un plazo máximo de 30 días y te notificaremos por correo electrónico.
+          </p>
+        </div>
+      }
+    </div>
+
+    <p class="text-gray-600 text-xs text-center mt-4">
+      Si tienes preguntas, contáctanos a soporte&#64;publihazclick.com
+    </p>
+  </div>
+</div>

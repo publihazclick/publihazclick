@@ -445,6 +445,14 @@ export const routes: Routes = [
     path: 'sms-masivos',
     loadComponent: () => import('./pages/module-landing/sms-landing.component').then(m => m.SmsPublicLandingComponent),
   },
+  {
+    path: 'privacy',
+    loadComponent: () => import('./pages/privacy/privacy.component').then(m => m.PrivacyComponent),
+  },
+  {
+    path: 'delete-account',
+    loadComponent: () => import('./pages/delete-account/delete-account.component').then(m => m.DeleteAccountComponent),
+  },
   // 404
   {
     path: '**',
