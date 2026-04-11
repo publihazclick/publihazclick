@@ -314,6 +314,11 @@
                   <span class="material-symbols-outlined text-zinc-700 text-5xl">image</span>
                 </div>
               }
+              <!-- Overlay con nombre de empresa -->
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
+                <p class="text-white font-black text-sm leading-tight drop-shadow-lg">{{ ad.title }}</p>
+                <p class="text-white/70 text-[10px] font-bold mt-0.5 drop-shadow">{{ ad.advertiserName }}</p>
+              </div>
               @if (selectedGalleryAd()?.id === ad.id) {
                 <div class="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                   <span class="material-symbols-outlined text-white" style="font-size:16px">check</span>
@@ -323,11 +328,9 @@
 
             <!-- Card body -->
             <div class="p-3 flex flex-col flex-1 gap-2">
-              <p class="text-xs font-black text-white line-clamp-2 leading-tight">{{ ad.title }}</p>
               @if (ad.description) {
-                <p class="text-[10px] text-slate-500 line-clamp-2">{{ ad.description }}</p>
+                <p class="text-[10px] text-slate-400 line-clamp-2">{{ ad.description }}</p>
               }
-              <p class="text-[10px] text-slate-600 mt-auto truncate">{{ ad.advertiserName }}</p>
 
               <!-- Select button -->
               <button
