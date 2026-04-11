@@ -316,8 +316,7 @@
               }
               <!-- Overlay con nombre de empresa -->
               <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
-                <p class="text-white font-black text-sm leading-tight drop-shadow-lg">{{ ad.title }}</p>
-                <p class="text-white/70 text-[10px] font-bold mt-0.5 drop-shadow">{{ ad.advertiserName }}</p>
+                <p class="text-white/70 text-[10px] font-bold drop-shadow">{{ ad.advertiserName }}</p>
               </div>
               @if (selectedGalleryAd()?.id === ad.id) {
                 <div class="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
