@@ -95,6 +95,13 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
     return this.currencyService.formatFromCOP(amount, 0);
   }
 
+  getDaysRemaining(): number {
+    const expires = this.profile()?.package_expires_at;
+    if (!expires) return 0;
+    const diff = new Date(expires).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / 86400000));
+  }
+
   toggleSidebarCollapse(): void {
     this.sidebarCollapsed.update((v) => !v);
   }
@@ -180,7 +187,11 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
     return this.router.url.includes('/sms-masivos');
   }
 
+  isAutoWhatsappRoute(): boolean {
+    return this.router.url.includes('/automatic-whatsapp');
+  }
+
   hideWalletAndCurrency(): boolean {
-    return this.isAndaGanaRoute() || this.isAiRoute() || this.isTradingBotRoute() || this.isCursosRoute() || this.isSmsRoute();
+    return this.isAndaGanaRoute() || this.isAiRoute() || this.isTradingBotRoute() || this.isCursosRoute() || this.isSmsRoute() || this.isAutoWhatsappRoute();
   }
 }
