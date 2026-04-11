@@ -1,9 +1,10 @@
-import { Component, inject, signal, OnInit, OnDestroy, Injector, effect } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, Injector, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.service';
 import { AdminBannerService } from '../../../../core/services/admin-banner.service';
+import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { StorageService } from '../../../../core/services/storage.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { UserTrackingService } from '../../../../core/services/user-tracking.service';
@@ -11,7 +12,7 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { SupabaseSessionService } from '../../../../core/services/supabase-session.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PtcModalComponent, PtcAd, RewardStatus } from '../../../../components/ptc-modal/ptc-modal.component';
-import type { PtcAdType } from '../../../../core/models/admin.model';
+import type { PtcAdType, Package } from '../../../../core/models/admin.model';
 
 interface PtcAdCard {
   id: string;
@@ -37,6 +38,7 @@ interface PtcAdCard {
 export class UserAdsComponent implements OnInit, OnDestroy {
   private readonly ptcService = inject(AdminPtcTaskService);
   private readonly bannerService = inject(AdminBannerService);
+  private readonly packageService = inject(AdminPackageService);
   private readonly storageService = inject(StorageService);
   protected readonly currencyService = inject(CurrencyService);
   protected readonly userTracking = inject(UserTrackingService);
@@ -84,16 +86,79 @@ export class UserAdsComponent implements OnInit, OnDestroy {
 
   private readonly adTypeRewards: Record<string, number> = {
     mega: 2000,
+    mega_2000: 2000,
+    mega_5000: 5000,
+    mega_10000: 10000,
+    mega_20000: 20000,
+    mega_50000: 50000,
+    mega_100000: 100000,
     standard_600: 600,
     standard_400: 400,
     mini: 83.33,
   };
 
+  // Mega grants V2 disponibles
+  readonly megaV2Grants = signal<{ ad_type: string; available: number; reward_per_ad: number; earliest_expiry: string }[]>([]);
+
+  // ── Renovación de paquete expirado ────────────────────────────────────────
+  readonly availablePackages = signal<Package[]>([]);
+  readonly renewLoading = signal(false);
+  readonly renewSuccess = signal(false);
+  readonly renewError = signal<string | null>(null);
+
+  /** true cuando el usuario autenticado NO tiene paquete activo (expiró o nunca tuvo) */
+  readonly packageExpired = computed(() => {
+    const p = this.profile();
+    if (!p) return false;
+    return !p.has_active_package;
+  });
+
+  /** Saldo disponible del usuario */
+  readonly userBalance = computed(() => this.profile()?.real_balance ?? 0);
+
+  /** Precio COP del paquete más barato */
+  getPackagePriceCOP(pkg: Package): number {
+    return (pkg as any).price_cop ?? Math.round(pkg.price * 4200);
+  }
+
+  canAffordPackage(pkg: Package): boolean {
+    return this.userBalance() >= this.getPackagePriceCOP(pkg);
+  }
+
+  formatCOP(amount: number): string {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency', currency: 'COP',
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  async renewWithBalance(pkg: Package): Promise<void> {
+    this.renewLoading.set(true);
+    this.renewError.set(null);
+    this.renewSuccess.set(false);
+
+    const result = await this.packageService.renewWithBalance(pkg.id);
+
+    this.renewLoading.set(false);
+    if (result.success) {
+      this.renewSuccess.set(true);
+      // Recargar perfil para reflejar nuevo estado
+      const profile = await this.profileService.getCurrentProfile();
+      // Forzar re-evaluación: el perfil ahora tiene has_active_package = true
+      // y role = 'advertiser', lo cual quitará el overlay y cargará los anuncios
+      this.adsInitialized = false;
+    } else {
+      this.renewError.set(result.error ?? 'Error al renovar');
+      setTimeout(() => this.renewError.set(null), 5000);
+    }
+  }
+
   ngOnInit(): void {
     // El perfil puede no estar cargado aún si el usuario llegó directo a esta URL.
     // Usamos un efecto reactivo para inicializar cuando el signal de perfil esté disponible.
     effect(() => {
-      const role = this.profile()?.role;
+      const p = this.profile();
+      const role = p?.role;
       if (role == null || this.adsInitialized) return;
       this.adsInitialized = true;
       const isAdv = role === 'advertiser' || role === 'admin' || role === 'dev';
@@ -102,6 +167,8 @@ export class UserAdsComponent implements OnInit, OnDestroy {
         this.loadAds();
       } else {
         this.loading.set(false);
+        // Cargar paquetes disponibles para mostrar opciones de renovación
+        this.loadPackagesForRenewal();
       }
     }, { injector: this.injector });
   }
@@ -146,7 +213,23 @@ export class UserAdsComponent implements OnInit, OnDestroy {
         status: task.status,
       }));
 
-      // 3. Filtrar: solo mostrar la cantidad exacta que le corresponde al usuario
+      // 3. Cargar clicks de hoy y mega del mes para excluir ads ya vistos
+      const todayClicked = new Set<string>();
+      const megaMonthClicked = new Set<string>();
+      if (userId) {
+        const [{ data: todayData }, { data: megaData }] = await Promise.all([
+          supabase.rpc('get_my_today_clicks'),
+          supabase.rpc('get_my_month_mega_clicks'),
+        ]);
+        if (todayData && Array.isArray(todayData)) {
+          for (const r of todayData) todayClicked.add(r.task_id);
+        }
+        if (megaData && Array.isArray(megaData)) {
+          for (const r of megaData) megaMonthClicked.add(r.task_id);
+        }
+      }
+
+      // 4. Filtrar: solo mostrar la cantidad exacta que le corresponde al usuario
       const limits = this.adLimits();
       if (limits && limits['has_package']) {
         const filtered: PtcAdCard[] = [];
@@ -161,21 +244,43 @@ export class UserAdsComponent implements OnInit, OnDestroy {
           byType[type].sort(() => Math.random() - 0.5);
         }
 
-        // standard_400 (Anuncios): remaining diario
+        // standard_400: remaining diario, excluir ya clickeados hoy
         const std400Remaining = limits['standard_400']?.remaining ?? 0;
-        filtered.push(...(byType['standard_400'] || []).slice(0, std400Remaining));
+        filtered.push(...(byType['standard_400'] || []).filter(a => !todayClicked.has(a.id)).slice(0, std400Remaining));
 
-        // mini: remaining diario
+        // mini: remaining diario, excluir ya clickeados hoy
         const miniRemaining = limits['mini']?.remaining ?? 0;
-        filtered.push(...(byType['mini'] || []).slice(0, miniRemaining));
+        filtered.push(...(byType['mini'] || []).filter(a => !todayClicked.has(a.id)).slice(0, miniRemaining));
 
-        // standard_600: remaining diario
+        // standard_600: remaining diario, excluir ya clickeados hoy
         const std600Remaining = limits['standard_600']?.remaining ?? 0;
-        filtered.push(...(byType['standard_600'] || []).slice(0, std600Remaining));
+        filtered.push(...(byType['standard_600'] || []).filter(a => !todayClicked.has(a.id)).slice(0, std600Remaining));
 
-        // mega: remaining mensual
+        // mega V1: remaining mensual, excluir ya clickeados este mes
         const megaRemaining = limits['mega']?.remaining ?? 0;
-        filtered.push(...(byType['mega'] || []).slice(0, megaRemaining));
+        filtered.push(...(byType['mega'] || []).filter(a => !megaMonthClicked.has(a.id)).slice(0, megaRemaining));
+
+        // mega V2: cargar grants disponibles y agregar como ads clickeables
+        if (userId) {
+          const { data: grants } = await supabase.rpc('get_available_mega_grants', { p_user_id: userId });
+          if (grants && Array.isArray(grants)) {
+            this.megaV2Grants.set(grants);
+            for (const grant of grants) {
+              // Buscar un ptc_task del tipo correspondiente para usarlo como contenido
+              const megaTask = allAds.find(a => a.adType === grant.ad_type);
+              if (megaTask) {
+                for (let i = 0; i < grant.available; i++) {
+                  filtered.push({
+                    ...megaTask,
+                    id: megaTask.id,
+                    rewardCOP: grant.reward_per_ad,
+                    adType: grant.ad_type as PtcAdType,
+                  });
+                }
+              }
+            }
+          }
+        }
 
         this.ads.set(filtered);
       } else {
@@ -190,6 +295,13 @@ export class UserAdsComponent implements OnInit, OnDestroy {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private async loadPackagesForRenewal(): Promise<void> {
+    try {
+      const packages = await this.packageService.getPackages();
+      this.availablePackages.set(packages);
+    } catch { /* silencioso */ }
   }
 
   getAdsByType(type: PtcAdType): PtcAdCard[] {
@@ -276,6 +388,11 @@ export class UserAdsComponent implements OnInit, OnDestroy {
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent : null;
       const fingerprint = await this.userTracking.getSessionFingerprint() || null;
 
+      // Determinar si es un mega V2 para pasar ad_type_override
+      const clickedAd = this.selectedAd();
+      const megaV2Types = ['mega_2000','mega_5000','mega_10000','mega_20000','mega_50000','mega_100000'];
+      const adTypeOverride = clickedAd && megaV2Types.includes(clickedAd.adType) ? clickedAd.adType : null;
+
       const data = await this.sessionService.callRpc<{ success: boolean; reward?: number; donation?: number; error?: string }>(
         'record_ptc_click',
         {
@@ -285,6 +402,7 @@ export class UserAdsComponent implements OnInit, OnDestroy {
           p_user_agent: ua,
           p_session_fingerprint: fingerprint,
           p_click_duration_ms: durationMs ?? null,
+          p_ad_type_override: adTypeOverride,
         }
       );
 
