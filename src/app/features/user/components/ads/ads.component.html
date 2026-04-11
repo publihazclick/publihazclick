@@ -60,31 +60,74 @@
       <!-- Paquetes disponibles para renovar -->
       @if (availablePackages().length > 0) {
         <div class="w-full max-w-lg space-y-3">
-          <p class="text-xs text-slate-500 uppercase font-bold tracking-wider">Renueva con tu saldo</p>
+          <p class="text-xs text-slate-500 uppercase font-bold tracking-wider">Renueva tu paquete</p>
           @for (pkg of availablePackages(); track pkg.id) {
-            <div class="bg-black/30 border rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 transition-all"
-              [class]="canAffordPackage(pkg) ? 'border-primary/30 hover:border-primary/50' : 'border-white/5 opacity-60'"
-            >
-              <div class="flex-grow text-left w-full sm:w-auto">
-                <p class="text-white font-black text-sm">{{ pkg.name }}</p>
-                <p class="text-slate-400 text-xs mt-0.5">{{ pkg.duration_days }} días &middot; {{ formatCOP(getPackagePriceCOP(pkg)) }}</p>
+            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-white font-black text-sm">{{ pkg.name }}</p>
+                  <p class="text-slate-400 text-xs mt-0.5">{{ pkg.duration_days }} días &middot; {{ formatCOP(getPackagePriceCOP(pkg)) }}</p>
+                </div>
+                @if (canAffordPackage(pkg)) {
+                  <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/20">Saldo suficiente</span>
+                } @else {
+                  <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/20">Saldo parcial</span>
+                }
               </div>
+
               @if (canAffordPackage(pkg)) {
+                <!-- Puede pagar completo con saldo -->
                 <button
                   (click)="renewWithBalance(pkg)"
                   [disabled]="renewLoading()"
-                  class="w-full sm:w-auto px-5 py-2.5 bg-primary hover:bg-primary/90 text-black font-black rounded-xl text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                  class="w-full px-5 py-3 bg-primary hover:bg-primary/90 text-black font-black rounded-xl text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2"
                 >
                   @if (renewLoading()) {
                     <div class="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
                     Renovando...
                   } @else {
                     <span class="material-symbols-outlined text-base">autorenew</span>
-                    Renovar
+                    Renovar con saldo ({{ formatCOP(getPackagePriceCOP(pkg)) }})
                   }
                 </button>
               } @else {
-                <span class="text-xs text-slate-500 font-bold whitespace-nowrap">Saldo insuficiente</span>
+                <!-- No le alcanza: mostrar opción de pago parcial con Nequi -->
+                <div class="bg-amber-500/5 border border-amber-500/15 rounded-xl p-4 space-y-3">
+                  <div class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-amber-400 flex-shrink-0 mt-0.5" style="font-size:18px">info</span>
+                    <div class="text-xs text-slate-300 leading-relaxed">
+                      <p>Tu saldo cubre <strong class="text-emerald-400">{{ formatCOP(userBalance()) }}</strong> de los <strong class="text-white">{{ formatCOP(getPackagePriceCOP(pkg)) }}</strong> necesarios.</p>
+                      <p class="mt-1">Deposita el restante de <strong class="text-amber-400">{{ formatCOP(getPackagePriceCOP(pkg) - userBalance()) }}</strong> por Nequi y envía tu comprobante por WhatsApp.</p>
+                    </div>
+                  </div>
+
+                  <div class="bg-black/30 rounded-xl p-3 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-500">Precio del paquete</span>
+                      <span class="text-white font-bold">{{ formatCOP(getPackagePriceCOP(pkg)) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-500">Tu saldo acumulado</span>
+                      <span class="text-emerald-400 font-bold">- {{ formatCOP(userBalance()) }}</span>
+                    </div>
+                    <div class="border-t border-white/10 pt-2 flex items-center justify-between text-xs">
+                      <span class="text-amber-400 font-bold">Depositar por Nequi</span>
+                      <span class="text-amber-400 font-black text-sm">{{ formatCOP(getPackagePriceCOP(pkg) - userBalance()) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="bg-black/30 rounded-xl p-3">
+                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-2">Nequi para depositar</p>
+                    <p class="text-lg font-black text-primary tracking-wider">313 445 3649</p>
+                  </div>
+
+                  <a href="https://wa.me/573134453649?text=Hola%2C%20hice%20un%20deposito%20de%20{{ getPackagePriceCOP(pkg) - userBalance() }}%20COP%20por%20Nequi%20para%20renovar%20mi%20paquete.%20Mi%20usuario%20es%20{{ profile()?.username }}"
+                     target="_blank" rel="noopener noreferrer"
+                     class="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-base">chat</span>
+                    Enviar comprobante por WhatsApp
+                  </a>
+                </div>
               }
             </div>
           }
@@ -105,17 +148,18 @@
         </div>
       }
 
-      <!-- Enlace alternativo a paquetes para pagar con otros métodos -->
-      <div class="flex flex-col items-center gap-2 pt-2">
-        <p class="text-slate-600 text-xs">¿No tienes suficiente saldo?</p>
-        <a
-          routerLink="/dashboard/packages"
-          class="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-bold text-sm transition-all"
-        >
-          <span class="material-symbols-outlined text-base">shopping_cart</span>
-          Comprar paquete
-        </a>
-      </div>
+      <!-- Si no tiene nada de saldo, opción directa de compra -->
+      @if (userBalance() <= 0) {
+        <div class="flex flex-col items-center gap-2 pt-2">
+          <a
+            routerLink="/dashboard/packages"
+            class="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-bold text-sm transition-all"
+          >
+            <span class="material-symbols-outlined text-base">shopping_cart</span>
+            Comprar paquete
+          </a>
+        </div>
+      }
     </div>
   }
 
