@@ -15,6 +15,7 @@ import { CurrencyService } from '../../core/services/currency.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { UserTrackingService } from '../../core/services/user-tracking.service';
 import { environment } from '../../../environments/environment';
+import type { PtcAdType } from '../../core/models/admin.model';
 
 export interface PtcAd {
   id: string;
@@ -25,7 +26,7 @@ export interface PtcAd {
   imageUrl: string;
   videoUrl: string;
   destinationUrl: string;
-  adType: 'mega' | 'standard_400' | 'standard_600' | 'mini' | 'mini_referral';
+  adType: PtcAdType;
   rewardCOP: number;
   duration: number;
 }
@@ -667,7 +668,7 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   getAdTypeLabel(): string {
     const labels: Record<string, string> = {
-      mega: 'Mega Anuncio', standard_600: 'Anuncio 600',
+      mega: 'Mega Anuncio',
       standard_400: 'Anuncio 400', mini: 'Mini Anuncio',
     };
     return labels[this.ad().adType] || 'PTC';
@@ -676,7 +677,6 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   getAdTypeBadgeClass(): string {
     const c: Record<string, string> = {
       mega: 'bg-purple-500/15 text-purple-400 border border-purple-500/20',
-      standard_600: 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20',
       standard_400: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
       mini: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
     };
@@ -686,7 +686,6 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   getModalBorderClass(): string {
     const c: Record<string, string> = {
       mega: 'bg-zinc-950 border-purple-500/20 shadow-purple-500/10',
-      standard_600: 'bg-zinc-950 border-cyan-500/20 shadow-cyan-500/10',
       standard_400: 'bg-zinc-950 border-blue-500/20 shadow-blue-500/10',
       mini: 'bg-zinc-950 border-emerald-500/20 shadow-emerald-500/10',
     };
@@ -696,7 +695,6 @@ export class PtcModalComponent implements OnInit, OnDestroy {
   getGlowClass(): string {
     const c: Record<string, string> = {
       mega: 'bg-gradient-to-r from-transparent via-purple-500/50 to-transparent',
-      standard_600: 'bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent',
       standard_400: 'bg-gradient-to-r from-transparent via-blue-500/50 to-transparent',
       mini: 'bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent',
     };

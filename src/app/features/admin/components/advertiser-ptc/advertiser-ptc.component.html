@@ -109,7 +109,6 @@
                   <th class="px-5 py-4">Fecha</th>
                   <th class="px-5 py-4 text-cyan-400">Std 400</th>
                   <th class="px-5 py-4 text-amber-400">Mini</th>
-                  <th class="px-5 py-4 text-blue-400">Std 600</th>
                   <th class="px-5 py-4 text-violet-400">Mega</th>
                   <th class="px-5 py-4 text-emerald-400">Realizados</th>
                   <th class="px-5 py-4 text-rose-400">Perdidos</th>
@@ -134,10 +133,6 @@
                     <td class="px-5 py-3.5">
                       <span class="font-bold text-amber-400">{{ row.mini_count }}</span>
                       <span class="text-slate-600 text-xs">/4</span>
-                    </td>
-                    <td class="px-5 py-3.5">
-                      <span class="font-bold text-blue-400">{{ row.std600_count }}</span>
-                      <span class="text-slate-600 text-xs">/3</span>
                     </td>
                     <td class="px-5 py-3.5">
                       <span class="font-bold text-violet-400">{{ row.mega_count }}</span>
@@ -354,7 +349,6 @@
                       <th class="pb-3 pr-4">Fecha</th>
                       <th class="pb-3 pr-4 text-cyan-400">S400</th>
                       <th class="pb-3 pr-4 text-amber-400">Mini</th>
-                      <th class="pb-3 pr-4 text-blue-400">S600</th>
                       <th class="pb-3 pr-4 text-violet-400">Mega</th>
                       <th class="pb-3 pr-4 text-emerald-400">Hechos</th>
                       <th class="pb-3 pr-4 text-rose-400">Perdidos</th>
@@ -367,7 +361,6 @@
                         <td class="py-2.5 pr-4 text-slate-300 whitespace-nowrap">{{ formatDate(day.report_date) }}</td>
                         <td class="py-2.5 pr-4 font-bold text-cyan-400">{{ day.std400_count }}<span class="text-slate-600 text-xs">/5</span></td>
                         <td class="py-2.5 pr-4 font-bold text-amber-400">{{ day.mini_count }}<span class="text-slate-600 text-xs">/4</span></td>
-                        <td class="py-2.5 pr-4 font-bold text-blue-400">{{ day.std600_count }}<span class="text-slate-600 text-xs">/3</span></td>
                         <td class="py-2.5 pr-4 font-bold text-violet-400">{{ day.mega_count }}<span class="text-slate-600 text-xs">/1</span></td>
                         <td class="py-2.5 pr-4 font-black text-emerald-400">{{ day.completed_count }}</td>
                         <td class="py-2.5 pr-4 font-bold" [class]="day.lost_count > 0 ? 'text-rose-400' : 'text-slate-600'">{{ day.lost_count }}</td>

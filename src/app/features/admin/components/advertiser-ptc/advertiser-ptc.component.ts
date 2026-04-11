@@ -16,7 +16,6 @@ interface AdvertiserRow {
   report_date: string;
   std400_count: number;
   mini_count: number;
-  std600_count: number;
   mega_count: number;
   completed_count: number;
   earned_cop: number;
@@ -26,7 +25,6 @@ interface DayDetail {
   report_date: string;
   std400_count: number;
   mini_count: number;
-  std600_count: number;
   mega_count: number;
   completed_count: number;
   earned_cop: number;
@@ -194,7 +192,6 @@ export class AdminAdvertiserPtcComponent implements OnInit {
             report_date: dateStr,
             std400_count: 0,
             mini_count: 0,
-            std600_count: 0,
             mega_count: 0,
             completed_count: 0,
             earned_cop: 0,
@@ -207,7 +204,6 @@ export class AdminAdvertiserPtcComponent implements OnInit {
         const adType = task.ad_type as string;
         if (adType === 'standard_400') row.std400_count++;
         else if (adType === 'mini' || adType === 'mini_referral') row.mini_count++;
-        else if (adType === 'standard_600') row.std600_count++;
         else if (adType === 'mega') row.mega_count++;
       }
 
@@ -280,7 +276,6 @@ export class AdminAdvertiserPtcComponent implements OnInit {
             report_date: dateStr,
             std400_count: 0,
             mini_count: 0,
-            std600_count: 0,
             mega_count: 0,
             completed_count: 0,
             earned_cop: 0,
@@ -295,7 +290,6 @@ export class AdminAdvertiserPtcComponent implements OnInit {
         const adType = task.ad_type as string;
         if (adType === 'standard_400') day.std400_count++;
         else if (adType === 'mini' || adType === 'mini_referral') day.mini_count++;
-        else if (adType === 'standard_600') day.std600_count++;
         else if (adType === 'mega') day.mega_count++;
       }
 
@@ -356,13 +350,11 @@ export class AdminAdvertiserPtcComponent implements OnInit {
       const limits: Record<string, number> = {
         standard_400: 5,
         mini: 4,
-        standard_600: 3,
         mega: 1,
       };
       const rewards: Record<string, number> = {
         standard_400: 400,
         mini: 83.33,
-        standard_600: 600,
         mega: 2000,
       };
 

@@ -258,7 +258,6 @@ export class AdminModerationComponent implements OnInit {
     const labels: Record<string, string> = {
       mega: 'Mega Anuncio',
       standard_400: 'Anuncio 400',
-      standard_600: 'Anuncio 600',
       mini: 'Mini Anuncio',
       sidebar: 'Banner Lateral',
       header: 'Banner Encabezado',

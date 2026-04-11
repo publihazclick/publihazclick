@@ -794,7 +794,6 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     const labels: Record<string, string> = {
       mini: 'Mini',
       standard_400: 'Standard 400',
-      standard_600: 'Standard 600',
       mega: 'Mega',
     };
     return labels[adType] ?? adType;
@@ -804,7 +803,6 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     const colors: Record<string, string> = {
       mini: 'text-sky-400',
       standard_400: 'text-violet-400',
-      standard_600: 'text-amber-400',
       mega: 'text-rose-400',
     };
     return colors[adType] ?? 'text-slate-400';
@@ -814,7 +812,6 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     const bgs: Record<string, string> = {
       mini: 'bg-sky-500/10',
       standard_400: 'bg-violet-500/10',
-      standard_600: 'bg-amber-500/10',
       mega: 'bg-rose-500/10',
     };
     return bgs[adType] ?? 'bg-slate-500/10';

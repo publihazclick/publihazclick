@@ -51,7 +51,6 @@ export class AboutComponent {
 
   readonly adTypes = [
     { icon: 'star',        label: 'Mega Anuncio', time: '60 seg', reward: '+$2.00', color: 'purple', desc: 'El más rentable. Videos premium de marcas de alto impacto.' },
-    { icon: 'ads_click',   label: 'Anuncio 600',  time: '60 seg', reward: '+$0.60', color: 'cyan',   desc: 'Anuncios estándar de alta rotación con excelente pago.' },
     { icon: 'play_circle', label: 'Anuncio 400',  time: '60 seg', reward: '+$0.40', color: 'blue',   desc: 'Contenido publicitario variado de marcas nacionales.' },
     { icon: 'bolt',        label: 'Mini Anuncio', time: '30 seg', reward: '+$0.08', color: 'emerald', desc: 'Rápido y frecuente. Ideal para acumular de forma constante.' },
   ];

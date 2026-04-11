@@ -8,7 +8,8 @@ import type {
   CreatePtcTaskData,
   PaginatedResponse,
   PaginationParams,
-  AdLocation
+  AdLocation,
+  PtcAdType
 } from '../models/admin.model';
 
 /**
@@ -22,7 +23,7 @@ export interface SampleAdCard {
   advertiserType: 'company' | 'person';
   imageUrl: string;
   videoUrl: string;
-  adType: 'mega' | 'standard_400' | 'standard_600' | 'mini';
+  adType: PtcAdType;
   rewardCOP: number;
   dailyLimit: number;
   totalClicks: number;
@@ -31,7 +32,7 @@ export interface SampleAdCard {
 
 /**
  * 32 anuncios de ejemplo usados en la landing y galería del anunciante
- * 8 por categoría: mega, standard_400, standard_600, mini
+ * Anuncios por categoría: mega, standard_400, mini
  */
 export const SAMPLE_PTC_ADS: SampleAdCard[] = [
   // Mega Anuncios (2000 COP)
@@ -146,63 +147,6 @@ export const SAMPLE_PTC_ADS: SampleAdCard[] = [
     rewardCOP: 400,
     dailyLimit: 50,
     totalClicks: 190,
-    status: 'active'
-  },
-  // Standard 600 (600 COP)
-  {
-    id: '3',
-    title: 'Servicio de Delivery Express',
-    description: 'Entrega rápida a domicilio',
-    advertiserName: 'Juan Pérez',
-    advertiserType: 'person',
-    imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
-    videoUrl: 'fJ9rUzIMcZQ',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 60,
-    totalClicks: 180,
-    status: 'active'
-  },
-  {
-    id: '12',
-    title: 'Clases de Guitarra Online',
-    description: 'Aprende a tocar guitarra desde casa',
-    advertiserName: 'MusicaVirtual',
-    advertiserType: 'company',
-    imageUrl: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop',
-    videoUrl: 'hT_nvWreIhg',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 40,
-    totalClicks: 150,
-    status: 'active'
-  },
-  {
-    id: '13',
-    title: 'Servicios de Limpieza',
-    description: 'Limpieza profesional garantizada',
-    advertiserName: 'LimpiaHogar',
-    advertiserType: 'company',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop',
-    videoUrl: 'kXYiU_JCYtU',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 55,
-    totalClicks: 230,
-    status: 'active'
-  },
-  {
-    id: '14',
-    title: 'Peluquería Canina a Domicilio',
-    description: 'Cuidamos a tu mascota con amor',
-    advertiserName: 'MascotasFelices',
-    advertiserType: 'company',
-    imageUrl: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=300&fit=crop',
-    videoUrl: 'RgKAFKcjG3w',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 35,
-    totalClicks: 95,
     status: 'active'
   },
   // Mini Anuncios (83.33 COP)
@@ -376,64 +320,6 @@ export const SAMPLE_PTC_ADS: SampleAdCard[] = [
     rewardCOP: 400,
     dailyLimit: 55,
     totalClicks: 175,
-    status: 'active'
-  },
-
-  // ── Standard 600 extra ×4 (clonan imágenes de mega) ─────────────────────
-  {
-    id: '25',
-    title: 'Outlet de Temporada',
-    description: 'Hasta 60% de descuento en miles de productos',
-    advertiserName: 'Mileniustore',
-    advertiserType: 'company',
-    imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=300&fit=crop',
-    videoUrl: 'dQw4w9WgXcQ',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 80,
-    totalClicks: 360,
-    status: 'active'
-  },
-  {
-    id: '26',
-    title: 'Cena Romántica para Dos',
-    description: 'Reserva tu mesa especial hoy',
-    advertiserName: 'Restaurante Los Parados',
-    advertiserType: 'company',
-    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
-    videoUrl: 'jfKfPfyJRdk',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 45,
-    totalClicks: 195,
-    status: 'active'
-  },
-  {
-    id: '27',
-    title: 'Celulares Desbloqueados',
-    description: 'Los mejores smartphones al mejor precio',
-    advertiserName: 'TecnoWorld',
-    advertiserType: 'company',
-    imageUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
-    videoUrl: '5qap5aO4i9A',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 70,
-    totalClicks: 280,
-    status: 'active'
-  },
-  {
-    id: '28',
-    title: 'Paquete Spa Día Completo',
-    description: 'Masajes, sauna y tratamientos faciales',
-    advertiserName: 'Relax & Vida',
-    advertiserType: 'company',
-    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop',
-    videoUrl: 'DWcJFNfaw9c',
-    adType: 'standard_600',
-    rewardCOP: 600,
-    dailyLimit: 40,
-    totalClicks: 130,
     status: 'active'
   },
 

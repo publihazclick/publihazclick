@@ -129,14 +129,13 @@ export class PtcAdsComponent implements OnInit {
   }
 
   getAdTypeLabel(type: PtcAdType): string {
-    const labels: Record<PtcAdType, string> = {
+    const labels: Partial<Record<PtcAdType, string>> = {
       'mega': 'Mega Anuncio',
       'standard_400': 'Anuncio 400',
-      'standard_600': 'Anuncio 600',
       'mini': 'Mini Anuncio',
       'mini_referral': 'Mini Referido'
     };
-    return labels[type] || type;
+    return labels[type] ?? type;
   }
 
   getAdTypeClass(type: PtcAdType): string {
@@ -145,8 +144,6 @@ export class PtcAdsComponent implements OnInit {
         return 'bg-purple-500';
       case 'standard_400':
         return 'bg-blue-500';
-      case 'standard_600':
-        return 'bg-cyan-500';
       case 'mini':
         return 'bg-green-500';
       default:
@@ -157,7 +154,6 @@ export class PtcAdsComponent implements OnInit {
   // Valores de recompensa por tipo de anuncio
   private readonly adTypeRewards: Record<string, number> = {
     'mega': 2000,
-    'standard_600': 600,
     'standard_400': 400,
     'mini': 83.33
   };

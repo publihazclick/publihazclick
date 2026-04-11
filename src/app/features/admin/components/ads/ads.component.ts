@@ -137,7 +137,6 @@ export class AdminAdsComponent implements OnInit {
   readonly adTypeOptions: { value: PtcAdType; label: string; reward: number; duration: number }[] =
     [
       { value: 'mega', label: 'Mega Anuncio', reward: 2000, duration: 60 },
-      { value: 'standard_600', label: 'Standard 600', reward: 600, duration: 60 },
       { value: 'standard_400', label: 'Standard 400', reward: 400, duration: 60 },
       { value: 'mini', label: 'Mini Anuncio', reward: 83.33, duration: 30 },
     ];
@@ -151,9 +150,6 @@ export class AdminAdsComponent implements OnInit {
     const hasUser = !!this.selectedAdvertiser();
     if (loc === 'app' && hasUser) {
       return this.adTypeOptions.filter((o) => o.value === 'standard_400');
-    }
-    if (loc === 'app') {
-      return this.adTypeOptions.filter((o) => o.value !== 'standard_600');
     }
     return this.adTypeOptions;
   });
@@ -825,7 +821,6 @@ export class AdminAdsComponent implements OnInit {
   getAdTypeLabel(adType: string): string {
     const labels: Record<string, string> = {
       mega: 'Mega',
-      standard_600: 'Std 600',
       standard_400: 'Std 400',
       mini: 'Mini',
     };

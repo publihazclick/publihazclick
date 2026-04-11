@@ -100,8 +100,13 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   private dbDoneToday = new Set<string>();
 
   private readonly adTypeRewards: Record<string, number> = {
-    mega: 2000, standard_600: 600, standard_400: 400, mini: 83.33, mini_referral: 100,
+    mega: 2000, mega_2000: 2000, mega_5000: 5000, mega_10000: 10000,
+    mega_20000: 20000, mega_50000: 50000, mega_100000: 100000,
+    standard_400: 400, mini: 83.33, mini_referral: 100,
   };
+
+  // Mega grants V2
+  readonly megaV2Slots = signal<TaskSlot[]>([]);
 
   // ── Tracking ─────────────────────────────────────────────────────────────
   // Clave diaria en fecha Colombia (UTC-5) → se resetea sola cada medianoche Colombia
@@ -160,14 +165,23 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
       // Cargar clicks de hoy desde la BD antes de construir slots.
       // Así el estado "visto" es correcto en cualquier navegador o dispositivo.
       await this.loadDbDoneToday();
-      await Promise.all([this.loadTasks(), this.loadMiniReferralSlots()]);
+      await Promise.all([this.loadTasks(), this.loadMiniReferralSlots(), this.loadMegaV2Grants()]);
     }
     this.loading.set(false);
   }
 
+  // IDs de mega clicks hechos este mes (para marcar como viewed)
+  private dbMegaDoneMonth = new Set<string>();
+
   private async loadDbDoneToday(): Promise<void> {
     try {
-      const { data } = await this.supabase.rpc('get_my_today_clicks');
+      const [{ data }, { data: megaMonth }] = await Promise.all([
+        this.supabase.rpc('get_my_today_clicks'),
+        this.supabase.rpc('get_my_month_mega_clicks'),
+      ]);
+      if (megaMonth && Array.isArray(megaMonth)) {
+        this.dbMegaDoneMonth = new Set(megaMonth.map((r: any) => r.task_id));
+      }
       if (data && Array.isArray(data)) {
         this.dbDoneToday = new Set(data.map((r: { task_id: string }) => r.task_id));
       }
@@ -206,14 +220,24 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
 
   private async loadTasks(): Promise<void> {
     try {
+      // 1. Obtener límites reales desde la BD (fuente de verdad)
+      const userId = this.profile()?.id;
+      let limits: any = null;
+      if (userId) {
+        const { data } = await this.supabase.rpc('get_user_ad_limits', { p_user_id: userId });
+        limits = data;
+      }
+
+      // 2. Cargar anuncios activos
       const result = await this.ptcService.getPtcTasks(
         { status: 'active', location: 'app' },
         { page: 1, pageSize: 100 }
       );
       const tasks = result.data ?? [];
-      // Combinar clicks de BD (fuente de verdad) con localStorage (cache local inmediato)
+
+      // 3. Sets de tasks ya completados
       const dailyDone = new Set([...this.dbDoneToday, ...this.getDailyDone()]);
-      const megaDone = new Set([...this.dbDoneToday, ...this.getMegaDone()]);
+      const megaDone = new Set([...this.dbMegaDoneMonth, ...this.getMegaDone()]);
 
       const toSlot = (task: any, isDailyType: boolean): TaskSlot => ({
         id: task.id,
@@ -224,38 +248,27 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
         videoUrl: task.youtube_url || '',
         destinationUrl: task.url || '',
         rewardCOP: this.adTypeRewards[task.ad_type] ?? task.reward ?? 0,
-        // Diarias: verificar si se hizo HOY — Mega: verificar si alguna vez se hizo
         viewed: isDailyType ? dailyDone.has(task.id) : megaDone.has(task.id),
       });
 
-      const emptySlot = (adType: PtcAdType, reward: number): TaskSlot => ({
-        id: null, adType, title: 'Próximamente',
-        description: 'El administrador cargará este anuncio pronto.',
-        imageUrl: '', videoUrl: '', destinationUrl: '', rewardCOP: reward, viewed: false,
-      });
+      // 4. Usar remaining de la BD en vez de constantes locales
+      const std400Remaining = limits?.standard_400?.remaining ?? DAILY_SLOTS.standard_400;
+      const miniRemaining = limits?.mini?.remaining ?? DAILY_SLOTS.mini;
+      const megaRemaining = limits?.mega?.remaining ?? 0;
 
-      const fillSlots = (
-        tasks: any[], total: number, adType: PtcAdType, reward: number, isDaily: boolean
-      ): TaskSlot[] => {
-        const slots = tasks.slice(0, total).map(t => toSlot(t, isDaily));
-        for (let i = slots.length; i < total; i++) slots.push(emptySlot(adType, reward));
-        return slots;
-      };
+      // 5. Filtrar tasks: excluir los ya clickeados hoy (diarios) o este mes (mega)
+      const s400 = tasks.filter(t => t.ad_type === 'standard_400' && !dailyDone.has(t.id));
+      const mini = tasks.filter(t => t.ad_type === 'mini' && !dailyDone.has(t.id));
+      const mega = tasks.filter(t => t.ad_type === 'mega' && !megaDone.has(t.id));
 
-      // Tareas diarias separadas por categoría
-      const s400 = tasks.filter(t => t.ad_type === 'standard_400');
-      const mini = tasks.filter(t => t.ad_type === 'mini');
-      this.standard400Slots.set(fillSlots(s400, DAILY_SLOTS.standard_400, 'standard_400', 400, true));
-      this.miniSlots.set(fillSlots(mini, DAILY_SLOTS.mini, 'mini', 83.33, true));
-
-      // Mega tareas: acumulables hasta el máximo disponible
-      const mega = tasks.filter(t => t.ad_type === 'mega');
-      const megaTotal = this.megaSlotsAvailable();
-      this.megaSlots.set(fillSlots(mega, megaTotal, 'mega', 2000, false));
+      // 6. Mostrar SOLO la cantidad que realmente le queda
+      this.standard400Slots.set(s400.slice(0, std400Remaining).map(t => toSlot(t, true)));
+      this.miniSlots.set(mini.slice(0, miniRemaining).map(t => toSlot(t, true)));
+      this.megaSlots.set(mega.slice(0, megaRemaining).map(t => toSlot(t, false)));
 
     } catch {
-      this.standard400Slots.set(Array.from({ length: DAILY_SLOTS.standard_400 }, () => this.emptySlot('standard_400', 400)));
-      this.miniSlots.set(Array.from({ length: DAILY_SLOTS.mini }, () => this.emptySlot('mini', 83.33)));
+      this.standard400Slots.set([]);
+      this.miniSlots.set([]);
       this.megaSlots.set([]);
     }
   }
@@ -282,28 +295,75 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
       const dailyDone = new Set([...this.dbDoneToday, ...this.getDailyDone()]);
       const total = this.miniReferralSlotsAvailable();
 
-      const filled: TaskSlot[] = rows.map(r => ({
-        id: r.task_id,
-        adType: 'mini_referral' as const,
-        title: r.title,
-        description: r.description || '',
-        imageUrl: r.image_url || '',
-        videoUrl: r.youtube_url || '',
-        destinationUrl: r.url || '',
-        rewardCOP: 100,
-        viewed: r.is_completed || dailyDone.has(r.task_id),
-      }));
-
-      // Rellenar con placeholders hasta el total disponible
-      for (let i = filled.length; i < total; i++) {
-        filled.push(this.emptySlot('mini_referral', 100));
-      }
+      // Solo mostrar los que NO están completados — no placeholders vacíos
+      const filled: TaskSlot[] = rows
+        .filter(r => !r.is_completed && !dailyDone.has(r.task_id))
+        .map(r => ({
+          id: r.task_id,
+          adType: 'mini_referral' as const,
+          title: r.title,
+          description: r.description || '',
+          imageUrl: r.image_url || '',
+          videoUrl: r.youtube_url || '',
+          destinationUrl: r.url || '',
+          rewardCOP: 100,
+          viewed: false,
+        }));
 
       this.miniReferralSlots.set(filled);
     } catch {
       this.miniReferralSlots.set(
         Array.from({ length: this.miniReferralSlotsAvailable() }, () => this.emptySlot('mini_referral', 100))
       );
+    }
+  }
+
+  private async loadMegaV2Grants(): Promise<void> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: grants } = await this.supabase.rpc('get_available_mega_grants', { p_user_id: user.id });
+      if (!grants || !Array.isArray(grants) || grants.length === 0) {
+        this.megaV2Slots.set([]);
+        return;
+      }
+
+      // Cargar ptc_tasks de los tipos mega V2 para usar como contenido
+      const megaTypes = grants.map((g: any) => g.ad_type);
+      const { data: megaTasks } = await this.supabase
+        .from('ptc_tasks')
+        .select('*')
+        .in('ad_type', megaTypes)
+        .eq('status', 'active');
+
+      const tasksByType: Record<string, any> = {};
+      for (const t of megaTasks ?? []) {
+        tasksByType[t.ad_type] = t;
+      }
+
+      const slots: TaskSlot[] = [];
+      for (const grant of grants) {
+        const task = tasksByType[grant.ad_type];
+        if (!task) continue;
+        for (let i = 0; i < grant.available; i++) {
+          slots.push({
+            id: task.id,
+            adType: grant.ad_type as PtcAdType,
+            title: task.title,
+            description: task.description || '',
+            imageUrl: task.image_url || '',
+            videoUrl: task.youtube_url || '',
+            destinationUrl: task.url || '',
+            rewardCOP: grant.reward_per_ad,
+            viewed: false,
+          });
+        }
+      }
+
+      this.megaV2Slots.set(slots);
+    } catch {
+      this.megaV2Slots.set([]);
     }
   }
 
@@ -355,6 +415,16 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   }
 
   private markSlotViewed(ad: PtcAd): void {
+    const megaV2Types = ['mega_2000','mega_5000','mega_10000','mega_20000','mega_50000','mega_100000'];
+    if (megaV2Types.includes(ad.adType)) {
+      // Marcar el primer slot no visto de este tipo como visto
+      this.megaV2Slots.update(slots => {
+        const idx = slots.findIndex(s => s.adType === ad.adType && !s.viewed);
+        if (idx >= 0) slots[idx] = { ...slots[idx], viewed: true };
+        return [...slots];
+      });
+      return;
+    }
     if (ad.adType === 'mega') {
       this.markMegaDone(ad.id);
       this.megaSlots.update(slots =>
@@ -402,7 +472,7 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
         p_user_agent: ua,
         p_session_fingerprint: fingerprint,
         p_click_duration_ms: durationMs ?? null,
-        p_ad_type_override: ad.adType === 'mini_referral' ? 'mini_referral' : null,
+        p_ad_type_override: ['mini_referral','mega_2000','mega_5000','mega_10000','mega_20000','mega_50000','mega_100000'].includes(ad.adType) ? ad.adType : null,
       });
 
       if (result?.success === true) {

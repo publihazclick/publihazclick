@@ -92,7 +92,6 @@ export class UserAdsComponent implements OnInit, OnDestroy {
     mega_20000: 20000,
     mega_50000: 50000,
     mega_100000: 100000,
-    standard_600: 600,
     standard_400: 400,
     mini: 83.33,
   };
@@ -251,10 +250,6 @@ export class UserAdsComponent implements OnInit, OnDestroy {
         // mini: remaining diario, excluir ya clickeados hoy
         const miniRemaining = limits['mini']?.remaining ?? 0;
         filtered.push(...(byType['mini'] || []).filter(a => !todayClicked.has(a.id)).slice(0, miniRemaining));
-
-        // standard_600: remaining diario, excluir ya clickeados hoy
-        const std600Remaining = limits['standard_600']?.remaining ?? 0;
-        filtered.push(...(byType['standard_600'] || []).filter(a => !todayClicked.has(a.id)).slice(0, std600Remaining));
 
         // mega V1: remaining mensual, excluir ya clickeados este mes
         const megaRemaining = limits['mega']?.remaining ?? 0;

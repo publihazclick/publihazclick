@@ -88,7 +88,6 @@ export class AdminReportesComponent implements OnInit {
 
   readonly adTypeLabels: Record<string, { label: string; color: string }> = {
     standard_400: { label: 'Estándar 400', color: 'text-cyan-400' },
-    standard_600: { label: 'Estándar 600', color: 'text-blue-400' },
     mini: { label: 'Mini', color: 'text-amber-400' },
     mini_referral: { label: 'Mini Referido', color: 'text-orange-400' },
     mega: { label: 'Mega', color: 'text-violet-400' },
