@@ -3,6 +3,7 @@
   [class.w-0]="sidebarCollapsed()"
   [class.lg:w-16]="sidebarCollapsed()"
   [class.w-64]="!sidebarCollapsed()"
+  [class.hidden]="isAndaGanaRoute()"
 >
   <!-- Logo + collapse -->
   <div class="p-3 lg:p-4 flex items-center justify-between border-b border-white/10">
@@ -143,7 +144,25 @@
           </li>
         </ul>
       </div>
-
+      <!-- Automatic WhatsApp -->
+      <div>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Automatic WhatsApp</h4>
+        }
+        <ul class="space-y-1">
+          <li>
+            <a routerLink="/dashboard/automatic-whatsapp" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-green-400">smart_toy</span>
+              @if (!sidebarCollapsed()) {
+                <span>Automatic WhatsApp</span>
+                <span class="ml-auto text-[9px] font-bold bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">NEW</span>
+              }
+            </a>
+          </li>
+        </ul>
+      </div>
       <div>
         @if (!sidebarCollapsed()) {
           <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Herramientas</h4>
@@ -288,18 +307,19 @@
 </aside>
 
 <!-- Overlay móvil para cerrar el menú -->
-@if (!sidebarCollapsed()) {
+@if (!sidebarCollapsed() && !isAndaGanaRoute()) {
   <div class="fixed inset-0 z-30 bg-black/50 lg:hidden" (click)="toggleSidebarCollapse()"></div>
 }
 
 <main
   class="flex-1 flex flex-col min-h-screen transition-all duration-300"
-  [class.ml-0]="sidebarCollapsed()"
-  [class.lg:ml-16]="sidebarCollapsed()"
-  [class.lg:ml-64]="!sidebarCollapsed()"
+  [class.ml-0]="sidebarCollapsed() || isAndaGanaRoute()"
+  [class.lg:ml-16]="sidebarCollapsed() && !isAndaGanaRoute()"
+  [class.lg:ml-64]="!sidebarCollapsed() && !isAndaGanaRoute()"
 >
   <!-- Header -->
-  <header class="bg-card-dark/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
+  <header class="bg-card-dark/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40"
+    [class.hidden]="isAndaGanaRoute()">
     <div class="flex items-center gap-3 px-4 lg:px-8 h-16">
 
       <!-- Hamburger (mobile only) — un solo botón, cambia ícono según estado -->
@@ -325,7 +345,7 @@
       </div>
 
       <!-- ── Divisa ── -->
-      @if (!isSmsRoute()) {
+      @if (!hideWalletAndCurrency()) {
       <div class="relative hidden sm:block">
         <button
           (click)="toggleCurrencyMenuAndClose()"
@@ -359,7 +379,7 @@
       }
 
       <!-- ── Billetera (click abre modal retiro) ── -->
-      @if (!isAndaGanaRoute() && !isSmsRoute()) {
+      @if (!hideWalletAndCurrency()) {
         <button (click)="openRetiroModal()"
            class="hidden sm:flex items-center gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/40 rounded-xl px-3 py-2 transition-all cursor-pointer">
           <div class="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -386,6 +406,24 @@
             </p>
           </div>
         </a>
+
+        <!-- ── Contador días restantes ── -->
+        @if (profile()?.has_active_package) {
+          <div class="hidden sm:flex items-center gap-2 rounded-xl px-3 py-2 border"
+            [class]="getDaysRemaining() <= 5 ? 'bg-rose-500/10 border-rose-500/20' : 'bg-amber-500/10 border-amber-500/20'">
+            <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              [class]="getDaysRemaining() <= 5 ? 'bg-rose-500/20' : 'bg-amber-500/20'">
+              <span class="material-symbols-outlined" style="font-size:15px"
+                [class]="getDaysRemaining() <= 5 ? 'text-rose-400' : 'text-amber-400'">timer</span>
+            </div>
+            <div class="leading-tight">
+              <p class="text-[9px] uppercase font-bold tracking-widest"
+                [class]="getDaysRemaining() <= 5 ? 'text-rose-400/70' : 'text-slate-400'">Vence en</p>
+              <p class="text-xs font-black"
+                [class]="getDaysRemaining() <= 5 ? 'text-rose-400' : 'text-amber-400'">{{ getDaysRemaining() }} días</p>
+            </div>
+          </div>
+        }
       }
 
       <!-- Divider -->
@@ -502,7 +540,7 @@
 
             <!-- Stats -->
             <div class="px-4 py-3 border-b border-white/5 space-y-2">
-              @if (!isAndaGanaRoute() && !isSmsRoute()) {
+              @if (!hideWalletAndCurrency()) {
                 <button (click)="closeProfileMenu(); openRetiroModal()"
                    class="w-full flex items-center justify-between hover:bg-primary/5 -mx-1 px-1 py-0.5 rounded-lg transition-colors cursor-pointer">
                   <div class="flex items-center gap-1.5">
@@ -521,7 +559,7 @@
                 </div>
                 <span class="text-xs font-black text-white">{{ profile()?.total_referrals_count ?? 0 }}</span>
               </div>
-              @if (!isAndaGanaRoute() && !isSmsRoute()) {
+              @if (!hideWalletAndCurrency()) {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-accent" style="font-size:14px">volunteer_activism</span>
@@ -539,6 +577,15 @@
                     <span class="text-xs text-slate-400">Paquete</span>
                   </div>
                   <span class="text-[10px] font-black text-amber-400 uppercase">Activo</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined" style="font-size:14px"
+                      [class]="getDaysRemaining() <= 5 ? 'text-rose-400' : 'text-amber-400'">timer</span>
+                    <span class="text-xs text-slate-400">Vence en</span>
+                  </div>
+                  <span class="text-[10px] font-black"
+                    [class]="getDaysRemaining() <= 5 ? 'text-rose-400' : 'text-amber-400'">{{ getDaysRemaining() }} días</span>
                 </div>
               }
             </div>
@@ -576,7 +623,7 @@
     </div>
 
     <!-- Barra móvil: Divisas · Billetera · Donaciones (solo mobile) -->
-    @if (!isSmsRoute()) {
+    @if (!hideWalletAndCurrency()) {
     <div class="sm:hidden flex items-center gap-2 px-4 py-2 border-t border-white/5">
       <!-- Convertidor de Divisas -->
       <div class="relative flex-1">
@@ -602,7 +649,7 @@
           </div>
         }
       </div>
-      @if (!isAndaGanaRoute() && !isSmsRoute()) {
+      @if (!hideWalletAndCurrency()) {
         <!-- Retiro -->
         <button (click)="openRetiroModal()"
            class="flex-1 flex flex-col items-center gap-0.5 bg-primary/10 border border-primary/20 rounded-lg px-2 py-1.5 transition-all">
@@ -621,8 +668,8 @@
   </header>
 
   <!-- Content -->
-  <div class="p-4 lg:p-8 max-w-7xl mx-auto w-full">
-    @if (!isSettingsRoute()) {
+  <div [class]="isAndaGanaRoute() ? 'w-full' : 'p-4 lg:p-8 max-w-7xl mx-auto w-full'">
+    @if (!isSettingsRoute() && !isAndaGanaRoute()) {
       <div class="mb-6 rounded-2xl overflow-hidden border border-white/5">
         <app-banner-slider location="app" [autoPlayInterval]="6000" />
       </div>
@@ -631,6 +678,7 @@
   </div>
 
   <!-- Footer -->
+  @if (!isAndaGanaRoute()) {
   <footer class="mt-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-600 border-t border-white/5 gap-2">
     <p>© 2024 PUBLIHAZCLIK — Todos los derechos reservados</p>
     <div class="flex gap-4">
@@ -638,6 +686,7 @@
       <a class="hover:text-primary transition-colors" href="#">Términos</a>
     </div>
   </footer>
+  }
 </main>
 
 <!-- Referral Modal -->
