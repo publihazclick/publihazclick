@@ -191,6 +191,10 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
     return this.router.url.includes('/automatic-whatsapp');
   }
 
+  isAdsRoute(): boolean {
+    return this.router.url.includes('/advertiser/ads');
+  }
+
   hideWalletAndCurrency(): boolean {
     return this.isAndaGanaRoute() || this.isAiRoute() || this.isTradingBotRoute() || this.isCursosRoute() || this.isSmsRoute() || this.isAutoWhatsappRoute();
   }
