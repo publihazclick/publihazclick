@@ -641,7 +641,7 @@
     }
 
     <!-- ═══ BANNER DÍAS RESTANTES — visible siempre arriba del contenido ═══ -->
-    @if (profile()?.has_active_package && isAdsRoute()) {
+    @if (profile()?.has_active_package && isTasksRoute()) {
       <div class="w-full px-4 py-2 flex items-center justify-center gap-2 text-center"
         [class]="getDaysRemaining() <= 5
           ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 animate-pulse'

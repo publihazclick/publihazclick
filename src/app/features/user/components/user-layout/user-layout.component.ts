@@ -262,7 +262,7 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
     return this.router.url.includes('/settings');
   }
 
-  isAdsRoute(): boolean {
+  isTasksRoute(): boolean {
     return this.router.url.includes('/dashboard/ads');
   }
 
