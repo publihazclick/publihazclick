@@ -84,9 +84,15 @@
             </div>
             <h3 class="text-base font-bold text-slate-800 mb-1">{{ cat.name }}</h3>
             <p class="text-xs text-slate-500 leading-relaxed">{{ cat.description }}</p>
-            <div class="mt-3 flex items-center gap-1.5">
+            <div class="mt-3 flex items-center gap-2">
               <span class="inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-r {{ cat.gradient }}"></span>
               <span class="text-[11px] text-slate-400 font-medium">{{ cat.providers.length }} proveedores</span>
+              @if (cat.live) {
+                <span class="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span class="text-[10px] font-bold uppercase">En vivo</span>
+                </span>
+              }
             </div>
           </div>
         }
@@ -243,9 +249,17 @@
             </div>
           </div>
 
+          <!-- Operator amount range (live categories) -->
+          @if (isLiveCategory() && selectedProvider()?.minAmount && selectedProvider()?.maxAmount) {
+            <p class="text-xs text-slate-400 mb-3">
+              Monto permitido: <span class="font-semibold text-slate-600">$ {{ selectedProvider()!.minAmount! | number:'1.0-0' }}</span> —
+              <span class="font-semibold text-slate-600">$ {{ selectedProvider()!.maxAmount! | number:'1.0-0' }} COP</span>
+            </p>
+          }
+
           <!-- Quick amounts -->
           <div class="flex flex-wrap gap-2 mb-6">
-            @for (amt of quickAmounts; track amt) {
+            @for (amt of getQuickAmounts(); track amt) {
               <button
                 class="pp-chip"
                 [class.active]="paymentAmount() === amt"
@@ -267,6 +281,22 @@
                 [ngModel]="paymentPhone()"
                 (ngModelChange)="paymentPhone.set($event)"
               />
+            </div>
+          }
+
+          <!-- API error -->
+          @if (apiError()) {
+            <div class="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2">
+              <span class="material-symbols-outlined text-red-500 flex-shrink-0" style="font-size:18px">error</span>
+              <span>{{ apiError() }}</span>
+            </div>
+          }
+
+          <!-- Live indicator -->
+          @if (isLiveCategory()) {
+            <div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
+              <span class="font-medium">Recarga en tiempo real — se procesará al instante</span>
             </div>
           }
 
@@ -321,6 +351,13 @@
               <span class="text-xl font-extrabold text-indigo-600">$ {{ paymentAmount()! | number:'1.0-0' }}</span>
             </div>
           </div>
+
+          @if (apiError()) {
+            <div class="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2">
+              <span class="material-symbols-outlined text-red-500 flex-shrink-0" style="font-size:18px">error</span>
+              <span>{{ apiError() }}</span>
+            </div>
+          }
 
           @if (!processing()) {
             <div class="flex gap-3">

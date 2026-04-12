@@ -1,7 +1,7 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { PuntoPagoService, ReloadlyOperator } from '../../core/services/punto-pago.service';
 
 /* ------------------------------------------------------------------ */
 /*  Interfaces                                                         */
@@ -9,7 +9,11 @@ import { Router } from '@angular/router';
 export interface ServiceProvider {
   id: string;
   name: string;
-  logo?: string;
+  operatorId?: number;  // Reloadly operator ID for live recharges
+  minAmount?: number;
+  maxAmount?: number;
+  denominationType?: 'RANGE' | 'FIXED';
+  fixedAmounts?: number[];
 }
 
 export interface ServiceCategory {
@@ -20,6 +24,7 @@ export interface ServiceCategory {
   gradient: string;
   iconBg: string;
   providers: ServiceProvider[];
+  live?: boolean;  // true = connected to a real aggregator
 }
 
 export interface Transaction {
@@ -33,17 +38,10 @@ export interface Transaction {
   status: 'completed' | 'pending' | 'failed';
 }
 
-export interface PackageCarrier {
-  id: string;
-  name: string;
-  logo?: string;
-  services: string[];
-}
-
 /* ------------------------------------------------------------------ */
-/*  Data                                                               */
+/*  Static data (categories pending PuntoRed integration)              */
 /* ------------------------------------------------------------------ */
-const CATEGORIES: ServiceCategory[] = [
+const STATIC_CATEGORIES: ServiceCategory[] = [
   {
     id: 'servicios',
     name: 'Servicios Públicos',
@@ -138,15 +136,8 @@ const CATEGORIES: ServiceCategory[] = [
     icon: 'smartphone',
     gradient: 'from-rose-500 to-pink-500',
     iconBg: 'bg-rose-100 text-rose-600',
-    providers: [
-      { id: 'claro', name: 'Claro' },
-      { id: 'movistar', name: 'Movistar' },
-      { id: 'tigo', name: 'Tigo' },
-      { id: 'wom', name: 'WOM' },
-      { id: 'virgin', name: 'Virgin Mobile' },
-      { id: 'flash-mobile', name: 'Flash Mobile' },
-      { id: 'exito-movil', name: 'Éxito Móvil' },
-    ],
+    live: true,  // <-- Connected to Reloadly
+    providers: [], // Loaded dynamically from Reloadly API
   },
   {
     id: 'apuestas',
@@ -215,7 +206,9 @@ type View = 'home' | 'category' | 'payment' | 'confirm' | 'receipt' | 'history' 
   imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PuntoPagoComponent {
+export class PuntoPagoComponent implements OnInit {
+  private ppService = inject(PuntoPagoService);
+
   /* Signals */
   view = signal<View>('home');
   selectedCategory = signal<ServiceCategory | null>(null);
@@ -227,14 +220,14 @@ export class PuntoPagoComponent {
   paymentAmount = signal<number | null>(null);
   paymentPhone = signal('');
   processing = signal(false);
-  transactions = signal<Transaction[]>([
-    { id: 'TXN-001', categoryId: 'servicios', categoryName: 'Servicios Públicos', providerName: 'Enel - Codensa', reference: '4521789654', amount: 85400, date: new Date(2026, 3, 10), status: 'completed' },
-    { id: 'TXN-002', categoryId: 'recargas', categoryName: 'Recargas Celular', providerName: 'Claro', reference: '3001234567', amount: 20000, date: new Date(2026, 3, 9), status: 'completed' },
-    { id: 'TXN-003', categoryId: 'creditos', categoryName: 'Créditos Bancarios', providerName: 'Bancolombia', reference: '8876543210', amount: 350000, date: new Date(2026, 3, 8), status: 'pending' },
-  ]);
+  loadingOperators = signal(false);
+  lastTopupResult = signal<any>(null);
+  apiError = signal<string | null>(null);
+
+  transactions = signal<Transaction[]>([]);
 
   /* Computed */
-  categories = signal(CATEGORIES);
+  categories = signal<ServiceCategory[]>([...STATIC_CATEGORIES]);
   quickAmounts = QUICK_AMOUNTS;
   corresponsalOps = CORRESPONSAL_OPERATIONS;
   paqueteriaOps = PAQUETERIA_OPERATIONS;
@@ -254,7 +247,108 @@ export class PuntoPagoComponent {
       .reduce((sum, t) => sum + t.amount, 0)
   );
 
-  /* Navigation */
+  /** Is the current category live (connected to real API)? */
+  isLiveCategory = computed(() => this.selectedCategory()?.live === true);
+
+  ngOnInit() {
+    this.loadReloadlyOperators();
+    this.loadTransactionHistory();
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Load real operators from Reloadly                                */
+  /* ---------------------------------------------------------------- */
+  private loadReloadlyOperators() {
+    this.loadingOperators.set(true);
+    this.ppService.getOperators().subscribe({
+      next: (operators) => {
+        if (!Array.isArray(operators)) {
+          this.loadingOperators.set(false);
+          return;
+        }
+        const providers: ServiceProvider[] = operators.map((op) => ({
+          id: `reloadly-${op.id}`,
+          name: op.name,
+          operatorId: op.id,
+          minAmount: op.supportsLocalAmounts ? op.localMinAmount : op.minAmount,
+          maxAmount: op.supportsLocalAmounts ? op.localMaxAmount : op.maxAmount,
+          denominationType: op.denominationType,
+          fixedAmounts: op.supportsLocalAmounts ? op.localFixedAmounts : op.fixedAmounts,
+        }));
+
+        // Update the recargas category with live providers
+        this.categories.update((cats) =>
+          cats.map((c) =>
+            c.id === 'recargas'
+              ? { ...c, providers: providers.length > 0 ? providers : c.providers }
+              : c
+          )
+        );
+        this.loadingOperators.set(false);
+      },
+      error: () => {
+        // If API fails, keep fallback static providers
+        this.categories.update((cats) =>
+          cats.map((c) =>
+            c.id === 'recargas' && c.providers.length === 0
+              ? {
+                  ...c,
+                  providers: [
+                    { id: 'claro', name: 'Claro' },
+                    { id: 'movistar', name: 'Movistar' },
+                    { id: 'tigo', name: 'Tigo' },
+                    { id: 'wom', name: 'WOM' },
+                    { id: 'virgin', name: 'Virgin Mobile' },
+                  ],
+                }
+              : c
+          )
+        );
+        this.loadingOperators.set(false);
+      },
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Load transaction history from Supabase                           */
+  /* ---------------------------------------------------------------- */
+  private loadTransactionHistory() {
+    this.ppService.getTransactions(50).subscribe({
+      next: (txs) => {
+        const mapped: Transaction[] = txs.map((t) => ({
+          id: t.external_id || t.id,
+          categoryId: t.category,
+          categoryName: this.getCategoryNameById(t.category),
+          providerName: t.provider_name,
+          reference: t.reference,
+          amount: t.amount,
+          date: new Date(t.created_at),
+          status: t.status as 'completed' | 'pending' | 'failed',
+        }));
+        this.transactions.set(mapped);
+      },
+      error: () => {
+        // Silently keep empty — table may not exist yet
+      },
+    });
+  }
+
+  private getCategoryNameById(catId: string): string {
+    const names: Record<string, string> = {
+      recargas: 'Recargas Celular',
+      servicios: 'Servicios Públicos',
+      creditos: 'Créditos Bancarios',
+      corresponsal: 'Corresponsal Bancario',
+      giros: 'Giros',
+      apuestas: 'Recargas Apuestas',
+      paqueteria: 'Paquetería',
+    };
+    return names[catId] ?? catId;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Navigation                                                       */
+  /* ---------------------------------------------------------------- */
   goHome() {
     this.view.set('home');
     this.resetForm();
@@ -263,6 +357,7 @@ export class PuntoPagoComponent {
   selectCategory(cat: ServiceCategory) {
     this.selectedCategory.set(cat);
     this.searchTerm.set('');
+    this.apiError.set(null);
     if (cat.id === 'corresponsal') {
       this.view.set('corresponsal-ops');
     } else if (cat.id === 'paqueteria') {
@@ -284,28 +379,101 @@ export class PuntoPagoComponent {
 
   selectProvider(provider: ServiceProvider) {
     this.selectedProvider.set(provider);
+    this.paymentAmount.set(null);
+    this.paymentRef.set('');
+    this.apiError.set(null);
     this.view.set('payment');
   }
 
   setQuickAmount(amount: number) {
-    this.paymentAmount.set(amount);
+    const provider = this.selectedProvider();
+    if (provider?.maxAmount && amount > provider.maxAmount) {
+      this.paymentAmount.set(provider.maxAmount);
+    } else if (provider?.minAmount && amount < provider.minAmount) {
+      this.paymentAmount.set(provider.minAmount);
+    } else {
+      this.paymentAmount.set(amount);
+    }
+  }
+
+  /** Get available quick amounts, filtering by operator min/max for live categories */
+  getQuickAmounts(): number[] {
+    const provider = this.selectedProvider();
+    if (!this.isLiveCategory() || !provider?.minAmount || !provider?.maxAmount) {
+      return QUICK_AMOUNTS;
+    }
+    // If operator has fixed amounts, use those
+    if (provider.denominationType === 'FIXED' && provider.fixedAmounts?.length) {
+      return provider.fixedAmounts.slice(0, 6);
+    }
+    // Filter quick amounts within the operator's range
+    return QUICK_AMOUNTS.filter(a => a >= provider.minAmount! && a <= provider.maxAmount!);
   }
 
   goToConfirm() {
     if (!this.paymentRef() || !this.paymentAmount()) return;
+
+    const provider = this.selectedProvider();
+    if (this.isLiveCategory() && provider?.minAmount && provider?.maxAmount) {
+      const amt = this.paymentAmount()!;
+      if (amt < provider.minAmount || amt > provider.maxAmount) {
+        this.apiError.set(`El monto debe estar entre $${provider.minAmount.toLocaleString()} y $${provider.maxAmount.toLocaleString()} COP`);
+        return;
+      }
+    }
+
+    this.apiError.set(null);
     this.view.set('confirm');
   }
 
+  /* ---------------------------------------------------------------- */
+  /*  Process payment                                                  */
+  /* ---------------------------------------------------------------- */
   processPayment() {
     this.processing.set(true);
+    this.apiError.set(null);
+
+    const cat = this.selectedCategory()!;
+    const provider = this.selectedProvider()!;
+    const amount = this.paymentAmount()!;
+    const ref = this.paymentRef();
+
+    // Live recharge via Reloadly
+    if (cat.live && provider.operatorId) {
+      this.ppService.sendTopup(provider.operatorId, amount, ref).subscribe({
+        next: (result) => {
+          this.lastTopupResult.set(result);
+          const tx: Transaction = {
+            id: String(result.transactionId),
+            categoryId: cat.id,
+            categoryName: cat.name,
+            providerName: result.operatorName ?? provider.name,
+            reference: ref,
+            amount: result.deliveredAmount ?? amount,
+            date: new Date(),
+            status: result.status === 'SUCCESSFUL' ? 'completed' : result.status === 'PENDING' ? 'pending' : 'failed',
+          };
+          this.transactions.update(list => [tx, ...list]);
+          this.processing.set(false);
+          this.view.set('receipt');
+        },
+        error: (err) => {
+          this.processing.set(false);
+          this.apiError.set(err?.message ?? 'Error al procesar la recarga. Intenta nuevamente.');
+        },
+      });
+      return;
+    }
+
+    // Simulated payment for categories not yet connected
     setTimeout(() => {
       const tx: Transaction = {
         id: 'TXN-' + String(Date.now()).slice(-6),
-        categoryId: this.selectedCategory()!.id,
-        categoryName: this.selectedCategory()!.name,
-        providerName: this.selectedProvider()!.name,
-        reference: this.paymentRef(),
-        amount: this.paymentAmount()!,
+        categoryId: cat.id,
+        categoryName: cat.name,
+        providerName: provider.name,
+        reference: ref,
+        amount,
         date: new Date(),
         status: 'completed',
       };
@@ -334,11 +502,11 @@ export class PuntoPagoComponent {
   }
 
   getCategoryIcon(catId: string): string {
-    return CATEGORIES.find(c => c.id === catId)?.icon ?? 'receipt';
+    return STATIC_CATEGORIES.find(c => c.id === catId)?.icon ?? 'receipt';
   }
 
   getCategoryGradient(catId: string): string {
-    return CATEGORIES.find(c => c.id === catId)?.gradient ?? 'from-gray-500 to-gray-600';
+    return STATIC_CATEGORIES.find(c => c.id === catId)?.gradient ?? 'from-gray-500 to-gray-600';
   }
 
   getReferenceLabel(): string {
@@ -358,5 +526,7 @@ export class PuntoPagoComponent {
     this.paymentRef.set('');
     this.paymentAmount.set(null);
     this.paymentPhone.set('');
+    this.apiError.set(null);
+    this.lastTopupResult.set(null);
   }
 }
