@@ -125,6 +125,25 @@
           </li>
         </ul>
       </div>
+      <!-- Punto Pago y Servicios -->
+      <div>
+        @if (!sidebarCollapsed()) {
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Punto Pago y Servicios</h4>
+        }
+        <ul class="space-y-1">
+          <li>
+            <a routerLink="/dashboard/punto-pago" routerLinkActive="bg-teal-500/10 text-teal-400 border border-teal-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-teal-500/5 text-slate-400 hover:text-teal-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
+              <span class="material-symbols-outlined text-teal-400">point_of_sale</span>
+              @if (!sidebarCollapsed()) {
+                <span>Punto Pago y Servicios</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-black rounded uppercase">NEW</span>
+              }
+            </a>
+          </li>
+        </ul>
+      </div>
       <!-- Dinámicas y Sorteos -->
       <div>
         @if (!sidebarCollapsed()) {

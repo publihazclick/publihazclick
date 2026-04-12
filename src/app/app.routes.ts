@@ -155,6 +155,10 @@ export const routes: Routes = [
       {
         path: 'sms-masivos',
         loadComponent: () => import('./features/user/components/sms-masivos/sms-masivos.component').then(m => m.SmsMasivosComponent)
+      },
+      {
+        path: 'punto-pago',
+        loadComponent: () => import('./features/punto-pago/punto-pago.component').then(m => m.PuntoPagoComponent)
       }
     ]
   },
@@ -268,6 +272,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dinamicas/components/dinamicas/dinamicas.component').then(m => m.DinamicasComponent)
       },
       {
+        path: 'automatic-whatsapp',
+        loadComponent: () => import('./features/automatic-whatsapp/components/automatic-whatsapp/automatic-whatsapp.component').then(m => m.AutomaticWhatsappComponent)
+      },
+      {
         path: 'trading-bot',
         loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
       },
@@ -290,6 +298,10 @@ export const routes: Routes = [
       {
         path: 'sms-masivos',
         loadComponent: () => import('./features/user/components/sms-masivos/sms-masivos.component').then(m => m.SmsMasivosComponent)
+      },
+      {
+        path: 'punto-pago',
+        loadComponent: () => import('./features/punto-pago/punto-pago.component').then(m => m.PuntoPagoComponent)
       },
     ]
   },
@@ -388,6 +400,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dinamicas/components/dinamicas/dinamicas.component').then(m => m.DinamicasComponent)
       },
       {
+        path: 'automatic-whatsapp',
+        loadComponent: () => import('./features/automatic-whatsapp/components/automatic-whatsapp/automatic-whatsapp.component').then(m => m.AutomaticWhatsappComponent)
+      },
+      {
         path: 'trading-bot',
         loadComponent: () => import('./features/user/components/trading-bot/trading-bot.component').then(m => m.TradingBotComponent)
       },
@@ -410,6 +426,10 @@ export const routes: Routes = [
       {
         path: 'sms-masivos',
         loadComponent: () => import('./features/user/components/sms-masivos/sms-masivos.component').then(m => m.SmsMasivosComponent)
+      },
+      {
+        path: 'punto-pago',
+        loadComponent: () => import('./features/punto-pago/punto-pago.component').then(m => m.PuntoPagoComponent)
       }
     ]
   },
@@ -418,6 +438,11 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./app').then(m => m.App),
     canActivate: [roleRedirectGuard]
+  },
+  // Ruta pública para la app Movi (Capacitor apunta a /anda-gana)
+  {
+    path: 'anda-gana',
+    loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent),
   },
   // Páginas públicas
   {

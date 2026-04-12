@@ -1,0 +1,427 @@
+<div class="pp-wrapper">
+
+  <!-- ============================================================ -->
+  <!-- HEADER                                                        -->
+  <!-- ============================================================ -->
+  <div class="pp-header px-4 sm:px-8 pt-6 pb-8 sm:pt-8 sm:pb-10">
+    <div class="pp-header-content max-w-5xl mx-auto">
+      <!-- Breadcrumb -->
+      @if (view() !== 'home') {
+        <nav class="pp-breadcrumb mb-4">
+          <button (click)="goHome()">Inicio</button>
+          <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+          @if (view() === 'history') {
+            <span class="current">Historial</span>
+          } @else if (selectedCategory()) {
+            @if (view() === 'category' || view() === 'payment' || view() === 'confirm' || view() === 'receipt') {
+              <button (click)="selectCategory(selectedCategory()!)">{{ selectedCategory()!.name }}</button>
+            } @else {
+              <span class="current">{{ selectedCategory()!.name }}</span>
+            }
+            @if (selectedProvider() && (view() === 'payment' || view() === 'confirm' || view() === 'receipt')) {
+              <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+              <span class="current">{{ selectedProvider()!.name }}</span>
+            }
+          }
+        </nav>
+      }
+
+      <!-- Title row -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-white" style="font-size:28px">point_of_sale</span>
+          </div>
+          <div>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight">Punto Pago y Servicios</h1>
+            <p class="text-xs sm:text-sm text-indigo-200 mt-0.5">Tu centro de pagos, recargas y envíos en un solo lugar</p>
+          </div>
+        </div>
+
+        @if (view() === 'home') {
+          <button (click)="showHistory()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-sm font-semibold transition-all self-start sm:self-auto">
+            <span class="material-symbols-outlined" style="font-size:18px">receipt_long</span>
+            Historial
+          </button>
+        }
+      </div>
+
+      <!-- Stats strip -->
+      @if (view() === 'home') {
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-6">
+          <div class="pp-stat">
+            <p class="text-[10px] uppercase tracking-widest text-indigo-300 font-bold mb-1">Categorías</p>
+            <p class="text-xl font-extrabold text-white">{{ categories().length }}</p>
+          </div>
+          <div class="pp-stat">
+            <p class="text-[10px] uppercase tracking-widest text-indigo-300 font-bold mb-1">Transacciones</p>
+            <p class="text-xl font-extrabold text-white">{{ totalTransactions() }}</p>
+          </div>
+          <div class="pp-stat hidden sm:block">
+            <p class="text-[10px] uppercase tracking-widest text-indigo-300 font-bold mb-1">Pagado</p>
+            <p class="text-xl font-extrabold text-white">$ {{ completedAmount() | number:'1.0-0' }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- CONTENT                                                       -->
+  <!-- ============================================================ -->
+  <div class="max-w-5xl mx-auto px-4 sm:px-8 -mt-4">
+
+    <!-- ========== HOME ========== -->
+    @if (view() === 'home') {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (cat of categories(); track cat.id) {
+          <div class="pp-card pp-card-hover pp-category-card p-5" (click)="selectCategory(cat)">
+            <div class="flex items-start justify-between mb-4">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ cat.iconBg }}">
+                <span class="material-symbols-outlined" style="font-size:24px">{{ cat.icon }}</span>
+              </div>
+              <span class="material-symbols-outlined pp-category-arrow text-slate-300" style="font-size:20px">arrow_forward</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">{{ cat.name }}</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">{{ cat.description }}</p>
+            <div class="mt-3 flex items-center gap-1.5">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-r {{ cat.gradient }}"></span>
+              <span class="text-[11px] text-slate-400 font-medium">{{ cat.providers.length }} proveedores</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Recent transactions preview -->
+      @if (transactions().length > 0) {
+        <div class="pp-card p-6 mt-8">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-slate-800">Últimas transacciones</h3>
+            <button (click)="showHistory()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">Ver todas</button>
+          </div>
+          @for (tx of transactions().slice(0, 3); track tx.id) {
+            <div class="pp-tx-row">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br {{ getCategoryGradient(tx.categoryId) }} flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-white" style="font-size:18px">{{ getCategoryIcon(tx.categoryId) }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-slate-800 truncate">{{ tx.providerName }}</p>
+                <p class="text-xs text-slate-400">{{ tx.date | date:'d MMM y, h:mm a' }}</p>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-sm font-bold text-slate-800">$ {{ tx.amount | number:'1.0-0' }}</p>
+                <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full {{ getStatusColor(tx.status) }}">{{ getStatusLabel(tx.status) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ========== CORRESPONSAL OPERATIONS ========== -->
+    @if (view() === 'corresponsal-ops') {
+      <div class="pp-card p-6 sm:p-8">
+        <h2 class="text-lg font-bold text-slate-800 mb-2">Selecciona la operación</h2>
+        <p class="text-sm text-slate-500 mb-6">¿Qué deseas hacer en el corresponsal bancario?</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          @for (op of corresponsalOps; track op.id) {
+            <div class="pp-op-card" (click)="selectCorresponsalOp(op.id)">
+              <div class="w-14 h-14 rounded-2xl {{ op.color }} flex items-center justify-center mx-auto mb-3">
+                <span class="material-symbols-outlined" style="font-size:26px">{{ op.icon }}</span>
+              </div>
+              <p class="text-sm font-semibold text-slate-700">{{ op.name }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ========== PAQUETERIA OPERATIONS ========== -->
+    @if (view() === 'paqueteria-ops') {
+      <div class="pp-card p-6 sm:p-8">
+        <h2 class="text-lg font-bold text-slate-800 mb-2">¿Qué deseas hacer?</h2>
+        <p class="text-sm text-slate-500 mb-6">Selecciona el tipo de operación con tu paquete</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          @for (op of paqueteriaOps; track op.id) {
+            <div class="pp-op-card" (click)="selectPaqueteriaOp(op.id)">
+              <div class="w-14 h-14 rounded-2xl {{ op.color }} flex items-center justify-center mx-auto mb-3">
+                <span class="material-symbols-outlined" style="font-size:26px">{{ op.icon }}</span>
+              </div>
+              <p class="text-sm font-semibold text-slate-700">{{ op.name }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ========== CATEGORY / PROVIDER LIST ========== -->
+    @if (view() === 'category') {
+      <div class="pp-card p-6 sm:p-8">
+        <!-- Category header -->
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br {{ selectedCategory()!.gradient }} flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-white" style="font-size:24px">{{ selectedCategory()!.icon }}</span>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-800">{{ selectedCategory()!.name }}</h2>
+            <p class="text-xs text-slate-500">Selecciona el proveedor o entidad</p>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="relative mb-6">
+          <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" style="font-size:20px">search</span>
+          <input
+            type="text"
+            class="pp-input !pl-11"
+            placeholder="Buscar proveedor..."
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)"
+          />
+        </div>
+
+        <!-- Provider grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          @for (provider of filteredProviders(); track provider.id) {
+            <div class="pp-provider flex items-center gap-3" (click)="selectProvider(provider)">
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br {{ selectedCategory()!.gradient }} flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-white" style="font-size:16px">{{ selectedCategory()!.icon }}</span>
+              </div>
+              <span class="text-sm truncate">{{ provider.name }}</span>
+            </div>
+          }
+        </div>
+
+        @if (filteredProviders().length === 0) {
+          <div class="text-center py-12">
+            <span class="material-symbols-outlined text-slate-300" style="font-size:48px">search_off</span>
+            <p class="text-sm text-slate-400 mt-2">No se encontraron resultados</p>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ========== PAYMENT FORM ========== -->
+    @if (view() === 'payment') {
+      <div class="max-w-lg mx-auto">
+        <div class="pp-card p-6 sm:p-8">
+          <!-- Provider badge -->
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 mb-6">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br {{ selectedCategory()!.gradient }} flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-white" style="font-size:18px">{{ selectedCategory()!.icon }}</span>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-slate-800 truncate">{{ selectedProvider()!.name }}</p>
+              <p class="text-xs text-slate-400">{{ selectedCategory()!.name }}</p>
+            </div>
+          </div>
+
+          <!-- Reference -->
+          <div class="mb-5">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">{{ getReferenceLabel() }}</label>
+            <input
+              type="text"
+              class="pp-input"
+              placeholder="Ingresa el número"
+              [ngModel]="paymentRef()"
+              (ngModelChange)="paymentRef.set($event)"
+            />
+          </div>
+
+          <!-- Amount -->
+          <div class="mb-5">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Monto a pagar</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">$</span>
+              <input
+                type="number"
+                class="pp-input !pl-9 text-lg font-bold"
+                placeholder="0"
+                [ngModel]="paymentAmount()"
+                (ngModelChange)="paymentAmount.set($event)"
+              />
+            </div>
+          </div>
+
+          <!-- Quick amounts -->
+          <div class="flex flex-wrap gap-2 mb-6">
+            @for (amt of quickAmounts; track amt) {
+              <button
+                class="pp-chip"
+                [class.active]="paymentAmount() === amt"
+                (click)="setQuickAmount(amt)"
+              >
+                $ {{ amt | number:'1.0-0' }}
+              </button>
+            }
+          </div>
+
+          <!-- Phone (optional for recargas) -->
+          @if (selectedCategory()?.id === 'recargas' || selectedCategory()?.id === 'apuestas') {
+            <div class="mb-6">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Teléfono de confirmación</label>
+              <input
+                type="tel"
+                class="pp-input"
+                placeholder="300 123 4567"
+                [ngModel]="paymentPhone()"
+                (ngModelChange)="paymentPhone.set($event)"
+              />
+            </div>
+          }
+
+          <!-- Submit -->
+          <button
+            class="pp-btn-primary w-full flex items-center justify-center gap-2"
+            [disabled]="!paymentRef() || !paymentAmount()"
+            (click)="goToConfirm()"
+          >
+            <span class="material-symbols-outlined" style="font-size:20px">lock</span>
+            Continuar al pago
+          </button>
+
+          <p class="text-[11px] text-slate-400 text-center mt-4 flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined" style="font-size:14px">verified_user</span>
+            Transacción protegida con encriptación de extremo a extremo
+          </p>
+        </div>
+      </div>
+    }
+
+    <!-- ========== CONFIRMATION ========== -->
+    @if (view() === 'confirm') {
+      <div class="max-w-lg mx-auto">
+        <div class="pp-card p-6 sm:p-8">
+          <div class="text-center mb-6">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br {{ selectedCategory()!.gradient }} flex items-center justify-center mx-auto mb-4">
+              <span class="material-symbols-outlined text-white" style="font-size:28px">{{ selectedCategory()!.icon }}</span>
+            </div>
+            <h2 class="text-lg font-bold text-slate-800">Confirma tu pago</h2>
+            <p class="text-sm text-slate-500">Revisa los datos antes de continuar</p>
+          </div>
+
+          <div class="bg-slate-50 rounded-xl p-5 space-y-4 mb-6">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-500">Proveedor</span>
+              <span class="text-sm font-semibold text-slate-800">{{ selectedProvider()!.name }}</span>
+            </div>
+            <div class="border-t border-slate-200"></div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-500">Referencia</span>
+              <span class="text-sm font-semibold text-slate-800 font-mono">{{ paymentRef() }}</span>
+            </div>
+            <div class="border-t border-slate-200"></div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-500">Categoría</span>
+              <span class="text-sm font-semibold text-slate-800">{{ selectedCategory()!.name }}</span>
+            </div>
+            <div class="border-t border-slate-200"></div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-500">Monto</span>
+              <span class="text-xl font-extrabold text-indigo-600">$ {{ paymentAmount()! | number:'1.0-0' }}</span>
+            </div>
+          </div>
+
+          @if (!processing()) {
+            <div class="flex gap-3">
+              <button class="pp-btn-outline flex-1" (click)="view.set('payment')">Editar</button>
+              <button class="pp-btn-primary flex-1 flex items-center justify-center gap-2" (click)="processPayment()">
+                <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+                Confirmar Pago
+              </button>
+            </div>
+          } @else {
+            <div class="flex flex-col items-center py-6">
+              <div class="pp-spinner mb-4"></div>
+              <p class="text-sm font-semibold text-slate-600">Procesando tu pago...</p>
+              <p class="text-xs text-slate-400 mt-1">Esto tomará unos segundos</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ========== RECEIPT ========== -->
+    @if (view() === 'receipt') {
+      <div class="max-w-lg mx-auto">
+        <div class="pp-card p-6 sm:p-8 text-center">
+          <div class="pp-check-circle mx-auto mb-5">
+            <span class="material-symbols-outlined text-white" style="font-size:40px">check</span>
+          </div>
+
+          <h2 class="text-xl font-extrabold text-slate-800 mb-1">¡Pago Exitoso!</h2>
+          <p class="text-sm text-slate-500 mb-6">Tu transacción ha sido procesada correctamente</p>
+
+          <div class="bg-slate-50 rounded-xl p-5 text-left space-y-3 mb-6">
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">ID Transacción</span>
+              <span class="text-sm font-bold text-slate-800 font-mono">{{ transactions()[0]?.id }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">Proveedor</span>
+              <span class="text-sm font-semibold text-slate-800">{{ selectedProvider()!.name }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">Referencia</span>
+              <span class="text-sm font-semibold text-slate-800 font-mono">{{ paymentRef() }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">Fecha</span>
+              <span class="text-sm font-semibold text-slate-800">{{ transactions()[0]?.date | date:'d MMM y, h:mm a' }}</span>
+            </div>
+            <div class="border-t border-slate-200 pt-3 flex justify-between items-center">
+              <span class="text-sm font-semibold text-slate-600">Total pagado</span>
+              <span class="text-xl font-extrabold text-emerald-600">$ {{ paymentAmount()! | number:'1.0-0' }}</span>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button class="pp-btn-outline flex-1 flex items-center justify-center gap-2" (click)="showHistory()">
+              <span class="material-symbols-outlined" style="font-size:18px">receipt_long</span>
+              Ver Historial
+            </button>
+            <button class="pp-btn-primary flex-1" (click)="goHome()">Nuevo Pago</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ========== HISTORY ========== -->
+    @if (view() === 'history') {
+      <div class="pp-card p-6 sm:p-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800">Historial de Transacciones</h2>
+            <p class="text-xs text-slate-500 mt-0.5">{{ transactions().length }} transacciones registradas</p>
+          </div>
+        </div>
+
+        @if (transactions().length === 0) {
+          <div class="text-center py-16">
+            <span class="material-symbols-outlined text-slate-200" style="font-size:64px">receipt_long</span>
+            <p class="text-sm text-slate-400 mt-3">Aún no tienes transacciones</p>
+            <button class="pp-btn-primary mt-4" (click)="goHome()">Realizar un pago</button>
+          </div>
+        } @else {
+          @for (tx of transactions(); track tx.id) {
+            <div class="pp-tx-row">
+              <div class="w-11 h-11 rounded-xl bg-gradient-to-br {{ getCategoryGradient(tx.categoryId) }} flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-white" style="font-size:20px">{{ getCategoryIcon(tx.categoryId) }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-slate-800 truncate">{{ tx.providerName }}</p>
+                <p class="text-xs text-slate-400">{{ tx.categoryName }} · Ref: {{ tx.reference }}</p>
+                <p class="text-xs text-slate-300">{{ tx.date | date:'d MMM y, h:mm a' }}</p>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-sm font-bold text-slate-800">$ {{ tx.amount | number:'1.0-0' }}</p>
+                <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full {{ getStatusColor(tx.status) }}">{{ getStatusLabel(tx.status) }}</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+
+  </div>
+</div>
