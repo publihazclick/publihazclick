@@ -166,7 +166,72 @@
   <!-- Contenido solo para anunciantes -->
   @if (isAdvertiser()) {
 
-  @if (loading()) {
+  @if (adCreationGate(); as gate) {
+    <!-- BLOQUEO: debe crear anuncio PTC + banner antes de hacer clicks -->
+    <div class="bg-gradient-to-br from-accent/5 via-card-dark to-primary/5 border border-accent/20 rounded-2xl p-6 sm:p-10 flex flex-col items-center text-center gap-6">
+      <div class="w-20 h-20 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+        <span class="material-symbols-outlined text-accent" style="font-size:44px">campaign</span>
+      </div>
+
+      <div>
+        <h3 class="text-xl font-black text-white">Publica tu anuncio para empezar</h3>
+        <p class="text-slate-400 text-sm mt-2 max-w-md">
+          Antes de hacer clicks debes crear (o clonar) tu anuncio PTC y tu banner de este periodo de 30 días. Así puedes promocionar lo que quieras durante tu activación.
+        </p>
+      </div>
+
+      <div class="w-full max-w-sm space-y-2.5">
+        <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border"
+             [class.bg-emerald-500/10]="gate.hasPtcAd" [class.border-emerald-500/20]="gate.hasPtcAd"
+             [class.bg-black/30]="!gate.hasPtcAd" [class.border-white/10]="!gate.hasPtcAd">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-xl"
+                  [class.text-emerald-400]="gate.hasPtcAd"
+                  [class.text-slate-500]="!gate.hasPtcAd">
+              {{ gate.hasPtcAd ? 'check_circle' : 'radio_button_unchecked' }}
+            </span>
+            <span class="text-sm font-bold text-white">Anuncio PTC</span>
+          </div>
+          @if (!gate.hasPtcAd) {
+            <button (click)="openPtcModal()"
+                    class="px-3 py-1.5 bg-primary text-black rounded-lg text-xs font-black uppercase tracking-wider hover:bg-primary/90 transition-colors">
+              Crear
+            </button>
+          } @else {
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Listo</span>
+          }
+        </div>
+
+        <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border"
+             [class.bg-emerald-500/10]="gate.hasBannerAd" [class.border-emerald-500/20]="gate.hasBannerAd"
+             [class.bg-black/30]="!gate.hasBannerAd" [class.border-white/10]="!gate.hasBannerAd">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-xl"
+                  [class.text-emerald-400]="gate.hasBannerAd"
+                  [class.text-slate-500]="!gate.hasBannerAd">
+              {{ gate.hasBannerAd ? 'check_circle' : 'radio_button_unchecked' }}
+            </span>
+            <span class="text-sm font-bold text-white">Banner</span>
+          </div>
+          @if (!gate.hasBannerAd) {
+            <button (click)="openBannerModal()"
+                    class="px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-black uppercase tracking-wider hover:bg-white/15 transition-colors border border-white/10">
+              Crear
+            </button>
+          } @else {
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Listo</span>
+          }
+        </div>
+      </div>
+
+      <p class="text-[11px] text-slate-500 max-w-sm">
+        También puedes clonar un anuncio de la galería desde
+        <a routerLink="/advertiser/ads" class="text-primary hover:underline font-bold">Mis anuncios</a>
+        o
+        <a routerLink="/advertiser/banner" class="text-primary hover:underline font-bold">Mis banners</a>.
+      </p>
+    </div>
+  } @else if (loading()) {
     <div class="flex justify-center items-center py-16">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>

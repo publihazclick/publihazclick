@@ -112,6 +112,17 @@ export class UserAdsComponent implements OnInit, OnDestroy {
     return !p.has_active_package;
   });
 
+  /** Gate: paquete activo pero aún no ha creado anuncio PTC + banner del periodo */
+  readonly adCreationGate = computed(() => {
+    const l = this.adLimits();
+    if (!l) return null;
+    if (!l['gate_active']) return null;
+    return {
+      hasPtcAd: !!l['has_ptc_ad'],
+      hasBannerAd: !!l['has_banner_ad'],
+    };
+  });
+
   /** Saldo disponible del usuario */
   readonly userBalance = computed(() => this.profile()?.real_balance ?? 0);
 
@@ -499,6 +510,7 @@ export class UserAdsComponent implements OnInit, OnDestroy {
       if (!result) throw new Error('No se pudo crear el anuncio');
       this.closePtcModal();
       this.showToast('Anuncio enviado para revisión. El equipo lo activará pronto.');
+      await this.loadAds();
     } catch (err: any) {
       this.ptcModalError.set(err.message || 'Error al crear el anuncio');
     } finally {
@@ -557,6 +569,7 @@ export class UserAdsComponent implements OnInit, OnDestroy {
       if (!result) throw new Error('No se pudo crear el banner');
       this.closeBannerModal();
       this.showToast('Banner enviado para revisión. El equipo lo activará pronto.');
+      await this.loadAds();
     } catch (err: any) {
       this.bannerModalError.set(err.message || 'Error al crear el banner');
     } finally {
