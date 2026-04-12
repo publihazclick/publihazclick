@@ -166,36 +166,54 @@ async function sha256Hex(input: string): Promise<string> {
     .join('');
 }
 
-// Parsear body: soporta JSON y form-urlencoded
-async function parseBody(req: Request): Promise<Record<string, string>> {
-  const contentType = req.headers.get('content-type') ?? '';
-  const rawText = await req.text();
+// Parsear parámetros desde GET (query string) o POST (body JSON o form-urlencoded)
+// ePayco usa GET para la "Response URL" y POST para la "Confirmation URL".
+// Aceptamos ambos para que cualquier configuración en el panel de ePayco funcione.
+async function parseParams(req: Request): Promise<Record<string, string>> {
+  const url = new URL(req.url);
+  const params: Record<string, string> = {};
 
-  if (contentType.includes('application/json')) {
-    try {
-      return JSON.parse(rawText);
-    } catch {
-      return {};
+  // Query params (GET y como fallback en POST)
+  for (const [k, v] of url.searchParams.entries()) {
+    params[k] = v;
+  }
+
+  if (req.method === 'POST') {
+    const contentType = req.headers.get('content-type') ?? '';
+    const rawText = await req.text().catch(() => '');
+
+    if (rawText) {
+      if (contentType.includes('application/json')) {
+        try {
+          const json = JSON.parse(rawText);
+          for (const k of Object.keys(json)) {
+            params[k] = String(json[k] ?? '');
+          }
+        } catch { /* keep query params only */ }
+      } else {
+        // application/x-www-form-urlencoded
+        for (const pair of rawText.split('&')) {
+          if (!pair) continue;
+          const [k, v] = pair.split('=');
+          if (k) params[decodeURIComponent(k)] = decodeURIComponent(v ?? '');
+        }
+      }
     }
   }
 
-  // application/x-www-form-urlencoded (más común en ePayco)
-  const params: Record<string, string> = {};
-  for (const pair of rawText.split('&')) {
-    const [k, v] = pair.split('=');
-    if (k) params[decodeURIComponent(k)] = decodeURIComponent(v ?? '');
-  }
   return params;
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
-  if (req.method !== 'POST') return fail('Method not allowed', 405);
+  if (req.method !== 'POST' && req.method !== 'GET') {
+    return fail('Method not allowed', 405);
+  }
 
   try {
-    // ── 1. Parsear parámetros enviados por ePayco ────────────────────────────
-    const p = await parseBody(req);
-    console.log('ePayco webhook params:', JSON.stringify(p));
+    // ── 1. Parsear parámetros enviados por ePayco (GET o POST) ───────────────
+    const p = await parseParams(req);
+    console.log(`ePayco webhook ${req.method} params:`, JSON.stringify(p));
 
     const x_ref_payco       = p['x_ref_payco']       ?? '';
     const x_transaction_id  = p['x_transaction_id']  ?? '';
@@ -328,6 +346,91 @@ Deno.serve(async (req) => {
       return ok('sms_wallet_approved');
     }
 
+    // ── 4A-4. Si es suscripción WhatsApp Automatico ─────────────────────────
+    if (x_extra3 === 'wa_subscription' && x_extra1) {
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setDate(expires.getDate() + 30);
+
+      const { error: waErr } = await supabase
+        .from('wa_subscriptions')
+        .update({
+          status: 'active',
+          started_at: now.toISOString(),
+          expires_at: expires.toISOString(),
+          payment_reference: x_ref_payco,
+        })
+        .eq('id', x_extra1);
+
+      if (waErr) {
+        console.error('Error activando suscripción WA:', waErr);
+        return fail('WA subscription activation failed', 500);
+      }
+
+      // ── Comisión por referido: WhatsApp Automatico ──
+      try {
+        const { data: waSub } = await supabase
+          .from('wa_subscriptions')
+          .select('user_id, price')
+          .eq('id', x_extra1)
+          .single();
+        if (waSub) {
+          const res = await supabase.rpc('credit_referral_commission', {
+            p_referred_id: waSub.user_id,
+            p_module: 'whatsapp_automatico',
+            p_source_amount: Number(x_amount),
+            p_source_id: x_extra1,
+            p_description: 'Comisión por suscripción WhatsApp Automatico de invitado',
+          });
+          console.log('Comisión WA referido:', JSON.stringify(res.data));
+        }
+      } catch (e) { console.error('Error comisión WA referido:', e); }
+
+      console.log(`Suscripción WA ${x_extra1} activada — ref: ${x_ref_payco}`);
+      return ok('wa_subscription_approved');
+    }
+
+    // ── 4A-5. Si es suscripción Facebook Automatico ─────────────────────────
+    if (x_extra3 === 'fb_subscription' && x_extra1) {
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setDate(expires.getDate() + 30);
+
+      const { error: fbErr } = await supabase
+        .from('fb_subscriptions')
+        .update({
+          status: 'active',
+          started_at: now.toISOString(),
+          expires_at: expires.toISOString(),
+          payment_reference: x_ref_payco,
+        })
+        .eq('id', x_extra1);
+
+      if (fbErr) {
+        console.error('Error activando suscripción FB:', fbErr);
+        return fail('FB subscription activation failed', 500);
+      }
+
+      // ── Comisión por referido: Facebook Automatico ──
+      try {
+        const { data: fbSub } = await supabase
+          .from('fb_subscriptions').select('user_id, price').eq('id', x_extra1).single();
+        if (fbSub) {
+          const res = await supabase.rpc('credit_referral_commission', {
+            p_referred_id: fbSub.user_id,
+            p_module: 'facebook_automatico',
+            p_source_amount: Number(x_amount),
+            p_source_id: x_extra1,
+            p_description: 'Comisión por suscripción Facebook Automatico de invitado',
+          });
+          console.log('Comisión FB referido:', JSON.stringify(res.data));
+        }
+      } catch (e) { console.error('Error comisión FB referido:', e); }
+
+      console.log(`Suscripción FB ${x_extra1} activada — ref: ${x_ref_payco}`);
+      return ok('fb_subscription_approved');
+    }
+
     // ── 4B. Si es compra de curso ────────────────────────────────────────────
     if (x_extra3 === 'curso_purchase' && x_extra1) {
       // Obtener datos de la compra antes de completar
@@ -450,30 +553,42 @@ Deno.serve(async (req) => {
     }
 
     // ── 5. Actualizar referencia de ePayco en el pago ────────────────────────
-    await supabase
+    const { error: updateError } = await supabase
       .from('payments')
       .update({
         gateway_transaction_id: x_transaction_id,
-        epayco_ref_payco:       x_ref_payco,
         metadata: {
           x_ref_payco,
           x_transaction_id,
           x_transaction_state,
           x_amount,
           x_currency_code,
+          x_approval_code: p['x_approval_code'] ?? '',
+          x_bank_name: p['x_bank_name'] ?? '',
+          x_payment_method: p['x_payment_method'] ?? '',
           confirmed_at: new Date().toISOString(),
         },
       })
       .eq('id', paymentId);
 
+    if (updateError) {
+      console.error('Error actualizando referencia de pago:', updateError);
+      // No bloqueamos — aún intentamos aprobar
+    }
+
     // ── 6. Aprobar pago y activar paquete (RPC SECURITY DEFINER) ────────────
-    const { error: approveError } = await supabase.rpc('approve_payment', {
+    const { data: approveData, error: approveError } = await supabase.rpc('approve_payment', {
       p_payment_id: paymentId,
     });
 
     if (approveError) {
       console.error('Error al aprobar pago:', approveError);
       return fail('Approval failed', 500);
+    }
+
+    if (approveData === false) {
+      console.warn(`approve_payment devolvió false para ${paymentId} (pago ya aprobado o no pendiente)`);
+      return ok('already_processed');
     }
 
     console.log(`Pago ${paymentId} aprobado automáticamente vía ePayco`);
