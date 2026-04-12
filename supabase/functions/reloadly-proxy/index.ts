@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
 
       /* ---------- Enviar recarga ---------- */
       case 'send-topup': {
-        const { operatorId, amount, phone } = params;
+        const { operatorId, amount, phone, useLocalAmount } = params;
         if (!operatorId || !amount || !phone) {
           return json({ error: 'operatorId, amount y phone son requeridos' }, 400);
         }
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
         const { status, data } = await reloadlyFetch('/topups', 'POST', {
           operatorId,
           amount: Number(amount),
-          useLocalAmount: true,
+          useLocalAmount: useLocalAmount !== false, // default true if operator supports it
           customIdentifier: customId,
           recipientPhone: {
             countryCode: 'CO',
