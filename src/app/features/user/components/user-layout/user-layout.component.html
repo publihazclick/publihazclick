@@ -297,6 +297,22 @@
               }
             </a>
           </li>
+          <li class="pt-2 mt-2 border-t border-white/10">
+            <a href="https://wa.me/573134453649?text=Hola%20tengo%20una%20sugerencia%20para%20hacer%20y%20es%20la%20siguiente..."
+               target="_blank" rel="noopener noreferrer"
+               (click)="closeSidebarOnMobile()"
+               class="relative flex items-center gap-3 px-3 py-3 text-sm rounded-xl bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-cyan-500/15 hover:from-emerald-500/25 hover:via-emerald-500/20 hover:to-cyan-500/25 text-emerald-300 hover:text-white border border-emerald-500/30 hover:border-emerald-400/50 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/30 transition-all font-bold overflow-hidden group"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+              <span class="material-symbols-outlined text-emerald-400 relative z-10" style="font-variation-settings: 'FILL' 1">lightbulb</span>
+              @if (!sidebarCollapsed()) {
+                <span class="relative z-10 uppercase tracking-wide">Sugerencias</span>
+                <span class="ml-auto relative z-10 flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 group-hover:bg-emerald-500/40 transition-colors">
+                  <span class="material-symbols-outlined text-emerald-300 text-base">chat</span>
+                </span>
+              }
+            </a>
+          </li>
         </ul>
       </div>
     </nav>
