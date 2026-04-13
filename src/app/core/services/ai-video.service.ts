@@ -171,6 +171,7 @@ export class AiVideoService {
     prompt: string,
     aspectRatio: string = '9:16'
   ): Promise<{ dataUrl: string; mimeType: string }> {
+    await this.chargeAction('image_vertex', { prompt, aspect_ratio: aspectRatio });
     const headers = await this.getAuthHeaders();
     const res = await fetch(`${FUNCTIONS_URL}/generate-vertex-image`, {
       method: 'POST',
@@ -217,6 +218,7 @@ export class AiVideoService {
 
   /** Genera audio TTS para un texto */
   async generateAudio(text: string, voiceId: string): Promise<string> {
+    await this.chargeAction('tts_azure', { voice_id: voiceId, chars: text.length });
     const headers = await this.getAuthHeaders();
     const res = await fetch(`${FUNCTIONS_URL}/generate-tts-audio`, {
       method: 'POST',

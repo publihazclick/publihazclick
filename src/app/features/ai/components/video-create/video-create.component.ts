@@ -4,12 +4,15 @@ import {
   computed,
   inject,
   OnDestroy,
+  OnInit,
   PLATFORM_ID,
   signal,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { AiVideoService } from '../../../../core/services/ai-video.service';
+import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 import type {
   AiScene,
   AiScript,
@@ -28,14 +31,23 @@ const STEPS: WizardStep[] = ['platform', 'topic', 'script', 'voice', 'images', '
 @Component({
   selector: 'app-video-create',
   standalone: true,
-  imports: [CommonModule, FormsModule, VideoPreviewComponent],
+  imports: [CommonModule, FormsModule, RouterModule, VideoPreviewComponent],
   templateUrl: './video-create.component.html',
   styleUrl: './video-create.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class VideoCreateComponent implements OnDestroy {
+export class VideoCreateComponent implements OnInit, OnDestroy {
   readonly aiVideoService = inject(AiVideoService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly walletService = inject(AiWalletService);
+
+  readonly walletBalance = this.walletService.balance;
+  readonly walletLoaded = signal(false);
+
+  async ngOnInit(): Promise<void> {
+    try { await this.walletService.loadWallet(); } catch {}
+    this.walletLoaded.set(true);
+  }
 
   // --- Wizard state ---
   readonly currentStep = signal<WizardStep>('platform');

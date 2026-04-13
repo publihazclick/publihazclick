@@ -34,6 +34,7 @@ export class VideoGeneratorComponent {
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
+  readonly walletLoaded = signal(false);
 
   readonly currentStep = signal(0);
 
@@ -179,6 +180,7 @@ export class VideoGeneratorComponent {
   }
 
   async ngOnInit(): Promise<void> {
-    await this.walletService.loadWallet();
+    try { await this.walletService.loadWallet(); } catch {}
+    this.walletLoaded.set(true);
   }
 }

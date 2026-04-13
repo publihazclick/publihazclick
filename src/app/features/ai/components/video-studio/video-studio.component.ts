@@ -40,6 +40,7 @@ export class VideoStudioComponent implements OnInit {
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
+  readonly walletLoaded = signal(false);
 
   // Wizard
   readonly currentStep = signal<WizardStep>('mode');
@@ -155,7 +156,8 @@ export class VideoStudioComponent implements OnInit {
   readonly checkingStatus = signal(false);
 
   async ngOnInit(): Promise<void> {
-    await this.walletService.loadWallet();
+    try { await this.walletService.loadWallet(); } catch {}
+    this.walletLoaded.set(true);
   }
 
   // ── Navegación ──────────────────────────────────────────────────────────

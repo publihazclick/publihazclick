@@ -29,6 +29,7 @@ export const environment = {
   andaGana: {
     mapboxToken:      'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w',
     functionsBaseUrl: 'https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1',
+    googlePlacesKey:  'AIzaSyDL7HAa3QYU8TvYwTnwNZgreNt3TxrUhs0',
   },
   youtubeApiKey: 'AIzaSyCLn_rNDe8iOHzdDFeHw4pWHrV3RvWgoV8',
 };

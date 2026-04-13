@@ -525,7 +525,7 @@ export class AndaGanaService {
   async getDriverStats(driverId: string): Promise<{ avgRating: number; completedTrips: number }> {
     const [ratingsRes, tripsRes] = await Promise.all([
       this.supabase.from('ag_trip_ratings')
-        .select('stars').eq('rated_user_id', driverId).eq('rated_by_role', 'driver'),  // wait, rated_user_id is ag_users.id not driver id
+        .select('stars').eq('rated_user_id', driverId).eq('rated_by_role', 'passenger'),  // ratings que pasajeros dan al conductor
       this.supabase.from('ag_trip_requests')
         .select('id', { count: 'exact', head: true })
         .eq('driver_id', driverId).eq('status', 'completed'),
@@ -553,6 +553,16 @@ export class AndaGanaService {
       .eq('driver_id', driverId)
       .eq('status', 'accepted');
     return (data ?? []).reduce((sum: number, r: any) => sum + (r.offered_price ?? 0), 0);
+  }
+
+  async submitReport(reporterUserId: string, type: 'incident' | 'passenger', description: string): Promise<{ success: boolean }> {
+    const { error } = await this.supabase.from('ag_reports').insert({
+      reporter_user_id: reporterUserId,
+      type,
+      description,
+      status: 'pending',
+    });
+    return { success: !error };
   }
 
   async setDriverOnline(driverId: string, online: boolean): Promise<void> {

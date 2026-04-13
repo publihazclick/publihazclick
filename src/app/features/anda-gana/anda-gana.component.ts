@@ -209,7 +209,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     }
                   </div>
                 } @else if (addressQuery().length > 1) {
-                  <div class="px-4 py-4 text-slate-400 text-sm text-center">Buscando...</div>
+                  @if (addressNoResults()) {
+                    <div class="px-4 py-4 text-center">
+                      <p class="text-slate-500 text-sm mb-2">No encontramos ese lugar</p>
+                      <button (mousedown)="$event.preventDefault(); useMapPin()"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-100 transition-colors">
+                        <span class="material-symbols-outlined" style="font-size:14px">pin_drop</span>
+                        Ubicar moviendo el pin en el mapa
+                      </button>
+                    </div>
+                  } @else {
+                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-1.5">
+                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
+                    </div>
+                  }
                 }
               </div>
             }
@@ -332,9 +345,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           }
                         </div>
                       } @else if (addressQuery().length > 1) {
-                        <div class="px-3 py-3 text-slate-400 text-xs flex items-center justify-center gap-1.5">
-                          <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
-                        </div>
+                        @if (addressNoResults()) {
+                          <div class="px-3 py-3 text-center">
+                            <p class="text-slate-500 text-xs mb-1.5">No encontramos ese lugar</p>
+                            <button (mousedown)="$event.preventDefault(); useMapPin()"
+                              class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-bold hover:bg-orange-100 transition-colors">
+                              <span class="material-symbols-outlined" style="font-size:12px">pin_drop</span>
+                              Mover pin en el mapa
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="px-3 py-3 text-slate-400 text-xs flex items-center justify-center gap-1.5">
+                            <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
+                          </div>
+                        }
                       }
                     </div>
                   }
@@ -379,10 +403,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       }
                     </div>
                   } @else if (tripQuery().length > 1) {
-                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-2">
-                      <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
-                      Buscando lugares...
-                    </div>
+                    @if (tripNoResults()) {
+                      <div class="px-4 py-4 text-center">
+                        <p class="text-slate-500 text-sm mb-2">No encontramos ese destino</p>
+                        <p class="text-slate-400 text-xs">Intenta con el nombre del barrio o una dirección cercana</p>
+                      </div>
+                    } @else {
+                      <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                        Buscando lugares...
+                      </div>
+                    }
                   }
                 </div>
               }
@@ -524,9 +555,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         }
                       </div>
                     } @else if (addressQuery().length > 1) {
-                      <div class="px-3 py-2.5 text-slate-400 text-xs flex items-center justify-center gap-1.5" style="background:#fff">
-                        <span class="material-symbols-outlined animate-spin" style="font-size:13px">autorenew</span> Buscando...
-                      </div>
+                      @if (addressNoResults()) {
+                        <div class="px-3 py-2.5 text-center" style="background:#fff">
+                          <p class="text-slate-500 text-xs mb-1.5">No encontramos ese lugar</p>
+                          <button (mousedown)="$event.preventDefault(); useMapPin()"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-bold hover:bg-orange-100 transition-colors">
+                            <span class="material-symbols-outlined" style="font-size:12px">pin_drop</span>
+                            Mover pin en el mapa
+                          </button>
+                        </div>
+                      } @else {
+                        <div class="px-3 py-2.5 text-slate-400 text-xs flex items-center justify-center gap-1.5" style="background:#fff">
+                          <span class="material-symbols-outlined animate-spin" style="font-size:13px">autorenew</span> Buscando...
+                        </div>
+                      }
                     }
                   </div>
                 }
@@ -1418,14 +1460,35 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                 } @else {
                   <div class="px-4 pb-3">
-                    @if (driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
-                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
+                    @if (driverWalletBalance() <= 0) {
+                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
                         style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
                         <div class="flex items-center gap-1.5">
                           <span class="material-symbols-outlined text-rose-400" style="font-size:15px">account_balance_wallet</span>
-                          <span class="text-rose-400 text-xs font-black">Saldo insuficiente</span>
+                          <span class="text-rose-400 text-xs font-black">Recarga requerida</span>
                         </div>
-                        <p class="text-slate-500 text-[10px]">Recarga tu billetera para tomar este viaje</p>
+                        <p class="text-slate-500 text-[10px]">Necesitas saldo en tu billetera para aceptar viajes</p>
+                        <button (click)="openDriverSection('earnings')"
+                          class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
+                          style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
+                          <span class="material-symbols-outlined" style="font-size:12px">add_circle</span>
+                          Recargar billetera
+                        </button>
+                      </div>
+                    } @else if (driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
+                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
+                        style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2)">
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-amber-400" style="font-size:15px">account_balance_wallet</span>
+                          <span class="text-amber-400 text-xs font-black">Saldo insuficiente</span>
+                        </div>
+                        <p class="text-slate-500 text-[10px]">Necesitas {{ formatCOP(requiredCommission(req.offered_price)) }} de comisión</p>
+                        <button (click)="openDriverSection('earnings')"
+                          class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
+                          style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
+                          <span class="material-symbols-outlined" style="font-size:12px">add_circle</span>
+                          Recargar billetera
+                        </button>
                       </div>
                     } @else {
                       <button (click)="openMakeOffer(req)"
@@ -1516,7 +1579,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     }
                   </div>
                 } @else if (addressQuery().length > 1) {
-                  <div class="px-4 py-4 text-slate-400 text-sm text-center">Buscando...</div>
+                  @if (addressNoResults()) {
+                    <div class="px-4 py-4 text-center">
+                      <p class="text-slate-500 text-sm mb-2">No encontramos ese lugar</p>
+                      <button (mousedown)="$event.preventDefault(); useMapPin()"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-cyan-50 text-cyan-600 rounded-lg text-xs font-bold hover:bg-cyan-100 transition-colors">
+                        <span class="material-symbols-outlined" style="font-size:14px">pin_drop</span>
+                        Ubicar moviendo el pin en el mapa
+                      </button>
+                    </div>
+                  } @else {
+                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-1.5">
+                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
+                    </div>
+                  }
                 }
               </div>
             }
@@ -2899,12 +2975,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   addressEditMode    = signal(false);
   addressQuery       = signal('');
   addressSuggestions = signal<any[]>([]);
+  addressNoResults   = signal(false);  // true cuando la búsqueda terminó sin resultados
   originEditOpen     = signal(false);  // edición inline del punto de origen
 
   // Trip request
   tripOpen        = signal(false);
   tripQuery       = signal('');
   tripSuggestions = signal<any[]>([]);
+  tripNoResults   = signal(false);
   tripDest        = signal<{ name: string; lat: number; lng: number } | null>(null);
   tripVehicle     = signal<'carro' | 'moto'>('carro');
   tripPrice       = signal(0);
@@ -3064,6 +3142,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _currentLat = 4.6097;
   private _currentLng = -74.0817;
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
+  private readonly GOOGLE_PLACES_KEY = (environment.andaGana as any).googlePlacesKey ?? '';
   private readonly DEFAULT_LAT  = 4.6097;
   private readonly DEFAULT_LNG  = -74.0817;
 
@@ -3083,7 +3162,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const profile = await this.agService.getMyAgProfile();
     this.agProfile.set(profile);
     if (profile && isPlatformBrowser(this.platformId)) {
-      this.agReferralLink.set(`${window.location.origin}/dashboard/anda-gana?ref=${profile.id}`);
+      this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
     }
 
     // Esperar a que la animación del splash termine (3.8s)
@@ -3133,6 +3212,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._destroyMap();
     this._stopWaiting();
     this._unsubscribeOffers();
+    this._unsubscribeChat();
     this.stopGpsTracking();
     this._unsubscribeLocations();
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
@@ -3228,16 +3308,38 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     let lng = this.DEFAULT_LNG;
 
     try {
-      const getPos = () => new Promise<GeolocationPosition>((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true, timeout: 15000, maximumAge: 0,
-        })
-      );
-      let pos = await getPos();
-      // Si la precisión es mala (>100m), reintentar para dar tiempo al GPS real
-      if (pos.coords.accuracy > 100) {
-        try { pos = await getPos(); } catch { /* usar la primera lectura */ }
-      }
+      // Obtener la mejor ubicación posible usando watchPosition con timeout
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        let bestPos: GeolocationPosition | null = null;
+        const watchId = navigator.geolocation.watchPosition(
+          (p) => {
+            // Guardar la mejor lectura (menor accuracy = más preciso)
+            if (!bestPos || p.coords.accuracy < bestPos.coords.accuracy) {
+              bestPos = p;
+            }
+            // Si tenemos precisión ≤30m, aceptar de inmediato
+            if (p.coords.accuracy <= 30) {
+              navigator.geolocation.clearWatch(watchId);
+              clearTimeout(timer);
+              resolve(p);
+            }
+          },
+          (err) => {
+            navigator.geolocation.clearWatch(watchId);
+            clearTimeout(timer);
+            if (bestPos) resolve(bestPos);
+            else reject(err);
+          },
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+        );
+        // Después de 6s, usar la mejor lectura que tengamos
+        const timer = setTimeout(() => {
+          navigator.geolocation.clearWatch(watchId);
+          if (bestPos) resolve(bestPos);
+          else reject(new Error('GPS timeout'));
+        }, 6000);
+      });
+
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
       this.gpsStatus.set('granted');
@@ -3288,31 +3390,96 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._searchDebounce) clearTimeout(this._searchDebounce);
   }
 
+  private _addressAbort: AbortController | null = null;
+
   onAddressInput(query: string) {
     this.addressQuery.set(query);
+    this.addressNoResults.set(false);
     if (this._searchDebounce) clearTimeout(this._searchDebounce);
     if (!query.trim() || query.length < 2) { this.addressSuggestions.set([]); return; }
-    this._searchDebounce = setTimeout(() => this._searchPlaces(query), 350);
+    this._searchDebounce = setTimeout(() => this._searchPlaces(query), 150);
   }
 
   private async _searchPlaces(query: string) {
+    if (this._addressAbort) this._addressAbort.abort();
+    this._addressAbort = new AbortController();
+    const sig = this._addressAbort.signal;
+
+    const lat = this._currentLat;
+    const lng = this._currentLng;
+
+    // ── Google Places (New) — fuente principal, encuentra conjuntos, edificios, POIs
+    const googleUrl = 'https://places.googleapis.com/v1/places:searchText';
+    const googleBody = {
+      textQuery: query,
+      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 30000 } },
+      languageCode: 'es',
+      maxResultCount: 8,
+    };
+
+    // ── Mapbox — complementa con direcciones y calles
+    const d = 0.25;
+    const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
+    const mbxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+      + `?access_token=${this.MAPBOX_TOKEN}&autocomplete=true&language=es`
+      + `&country=co&limit=5&types=poi,place,address,neighborhood,locality`
+      + `&proximity=${lng},${lat}&bbox=${bbox}`;
+
     try {
-      const lat  = this._currentLat;
-      const lng  = this._currentLng;
-      const prox = `${lng},${lat}`;
-      // Bounding box de ~25 km alrededor del usuario → solo resultados locales
-      const delta = 0.22;
-      const bbox  = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-        + `?access_token=${this.MAPBOX_TOKEN}&language=es`
-        + `&types=address,poi,neighborhood,locality,place`
-        + `&proximity=${prox}`
-        + `&bbox=${bbox}`
-        + `&limit=6`;
-      const res  = await fetch(url);
-      const data = await res.json();
-      this.addressSuggestions.set(data.features ?? []);
-    } catch { this.addressSuggestions.set([]); }
+      const [googleRes, mbxRes] = await Promise.all([
+        fetch(googleUrl, {
+          method: 'POST', signal: sig,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': this.GOOGLE_PLACES_KEY,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location',
+          },
+          body: JSON.stringify(googleBody),
+        }),
+        fetch(mbxUrl, { signal: sig }),
+      ]);
+
+      const googleJson = await googleRes.json();
+      const mbxJson = await mbxRes.json();
+
+      // Convertir Google Places al formato interno
+      const googleFeatures = (googleJson.places ?? []).map((p: any, i: number) => {
+        const fLat = p.location?.latitude ?? lat;
+        const fLng = p.location?.longitude ?? lng;
+        return {
+          id: `gpl-${i}`,
+          text: p.displayName?.text ?? '',
+          place_name: p.formattedAddress ?? '',
+          center: [fLng, fLat] as [number, number],
+          distKm: this._distKm(lat, lng, fLat, fLng),
+        };
+      });
+
+      // Convertir Mapbox al formato interno
+      const mbxFeatures = (mbxJson.features ?? []).map((f: any) => {
+        const [fLng, fLat] = f.center ?? [lng, lat];
+        return { ...f, id: `mbx-${f.id}`, distKm: this._distKm(lat, lng, fLat, fLng) };
+      });
+
+      // Google primero (mejor para POIs/conjuntos), Mapbox complementa
+      const seen = new Set<string>();
+      const merged: any[] = [];
+      for (const f of [...googleFeatures, ...mbxFeatures]) {
+        const key = `${(+f.center[0]).toFixed(3)},${(+f.center[1]).toFixed(3)}`;
+        if (!seen.has(key)) { seen.add(key); merged.push(f); }
+      }
+      merged.sort((a, b) => (a.distKm ?? 999) - (b.distKm ?? 999));
+
+      const results = merged.slice(0, 8);
+      this.addressSuggestions.set(results);
+      this.addressNoResults.set(results.length === 0 && this.addressQuery().trim().length >= 2);
+    } catch { /* abortado o sin red */ }
+  }
+
+  /** Cierra la búsqueda y deja que el usuario mueva el pin en el mapa */
+  useMapPin() {
+    this.closeAddressEdit();
+    this.originEditOpen.set(false);
   }
 
   selectAddress(feature: any) {
@@ -3435,9 +3602,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         document.head.appendChild(style);
       }
 
-      this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+      this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center', draggable: true })
         .setLngLat([lng, lat])
         .addTo(this._map);
+
+      // Al arrastrar el pin, actualizar ubicación y dirección
+      this._userMarker.on('dragend', () => {
+        const lngLat = this._userMarker!.getLngLat();
+        this._currentLat = lngLat.lat;
+        this._currentLng = lngLat.lng;
+        this._reverseGeocode(lngLat.lat, lngLat.lng);
+      });
 
       this._map.resize();
       // Centrar el mapa en la ubicación del usuario después de renderizar todo
@@ -3967,15 +4142,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private startGpsTracking(driverId: string): void {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      alert('Tu dispositivo no soporta GPS. No podrás recibir solicitudes.');
+      return;
+    }
 
     // Enviar posición inicial
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
       },
-      () => {},
-      { enableHighAccuracy: true }
+      (err) => {
+        console.error('GPS inicial falló:', err.message);
+        if (err.code === err.PERMISSION_DENIED) {
+          alert('Permiso de GPS denegado. Activa la ubicación para recibir solicitudes.');
+          this.driverOnline.set(false);
+          this.agService.setDriverOnline(driverId, false);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
     );
 
     // Tracking continuo cada vez que se mueve
@@ -3983,7 +4168,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       (pos) => {
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
       },
-      () => {},
+      (err) => {
+        console.error('GPS tracking error:', err.message);
+        if (err.code === err.PERMISSION_DENIED) {
+          this.stopGpsTracking();
+          this.driverOnline.set(false);
+          this.agService.setDriverOnline(driverId, false);
+          alert('Se perdió el acceso al GPS. Te pusimos fuera de línea.');
+        }
+      },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
   }
@@ -4042,11 +4235,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.emergencyContacts.update(list => list.filter(c => c.phone !== phone));
   }
 
-  submitReport(type: 'incident' | 'passenger') {
-    // TODO: persist report to DB
-    if (type === 'incident') this.reportIncidentText = '';
-    else this.reportPassengerText = '';
-    alert('Reporte enviado. Nuestro equipo lo revisará en las próximas 24 horas.');
+  async submitReport(type: 'incident' | 'passenger') {
+    const text = type === 'incident' ? this.reportIncidentText.trim() : this.reportPassengerText.trim();
+    if (!text) { alert('Escribe una descripción del reporte.'); return; }
+
+    const profile = this.agProfile();
+    if (!profile) { alert('No se pudo identificar tu perfil.'); return; }
+
+    const result = await this.agService.submitReport(profile.id, type, text);
+    if (result.success) {
+      if (type === 'incident') this.reportIncidentText = '';
+      else this.reportPassengerText = '';
+      alert('Reporte enviado. Nuestro equipo lo revisará en las próximas 24 horas.');
+    } else {
+      alert('Error al enviar el reporte. Intenta de nuevo.');
+    }
   }
 
   private _resetTrip() {
@@ -4078,6 +4281,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   onTripQueryInput(val: string) {
     this.tripQuery.set(val);
+    this.tripNoResults.set(false);
     if (this._tripDebounce) clearTimeout(this._tripDebounce);
     if (!val.trim()) { this.tripSuggestions.set([]); return; }
     this._tripDebounce = setTimeout(() => this._searchTripPlaces(val), 120);
@@ -4091,39 +4295,52 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const sig = this._tripAbort.signal;
 
     const lat = this._currentLat, lng = this._currentLng;
-    const d = 0.8; // ~88 km — cubre toda el área metropolitana
 
-    // ── Nominatim (OpenStreetMap) — mejor cobertura de POIs, barrios y conjuntos
-    // viewbox sin bounded=1 para que busque en toda Colombia pero priorice la zona
-    const viewbox = `${lng - d},${lat + d},${lng + d},${lat - d}`;
-    const nomUrl  = `https://nominatim.openstreetmap.org/search`
-      + `?q=${encodeURIComponent(query)}&format=jsonv2&limit=10`
-      + `&countrycodes=co&viewbox=${viewbox}&addressdetails=1`;
+    // ── Google Places (New) — fuente principal para destinos
+    const googleUrl = 'https://places.googleapis.com/v1/places:searchText';
+    const googleBody = {
+      textQuery: query,
+      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 50000 } },
+      languageCode: 'es',
+      maxResultCount: 8,
+    };
 
-    // ── Mapbox — complementa con direcciones y lugares adicionales
-    const bbox   = `${lng - d},${lat - d},${lng + d},${lat + d}`;
+    // ── Mapbox — complementa con direcciones y calles
+    const d = 0.5;
+    const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
     const mbxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
       + `?access_token=${this.MAPBOX_TOKEN}&autocomplete=true&language=es`
-      + `&country=co&limit=6&types=poi,place,address,neighborhood,locality,district`
+      + `&country=co&limit=5&types=poi,place,address,neighborhood,locality,district`
       + `&proximity=${lng},${lat}&bbox=${bbox}`;
 
     try {
-      const [nomRes, mbxRes] = await Promise.all([
-        fetch(nomUrl, { signal: sig, headers: { 'Accept-Language': 'es' } }),
+      const [googleRes, mbxRes] = await Promise.all([
+        fetch(googleUrl, {
+          method: 'POST', signal: sig,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': this.GOOGLE_PLACES_KEY,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location',
+          },
+          body: JSON.stringify(googleBody),
+        }),
         fetch(mbxUrl, { signal: sig }),
       ]);
 
-      const nomJson = await nomRes.json() as any[];
+      const googleJson = await googleRes.json();
       const mbxJson = await mbxRes.json();
 
-      // Convertir Nominatim al formato interno
-      const nomFeatures = nomJson.map((f: any) => {
-        const fLat = parseFloat(f.lat), fLng = parseFloat(f.lon);
-        const name = f.name || f.display_name.split(',')[0];
-        const addr = f.display_name;
-        return { id: `nom-${f.place_id}`, text: name, place_name: addr,
-                 center: [fLng, fLat] as [number, number],
-                 distKm: this._distKm(lat, lng, fLat, fLng) };
+      // Convertir Google Places al formato interno
+      const googleFeatures = (googleJson.places ?? []).map((p: any, i: number) => {
+        const fLat = p.location?.latitude ?? lat;
+        const fLng = p.location?.longitude ?? lng;
+        return {
+          id: `gpl-${i}`,
+          text: p.displayName?.text ?? '',
+          place_name: p.formattedAddress ?? '',
+          center: [fLng, fLat] as [number, number],
+          distKm: this._distKm(lat, lng, fLat, fLng),
+        };
       });
 
       // Convertir Mapbox al formato interno
@@ -4132,15 +4349,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         return { ...f, id: `mbx-${f.id}`, distKm: this._distKm(lat, lng, fLat, fLng) };
       });
 
-      // Unir: Nominatim primero (mejores POIs), luego Mapbox sin duplicados
+      // Unir, deduplicar y ordenar por distancia (más cercanos primero)
       const seen  = new Set<string>();
       const merged: any[] = [];
-      for (const f of [...nomFeatures, ...mbxFeatures]) {
+      for (const f of [...googleFeatures, ...mbxFeatures]) {
         const key = `${(+f.center[0]).toFixed(3)},${(+f.center[1]).toFixed(3)}`;
         if (!seen.has(key)) { seen.add(key); merged.push(f); }
       }
+      merged.sort((a, b) => (a.distKm ?? 999) - (b.distKm ?? 999));
 
-      this.tripSuggestions.set(merged.slice(0, 8));
+      const results = merged.slice(0, 8);
+      this.tripSuggestions.set(results);
+      this.tripNoResults.set(results.length === 0 && this.tripQuery().trim().length >= 2);
     } catch { /* abortado o sin red */ }
   }
 
@@ -4265,11 +4485,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.agService.getSearchingRequests(vehicleType).then(reqs => {
       this.driverRequests.set(reqs);
     });
-    // Refresh every 15s
-    if (this._driverRefreshInterval) clearInterval(this._driverRefreshInterval);
+    // Limpiar intervalo previo antes de crear uno nuevo (evita duplicados)
+    if (this._driverRefreshInterval) {
+      clearInterval(this._driverRefreshInterval);
+      this._driverRefreshInterval = null;
+    }
+    // Refresh every 15s solo si el panel está abierto
     this._driverRefreshInterval = setInterval(() => {
       if (this.driverRequestsOpen()) {
         this.agService.getSearchingRequests(vehicleType).then(reqs => this.driverRequests.set(reqs));
+      } else {
+        // Si se cerró el panel, detener polling
+        if (this._driverRefreshInterval) {
+          clearInterval(this._driverRefreshInterval);
+          this._driverRefreshInterval = null;
+        }
       }
     }, 15000);
   }
@@ -4297,6 +4527,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const req = this.makingOfferFor();
     const driver = this.driverData();
     if (!req || !driver) return;
+
+    // Validar saldo de wallet antes de enviar
+    if (this.driverWalletBalance() <= 0) {
+      alert('Necesitas recargar tu billetera antes de aceptar viajes.');
+      return;
+    }
+    const commission = this.requiredCommission(this.driverOfferPrice());
+    if (this.driverCommissionPct() > 0 && this.driverWalletBalance() < commission) {
+      alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} en tu billetera para cubrir la comisión.`);
+      return;
+    }
+
     this.sendingOffer.set(true);
     const result = await this.agService.makeOffer(req.id, driver.id, this.driverOfferPrice());
     this.sendingOffer.set(false);

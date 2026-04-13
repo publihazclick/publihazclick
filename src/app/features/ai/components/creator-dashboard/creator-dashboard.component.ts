@@ -38,6 +38,7 @@ export class CreatorDashboardComponent implements OnInit {
   private readonly walletService = inject(AiWalletService);
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
+  readonly walletLoaded = signal(false);
 
   readonly sidebarOpen = signal(false);
   readonly showRetiroModal = signal(false);
@@ -59,7 +60,8 @@ export class CreatorDashboardComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    await this.walletService.loadWallet();
+    try { await this.walletService.loadWallet(); } catch {}
+    this.walletLoaded.set(true);
   }
 
   readonly menuItems = [

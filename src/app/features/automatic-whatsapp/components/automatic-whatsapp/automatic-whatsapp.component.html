@@ -1,0 +1,1248 @@
+<!-- Loading -->
+@if (loading()) {
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+      <span class="material-symbols-outlined text-5xl text-green-400 animate-spin">progress_activity</span>
+      <p class="text-slate-400 mt-4">Cargando WhatsApp Automatico...</p>
+    </div>
+  </div>
+} @else {
+
+  <!-- ════════════════════════════════════════ -->
+  <!-- MAIN APP                                -->
+  <!-- ════════════════════════════════════════ -->
+  <div class="min-h-screen">
+    <!-- Top Header -->
+    <div class="border-b border-white/10 bg-black/30 backdrop-blur-sm sticky top-0 z-10">
+      <div class="px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2 md:gap-3">
+          <span class="material-symbols-outlined text-xl md:text-2xl text-green-400">smart_toy</span>
+          <h1 class="text-sm md:text-lg font-bold text-white">WhatsApp Automatico</h1>
+          <span class="text-[8px] md:text-[9px] font-bold bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">PRO</span>
+        </div>
+        <div class="hidden md:flex items-center gap-2">
+          @for (s of sessions(); track s.id) {
+            <div class="flex items-center gap-1 text-xs" [class]="getSessionStatusColor(s.status)">
+              <span class="material-symbols-outlined text-sm">{{ getSessionStatusIcon(s.status) }}</span>
+              {{ s.session_name }}
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="px-2 md:px-6 flex gap-0.5 md:gap-1 overflow-x-auto pb-0 scrollbar-hide">
+        @for (tab of tabs; track tab.id) {
+          <button (click)="switchTab(tab.id)"
+            class="flex items-center gap-1 md:gap-1.5 px-2.5 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-medium rounded-t-lg transition-all whitespace-nowrap"
+            [class]="activeTab() === tab.id
+              ? 'bg-card-dark text-green-400 border border-white/10 border-b-card-dark -mb-px'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'">
+            <span class="material-symbols-outlined text-base md:text-lg">{{ tab.icon }}</span>
+            <span class="hidden sm:inline">{{ tab.label }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Subscription Banner -->
+    @if (!hasSubscription()) {
+      <div class="mx-3 md:mx-6 mt-3 bg-gradient-to-r from-green-500/10 to-emerald-500/5 border border-green-500/20 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-green-400">lock_open</span>
+          <div>
+            <p class="text-sm text-white font-medium">Modo vista previa</p>
+            <p class="text-xs text-slate-400">Explora la herramienta. Suscribete para usar todas las funciones.</p>
+          </div>
+        </div>
+        <button (click)="showPaymentModal.set(true)" class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-400 text-black text-xs font-bold transition-all shrink-0">
+          Activar por $20 USD/mes
+        </button>
+      </div>
+    }
+
+    <div class="p-3 md:p-6">
+      <!-- ══════════ DASHBOARD TAB ══════════ -->
+      @if (activeTab() === 'dashboard') {
+        <div class="space-y-4 md:space-y-6">
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+            <div class="bg-card-dark border border-white/10 rounded-xl p-3 md:p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-green-400">contacts</span>
+                <span class="text-xs text-slate-500 uppercase font-bold">Contactos</span>
+              </div>
+              <span class="text-xl md:text-2xl font-black text-white">{{ stats().totalContacts }}</span>
+            </div>
+            <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-blue-400">campaign</span>
+                <span class="text-xs text-slate-500 uppercase font-bold">Campañas</span>
+              </div>
+              <span class="text-xl md:text-2xl font-black text-white">{{ stats().totalCampaigns }}</span>
+            </div>
+            <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-emerald-400">send</span>
+                <span class="text-xs text-slate-500 uppercase font-bold">Enviados Hoy</span>
+              </div>
+              <span class="text-xl md:text-2xl font-black text-white">{{ stats().todaySent }}</span>
+            </div>
+            <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-amber-400">rocket_launch</span>
+                <span class="text-xs text-slate-500 uppercase font-bold">Activas</span>
+              </div>
+              <span class="text-xl md:text-2xl font-black text-white">{{ stats().activeCampaigns }}</span>
+            </div>
+          </div>
+
+          <!-- Performance Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+              <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Rendimiento Global</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-slate-300">Total Enviados</span>
+                  <span class="text-white font-bold">{{ stats().totalSent }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-slate-300">Entregados</span>
+                  <span class="text-green-400 font-bold">{{ stats().totalDelivered }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-slate-300">Fallidos</span>
+                  <span class="text-red-400 font-bold">{{ stats().totalFailed }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-slate-300">Respuestas</span>
+                  <span class="text-blue-400 font-bold">{{ stats().totalReplies }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+              <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Tasa de Entrega</h3>
+              <div class="flex items-center justify-center h-28">
+                <div class="text-center">
+                  <span class="text-3xl md:text-4xl font-black text-green-400">{{ stats().deliveryRate | number:'1.1-1' }}%</span>
+                  <p class="text-xs text-slate-500 mt-1">de mensajes entregados</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+              <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Tasa de Respuesta</h3>
+              <div class="flex items-center justify-center h-28">
+                <div class="text-center">
+                  <span class="text-3xl md:text-4xl font-black text-blue-400">{{ stats().replyRate | number:'1.1-1' }}%</span>
+                  <p class="text-xs text-slate-500 mt-1">de destinatarios respondieron</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Acciones Rapidas</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <button (click)="switchTab('campaigns'); openCreateCampaign()"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-all text-green-400">
+                <span class="material-symbols-outlined text-2xl">add_circle</span>
+                <span class="text-xs font-medium">Nueva Campaña</span>
+              </button>
+              <button (click)="switchTab('contacts'); contactModal.set('add')"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-blue-400">
+                <span class="material-symbols-outlined text-2xl">person_add</span>
+                <span class="text-xs font-medium">Agregar Contacto</span>
+              </button>
+              <button (click)="switchTab('contacts'); contactModal.set('import')"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-all text-purple-400">
+                <span class="material-symbols-outlined text-2xl">upload_file</span>
+                <span class="text-xs font-medium">Importar CSV</span>
+              </button>
+              <button (click)="switchTab('templates'); openCreateTemplate()"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all text-amber-400">
+                <span class="material-symbols-outlined text-2xl">note_add</span>
+                <span class="text-xs font-medium">Nueva Plantilla</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ══════════ CONTACTS TAB ══════════ -->
+      @if (activeTab() === 'contacts') {
+        <div class="space-y-4">
+          <!-- Toolbar -->
+          <div class="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+            <div class="flex gap-2 flex-1 w-full md:w-auto">
+              <div class="relative flex-1">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+                <input type="text" [ngModel]="contactSearch()" (ngModelChange)="contactSearch.set($event)" (keyup.enter)="searchContacts()"
+                  placeholder="Buscar por telefono o nombre..."
+                  class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+              </div>
+              <select [ngModel]="selectedGroupFilter()" (ngModelChange)="selectedGroupFilter.set($event); loadContacts()"
+                class="bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                <option value="">Todos los grupos</option>
+                @for (g of groups(); track g.id) {
+                  <option [value]="g.id">{{ g.name }} ({{ g.contacts_count }})</option>
+                }
+              </select>
+            </div>
+            <div class="flex gap-1.5 md:gap-2 w-full md:w-auto">
+              <button (click)="contactModal.set('add')" class="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-2 text-xs md:text-sm rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors flex-1 md:flex-none justify-center">
+                <span class="material-symbols-outlined text-base md:text-lg">person_add</span> <span class="hidden sm:inline">Agregar</span>
+              </button>
+              <button (click)="contactModal.set('import')" class="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-2 text-xs md:text-sm rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors flex-1 md:flex-none justify-center">
+                <span class="material-symbols-outlined text-base md:text-lg">upload_file</span> <span class="hidden sm:inline">Importar</span>
+              </button>
+              <button (click)="contactModal.set('group')" class="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-2 text-xs md:text-sm rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex-1 md:flex-none justify-center">
+                <span class="material-symbols-outlined text-base md:text-lg">group_add</span> <span class="hidden sm:inline">Grupo</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selection Bar -->
+          @if (selectedContacts().size > 0) {
+            <div class="bg-green-500/10 border border-green-500/20 rounded-lg px-3 md:px-4 py-2 md:py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <span class="text-sm text-green-400 font-medium">{{ selectedContacts().size }} contactos seleccionados</span>
+              <div class="flex gap-2">
+                @for (g of groups(); track g.id) {
+                  <button (click)="addSelectedToGroup(g.id)" class="text-xs px-2 py-1 rounded bg-white/10 text-slate-300 hover:bg-white/20 transition-colors">
+                    + {{ g.name }}
+                  </button>
+                }
+                <button (click)="deselectAllContacts()" class="text-xs px-2 py-1 rounded bg-white/10 text-slate-300 hover:bg-white/20 transition-colors">
+                  Deseleccionar
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Groups Row -->
+          @if (groups().length > 0) {
+            <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              @for (g of groups(); track g.id) {
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-card-dark text-sm whitespace-nowrap shrink-0">
+                  <div class="w-2.5 h-2.5 rounded-full" [style.backgroundColor]="g.color"></div>
+                  <span class="text-slate-300">{{ g.name }}</span>
+                  <span class="text-xs text-slate-500">({{ g.contacts_count }})</span>
+                  <button (click)="deleteGroup(g.id)" class="text-slate-500 hover:text-red-400 transition-colors">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Contacts Table -->
+          <div class="bg-card-dark border border-white/10 rounded-xl overflow-hidden">
+            @if (contactsLoading()) {
+              <div class="flex items-center justify-center py-16">
+                <span class="material-symbols-outlined text-3xl text-green-400 animate-spin">progress_activity</span>
+              </div>
+            } @else if (contacts().length === 0) {
+              <div class="text-center py-16">
+                <span class="material-symbols-outlined text-5xl text-slate-700 mb-3">contacts</span>
+                <p class="text-slate-500">No hay contactos aun</p>
+                <p class="text-slate-600 text-sm">Agrega o importa contactos para empezar</p>
+              </div>
+            } @else {
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead>
+                    <tr class="border-b border-white/10">
+                      <th class="py-2.5 px-2 md:px-4 text-left">
+                        <input type="checkbox" [checked]="selectedContacts().size === contacts().length && contacts().length > 0"
+                          (change)="selectedContacts().size === contacts().length ? deselectAllContacts() : selectAllContacts()"
+                          class="accent-green-500">
+                      </th>
+                      <th class="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase">Telefono</th>
+                      <th class="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase">Nombre</th>
+                      <th class="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase hidden md:table-cell">Mensajes</th>
+                      <th class="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase hidden md:table-cell">Ultimo Envio</th>
+                      <th class="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase">Estado</th>
+                      <th class="py-2.5 px-2 md:px-4 text-right text-xs font-bold text-slate-500 uppercase">Accion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (c of contacts(); track c.id) {
+                      <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                        <td class="py-2 px-2 md:px-4">
+                          <input type="checkbox" [checked]="selectedContacts().has(c.id)" (change)="toggleContactSelection(c.id)" class="accent-green-500">
+                        </td>
+                        <td class="py-2.5 px-4 text-sm text-white font-mono">{{ c.phone }}</td>
+                        <td class="py-2.5 px-4 text-sm text-slate-300">{{ c.name || '—' }}</td>
+                        <td class="py-2.5 px-4 text-sm text-slate-400 hidden md:table-cell">{{ c.total_messages_sent }}</td>
+                        <td class="py-2.5 px-4 text-xs text-slate-500 hidden md:table-cell">{{ c.last_messaged_at ? (c.last_messaged_at | date:'dd/MM/yy HH:mm') : '—' }}</td>
+                        <td class="py-2 px-2 md:px-4">
+                          @if (c.is_blocked) {
+                            <span class="text-[10px] font-bold bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full">BLOQUEADO</span>
+                          } @else if (c.is_valid) {
+                            <span class="text-[10px] font-bold bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">ACTIVO</span>
+                          } @else {
+                            <span class="text-[10px] font-bold bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full">INVALIDO</span>
+                          }
+                        </td>
+                        <td class="py-2.5 px-4 text-right">
+                          <button (click)="deleteContact(c.id)" class="text-slate-500 hover:text-red-400 transition-colors">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div class="px-4 py-3 border-t border-white/5 text-xs text-slate-500">
+                {{ contacts().length }} contactos mostrados
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Add Contact Modal -->
+        @if (contactModal() === 'add') {
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="contactModal.set('none')">
+            <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4" (click)="$event.stopPropagation()">
+              <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-white">Agregar Contacto</h3>
+                <button (click)="contactModal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <label class="text-sm text-slate-400 mb-1.5 block">Telefono (con codigo de pais)</label>
+                  <input type="tel" [ngModel]="newContactPhone()" (ngModelChange)="newContactPhone.set($event)"
+                    placeholder="+573001234567"
+                    class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+                </div>
+                <div>
+                  <label class="text-sm text-slate-400 mb-1.5 block">Nombre (opcional)</label>
+                  <input type="text" [ngModel]="newContactName()" (ngModelChange)="newContactName.set($event)"
+                    placeholder="Nombre del contacto"
+                    class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+                </div>
+                <button (click)="addContact()" [disabled]="!newContactPhone()"
+                  class="w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold transition-all disabled:opacity-50">
+                  Agregar Contacto
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Import Modal -->
+        @if (contactModal() === 'import') {
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="contactModal.set('none')">
+            <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
+              <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-white">Importar Contactos</h3>
+                <button (click)="contactModal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+              </div>
+              <p class="text-sm text-slate-400 mb-3">Pega los numeros separados por linea. Opcionalmente agrega el nombre despues de una coma.</p>
+              <div class="bg-black/30 border border-white/5 rounded-lg p-3 mb-3">
+                <code class="text-xs text-slate-500">
+                  +573001234567, Juan Perez<br>
+                  +573009876543, Maria Lopez<br>
+                  +573005551234
+                </code>
+              </div>
+              <textarea [ngModel]="importText()" (ngModelChange)="importText.set($event)" rows="8"
+                placeholder="Pega aqui tus contactos..."
+                class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white font-mono placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none resize-none mb-3"></textarea>
+              @if (importResult()) {
+                <div class="bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2 text-sm text-green-400 mb-3">
+                  {{ importResult() }}
+                </div>
+              }
+              <button (click)="importContacts()" [disabled]="!importText()"
+                class="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold transition-all disabled:opacity-50 mb-4">
+                Importar Texto
+              </button>
+
+              <!-- Excel Upload -->
+              <div class="border-t border-white/10 pt-4">
+                <p class="text-sm text-slate-400 mb-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-green-400 text-lg">table_chart</span>
+                  O sube un archivo Excel / CSV con los numeros
+                </p>
+                <div class="border border-dashed border-white/20 rounded-xl p-4 text-center hover:border-green-500/30 transition-colors relative">
+                  <input type="file" accept=".csv,.xls,.xlsx,.txt" class="absolute inset-0 opacity-0 cursor-pointer" (change)="onExcelFileSelected($event)" #excelInput>
+                  @if (excelImportLoading()) {
+                    <span class="material-symbols-outlined text-2xl text-green-400 animate-spin">progress_activity</span>
+                    <p class="text-sm text-slate-400 mt-1">Procesando archivo...</p>
+                  } @else {
+                    <span class="material-symbols-outlined text-2xl text-green-400/60">upload_file</span>
+                    <p class="text-sm text-slate-400 mt-1">{{ excelFileName() || 'Click o arrastra tu archivo aqui' }}</p>
+                    <p class="text-xs text-slate-600 mt-0.5">.csv, .xls, .xlsx, .txt — Numeros en la 1ra columna, nombre en la 2da (opcional)</p>
+                  }
+                </div>
+                @if (excelImportResult()) {
+                  <div class="bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2 text-sm text-green-400 mt-3">
+                    {{ excelImportResult() }}
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- New Group Modal -->
+        @if (contactModal() === 'group') {
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="contactModal.set('none')">
+            <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4" (click)="$event.stopPropagation()">
+              <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-white">Crear Grupo</h3>
+                <button (click)="contactModal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <label class="text-sm text-slate-400 mb-1.5 block">Nombre del grupo</label>
+                  <input type="text" [ngModel]="newGroupName()" (ngModelChange)="newGroupName.set($event)"
+                    placeholder="Ej: Clientes VIP"
+                    class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+                </div>
+                <div>
+                  <label class="text-sm text-slate-400 mb-1.5 block">Color</label>
+                  <div class="flex gap-2">
+                    @for (color of ['#22c55e','#3b82f6','#a855f7','#f59e0b','#ef4444','#ec4899','#06b6d4']; track color) {
+                      <button (click)="newGroupColor.set(color)"
+                        class="w-8 h-8 rounded-full border-2 transition-all"
+                        [style.backgroundColor]="color"
+                        [class]="newGroupColor() === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'">
+                      </button>
+                    }
+                  </div>
+                </div>
+                <button (click)="createGroup()" [disabled]="!newGroupName()"
+                  class="w-full py-3 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold transition-all disabled:opacity-50">
+                  Crear Grupo
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- ══════════ CAMPAIGNS TAB ══════════ -->
+      @if (activeTab() === 'campaigns') {
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-white">Mis Campañas</h2>
+            <button (click)="openCreateCampaign()"
+              class="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-green-500 text-black font-bold hover:bg-green-400 transition-all">
+              <span class="material-symbols-outlined text-lg">add</span> Nueva Campaña
+            </button>
+          </div>
+
+          @if (campaigns().length === 0) {
+            <div class="bg-card-dark border border-white/10 rounded-xl text-center py-16">
+              <span class="material-symbols-outlined text-5xl text-slate-700 mb-3">campaign</span>
+              <p class="text-slate-500 mb-1">No has creado campañas aun</p>
+              <p class="text-slate-600 text-sm">Crea tu primera campaña para enviar mensajes masivos</p>
+            </div>
+          } @else {
+            <div class="space-y-3">
+              @for (c of campaigns(); track c.id) {
+                <div class="bg-card-dark border border-white/10 rounded-xl p-4 md:p-5 hover:border-white/20 transition-colors">
+                  <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
+                    <div>
+                      <div class="flex items-center gap-2 mb-1">
+                        <h3 class="font-bold text-white">{{ c.name }}</h3>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" [class]="getCampaignStatusColor(c.status)">
+                          {{ getCampaignStatusLabel(c.status) }}
+                        </span>
+                      </div>
+                      @if (c.description) {
+                        <p class="text-sm text-slate-400">{{ c.description }}</p>
+                      }
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                      @if (c.status === 'draft' || c.status === 'paused') {
+                        <button (click)="startCampaign(c.id)"
+                          class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors font-medium">
+                          <span class="material-symbols-outlined text-sm">play_arrow</span> Iniciar
+                        </button>
+                      }
+                      @if (c.status === 'running') {
+                        <button (click)="pauseCampaign(c.id)"
+                          class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 transition-colors font-medium">
+                          <span class="material-symbols-outlined text-sm">pause</span> Pausar
+                        </button>
+                      }
+                      @if (c.status !== 'completed' && c.status !== 'cancelled') {
+                        <button (click)="cancelCampaign(c.id)"
+                          class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors font-medium">
+                          <span class="material-symbols-outlined text-sm">stop</span> Cancelar
+                        </button>
+                      }
+                      <button (click)="deleteCampaign(c.id)"
+                        class="text-slate-500 hover:text-red-400 transition-colors p-1">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Progress -->
+                  <div class="mb-3">
+                    <div class="flex justify-between text-xs text-slate-400 mb-1">
+                      <span>{{ c.sent_count }} / {{ c.total_contacts }} enviados</span>
+                      <span>{{ getProgressPercent(c) }}%</span>
+                    </div>
+                    <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500"
+                        [style.width.%]="getProgressPercent(c)"></div>
+                    </div>
+                  </div>
+
+                  <!-- Stats row -->
+                  <div class="flex gap-4 text-xs">
+                    <span class="text-green-400">{{ c.delivered_count }} entregados</span>
+                    <span class="text-red-400">{{ c.failed_count }} fallidos</span>
+                    <span class="text-blue-400">{{ c.reply_count }} respuestas</span>
+                    @if (c.template) {
+                      <span class="text-slate-500 ml-auto">Plantilla: {{ c.template.name }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Create Campaign Modal -->
+        @if (campaignModal() === 'create') {
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-6" (click)="campaignModal.set('none')">
+            <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-2xl mx-4 my-auto" (click)="$event.stopPropagation()">
+              <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-white">Nueva Campaña</h3>
+                <button (click)="campaignModal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+              </div>
+
+              <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
+                <!-- Basic Info -->
+                <div class="space-y-3">
+                  <h4 class="text-sm font-bold text-green-400 uppercase">Informacion Basica</h4>
+                  <div>
+                    <label class="text-sm text-slate-400 mb-1 block">Nombre de la campaña</label>
+                    <input type="text" [ngModel]="newCampaignName()" (ngModelChange)="newCampaignName.set($event)"
+                      placeholder="Ej: Promo Black Friday"
+                      class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+                  </div>
+                  <div>
+                    <label class="text-sm text-slate-400 mb-1 block">Descripcion (opcional)</label>
+                    <input type="text" [ngModel]="newCampaignDescription()" (ngModelChange)="newCampaignDescription.set($event)"
+                      placeholder="Descripcion breve de la campaña"
+                      class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+                  </div>
+                </div>
+
+                <!-- Template Selection -->
+                <div class="space-y-3">
+                  <h4 class="text-sm font-bold text-blue-400 uppercase">Plantilla de Mensaje</h4>
+                  <select [ngModel]="newCampaignTemplateId()" (ngModelChange)="newCampaignTemplateId.set($event)"
+                    class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                    <option value="" disabled>Selecciona una plantilla</option>
+                    @for (t of templates(); track t.id) {
+                      <option [value]="t.id">{{ t.name }} ({{ t.message_type }})</option>
+                    }
+                  </select>
+                </div>
+
+                <!-- Target -->
+                <div class="space-y-3">
+                  <h4 class="text-sm font-bold text-purple-400 uppercase">Destinatarios</h4>
+                  <div class="flex gap-2">
+                    <button (click)="newCampaignTargetType.set('all')"
+                      class="px-4 py-2 text-sm rounded-lg border transition-colors"
+                      [class]="newCampaignTargetType() === 'all' ? 'border-green-500/50 bg-green-500/10 text-green-400' : 'border-white/10 text-slate-400 hover:bg-white/5'">
+                      Todos los contactos
+                    </button>
+                    <button (click)="newCampaignTargetType.set('group')"
+                      class="px-4 py-2 text-sm rounded-lg border transition-colors"
+                      [class]="newCampaignTargetType() === 'group' ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-white/10 text-slate-400 hover:bg-white/5'">
+                      Por grupo
+                    </button>
+                  </div>
+                  @if (newCampaignTargetType() === 'group') {
+                    <select [ngModel]="newCampaignGroupId()" (ngModelChange)="newCampaignGroupId.set($event)"
+                      class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                      <option value="" disabled>Selecciona un grupo</option>
+                      @for (g of groups(); track g.id) {
+                        <option [value]="g.id">{{ g.name }} ({{ g.contacts_count }} contactos)</option>
+                      }
+                    </select>
+                  }
+                </div>
+
+                <!-- Anti-Block Config -->
+                <div class="space-y-3">
+                  <h4 class="text-sm font-bold text-amber-400 uppercase flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">shield</span> Configuracion Anti-Bloqueo
+                  </h4>
+
+                  <!-- Recomendacion principal -->
+                  <div class="bg-green-500/5 border border-green-500/15 rounded-xl p-3 md:p-4">
+                    <div class="flex items-start gap-2 mb-2">
+                      <span class="material-symbols-outlined text-green-400 text-lg mt-0.5 shrink-0">verified_user</span>
+                      <div>
+                        <p class="text-xs text-green-400 font-bold mb-1">Configuracion recomendada (ya aplicada)</p>
+                        <p class="text-[10px] text-slate-400">Estos valores estan optimizados para evitar bloqueos. Puedes ajustarlos pero no recomendamos bajar las esperas ni subir los limites.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="bg-black/20 border border-white/5 rounded-xl p-3 md:p-4 space-y-4">
+                    <!-- Tiempo entre mensajes -->
+                    <div>
+                      <p class="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">timer</span> Tiempo entre cada mensaje
+                      </p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div>
+                          <label class="text-xs text-slate-400 mb-1 block">Espera minima (seg)</label>
+                          <input type="number" [ngModel]="antiBlockConfig().min_delay_seconds"
+                            (ngModelChange)="updateAntiBlockField('min_delay_seconds', $event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                          <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: 15 seg</p>
+                        </div>
+                        <div>
+                          <label class="text-xs text-slate-400 mb-1 block">Espera maxima (seg)</label>
+                          <input type="number" [ngModel]="antiBlockConfig().max_delay_seconds"
+                            (ngModelChange)="updateAntiBlockField('max_delay_seconds', $event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                          <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: 45 seg</p>
+                        </div>
+                      </div>
+                      <p class="text-[9px] text-slate-600 mt-1">El sistema elige un tiempo aleatorio entre estos dos valores para cada mensaje, simulando comportamiento humano.</p>
+                    </div>
+
+                    <!-- Limites de envio -->
+                    <div>
+                      <p class="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">speed</span> Limites de envio
+                      </p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div>
+                          <label class="text-xs text-slate-400 mb-1 block">Maximo por dia</label>
+                          <input type="number" [ngModel]="antiBlockConfig().daily_limit"
+                            (ngModelChange)="updateAntiBlockField('daily_limit', $event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                          <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: 80 msgs/dia</p>
+                        </div>
+                        <div>
+                          <label class="text-xs text-slate-400 mb-1 block">Maximo por hora</label>
+                          <input type="number" [ngModel]="antiBlockConfig().hourly_limit"
+                            (ngModelChange)="updateAntiBlockField('hourly_limit', $event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                          <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: 20 msgs/hora</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Division en lotes -->
+                    <div>
+                      <p class="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">view_agenda</span> Division en lotes
+                      </p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div>
+                          <label class="text-xs text-slate-400 mb-1 block">Mensajes por lote</label>
+                          <input type="number" [ngModel]="antiBlockConfig().batch_size"
+                            (ngModelChange)="updateAntiBlockField('batch_size', $event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                          <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: 8 msgs por lote</p>
+                        </div>
+                        <div>
+                          <label class="text-xs text-slate-400 mb-1 block">Pausa entre lotes (seg)</label>
+                          <input type="number" [ngModel]="antiBlockConfig().batch_pause_seconds"
+                            (ngModelChange)="updateAntiBlockField('batch_pause_seconds', $event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                          <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: 180 seg (3 min)</p>
+                        </div>
+                      </div>
+                      <p class="text-[9px] text-slate-600 mt-1">Tu lista se divide en lotes de 8 numeros. Despues de enviar cada lote, el sistema hace una pausa de 3 minutos antes de continuar con el siguiente.</p>
+                    </div>
+
+                    <!-- Calentamiento y variacion -->
+                    <div>
+                      <p class="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">trending_up</span> Proteccion avanzada
+                      </p>
+                      <div class="space-y-2">
+                        <label class="flex items-start gap-2 cursor-pointer bg-black/20 rounded-lg px-3 py-2.5">
+                          <input type="checkbox" [ngModel]="antiBlockConfig().warmup_enabled"
+                            (ngModelChange)="updateAntiBlockField('warmup_enabled', $event)"
+                            class="accent-green-500 mt-0.5">
+                          <div>
+                            <span class="text-xs text-slate-300 font-medium">Calentamiento progresivo</span>
+                            <p class="text-[9px] text-slate-500">Empieza enviando pocos mensajes el primer dia y sube gradualmente. Ideal para cuentas nuevas o que nunca han enviado masivamente.</p>
+                          </div>
+                        </label>
+                        <label class="flex items-start gap-2 cursor-pointer bg-black/20 rounded-lg px-3 py-2.5">
+                          <input type="checkbox" [ngModel]="antiBlockConfig().variation_enabled"
+                            (ngModelChange)="updateAntiBlockField('variation_enabled', $event)"
+                            class="accent-green-500 mt-0.5">
+                          <div>
+                            <span class="text-xs text-slate-300 font-medium">Variacion de mensajes</span>
+                            <p class="text-[9px] text-slate-500">Modifica ligeramente cada mensaje para que no sean identicos. WhatsApp detecta y bloquea mensajes repetidos.</p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    @if (antiBlockConfig().warmup_enabled) {
+                      <div class="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">
+                        <p class="text-[10px] text-amber-400/80 font-bold mb-2">Configuracion de calentamiento</p>
+                        <div class="grid grid-cols-2 gap-3">
+                          <div>
+                            <label class="text-xs text-slate-400 mb-1 block">Dia 1: mensajes</label>
+                            <input type="number" [ngModel]="antiBlockConfig().warmup_start_count"
+                              (ngModelChange)="updateAntiBlockField('warmup_start_count', $event)"
+                              class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                            <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: 15 msgs</p>
+                          </div>
+                          <div>
+                            <label class="text-xs text-slate-400 mb-1 block">Subir por dia</label>
+                            <input type="number" [ngModel]="antiBlockConfig().warmup_increment"
+                              (ngModelChange)="updateAntiBlockField('warmup_increment', $event)"
+                              class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                            <p class="text-[9px] text-green-500/60 mt-0.5">Recomendado: +5 msgs/dia</p>
+                          </div>
+                        </div>
+                        <p class="text-[9px] text-slate-600 mt-2">Dia 1: 15 msgs → Dia 2: 20 msgs → Dia 3: 25 msgs → ... hasta alcanzar el limite diario (80).</p>
+                      </div>
+                    }
+
+                    <!-- Resumen visual -->
+                    <div class="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3">
+                      <p class="text-[10px] text-blue-400 font-bold mb-2">Asi funcionara tu campaña</p>
+                      <div class="space-y-1.5 text-[10px] text-slate-400">
+                        <p class="flex items-center gap-1.5"><span class="material-symbols-outlined text-xs text-blue-400">schedule</span> Cada mensaje se envia entre <strong class="text-white">{{ antiBlockConfig().min_delay_seconds }} y {{ antiBlockConfig().max_delay_seconds }} segundos</strong> despues del anterior</p>
+                        <p class="flex items-center gap-1.5"><span class="material-symbols-outlined text-xs text-blue-400">view_agenda</span> Se envian <strong class="text-white">{{ antiBlockConfig().batch_size }} mensajes</strong> seguidos y luego pausa de <strong class="text-white">{{ antiBlockConfig().batch_pause_seconds }} seg</strong></p>
+                        <p class="flex items-center gap-1.5"><span class="material-symbols-outlined text-xs text-blue-400">today</span> Maximo <strong class="text-white">{{ antiBlockConfig().daily_limit }} mensajes por dia</strong> y <strong class="text-white">{{ antiBlockConfig().hourly_limit }} por hora</strong></p>
+                        @if (antiBlockConfig().warmup_enabled) {
+                          <p class="flex items-center gap-1.5"><span class="material-symbols-outlined text-xs text-amber-400">trending_up</span> Calentamiento: empieza con <strong class="text-white">{{ antiBlockConfig().warmup_start_count }} msgs</strong> y sube <strong class="text-white">+{{ antiBlockConfig().warmup_increment }}</strong> cada dia</p>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 pt-4 border-t border-white/10">
+                <button (click)="saveCampaign()" [disabled]="!newCampaignName() || !newCampaignTemplateId()"
+                  class="w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold transition-all disabled:opacity-50">
+                  Crear Campaña
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- ══════════ TEMPLATES TAB ══════════ -->
+      @if (activeTab() === 'templates') {
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-white">Plantillas de Mensaje</h2>
+            <button (click)="openCreateTemplate()"
+              class="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-green-500 text-black font-bold hover:bg-green-400 transition-all">
+              <span class="material-symbols-outlined text-lg">add</span> Nueva Plantilla
+            </button>
+          </div>
+
+          @if (templates().length === 0) {
+            <div class="bg-card-dark border border-white/10 rounded-xl text-center py-16">
+              <span class="material-symbols-outlined text-5xl text-slate-700 mb-3">description</span>
+              <p class="text-slate-500 mb-1">No hay plantillas creadas</p>
+              <p class="text-slate-600 text-sm">Las plantillas te permiten reutilizar mensajes con variables</p>
+            </div>
+          } @else {
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              @for (t of templates(); track t.id) {
+                <div class="bg-card-dark border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors">
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-green-400">
+                        @switch (t.message_type) {
+                          @case ('text') { chat }
+                          @case ('image') { image }
+                          @case ('audio') { mic }
+                          @case ('pdf') { picture_as_pdf }
+                          @case ('video') { videocam }
+                        }
+                      </span>
+                      <div>
+                        <h3 class="font-bold text-white text-sm">{{ t.name }}</h3>
+                        <span class="text-[10px] text-slate-500 uppercase">{{ t.category }} · {{ t.message_type }}</span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button (click)="toggleFavorite(t)" class="transition-colors" [class]="t.is_favorite ? 'text-amber-400' : 'text-slate-600 hover:text-amber-400'">
+                        <span class="material-symbols-outlined text-lg">{{ t.is_favorite ? 'star' : 'star_border' }}</span>
+                      </button>
+                      <button (click)="editTemplate(t)" class="text-slate-500 hover:text-white transition-colors">
+                        <span class="material-symbols-outlined text-lg">edit</span>
+                      </button>
+                      <button (click)="deleteTemplate(t.id)" class="text-slate-500 hover:text-red-400 transition-colors">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-sm text-slate-400 line-clamp-3 mb-2">{{ t.content }}</p>
+                  @if (t.variables.length > 0) {
+                    <div class="flex flex-wrap gap-1">
+                      @for (v of t.variables; track v) {
+                        <span class="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">{{'{'}}{{ v }}{{'}'}}</span>
+                      }
+                    </div>
+                  }
+                  @if (t.media_filename) {
+                    <div class="flex items-center gap-1 mt-2 text-xs text-slate-500">
+                      <span class="material-symbols-outlined text-sm">attach_file</span>
+                      {{ t.media_filename }}
+                    </div>
+                  }
+                  <div class="text-xs text-slate-600 mt-2">Usado {{ t.use_count }} veces</div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Create/Edit Template Modal -->
+        @if (templateModal() === 'create') {
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-6" (click)="templateModal.set('none')">
+            <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4 my-auto" (click)="$event.stopPropagation()">
+              <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-white">{{ editingTemplate() ? 'Editar' : 'Nueva' }} Plantilla</h3>
+                <button (click)="templateModal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+              </div>
+
+              <div class="space-y-4">
+                <div>
+                  <label class="text-sm text-slate-400 mb-1 block">Nombre</label>
+                  <input type="text" [ngModel]="newTemplateName()" (ngModelChange)="newTemplateName.set($event)"
+                    placeholder="Ej: Promo mensual"
+                    class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="text-sm text-slate-400 mb-1 block">Categoria</label>
+                    <select [ngModel]="newTemplateCategory()" (ngModelChange)="newTemplateCategory.set($event)"
+                      class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                      @for (cat of templateCategories; track cat.value) {
+                        <option [value]="cat.value">{{ cat.label }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-sm text-slate-400 mb-1 block">Tipo de mensaje</label>
+                    <select [ngModel]="newTemplateType()" (ngModelChange)="newTemplateType.set($event)"
+                      class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                      @for (mt of messageTypes; track mt.value) {
+                        <option [value]="mt.value">{{ mt.label }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="text-sm text-slate-400 mb-1 block">Contenido del mensaje</label>
+                  <textarea [ngModel]="newTemplateContent()" (ngModelChange)="newTemplateContent.set($event)" rows="5"
+                    placeholder="Hola {nombre}, te invitamos a aprovechar nuestra promo..."
+                    class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none resize-none"></textarea>
+                  <p class="text-xs text-slate-600 mt-1">Usa {{'{'}}variable{{'}'}}) para personalizar: {{'{'}}nombre{{'}'}}, {{'{'}}empresa{{'}'}}, {{'{'}}telefono{{'}'}}</p>
+                </div>
+
+                @if (newTemplateType() !== 'text') {
+                  <div>
+                    <label class="text-sm text-slate-400 mb-1 block">Archivo adjunto</label>
+                    <div class="border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-green-500/30 transition-colors">
+                      <input type="file" (change)="onMediaFileSelected($event)" class="hidden" #fileInput
+                        [accept]="newTemplateType() === 'image' ? 'image/*' : newTemplateType() === 'audio' ? 'audio/*' : newTemplateType() === 'pdf' ? '.pdf' : 'video/*'">
+                      <button (click)="fileInput.click()" class="text-slate-400 hover:text-white transition-colors">
+                        <span class="material-symbols-outlined text-2xl mb-1">cloud_upload</span>
+                        <p class="text-sm">{{ newTemplateMediaFile()?.name || 'Click para subir archivo' }}</p>
+                      </button>
+                    </div>
+                  </div>
+                }
+
+                <button (click)="saveTemplate()" [disabled]="!newTemplateName() || !newTemplateContent()"
+                  class="w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold transition-all disabled:opacity-50">
+                  {{ editingTemplate() ? 'Guardar Cambios' : 'Crear Plantilla' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- ══════════ SETTINGS TAB ══════════ -->
+      @if (activeTab() === 'settings') {
+        <div class="space-y-6 max-w-3xl">
+          <!-- WhatsApp Sessions -->
+          <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg text-green-400">phone_iphone</span>
+              Sesiones de WhatsApp
+            </h3>
+            <p class="text-xs text-slate-500 mb-4">Conecta tu WhatsApp escaneando el codigo QR. Puedes tener multiples sesiones activas.</p>
+
+            @if (sessions().length === 0) {
+              <div class="text-center py-8 border border-dashed border-white/10 rounded-xl mb-4">
+                <span class="material-symbols-outlined text-4xl text-slate-700 mb-2">phone_iphone</span>
+                <p class="text-slate-400 text-sm font-medium mb-1">No hay sesiones configuradas</p>
+                <p class="text-slate-600 text-xs max-w-xs mx-auto">Agrega una sesion para vincular tu WhatsApp. Solo necesitas tu celular con WhatsApp instalado.</p>
+              </div>
+            } @else {
+              <div class="space-y-2 mb-4">
+                @for (s of sessions(); track s.id) {
+                  <div class="flex items-center justify-between bg-black/20 border border-white/5 rounded-lg px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      <span class="material-symbols-outlined text-xl" [class]="getSessionStatusColor(s.status)">
+                        {{ getSessionStatusIcon(s.status) }}
+                      </span>
+                      <div>
+                        <p class="text-sm text-white font-medium">{{ s.session_name }}</p>
+                        <p class="text-xs text-slate-500">
+                          {{ s.phone_number || 'Sin vincular' }} ·
+                          {{ s.status === 'connected' ? 'Conectado' : s.status === 'qr_pending' ? 'Esperando QR' : s.status === 'banned' ? 'Bloqueado' : 'Desconectado' }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      @if (s.status !== 'connected' && s.phone_number) {
+                        <button (click)="connectSession(s)" class="text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors">
+                          Conectar
+                        </button>
+                      }
+                      <button (click)="deleteSession(s.id)" class="text-slate-500 hover:text-red-400 transition-colors">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="flex gap-2">
+              <input type="text" [ngModel]="newSessionName()" (ngModelChange)="newSessionName.set($event)"
+                placeholder="Nombre de la sesion (ej: Celular principal)"
+                class="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+              <button (click)="createSession()" [disabled]="!newSessionName() || sessionLoading()"
+                class="px-4 py-2.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors text-sm font-medium disabled:opacity-50">
+                @if (sessionLoading()) {
+                  <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                } @else {
+                  + Agregar Sesion
+                }
+              </button>
+            </div>
+
+            @if (sessionError()) {
+              <div class="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 text-sm text-red-400 mt-3">{{ sessionError() }}</div>
+            }
+
+            <!-- Vincular WhatsApp -->
+            @if (qrCode() || pairingCode()) {
+              <div class="mt-4 bg-black/20 border border-green-500/20 rounded-xl p-4 md:p-5">
+                <div class="text-center mb-4">
+                  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 mb-3">
+                    <span class="material-symbols-outlined text-2xl text-green-400">link</span>
+                  </div>
+                  <h4 class="text-sm font-bold text-green-400 mb-1">Vincula tu WhatsApp</h4>
+                  <p class="text-xs text-slate-500">Sigue estos pasos desde tu celular</p>
+                </div>
+
+                <!-- Pasos -->
+                <div class="space-y-3 mb-5">
+                  <div class="flex items-start gap-3 bg-black/20 rounded-lg px-3 py-2.5">
+                    <span class="w-6 h-6 rounded-full bg-green-500/20 text-green-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                    <p class="text-xs text-slate-300">Abre la app de <strong class="text-white">WhatsApp</strong> en tu celular</p>
+                  </div>
+                  <div class="flex items-start gap-3 bg-black/20 rounded-lg px-3 py-2.5">
+                    <span class="w-6 h-6 rounded-full bg-green-500/20 text-green-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                    <p class="text-xs text-slate-300">Ve a <strong class="text-white">Ajustes</strong> (los 3 puntos arriba) > <strong class="text-white">Dispositivos vinculados</strong></p>
+                  </div>
+                  <div class="flex items-start gap-3 bg-black/20 rounded-lg px-3 py-2.5">
+                    <span class="w-6 h-6 rounded-full bg-green-500/20 text-green-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                    <p class="text-xs text-slate-300">Toca <strong class="text-white">Vincular un dispositivo</strong></p>
+                  </div>
+                  <div class="flex items-start gap-3 bg-black/20 rounded-lg px-3 py-2.5">
+                    <span class="w-6 h-6 rounded-full bg-green-500/20 text-green-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
+                    <p class="text-xs text-slate-300">En vez de escanear QR, toca <strong class="text-white">"Vincular con numero de telefono"</strong></p>
+                  </div>
+                  <div class="flex items-start gap-3 bg-black/20 rounded-lg px-3 py-2.5">
+                    <span class="w-6 h-6 rounded-full bg-green-500/20 text-green-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">5</span>
+                    <p class="text-xs text-slate-300">Ingresa el <strong class="text-white">codigo de vinculacion</strong> que aparece abajo</p>
+                  </div>
+                </div>
+
+                <!-- Codigo de vinculacion -->
+                @if (pairingCode()) {
+                  <div class="text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">Tu codigo de vinculacion</p>
+                    <div class="bg-black/50 border-2 border-green-500/30 rounded-xl px-6 py-4 inline-block">
+                      <span class="text-3xl md:text-4xl font-mono font-black text-green-400 tracking-[0.3em]">{{ pairingCode() }}</span>
+                    </div>
+                    <p class="text-[10px] text-slate-600 mt-2">Este codigo expira en 60 segundos. Si expira, genera uno nuevo.</p>
+                  </div>
+                }
+
+                <!-- Botones -->
+                <div class="flex flex-col sm:flex-row justify-center gap-2 mt-5">
+                  <button (click)="checkConnection()" class="px-4 py-2.5 rounded-lg bg-green-500 text-black text-xs font-bold transition-all hover:bg-green-400 flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">check_circle</span> Ya ingrese el codigo
+                  </button>
+                  <button (click)="refreshQR(activeInstance()!)" class="px-4 py-2.5 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 text-xs font-medium transition-colors flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">refresh</span> Generar nuevo codigo
+                  </button>
+                </div>
+
+                <!-- Nota informativa -->
+                <div class="mt-4 bg-blue-500/5 border border-blue-500/10 rounded-lg px-3 py-2.5">
+                  <p class="text-[10px] text-blue-400/80 flex items-start gap-1.5">
+                    <span class="material-symbols-outlined text-xs mt-0.5 shrink-0">info</span>
+                    <span>Funciona desde el celular: solo alterna entre esta pagina y la app de WhatsApp. No necesitas computadora ni otro dispositivo.</span>
+                  </p>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Enviar Mensaje de Prueba -->
+          <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg text-emerald-400">send</span>
+              Enviar Mensaje de Prueba
+            </h3>
+            <p class="text-xs text-slate-500 mb-3">Verifica que tu conexion funciona enviando un mensaje de prueba.</p>
+            <div class="space-y-3">
+              <input type="tel" [ngModel]="testPhone()" (ngModelChange)="testPhone.set($event)"
+                placeholder="Numero con codigo de pais (ej: 573001234567)"
+                class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+              <input type="text" [ngModel]="testMessage()" (ngModelChange)="testMessage.set($event)"
+                placeholder="Mensaje de prueba"
+                class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
+              <button (click)="sendTest()" [disabled]="!testPhone() || !testMessage() || testSending()"
+                class="w-full py-2.5 rounded-lg bg-green-500 hover:bg-green-400 text-black font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                @if (testSending()) {
+                  <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span> Enviando...
+                } @else {
+                  <span class="material-symbols-outlined text-sm">send</span> Enviar Prueba
+                }
+              </button>
+              @if (testResult()) {
+                <div class="rounded-lg px-4 py-2 text-sm" [class]="testResult()!.includes('correctamente') ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'">
+                  {{ testResult() }}
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Subscription Info -->
+          <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg text-amber-400">credit_card</span>
+              Suscripcion
+            </h3>
+            @if (subscription(); as sub) {
+              <div class="space-y-3">
+                <div class="flex justify-between">
+                  <span class="text-sm text-slate-400">Plan</span>
+                  <span class="text-sm text-white font-medium">WhatsApp Pro</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-slate-400">Precio</span>
+                  <span class="text-sm text-green-400 font-bold">${{ sub.price }} {{ sub.currency }}/mes</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-slate-400">Estado</span>
+                  <span class="text-[10px] font-bold bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full uppercase">{{ sub.status }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-slate-400">Expira</span>
+                  <span class="text-sm text-white">{{ sub.expires_at | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-slate-400">Metodo de pago</span>
+                  <span class="text-sm text-white capitalize">{{ sub.payment_method }}</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Guia Anti-Bloqueo -->
+          <div class="bg-card-dark border border-white/10 rounded-xl p-4 md:p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-lg text-cyan-400">shield</span>
+              Guia Anti-Bloqueo de WhatsApp
+            </h3>
+
+            <!-- Tiempos recomendados -->
+            <div class="mb-4">
+              <p class="text-[10px] text-green-400 uppercase font-bold mb-2">Tiempos recomendados</p>
+              <div class="bg-black/20 rounded-lg p-3 space-y-2 text-xs text-slate-400">
+                <div class="flex justify-between"><span>Espera entre mensajes</span><strong class="text-white">15 a 45 segundos</strong></div>
+                <div class="flex justify-between"><span>Mensajes por lote</span><strong class="text-white">8 mensajes</strong></div>
+                <div class="flex justify-between"><span>Pausa entre lotes</span><strong class="text-white">3 minutos</strong></div>
+                <div class="flex justify-between"><span>Maximo por hora</span><strong class="text-white">20 mensajes</strong></div>
+                <div class="flex justify-between"><span>Maximo por dia</span><strong class="text-white">80 mensajes</strong></div>
+              </div>
+            </div>
+
+            <!-- Division de listas -->
+            <div class="mb-4">
+              <p class="text-[10px] text-blue-400 uppercase font-bold mb-2">Como dividir tu lista de numeros</p>
+              <div class="bg-black/20 rounded-lg p-3 space-y-2 text-xs text-slate-400">
+                <div class="flex justify-between"><span>Hasta 80 numeros</span><strong class="text-white">1 campaña, 1 dia</strong></div>
+                <div class="flex justify-between"><span>80 a 200 numeros</span><strong class="text-white">Dividir en 2-3 dias</strong></div>
+                <div class="flex justify-between"><span>200 a 500 numeros</span><strong class="text-white">Dividir en 4-7 dias</strong></div>
+                <div class="flex justify-between"><span>500 a 1,000 numeros</span><strong class="text-white">Dividir en 2 semanas</strong></div>
+                <div class="flex justify-between"><span>Mas de 1,000 numeros</span><strong class="text-white">Usar calentamiento + 3-4 semanas</strong></div>
+              </div>
+            </div>
+
+            <!-- Calentamiento -->
+            <div class="mb-4">
+              <p class="text-[10px] text-amber-400 uppercase font-bold mb-2">Calentamiento para cuentas nuevas</p>
+              <div class="bg-black/20 rounded-lg p-3 space-y-1.5 text-xs text-slate-400">
+                <p>Dia 1-2: <strong class="text-white">15 mensajes/dia</strong></p>
+                <p>Dia 3-4: <strong class="text-white">20 mensajes/dia</strong></p>
+                <p>Dia 5-6: <strong class="text-white">25 mensajes/dia</strong></p>
+                <p>Dia 7-10: <strong class="text-white">35 mensajes/dia</strong></p>
+                <p>Dia 11+: <strong class="text-white">Subir gradualmente hasta 80/dia</strong></p>
+                <p class="text-[9px] text-slate-600 mt-1">Si la cuenta ya envia mensajes normalmente hace semanas, puedes empezar con 40-50/dia.</p>
+              </div>
+            </div>
+
+            <!-- Lo que debes hacer -->
+            <div class="mb-4">
+              <p class="text-[10px] text-green-400 uppercase font-bold mb-2">Lo que debes hacer</p>
+              <div class="space-y-2 text-xs text-slate-400">
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-green-400 text-base mt-0.5 shrink-0">check_circle</span>
+                  <span>Usa <strong class="text-white">variables</strong> como {{'{'}}nombre{{'}'}}, {{'{'}}empresa{{'}'}}, etc. para personalizar cada mensaje</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-green-400 text-base mt-0.5 shrink-0">check_circle</span>
+                  <span>Activa <strong class="text-white">variacion de mensajes</strong> para que no sean identicos</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-green-400 text-base mt-0.5 shrink-0">check_circle</span>
+                  <span>Alterna entre <strong class="text-white">texto, imagen y audio</strong> en diferentes campañas</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-green-400 text-base mt-0.5 shrink-0">check_circle</span>
+                  <span>Envia en <strong class="text-white">horarios naturales</strong> (8am a 8pm)</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-green-400 text-base mt-0.5 shrink-0">check_circle</span>
+                  <span>Haz una <strong class="text-white">prueba con 5-10 numeros</strong> antes de lanzar una campaña grande</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lo que NO debes hacer -->
+            <div>
+              <p class="text-[10px] text-red-400 uppercase font-bold mb-2">Lo que NO debes hacer</p>
+              <div class="space-y-2 text-xs text-slate-400">
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-red-400 text-base mt-0.5 shrink-0">cancel</span>
+                  <span>Enviar <strong class="text-white">mas de 80 mensajes en un dia</strong> con una cuenta nueva</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-red-400 text-base mt-0.5 shrink-0">cancel</span>
+                  <span>Enviar el <strong class="text-white">mismo mensaje exacto</strong> a todos los contactos</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-red-400 text-base mt-0.5 shrink-0">cancel</span>
+                  <span>Enviar a numeros que te han <strong class="text-white">bloqueado o reportado</strong></span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-red-400 text-base mt-0.5 shrink-0">cancel</span>
+                  <span>Usar esperas de <strong class="text-white">menos de 10 segundos</strong> entre mensajes</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-red-400 text-base mt-0.5 shrink-0">cancel</span>
+                  <span>Incluir <strong class="text-white">links acortados</strong> (bit.ly, etc.) — WhatsApp los detecta como spam</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-red-400 text-base mt-0.5 shrink-0">cancel</span>
+                  <span>Si recibes un <strong class="text-white">aviso de restriccion</strong>, para TODO por 48-72 horas</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ═══ PAYMENT MODAL ═══ -->
+  @if (showPaymentModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm overflow-y-auto py-4" (click)="showPaymentModal.set(false)">
+      <div class="bg-card-dark border border-white/10 rounded-2xl p-5 md:p-8 w-full max-w-md mx-4 my-auto relative" (click)="$event.stopPropagation()">
+        <button (click)="showPaymentModal.set(false)" class="absolute top-4 right-4 text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+
+        @if (subscriptionStep() === 'pricing') {
+          <div class="text-center">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-500/10 border border-green-500/20 mb-4">
+              <span class="material-symbols-outlined text-3xl text-green-400">rocket_launch</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1">Activa WhatsApp Pro</h3>
+            <p class="text-slate-400 text-sm mb-5">Desbloquea todas las funciones de automatizacion</p>
+            <div class="flex items-baseline justify-center gap-1 mb-1">
+              <span class="text-4xl font-black text-green-400">$20</span>
+              <span class="text-slate-400 text-sm">USD / mes</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-5">{{ formatCOP(priceCOP()) }} COP aprox.</p>
+            <ul class="text-left space-y-2 mb-6">
+              @for (f of ['Envios ilimitados','Contactos ilimitados','Texto, imagen, audio, PDF','Anti-bloqueo inteligente','Plantillas con variables','Importacion masiva']; track f) {
+                <li class="flex items-center gap-2 text-sm text-slate-300">
+                  <span class="material-symbols-outlined text-green-400 text-base">check_circle</span>{{ f }}
+                </li>
+              }
+            </ul>
+            @if (epaycoError()) {
+              <div class="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 text-sm text-red-400 mb-4">{{ epaycoError() }}</div>
+            }
+            <button (click)="startEpaycoCheckout()" [disabled]="subscribing()"
+              class="w-full py-3 rounded-xl bg-[#00B1EA] hover:bg-[#00c4ff] text-white font-bold transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+              @if (subscribing()) {
+                <span class="material-symbols-outlined animate-spin">progress_activity</span> Preparando...
+              } @else {
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                Pagar {{ formatCOP(priceWithFeeCOP()) }} con ePayco
+              }
+            </button>
+            <p class="text-[10px] text-slate-600 mt-3">Pago seguro por ePayco. Incluye comision de pasarela.</p>
+          </div>
+        } @else if (subscriptionStep() === 'epayco-loading') {
+          <div class="text-center py-8">
+            <span class="material-symbols-outlined text-4xl text-[#00B1EA] animate-spin mb-3">progress_activity</span>
+            <p class="text-white font-bold">Preparando pago...</p>
+          </div>
+        } @else if (subscriptionStep() === 'epayco-opening') {
+          <div class="text-center py-8">
+            <span class="material-symbols-outlined text-4xl text-[#00B1EA] mb-3">open_in_new</span>
+            <p class="text-white font-bold mb-2">Redirigiendo a ePayco...</p>
+            <p class="text-slate-400 text-sm">Completa el pago en la ventana de ePayco.</p>
+          </div>
+        } @else if (subscriptionStep() === 'epayco-result') {
+          <div class="text-center py-8">
+            <span class="material-symbols-outlined text-4xl text-green-400 animate-pulse mb-3">verified</span>
+            <p class="text-white font-bold mb-2">Verificando pago...</p>
+            <span class="material-symbols-outlined text-xl text-green-400 animate-spin">progress_activity</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+}

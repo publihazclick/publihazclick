@@ -1,9 +1,10 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiVideoService } from '../../../../core/services/ai-video.service';
+import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 
 interface StyleOption {
   id: string;
@@ -35,11 +36,19 @@ interface GeneratedImage {
   templateUrl: './image-generator.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ImageGeneratorComponent {
+export class ImageGeneratorComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly aiService = inject(AiVideoService);
+  private readonly walletService = inject(AiWalletService);
 
   readonly profile = this.profileService.profile;
+  readonly walletBalance = this.walletService.balance;
+  readonly walletLoaded = signal(false);
+
+  async ngOnInit(): Promise<void> {
+    try { await this.walletService.loadWallet(); } catch {}
+    this.walletLoaded.set(true);
+  }
 
   // Form
   readonly prompt = signal('');

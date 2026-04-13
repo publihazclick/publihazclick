@@ -1,3 +1,37 @@
+<!-- ═══ BLOQUEO: Saldo insuficiente ═══ -->
+@if (walletLoaded() && walletBalance() <= 0) {
+  <div class="min-h-screen bg-white rounded-2xl overflow-hidden flex items-center justify-center">
+    <div class="max-w-md w-full text-center px-6 py-16">
+      <div class="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center mb-6"
+           style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+        <span class="material-symbols-outlined text-amber-500" style="font-size:40px">account_balance_wallet</span>
+      </div>
+      <h2 class="text-2xl font-black text-gray-900 mb-2">Recarga Requerida</h2>
+      <p class="text-sm text-gray-500 leading-relaxed mb-6">
+        Para usar el <strong>Generador de Imágenes IA</strong> necesitas saldo en tu billetera.
+        Recarga ahora y crea imágenes profesionales al instante.
+      </p>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
+        <div class="flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-amber-600" style="font-size:18px">info</span>
+          <span class="text-sm font-bold text-amber-700">Saldo actual: $0 COP</span>
+        </div>
+      </div>
+      <a routerLink="/advertiser/ai/wallet"
+         class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all hover:opacity-90 shadow-lg shadow-purple-500/20"
+         style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef);">
+        <span class="material-symbols-outlined" style="font-size:18px">add_circle</span>
+        Recargar Billetera
+      </a>
+      <div class="mt-4">
+        <a routerLink="/advertiser/ai/creator" class="text-sm text-gray-400 hover:text-purple-600 transition-colors">
+          ← Volver al panel
+        </a>
+      </div>
+    </div>
+  </div>
+} @else {
+
 <div class="min-h-screen bg-white rounded-2xl overflow-hidden">
 
   <!-- Header -->
@@ -361,3 +395,5 @@
     </div>
   </div>
 }
+
+} <!-- cierre @else walletBalance -->

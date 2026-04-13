@@ -27,6 +27,7 @@ export class YoutubeStudioComponent implements OnInit {
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
+  readonly walletLoaded = signal(false);
 
   // Tabs
   readonly activeTab = signal<'creacion' | 'analiticas' | 'seo' | 'miniaturas' | 'playlists'>('creacion');
@@ -90,7 +91,8 @@ export class YoutubeStudioComponent implements OnInit {
   readonly checkingStatus = signal(false);
 
   async ngOnInit(): Promise<void> {
-    await this.walletService.loadWallet();
+    try { await this.walletService.loadWallet(); } catch {}
+    this.walletLoaded.set(true);
     await this.loadVoices();
   }
 

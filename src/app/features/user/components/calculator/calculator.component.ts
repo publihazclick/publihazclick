@@ -11,20 +11,23 @@ import { RouterModule } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 
+interface MegaReward {
+  adType: string;
+  quantity: number;
+  rewardCOP: number;
+}
+
 interface PlatformTier {
   name: string;
   minReferrals: number;
   maxReferrals: number | null;
   ownClicksCOP: number;
-  referralClicksCOP: number;
   monthlyEarningsCOP: number;
   color: string;
   bgGradient: string;
   icon: string;
   bgColorClass: string;
   category: 'basic' | 'superior' | 'superior-plus';
-  commissionPerStd400?: number;
-  miniSlotsPerInvitee?: number;
   requiredPackage?: string;
   /** Desglose de clicks propios para tiers 20+ refs */
   ownAdsPerDay?: number;
@@ -33,6 +36,9 @@ interface PlatformTier {
   ownAdDonacionCOP?: number;
   ownMiniPerDay?: number;
   ownMiniPriceCOP?: number;
+  /** V2: Mega recompensas por compra de invitado */
+  megaRewards: MegaReward[];
+  megaRewardTotalCOP: number;
 }
 
 @Component({
@@ -50,174 +56,124 @@ export class CalculatorComponent implements OnInit {
 
   readonly PLATFORM_TIERS: PlatformTier[] = [
     {
-      name: 'JADE',
-      minReferrals: 1,
-      maxReferrals: 2,
+      name: 'JADE', minReferrals: 1, maxReferrals: 2,
       ownClicksCOP: 70_000,
-      referralClicksCOP: 28_000,
-      monthlyEarningsCOP: 98_000,
-      color: 'text-emerald-500',
-      bgGradient: 'from-emerald-400 to-emerald-600',
-      bgColorClass: 'bg-emerald-500',
-      icon: 'diamond',
-      category: 'basic',
-      commissionPerStd400: 100,
-      miniSlotsPerInvitee: 1,
+      color: 'text-emerald-500', bgGradient: 'from-emerald-400 to-emerald-600',
+      bgColorClass: 'bg-emerald-500', icon: 'diamond', category: 'basic',
+      megaRewards: [{ adType: 'mega_2000', quantity: 14, rewardCOP: 2_000 }],
+      megaRewardTotalCOP: 28_000,
+      monthlyEarningsCOP: 0, // se calcula dinámicamente
     },
     {
-      name: 'PERLA',
-      minReferrals: 3,
-      maxReferrals: 5,
+      name: 'PERLA', minReferrals: 3, maxReferrals: 5,
       ownClicksCOP: 70_000,
-      referralClicksCOP: 138_000,
-      monthlyEarningsCOP: 208_000,
-      color: 'text-pink-400',
-      bgGradient: 'from-pink-400 to-pink-600',
-      bgColorClass: 'bg-pink-400',
-      icon: 'brightness_7',
-      category: 'basic',
-      commissionPerStd400: 200,
-      miniSlotsPerInvitee: 2,
+      color: 'text-pink-400', bgGradient: 'from-pink-400 to-pink-600',
+      bgColorClass: 'bg-pink-400', icon: 'brightness_7', category: 'basic',
+      megaRewards: [
+        { adType: 'mega_5000', quantity: 8, rewardCOP: 5_000 },
+        { adType: 'mega_2000', quantity: 3, rewardCOP: 2_000 },
+      ],
+      megaRewardTotalCOP: 46_000,
+      monthlyEarningsCOP: 0,
     },
     {
-      name: 'ZAFIRO',
-      minReferrals: 6,
-      maxReferrals: 9,
+      name: 'ZAFIRO', minReferrals: 6, maxReferrals: 9,
       ownClicksCOP: 70_000,
-      referralClicksCOP: 384_000,
-      monthlyEarningsCOP: 454_000,
-      color: 'text-blue-400',
-      bgGradient: 'from-blue-400 to-blue-600',
-      bgColorClass: 'bg-blue-400',
-      icon: 'auto_awesome',
-      category: 'basic',
-      commissionPerStd400: 300,
-      miniSlotsPerInvitee: 3,
+      color: 'text-blue-400', bgGradient: 'from-blue-400 to-blue-600',
+      bgColorClass: 'bg-blue-400', icon: 'auto_awesome', category: 'basic',
+      megaRewards: [
+        { adType: 'mega_10000', quantity: 6, rewardCOP: 10_000 },
+        { adType: 'mega_2000', quantity: 2, rewardCOP: 2_000 },
+      ],
+      megaRewardTotalCOP: 64_000,
+      monthlyEarningsCOP: 0,
     },
     {
-      name: 'RUBY',
-      minReferrals: 10,
-      maxReferrals: 19,
+      name: 'RUBY', minReferrals: 10, maxReferrals: 19,
       ownClicksCOP: 70_000,
-      referralClicksCOP: 820_000,
-      monthlyEarningsCOP: 890_000,
-      color: 'text-red-500',
-      bgGradient: 'from-red-500 to-red-700',
-      bgColorClass: 'bg-red-500',
-      icon: 'local_fire_department',
-      category: 'basic',
-      commissionPerStd400: 400,
-      miniSlotsPerInvitee: 4,
+      color: 'text-red-500', bgGradient: 'from-red-500 to-red-700',
+      bgColorClass: 'bg-red-500', icon: 'local_fire_department', category: 'basic',
+      megaRewards: [
+        { adType: 'mega_20000', quantity: 4, rewardCOP: 20_000 },
+        { adType: 'mega_2000', quantity: 1, rewardCOP: 2_000 },
+      ],
+      megaRewardTotalCOP: 82_000,
+      monthlyEarningsCOP: 0,
     },
     {
-      name: 'ESMERALDA',
-      minReferrals: 20,
-      maxReferrals: 25,
+      name: 'ESMERALDA', minReferrals: 20, maxReferrals: 25,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 1_700_000,
-      monthlyEarningsCOP: 1_880_000,
-      color: 'text-green-500',
-      bgGradient: 'from-green-500 to-green-700',
-      bgColorClass: 'bg-green-500',
-      icon: 'park',
-      category: 'superior',
-      commissionPerStd400: 400,
-      miniSlotsPerInvitee: 5,
+      color: 'text-green-500', bgGradient: 'from-green-500 to-green-700',
+      bgColorClass: 'bg-green-500', icon: 'park', category: 'superior',
       requiredPackage: 'enterprise',
-      ownAdsPerDay: 5,
-      ownAdPriceCOP: 1_130,
-      ownAdRetiroCOP: 1_120,
-      ownAdDonacionCOP: 10,
-      ownMiniPerDay: 4,
-      ownMiniPriceCOP: 100,
+      ownAdsPerDay: 5, ownAdPriceCOP: 1_130, ownAdRetiroCOP: 1_120, ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4, ownMiniPriceCOP: 100,
+      megaRewards: [
+        { adType: 'mega_20000', quantity: 4, rewardCOP: 20_000 },
+        { adType: 'mega_5000', quantity: 1, rewardCOP: 5_000 },
+      ],
+      megaRewardTotalCOP: 85_000,
+      monthlyEarningsCOP: 0,
     },
     {
-      name: 'DIAMANTE',
-      minReferrals: 26,
-      maxReferrals: 30,
+      name: 'DIAMANTE', minReferrals: 26, maxReferrals: 30,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 2_210_000,
-      monthlyEarningsCOP: 2_390_000,
-      color: 'text-cyan-400',
-      bgGradient: 'from-cyan-400 to-cyan-600',
-      bgColorClass: 'bg-cyan-400',
-      icon: 'diamond',
-      category: 'superior',
-      commissionPerStd400: 400,
-      miniSlotsPerInvitee: 5,
+      color: 'text-cyan-400', bgGradient: 'from-cyan-400 to-cyan-600',
+      bgColorClass: 'bg-cyan-400', icon: 'diamond', category: 'superior',
       requiredPackage: 'enterprise',
-      ownAdsPerDay: 5,
-      ownAdPriceCOP: 1_130,
-      ownAdRetiroCOP: 1_120,
-      ownAdDonacionCOP: 10,
-      ownMiniPerDay: 4,
-      ownMiniPriceCOP: 100,
+      ownAdsPerDay: 5, ownAdPriceCOP: 1_130, ownAdRetiroCOP: 1_120, ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4, ownMiniPriceCOP: 100,
+      megaRewards: [
+        { adType: 'mega_20000', quantity: 4, rewardCOP: 20_000 },
+        { adType: 'mega_5000', quantity: 1, rewardCOP: 5_000 },
+      ],
+      megaRewardTotalCOP: 85_000,
+      monthlyEarningsCOP: 0,
     },
     {
-      name: 'DIAMANTE AZUL',
-      minReferrals: 31,
-      maxReferrals: 35,
+      name: 'DIAMANTE AZUL', minReferrals: 31, maxReferrals: 35,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 2_635_000,
-      monthlyEarningsCOP: 2_815_000,
-      color: 'text-blue-400',
-      bgGradient: 'from-blue-600 to-indigo-700',
-      bgColorClass: 'bg-blue-600',
-      icon: 'water_drop',
-      category: 'superior',
-      commissionPerStd400: 400,
-      miniSlotsPerInvitee: 5,
+      color: 'text-blue-400', bgGradient: 'from-blue-600 to-indigo-700',
+      bgColorClass: 'bg-blue-600', icon: 'water_drop', category: 'superior',
       requiredPackage: 'enterprise',
-      ownAdsPerDay: 5,
-      ownAdPriceCOP: 1_130,
-      ownAdRetiroCOP: 1_120,
-      ownAdDonacionCOP: 10,
-      ownMiniPerDay: 4,
-      ownMiniPriceCOP: 100,
+      ownAdsPerDay: 5, ownAdPriceCOP: 1_130, ownAdRetiroCOP: 1_120, ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4, ownMiniPriceCOP: 100,
+      megaRewards: [
+        { adType: 'mega_20000', quantity: 4, rewardCOP: 20_000 },
+        { adType: 'mega_5000', quantity: 1, rewardCOP: 5_000 },
+      ],
+      megaRewardTotalCOP: 85_000,
+      monthlyEarningsCOP: 0,
     },
     {
-      name: 'DIAMANTE NEGRO',
-      minReferrals: 36,
-      maxReferrals: 39,
+      name: 'DIAMANTE NEGRO', minReferrals: 36, maxReferrals: 39,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 3_060_000,
-      monthlyEarningsCOP: 3_240_000,
-      color: 'text-gray-300',
-      bgGradient: 'from-gray-600 to-gray-800',
-      bgColorClass: 'bg-gray-600',
-      icon: 'dark_mode',
-      category: 'superior',
-      commissionPerStd400: 400,
-      miniSlotsPerInvitee: 5,
+      color: 'text-gray-300', bgGradient: 'from-gray-600 to-gray-800',
+      bgColorClass: 'bg-gray-600', icon: 'dark_mode', category: 'superior',
       requiredPackage: 'enterprise',
-      ownAdsPerDay: 5,
-      ownAdPriceCOP: 1_130,
-      ownAdRetiroCOP: 1_120,
-      ownAdDonacionCOP: 10,
-      ownMiniPerDay: 4,
-      ownMiniPriceCOP: 100,
+      ownAdsPerDay: 5, ownAdPriceCOP: 1_130, ownAdRetiroCOP: 1_120, ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4, ownMiniPriceCOP: 100,
+      megaRewards: [
+        { adType: 'mega_20000', quantity: 4, rewardCOP: 20_000 },
+        { adType: 'mega_5000', quantity: 1, rewardCOP: 5_000 },
+      ],
+      megaRewardTotalCOP: 85_000,
+      monthlyEarningsCOP: 0,
     },
     {
-      name: 'DIAMANTE CORONA',
-      minReferrals: 40,
-      maxReferrals: null,
+      name: 'DIAMANTE CORONA', minReferrals: 40, maxReferrals: null,
       ownClicksCOP: 180_000,
-      referralClicksCOP: 3_400_000,
-      monthlyEarningsCOP: 3_580_000,
-      color: 'text-amber-400',
-      bgGradient: 'from-amber-400 to-yellow-500',
-      bgColorClass: 'bg-amber-400',
-      icon: 'military_tech',
-      category: 'superior',
-      commissionPerStd400: 400,
-      miniSlotsPerInvitee: 5,
+      color: 'text-amber-400', bgGradient: 'from-amber-400 to-yellow-500',
+      bgColorClass: 'bg-amber-400', icon: 'military_tech', category: 'superior',
       requiredPackage: 'enterprise',
-      ownAdsPerDay: 5,
-      ownAdPriceCOP: 1_130,
-      ownAdRetiroCOP: 1_120,
-      ownAdDonacionCOP: 10,
-      ownMiniPerDay: 4,
-      ownMiniPriceCOP: 100,
+      ownAdsPerDay: 5, ownAdPriceCOP: 1_130, ownAdRetiroCOP: 1_120, ownAdDonacionCOP: 10,
+      ownMiniPerDay: 4, ownMiniPriceCOP: 100,
+      megaRewards: [
+        { adType: 'mega_20000', quantity: 4, rewardCOP: 20_000 },
+        { adType: 'mega_5000', quantity: 1, rewardCOP: 5_000 },
+      ],
+      megaRewardTotalCOP: 85_000,
+      monthlyEarningsCOP: 0,
     },
   ];
 
@@ -269,50 +225,28 @@ export class CalculatorComponent implements OnInit {
   readonly ownRetiroCOP = computed(() => this.ownAdsMonthlyRetiro() + this.ownMiniMonthly());
   readonly ownDonacionCOP = computed(() => this.ownAdsMonthlyDonacion());
 
-  // ── Desglose de ganancias por referidos ──
+  // ── Desglose de ganancias por referidos (V2: mega recompensas por compra) ──
 
-  readonly std400CommissionDaily = computed(() => {
-    const tier = this.currentTier();
-    if (!tier.commissionPerStd400) return 0;
-    return this.simulatedRefs() * 5 * tier.commissionPerStd400;
-  });
-
-  readonly std400CommissionCOP = computed(() => this.std400CommissionDaily() * 30);
-
-  readonly miniReferralDaily = computed(() => {
-    const tier = this.currentTier();
-    if (!tier.miniSlotsPerInvitee) return 0;
-    return this.simulatedRefs() * tier.miniSlotsPerInvitee * 100;
-  });
-
-  readonly miniReferralCOP = computed(() => this.miniReferralDaily() * 30);
-
-  readonly totalMiniSlotsDaily = computed(() => {
-    const tier = this.currentTier();
-    if (!tier.miniSlotsPerInvitee) return 0;
-    return this.simulatedRefs() * tier.miniSlotsPerInvitee;
-  });
-
-  readonly activationBonusCOP = computed(() => {
-    const tier = this.currentTier();
-    if (!tier.commissionPerStd400) return 0;
-    return this.simulatedRefs() * 10_000;
-  });
-
+  /** Total de mega recompensas por TODOS los invitados que compren/renueven */
   readonly referralEarningsCOP = computed(() => {
     const tier = this.currentTier();
-    if (tier.commissionPerStd400) {
-      return this.std400CommissionCOP() + this.miniReferralCOP() + this.activationBonusCOP();
-    }
-    return tier.referralClicksCOP;
+    return this.simulatedRefs() * tier.megaRewardTotalCOP;
   });
 
   readonly totalMonthlyCOP = computed(() => this.ownClicksEarningsCOP() + this.referralEarningsCOP());
 
-  readonly maxMonthlyInTiers = this.PLATFORM_TIERS[this.PLATFORM_TIERS.length - 1].monthlyEarningsCOP;
+  readonly maxMonthlyInTiers = computed(() => {
+    const lastTier = this.PLATFORM_TIERS[this.PLATFORM_TIERS.length - 1];
+    return lastTier.ownClicksCOP + 40 * lastTier.megaRewardTotalCOP;
+  });
 
   tierBarWidth(tier: PlatformTier): number {
-    return Math.round((tier.monthlyEarningsCOP / this.maxMonthlyInTiers) * 100);
+    const tierTotal = tier.ownClicksCOP + tier.minReferrals * tier.megaRewardTotalCOP;
+    return Math.round((tierTotal / this.maxMonthlyInTiers()) * 100);
+  }
+
+  tierMonthlyEstimate(tier: PlatformTier): number {
+    return tier.ownClicksCOP + tier.minReferrals * tier.megaRewardTotalCOP;
   }
 
   readonly numbers = Array.from({ length: 40 }, (_, i) => i + 1);

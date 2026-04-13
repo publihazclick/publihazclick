@@ -1,0 +1,709 @@
+@if (loading()) {
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+      <span class="material-symbols-outlined text-5xl text-blue-500 animate-spin">progress_activity</span>
+      <p class="text-slate-400 mt-4">Cargando Facebook Automatico...</p>
+    </div>
+  </div>
+} @else {
+<!-- ═══════ MAIN APP ═══════ -->
+<div class="min-h-screen">
+  <!-- Header -->
+  <div class="border-b border-white/10 bg-black/30 backdrop-blur-sm sticky top-0 z-10">
+    <div class="px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2 md:gap-3">
+        <span class="material-symbols-outlined text-xl md:text-2xl text-blue-500">smart_toy</span>
+        <h1 class="text-sm md:text-lg font-bold text-white">Facebook Automatico</h1>
+        <span class="text-[8px] md:text-[9px] font-bold bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full">PRO</span>
+      </div>
+      <div class="hidden md:flex items-center gap-2">
+        @for (s of sessions(); track s.id) {
+          <div class="flex items-center gap-1 text-xs" [class]="getSessionStatusColor(s.status)">
+            <span class="material-symbols-outlined text-sm">{{ getSessionStatusIcon(s.status) }}</span>{{ s.account_name }}
+          </div>
+        }
+      </div>
+    </div>
+    <div class="px-2 md:px-6 flex gap-0.5 md:gap-1 overflow-x-auto pb-0 scrollbar-hide">
+      @for (tab of tabs; track tab.id) {
+        <button (click)="switchTab(tab.id)" class="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-2 md:py-2.5 text-xs md:text-sm font-medium rounded-t-lg transition-all whitespace-nowrap"
+          [class]="activeTab() === tab.id ? 'bg-card-dark text-blue-400 border border-white/10 border-b-card-dark -mb-px' : 'text-slate-400 hover:text-white hover:bg-white/5'">
+          <span class="material-symbols-outlined text-base md:text-lg">{{ tab.icon }}</span><span class="hidden sm:inline">{{ tab.label }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Subscription Banner -->
+  @if (!hasSubscription()) {
+    <div class="mx-3 md:mx-6 mt-3 bg-gradient-to-r from-blue-500/10 to-indigo-500/5 border border-blue-500/20 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-blue-400">lock_open</span>
+        <div>
+          <p class="text-sm text-white font-medium">Modo vista previa</p>
+          <p class="text-xs text-slate-400">Explora la herramienta. Suscribete para usar todas las funciones.</p>
+        </div>
+      </div>
+      <button (click)="showPaymentModal.set(true)" class="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold transition-all shrink-0">
+        Activar por $20 USD/mes
+      </button>
+    </div>
+  }
+
+  <div class="p-3 md:p-6">
+    <!-- ═══ DASHBOARD ═══ -->
+    @if (activeTab() === 'dashboard') {
+      <div class="space-y-4 md:space-y-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+          @for (st of [
+            { icon: 'groups', color: 'text-blue-400', label: 'Grupos', val: stats().totalGroups },
+            { icon: 'article', color: 'text-cyan-400', label: 'Paginas', val: stats().totalPages },
+            { icon: 'campaign', color: 'text-green-400', label: 'Campañas', val: stats().totalCampaigns },
+            { icon: 'rocket_launch', color: 'text-amber-400', label: 'Activas', val: stats().activeCampaigns }
+          ]; track st.label) {
+            <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined" [class]="st.color">{{ st.icon }}</span>
+                <span class="text-xs text-slate-500 uppercase font-bold">{{ st.label }}</span>
+              </div>
+              <span class="text-2xl font-black text-white">{{ st.val }}</span>
+            </div>
+          }
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Actividad Global</h3>
+            <div class="space-y-3">
+              <div class="flex justify-between"><span class="text-sm text-slate-300">Posts enviados</span><span class="text-blue-400 font-bold">{{ stats().totalPostsSent }}</span></div>
+              <div class="flex justify-between"><span class="text-sm text-slate-300">Mensajes enviados</span><span class="text-purple-400 font-bold">{{ stats().totalMessagesSent }}</span></div>
+              <div class="flex justify-between"><span class="text-sm text-slate-300">Grupos unidos</span><span class="text-green-400 font-bold">{{ stats().totalGroupJoins }}</span></div>
+              <div class="flex justify-between"><span class="text-sm text-slate-300">Posts programados</span><span class="text-amber-400 font-bold">{{ stats().scheduledPosts }}</span></div>
+            </div>
+          </div>
+          <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Tasa de Exito</h3>
+            <div class="flex items-center justify-center h-28">
+              <div class="text-center">
+                <span class="text-4xl font-black text-blue-400">{{ stats().successRate | number:'1.1-1' }}%</span>
+                <p class="text-xs text-slate-500 mt-1">de acciones completadas</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Acciones Rapidas</h3>
+            <div class="grid grid-cols-2 gap-2">
+              <button (click)="switchTab('campaigns'); openCampaignModal()" class="flex flex-col items-center gap-1 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 text-blue-400 transition-all">
+                <span class="material-symbols-outlined text-xl">add_circle</span><span class="text-[10px] font-medium">Nueva Campaña</span>
+              </button>
+              <button (click)="switchTab('groups'); modal.set('group')" class="flex flex-col items-center gap-1 p-3 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 text-green-400 transition-all">
+                <span class="material-symbols-outlined text-xl">group_add</span><span class="text-[10px] font-medium">Agregar Grupo</span>
+              </button>
+              <button (click)="switchTab('scheduler'); openScheduleModal()" class="flex flex-col items-center gap-1 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 text-amber-400 transition-all">
+                <span class="material-symbols-outlined text-xl">schedule</span><span class="text-[10px] font-medium">Programar Post</span>
+              </button>
+              <button (click)="switchTab('templates'); openPostTplModal()" class="flex flex-col items-center gap-1 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-purple-400 transition-all">
+                <span class="material-symbols-outlined text-xl">note_add</span><span class="text-[10px] font-medium">Plantilla</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ GROUPS ═══ -->
+    @if (activeTab() === 'groups') {
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-white">Mis Grupos ({{ groups().length }})</h2>
+          <button (click)="modal.set('group')" class="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-400 transition-all">
+            <span class="material-symbols-outlined text-lg">add</span> Agregar Grupo
+          </button>
+        </div>
+        @if (groups().length === 0) {
+          <div class="bg-card-dark border border-white/10 rounded-xl text-center py-16">
+            <span class="material-symbols-outlined text-5xl text-slate-700 mb-3">groups</span>
+            <p class="text-slate-500">No hay grupos agregados</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            @for (g of groups(); track g.id) {
+              <div class="bg-card-dark border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors">
+                <div class="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 class="font-bold text-white text-sm">{{ g.name }}</h3>
+                    <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                      @if (g.member_count) { <span>{{ g.member_count | number }} miembros</span> }
+                      @if (g.category) { <span>· {{ g.category }}</span> }
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" [class]="g.status === 'joined' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'">{{ g.status === 'joined' ? 'UNIDO' : g.status.toUpperCase() }}</span>
+                    </div>
+                  </div>
+                  <div class="flex gap-1">
+                    <button (click)="toggleGroupPosting(g)" class="p-1 transition-colors" [class]="g.is_posting_enabled ? 'text-green-400' : 'text-slate-600'">
+                      <span class="material-symbols-outlined text-lg">{{ g.is_posting_enabled ? 'toggle_on' : 'toggle_off' }}</span>
+                    </button>
+                    <button (click)="deleteGroup(g.id)" class="text-slate-500 hover:text-red-400 transition-colors p-1">
+                      <span class="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex gap-3 text-xs text-slate-500">
+                  <span>{{ g.total_posts }} posts</span>
+                  <span>{{ g.total_messages_sent }} msgs</span>
+                  @if (g.last_posted_at) { <span>Ultimo: {{ g.last_posted_at | date:'dd/MM HH:mm' }}</span> }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══ PAGES ═══ -->
+    @if (activeTab() === 'pages') {
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-white">Mis Paginas ({{ pages().length }})</h2>
+          <button (click)="modal.set('page')" class="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-400 transition-all">
+            <span class="material-symbols-outlined text-lg">add</span> Agregar Pagina
+          </button>
+        </div>
+        @if (pages().length === 0) {
+          <div class="bg-card-dark border border-white/10 rounded-xl text-center py-16">
+            <span class="material-symbols-outlined text-5xl text-slate-700 mb-3">article</span>
+            <p class="text-slate-500">No hay paginas agregadas</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            @for (p of pages(); track p.id) {
+              <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <h3 class="font-bold text-white text-sm">{{ p.name }}</h3>
+                    <div class="text-xs text-slate-500 mt-0.5">
+                      @if (p.followers_count) { {{ p.followers_count | number }} seguidores · }
+                      {{ p.total_posts }} posts · {{ p.total_messages_sent }} msgs
+                    </div>
+                  </div>
+                  <button (click)="deletePage(p.id)" class="text-slate-500 hover:text-red-400 transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══ CAMPAIGNS ═══ -->
+    @if (activeTab() === 'campaigns') {
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-white">Campañas</h2>
+          <button (click)="openCampaignModal()" class="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-400 transition-all">
+            <span class="material-symbols-outlined text-lg">add</span> Nueva Campaña
+          </button>
+        </div>
+        @if (campaigns().length === 0) {
+          <div class="bg-card-dark border border-white/10 rounded-xl text-center py-16">
+            <span class="material-symbols-outlined text-5xl text-slate-700 mb-3">campaign</span>
+            <p class="text-slate-500">No hay campañas creadas</p>
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (c of campaigns(); track c.id) {
+              <div class="bg-card-dark border border-white/10 rounded-xl p-4 md:p-5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
+                  <div>
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="material-symbols-outlined text-lg" [class]="campaignTypeLabels[c.campaign_type].color">{{ campaignTypeLabels[c.campaign_type].icon }}</span>
+                      <h3 class="font-bold text-white">{{ c.name }}</h3>
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" [class]="getCampStatusColor(c.status)">{{ getCampStatusLabel(c.status) }}</span>
+                    </div>
+                    <p class="text-xs text-slate-500">{{ campaignTypeLabels[c.campaign_type].label }}{{ c.description ? ' — ' + c.description : '' }}</p>
+                  </div>
+                  <div class="flex gap-2 shrink-0">
+                    @if (c.status === 'draft' || c.status === 'paused') {
+                      <button (click)="startCampaign(c.id)" class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 font-medium"><span class="material-symbols-outlined text-sm">play_arrow</span> Iniciar</button>
+                    }
+                    @if (c.status === 'running') {
+                      <button (click)="pauseCampaign(c.id)" class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 font-medium"><span class="material-symbols-outlined text-sm">pause</span> Pausar</button>
+                    }
+                    @if (c.status !== 'completed' && c.status !== 'cancelled') {
+                      <button (click)="cancelCampaign(c.id)" class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 font-medium"><span class="material-symbols-outlined text-sm">stop</span></button>
+                    }
+                    <button (click)="deleteCampaign(c.id)" class="text-slate-500 hover:text-red-400 p-1"><span class="material-symbols-outlined text-lg">delete</span></button>
+                  </div>
+                </div>
+                @if (c.total_targets > 0) {
+                  <div class="mb-2">
+                    <div class="flex justify-between text-xs text-slate-400 mb-1"><span>{{ c.completed_count }}/{{ c.total_targets }}</span><span>{{ getProgress(c) }}%</span></div>
+                    <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full transition-all" [style.width.%]="getProgress(c)"></div>
+                    </div>
+                  </div>
+                }
+                <div class="flex gap-4 text-xs">
+                  <span class="text-green-400">{{ c.success_count }} exitosos</span>
+                  <span class="text-red-400">{{ c.failed_count }} fallidos</span>
+                  <span class="text-slate-500">{{ c.skipped_count }} omitidos</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══ TEMPLATES ═══ -->
+    @if (activeTab() === 'templates') {
+      <div class="space-y-6">
+        <!-- Post Templates -->
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-white">Plantillas de Publicacion</h2>
+            <button (click)="openPostTplModal()" class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors">
+              <span class="material-symbols-outlined text-lg">add</span> Nueva
+            </button>
+          </div>
+          @if (postTemplates().length === 0) {
+            <div class="bg-card-dark border border-white/10 rounded-xl text-center py-10"><p class="text-slate-500 text-sm">Sin plantillas de publicacion</p></div>
+          } @else {
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              @for (t of postTemplates(); track t.id) {
+                <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+                  <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-2"><span class="material-symbols-outlined text-blue-400">post_add</span><h3 class="font-bold text-white text-sm">{{ t.name }}</h3></div>
+                    <div class="flex gap-1">
+                      <button (click)="openPostTplModal(t)" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined text-lg">edit</span></button>
+                      <button (click)="deletePostTemplate(t.id)" class="text-slate-500 hover:text-red-400"><span class="material-symbols-outlined text-lg">delete</span></button>
+                    </div>
+                  </div>
+                  <p class="text-sm text-slate-400 line-clamp-2 mb-2">{{ t.content }}</p>
+                  <div class="flex gap-2 text-[10px] text-slate-500">
+                    <span>{{ t.media_type }}</span><span>· {{ t.category }}</span><span>· {{ t.use_count }} usos</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <!-- Message Templates -->
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-white">Plantillas de Mensaje</h2>
+            <button (click)="openMsgTplModal()" class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors">
+              <span class="material-symbols-outlined text-lg">add</span> Nueva
+            </button>
+          </div>
+          @if (msgTemplates().length === 0) {
+            <div class="bg-card-dark border border-white/10 rounded-xl text-center py-10"><p class="text-slate-500 text-sm">Sin plantillas de mensaje</p></div>
+          } @else {
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              @for (t of msgTemplates(); track t.id) {
+                <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+                  <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-2"><span class="material-symbols-outlined text-purple-400">chat</span><h3 class="font-bold text-white text-sm">{{ t.name }}</h3></div>
+                    <div class="flex gap-1">
+                      <button (click)="openMsgTplModal(t)" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined text-lg">edit</span></button>
+                      <button (click)="deleteMsgTemplate(t.id)" class="text-slate-500 hover:text-red-400"><span class="material-symbols-outlined text-lg">delete</span></button>
+                    </div>
+                  </div>
+                  <p class="text-sm text-slate-400 line-clamp-2">{{ t.content }}</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ═══ SCHEDULER ═══ -->
+    @if (activeTab() === 'scheduler') {
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-white">Publicaciones Programadas</h2>
+          <button (click)="openScheduleModal()" class="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-amber-500 text-black font-bold hover:bg-amber-400 transition-all">
+            <span class="material-symbols-outlined text-lg">add</span> Programar
+          </button>
+        </div>
+        @if (scheduledPosts().length === 0) {
+          <div class="bg-card-dark border border-white/10 rounded-xl text-center py-16">
+            <span class="material-symbols-outlined text-5xl text-slate-700 mb-3">schedule</span>
+            <p class="text-slate-500">No hay publicaciones programadas</p>
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (sp of scheduledPosts(); track sp.id) {
+              <div class="bg-card-dark border border-white/10 rounded-xl p-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="material-symbols-outlined text-lg" [class]="sp.target_type === 'group' ? 'text-blue-400' : 'text-cyan-400'">{{ sp.target_type === 'group' ? 'groups' : 'article' }}</span>
+                      <span class="text-sm text-white font-medium">{{ sp.target_name }}</span>
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" [class]="sp.status === 'scheduled' ? 'bg-amber-500/20 text-amber-400' : sp.status === 'posted' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
+                        {{ sp.status === 'scheduled' ? 'PROGRAMADO' : sp.status === 'posted' ? 'PUBLICADO' : 'FALLIDO' }}
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-400 line-clamp-1 mb-1">{{ sp.content }}</p>
+                    <div class="text-xs text-slate-500">
+                      <span class="material-symbols-outlined text-sm align-middle">schedule</span> {{ sp.scheduled_at | date:'dd/MM/yyyy HH:mm' }}
+                      @if (sp.repeat_enabled) { <span class="ml-2">↻ cada {{ sp.repeat_interval_hours }}h</span> }
+                    </div>
+                  </div>
+                  <button (click)="deleteScheduledPost(sp.id)" class="text-slate-500 hover:text-red-400"><span class="material-symbols-outlined text-lg">delete</span></button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ═══ SETTINGS ═══ -->
+    @if (activeTab() === 'settings') {
+      <div class="space-y-6 max-w-3xl">
+        <!-- Sessions -->
+        <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-lg text-blue-400">phone_iphone</span> Cuentas de Facebook
+          </h3>
+          @if (sessions().length === 0) {
+            <div class="text-center py-8 border border-dashed border-white/10 rounded-xl mb-4">
+              <span class="material-symbols-outlined text-4xl text-slate-700 mb-2">person</span>
+              <p class="text-slate-500 text-sm">No hay cuentas conectadas</p>
+            </div>
+          } @else {
+            <div class="space-y-2 mb-4">
+              @for (s of sessions(); track s.id) {
+                <div class="flex items-center justify-between bg-black/20 border border-white/5 rounded-lg px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-xl" [class]="getSessionStatusColor(s.status)">{{ getSessionStatusIcon(s.status) }}</span>
+                    <div>
+                      <p class="text-sm text-white font-medium">{{ s.account_name }}</p>
+                      <p class="text-xs text-slate-500">{{ s.friends_count }} amigos · {{ s.groups_count }} grupos · {{ s.pages_count }} paginas</p>
+                    </div>
+                  </div>
+                  <button (click)="deleteSession(s.id)" class="text-slate-500 hover:text-red-400"><span class="material-symbols-outlined text-lg">delete</span></button>
+                </div>
+              }
+            </div>
+          }
+          <div class="flex gap-2">
+            <input type="text" [ngModel]="newSessionName()" (ngModelChange)="newSessionName.set($event)" placeholder="Nombre de la cuenta"
+              class="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none">
+            <button (click)="createSession()" [disabled]="!newSessionName()" class="px-4 py-2.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium disabled:opacity-50">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- Subscription -->
+        <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-lg text-amber-400">credit_card</span> Suscripcion
+          </h3>
+          @if (subscription(); as sub) {
+            <div class="space-y-3">
+              <div class="flex justify-between"><span class="text-sm text-slate-400">Plan</span><span class="text-sm text-white font-medium">Facebook Pro</span></div>
+              <div class="flex justify-between"><span class="text-sm text-slate-400">Precio</span><span class="text-sm text-blue-400 font-bold">${{ sub.price }} {{ sub.currency }}/mes</span></div>
+              <div class="flex justify-between"><span class="text-sm text-slate-400">Expira</span><span class="text-sm text-white">{{ sub.expires_at | date:'dd/MM/yyyy' }}</span></div>
+            </div>
+          }
+        </div>
+
+        <!-- Anti-Block Tips -->
+        <div class="bg-card-dark border border-white/10 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-lg text-red-400">shield</span> Pautas Anti-Bloqueo de Facebook
+          </h3>
+          <div class="space-y-3 text-sm text-slate-400">
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>Usa esperas de <strong class="text-white">30-90 segundos</strong> entre acciones. Facebook detecta patrones rapidos</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>Activa <strong class="text-white">calentamiento progresivo</strong> — empieza con 5 acciones/dia y sube gradualmente</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>No excedas <strong class="text-white">25 acciones/dia</strong> por cuenta (posts + mensajes + joins)</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>Usa <strong class="text-white">variables</strong> {{'{'}}nombre{{'}'}}, {{'{'}}grupo{{'}'}}, etc. para que cada post/mensaje sea unico</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>Activa <strong class="text-white">pausas aleatorias</strong> y <strong class="text-white">retardo de escritura</strong> para simular comportamiento humano</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>Alterna entre <strong class="text-white">diferentes tipos de contenido</strong>: texto, imagen, link, video</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>No te unas a mas de <strong class="text-white">5 grupos por dia</strong> — Facebook limita agresivamente esto</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-green-400 text-lg mt-0.5">check_circle</span><span>Programa posts en <strong class="text-white">horarios naturales</strong> (8am-10pm) — evita las madrugadas</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-red-400 text-lg mt-0.5">cancel</span><span>NO publiques el <strong class="text-white">mismo texto</strong> en multiples grupos — Facebook detecta spam duplicado</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-red-400 text-lg mt-0.5">cancel</span><span>NO envies mensajes a personas que <strong class="text-white">no son tus amigos</strong> sin relacion previa</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-red-400 text-lg mt-0.5">cancel</span><span>NO uses cuentas <strong class="text-white">recien creadas</strong> — necesitan minimo 2-4 semanas de actividad normal</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-red-400 text-lg mt-0.5">cancel</span><span>Si recibes un <strong class="text-white">aviso de restriccion</strong>, para TODA la automatizacion por 48-72 horas</span></div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ═══════ MODALS ═══════ -->
+
+<!-- Add Group Modal -->
+@if (modal() === 'group') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="modal.set('none')">
+    <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5"><h3 class="text-lg font-bold text-white">Agregar Grupo</h3><button (click)="modal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button></div>
+      <div class="space-y-4">
+        <div><label class="text-sm text-slate-400 mb-1 block">Nombre del grupo</label><input type="text" [ngModel]="newGroupName()" (ngModelChange)="newGroupName.set($event)" placeholder="Ej: Marketing Digital Colombia" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        <div><label class="text-sm text-slate-400 mb-1 block">URL del grupo (opcional)</label><input type="text" [ngModel]="newGroupUrl()" (ngModelChange)="newGroupUrl.set($event)" placeholder="https://facebook.com/groups/..." class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        <div><label class="text-sm text-slate-400 mb-1 block">Categoria (opcional)</label><input type="text" [ngModel]="newGroupCategory()" (ngModelChange)="newGroupCategory.set($event)" placeholder="Ej: Negocios, Tecnologia" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        <button (click)="addGroup()" [disabled]="!newGroupName()" class="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold disabled:opacity-50">Agregar Grupo</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Add Page Modal -->
+@if (modal() === 'page') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="modal.set('none')">
+    <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5"><h3 class="text-lg font-bold text-white">Agregar Pagina</h3><button (click)="modal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button></div>
+      <div class="space-y-4">
+        <div><label class="text-sm text-slate-400 mb-1 block">Nombre de la pagina</label><input type="text" [ngModel]="newPageName()" (ngModelChange)="newPageName.set($event)" placeholder="Ej: Mi Negocio" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        <div><label class="text-sm text-slate-400 mb-1 block">URL de la pagina (opcional)</label><input type="text" [ngModel]="newPageUrl()" (ngModelChange)="newPageUrl.set($event)" placeholder="https://facebook.com/..." class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        <button (click)="addPage()" [disabled]="!newPageName()" class="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold disabled:opacity-50">Agregar Pagina</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Post Template Modal -->
+@if (modal() === 'post-template') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="modal.set('none')">
+    <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5"><h3 class="text-lg font-bold text-white">{{ editingPostTpl() ? 'Editar' : 'Nueva' }} Plantilla de Publicacion</h3><button (click)="modal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button></div>
+      <div class="space-y-4">
+        <div><label class="text-sm text-slate-400 mb-1 block">Nombre</label><input type="text" [ngModel]="tplName()" (ngModelChange)="tplName.set($event)" placeholder="Ej: Promo diaria" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        <div><label class="text-sm text-slate-400 mb-1 block">Contenido</label>
+          <textarea [ngModel]="tplContent()" (ngModelChange)="tplContent.set($event)" rows="5" placeholder="Hola {grupo}! Tenemos una oferta especial..." class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none resize-none"></textarea>
+          <p class="text-xs text-slate-600 mt-1">Variables: {{'{'}}nombre{{'}'}}, {{'{'}}grupo{{'}'}}, {{'{'}}pagina{{'}'}}, {{'{'}}fecha{{'}'}}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-sm text-slate-400 mb-1 block">Tipo de contenido</label>
+            <select [ngModel]="tplMediaType()" (ngModelChange)="tplMediaType.set($event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none">
+              <option value="none">Solo texto</option><option value="image">Imagen</option><option value="video">Video</option><option value="link">Enlace</option>
+            </select>
+          </div>
+          <div><label class="text-sm text-slate-400 mb-1 block">Categoria</label>
+            <select [ngModel]="tplCategory()" (ngModelChange)="tplCategory.set($event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none">
+              <option value="general">General</option><option value="promo">Promo</option><option value="info">Informativo</option><option value="engagement">Interaccion</option>
+            </select>
+          </div>
+        </div>
+        @if (tplMediaType() === 'link') {
+          <div><label class="text-sm text-slate-400 mb-1 block">URL del enlace</label><input type="url" [ngModel]="tplLinkUrl()" (ngModelChange)="tplLinkUrl.set($event)" placeholder="https://..." class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        }
+        <button (click)="savePostTemplate()" [disabled]="!tplName() || !tplContent()" class="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold disabled:opacity-50">{{ editingPostTpl() ? 'Guardar' : 'Crear' }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Message Template Modal -->
+@if (modal() === 'msg-template') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="modal.set('none')">
+    <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5"><h3 class="text-lg font-bold text-white">{{ editingMsgTpl() ? 'Editar' : 'Nueva' }} Plantilla de Mensaje</h3><button (click)="modal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button></div>
+      <div class="space-y-4">
+        <div><label class="text-sm text-slate-400 mb-1 block">Nombre</label><input type="text" [ngModel]="msgTplName()" (ngModelChange)="msgTplName.set($event)" placeholder="Ej: Saludo inicial" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none"></div>
+        <div><label class="text-sm text-slate-400 mb-1 block">Contenido</label>
+          <textarea [ngModel]="msgTplContent()" (ngModelChange)="msgTplContent.set($event)" rows="5" placeholder="Hola {nombre}! Vi que eres miembro de {grupo}..." class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none resize-none"></textarea>
+        </div>
+        <button (click)="saveMsgTemplate()" [disabled]="!msgTplName() || !msgTplContent()" class="w-full py-3 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold disabled:opacity-50">{{ editingMsgTpl() ? 'Guardar' : 'Crear' }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Campaign Modal -->
+@if (modal() === 'campaign') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-6" (click)="modal.set('none')">
+    <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-2xl mx-4 my-auto" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6"><h3 class="text-lg font-bold text-white">Nueva Campaña</h3><button (click)="modal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button></div>
+      <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
+        <!-- Basic -->
+        <div class="space-y-3">
+          <h4 class="text-sm font-bold text-blue-400 uppercase">Informacion</h4>
+          <input type="text" [ngModel]="campName()" (ngModelChange)="campName.set($event)" placeholder="Nombre de la campaña" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none">
+          <input type="text" [ngModel]="campDescription()" (ngModelChange)="campDescription.set($event)" placeholder="Descripcion (opcional)" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none">
+        </div>
+        <!-- Type -->
+        <div class="space-y-3">
+          <h4 class="text-sm font-bold text-purple-400 uppercase">Tipo de Campaña</h4>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-2">
+            @for (ct of campaignTypes; track ct) {
+              <button (click)="campType.set(ct)" class="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-2 md:py-2.5 text-xs md:text-sm rounded-lg border transition-colors"
+                [class]="campType() === ct ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-white/10 text-slate-400 hover:bg-white/5'">
+                <span class="material-symbols-outlined text-lg" [class]="campaignTypeLabels[ct].color">{{ campaignTypeLabels[ct].icon }}</span>
+                <span class="text-xs">{{ campaignTypeLabels[ct].label }}</span>
+              </button>
+            }
+          </div>
+        </div>
+        <!-- Template selection -->
+        @if (needsPostTemplate()) {
+          <div><label class="text-sm text-slate-400 mb-1 block">Plantilla de publicacion</label>
+            <select [ngModel]="campPostTplId()" (ngModelChange)="campPostTplId.set($event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none">
+              <option value="">Selecciona plantilla</option>
+              @for (t of postTemplates(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+            </select>
+          </div>
+        }
+        @if (needsMsgTemplate()) {
+          <div><label class="text-sm text-slate-400 mb-1 block">Plantilla de mensaje</label>
+            <select [ngModel]="campMsgTplId()" (ngModelChange)="campMsgTplId.set($event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none">
+              <option value="">Selecciona plantilla</option>
+              @for (t of msgTemplates(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
+            </select>
+          </div>
+        }
+        <!-- Targets -->
+        @if (needsKeywords()) {
+          <div><label class="text-sm text-slate-400 mb-1 block">Palabras clave (separadas por coma)</label>
+            <input type="text" [ngModel]="campKeywords()" (ngModelChange)="campKeywords.set($event)" placeholder="marketing, negocios, emprendimiento" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none">
+          </div>
+        }
+        @if (needsGroups()) {
+          <div><h4 class="text-sm text-slate-400 mb-2">Selecciona grupos</h4>
+            <div class="space-y-1 max-h-40 overflow-y-auto">
+              @for (g of groups(); track g.id) {
+                <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                  <input type="checkbox" [checked]="campTargetGroupIds().has(g.id)" (change)="toggleCampGroup(g.id)" class="accent-blue-500">
+                  <span class="text-sm text-slate-300">{{ g.name }}</span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+        @if (needsPages()) {
+          <div><h4 class="text-sm text-slate-400 mb-2">Selecciona paginas</h4>
+            <div class="space-y-1 max-h-40 overflow-y-auto">
+              @for (p of pages(); track p.id) {
+                <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                  <input type="checkbox" [checked]="campTargetPageIds().has(p.id)" (change)="toggleCampPage(p.id)" class="accent-blue-500">
+                  <span class="text-sm text-slate-300">{{ p.name }}</span>
+                </label>
+              }
+            </div>
+          </div>
+        }
+        <!-- Anti-Block -->
+        <div class="space-y-3">
+          <h4 class="text-sm font-bold text-amber-400 uppercase flex items-center gap-2"><span class="material-symbols-outlined text-lg">shield</span> Anti-Bloqueo</h4>
+          <div class="bg-black/20 border border-white/5 rounded-xl p-4 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div><label class="text-xs text-slate-400 mb-1 block">Espera minima (seg)</label><input type="number" [ngModel]="antiBlock().min_delay_seconds" (ngModelChange)="updateAntiBlock('min_delay_seconds', $event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+              <div><label class="text-xs text-slate-400 mb-1 block">Espera maxima (seg)</label><input type="number" [ngModel]="antiBlock().max_delay_seconds" (ngModelChange)="updateAntiBlock('max_delay_seconds', $event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+              <div><label class="text-xs text-slate-400 mb-1 block">Limite diario</label><input type="number" [ngModel]="antiBlock().daily_limit" (ngModelChange)="updateAntiBlock('daily_limit', $event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+              <div><label class="text-xs text-slate-400 mb-1 block">Limite por hora</label><input type="number" [ngModel]="antiBlock().hourly_limit" (ngModelChange)="updateAntiBlock('hourly_limit', $event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+              <div><label class="text-xs text-slate-400 mb-1 block">Tamaño de lote</label><input type="number" [ngModel]="antiBlock().batch_size" (ngModelChange)="updateAntiBlock('batch_size', $event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+              <div><label class="text-xs text-slate-400 mb-1 block">Pausa entre lotes (min)</label><input type="number" [ngModel]="antiBlock().batch_pause_minutes" (ngModelChange)="updateAntiBlock('batch_pause_minutes', $event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+            </div>
+            <div class="flex flex-wrap gap-4">
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" [ngModel]="antiBlock().warmup_enabled" (ngModelChange)="updateAntiBlock('warmup_enabled', $event)" class="accent-blue-500"><span class="text-sm text-slate-300">Calentamiento</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" [ngModel]="antiBlock().variation_enabled" (ngModelChange)="updateAntiBlock('variation_enabled', $event)" class="accent-blue-500"><span class="text-sm text-slate-300">Variacion</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" [ngModel]="antiBlock().human_typing_delay" (ngModelChange)="updateAntiBlock('human_typing_delay', $event)" class="accent-blue-500"><span class="text-sm text-slate-300">Escritura humana</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" [ngModel]="antiBlock().random_breaks" (ngModelChange)="updateAntiBlock('random_breaks', $event)" class="accent-blue-500"><span class="text-sm text-slate-300">Pausas aleatorias</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-6 pt-4 border-t border-white/10">
+        <button (click)="saveCampaign()" [disabled]="!campName()" class="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold disabled:opacity-50">Crear Campaña</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Schedule Post Modal -->
+@if (modal() === 'schedule') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="modal.set('none')">
+    <div class="bg-card-dark border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5"><h3 class="text-lg font-bold text-white">Programar Publicacion</h3><button (click)="modal.set('none')" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button></div>
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <button (click)="schedTargetType.set('group')" class="px-4 py-2 text-sm rounded-lg border transition-colors" [class]="schedTargetType() === 'group' ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-white/10 text-slate-400'">Grupo</button>
+          <button (click)="schedTargetType.set('page')" class="px-4 py-2 text-sm rounded-lg border transition-colors" [class]="schedTargetType() === 'page' ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400' : 'border-white/10 text-slate-400'">Pagina</button>
+        </div>
+        <select [ngModel]="schedTargetId()" (ngModelChange)="schedTargetId.set($event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none">
+          <option value="">Selecciona {{ schedTargetType() === 'group' ? 'grupo' : 'pagina' }}</option>
+          @if (schedTargetType() === 'group') {
+            @for (g of groups(); track g.id) { <option [value]="g.id">{{ g.name }}</option> }
+          } @else {
+            @for (p of pages(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
+          }
+        </select>
+        <textarea [ngModel]="schedContent()" (ngModelChange)="schedContent.set($event)" rows="4" placeholder="Contenido de la publicacion..." class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none resize-none"></textarea>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-sm text-slate-400 mb-1 block">Fecha</label><input type="date" [ngModel]="schedDate()" (ngModelChange)="schedDate.set($event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+          <div><label class="text-sm text-slate-400 mb-1 block">Hora</label><input type="time" [ngModel]="schedTime()" (ngModelChange)="schedTime.set($event)" class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none"></div>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" [ngModel]="schedRepeat()" (ngModelChange)="schedRepeat.set($event)" class="accent-blue-500">
+          <span class="text-sm text-slate-300">Repetir cada</span>
+          @if (schedRepeat()) { <input type="number" [ngModel]="schedRepeatHours()" (ngModelChange)="schedRepeatHours.set($event)" class="w-16 bg-black/40 border border-white/10 rounded px-2 py-1 text-sm text-white text-center"> <span class="text-sm text-slate-400">horas</span> }
+        </label>
+        <button (click)="saveScheduledPost()" [disabled]="!schedTargetId() || !schedContent() || !schedDate() || !schedTime()" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-50">Programar Publicacion</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ PAYMENT MODAL ═══ -->
+@if (showPaymentModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm overflow-y-auto py-4" (click)="showPaymentModal.set(false)">
+    <div class="bg-card-dark border border-white/10 rounded-2xl p-5 md:p-8 w-full max-w-md mx-4 my-auto relative" (click)="$event.stopPropagation()">
+      <button (click)="showPaymentModal.set(false)" class="absolute top-4 right-4 text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+
+      @if (subStep() === 'pricing') {
+        <div class="text-center">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
+            <span class="material-symbols-outlined text-3xl text-blue-400">rocket_launch</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-1">Activa Facebook Pro</h3>
+          <p class="text-slate-400 text-sm mb-5">Desbloquea todas las funciones de automatizacion</p>
+          <div class="flex items-baseline justify-center gap-1 mb-1">
+            <span class="text-4xl font-black text-blue-400">$20</span>
+            <span class="text-slate-400 text-sm">USD / mes</span>
+          </div>
+          <p class="text-xs text-slate-500 mb-5">{{ formatCOP(priceCOP()) }} COP aprox.</p>
+          <ul class="text-left space-y-2 mb-6">
+            @for (f of ['Unirse a grupos automaticamente','Publicar en grupos ilimitados','Mensajes a amigos y miembros','Programar publicaciones','Anti-bloqueo avanzado','Plantillas con variables']; track f) {
+              <li class="flex items-center gap-2 text-sm text-slate-300">
+                <span class="material-symbols-outlined text-blue-400 text-base">check_circle</span>{{ f }}
+              </li>
+            }
+          </ul>
+          @if (epaycoError()) {
+            <div class="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 text-sm text-red-400 mb-4">{{ epaycoError() }}</div>
+          }
+          <button (click)="startEpaycoCheckout()" [disabled]="subscribing()"
+            class="w-full py-3 rounded-xl bg-[#00B1EA] hover:bg-[#00c4ff] text-white font-bold transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+            @if (subscribing()) {
+              <span class="material-symbols-outlined animate-spin">progress_activity</span> Preparando...
+            } @else {
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+              Pagar {{ formatCOP(priceWithFeeCOP()) }} con ePayco
+            }
+          </button>
+          <p class="text-[10px] text-slate-600 mt-3">Pago seguro por ePayco. Incluye comision de pasarela.</p>
+        </div>
+      } @else if (subStep() === 'epayco-loading') {
+        <div class="text-center py-8">
+          <span class="material-symbols-outlined text-4xl text-[#00B1EA] animate-spin mb-3">progress_activity</span>
+          <p class="text-white font-bold">Preparando pago...</p>
+        </div>
+      } @else if (subStep() === 'epayco-opening') {
+        <div class="text-center py-8">
+          <span class="material-symbols-outlined text-4xl text-[#00B1EA] mb-3">open_in_new</span>
+          <p class="text-white font-bold mb-2">Redirigiendo a ePayco...</p>
+          <p class="text-slate-400 text-sm">Completa el pago en la ventana de ePayco.</p>
+        </div>
+      } @else if (subStep() === 'epayco-result') {
+        <div class="text-center py-8">
+          <span class="material-symbols-outlined text-4xl text-blue-400 animate-pulse mb-3">verified</span>
+          <p class="text-white font-bold mb-2">Verificando pago...</p>
+          <span class="material-symbols-outlined text-xl text-blue-400 animate-spin">progress_activity</span>
+        </div>
+      }
+    </div>
+  </div>
+}
+}

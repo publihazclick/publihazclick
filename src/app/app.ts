@@ -36,6 +36,7 @@ export class App {
   readonly isAuthRoute = signal(false);
   readonly isAdminOrDashboardRoute = signal(false);
   readonly isLandingRoute = signal(true);
+  readonly isAndaGanaRoute = signal(false);
 
   private readonly router = inject(Router);
 
@@ -58,5 +59,6 @@ export class App {
       url.includes('/admin') || url.includes('/dashboard') || url.includes('/advertiser') || url.includes('/social') || url.includes('/ai')
     );
     this.isLandingRoute.set(url === '/' || url === '');
+    this.isAndaGanaRoute.set(url.includes('/anda-gana'));
   }
 }

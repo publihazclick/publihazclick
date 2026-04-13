@@ -298,114 +298,66 @@
       </div>
       <div>
         <h4 class="text-sm font-black text-white">Lo que ganas por tus invitados</h4>
-        <p class="text-[10px] text-slate-500">Cada invitado que active su paquete te genera estas 3 fuentes de ingreso</p>
+        <p class="text-[10px] text-slate-500">Cada vez que un invitado compra o renueva su paquete, recibes mega recompensas</p>
       </div>
     </div>
 
     <div class="p-5 space-y-3">
 
-      <!-- ── Comisión por anuncios de invitados ── -->
+      <!-- ── Mega Recompensas por compra de invitado ── -->
       <div class="bg-black/30 rounded-xl p-4 border border-white/5 space-y-3">
         <div class="flex items-center gap-2 mb-1">
-          <span class="material-symbols-outlined text-base" [ngClass]="currentTier().color">ads_click</span>
-          <span class="text-xs font-bold text-white">Comisión por anuncios de tus invitados</span>
+          <span class="material-symbols-outlined text-amber-400 text-base">stars</span>
+          <span class="text-xs font-bold text-white">Mega Recompensas por compra de invitado</span>
+          <span class="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[8px] font-bold rounded-full border border-amber-500/20 uppercase">Por compra</span>
         </div>
         <p class="text-[10px] text-slate-500 leading-relaxed">
-          Cada vez que uno de tus invitados ve un anuncio estándar, tú recibes una comisión.
-          En tu categoría <strong [ngClass]="currentTier().color">{{ currentTier().name }}</strong> la comisión es de
-          <strong class="text-white">{{ currencyService.formatFromCOP(currentTier().commissionPerStd400 ?? 0) }}</strong> por click.
+          Cada vez que uno de tus invitados <strong class="text-white">compra o renueva</strong> su paquete de $25 USD,
+          tú recibes <strong class="text-white">mega anuncios</strong> que puedes ver y cobrar.
+          En tu categoría <strong [ngClass]="currentTier().color">{{ currentTier().name }}</strong> recibes:
         </p>
+
+        <!-- Desglose de mega recompensas -->
+        <div class="bg-black/30 rounded-lg p-3 space-y-2">
+          @for (reward of currentTier().megaRewards; track reward.adType) {
+            <div class="flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span class="text-slate-400">Mega de {{ currencyService.formatFromCOP(reward.rewardCOP) }}:</span>
+              </div>
+              <span class="text-white font-bold">{{ reward.quantity }} anuncios = {{ currencyService.formatFromCOP(reward.quantity * reward.rewardCOP) }}</span>
+            </div>
+          }
+          <div class="h-px bg-white/5"></div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Total por cada invitado que compre:</span>
+            <span class="text-amber-400 font-bold">{{ currencyService.formatFromCOP(currentTier().megaRewardTotalCOP) }}</span>
+          </div>
+        </div>
+
+        <!-- Cálculo con N invitados -->
         <div class="bg-black/30 rounded-lg p-3 space-y-2">
           <div class="flex items-center justify-between text-[11px]">
             <span class="text-slate-400">Tus invitados activos:</span>
             <span class="text-white font-bold">{{ simulatedRefs() }}</span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Cada invitado ve al día:</span>
-            <span class="text-white font-bold">5 anuncios</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Comisión por cada uno:</span>
-            <span class="font-bold" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(currentTier().commissionPerStd400 ?? 0) }}</span>
+            <span class="text-slate-400">Recompensa por invitado:</span>
+            <span class="text-white font-bold">{{ currencyService.formatFromCOP(currentTier().megaRewardTotalCOP) }}</span>
           </div>
           <div class="h-px bg-white/5"></div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Al día:</span>
-            <span class="text-white font-bold">{{ simulatedRefs() }} × 5 × {{ currencyService.formatFromCOP(currentTier().commissionPerStd400 ?? 0) }} = {{ currencyService.formatFromCOP(std400CommissionDaily()) }}</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Al mes (30 días):</span>
-            <span class="font-bold" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(std400CommissionCOP()) }}/mes</span>
+            <span class="text-slate-400">Total ({{ simulatedRefs() }} inv. × {{ currencyService.formatFromCOP(currentTier().megaRewardTotalCOP) }}):</span>
+            <span class="font-bold" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(referralEarningsCOP()) }}</span>
           </div>
         </div>
-      </div>
 
-      <!-- ── Mini anuncios por invitar ── -->
-      <div class="bg-black/30 rounded-xl p-4 border border-white/5 space-y-3">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="material-symbols-outlined text-base" [ngClass]="currentTier().color">featured_play_list</span>
-          <span class="text-xs font-bold text-white">Mini anuncios extra por invitar</span>
-        </div>
-        <p class="text-[10px] text-slate-500 leading-relaxed">
-          Por cada invitado activo, desbloqueas
-          <strong class="text-white">{{ currentTier().miniSlotsPerInvitee }} mini anuncio{{ (currentTier().miniSlotsPerInvitee ?? 0) === 1 ? '' : 's' }} extra</strong>
-          al día para que tú los veas y ganes <strong class="text-white">$100 COP</strong> por cada uno.
-        </p>
-        <div class="bg-black/30 rounded-lg p-3 space-y-2">
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Slots por invitado:</span>
-            <span class="text-white font-bold">{{ currentTier().miniSlotsPerInvitee }} al día</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Total de mini anuncios:</span>
-            <span class="text-white font-bold">{{ simulatedRefs() }} inv × {{ currentTier().miniSlotsPerInvitee }} = {{ totalMiniSlotsDaily() }} al día</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Valor por mini anuncio:</span>
-            <span class="text-white font-bold">$100 COP</span>
-          </div>
-          <div class="h-px bg-white/5"></div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Al día:</span>
-            <span class="text-white font-bold">{{ totalMiniSlotsDaily() }} × $100 = {{ currencyService.formatFromCOP(miniReferralDaily()) }}</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Al mes (30 días):</span>
-            <span class="font-bold" [ngClass]="currentTier().color">{{ currencyService.formatFromCOP(miniReferralCOP()) }}/mes</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Bonus de activación ── -->
-      <div class="bg-black/30 rounded-xl p-4 border border-white/5 space-y-3">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="material-symbols-outlined text-amber-400 text-base">bolt</span>
-          <span class="text-xs font-bold text-white">Bonus de activación</span>
-          <span class="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 text-[8px] font-bold rounded-full border border-amber-500/20 uppercase">Mensual</span>
-        </div>
-        <p class="text-[10px] text-slate-500 leading-relaxed">
-          Cada vez que un invitado <strong class="text-white">activa o renueva</strong> su paquete, tú recibes
-          <strong class="text-white">5 mega anuncios</strong> de <strong class="text-white">$2.000 COP</strong> cada uno.
-          Son anuncios especiales que se acumulan y no expiran.
-        </p>
-        <div class="bg-black/30 rounded-lg p-3 space-y-2">
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Mega anuncios por invitado:</span>
-            <span class="text-white font-bold">5</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Valor de cada mega anuncio:</span>
-            <span class="text-white font-bold">$2.000 COP</span>
-          </div>
-          <div class="h-px bg-white/5"></div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Por invitado:</span>
-            <span class="text-white font-bold">5 × $2.000 = $10.000</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Total ({{ simulatedRefs() }} invitado{{ simulatedRefs() === 1 ? '' : 's' }}):</span>
-            <span class="text-amber-400 font-bold">{{ simulatedRefs() }} × $10.000 = {{ currencyService.formatFromCOP(activationBonusCOP()) }}/mes</span>
-          </div>
+        <div class="flex items-start gap-2 mt-1 px-3 py-2 bg-amber-500/5 border border-amber-500/15 rounded-lg">
+          <span class="material-symbols-outlined text-amber-400 text-sm mt-0.5 flex-shrink-0">timer</span>
+          <p class="text-[10px] text-amber-400/80 leading-relaxed">
+            Los mega anuncios son <strong class="text-amber-400">acumulables</strong> y tienes <strong class="text-amber-400">30 días</strong> para verlos y cobrarlos.
+            Se otorgan una vez por cada compra o renovación de paquete de tu invitado.
+          </p>
         </div>
       </div>
 
@@ -413,7 +365,7 @@
       <div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-blue-400">Subtotal — Ganancias por invitados</span>
-          <span class="text-base font-black text-blue-400">{{ currencyService.formatFromCOP(referralEarningsCOP()) }}/mes</span>
+          <span class="text-base font-black text-blue-400">{{ currencyService.formatFromCOP(referralEarningsCOP()) }}</span>
         </div>
       </div>
 
@@ -452,7 +404,7 @@
                     }
                   </span>
                 </div>
-                <span class="text-xs font-black text-white">{{ currencyService.formatFromCOP(tier.monthlyEarningsCOP) }}/mes</span>
+                <span class="text-xs font-black text-white">{{ currencyService.formatFromCOP(tierMonthlyEstimate(tier)) }}/mes</span>
               </div>
               <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <div class="h-full rounded-full bg-gradient-to-r transition-all duration-700"
@@ -487,7 +439,7 @@
           <span class="text-blue-400 font-bold text-[10px]">2</span>
         </div>
         <p class="text-[11px] text-slate-400 leading-relaxed">
-          <strong class="text-white">Invitas personas</strong> con tu enlace. Cada invitado que active su paquete te genera comisiones automáticas.
+          <strong class="text-white">Invitas personas</strong> con tu enlace. Cada vez que un invitado compra o renueva su paquete, recibes mega recompensas que puedes ver y cobrar.
         </p>
       </div>
       <div class="flex items-start gap-3">
@@ -495,7 +447,7 @@
           <span class="text-amber-400 font-bold text-[10px]">3</span>
         </div>
         <p class="text-[11px] text-slate-400 leading-relaxed">
-          <strong class="text-white">Tus ganancias crecen</strong> con cada invitado. Más invitados activos = mejor categoría = mayores comisiones.
+          <strong class="text-white">Tus ganancias crecen</strong> con cada invitado. Más invitados activos = mejor categoría = mega anuncios de mayor valor.
         </p>
       </div>
     </div>

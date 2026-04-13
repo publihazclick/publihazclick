@@ -137,6 +137,27 @@
     <!-- Content -->
     <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 bg-white">
 
+      <!-- ═══ BANNER: Recarga requerida ═══ -->
+      @if (walletLoaded() && walletBalance() <= 0) {
+        <div class="flex flex-col sm:flex-row items-center gap-4 p-5 rounded-2xl border border-amber-200"
+             style="background: linear-gradient(135deg, #fffbeb, #fef3c7);">
+          <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+               style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+            <span class="material-symbols-outlined text-white" style="font-size:28px">account_balance_wallet</span>
+          </div>
+          <div class="flex-1 text-center sm:text-left">
+            <h3 class="text-base font-black text-gray-900 mb-0.5">Recarga tu billetera para usar las herramientas IA</h3>
+            <p class="text-sm text-gray-500">Todas las herramientas requieren saldo. Recarga ahora y empieza a crear contenido profesional.</p>
+          </div>
+          <a routerLink="/advertiser/ai/wallet"
+             class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all hover:opacity-90 shadow-lg shadow-purple-500/20 flex-shrink-0"
+             style="background: linear-gradient(90deg, #7e22ce, #a855f7, #d946ef);">
+            <span class="material-symbols-outlined" style="font-size:18px">add_circle</span>
+            Recargar
+          </a>
+        </div>
+      }
+
       <!-- Welcome -->
       <div>
         <h1 class="text-2xl sm:text-3xl font-black text-gray-900">
