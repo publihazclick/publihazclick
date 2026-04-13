@@ -193,18 +193,11 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
   private async checkRequirements(): Promise<void> {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return;
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const now = new Date().toISOString();
-    const [{ count: adCount }, { count: bannerCount }] = await Promise.all([
-      this.supabase.from('ptc_tasks').select('id', { count: 'exact', head: true })
-        .eq('advertiser_id', user.id).eq('status', 'active')
-        .or(`activated_at.is.null,activated_at.gte.${thirtyDaysAgo}`),
-      this.supabase.from('banner_ads').select('id', { count: 'exact', head: true })
-        .eq('advertiser_id', user.id).eq('status', 'active')
-        .or(`end_date.is.null,end_date.gte.${now}`),
-    ]);
-    this.userHasAd.set((adCount ?? 0) > 0);
-    this.userHasBanner.set((bannerCount ?? 0) > 0);
+    // Fuente de verdad: get_user_ad_limits mira package_started_at del perfil,
+    // así cada compra/renovación de paquete reinicia el gate automáticamente.
+    const { data } = await this.supabase.rpc('get_user_ad_limits', { p_user_id: user.id });
+    this.userHasAd.set(!!data?.has_ptc_ad);
+    this.userHasBanner.set(!!data?.has_banner_ad);
   }
 
   private async loadAffiliatesCount(): Promise<void> {

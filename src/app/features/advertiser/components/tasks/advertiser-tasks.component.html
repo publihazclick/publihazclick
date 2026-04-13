@@ -13,8 +13,8 @@
   } @else if (!requirementsMet()) {
 
     <!-- Bloqueo: requisitos no cumplidos -->
-    <div class="flex items-center justify-center py-10">
-      <div class="bg-card-dark border border-white/10 rounded-2xl p-8 max-w-lg w-full text-center space-y-6">
+    <div class="flex items-center justify-center py-8 sm:py-10">
+      <div class="bg-card-dark border border-white/10 rounded-2xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 sm:space-y-6">
         <!-- Icono -->
         <div class="flex justify-center">
           <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-accent/20 border border-cyan-500/20 flex items-center justify-center">
@@ -24,8 +24,15 @@
 
         <!-- Título y descripción -->
         <div class="space-y-2">
-          <h3 class="text-lg font-black text-white">Completa tu configuración de anunciante</h3>
-          <p class="text-sm text-slate-400">Para acceder a tus tareas diarias y empezar a ganar, primero debes crear tu contenido publicitario.</p>
+          <h3 class="text-lg sm:text-xl font-black text-white leading-tight">
+            Activa tus tareas diarias
+          </h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Para poder iniciar tus tareas diarias debes <span class="text-white font-bold">crear o clonar tu anuncio PTC</span> y <span class="text-white font-bold">crear o clonar tu anuncio banner</span> para poder hacer tus clicks.
+          </p>
+          <p class="text-xs text-cyan-400/80 font-semibold pt-1">
+            Solo se hace una vez por cada paquete de 30 días.
+          </p>
         </div>
 
         <!-- Checklist -->
@@ -34,12 +41,15 @@
           @if (userHasAd()) {
             <div class="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3">
               <span class="material-symbols-outlined text-emerald-400">check_circle</span>
-              <span class="text-sm text-emerald-400 font-bold flex-1">Anuncio PTC creado</span>
+              <span class="text-sm text-emerald-400 font-bold flex-1">Anuncio PTC listo</span>
             </div>
           } @else {
-            <a routerLink="/advertiser/ads" class="flex items-center gap-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl px-4 py-3 hover:bg-cyan-500/10 transition-colors group">
-              <span class="material-symbols-outlined text-cyan-400">campaign</span>
-              <span class="text-sm text-white font-bold flex-1">Crear tu primer anuncio PTC</span>
+            <a routerLink="/advertiser/ads" class="flex items-center gap-3 bg-cyan-500/5 border border-cyan-500/30 rounded-xl px-4 py-3.5 hover:bg-cyan-500/10 active:bg-cyan-500/15 transition-colors group">
+              <span class="material-symbols-outlined text-cyan-400 text-2xl">campaign</span>
+              <span class="flex flex-col flex-1 min-w-0">
+                <span class="text-sm text-white font-black">Crear o clonar tu anuncio PTC</span>
+                <span class="text-[11px] text-slate-400 font-medium">Toca para empezar</span>
+              </span>
               <span class="material-symbols-outlined text-cyan-400 text-lg group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
             </a>
           }
@@ -48,21 +58,24 @@
           @if (userHasBanner()) {
             <div class="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3">
               <span class="material-symbols-outlined text-emerald-400">check_circle</span>
-              <span class="text-sm text-emerald-400 font-bold flex-1">Banner creado</span>
+              <span class="text-sm text-emerald-400 font-bold flex-1">Banner listo</span>
             </div>
           } @else {
-            <a routerLink="/advertiser/banner" class="flex items-center gap-3 bg-purple-500/5 border border-purple-500/20 rounded-xl px-4 py-3 hover:bg-purple-500/10 transition-colors group">
-              <span class="material-symbols-outlined text-purple-400">image</span>
-              <span class="text-sm text-white font-bold flex-1">Crear tu primer banner</span>
+            <a routerLink="/advertiser/banner" class="flex items-center gap-3 bg-purple-500/5 border border-purple-500/30 rounded-xl px-4 py-3.5 hover:bg-purple-500/10 active:bg-purple-500/15 transition-colors group">
+              <span class="material-symbols-outlined text-purple-400 text-2xl">image</span>
+              <span class="flex flex-col flex-1 min-w-0">
+                <span class="text-sm text-white font-black">Crear o clonar tu anuncio banner</span>
+                <span class="text-[11px] text-slate-400 font-medium">Toca para empezar</span>
+              </span>
               <span class="material-symbols-outlined text-purple-400 text-lg group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
             </a>
           }
         </div>
 
         <!-- Nota -->
-        <p class="text-xs text-slate-500 flex items-center justify-center gap-1">
-          <span class="material-symbols-outlined text-[14px]">info</span>
-          Tus anuncios se activarán tras la revisión del administrador, pero las tareas se desbloquean al crearlos.
+        <p class="text-xs text-slate-500 flex items-start justify-center gap-1.5 leading-relaxed">
+          <span class="material-symbols-outlined text-[16px] shrink-0 mt-px">info</span>
+          <span>Tus anuncios entran en revisión del administrador, pero tus tareas se desbloquean apenas los creas o clonas.</span>
         </p>
       </div>
     </div>
@@ -451,6 +464,82 @@
         </div>
       }
     </div>
+
+    <!-- ── Categoría 5: Mega Anuncios V2 (por invitados nuevos) ── -->
+    @if (megaV2Slots().length > 0) {
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2.5">
+          <span class="material-symbols-outlined text-amber-400">stars</span>
+          <h3 class="text-base font-black uppercase tracking-tight text-white">Mega Recompensas</h3>
+        </div>
+        <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/20">
+          POR INVITADOS
+        </span>
+      </div>
+      <p class="text-xs text-slate-500 mb-4 flex items-start gap-1">
+        <span class="material-symbols-outlined text-[14px] text-amber-500/60 mt-0.5">timer</span>
+        <span>Otorgados cuando tus invitados compran paquete. <span class="text-amber-400 font-bold">Expiran en 30 días</span> — acumulables.</span>
+      </p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        @for (slot of megaV2Slots(); track $index) {
+          <div
+            class="bg-card-dark border rounded-xl overflow-hidden flex flex-col transition-all"
+            [class]="slot.viewed
+              ? 'border-white/5 opacity-50'
+              : slot.id
+                ? 'border-amber-500/20 hover:border-amber-500/40 hover:-translate-y-0.5 cursor-pointer'
+                : 'border-dashed border-amber-500/15'"
+            (click)="openModal(slot)"
+          >
+            <div class="relative aspect-[16/9] bg-zinc-900 overflow-hidden">
+              @if (slot.imageUrl) {
+                <img [src]="slot.imageUrl" [alt]="slot.title" class="w-full h-full object-cover">
+              } @else {
+                <div class="w-full h-full flex flex-col items-center justify-center gap-2">
+                  <span class="material-symbols-outlined text-amber-800 text-4xl">stars</span>
+                </div>
+              }
+              @if (slot.viewed) {
+                <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-emerald-400 text-4xl">check_circle</span>
+                </div>
+              }
+              <div class="absolute top-2 left-2">
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  Mega Recompensa
+                </span>
+              </div>
+              <div class="absolute top-2 right-2">
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                  +{{ formatReward(slot.rewardCOP) }}
+                </span>
+              </div>
+            </div>
+            <div class="p-3 flex-1 flex flex-col gap-2">
+              <p class="text-sm font-bold text-white line-clamp-1">{{ slot.title }}</p>
+              <p class="text-xs text-slate-500 line-clamp-2 flex-1">{{ slot.description }}</p>
+              <button
+                [disabled]="!slot.id || slot.viewed"
+                class="w-full py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1"
+                [class]="slot.viewed
+                  ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+                  : slot.id
+                    ? 'bg-amber-500 hover:bg-amber-400 text-black'
+                    : 'bg-white/5 text-slate-600 cursor-not-allowed'"
+              >
+                @if (slot.viewed) {
+                  <span class="material-symbols-outlined text-sm">check</span> Completado
+                } @else {
+                  <span class="material-symbols-outlined text-sm">play_circle</span> Ver anuncio
+                }
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+    }
 
     <!-- Resumen por categorías -->
     <div class="bg-gradient-to-r from-accent/5 to-purple-500/5 border border-white/5 rounded-2xl p-4">
