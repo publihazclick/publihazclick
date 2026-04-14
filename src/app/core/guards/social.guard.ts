@@ -4,7 +4,7 @@ import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
 
 /**
- * Guard de red social - solo advertiser, admin y dev pueden acceder
+ * Guard de red social - guest, advertiser, admin y dev pueden acceder
  */
 export const socialGuard: CanActivateFn = async (route, state) => {
   const router = inject(Router);
@@ -22,7 +22,7 @@ export const socialGuard: CanActivateFn = async (route, state) => {
       return router.createUrlTree(['/login']);
     }
 
-    const allowed = ['advertiser', 'admin', 'dev'];
+    const allowed = ['guest', 'advertiser', 'admin', 'dev'];
     if (!allowed.includes(profile.role)) {
       return router.createUrlTree(['/dashboard']);
     }

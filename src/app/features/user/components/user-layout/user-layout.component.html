@@ -88,6 +88,7 @@
           <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Panel Principal</h4>
         }
         <ul class="space-y-1">
+          <!-- 1. Dashboard -->
           <li>
             <a routerLink="/dashboard" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                [routerLinkActiveOptions]="{exact: true}"
@@ -97,6 +98,25 @@
               @if (!sidebarCollapsed()) { <span>Dashboard</span> }
             </a>
           </li>
+          <!-- 2. Mi Paquete -->
+          <li>
+            <a routerLink="/dashboard/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
+            </a>
+          </li>
+          <!-- 3. Mi Líder -->
+          <li>
+            <a routerLink="/dashboard/leader" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">military_tech</span>
+              @if (!sidebarCollapsed()) { <span>Mi Líder</span> }
+            </a>
+          </li>
+          <!-- 4. Recomienda y Gana -->
           <li>
             <button
               (click)="openReferralModal()"
@@ -107,6 +127,7 @@
               @if (!sidebarCollapsed()) { <span>Recomienda y Gana</span> }
             </button>
           </li>
+          <!-- 5. Mis Invitados -->
           <li>
             <a routerLink="/dashboard/referrals" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -115,78 +136,7 @@
               @if (!sidebarCollapsed()) { <span>Mis Invitados</span> }
             </a>
           </li>
-          <li>
-            <a routerLink="/dashboard/leader" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">military_tech</span>
-              @if (!sidebarCollapsed()) { <span>Mi Líder</span> }
-            </a>
-          </li>
-        </ul>
-      </div>
-      <!-- Punto Pago y Servicios -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Punto Pago y Servicios</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/dashboard/punto-pago" routerLinkActive="bg-teal-500/10 text-teal-400 border border-teal-500/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-teal-500/5 text-slate-400 hover:text-teal-300 transition-all border border-transparent"
-               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
-              <span class="material-symbols-outlined text-teal-400">point_of_sale</span>
-              @if (!sidebarCollapsed()) {
-                <span>Punto Pago y Servicios</span>
-                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-black rounded uppercase">NEW</span>
-              }
-            </a>
-          </li>
-        </ul>
-      </div>
-      <!-- Dinámicas y Sorteos -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Dinámicas y Sorteos</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/dashboard/dinamicas" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined text-amber-400">emoji_events</span>
-              @if (!sidebarCollapsed()) {
-                <span>Dinámicas y Sorteos</span>
-                <span class="ml-auto text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">NEW</span>
-              }
-            </a>
-          </li>
-        </ul>
-      </div>
-      <!-- Automatic WhatsApp -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Automatic WhatsApp</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/dashboard/automatic-whatsapp" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined text-green-400">smart_toy</span>
-              @if (!sidebarCollapsed()) {
-                <span>Automatic WhatsApp</span>
-                <span class="ml-auto text-[9px] font-bold bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">NEW</span>
-              }
-            </a>
-          </li>
-        </ul>
-      </div>
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Herramientas</h4>
-        }
-        <ul class="space-y-1">
+          <!-- 6. Calculadora Ganancias -->
           <li>
             <a routerLink="/dashboard/calculator" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -195,6 +145,7 @@
               @if (!sidebarCollapsed()) { <span>Calculadora Ganancias</span> }
             </a>
           </li>
+          <!-- 7. Retiro -->
           <li>
             <a routerLink="/dashboard/wallet" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -203,6 +154,7 @@
               @if (!sidebarCollapsed()) { <span>Retiro</span> }
             </a>
           </li>
+          <!-- 8. Historial -->
           <li>
             <a routerLink="/dashboard/history" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -211,14 +163,7 @@
               @if (!sidebarCollapsed()) { <span>Historial</span> }
             </a>
           </li>
-          <li>
-            <a routerLink="/dashboard/packages" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">workspace_premium</span>
-              @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
-            </a>
-          </li>
+          <!-- 9. Mi Perfil -->
           <li>
             <a routerLink="/dashboard/settings" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -227,6 +172,29 @@
               @if (!sidebarCollapsed()) { <span>Mi Perfil</span> }
             </a>
           </li>
+          <!-- 10. Red Social -->
+          <li>
+            <a routerLink="/social"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary border border-transparent hover:border-primary/20 transition-all"
+               [class.justify-center]="sidebarCollapsed()"
+               (click)="closeSidebarOnMobile()"
+               title="Red Social">
+              <span class="material-symbols-outlined text-primary">diversity_3</span>
+              @if (!sidebarCollapsed()) { <span class="font-semibold">Red Social</span> }
+            </a>
+          </li>
+          <!-- 11. Marketplace -->
+          <li>
+            <a routerLink="/social/marketplace" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()"
+               (click)="closeSidebarOnMobile()"
+               title="Marketplace">
+              <span class="material-symbols-outlined">storefront</span>
+              @if (!sidebarCollapsed()) { <span>Marketplace</span> }
+            </a>
+          </li>
+          <!-- 12. Academia -->
           <li>
             <a routerLink="/dashboard/cursos" routerLinkActive="bg-sky-500/10 text-sky-400 border border-sky-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-sky-500/5 text-slate-400 hover:text-sky-300 transition-all border border-transparent"
@@ -235,6 +203,7 @@
               @if (!sidebarCollapsed()) { <span>Academia</span> }
             </a>
           </li>
+          <!-- 13. Movi -->
           <li>
             <a routerLink="/dashboard/anda-gana" routerLinkActive="bg-orange-500/10 text-orange-400 border border-orange-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-orange-500/5 text-slate-400 hover:text-orange-300 transition-all border border-transparent"
@@ -246,6 +215,7 @@
               }
             </a>
           </li>
+          <!-- 14. Trading Bot AI -->
           <li>
             <a routerLink="/dashboard/trading-bot" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-emerald-500/5 text-slate-400 hover:text-emerald-300 transition-all border border-transparent"
@@ -254,18 +224,6 @@
               @if (!sidebarCollapsed()) {
                 <span>Trading Bot AI</span>
                 <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-emerald-500 to-cyan-500 text-black rounded uppercase">IA</span>
-              }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/ai"
-               routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent hover:border-violet-500/20"
-               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
-              <span class="material-symbols-outlined text-violet-400">auto_awesome</span>
-              @if (!sidebarCollapsed()) {
-                <span>Herramientas IA</span>
-                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded uppercase">IA</span>
               }
             </a>
           </li>
@@ -286,6 +244,20 @@
               </a>
             </li>
           }
+          <!-- 15. Herramientas IA -->
+          <li>
+            <a routerLink="/advertiser/ai"
+               routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent hover:border-violet-500/20"
+               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
+              <span class="material-symbols-outlined text-violet-400">auto_awesome</span>
+              @if (!sidebarCollapsed()) {
+                <span>Herramientas IA</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded uppercase">IA</span>
+              }
+            </a>
+          </li>
+          <!-- 16. SMS Masivos -->
           <li>
             <a routerLink="/dashboard/sms-masivos" routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent"
@@ -297,6 +269,43 @@
               }
             </a>
           </li>
+          <!-- 17. Automatic WhatsApp -->
+          <li>
+            <a routerLink="/dashboard/automatic-whatsapp" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-green-400">smart_toy</span>
+              @if (!sidebarCollapsed()) {
+                <span>Automatic WhatsApp</span>
+                <span class="ml-auto text-[9px] font-bold bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">NEW</span>
+              }
+            </a>
+          </li>
+          <!-- 18. Punto Pago y Servicios -->
+          <li>
+            <a routerLink="/dashboard/punto-pago" routerLinkActive="bg-teal-500/10 text-teal-400 border border-teal-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-teal-500/5 text-slate-400 hover:text-teal-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
+              <span class="material-symbols-outlined text-teal-400">point_of_sale</span>
+              @if (!sidebarCollapsed()) {
+                <span>Punto Pago y Servicios</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-black rounded uppercase">NEW</span>
+              }
+            </a>
+          </li>
+          <!-- 19. Dinámicas y Sorteos -->
+          <li>
+            <a routerLink="/dashboard/dinamicas" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-amber-400">emoji_events</span>
+              @if (!sidebarCollapsed()) {
+                <span>Dinámicas y Sorteos</span>
+                <span class="ml-auto text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">NEW</span>
+              }
+            </a>
+          </li>
+          <!-- 20. Sugerencias -->
           <li class="pt-2 mt-2 border-t border-white/10">
             <a href="https://wa.me/573134453649?text=Hola%20tengo%20una%20sugerencia%20para%20hacer%20y%20es%20la%20siguiente..."
                target="_blank" rel="noopener noreferrer"
