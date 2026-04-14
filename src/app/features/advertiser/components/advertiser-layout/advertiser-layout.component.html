@@ -76,12 +76,12 @@
     }
 
     <nav class="space-y-2 lg:space-y-4">
-      <!-- Mi Panel -->
       <div>
         @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Mi Panel</h4>
+          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Panel Principal</h4>
         }
         <ul class="space-y-1">
+          <!-- 1. Dashboard -->
           <li>
             <a routerLink="/advertiser" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                [routerLinkActiveOptions]="{exact: true}"
@@ -91,6 +91,7 @@
               @if (!sidebarCollapsed()) { <span>Dashboard</span> }
             </a>
           </li>
+          <!-- 2. Crea tu Anuncio PTC -->
           <li>
             <a routerLink="/advertiser/ads" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                [routerLinkActiveOptions]="{exact: true}"
@@ -100,6 +101,7 @@
               @if (!sidebarCollapsed()) { <span>Crea tu Anuncio PTC</span> }
             </a>
           </li>
+          <!-- 3. Crea tu Banner -->
           <li>
             <a routerLink="/advertiser/banner" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -108,6 +110,7 @@
               @if (!sidebarCollapsed()) { <span>Crea tu Banner</span> }
             </a>
           </li>
+          <!-- 4. Mis Tareas -->
           <li>
             <a routerLink="/advertiser/tasks" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -116,101 +119,7 @@
               @if (!sidebarCollapsed()) { <span>Mis Tareas</span> }
             </a>
           </li>
-        </ul>
-      </div>
-
-      <!-- Red Social -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Red Social</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/social"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary border border-transparent hover:border-primary/20 transition-all"
-               [class.justify-center]="sidebarCollapsed()"
-               title="Red Social de Anunciantes">
-              <span class="material-symbols-outlined text-primary">diversity_3</span>
-              @if (!sidebarCollapsed()) { <span class="font-semibold">Red Social</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/marketplace" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()"
-               title="Marketplace">
-              <span class="material-symbols-outlined">storefront</span>
-              @if (!sidebarCollapsed()) { <span>Marketplace</span> }
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Red de Invitados -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Red de Invitados</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/advertiser/recommend" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">share</span>
-              @if (!sidebarCollapsed()) { <span>Recomienda y Gana</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/referrals" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">group</span>
-              @if (!sidebarCollapsed()) { <span>Mis Invitados</span> }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/leader" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">military_tech</span>
-              @if (!sidebarCollapsed()) { <span>Mi Líder</span> }
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Herramientas -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Herramientas</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/advertiser/calculator" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">calculate</span>
-              @if (!sidebarCollapsed()) { <span>Calculadora Ganancias</span> }
-            </a>
-          </li>
-          @if (!isAiRoute()) {
-            <li>
-              <a routerLink="/advertiser/wallet" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-                 class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-                 [class.justify-center]="sidebarCollapsed()">
-                <span class="material-symbols-outlined">account_balance_wallet</span>
-                @if (!sidebarCollapsed()) { <span>Retiro</span> }
-              </a>
-            </li>
-          }
-          <li>
-            <a routerLink="/advertiser/history" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined">history</span>
-              @if (!sidebarCollapsed()) { <span>Historial</span> }
-            </a>
-          </li>
+          <!-- 5. Mi Paquete -->
           <li>
             <a routerLink="/advertiser/packages" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -219,6 +128,61 @@
               @if (!sidebarCollapsed()) { <span>Mi Paquete</span> }
             </a>
           </li>
+          <!-- 6. Mi Líder -->
+          <li>
+            <a routerLink="/advertiser/leader" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">military_tech</span>
+              @if (!sidebarCollapsed()) { <span>Mi Líder</span> }
+            </a>
+          </li>
+          <!-- 7. Recomienda y Gana -->
+          <li>
+            <a routerLink="/advertiser/recommend" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-accent">card_giftcard</span>
+              @if (!sidebarCollapsed()) { <span>Recomienda y Gana</span> }
+            </a>
+          </li>
+          <!-- 8. Mis Invitados -->
+          <li>
+            <a routerLink="/advertiser/referrals" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">group</span>
+              @if (!sidebarCollapsed()) { <span>Mis Invitados</span> }
+            </a>
+          </li>
+          <!-- 9. Calculadora Ganancias -->
+          <li>
+            <a routerLink="/advertiser/calculator" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">calculate</span>
+              @if (!sidebarCollapsed()) { <span>Calculadora Ganancias</span> }
+            </a>
+          </li>
+          <!-- 10. Retiro -->
+          <li>
+            <a routerLink="/advertiser/wallet" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">account_balance_wallet</span>
+              @if (!sidebarCollapsed()) { <span>Retiro</span> }
+            </a>
+          </li>
+          <!-- 11. Historial -->
+          <li>
+            <a routerLink="/advertiser/history" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined">history</span>
+              @if (!sidebarCollapsed()) { <span>Historial</span> }
+            </a>
+          </li>
+          <!-- 12. Mi Perfil -->
           <li>
             <a routerLink="/advertiser/settings" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -227,6 +191,29 @@
               @if (!sidebarCollapsed()) { <span>Mi Perfil</span> }
             </a>
           </li>
+          <!-- 13. Red Social -->
+          <li>
+            <a routerLink="/social"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary border border-transparent hover:border-primary/20 transition-all"
+               [class.justify-center]="sidebarCollapsed()"
+               (click)="closeSidebarOnMobile()"
+               title="Red Social">
+              <span class="material-symbols-outlined text-primary">diversity_3</span>
+              @if (!sidebarCollapsed()) { <span class="font-semibold">Red Social</span> }
+            </a>
+          </li>
+          <!-- 14. Marketplace -->
+          <li>
+            <a routerLink="/advertiser/marketplace" routerLinkActive="bg-primary/10 text-primary border border-primary/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()"
+               (click)="closeSidebarOnMobile()"
+               title="Marketplace">
+              <span class="material-symbols-outlined">storefront</span>
+              @if (!sidebarCollapsed()) { <span>Marketplace</span> }
+            </a>
+          </li>
+          <!-- 15. Academia -->
           <li>
             <a routerLink="/advertiser/cursos" routerLinkActive="bg-sky-500/10 text-sky-400 border border-sky-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-sky-500/5 text-slate-400 hover:text-sky-300 transition-all border border-transparent"
@@ -235,6 +222,7 @@
               @if (!sidebarCollapsed()) { <span>Academia</span> }
             </a>
           </li>
+          <!-- 16. Movi -->
           <li>
             <a routerLink="/advertiser/anda-gana" routerLinkActive="bg-orange-500/10 text-orange-400 border border-orange-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-orange-500/5 text-slate-400 hover:text-orange-300 transition-all border border-transparent"
@@ -246,6 +234,7 @@
               }
             </a>
           </li>
+          <!-- 17. Trading Bot AI -->
           <li>
             <a routerLink="/advertiser/trading-bot" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-emerald-500/5 text-slate-400 hover:text-emerald-300 transition-all border border-transparent"
@@ -254,18 +243,6 @@
               @if (!sidebarCollapsed()) {
                 <span>Trading Bot AI</span>
                 <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-emerald-500 to-cyan-500 text-black rounded uppercase">IA</span>
-              }
-            </a>
-          </li>
-          <li>
-            <a routerLink="/advertiser/ai"
-               routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent hover:border-violet-500/20"
-               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
-              <span class="material-symbols-outlined text-violet-400">auto_awesome</span>
-              @if (!sidebarCollapsed()) {
-                <span>Herramientas IA</span>
-                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded uppercase">IA</span>
               }
             </a>
           </li>
@@ -286,6 +263,20 @@
               </a>
             </li>
           }
+          <!-- 18. Herramientas IA -->
+          <li>
+            <a routerLink="/advertiser/ai"
+               routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent hover:border-violet-500/20"
+               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
+              <span class="material-symbols-outlined text-violet-400">auto_awesome</span>
+              @if (!sidebarCollapsed()) {
+                <span>Herramientas IA</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded uppercase">IA</span>
+              }
+            </a>
+          </li>
+          <!-- 19. SMS Masivos -->
           <li>
             <a routerLink="/advertiser/sms-masivos" routerLinkActive="bg-violet-500/10 text-violet-400 border border-violet-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-violet-500/5 text-slate-400 hover:text-violet-300 transition-all border border-transparent"
@@ -297,53 +288,7 @@
               }
             </a>
           </li>
-        </ul>
-      </div>
-
-      <!-- Punto Pago y Servicios -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Punto Pago y Servicios</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/advertiser/punto-pago" routerLinkActive="bg-teal-500/10 text-teal-400 border border-teal-500/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-teal-500/5 text-slate-400 hover:text-teal-300 transition-all border border-transparent"
-               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
-              <span class="material-symbols-outlined text-teal-400">point_of_sale</span>
-              @if (!sidebarCollapsed()) {
-                <span>Punto Pago y Servicios</span>
-                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-black rounded uppercase">NEW</span>
-              }
-            </a>
-          </li>
-        </ul>
-      </div>
-      <!-- Dinámicas y Sorteos -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Dinámicas y Sorteos</h4>
-        }
-        <ul class="space-y-1">
-          <li>
-            <a routerLink="/advertiser/dinamicas" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
-               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
-               [class.justify-center]="sidebarCollapsed()">
-              <span class="material-symbols-outlined text-amber-400">emoji_events</span>
-              @if (!sidebarCollapsed()) {
-                <span>Dinámicas y Sorteos</span>
-                <span class="ml-auto text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">NEW</span>
-              }
-            </a>
-          </li>
-        </ul>
-      </div>
-      <!-- Automatic WhatsApp -->
-      <div>
-        @if (!sidebarCollapsed()) {
-          <h4 class="text-[10px] uppercase font-black text-slate-500 mb-3 lg:mb-4 px-2 tracking-widest">Automatic WhatsApp</h4>
-        }
-        <ul class="space-y-1">
+          <!-- 20. Automatic WhatsApp -->
           <li>
             <a routerLink="/advertiser/automatic-whatsapp" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
@@ -355,15 +300,35 @@
               }
             </a>
           </li>
-        </ul>
-      </div>
-
-      <!-- Sugerencias -->
-      <div>
-        <ul class="space-y-1">
+          <!-- 21. Punto Pago y Servicios -->
+          <li>
+            <a routerLink="/advertiser/punto-pago" routerLinkActive="bg-teal-500/10 text-teal-400 border border-teal-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-teal-500/5 text-slate-400 hover:text-teal-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
+              <span class="material-symbols-outlined text-teal-400">point_of_sale</span>
+              @if (!sidebarCollapsed()) {
+                <span>Punto Pago y Servicios</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-black rounded uppercase">NEW</span>
+              }
+            </a>
+          </li>
+          <!-- 22. Dinámicas y Sorteos -->
+          <li>
+            <a routerLink="/advertiser/dinamicas" routerLinkActive="bg-accent/10 text-accent border border-accent/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-amber-400">emoji_events</span>
+              @if (!sidebarCollapsed()) {
+                <span>Dinámicas y Sorteos</span>
+                <span class="ml-auto text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">NEW</span>
+              }
+            </a>
+          </li>
+          <!-- 23. Sugerencias -->
           <li class="pt-2 mt-2 border-t border-white/10">
             <a href="https://wa.me/573134453649?text=Hola%20tengo%20una%20sugerencia%20para%20hacer%20y%20es%20la%20siguiente..."
                target="_blank" rel="noopener noreferrer"
+               (click)="closeSidebarOnMobile()"
                class="relative flex items-center gap-3 px-3 py-3 text-sm rounded-xl bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-cyan-500/15 hover:from-emerald-500/25 hover:via-emerald-500/20 hover:to-cyan-500/25 text-emerald-300 hover:text-white border border-emerald-500/30 hover:border-emerald-400/50 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/30 transition-all font-bold overflow-hidden group"
                [class.justify-center]="sidebarCollapsed()">
               <span class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
