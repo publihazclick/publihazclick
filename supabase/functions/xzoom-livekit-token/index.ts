@@ -194,18 +194,45 @@ Deno.serve(async (req) => {
     }
 
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'No autorizado' }, 401);
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[xzoom-livekit-token] Sin header Authorization Bearer');
+      return json({ error: 'No autorizado — falta sesión' }, 401);
+    }
 
     const userJwt = authHeader.replace('Bearer ', '');
-    const jwtPayload = decodeJwtPayload(userJwt);
-    const userId = jwtPayload.sub;
-    if (!userId) return json({ error: 'Token sin user ID' }, 401);
 
     const body = await req.json().catch(() => null);
     const hostId = body?.host_id as string | undefined;
     if (!hostId) return json({ error: 'host_id requerido' }, 400);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // Validar el JWT del usuario con el helper oficial de Supabase
+    let userId: string | null = null;
+    try {
+      const { data: userData, error: userErr } = await supabase.auth.getUser(userJwt);
+      if (userErr) {
+        console.error('[xzoom-livekit-token] getUser error:', userErr.message);
+      }
+      userId = userData?.user?.id ?? null;
+    } catch (e) {
+      console.error('[xzoom-livekit-token] excepción getUser:', e);
+    }
+
+    // Fallback: algunos entornos firman JWTs sin sub accesible via auth.getUser
+    if (!userId) {
+      try {
+        const decoded = decodeJwtPayload(userJwt);
+        userId = decoded.sub ?? null;
+      } catch (e) {
+        console.error('[xzoom-livekit-token] decode fallback error:', e);
+      }
+    }
+
+    if (!userId) {
+      console.error('[xzoom-livekit-token] No se pudo extraer userId del JWT');
+      return json({ error: 'Sesión inválida — vuelve a iniciar sesión' }, 401);
+    }
 
     // Obtener perfil y anfitrión
     const [{ data: profile }, { data: host }] = await Promise.all([

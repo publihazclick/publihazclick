@@ -259,9 +259,19 @@ export class XzoomService {
   // ─────────────────────────────────────────────────────────────
 
   async getLivekitToken(hostId: string): Promise<XzoomLiveKitTokenResponse> {
+    // Forzar refresh del token de sesión antes de invocar para evitar 401
+    // cuando el JWT local está expirado o el cliente no lo ha hidratado.
+    const { data: sess } = await this.supabase.auth.getSession();
+    const accessToken = sess?.session?.access_token;
+    if (!accessToken) {
+      throw new Error('Sesión no iniciada. Inicia sesión e intenta de nuevo.');
+    }
     const { data, error } = await this.supabase.functions.invoke(
       'xzoom-livekit-token',
-      { body: { host_id: hostId } },
+      {
+        body: { host_id: hostId },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
     );
     if (error) throw error;
     if ((data as any)?.error) throw new Error((data as any).error);
