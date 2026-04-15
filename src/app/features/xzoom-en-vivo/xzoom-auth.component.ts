@@ -563,40 +563,26 @@ export class XzoomAuthComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    // 1) Leer invitación de query params (invite_host=slug o invite_ref=code)
+    // El flujo de invitación del anfitrión YA NO pasa por aquí: el link privado
+    // lleva directo a /xzoom/h/:slug (pública, con form guest). El invite de
+    // participante solo informa al usuario, NO crea relación de referido.
     const qp = this.route.snapshot.queryParams;
-    const hostSlug = (qp['invite_host'] ?? '').toString().trim();
     const participantCode = (qp['invite_ref'] ?? '').toString().trim();
 
-    if (hostSlug) {
-      this.inviteIntent = { type: 'host', code: hostSlug, savedAt: Date.now() };
-      this.persistInvite(this.inviteIntent);
-      this.inviteBanner.set(
-        `Te invitó un anfitrión. Al entrar te llevaremos directo a su sala privada.`,
-      );
-    } else if (participantCode) {
+    if (participantCode) {
       this.inviteIntent = { type: 'participant', code: participantCode, savedAt: Date.now() };
-      this.persistInvite(this.inviteIntent);
       this.inviteBanner.set(
-        `Fuiste invitado por un participante. Entra y descubre todos los anfitriones disponibles.`,
+        'Fuiste invitado a descubrir XZOOM EN VIVO. Crea tu cuenta o inicia sesión para explorar a todos los anfitriones.',
       );
-    } else {
-      // Recuperar invitación previa guardada (caso: vino del landing y dio click)
-      this.inviteIntent = this.readInvite();
-      if (this.inviteIntent?.type === 'host') {
-        this.inviteBanner.set(
-          `Te invitó un anfitrión. Al entrar te llevaremos directo a su sala privada.`,
-        );
-      }
     }
 
-    // 2) Si ya está autenticado, redirigir según invitación
+    // Si ya está autenticado, mandar al landing público
     if (this.authService.isAuthenticated()) {
-      this.redirectAfterAuth();
+      this.router.navigateByUrl('/xzoom');
       return;
     }
 
-    // 3) Query param mode=login (enlace directo) cambia el tab
+    // Query param mode=login (enlace directo) cambia el tab
     const modeParam = (qp['mode'] ?? '').toString();
     if (modeParam === 'login') this.mode.set('login');
   }
@@ -635,11 +621,9 @@ export class XzoomAuthComponent implements OnInit {
     this.isLoading.set(true);
     try {
       const { fullName, username, email, phone, password } = this.registerForm.value;
-      // Si la invitación es de participante, pasar el referral_code al trigger handle_new_user
+      // Los invites de participante ya NO crean relación de referido.
+      // Solo pasamos el username al trigger.
       const metadata: Record<string, any> = { username };
-      if (this.inviteIntent?.type === 'participant') {
-        metadata['referral_code'] = this.inviteIntent.code;
-      }
 
       const result = await firstValueFrom(
         this.authService.register({
@@ -674,34 +658,9 @@ export class XzoomAuthComponent implements OnInit {
   }
 
   private redirectAfterAuth(): void {
-    const invite = this.inviteIntent ?? this.readInvite();
     this.clearInvite();
-
-    if (invite?.type === 'host' && invite.code) {
-      this.router.navigateByUrl(`/xzoom/h/${invite.code}`);
-      return;
-    }
-    // Participant o sin invitación → landing principal
+    // Participant o sin invitación → landing principal XZOOM
     this.router.navigateByUrl('/xzoom');
-  }
-
-  private persistInvite(intent: XzoomInviteIntent): void {
-    if (typeof sessionStorage === 'undefined') return;
-    try {
-      sessionStorage.setItem(XZOOM_INVITE_STORAGE_KEY, JSON.stringify(intent));
-    } catch {
-      /* noop */
-    }
-  }
-
-  private readInvite(): XzoomInviteIntent | null {
-    if (typeof sessionStorage === 'undefined') return null;
-    try {
-      const raw = sessionStorage.getItem(XZOOM_INVITE_STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as XzoomInviteIntent) : null;
-    } catch {
-      return null;
-    }
   }
 
   private clearInvite(): void {

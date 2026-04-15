@@ -163,6 +163,10 @@ export const routes: Routes = [
       {
         path: 'xzoom-en-vivo',
         loadComponent: () => import('./features/xzoom-en-vivo/xzoom-en-vivo.component').then(m => m.XzoomEnVivoComponent)
+      },
+      {
+        path: 'xzoom-settings',
+        loadComponent: () => import('./features/admin/components/xzoom-settings/admin-xzoom-settings.component').then(m => m.AdminXzoomSettingsComponent)
       }
     ]
   },
@@ -475,6 +479,14 @@ export const routes: Routes = [
   {
     path: 'xzoom/h/:slug',
     loadComponent: () => import('./features/xzoom-en-vivo/xzoom-host-landing.component').then(m => m.XzoomHostLandingComponent)
+  },
+  // XZOOM EN VIVO — link de invitación de participante: solo redirige a la landing pública
+  {
+    path: 'xzoom/invite/p/:code',
+    canActivate: [
+      () => inject(Router).createUrlTree(['/xzoom'])
+    ],
+    children: []
   },
   {
     path: 'terminos',

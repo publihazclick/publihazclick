@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -18,7 +19,7 @@ declare const ePayco: any;
 @Component({
   selector: 'app-xzoom-host-landing',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="host-landing">
@@ -34,6 +35,11 @@ declare const ePayco: any;
             <span class="material-symbols-outlined">person</span>
             {{ currentUserEmail() }}
           </span>
+        } @else {
+          <a routerLink="/xzoom/auth" class="user-chip as-link">
+            <span class="material-symbols-outlined">login</span>
+            Ya tengo cuenta
+          </a>
         }
       </nav>
 
@@ -71,7 +77,7 @@ declare const ePayco: any;
             </div>
           </div>
 
-          <!-- Pitch video del anfitrión (o fallback) -->
+          <!-- Pitch video del anfitrión -->
           <div class="video-wrap">
             <div class="video-frame">
               @if (pitchVideoEmbedUrl()) {
@@ -100,7 +106,7 @@ declare const ePayco: any;
             </div>
           }
 
-          <div class="subscribe-card">
+          <div class="subscribe-card" id="suscribirme">
             <div class="price-row">
               <div>
                 <span class="price-label">Suscripción mensual</span>
@@ -129,25 +135,77 @@ declare const ePayco: any;
               </li>
             </ul>
 
-            @if (errorMsg()) {
-              <div class="error-box">
-                <span class="material-symbols-outlined">error</span>
-                {{ errorMsg() }}
-              </div>
+            @if (!isLoggedIn()) {
+              <form [formGroup]="form" (ngSubmit)="onSubscribe()" class="guest-form">
+                <p class="form-intro">
+                  Dinos tu nombre y correo — al confirmar el pago te enviaremos un
+                  email para activar tu cuenta y setear tu contraseña.
+                </p>
+
+                <label class="field">
+                  <span class="label">Nombre completo</span>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined">person</span>
+                    <input
+                      type="text"
+                      formControlName="fullName"
+                      placeholder="María Pérez"
+                      autocomplete="name" />
+                  </div>
+                </label>
+
+                <label class="field">
+                  <span class="label">Correo electrónico</span>
+                  <div class="input-wrap">
+                    <span class="material-symbols-outlined">mail</span>
+                    <input
+                      type="email"
+                      formControlName="email"
+                      placeholder="tucorreo@ejemplo.com"
+                      autocomplete="email" />
+                  </div>
+                </label>
+
+                @if (errorMsg()) {
+                  <div class="error-box">
+                    <span class="material-symbols-outlined">error</span>
+                    {{ errorMsg() }}
+                  </div>
+                }
+
+                <button
+                  type="submit"
+                  class="btn-subscribe"
+                  [disabled]="processing() || form.invalid">
+                  @if (processing()) {
+                    Procesando pago…
+                  } @else {
+                    Pagar y suscribirme
+                    <span class="material-symbols-outlined">arrow_forward</span>
+                  }
+                </button>
+              </form>
+            } @else {
+              @if (errorMsg()) {
+                <div class="error-box">
+                  <span class="material-symbols-outlined">error</span>
+                  {{ errorMsg() }}
+                </div>
+              }
+              <button
+                type="button"
+                class="btn-subscribe"
+                (click)="onSubscribeAsUser()"
+                [disabled]="processing()">
+                @if (processing()) {
+                  Procesando pago…
+                } @else {
+                  Suscribirme ahora
+                  <span class="material-symbols-outlined">arrow_forward</span>
+                }
+              </button>
             }
 
-            <button
-              type="button"
-              class="btn-subscribe"
-              (click)="subscribe()"
-              [disabled]="processing()">
-              @if (processing()) {
-                Procesando pago…
-              } @else {
-                Suscribirme ahora
-                <span class="material-symbols-outlined">arrow_forward</span>
-              }
-            </button>
             <p class="secure">
               <span class="material-symbols-outlined">lock</span>
               Pago 100% seguro procesado por ePayco
@@ -175,7 +233,6 @@ declare const ePayco: any;
         #050505;
       z-index: 0;
     }
-
     .top-nav {
       position: relative;
       z-index: 2;
@@ -216,6 +273,12 @@ declare const ePayco: any;
       border-radius: 100px;
       font-size: 12px;
       color: #a1a1aa;
+      text-decoration: none;
+    }
+    .user-chip.as-link:hover {
+      background: rgba(255,59,48,0.12);
+      border-color: #ff3b30;
+      color: #fff;
     }
     .user-chip .material-symbols-outlined { font-size: 15px; }
 
@@ -404,10 +467,7 @@ declare const ePayco: any;
       line-height: 1;
       margin: 4px 0;
     }
-    .price-sub {
-      font-size: 12px;
-      color: #71717a;
-    }
+    .price-sub { font-size: 12px; color: #71717a; }
     .badge {
       font-size: 48px;
       color: #ff6b6b;
@@ -417,7 +477,7 @@ declare const ePayco: any;
     .perks {
       list-style: none;
       padding: 0;
-      margin: 0 0 24px;
+      margin: 0 0 28px;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -429,10 +489,59 @@ declare const ePayco: any;
       font-size: 14px;
       color: #d4d4d8;
     }
-    .perks .material-symbols-outlined {
-      color: #4ade80;
-      font-size: 20px;
+    .perks .material-symbols-outlined { color: #4ade80; font-size: 20px; }
+
+    .guest-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 24px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      margin-bottom: 20px;
     }
+    .form-intro {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #a1a1aa;
+      line-height: 1.55;
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field .label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #d4d4d8;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      transition: all 0.2s;
+    }
+    .input-wrap:focus-within {
+      border-color: #ff3b30;
+      background: rgba(255,59,48,0.05);
+      box-shadow: 0 0 0 4px rgba(255,59,48,0.12);
+    }
+    .input-wrap .material-symbols-outlined { font-size: 19px; color: #71717a; }
+    .input-wrap input {
+      flex: 1;
+      padding: 13px 0;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .input-wrap input::placeholder { color: #52525b; }
 
     .error-box {
       display: flex;
@@ -500,13 +609,20 @@ export class XzoomHostLandingComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly fb = inject(FormBuilder);
 
   readonly host = signal<XzoomHost | null>(null);
   readonly loading = signal(true);
   readonly processing = signal(false);
   readonly errorMsg = signal<string | null>(null);
 
+  readonly isLoggedIn = computed(() => !!this.auth.getCurrentUser());
   readonly currentUserEmail = computed(() => this.auth.getCurrentUser()?.email ?? null);
+
+  readonly form: FormGroup = this.fb.group({
+    fullName: ['', [Validators.required, Validators.minLength(2)]],
+    email: ['', [Validators.required, Validators.email]],
+  });
 
   readonly pitchVideoEmbedUrl = computed<SafeResourceUrl | null>(() => {
     const url = this.host()?.pitch_video_url;
@@ -522,15 +638,9 @@ export class XzoomHostLandingComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
-    // Si no está autenticado, mandar al form de auth con invite_host=slug
     const slug = this.route.snapshot.paramMap.get('slug') ?? '';
     if (!slug) {
       this.loading.set(false);
-      return;
-    }
-
-    if (!this.auth.isAuthenticated()) {
-      this.router.navigate(['/xzoom/auth'], { queryParams: { invite_host: slug } });
       return;
     }
 
@@ -544,7 +654,27 @@ export class XzoomHostLandingComponent implements OnInit {
     }
   }
 
-  async subscribe(): Promise<void> {
+  async onSubscribe(): Promise<void> {
+    const h = this.host();
+    if (!h || this.processing() || this.form.invalid) return;
+    this.errorMsg.set(null);
+    this.processing.set(true);
+    try {
+      const { fullName, email } = this.form.value;
+      const params = await this.xzoom.createPublicSubscriptionCheckout({
+        hostSlug: h.slug,
+        email: (email as string).trim().toLowerCase(),
+        fullName: (fullName as string).trim(),
+      });
+      this.openEpaycoCheckout(params);
+    } catch (err: any) {
+      this.errorMsg.set(err?.message ?? 'No pudimos iniciar el pago.');
+    } finally {
+      this.processing.set(false);
+    }
+  }
+
+  async onSubscribeAsUser(): Promise<void> {
     const h = this.host();
     if (!h || this.processing()) return;
     this.errorMsg.set(null);
@@ -592,24 +722,19 @@ export class XzoomHostLandingComponent implements OnInit {
   private toEmbedUrl(url: string): string | null {
     try {
       const u = new URL(url);
-      // Ya es embed
       if (u.pathname.startsWith('/embed/')) return url;
-      // YouTube watch
       if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) {
         return `https://www.youtube.com/embed/${u.searchParams.get('v')}`;
       }
-      // youtu.be corto
       if (u.hostname === 'youtu.be') {
         return `https://www.youtube.com/embed${u.pathname}`;
       }
-      // Vimeo
       if (u.hostname.includes('vimeo.com')) {
         const id = u.pathname.replace(/\//g, '');
         if (/^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
       }
-      // mp4 directo: no es iframe
       if (/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return null;
-      return url; // cualquier otra URL la intentamos como iframe
+      return url;
     } catch {
       return null;
     }

@@ -13,7 +13,24 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const EPAYCO_PUBLIC_KEY    = Deno.env.get('EPAYCO_PUBLIC_KEY') ?? '';
 const EPAYCO_TEST          = Deno.env.get('EPAYCO_TEST') ?? 'true';
 
-const DEFAULT_COMMISSION_RATE = 0.15;
+const DEFAULT_COMMISSION_RATE = 0.12;
+
+async function getCommissionRate(supabase: any): Promise<number> {
+  try {
+    const { data } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'xzoom_commission_rate')
+      .single();
+    const raw = (data?.value ?? '').toString().trim();
+    if (!raw) return DEFAULT_COMMISSION_RATE;
+    const parsed = parseFloat(raw);
+    if (isNaN(parsed) || parsed < 0 || parsed >= 1) return DEFAULT_COMMISSION_RATE;
+    return parsed;
+  } catch {
+    return DEFAULT_COMMISSION_RATE;
+  }
+}
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -95,7 +112,7 @@ Deno.serve(async (req) => {
     }
 
     const copAmount = host.subscriber_price_cop;
-    const commissionRate = DEFAULT_COMMISSION_RATE;
+    const commissionRate = await getCommissionRate(supabase);
     const platformCop = Math.floor(copAmount * commissionRate);
     const hostEarningsCop = copAmount - platformCop;
 

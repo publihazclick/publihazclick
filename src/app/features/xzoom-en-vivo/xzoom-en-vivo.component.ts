@@ -37,7 +37,6 @@ type View =
   | 'loading'
   | 'onboarding'
   | 'host_dashboard'
-  | 'host_subscription_required'
   | 'viewer_dashboard'
   | 'live_room';
 
@@ -164,11 +163,8 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
         this.recordings.set(recs);
         this.subscribers.set(subs);
 
-        if (this.hasActiveHostSub()) {
-          this.view.set('host_dashboard');
-        } else {
-          this.view.set('host_subscription_required');
-        }
+        // Sin paywall: el host entra directo al dashboard tras crear su perfil
+        this.view.set('host_dashboard');
       } else {
         // No es anfitrión — cargar sus suscripciones como viewer
         const mine = await this.xzoom.listMyViewerSubscriptions(uid);
@@ -204,7 +200,8 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
         category: this.formCategory() || undefined,
       });
       this.host.set(host);
-      this.view.set('host_subscription_required');
+      // Recargar todo el estado y caer en host_dashboard (sin paywall)
+      await this.loadAll();
     } catch (err: any) {
       this.errorMsg.set(err?.message ?? 'Error creando perfil');
     } finally {
@@ -213,23 +210,8 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // PAGAR SUSCRIPCIÓN DE ANFITRIÓN (ePayco checkout)
+  // SUSCRIBIRSE A OTRO ANFITRIÓN (como viewer autenticado)
   // ─────────────────────────────────────────────────────────────
-  async payHostSubscription(): Promise<void> {
-    this.loading.set(true);
-    this.errorMsg.set(null);
-    try {
-      // Precio en COP: aproximado $48 USD × $4100 = $196.800
-      const copAmount = 200000;
-      const params = await this.xzoom.createHostSubscriptionCheckout(copAmount);
-      this.openEpaycoCheckout(params);
-    } catch (err: any) {
-      this.errorMsg.set(err?.message ?? 'Error iniciando pago');
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
   async paySubscribeToHost(hostId: string): Promise<void> {
     this.loading.set(true);
     this.errorMsg.set(null);

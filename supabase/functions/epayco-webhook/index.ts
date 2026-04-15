@@ -157,6 +157,204 @@ function buildCourseConfirmationHtml(params: {
 </body></html>`;
 }
 
+// ── Email: activación XZOOM EN VIVO para visitante que pagó sin cuenta ─────
+function buildXzoomActivationHtml(params: {
+  guestName: string;
+  hostName: string;
+  activationUrl: string;
+  amountCOP: number;
+}): string {
+  const { guestName, hostName, activationUrl, amountCOP } = params;
+  const price = new Intl.NumberFormat('es-CO', {
+    style: 'currency', currency: 'COP', minimumFractionDigits: 0,
+  }).format(amountCOP);
+
+  return `<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><title>Activa tu cuenta XZOOM EN VIVO</title></head>
+<body style="margin:0;padding:0;background:#050505;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#050505"><tr><td align="center" style="padding:40px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+  <tr><td align="center" style="padding-bottom:28px;">
+    <img src="https://www.publihazclick.com/logo.webp" alt="PubliHazClick" height="48" style="display:block;height:48px;width:auto;border:0;">
+  </td></tr>
+  <tr><td bgcolor="#0a0a0a" style="border-radius:20px;border:1px solid #ff3b3030;overflow:hidden;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td bgcolor="#ff3b30" style="height:4px;font-size:1px;line-height:1px;">&nbsp;</td></tr>
+      <tr><td style="padding:40px 36px 36px;">
+        <table cellpadding="0" cellspacing="0" style="margin-bottom:22px;">
+          <tr><td bgcolor="#ff3b3015" style="border-radius:100px;border:1px solid #ff3b3040;padding:6px 18px;">
+            <span style="color:#ff6b6b;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">✦ PAGO CONFIRMADO ✦</span>
+          </td></tr>
+        </table>
+        <h1 style="color:#fff;font-size:26px;font-weight:900;margin:0 0 14px;line-height:1.2;">
+          ¡Bienvenido a XZOOM EN VIVO, ${guestName}!
+        </h1>
+        <p style="color:#a1a1aa;font-size:15px;line-height:1.65;margin:0 0 18px;">
+          Tu suscripción mensual a <strong style="color:#ff6b6b;">${hostName}</strong> fue activada correctamente.
+        </p>
+        <p style="color:#a1a1aa;font-size:14px;line-height:1.65;margin:0 0 28px;">
+          Creamos una cuenta para ti con este correo. Solo falta un paso: hacé clic en el botón de abajo para definir tu contraseña y entrar a la sala en vivo.
+        </p>
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;"><tr><td bgcolor="#ff3b30" style="border-radius:100px;">
+          <a href="${activationUrl}" style="display:inline-block;padding:16px 34px;color:#fff;font-size:14px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;text-decoration:none;">
+            Activar mi cuenta →
+          </a>
+        </td></tr></table>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border-top:1px solid #ffffff10;padding-top:22px;">
+          <tr><td style="padding:6px 0;">
+            <span style="color:#71717a;font-size:12px;">Anfitrión:</span>
+            <strong style="color:#fff;font-size:13px;margin-left:8px;">${hostName}</strong>
+          </td></tr>
+          <tr><td style="padding:6px 0;">
+            <span style="color:#71717a;font-size:12px;">Pagaste:</span>
+            <strong style="color:#ff6b6b;font-size:13px;margin-left:8px;">${price} / mes</strong>
+          </td></tr>
+        </table>
+        <p style="color:#52525b;font-size:11px;line-height:1.55;margin:26px 0 0;">
+          Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+          <span style="color:#71717a;word-break:break-all;">${activationUrl}</span>
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+  <tr><td align="center" style="padding:28px 0 0;color:#52525b;font-size:11px;">
+    © 2026 PubliHazClick · XZOOM EN VIVO
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+// Genera link de recovery + crea auth user si no existe (para suscripciones guest)
+async function activateGuestSubscription(
+  supabase: any,
+  subscriptionId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data: sub } = await supabase
+    .from('xzoom_viewer_subscriptions')
+    .select('id, viewer_user_id, guest_email, guest_full_name, host_id, price_cop, activation_sent_at')
+    .eq('id', subscriptionId)
+    .maybeSingle();
+
+  if (!sub) return { ok: false, reason: 'subscription_not_found' };
+  if (sub.viewer_user_id) return { ok: true, reason: 'already_linked' };
+  if (!sub.guest_email) return { ok: false, reason: 'not_a_guest' };
+  if (sub.activation_sent_at) return { ok: true, reason: 'already_sent' };
+
+  const email    = (sub.guest_email as string).toLowerCase();
+  const fullName = (sub.guest_full_name as string | null) ?? 'Suscriptor';
+
+  // Buscar host para el email
+  const { data: host } = await supabase
+    .from('xzoom_hosts')
+    .select('display_name, slug')
+    .eq('id', sub.host_id)
+    .maybeSingle();
+  const hostName = host?.display_name ?? 'el anfitrión';
+  const hostSlug = host?.slug ?? '';
+
+  // 1. Buscar si el usuario ya existe en auth.users
+  let userId: string | null = null;
+  try {
+    const { data: existing } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1, email });
+    if (existing?.users?.length) userId = existing.users[0].id;
+  } catch (e) {
+    console.warn('[xzoom guest] listUsers falló, intentando crear:', e);
+  }
+
+  // 2. Si no existe, crearlo
+  if (!userId) {
+    try {
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: { full_name: fullName, source: 'xzoom_guest_subscription' },
+      });
+      if (createErr) {
+        // Puede ser duplicado (race): intentar leer de nuevo
+        console.warn('[xzoom guest] createUser err:', createErr.message);
+        const { data: retry } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1, email });
+        if (retry?.users?.length) userId = retry.users[0].id;
+      } else {
+        userId = created?.user?.id ?? null;
+      }
+    } catch (e) {
+      console.error('[xzoom guest] Excepción creando auth user:', e);
+    }
+  }
+
+  if (!userId) {
+    return { ok: false, reason: 'create_user_failed' };
+  }
+
+  // 3. Generar link de recovery (para que setee su clave)
+  let activationUrl = `${APP_URL}/xzoom`;
+  try {
+    const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: {
+        redirectTo: hostSlug
+          ? `${APP_URL}/xzoom/h/${hostSlug}`
+          : `${APP_URL}/xzoom`,
+      },
+    });
+    if (linkErr) {
+      console.error('[xzoom guest] generateLink recovery err:', linkErr.message);
+    }
+    const actionLink = (linkData as any)?.properties?.action_link ?? (linkData as any)?.action_link;
+    if (actionLink) activationUrl = actionLink;
+  } catch (e) {
+    console.error('[xzoom guest] Excepción generateLink:', e);
+  }
+
+  // 4. Vincular sub al nuevo user_id
+  try {
+    await supabase.rpc('xzoom_link_guest_subscription', {
+      p_subscription_id: subscriptionId,
+      p_user_id: userId,
+    });
+  } catch (e) {
+    console.error('[xzoom guest] link RPC err:', e);
+  }
+
+  // 5. Enviar email con Resend
+  if (RESEND_API_KEY) {
+    try {
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: RESEND_FROM,
+          to: [email],
+          subject: `✅ Tu suscripción a ${hostName} está lista — activa tu cuenta`,
+          html: buildXzoomActivationHtml({
+            guestName: fullName,
+            hostName,
+            activationUrl,
+            amountCOP: sub.price_cop,
+          }),
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        console.error('[xzoom guest] Resend err:', resp.status, txt);
+      } else {
+        console.log(`[xzoom guest] Email de activación enviado a ${email}`);
+      }
+    } catch (e) {
+      console.error('[xzoom guest] Excepción Resend:', e);
+    }
+  } else {
+    console.warn('[xzoom guest] RESEND_API_KEY no configurado; no se envió email');
+  }
+
+  return { ok: true };
+}
+
 // SHA256 como hex
 async function sha256Hex(input: string): Promise<string> {
   const data = new TextEncoder().encode(input);
@@ -485,7 +683,15 @@ Deno.serve(async (req) => {
         return fail('XZOOM viewer subscription activation failed', 500);
       }
 
-      // Acreditar ganancias (85% por defecto) al balance del anfitrión
+      // Si es una sub GUEST (sin viewer_user_id), crear el auth user + enviar link de activación
+      try {
+        const guestRes = await activateGuestSubscription(supabase, x_extra1);
+        console.log('[xzoom guest activation]', JSON.stringify(guestRes));
+      } catch (e) {
+        console.error('[xzoom guest activation] excepción:', e);
+      }
+
+      // Acreditar ganancias al balance del anfitrión (usa host_earnings_cop ya calculado)
       try {
         const { data: creditRes, error: creditErr } = await supabase.rpc(
           'xzoom_credit_host_earnings',

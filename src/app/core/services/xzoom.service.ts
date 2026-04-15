@@ -149,6 +149,31 @@ export class XzoomService {
     return data;
   }
 
+  /**
+   * Suscripción pública desde la landing privada del anfitrión.
+   * No requiere usuario autenticado. Al validar el pago, el webhook crea el
+   * auth user con el email indicado y envía un link para setear la clave.
+   */
+  async createPublicSubscriptionCheckout(params: {
+    hostSlug: string;
+    email: string;
+    fullName: string;
+  }): Promise<any> {
+    const { data, error } = await this.supabase.functions.invoke(
+      'create-xzoom-public-subscription',
+      {
+        body: {
+          host_slug: params.hostSlug,
+          email: params.email,
+          full_name: params.fullName,
+        },
+      },
+    );
+    if (error) throw error;
+    if ((data as any)?.error) throw new Error((data as any).error);
+    return data;
+  }
+
   async listMyViewerSubscriptions(userId: string): Promise<XzoomViewerSubscription[]> {
     const { data, error } = await this.supabase
       .from('xzoom_viewer_subscriptions')
