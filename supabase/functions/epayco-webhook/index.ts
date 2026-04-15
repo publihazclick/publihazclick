@@ -431,6 +431,64 @@ Deno.serve(async (req) => {
       return ok('fb_subscription_approved');
     }
 
+    // ── 4A-6. Si es suscripción XZOOM EN VIVO (anfitrión) ───────────────────
+    if (x_extra3 === 'xzoom_host_subscription' && x_extra1) {
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setDate(expires.getDate() + 30);
+
+      const { error: xhErr } = await supabase
+        .from('xzoom_host_subscriptions')
+        .update({
+          status: 'active',
+          started_at: now.toISOString(),
+          expires_at: expires.toISOString(),
+          payment_reference: x_ref_payco,
+        })
+        .eq('id', x_extra1);
+
+      if (xhErr) {
+        console.error('Error activando suscripción XZOOM host:', xhErr);
+        return fail('XZOOM host subscription activation failed', 500);
+      }
+
+      // Activar el host (is_active = TRUE) — x_extra2 trae el host_id
+      if (x_extra2) {
+        await supabase
+          .from('xzoom_hosts')
+          .update({ is_active: true })
+          .eq('id', x_extra2);
+      }
+
+      console.log(`Suscripción XZOOM host ${x_extra1} activada — ref: ${x_ref_payco}`);
+      return ok('xzoom_host_subscription_approved');
+    }
+
+    // ── 4A-7. Si es suscripción XZOOM EN VIVO (suscriptor a anfitrión) ──────
+    if (x_extra3 === 'xzoom_viewer_subscription' && x_extra1) {
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setDate(expires.getDate() + 30);
+
+      const { error: xvErr } = await supabase
+        .from('xzoom_viewer_subscriptions')
+        .update({
+          status: 'active',
+          started_at: now.toISOString(),
+          expires_at: expires.toISOString(),
+          payment_reference: x_ref_payco,
+        })
+        .eq('id', x_extra1);
+
+      if (xvErr) {
+        console.error('Error activando suscripción XZOOM viewer:', xvErr);
+        return fail('XZOOM viewer subscription activation failed', 500);
+      }
+
+      console.log(`Suscripción XZOOM viewer ${x_extra1} activada — ref: ${x_ref_payco}`);
+      return ok('xzoom_viewer_subscription_approved');
+    }
+
     // ── 4B. Si es compra de curso ────────────────────────────────────────────
     if (x_extra3 === 'curso_purchase' && x_extra1) {
       // Obtener datos de la compra antes de completar
