@@ -141,13 +141,34 @@ export class XzoomService {
   }
 
   async createViewerSubscriptionCheckout(hostId: string): Promise<any> {
-    const { data, error } = await this.supabase.functions.invoke(
-      'create-xzoom-viewer-subscription',
-      { body: { host_id: hostId } },
-    );
-    if (error) throw error;
-    if ((data as any)?.error) throw new Error((data as any).error);
-    return data;
+    // fetch directo (igual que getLivekitToken) para garantizar que el header
+    // Authorization siempre salga con el access_token del usuario.
+    const { data: sess } = await this.supabase.auth.getSession();
+    const accessToken = sess?.session?.access_token;
+    if (!accessToken) {
+      throw new Error('Sesión no iniciada. Cierra sesión e inicia sesión nuevamente.');
+    }
+    const url = `${environment.supabase.url}/functions/v1/create-xzoom-viewer-subscription`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: environment.supabase.anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ host_id: hostId }),
+    });
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.error('[createViewerSubscriptionCheckout] HTTP', resp.status, text);
+      let msg = `Error ${resp.status}`;
+      try {
+        const j = JSON.parse(text);
+        msg = j.error ?? j.message ?? msg;
+      } catch { /* noop */ }
+      throw new Error(msg);
+    }
+    return JSON.parse(text);
   }
 
   /**

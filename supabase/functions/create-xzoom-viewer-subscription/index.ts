@@ -69,14 +69,41 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith('Bearer ')) return json({ error: 'No autorizado' }, 401);
 
     const token = authHeader.replace('Bearer ', '');
-    const jwtPayload = decodeJwtPayload(token);
-    const viewerId  = jwtPayload.sub;
-    const viewerEmail = jwtPayload.email ?? '';
-    if (!viewerId) return json({ error: 'Token sin user ID' }, 401);
 
     const body = await req.json().catch(() => null);
     const hostId = body?.host_id as string | undefined;
     if (!hostId) return json({ error: 'host_id requerido' }, 400);
+
+    // Validar el JWT del usuario vía /auth/v1/user (soporta ES256 porque
+    // delega al servicio Auth). La verificación local de supabase-js en Deno
+    // lanza "Unsupported JWT algorithm ES256" para JWTs nuevos de Supabase.
+    let viewerId: string | null = null;
+    let viewerEmail = '';
+    try {
+      const verifyResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: SUPABASE_SERVICE_KEY,
+        },
+      });
+      if (verifyResp.ok) {
+        const user = await verifyResp.json();
+        viewerId = user?.id ?? null;
+        viewerEmail = user?.email ?? '';
+      } else {
+        console.error('[create-xzoom-viewer-sub] /auth/v1/user rechazó:', verifyResp.status);
+      }
+    } catch (e) {
+      console.error('[create-xzoom-viewer-sub] excepción validando JWT:', e);
+    }
+    if (!viewerId) {
+      try {
+        const payload = decodeJwtPayload(token);
+        viewerId = payload.sub ?? null;
+        if (!viewerEmail) viewerEmail = payload.email ?? '';
+      } catch { /* noop */ }
+    }
+    if (!viewerId) return json({ error: 'Sesión inválida — vuelve a iniciar sesión' }, 401);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 

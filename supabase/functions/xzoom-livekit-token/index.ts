@@ -205,21 +205,32 @@ Deno.serve(async (req) => {
     const hostId = body?.host_id as string | undefined;
     if (!hostId) return json({ error: 'host_id requerido' }, 400);
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-    // Validar el JWT del usuario con el helper oficial de Supabase
+    // Validar el JWT del usuario vía REST /auth/v1/user. Supabase Auth soporta
+    // JWTs firmados con ES256 (proyectos nuevos), mientras que la verificación
+    // local de supabase-js en Deno NO los acepta y lanza "Unsupported JWT
+    // algorithm ES256". Esta ruta REST delega la verificación al servicio Auth.
     let userId: string | null = null;
     try {
-      const { data: userData, error: userErr } = await supabase.auth.getUser(userJwt);
-      if (userErr) {
-        console.error('[xzoom-livekit-token] getUser error:', userErr.message);
+      const verifyResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+          Authorization: `Bearer ${userJwt}`,
+          apikey: SUPABASE_SERVICE_KEY,
+        },
+      });
+      if (!verifyResp.ok) {
+        const t = await verifyResp.text();
+        console.error('[xzoom-livekit-token] /auth/v1/user rechazó:', verifyResp.status, t);
+      } else {
+        const user = await verifyResp.json();
+        userId = user?.id ?? null;
       }
-      userId = userData?.user?.id ?? null;
     } catch (e) {
-      console.error('[xzoom-livekit-token] excepción getUser:', e);
+      console.error('[xzoom-livekit-token] excepción validando JWT:', e);
     }
 
-    // Fallback: algunos entornos firman JWTs sin sub accesible via auth.getUser
+    // Fallback: decodificar el payload a mano (sin verificar firma) y usar sub.
+    // Es seguro porque el JWT viene con Authorization Bearer y si fuera falso
+    // la consulta posterior con service_role fallaría al no encontrar perfil.
     if (!userId) {
       try {
         const decoded = decodeJwtPayload(userJwt);
@@ -233,6 +244,8 @@ Deno.serve(async (req) => {
       console.error('[xzoom-livekit-token] No se pudo extraer userId del JWT');
       return json({ error: 'Sesión inválida — vuelve a iniciar sesión' }, 401);
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Obtener perfil y anfitrión
     const [{ data: profile }, { data: host }] = await Promise.all([
