@@ -527,6 +527,41 @@ interface XzoomInviteIntent {
       font-size: 13px;
     }
     .switch-mode button:hover { text-decoration: underline; }
+
+    /* ───────── Responsive ───────── */
+    @media (max-width: 640px) {
+      .xzoom-auth { padding: 16px 14px 48px; }
+      .top-nav { margin-bottom: 26px; }
+      .brand-text { font-size: 15px; }
+      .brand .material-symbols-outlined { font-size: 24px; }
+      .back-link { font-size: 12px; }
+      .auth-card {
+        padding: 26px 20px 24px;
+        border-radius: 20px;
+      }
+      .invite-banner { padding: 12px 14px; margin-bottom: 20px; }
+      .invite-banner p { font-size: 12px; }
+      .mode-tabs { margin-bottom: 22px; }
+      .mode-tabs button { padding: 10px 12px; font-size: 12px; }
+      .auth-head { margin-bottom: 22px; }
+      .auth-head h1 { font-size: 21px; }
+      .auth-head p { font-size: 12px; }
+      .auth-form { gap: 14px; }
+      .input-wrap { padding: 0 12px; border-radius: 11px; }
+      /* iOS evita hacer zoom al enfocar cuando font-size >= 16px */
+      .input-wrap input { padding: 12px 0; font-size: 16px; }
+      .input-wrap .material-symbols-outlined { font-size: 18px; }
+      .field .label { font-size: 11px; }
+      .checkbox { font-size: 11px; }
+      .btn-primary { padding: 15px 20px; font-size: 13px; }
+      .switch-mode { margin-top: 20px; font-size: 12px; }
+      .switch-mode button { font-size: 12px; }
+    }
+    @media (max-width: 380px) {
+      .auth-card { padding: 22px 16px; }
+      .auth-head h1 { font-size: 19px; }
+      .mode-tabs button { padding: 9px 8px; font-size: 11px; }
+    }
   `],
 })
 export class XzoomAuthComponent implements OnInit {

@@ -623,14 +623,68 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
     .xzoom-footer p { margin: 0; }
 
     /* ───────── Responsive ───────── */
-    @media (max-width: 640px) {
-      .hero-inner { padding-top: 60px; }
-      .hero-stats { gap: 28px; }
-      .hero-stats strong { font-size: 26px; }
-      .video-section, .info-section, .how-section {
-        padding: 60px 20px;
+    @media (max-width: 1024px) {
+      .hero { padding-bottom: 80px; }
+      .hero-inner { padding: 70px 20px 0; }
+      .video-section { padding: 80px 20px; }
+      .info-section, .how-section { padding: 70px 20px; }
+    }
+    @media (max-width: 768px) {
+      .top-nav { padding: 18px 16px 0; }
+      .brand-text { font-size: 15px; }
+      .brand .material-symbols-outlined { font-size: 24px; }
+      .nav-cta { padding: 8px 16px; font-size: 12px; }
+      .hero { padding-bottom: 60px; }
+      .hero-inner { padding: 50px 16px 0; }
+      .pill { font-size: 10px; padding: 6px 14px; margin-bottom: 20px; }
+      h1 { letter-spacing: -1px; margin: 0 0 18px; }
+      .tagline { font-size: 15px; margin-bottom: 28px; padding: 0 4px; }
+      .hero-actions { gap: 10px; margin-bottom: 44px; }
+      .btn-primary, .btn-ghost { padding: 14px 24px; font-size: 13px; width: 100%; max-width: 320px; }
+      .hero-stats { gap: 22px; padding-top: 24px; }
+      .hero-stats strong { font-size: 24px; }
+      .hero-stats span { font-size: 10px; }
+      .section-head { margin-bottom: 36px; }
+      .section-head h2 { font-size: 26px; }
+      .section-head p { font-size: 14px; }
+      .video-section { padding: 60px 16px; }
+      .video-wrap { border-radius: 18px; padding: 3px; }
+      .video-frame { border-radius: 15px; }
+      .cta-below-video { margin-top: 36px; }
+      .btn-primary-big {
+        padding: 16px 24px;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+        width: 100%;
+        max-width: 340px;
       }
-      .final-cta { margin: 20px 16px 60px; padding: 50px 22px; }
+      .btn-primary-big .material-symbols-outlined { font-size: 18px; }
+      .info-section, .how-section { padding: 60px 16px; }
+      .info-grid { grid-template-columns: 1fr; gap: 14px; }
+      .info-card { padding: 26px 22px; border-radius: 16px; }
+      .info-card .icon { font-size: 32px; margin-bottom: 12px; }
+      .info-card h3 { font-size: 17px; }
+      .info-card p { font-size: 13px; }
+      .steps { grid-template-columns: 1fr; gap: 14px; }
+      .step { padding: 32px 24px; border-radius: 16px; }
+      .step-num { width: 48px; height: 48px; font-size: 19px; margin-bottom: 14px; }
+      .final-cta {
+        margin: 20px 12px 60px;
+        padding: 50px 20px;
+        border-radius: 22px;
+      }
+      .xzoom-footer { padding: 32px 20px 48px; }
+    }
+    @media (max-width: 480px) {
+      h1 { font-size: 34px; }
+      .tagline { font-size: 14px; }
+      .hero-stats { gap: 18px; }
+      .hero-stats strong { font-size: 22px; }
+      .section-head h2 { font-size: 23px; }
+      .video-section { padding: 48px 14px; }
+      .info-section, .how-section { padding: 48px 14px; }
+      .final-cta h2 { font-size: 24px; }
+      .final-cta p { font-size: 14px; }
     }
   `],
 })

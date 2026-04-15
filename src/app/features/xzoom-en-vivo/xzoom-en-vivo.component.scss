@@ -390,3 +390,120 @@
   padding: 60px;
   color: #94a3b8;
 }
+
+/* ───────── Responsive ───────── */
+@media (max-width: 768px) {
+  :host { padding: 14px; }
+
+  .xzoom-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+  }
+  .xzoom-brand .icon { font-size: 30px; }
+  .xzoom-brand h1 { font-size: 19px; letter-spacing: 0.5px; }
+  .xzoom-host-badge { align-items: flex-start; font-size: 12px; }
+
+  .xzoom-alert {
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  .xzoom-card {
+    padding: 18px 16px;
+    border-radius: 14px;
+    margin-bottom: 14px;
+
+    h2 { font-size: 17px; }
+    h3 { font-size: 14px; }
+    h4 { font-size: 11px; }
+    .muted { font-size: 13px; }
+
+    label { margin: 10px 0 4px; font-size: 11px; }
+    /* iOS: font-size >= 16px evita el zoom al enfocar inputs */
+    input, textarea, select {
+      padding: 11px 12px;
+      font-size: 16px;
+      border-radius: 9px;
+    }
+    .row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+  }
+
+  .subscription-gate .price-box strong { font-size: 26px; }
+
+  .btn-primary, .btn-secondary, .btn-live {
+    padding: 13px 20px;
+    font-size: 13px;
+    border-radius: 11px;
+  }
+  .btn-live { padding: 15px; font-size: 15px; }
+
+  .xzoom-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+
+    .stat {
+      padding: 12px;
+      strong { font-size: 20px; }
+    }
+  }
+
+  .xzoom-sub-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+
+    button { padding: 5px 10px; font-size: 11px; }
+  }
+
+  /* LIVE ROOM */
+  .xzoom-live-room {
+    .live-header {
+      padding: 12px 14px;
+      gap: 10px;
+      flex-wrap: wrap;
+
+      h2 { font-size: 14px; letter-spacing: 0.5px; }
+      .btn-leave { padding: 7px 12px; font-size: 12px; }
+    }
+
+    .live-video {
+      min-height: 280px;
+      border-radius: 10px;
+      .local-media video, .remote-media video { max-height: 60vh; }
+    }
+
+    .live-controls {
+      gap: 10px;
+      margin-top: 14px;
+
+      button {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+      }
+    }
+  }
+
+  .xzoom-loading { padding: 40px 20px; font-size: 14px; }
+}
+
+@media (max-width: 420px) {
+  :host { padding: 10px; }
+  .xzoom-brand h1 { font-size: 17px; }
+  .xzoom-card { padding: 16px 14px; }
+  .stats { grid-template-columns: 1fr; }
+}

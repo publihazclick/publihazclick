@@ -596,10 +596,61 @@ declare const ePayco: any;
     }
     .secure .material-symbols-outlined { font-size: 14px; }
 
-    @media (max-width: 640px) {
-      .pitch-head { flex-direction: column; text-align: center; gap: 14px; }
-      .price-row { flex-direction: column-reverse; align-items: center; text-align: center; gap: 16px; }
-      .subscribe-card, .bio-block { padding: 28px 22px; }
+    @media (max-width: 768px) {
+      .host-landing { padding: 16px 14px 64px; }
+      .top-nav { margin-bottom: 28px; }
+      .brand-text { font-size: 15px; }
+      .brand .material-symbols-outlined { font-size: 24px; }
+      .user-chip { padding: 7px 12px; font-size: 11px; }
+      .pitch-head { flex-direction: column; text-align: center; gap: 16px; margin-bottom: 26px; }
+      .avatar { width: 72px; height: 72px; }
+      .avatar .material-symbols-outlined { font-size: 38px; }
+      .pitch-meta .eyebrow { font-size: 10px; letter-spacing: 1.5px; }
+      .pitch-meta h1 { font-size: 26px; }
+      .video-wrap { margin-bottom: 32px; border-radius: 20px; padding: 3px; }
+      .video-frame { border-radius: 17px; }
+      .bio-block {
+        padding: 24px 20px;
+        border-radius: 16px;
+        margin-bottom: 26px;
+      }
+      .bio-block h3 { font-size: 13px; }
+      .bio-block p { font-size: 14px; }
+      .subscribe-card {
+        padding: 28px 20px;
+        border-radius: 20px;
+      }
+      .price-row {
+        flex-direction: column-reverse;
+        align-items: center;
+        text-align: center;
+        gap: 14px;
+        margin-bottom: 22px;
+        padding-bottom: 22px;
+      }
+      .price { font-size: 34px; }
+      .badge { font-size: 42px; }
+      .perks { gap: 10px; margin-bottom: 22px; }
+      .perks li { font-size: 13px; }
+      .perks .material-symbols-outlined { font-size: 18px; }
+      .guest-form {
+        padding: 20px 18px;
+        border-radius: 16px;
+        gap: 12px;
+      }
+      .form-intro { font-size: 12px; }
+      .field .label { font-size: 10px; }
+      .input-wrap { padding: 0 12px; border-radius: 11px; }
+      /* iOS: font-size >= 16px evita el zoom al enfocar */
+      .input-wrap input { padding: 12px 0; font-size: 16px; }
+      .input-wrap .material-symbols-outlined { font-size: 18px; }
+      .btn-subscribe, .btn-primary { padding: 16px 20px; font-size: 13px; }
+      .secure { font-size: 11px; }
+    }
+    @media (max-width: 380px) {
+      .pitch-meta h1 { font-size: 22px; }
+      .price { font-size: 30px; }
+      .subscribe-card, .bio-block, .guest-form { padding: 20px 16px; }
     }
   `],
 })
