@@ -1,19 +1,13 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  OnInit,
   computed,
   inject,
-  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { XzoomService } from '../../core/services/xzoom.service';
-import type { XzoomHost } from '../../core/models/xzoom.model';
-
-declare const ePayco: any;
 
 // Video explicativo de la plataforma. Reemplazar por el embed real cuando esté listo.
 const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ';
@@ -53,9 +47,11 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
             con los creadores que te <span class="gradient">inspiran</span>
           </h1>
           <p class="tagline">
-            XZOOM EN VIVO es la plataforma premium de transmisiones privadas de Publihazclick.
-            Suscríbete a tus anfitriones favoritos, accede a sesiones en vivo y mira todas
-            las grabaciones cuando quieras.
+            XZOOM EN VIVO es la plataforma premium de transmisiones privadas.
+            Suscríbete a tus anfitriones favoritos, accede a sesiones en vivo y mira
+            todas las grabaciones cuando quieras. O crea tu cuenta como anfitrión y
+            produce contenido de valor para que tus seguidores adquieran suscripción
+            y vean tus transmisiones en vivo o tus grabaciones.
           </p>
           <div class="hero-actions">
             <a routerLink="/xzoom/auth" class="btn-primary">
@@ -129,8 +125,8 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
             <span class="material-symbols-outlined icon">auto_awesome</span>
             <h3>WebRTC de última generación</h3>
             <p>
-              Impulsado por LiveKit Cloud. Pantalla compartida, chat en vivo,
-              participantes simultáneos y calidad HD garantizada.
+              Impulsado por la tecnología más robusta del mercado. Pantalla compartida,
+              chat en vivo, participantes simultáneos y calidad HD garantizada.
             </p>
           </article>
           <article class="info-card">
@@ -159,10 +155,10 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
           </article>
           <article class="info-card">
             <span class="material-symbols-outlined icon">paid</span>
-            <h3>Pagos con ePayco</h3>
+            <h3>Pagos en línea</h3>
             <p>
-              Cobros locales en pesos colombianos. Pagos seguros, transparentes
-              y con liquidación directa al balance de Publihazclick.
+              Cobros a nivel mundial. Pagos seguros, transparentes y con
+              liquidación directa a tu balance de XZOOM EN VIVO.
             </p>
           </article>
         </div>
@@ -182,70 +178,17 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
           </div>
           <div class="step">
             <div class="step-num">2</div>
-            <h3>Elige un anfitrión</h3>
-            <p>Explora el directorio y suscríbete al creador que más te interese.</p>
+            <h3>Pide el link</h3>
+            <p>
+              Contacta a tu mentor (anfitrión) y dile que te envíe el link de su
+              panel de suscripción.
+            </p>
           </div>
           <div class="step">
             <div class="step-num">3</div>
             <h3>Disfruta en vivo</h3>
             <p>Entra a las transmisiones en tiempo real o mira las grabaciones cuando quieras.</p>
           </div>
-        </div>
-      </section>
-
-      <!-- ────────────────── DIRECTORIO DE HOSTS ────────────────── -->
-      <section class="directory-section">
-        <div class="section-head">
-          <span class="eyebrow">Anfitriones activos</span>
-          <h2>Descubre a los creadores</h2>
-        </div>
-
-        @if (loading()) {
-          <p class="muted">Cargando anfitriones…</p>
-        }
-
-        @if (!loading() && hosts().length === 0) {
-          <p class="muted">
-            Todavía no hay anfitriones activos. ¿Quieres ser el primero?
-            <a routerLink="/xzoom/auth">Crea tu cuenta</a> y activa tu plan.
-          </p>
-        }
-
-        <div class="host-grid">
-          @for (h of hosts(); track h.id) {
-            <article class="host-card">
-              @if (h.cover_url) {
-                <img class="cover" [src]="h.cover_url" [alt]="h.display_name" />
-              } @else {
-                <div class="cover placeholder">
-                  <span class="material-symbols-outlined">videocam</span>
-                </div>
-              }
-              <div class="host-body">
-                <h3>{{ h.display_name }}</h3>
-                @if (h.category) {
-                  <span class="category">{{ h.category }}</span>
-                }
-                @if (h.bio) {
-                  <p class="bio">{{ h.bio }}</p>
-                }
-                <div class="host-price">
-                  <strong>{{ formatCOP(h.subscriber_price_cop) }}</strong>
-                  <span>/ mes</span>
-                </div>
-                <button
-                  class="btn-subscribe"
-                  (click)="subscribe(h)"
-                  [disabled]="processing() === h.id">
-                  @if (processing() === h.id) {
-                    Procesando…
-                  } @else {
-                    Suscribirme
-                  }
-                </button>
-              </div>
-            </article>
-          }
         </div>
       </section>
 
@@ -642,96 +585,6 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
       margin: 0;
     }
 
-    /* ───────── Directorio ───────── */
-    .directory-section {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 80px 24px;
-    }
-    .muted {
-      text-align: center;
-      color: #71717a;
-      font-size: 15px;
-    }
-    .muted a { color: #ff6b6b; text-decoration: underline; }
-    .host-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-      gap: 22px;
-    }
-    .host-card {
-      background: #0a0a0a;
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 20px;
-      overflow: hidden;
-      transition: all 0.2s;
-    }
-    .host-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(255,59,48,0.5);
-    }
-    .cover {
-      width: 100%;
-      height: 180px;
-      object-fit: cover;
-      display: block;
-    }
-    .cover.placeholder {
-      background: linear-gradient(135deg, #1a0808, #0a0a0a);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #ff3b30;
-    }
-    .cover.placeholder .material-symbols-outlined { font-size: 64px; }
-    .host-body { padding: 22px 22px 24px; }
-    .host-body h3 {
-      margin: 0 0 6px;
-      font-size: 18px;
-      font-weight: 800;
-    }
-    .category {
-      display: inline-block;
-      font-size: 10px;
-      color: #ff6b6b;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
-      font-weight: 700;
-    }
-    .bio {
-      font-size: 13px;
-      color: #a1a1aa;
-      line-height: 1.55;
-      margin: 0 0 14px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      min-height: 40px;
-    }
-    .host-price {
-      display: flex;
-      align-items: baseline;
-      gap: 4px;
-      margin-bottom: 16px;
-    }
-    .host-price strong { color: #ff6b6b; font-size: 22px; font-weight: 900; }
-    .host-price span { color: #71717a; font-size: 13px; }
-    .btn-subscribe {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #ff3b30, #ff6b6b);
-      color: #fff;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .btn-subscribe:disabled { opacity: 0.55; cursor: not-allowed; }
-    .btn-subscribe:not(:disabled):hover {
-      box-shadow: 0 10px 30px -10px rgba(255,59,48,0.7);
-    }
-
     /* ───────── CTA final ───────── */
     .final-cta {
       max-width: 800px;
@@ -774,97 +627,20 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
       .hero-inner { padding-top: 60px; }
       .hero-stats { gap: 28px; }
       .hero-stats strong { font-size: 26px; }
-      .video-section, .info-section, .how-section, .directory-section {
+      .video-section, .info-section, .how-section {
         padding: 60px 20px;
       }
       .final-cta { margin: 20px 16px 60px; padding: 50px 22px; }
     }
   `],
 })
-export class XzoomPublicLandingComponent implements OnInit {
+export class XzoomPublicLandingComponent {
   private readonly auth = inject(AuthService);
-  private readonly xzoom = inject(XzoomService);
-  private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
 
-  readonly hosts = signal<XzoomHost[]>([]);
-  readonly loading = signal(true);
-  readonly processing = signal<string | null>(null);
-  readonly errorMsg = signal<string | null>(null);
   readonly explainerVideoUrl: SafeResourceUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
     PLATFORM_EXPLAINER_VIDEO_URL,
   );
 
   readonly isLoggedIn = computed(() => !!this.auth.getCurrentUser());
-
-  async ngOnInit(): Promise<void> {
-    try {
-      const list = await this.xzoom.listActiveHosts();
-      this.hosts.set(list);
-    } catch (err: any) {
-      this.errorMsg.set(err?.message ?? 'Error cargando anfitriones');
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  async subscribe(host: XzoomHost): Promise<void> {
-    const user = this.auth.getCurrentUser();
-    if (!user) {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('xzoom_intent_subscribe', host.id);
-      }
-      this.router.navigate(['/xzoom/auth'], { queryParams: { invite_host: host.slug } });
-      return;
-    }
-
-    this.processing.set(host.id);
-    try {
-      const params = await this.xzoom.createViewerSubscriptionCheckout(host.id);
-      this.openEpaycoCheckout(params);
-    } catch (err: any) {
-      this.errorMsg.set(err?.message ?? 'Error iniciando el pago');
-      alert(err?.message ?? 'Error iniciando el pago');
-    } finally {
-      this.processing.set(null);
-    }
-  }
-
-  private openEpaycoCheckout(params: any): void {
-    if (typeof ePayco === 'undefined') {
-      alert('Checkout ePayco no cargado. Recarga la página e intenta de nuevo.');
-      return;
-    }
-    const handler = ePayco.checkout.configure({
-      key: params.publicKey,
-      test: params.test,
-    });
-    handler.open({
-      name: params.name,
-      description: params.description,
-      invoice: params.invoice,
-      currency: params.currency,
-      amount: params.amount,
-      tax_base: params.tax_base,
-      tax: params.tax,
-      country: params.country,
-      lang: params.lang,
-      external: 'false',
-      email_billing: params.email_billing,
-      name_billing: params.name_billing,
-      extra1: params.extra1,
-      extra2: params.extra2,
-      extra3: params.extra3,
-      confirmation: params.confirmation,
-      response: params.response,
-    });
-  }
-
-  formatCOP(v: number | null | undefined): string {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(v ?? 0);
-  }
 }
