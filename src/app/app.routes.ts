@@ -159,6 +159,10 @@ export const routes: Routes = [
       {
         path: 'punto-pago',
         loadComponent: () => import('./features/punto-pago/punto-pago.component').then(m => m.PuntoPagoComponent)
+      },
+      {
+        path: 'xzoom-en-vivo',
+        loadComponent: () => import('./features/xzoom-en-vivo/xzoom-en-vivo.component').then(m => m.XzoomEnVivoComponent)
       }
     ]
   },
@@ -303,6 +307,10 @@ export const routes: Routes = [
         path: 'punto-pago',
         loadComponent: () => import('./features/punto-pago/punto-pago.component').then(m => m.PuntoPagoComponent)
       },
+      {
+        path: 'xzoom-en-vivo',
+        loadComponent: () => import('./features/xzoom-en-vivo/xzoom-en-vivo.component').then(m => m.XzoomEnVivoComponent)
+      },
     ]
   },
   // Rutas de Herramientas IA — con layout de advertiser pero sin authGuard
@@ -430,6 +438,10 @@ export const routes: Routes = [
       {
         path: 'punto-pago',
         loadComponent: () => import('./features/punto-pago/punto-pago.component').then(m => m.PuntoPagoComponent)
+      },
+      {
+        path: 'xzoom-en-vivo',
+        loadComponent: () => import('./features/xzoom-en-vivo/xzoom-en-vivo.component').then(m => m.XzoomEnVivoComponent)
       }
     ]
   },
@@ -448,6 +460,11 @@ export const routes: Routes = [
   {
     path: 'quienes-somos',
     loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent)
+  },
+  // XZOOM EN VIVO — landing pública (accesible sin login)
+  {
+    path: 'xzoom',
+    loadComponent: () => import('./features/xzoom-en-vivo/xzoom-public-landing.component').then(m => m.XzoomPublicLandingComponent)
   },
   {
     path: 'terminos',

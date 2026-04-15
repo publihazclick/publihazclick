@@ -293,6 +293,18 @@
               }
             </a>
           </li>
+          <!-- 18.5 XZOOM EN VIVO -->
+          <li>
+            <a routerLink="/dashboard/xzoom-en-vivo" routerLinkActive="bg-red-500/10 text-red-400 border border-red-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-red-500/5 text-slate-400 hover:text-red-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()" (click)="closeSidebarOnMobile()">
+              <span class="material-symbols-outlined text-red-400">live_tv</span>
+              @if (!sidebarCollapsed()) {
+                <span>XZOOM EN VIVO</span>
+                <span class="ml-auto px-1.5 py-0.5 text-[9px] font-black bg-gradient-to-r from-red-500 to-rose-500 text-white rounded uppercase">NEW</span>
+              }
+            </a>
+          </li>
           <!-- 19. Dinámicas y Sorteos -->
           <li>
             <a routerLink="/dashboard/dinamicas" routerLinkActive="bg-primary/10 text-primary border border-primary/20"

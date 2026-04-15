@@ -1,0 +1,227 @@
+<div class="xzoom-container">
+
+  <!-- HEADER -->
+  <header class="xzoom-header">
+    <div class="xzoom-brand">
+      <span class="material-symbols-outlined icon">live_tv</span>
+      <h1>XZOOM EN VIVO</h1>
+    </div>
+    @if (host(); as h) {
+      <div class="xzoom-host-badge" [class.active]="hasActiveHostSub()">
+        {{ h.display_name }}
+        <span>{{ hasActiveHostSub() ? 'Anfitrión activo' : 'Suscripción inactiva' }}</span>
+      </div>
+    }
+  </header>
+
+  @if (errorMsg()) {
+    <div class="xzoom-alert error">
+      {{ errorMsg() }}
+      <button (click)="errorMsg.set(null)">×</button>
+    </div>
+  }
+
+  <!-- LOADING -->
+  @if (view() === 'loading') {
+    <div class="xzoom-loading">Cargando XZOOM EN VIVO…</div>
+  }
+
+  <!-- ONBOARDING: convertirse en anfitrión -->
+  @if (view() === 'onboarding') {
+    <section class="xzoom-card onboarding">
+      <h2>Conviértete en anfitrión</h2>
+      <p class="muted">
+        Crea tu canal de XZOOM EN VIVO. Luego de pagar la suscripción mensual de anfitrión,
+        podrás transmitir en vivo a tus suscriptores con grabación automática y pantalla compartida.
+      </p>
+
+      <label>Nombre público del canal</label>
+      <input type="text" [value]="formDisplayName()" (input)="formDisplayName.set($any($event.target).value)" placeholder="Mi canal en vivo" />
+
+      <label>Precio mensual que cobrarás a tus suscriptores (COP)</label>
+      <input type="number" [value]="formPriceCop()" (input)="formPriceCop.set(+$any($event.target).value)" min="1000" step="1000" />
+
+      <label>Descripción (opcional)</label>
+      <textarea [value]="formBio()" (input)="formBio.set($any($event.target).value)" placeholder="¿De qué trata tu canal?"></textarea>
+
+      <label>Categoría (opcional)</label>
+      <select [value]="formCategory()" (change)="formCategory.set($any($event.target).value)">
+        <option value="">Sin categoría</option>
+        <option value="educacion">Educación</option>
+        <option value="entretenimiento">Entretenimiento</option>
+        <option value="negocios">Negocios</option>
+        <option value="deportes">Deportes</option>
+        <option value="salud">Salud y bienestar</option>
+        <option value="tecnologia">Tecnología</option>
+      </select>
+
+      <button class="btn-primary" (click)="submitOnboarding()" [disabled]="loading()">
+        @if (loading()) { Creando… } @else { Crear perfil de anfitrión }
+      </button>
+    </section>
+
+    @if (mySubscriptions().length > 0) {
+      <section class="xzoom-card">
+        <h3>Mis suscripciones a otros anfitriones</h3>
+        @for (s of mySubscriptions(); track s.id) {
+          <div class="xzoom-sub-row">
+            <span>Host {{ s.host_id.substring(0,8) }} — {{ formatCOP(s.price_cop) }}/mes</span>
+            <span class="badge" [class.active]="s.status === 'active'">{{ s.status }}</span>
+          </div>
+        }
+      </section>
+    }
+  }
+
+  <!-- HOST SUBSCRIPTION REQUIRED -->
+  @if (view() === 'host_subscription_required') {
+    <section class="xzoom-card subscription-gate">
+      <h2>Activa tu plan de anfitrión</h2>
+      <p class="muted">
+        Para empezar a transmitir y recibir suscriptores necesitas activar el plan mensual
+        de XZOOM EN VIVO.
+      </p>
+      <div class="price-box">
+        <strong>$200.000 COP / mes</strong>
+        <span>≈ $48 USD — incluye transmisión ilimitada, grabación automática y pantalla compartida</span>
+      </div>
+      <button class="btn-primary" (click)="payHostSubscription()" [disabled]="loading()">
+        @if (loading()) { Procesando… } @else { Pagar suscripción de anfitrión }
+      </button>
+    </section>
+  }
+
+  <!-- HOST DASHBOARD -->
+  @if (view() === 'host_dashboard') {
+    <div class="xzoom-grid">
+
+      <section class="xzoom-card stats">
+        <div class="stat">
+          <span class="stat-label">Suscriptores activos</span>
+          <strong>{{ subscribersCount() }}</strong>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Ingresos estimados/mes</span>
+          <strong>{{ formatCOP(monthlyRevenueEstimate()) }}</strong>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Precio por suscriptor</span>
+          <strong>{{ formatCOP(host()?.subscriber_price_cop) }}</strong>
+        </div>
+      </section>
+
+      <section class="xzoom-card golive">
+        <h3>Transmisión en vivo</h3>
+        <button class="btn-live" (click)="goLive()" [disabled]="loading()">
+          <span class="material-symbols-outlined">videocam</span>
+          Iniciar transmisión
+        </button>
+      </section>
+
+      <section class="xzoom-card schedule">
+        <h3>Programar sesión</h3>
+        <input type="text" placeholder="Título" [value]="scheduleTitle()" (input)="scheduleTitle.set($any($event.target).value)" />
+        <textarea placeholder="Descripción" [value]="scheduleDescription()" (input)="scheduleDescription.set($any($event.target).value)"></textarea>
+        <div class="row">
+          <input type="date" [value]="scheduleDate()" (input)="scheduleDate.set($any($event.target).value)" />
+          <input type="time" [value]="scheduleTime()" (input)="scheduleTime.set($any($event.target).value)" />
+          <input type="number" min="15" max="600" step="15" [value]="scheduleDuration()" (input)="scheduleDuration.set(+$any($event.target).value)" />
+        </div>
+        <button class="btn-secondary" (click)="createScheduledSession()" [disabled]="loading()">Programar</button>
+
+        @if (scheduledSessions().length > 0) {
+          <h4>Próximas sesiones</h4>
+          @for (s of scheduledSessions(); track s.id) {
+            <div class="xzoom-sub-row">
+              <span><strong>{{ s.title }}</strong> — {{ formatDate(s.scheduled_at) }}</span>
+              <button (click)="cancelSession(s.id)">Cancelar</button>
+            </div>
+          }
+        }
+      </section>
+
+      <section class="xzoom-card recordings">
+        <h3>Grabaciones ({{ recordings().length }})</h3>
+        @if (recordings().length === 0) {
+          <p class="muted">Aún no tienes grabaciones. Se crearán automáticamente al transmitir.</p>
+        }
+        @for (r of recordings(); track r.id) {
+          <div class="xzoom-sub-row">
+            <span>{{ formatDate(r.started_at) }}</span>
+            @if (r.recording_url) {
+              <a [href]="r.recording_url" target="_blank">Ver</a>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="xzoom-card subs">
+        <h3>Mis suscriptores ({{ subscribersCount() }})</h3>
+        @if (subscribers().length === 0) {
+          <p class="muted">Aún no tienes suscriptores. Comparte tu enlace público:
+            <code>publihazclick.com/xzoom/{{ host()?.slug }}</code>
+          </p>
+        }
+        @for (s of subscribers(); track s.id) {
+          <div class="xzoom-sub-row">
+            <span>User {{ s.viewer_user_id.substring(0, 8) }}</span>
+            <span class="badge" [class.active]="s.status === 'active'">{{ s.status }}</span>
+          </div>
+        }
+      </section>
+
+    </div>
+  }
+
+  <!-- VIEWER DASHBOARD -->
+  @if (view() === 'viewer_dashboard') {
+    <section class="xzoom-card">
+      <h2>Mis suscripciones</h2>
+      @if (mySubscriptions().length === 0) {
+        <p class="muted">Aún no estás suscrito a ningún anfitrión. Explora el directorio en
+          <a href="/xzoom">publihazclick.com/xzoom</a>.
+        </p>
+      }
+      @for (s of mySubscriptions(); track s.id) {
+        <div class="xzoom-sub-row">
+          <span>Host {{ s.host_id.substring(0, 8) }}</span>
+          <span class="badge" [class.active]="s.status === 'active'">{{ s.status }}</span>
+          @if (s.status === 'active') {
+            <button (click)="joinLiveRoomAsViewer(s.host_id)">Entrar a sala</button>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <!-- LIVE ROOM -->
+  @if (view() === 'live_room') {
+    <section class="xzoom-live-room">
+      <div class="live-header">
+        <span class="live-dot"></span>
+        <h2>EN VIVO — {{ liveParticipantCount() }} participantes</h2>
+        <button class="btn-leave" (click)="leaveRoom()">Salir</button>
+      </div>
+
+      <div class="live-video">
+        <div id="xzoom-local-media" class="local-media"></div>
+        <div id="xzoom-remote-media" class="remote-media"></div>
+      </div>
+
+      @if (liveRole() === 'host') {
+        <div class="live-controls">
+          <button (click)="toggleCamera()" [class.off]="!liveCameraOn()">
+            <span class="material-symbols-outlined">{{ liveCameraOn() ? 'videocam' : 'videocam_off' }}</span>
+          </button>
+          <button (click)="toggleMic()" [class.off]="!liveMicOn()">
+            <span class="material-symbols-outlined">{{ liveMicOn() ? 'mic' : 'mic_off' }}</span>
+          </button>
+          <button (click)="toggleScreenShare()" [class.on]="liveScreenSharing()">
+            <span class="material-symbols-outlined">screen_share</span>
+          </button>
+        </div>
+      }
+    </section>
+  }
+
+</div>
