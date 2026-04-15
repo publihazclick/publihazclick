@@ -37,6 +37,7 @@ export class App {
   readonly isAdminOrDashboardRoute = signal(false);
   readonly isLandingRoute = signal(true);
   readonly isAndaGanaRoute = signal(false);
+  readonly isXzoomRoute = signal(false);
 
   private readonly router = inject(Router);
 
@@ -60,5 +61,10 @@ export class App {
     );
     this.isLandingRoute.set(url === '/' || url === '');
     this.isAndaGanaRoute.set(url.includes('/anda-gana'));
+    // XZOOM EN VIVO: oculta header y footer globales para que sólo se vea el
+    // contenido de la plataforma. Matches /xzoom, /xzoom/auth, /xzoom/h/:slug,
+    // /xzoom/panel, /xzoom/invite/p/:code, etc.
+    const path = url.split('?')[0].split('#')[0];
+    this.isXzoomRoute.set(path === '/xzoom' || path.startsWith('/xzoom/'));
   }
 }

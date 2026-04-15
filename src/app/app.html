@@ -1,9 +1,9 @@
-@if (!isAuthRoute() && !isAdminOrDashboardRoute() && !isAndaGanaRoute()) {
+@if (!isAuthRoute() && !isAdminOrDashboardRoute() && !isAndaGanaRoute() && !isXzoomRoute()) {
   <app-header />
 }
 
 <main>
-  @if (isAuthRoute() || isAdminOrDashboardRoute()) {
+  @if (isAuthRoute() || isAdminOrDashboardRoute() || isXzoomRoute()) {
     <!-- Mostrar solo el router-outlet para rutas de autenticación, admin y dashboard -->
     <router-outlet />
   } @else if (isLandingRoute()) {
@@ -34,6 +34,6 @@
   }
 </main>
 
-@if (!isAuthRoute() && !isAdminOrDashboardRoute() && !isAndaGanaRoute()) {
+@if (!isAuthRoute() && !isAdminOrDashboardRoute() && !isAndaGanaRoute() && !isXzoomRoute()) {
   <app-footer />
 }
