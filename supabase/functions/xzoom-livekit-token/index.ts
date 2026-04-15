@@ -1,9 +1,12 @@
 // =============================================================================
 // Edge Function: xzoom-livekit-token
 // Firma tokens JWT de LiveKit con permisos según el rol del usuario.
-// - Anfitrión: canPublish, canPublishData, canSubscribe, recorder allowed.
-// - Suscriptor (con suscripción activa): solo canSubscribe + canPublishData (chat).
+// - Anfitrión: canPublish, canPublishData, canSubscribe + dispara egress
+// - Suscriptor (con suscripción activa): solo canSubscribe + canPublishData (chat)
 // Valida siempre contra la BD antes de firmar.
+//
+// Grabación: si hay S3 config (LIVEKIT_EGRESS_S3_*), inicia egress automático
+// al rol host. Si no, crea la live_session sin egress (modo sin grabación).
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -13,6 +16,14 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const LIVEKIT_API_KEY      = Deno.env.get('LIVEKIT_API_KEY') ?? '';
 const LIVEKIT_API_SECRET   = Deno.env.get('LIVEKIT_API_SECRET') ?? '';
 const LIVEKIT_URL          = Deno.env.get('LIVEKIT_URL') ?? '';
+
+// Egress S3 (opcional — si no se configura, no se graba)
+const EGRESS_S3_ENDPOINT    = Deno.env.get('LIVEKIT_EGRESS_S3_ENDPOINT') ?? '';
+const EGRESS_S3_ACCESS_KEY  = Deno.env.get('LIVEKIT_EGRESS_S3_ACCESS_KEY') ?? '';
+const EGRESS_S3_SECRET      = Deno.env.get('LIVEKIT_EGRESS_S3_SECRET') ?? '';
+const EGRESS_S3_BUCKET      = Deno.env.get('LIVEKIT_EGRESS_S3_BUCKET') ?? '';
+const EGRESS_S3_REGION      = Deno.env.get('LIVEKIT_EGRESS_S3_REGION') ?? 'auto';
+const EGRESS_S3_FORCE_PATH  = Deno.env.get('LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE') ?? 'true';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -41,45 +52,11 @@ function base64UrlEncode(data: Uint8Array | string): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// Firma JWT HS256 manualmente (no podemos usar librerías Node en Deno edge)
-async function signLivekitToken(params: {
-  apiKey: string;
-  apiSecret: string;
-  identity: string;
-  name?: string;
-  room: string;
-  canPublish: boolean;
-  canSubscribe: boolean;
-  canPublishData: boolean;
-  canRecord: boolean;
-  ttlSeconds?: number;
-}): Promise<string> {
-  const {
-    apiKey, apiSecret, identity, name, room,
-    canPublish, canSubscribe, canPublishData, canRecord,
-    ttlSeconds = 4 * 60 * 60, // 4 horas
-  } = params;
-
-  const now = Math.floor(Date.now() / 1000);
+async function signJwtHS256(
+  payload: Record<string, unknown>,
+  apiSecret: string,
+): Promise<string> {
   const header = { alg: 'HS256', typ: 'JWT' };
-  const payload: Record<string, unknown> = {
-    iss: apiKey,
-    sub: identity,
-    iat: now,
-    nbf: now,
-    exp: now + ttlSeconds,
-    name: name ?? identity,
-    video: {
-      room,
-      roomJoin: true,
-      canPublish,
-      canSubscribe,
-      canPublishData,
-      canUpdateOwnMetadata: true,
-      ...(canRecord ? { roomRecord: true } : {}),
-    },
-  };
-
   const headerB64 = base64UrlEncode(JSON.stringify(header));
   const payloadB64 = base64UrlEncode(JSON.stringify(payload));
   const toSign = `${headerB64}.${payloadB64}`;
@@ -92,8 +69,116 @@ async function signLivekitToken(params: {
     ['sign'],
   );
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(toSign));
-  const sigB64 = base64UrlEncode(new Uint8Array(signature));
-  return `${toSign}.${sigB64}`;
+  return `${toSign}.${base64UrlEncode(new Uint8Array(signature))}`;
+}
+
+async function signClientToken(params: {
+  identity: string;
+  name: string;
+  room: string;
+  canPublish: boolean;
+  canSubscribe: boolean;
+  canPublishData: boolean;
+  canRecord: boolean;
+  ttlSeconds?: number;
+}): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: Record<string, unknown> = {
+    iss: LIVEKIT_API_KEY,
+    sub: params.identity,
+    iat: now,
+    nbf: now,
+    exp: now + (params.ttlSeconds ?? 4 * 60 * 60),
+    name: params.name,
+    video: {
+      room: params.room,
+      roomJoin: true,
+      canPublish: params.canPublish,
+      canSubscribe: params.canSubscribe,
+      canPublishData: params.canPublishData,
+      canUpdateOwnMetadata: true,
+      ...(params.canRecord ? { roomRecord: true } : {}),
+    },
+  };
+  return signJwtHS256(payload, LIVEKIT_API_SECRET);
+}
+
+async function signAdminToken(ttlSeconds = 300): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: Record<string, unknown> = {
+    iss: LIVEKIT_API_KEY,
+    sub: LIVEKIT_API_KEY,
+    iat: now,
+    nbf: now,
+    exp: now + ttlSeconds,
+    video: {
+      roomAdmin: true,
+      roomCreate: true,
+      roomList: true,
+      roomRecord: true,
+      room: '*',
+    },
+  };
+  return signJwtHS256(payload, LIVEKIT_API_SECRET);
+}
+
+function livekitHttpBase(): string {
+  // wss://publihazclick-a6r1aer2.livekit.cloud → https://publihazclick-a6r1aer2.livekit.cloud
+  return LIVEKIT_URL.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://');
+}
+
+/**
+ * Inicia la grabación (RoomCompositeEgress) de la sala.
+ * Devuelve egressId en éxito, null si S3 no está configurado, throw en error.
+ */
+async function startRoomEgress(roomName: string, hostId: string): Promise<string | null> {
+  if (!EGRESS_S3_ENDPOINT || !EGRESS_S3_ACCESS_KEY || !EGRESS_S3_SECRET || !EGRESS_S3_BUCKET) {
+    console.log('[xzoom-egress] S3 config incompleto — grabación deshabilitada');
+    return null;
+  }
+
+  const adminToken = await signAdminToken();
+  const filepath = `xzoom/${hostId}/${Date.now()}.mp4`;
+
+  const body = {
+    room_name: roomName,
+    preset: 'H264_720P_30',
+    file_outputs: [
+      {
+        file_type: 'MP4',
+        filepath,
+        s3: {
+          access_key: EGRESS_S3_ACCESS_KEY,
+          secret: EGRESS_S3_SECRET,
+          region: EGRESS_S3_REGION,
+          bucket: EGRESS_S3_BUCKET,
+          endpoint: EGRESS_S3_ENDPOINT,
+          force_path_style: EGRESS_S3_FORCE_PATH === 'true',
+        },
+      },
+    ],
+  };
+
+  const res = await fetch(
+    `${livekitHttpBase()}/twirp/livekit.Egress/StartRoomCompositeEgress`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+  );
+
+  const text = await res.text();
+  if (!res.ok) {
+    console.error('[xzoom-egress] LiveKit error', res.status, text);
+    throw new Error(`Egress start failed: ${res.status} ${text}`);
+  }
+
+  const data = JSON.parse(text);
+  return data.egress_id ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -144,12 +229,10 @@ Deno.serve(async (req) => {
     let canRecord = false;
 
     if (isHost) {
-      // El dueño entra como host — permisos completos
       canPublish = true;
       canSubscribe = true;
       canRecord = true;
     } else {
-      // Verificar suscripción activa del viewer a este anfitrión
       const { data: hasSub } = await supabase.rpc('xzoom_has_active_viewer_subscription', {
         p_viewer_user_id: userId,
         p_host_id: host.id,
@@ -160,29 +243,81 @@ Deno.serve(async (req) => {
       canSubscribe = true;
     }
 
-    const token = await signLivekitToken({
-      apiKey: LIVEKIT_API_KEY,
-      apiSecret: LIVEKIT_API_SECRET,
+    const token = await signClientToken({
       identity: userId,
       name: profile.username ?? 'Usuario',
       room: host.livekit_room_name,
       canPublish,
       canSubscribe,
-      canPublishData: true, // chat para todos
+      canPublishData: true,
       canRecord,
     });
+
+    // Si es el host, preparamos live_session y disparamos egress si es posible
+    let egressStarted = false;
+    let recordingEnabled = false;
+    if (isHost) {
+      try {
+        // ¿Ya hay una live_session abierta?
+        const { data: activeSession } = await supabase
+          .from('xzoom_live_sessions')
+          .select('id, livekit_egress_id')
+          .eq('host_id', host.id)
+          .is('ended_at', null)
+          .maybeSingle();
+
+        let sessionId = activeSession?.id;
+
+        // Crear live_session si no existe
+        if (!sessionId) {
+          const { data: newSession } = await supabase
+            .from('xzoom_live_sessions')
+            .insert({
+              host_id: host.id,
+              livekit_room_name: host.livekit_room_name,
+              started_at: new Date().toISOString(),
+              recording_status: EGRESS_S3_ENDPOINT ? 'pending' : 'disabled',
+            })
+            .select('id')
+            .single();
+          sessionId = newSession?.id;
+        }
+
+        // Intentar iniciar egress (solo si S3 está configurado y no hay egress activo)
+        if (sessionId && !activeSession?.livekit_egress_id && EGRESS_S3_ENDPOINT) {
+          const egressId = await startRoomEgress(host.livekit_room_name, host.id);
+          if (egressId) {
+            await supabase
+              .from('xzoom_live_sessions')
+              .update({
+                livekit_egress_id: egressId,
+                recording_status: 'processing',
+              })
+              .eq('id', sessionId);
+            egressStarted = true;
+            recordingEnabled = true;
+          }
+        } else if (activeSession?.livekit_egress_id) {
+          recordingEnabled = true;
+        }
+      } catch (e) {
+        console.error('[xzoom-egress] Failed to start recording:', e);
+        // NO bloqueamos la transmisión si falla la grabación
+      }
+    }
 
     return json({
       token,
       url: LIVEKIT_URL,
       room: host.livekit_room_name,
       role: isHost ? 'host' : 'viewer',
+      recording_enabled: recordingEnabled,
+      egress_started: egressStarted,
       host: {
         id: host.id,
         display_name: host.display_name,
       },
     });
-
   } catch (err) {
     console.error('Error en xzoom-livekit-token:', err);
     return json({ error: 'Error interno del servidor' }, 500);

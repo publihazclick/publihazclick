@@ -485,6 +485,21 @@ Deno.serve(async (req) => {
         return fail('XZOOM viewer subscription activation failed', 500);
       }
 
+      // Acreditar ganancias (85% por defecto) al balance del anfitrión
+      try {
+        const { data: creditRes, error: creditErr } = await supabase.rpc(
+          'xzoom_credit_host_earnings',
+          { p_subscription_id: x_extra1 },
+        );
+        if (creditErr) {
+          console.error('Error acreditando ganancias XZOOM al anfitrión:', creditErr);
+        } else {
+          console.log('Ganancias XZOOM acreditadas al anfitrión:', JSON.stringify(creditRes));
+        }
+      } catch (e) {
+        console.error('Excepción acreditando ganancias XZOOM:', e);
+      }
+
       console.log(`Suscripción XZOOM viewer ${x_extra1} activada — ref: ${x_ref_payco}`);
       return ok('xzoom_viewer_subscription_approved');
     }
