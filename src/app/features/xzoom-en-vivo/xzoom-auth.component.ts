@@ -564,8 +564,8 @@ export class XzoomAuthComponent implements OnInit {
 
   ngOnInit(): void {
     // El flujo de invitación del anfitrión YA NO pasa por aquí: el link privado
-    // lleva directo a /xzoom/h/:slug (pública, con form guest). El invite de
-    // participante solo informa al usuario, NO crea relación de referido.
+    // lleva directo a /xzoom/h/:slug. El invite de participante solo informa al
+    // usuario, NO crea relación de referido.
     const qp = this.route.snapshot.queryParams;
     const participantCode = (qp['invite_ref'] ?? '').toString().trim();
 
@@ -574,12 +574,6 @@ export class XzoomAuthComponent implements OnInit {
       this.inviteBanner.set(
         'Fuiste invitado a descubrir XZOOM EN VIVO. Crea tu cuenta o inicia sesión para explorar a todos los anfitriones.',
       );
-    }
-
-    // Si ya está autenticado, mandar al landing público
-    if (this.authService.isAuthenticated()) {
-      this.router.navigateByUrl('/xzoom');
-      return;
     }
 
     // Query param mode=login (enlace directo) cambia el tab

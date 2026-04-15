@@ -480,6 +480,12 @@ export const routes: Routes = [
     path: 'xzoom/h/:slug',
     loadComponent: () => import('./features/xzoom-en-vivo/xzoom-host-landing.component').then(m => m.XzoomHostLandingComponent)
   },
+  // XZOOM EN VIVO — panel del anfitrión standalone (sin layouts de Publihazclick)
+  {
+    path: 'xzoom/panel',
+    loadComponent: () => import('./features/xzoom-en-vivo/xzoom-en-vivo.component').then(m => m.XzoomEnVivoComponent),
+    canActivate: [authGuard]
+  },
   // XZOOM EN VIVO — link de invitación de participante: solo redirige a la landing pública
   {
     path: 'xzoom/invite/p/:code',
