@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../environments/environment';
 import { getSupabaseClient } from '../supabase.client';
 import type {
   XzoomHost,
@@ -259,22 +260,42 @@ export class XzoomService {
   // ─────────────────────────────────────────────────────────────
 
   async getLivekitToken(hostId: string): Promise<XzoomLiveKitTokenResponse> {
-    // Forzar refresh del token de sesión antes de invocar para evitar 401
-    // cuando el JWT local está expirado o el cliente no lo ha hidratado.
+    // Usamos fetch directo en vez de supabase.functions.invoke() porque la
+    // invocación vía SDK a veces no incluye el Authorization header en entornos
+    // SSR/hydratados, y el gateway de Supabase rechaza con 401. Con fetch
+    // controlamos exactamente los headers que salen.
     const { data: sess } = await this.supabase.auth.getSession();
     const accessToken = sess?.session?.access_token;
     if (!accessToken) {
-      throw new Error('Sesión no iniciada. Inicia sesión e intenta de nuevo.');
+      throw new Error('Sesión no iniciada. Cierra sesión e inicia sesión nuevamente.');
     }
-    const { data, error } = await this.supabase.functions.invoke(
-      'xzoom-livekit-token',
-      {
-        body: { host_id: hostId },
-        headers: { Authorization: `Bearer ${accessToken}` },
+
+    const url = `${environment.supabase.url}/functions/v1/xzoom-livekit-token`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: environment.supabase.anonKey,
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
-    if (error) throw error;
-    if ((data as any)?.error) throw new Error((data as any).error);
-    return data as XzoomLiveKitTokenResponse;
+      body: JSON.stringify({ host_id: hostId }),
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.error('[getLivekitToken] HTTP', resp.status, text);
+      let msg = `Error ${resp.status}`;
+      try {
+        const j = JSON.parse(text);
+        msg = j.error ?? j.message ?? msg;
+      } catch { /* noop */ }
+      throw new Error(msg);
+    }
+
+    try {
+      return JSON.parse(text) as XzoomLiveKitTokenResponse;
+    } catch {
+      throw new Error('Respuesta inválida del servidor');
+    }
   }
 }
