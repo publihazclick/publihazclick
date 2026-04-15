@@ -466,6 +466,16 @@ export const routes: Routes = [
     path: 'xzoom',
     loadComponent: () => import('./features/xzoom-en-vivo/xzoom-public-landing.component').then(m => m.XzoomPublicLandingComponent)
   },
+  // XZOOM EN VIVO — formulario combinado de login + registro
+  {
+    path: 'xzoom/auth',
+    loadComponent: () => import('./features/xzoom-en-vivo/xzoom-auth.component').then(m => m.XzoomAuthComponent)
+  },
+  // XZOOM EN VIVO — landing privada del anfitrión con pitch video + suscripción
+  {
+    path: 'xzoom/h/:slug',
+    loadComponent: () => import('./features/xzoom-en-vivo/xzoom-host-landing.component').then(m => m.XzoomHostLandingComponent)
+  },
   {
     path: 'terminos',
     loadComponent: () => import('./pages/terms/terms.component').then(m => m.TermsComponent)
