@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -32,7 +33,14 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
             <span class="material-symbols-outlined">live_tv</span>
             <span class="brand-text">XZOOM <em>EN VIVO</em></span>
           </div>
-          <a routerLink="/xzoom/auth" class="nav-cta">Entrar</a>
+          @if (isLoggedIn()) {
+            <a [routerLink]="dashboardRoute()" class="nav-cta">
+              <span class="material-symbols-outlined">dashboard</span>
+              Mi panel
+            </a>
+          } @else {
+            <a routerLink="/xzoom/auth" class="nav-cta">Entrar</a>
+          }
         </nav>
 
         <div class="hero-inner">
@@ -786,6 +794,15 @@ export class XzoomPublicLandingComponent implements OnInit {
   readonly explainerVideoUrl: SafeResourceUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
     PLATFORM_EXPLAINER_VIDEO_URL,
   );
+
+  readonly isLoggedIn = computed(() => !!this.auth.getCurrentUser());
+  readonly dashboardRoute = computed(() => {
+    const user = this.auth.getCurrentUser();
+    const role = (user?.user_metadata?.['role'] ?? user?.app_metadata?.['role']) as string | undefined;
+    if (role === 'admin' || role === 'dev') return '/admin/xzoom-en-vivo';
+    if (role === 'advertiser') return '/advertiser/xzoom-en-vivo';
+    return '/dashboard/xzoom-en-vivo';
+  });
 
   async ngOnInit(): Promise<void> {
     try {
