@@ -210,16 +210,41 @@
       </section>
 
       <section class="xzoom-card recordings">
-        <h3>Grabaciones ({{ recordings().length }})</h3>
+        <h3>
+          <span class="material-symbols-outlined">video_library</span>
+          Grabaciones ({{ recordings().length }})
+        </h3>
+        <p class="muted">Tus transmisiones pasadas quedan guardadas para que tus suscriptores puedan verlas después.</p>
         @if (recordings().length === 0) {
           <p class="muted">Aún no tienes grabaciones. Se crearán automáticamente al transmitir.</p>
         }
         @for (r of recordings(); track r.id) {
-          <div class="xzoom-sub-row">
-            <span>{{ formatDate(r.started_at) }}</span>
-            @if (r.recording_url) {
-              <a [href]="r.recording_url" target="_blank">Ver</a>
-            }
+          <div class="recording-row">
+            <div class="recording-info">
+              <span class="recording-date">{{ formatDate(r.started_at) }}</span>
+              <span class="recording-meta">
+                @if (r.recording_duration_seconds) {
+                  <span class="material-symbols-outlined">schedule</span>
+                  {{ formatDuration(r.recording_duration_seconds) }}
+                }
+                @if (r.peak_viewers) {
+                  &nbsp;·&nbsp;
+                  <span class="material-symbols-outlined">group</span>
+                  {{ r.peak_viewers }} viewers
+                }
+              </span>
+            </div>
+            <div class="recording-actions">
+              @if (r.recording_url) {
+                <a class="btn-play" [href]="r.recording_url" target="_blank" rel="noopener">
+                  <span class="material-symbols-outlined">play_circle</span>
+                  Ver
+                </a>
+              }
+              <button type="button" class="btn-delete-rec" (click)="confirmDeleteRecording(r)" title="Eliminar grabación">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
           </div>
         }
       </section>
@@ -269,6 +294,12 @@
       <div class="live-header">
         <span class="live-dot"></span>
         <h2>EN VIVO — {{ liveParticipantCount() }} participantes</h2>
+        @if (liveRole() === 'host') {
+          <span class="live-timer">
+            <span class="material-symbols-outlined">timer</span>
+            {{ liveElapsedFormatted() }}
+          </span>
+        }
         <button class="btn-leave" type="button" (click)="leaveRoom()">Salir</button>
       </div>
 
@@ -298,6 +329,26 @@
         </div>
       }
     </section>
+  }
+
+  <!-- MODAL: Confirmar eliminación de grabación -->
+  @if (deleteTarget(); as rec) {
+    <div class="delete-overlay" (click)="cancelDeleteRecording()">
+      <div class="delete-modal" (click)="$event.stopPropagation()">
+        <span class="material-symbols-outlined delete-icon">warning</span>
+        <h3>¿Estás seguro de eliminar esta grabación?</h3>
+        <p class="delete-date">{{ formatDate(rec.started_at) }}</p>
+        <p class="delete-warning">Esta acción no puede deshacerse. Una vez eliminada, la grabación se perderá permanentemente y tus suscriptores ya no podrán verla.</p>
+        <div class="delete-actions">
+          <button type="button" class="btn-delete-cancel" (click)="cancelDeleteRecording()">
+            Regresar
+          </button>
+          <button type="button" class="btn-delete-confirm" (click)="executeDeleteRecording()" [disabled]="deleting()">
+            @if (deleting()) { Eliminando… } @else { Eliminar }
+          </button>
+        </div>
+      </div>
+    </div>
   }
 
 </div>

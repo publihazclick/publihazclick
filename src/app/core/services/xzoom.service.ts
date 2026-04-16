@@ -276,6 +276,14 @@ export class XzoomService {
     return (data ?? []) as XzoomLiveSession[];
   }
 
+  async deleteRecording(sessionId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('xzoom_live_sessions')
+      .delete()
+      .eq('id', sessionId);
+    if (error) throw error;
+  }
+
   // ─────────────────────────────────────────────────────────────
   // LIVEKIT — tokens
   // ─────────────────────────────────────────────────────────────

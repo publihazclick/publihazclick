@@ -117,6 +117,23 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   readonly liveCameraOn = signal(true);
   readonly liveMicOn = signal(true);
 
+  // Live timer
+  readonly liveElapsedSeconds = signal(0);
+  private liveTimerInterval: ReturnType<typeof setInterval> | null = null;
+
+  readonly liveElapsedFormatted = computed(() => {
+    const total = this.liveElapsedSeconds();
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  });
+
+  // Delete confirmation modal
+  readonly deleteTarget = signal<XzoomLiveSession | null>(null);
+  readonly deleting = signal(false);
+
   readonly hasActiveHostSub = computed(() => {
     const s = this.hostSubscription();
     return !!s && s.status === 'active' && !!s.expires_at && new Date(s.expires_at) > new Date();
@@ -164,6 +181,7 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopLiveTimer();
     this.disconnectFromRoom();
   }
 
@@ -390,6 +408,7 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
       this.view.set('live_room');
       this.liveCameraOn.set(false);
       this.liveMicOn.set(false);
+      this.startLiveTimer();
     } catch (err: any) {
       this.errorMsg.set('No se pudo conectar a la sala. Verifica tu conexión a internet e intenta de nuevo.');
       this.loading.set(false);
@@ -512,6 +531,58 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     return `Error activando ${device}. Recarga la página e intenta de nuevo.`;
   }
 
+  private startLiveTimer(): void {
+    this.liveElapsedSeconds.set(0);
+    this.stopLiveTimer();
+    this.liveTimerInterval = setInterval(() => {
+      this.liveElapsedSeconds.update((v) => v + 1);
+    }, 1000);
+  }
+
+  private stopLiveTimer(): void {
+    if (this.liveTimerInterval) {
+      clearInterval(this.liveTimerInterval);
+      this.liveTimerInterval = null;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // ELIMINAR GRABACIÓN
+  // ─────────────────────────────────────────────────────────────
+  confirmDeleteRecording(rec: XzoomLiveSession): void {
+    this.deleteTarget.set(rec);
+  }
+
+  cancelDeleteRecording(): void {
+    this.deleteTarget.set(null);
+  }
+
+  async executeDeleteRecording(): Promise<void> {
+    const rec = this.deleteTarget();
+    if (!rec) return;
+    this.deleting.set(true);
+    try {
+      await this.xzoom.deleteRecording(rec.id);
+      this.recordings.update((list) => list.filter((r) => r.id !== rec.id));
+      this.deleteTarget.set(null);
+    } catch (err: any) {
+      this.errorMsg.set(err?.message ?? 'Error eliminando la grabación');
+    } finally {
+      this.deleting.set(false);
+    }
+  }
+
+  formatDuration(seconds: number | null | undefined): string {
+    if (!seconds) return '—';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.round(seconds % 60);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    if (h > 0) return `${h}h ${pad(m)}m`;
+    if (m > 0) return `${m}m ${pad(s)}s`;
+    return `${s}s`;
+  }
+
   async toggleCamera(): Promise<void> {
     if (!this.liveRoom) return;
     const enabled = !this.liveCameraOn();
@@ -550,6 +621,7 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   }
 
   private async disconnectFromRoom(): Promise<void> {
+    this.stopLiveTimer();
     if (this.liveRoom) {
       await this.liveRoom.disconnect();
       this.liveRoom = null;
