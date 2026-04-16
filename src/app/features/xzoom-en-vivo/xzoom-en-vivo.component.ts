@@ -361,8 +361,41 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   private async joinLiveRoom(hostId: string): Promise<void> {
     this.loading.set(true);
     this.errorMsg.set(null);
+
+    const isHost = this.host()?.id === hostId && this.host()?.user_id === this.userId();
+
+    // ── PASO 1: Pedir permisos de cámara/micrófono ANTES de conectar ──
+    // Esto asegura que el navegador muestre el prompt de permisos
+    // inmediatamente al hacer clic en "Iniciar transmisión".
+    if (isHost) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        // Liberar el stream temporal; los tracks reales los crea LiveKit
+        stream.getTracks().forEach(t => t.stop());
+      } catch (e: any) {
+        console.error('[xzoom] permiso de cámara/mic denegado:', e);
+        this.errorMsg.set(this.friendlyMediaError('cámara y micrófono', e));
+        this.loading.set(false);
+        return;
+      }
+    }
+
+    // ── PASO 2: Obtener token de LiveKit ──
+    let tokenRes: any;
     try {
-      const tokenRes = await this.xzoom.getLivekitToken(hostId);
+      tokenRes = await this.xzoom.getLivekitToken(hostId);
+    } catch (err: any) {
+      console.error('[xzoom] error obteniendo token:', err);
+      this.errorMsg.set(err?.message ?? 'Error conectando al servidor de transmisión');
+      this.loading.set(false);
+      return;
+    }
+
+    // ── PASO 3: Conectar a la sala de LiveKit ──
+    try {
       const room = new Room({
         adaptiveStream: true,
         dynacast: true,
@@ -392,12 +425,10 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
       this.liveParticipantCount.set(room.numParticipants);
       this.view.set('live_room');
 
+      // ── PASO 4: Publicar cámara y micro (solo host) ──
       if (tokenRes.role === 'host') {
-        // Publicar cámara + micro como anfitrión. Capturamos errores de
-        // permisos por separado: el host sigue conectado a la sala aunque
-        // falle la cámara, así puede reintentarla sin reconectar.
         try {
-          const videoTrack = await createLocalVideoTrack();
+          const videoTrack = await createLocalVideoTrack({ resolution: { width: 1280, height: 720 } });
           await room.localParticipant.publishTrack(videoTrack);
           const localEl = videoTrack.attach();
           const lc = document.getElementById('xzoom-local-media');
