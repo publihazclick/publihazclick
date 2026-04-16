@@ -38,7 +38,7 @@ export const environment = {
     pKey: 'a43a672655a9c6576bf5fcd52c0d03b95e5912d6',
     publicKey: '62977a30b1a19dcd0728f6b639b33fb0',
     privateKey: 'feb3b00cd4fe4a203cbfe00eba8c9695',
-    test: true,
+    test: false,
   },
   andaGana: {
     mapboxToken:      'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w',
