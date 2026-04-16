@@ -147,6 +147,13 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  isModuleRoute(): boolean {
+    const u = this.router.url;
+    return u.includes('/cursos') || u.includes('/trading-bot') || u.includes('/trading-operation') ||
+      u.includes('/ai') || u.includes('/sms-masivos') || u.includes('/automatic-whatsapp') ||
+      u.includes('/punto-pago') || u.includes('/dinamicas') || u.includes('/xzoom-en-vivo');
+  }
+
   logout(): void {
     this.authService.logout().subscribe();
   }
