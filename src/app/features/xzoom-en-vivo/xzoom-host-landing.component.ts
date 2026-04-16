@@ -58,23 +58,35 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
       }
 
       @if (!loading() && host(); as h) {
-        <section class="pitch">
-          <div class="pitch-head">
-            <div class="avatar">
+        <!-- COVER IMAGE (estilo Facebook) -->
+        <div class="cover-section">
+          <div class="cover-image">
+            @if (h.cover_url) {
+              <img [src]="h.cover_url" [alt]="h.display_name" />
+            }
+            <div class="cover-gradient"></div>
+          </div>
+          <div class="cover-profile">
+            <div class="cover-avatar">
               @if (h.avatar_url) {
                 <img [src]="h.avatar_url" [alt]="h.display_name" />
               } @else {
                 <span class="material-symbols-outlined">person</span>
               }
             </div>
-            <div class="pitch-meta">
-              <span class="eyebrow">Invitación privada</span>
-              <h1>{{ h.display_name }} te invita a su sala XZOOM</h1>
-              @if (h.category) {
-                <span class="category">{{ h.category }}</span>
-              }
+            <div class="cover-info">
+              <h1>{{ h.display_name }}</h1>
+              <div class="cover-details">
+                <span class="eyebrow">Invitación privada</span>
+                @if (h.category) {
+                  <span class="category">{{ h.category }}</span>
+                }
+              </div>
             </div>
           </div>
+        </div>
+
+        <section class="pitch">
 
           <!-- Pitch video del anfitrión -->
           <div class="video-wrap">
@@ -301,35 +313,60 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
     }
     .state.error p { margin: 0 0 24px; }
 
-    .pitch {
+    /* ── Cover estilo Facebook ── */
+    .cover-section {
       position: relative;
       z-index: 2;
       max-width: 960px;
-      margin: 0 auto;
+      margin: 0 auto 0;
     }
-
-    .pitch-head {
+    .cover-image {
+      position: relative;
+      width: 100%;
+      height: 240px;
+      border-radius: 0 0 20px 20px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1a0a0a, #0a0a1a);
+    }
+    .cover-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .cover-gradient {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      background: linear-gradient(to top, rgba(10,10,10,0.95), transparent);
+    }
+    .cover-profile {
       display: flex;
-      align-items: center;
-      gap: 20px;
-      margin-bottom: 32px;
+      align-items: flex-end;
+      gap: 16px;
+      padding: 0 24px;
+      margin-top: -44px;
+      position: relative;
+      z-index: 3;
     }
-    .avatar {
-      width: 76px;
-      height: 76px;
+    .cover-avatar {
+      width: 96px;
+      height: 96px;
       border-radius: 50%;
       background: linear-gradient(135deg, #ff3b30, #ff6b6b);
       padding: 3px;
       flex-shrink: 0;
-      box-shadow: 0 15px 40px -10px rgba(255,59,48,0.6);
+      box-shadow: 0 8px 30px -8px rgba(255,59,48,0.6);
+      border: 4px solid #0a0a0a;
     }
-    .avatar img {
+    .cover-avatar img {
       width: 100%;
       height: 100%;
       border-radius: 50%;
       object-fit: cover;
     }
-    .avatar .material-symbols-outlined {
+    .cover-avatar .material-symbols-outlined {
       width: 100%;
       height: 100%;
       border-radius: 50%;
@@ -337,8 +374,32 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
       align-items: center;
       justify-content: center;
       background: #0a0a0a;
-      font-size: 40px;
+      font-size: 44px;
       color: #ff6b6b;
+    }
+    .cover-info {
+      padding-bottom: 8px;
+    }
+    .cover-info h1 {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      margin: 0 0 4px;
+      line-height: 1.2;
+    }
+    .cover-details {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pitch {
+      position: relative;
+      z-index: 2;
+      max-width: 960px;
+      margin: 0 auto;
+      padding-top: 24px;
     }
     .pitch-meta .eyebrow {
       display: inline-block;
@@ -601,9 +662,12 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
       .brand-text { font-size: 15px; }
       .brand .material-symbols-outlined { font-size: 24px; }
       .user-chip { padding: 7px 12px; font-size: 11px; }
-      .pitch-head { flex-direction: column; text-align: center; gap: 16px; margin-bottom: 26px; }
-      .avatar { width: 72px; height: 72px; }
-      .avatar .material-symbols-outlined { font-size: 38px; }
+      .cover-image { height: 180px; border-radius: 0 0 16px 16px; }
+      .cover-profile { margin-top: -36px; padding: 0 16px; gap: 12px; }
+      .cover-avatar { width: 76px; height: 76px; border-width: 3px; }
+      .cover-avatar .material-symbols-outlined { font-size: 36px; }
+      .cover-info h1 { font-size: 18px; }
+      .cover-details { gap: 6px; }
       .pitch-meta .eyebrow { font-size: 10px; letter-spacing: 1.5px; }
       .pitch-meta h1 { font-size: 26px; }
       .video-wrap { margin-bottom: 32px; border-radius: 20px; padding: 3px; }
