@@ -15,6 +15,7 @@ import { CurrencyService } from '../../core/services/currency.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { XzoomService } from '../../core/services/xzoom.service';
 import { StorageService } from '../../core/services/storage.service';
+import { getSupabaseClient } from '../../core/supabase.client';
 import type {
   XzoomHost,
   XzoomHostSubscription,
@@ -700,25 +701,34 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   // SUBIR ARCHIVOS (avatar, portada, video)
   // ─────────────────────────────────────────────────────────────
   async onFileUpload(event: Event, type: 'avatar' | 'cover' | 'video'): Promise<void> {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
+    // Reset input so the same file can be selected again
+    input.value = '';
 
     const h = this.host();
     if (!h) return;
 
-    // Validate
+    // Validate file type and size
     if (type === 'video') {
+      const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+      if (!validVideoTypes.includes(file.type)) {
+        this.editError.set('Formato de video no válido. Usa MP4, WebM o MOV.');
+        return;
+      }
       if (file.size > 50 * 1024 * 1024) {
-        this.editError.set('El video no debe superar 50MB');
+        this.editError.set('El video no debe superar 50MB. Tu archivo pesa ' + (file.size / 1024 / 1024).toFixed(1) + 'MB.');
         return;
       }
     } else {
-      if (!this.storage.isValidImage(file)) {
-        this.editError.set('Formato no válido. Usa JPG, PNG o WebP.');
+      const validImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validImageTypes.includes(file.type)) {
+        this.editError.set('Formato de imagen no válido. Usa JPG, PNG o WebP. Recibimos: ' + file.type);
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        this.editError.set('La imagen no debe superar 5MB');
+        this.editError.set('La imagen no debe superar 5MB. Tu archivo pesa ' + (file.size / 1024 / 1024).toFixed(1) + 'MB.');
         return;
       }
     }
@@ -729,23 +739,51 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     else this.uploadingVideo.set(true);
 
     try {
-      const folder = `xzoom/${h.id}`;
-      const result = await this.storage.uploadImage('xzoom-media', file, folder);
+      const supabase = getSupabaseClient();
+      const timestamp = Date.now();
+      const ext = file.name.split('.').pop() || (type === 'video' ? 'mp4' : 'jpg');
+      const path = `xzoom/${h.id}/${type}-${timestamp}.${ext}`;
 
-      if (!result.success || !result.url) {
-        this.editError.set(result.error ?? 'Error al subir el archivo');
+      const { data, error } = await supabase.storage
+        .from('xzoom-media')
+        .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+
+      if (error) {
+        let msg = 'Error al subir el archivo: ';
+        if (error.message?.includes('bucket') || error.message?.includes('not found')) {
+          msg += 'El almacenamiento no está configurado. Contacta al administrador.';
+        } else if (error.message?.includes('size')) {
+          msg += 'El archivo es demasiado grande.';
+        } else if (error.message?.includes('mime') || error.message?.includes('type')) {
+          msg += 'Formato de archivo no permitido.';
+        } else if (error.message?.includes('policy') || error.message?.includes('security')) {
+          msg += 'No tienes permiso para subir archivos. Intenta cerrar sesión y volver a entrar.';
+        } else {
+          msg += error.message || 'Error desconocido';
+        }
+        this.editError.set(msg);
+        return;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage.from('xzoom-media').getPublicUrl(path);
+      const publicUrl = urlData?.publicUrl;
+
+      if (!publicUrl) {
+        this.editError.set('El archivo se subió pero no se pudo obtener la URL. Intenta de nuevo.');
         return;
       }
 
       if (type === 'avatar') {
-        this.editAvatarUrl.set(result.url);
+        this.editAvatarUrl.set(publicUrl);
       } else if (type === 'cover') {
-        this.editCoverUrl.set(result.url);
+        this.editCoverUrl.set(publicUrl);
       } else {
-        this.editPitchVideoUrl.set(result.url);
+        this.editPitchVideoUrl.set(publicUrl);
       }
+      this.editError.set(null);
     } catch (e: any) {
-      this.editError.set(e?.message ?? 'Error al subir');
+      this.editError.set('Error inesperado al subir: ' + (e?.message ?? 'Intenta de nuevo'));
     } finally {
       if (type === 'avatar') this.uploadingAvatar.set(false);
       else if (type === 'cover') this.uploadingCover.set(false);
@@ -762,18 +800,18 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     const displayName = this.editDisplayName().trim();
     const priceUsd = this.editPriceUsd();
     if (!displayName) {
-      this.errorMsg.set('El nombre del canal es obligatorio');
+      this.editError.set('El nombre del canal es obligatorio');
       return;
     }
     if (!priceUsd || priceUsd < 1) {
-      this.errorMsg.set('El precio mínimo es $1 USD');
+      this.editError.set('El precio mínimo es $1 USD');
       return;
     }
     const priceCop = this.currency.usdToCop(priceUsd);
 
     this.savingProfile.set(true);
     this.profileSaveMsg.set(null);
-    this.errorMsg.set(null);
+    this.editError.set(null);
     try {
       const updated = await this.xzoom.updateHostProfile(h.id, {
         display_name: displayName,
@@ -785,10 +823,21 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
         pitch_video_url: this.editPitchVideoUrl().trim() || null,
       });
       this.host.set(updated);
-      this.profileSaveMsg.set('Cambios guardados correctamente ✓');
+      this.profileSaveMsg.set('Cambios guardados correctamente');
       setTimeout(() => this.profileSaveMsg.set(null), 3000);
     } catch (err: any) {
-      this.errorMsg.set(err?.message ?? 'No pudimos guardar los cambios');
+      let msg = 'No pudimos guardar los cambios. ';
+      const errMsg = err?.message ?? '';
+      if (errMsg.includes('permission') || errMsg.includes('policy') || errMsg.includes('42501')) {
+        msg += 'No tienes permiso para editar este canal.';
+      } else if (errMsg.includes('unique') || errMsg.includes('duplicate')) {
+        msg += 'Ese nombre ya está en uso.';
+      } else if (errMsg.includes('network') || errMsg.includes('fetch')) {
+        msg += 'Revisa tu conexión a internet.';
+      } else {
+        msg += errMsg || 'Error desconocido. Intenta de nuevo.';
+      }
+      this.editError.set(msg);
     } finally {
       this.savingProfile.set(false);
     }
