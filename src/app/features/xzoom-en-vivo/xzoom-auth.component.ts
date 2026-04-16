@@ -688,8 +688,8 @@ export class XzoomAuthComponent implements OnInit {
 
   private redirectAfterAuth(): void {
     this.clearInvite();
-    // Participant o sin invitación → landing principal XZOOM
-    this.router.navigateByUrl('/xzoom');
+    // Redirigir al panel XZOOM del anfitrión después de login/registro
+    this.router.navigateByUrl('/dashboard/xzoom-en-vivo');
   }
 
   private clearInvite(): void {
