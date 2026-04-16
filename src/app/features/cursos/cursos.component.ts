@@ -28,7 +28,53 @@ import { ProfileService } from '../../core/services/profile.service';
                     </div>
                   </button>
                 }
-                <span class="text-sm font-bold text-gray-700">Cursos</span>
+                <div class="academy-logo-sm" aria-label="Academy Pro 180">
+                  <svg viewBox="0 0 520 80" xmlns="http://www.w3.org/2000/svg" class="h-7 w-auto">
+                    <defs>
+                      <linearGradient id="acLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#06b6d4"/>
+                        <stop offset="50%" stop-color="#3b82f6"/>
+                        <stop offset="100%" stop-color="#8b5cf6"/>
+                      </linearGradient>
+                      <linearGradient id="ac180Grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#f59e0b"/>
+                        <stop offset="100%" stop-color="#ef4444"/>
+                      </linearGradient>
+                      <linearGradient id="acShieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#06b6d4"/>
+                        <stop offset="100%" stop-color="#3b82f6"/>
+                      </linearGradient>
+                      <filter id="acGlow">
+                        <feGaussianBlur stdDeviation="2" result="blur"/>
+                        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                      </filter>
+                    </defs>
+                    <!-- Shield icon -->
+                    <g transform="translate(2,4)">
+                      <path d="M36,2 L66,16 L66,40 C66,58 52,70 36,76 C20,70 6,58 6,40 L6,16 Z"
+                            fill="url(#acShieldGrad)" opacity="0.15" stroke="url(#acShieldGrad)" stroke-width="2"/>
+                      <path d="M36,14 L26,26 L28,42 L36,50 L44,42 L46,26 Z" fill="none"
+                            stroke="url(#acLogoGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                      <circle cx="36" cy="32" r="5" fill="url(#acLogoGrad)"/>
+                      <path d="M28,56 L36,62 L44,56" fill="none" stroke="url(#acLogoGrad)" stroke-width="2" stroke-linecap="round"/>
+                    </g>
+                    <!-- ACADEMY text -->
+                    <text x="80" y="36" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                          font-size="28" font-weight="900" letter-spacing="3" fill="url(#acLogoGrad)">ACADEMY</text>
+                    <!-- PRO text -->
+                    <text x="275" y="36" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                          font-size="28" font-weight="900" letter-spacing="2" fill="#64748b">PRO</text>
+                    <!-- 180 badge -->
+                    <rect x="345" y="10" width="88" height="34" rx="8" fill="url(#ac180Grad)" filter="url(#acGlow)"/>
+                    <text x="389" y="34" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                          font-size="22" font-weight="900" letter-spacing="2" fill="#fff" text-anchor="middle">180</text>
+                    <!-- Tagline -->
+                    <text x="80" y="62" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                          font-size="11" font-weight="600" letter-spacing="4" fill="#94a3b8">TRANSFORMA TU FUTURO</text>
+                    <!-- Decorative line -->
+                    <line x1="80" y1="44" x2="430" y2="44" stroke="url(#acLogoGrad)" stroke-width="1" opacity="0.2"/>
+                  </svg>
+                </div>
                 <span class="hidden md:inline text-sm font-black text-gray-800 ml-2">· Hola, {{ profile()?.full_name || profile()?.username || 'Usuario' }}</span>
               </div>
               <!-- Menú hamburguesa (derecha) -->
@@ -60,7 +106,43 @@ import { ProfileService } from '../../core/services/profile.service';
         <div class="fixed top-0 left-0 z-50 w-72 h-full bg-white shadow-2xl animate-slide-in">
           <!-- Menu header -->
           <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <span class="text-base font-black text-gray-800">Cursos</span>
+            <div class="academy-logo-sidebar" aria-label="Academy Pro 180">
+              <svg viewBox="0 0 520 80" xmlns="http://www.w3.org/2000/svg" class="h-8 w-auto">
+                <defs>
+                  <linearGradient id="acLogoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#06b6d4"/>
+                    <stop offset="50%" stop-color="#3b82f6"/>
+                    <stop offset="100%" stop-color="#8b5cf6"/>
+                  </linearGradient>
+                  <linearGradient id="ac180Grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#f59e0b"/>
+                    <stop offset="100%" stop-color="#ef4444"/>
+                  </linearGradient>
+                  <linearGradient id="acShieldGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#06b6d4"/>
+                    <stop offset="100%" stop-color="#3b82f6"/>
+                  </linearGradient>
+                </defs>
+                <g transform="translate(2,4)">
+                  <path d="M36,2 L66,16 L66,40 C66,58 52,70 36,76 C20,70 6,58 6,40 L6,16 Z"
+                        fill="url(#acShieldGrad2)" opacity="0.15" stroke="url(#acShieldGrad2)" stroke-width="2"/>
+                  <path d="M36,14 L26,26 L28,42 L36,50 L44,42 L46,26 Z" fill="none"
+                        stroke="url(#acLogoGrad2)" stroke-width="2.5" stroke-linejoin="round"/>
+                  <circle cx="36" cy="32" r="5" fill="url(#acLogoGrad2)"/>
+                  <path d="M28,56 L36,62 L44,56" fill="none" stroke="url(#acLogoGrad2)" stroke-width="2" stroke-linecap="round"/>
+                </g>
+                <text x="80" y="36" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                      font-size="28" font-weight="900" letter-spacing="3" fill="url(#acLogoGrad2)">ACADEMY</text>
+                <text x="275" y="36" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                      font-size="28" font-weight="900" letter-spacing="2" fill="#64748b">PRO</text>
+                <rect x="345" y="10" width="88" height="34" rx="8" fill="url(#ac180Grad2)"/>
+                <text x="389" y="34" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                      font-size="22" font-weight="900" letter-spacing="2" fill="#fff" text-anchor="middle">180</text>
+                <text x="80" y="62" font-family="'Inter','Montserrat',system-ui,sans-serif"
+                      font-size="11" font-weight="600" letter-spacing="4" fill="#94a3b8">TRANSFORMA TU FUTURO</text>
+                <line x1="80" y1="44" x2="430" y2="44" stroke="url(#acLogoGrad2)" stroke-width="1" opacity="0.2"/>
+              </svg>
+            </div>
             <button (click)="menuOpen.set(false)"
                     class="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 transition-all">
               <span class="material-symbols-outlined" style="font-size:20px">close</span>
@@ -282,6 +364,20 @@ import { ProfileService } from '../../core/services/profile.service';
     }
     .animate-slide-in {
       animation: slide-in 0.2s ease-out;
+    }
+    .academy-logo-sm svg {
+      height: 28px;
+      width: auto;
+      flex-shrink: 0;
+    }
+    .academy-logo-sidebar svg {
+      height: 32px;
+      width: auto;
+    }
+    @media (max-width: 380px) {
+      .academy-logo-sm svg {
+        height: 22px;
+      }
     }
   `],
 })

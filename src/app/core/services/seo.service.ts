@@ -56,7 +56,7 @@ const ROUTE_SEO: Record<string, SeoConfig> = {
       'Plataforma de SMS masivos de Publihazclick. Envía mensajes de texto a más de 15 países desde $0.03 por SMS. Campañas, contactos y reportes en tiempo real.',
   },
   '/cursos': {
-    title: 'Academia — Publihazclick | Cursos Online para Emprendedores',
+    title: 'Academy Pro 180 — Publihazclick | Cursos Online para Emprendedores',
     description:
       'Marketplace de cursos online de Publihazclick. Aprende marketing digital, trading, IA y más. Publica tus cursos y gana comisiones del 70%.',
   },
