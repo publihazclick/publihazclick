@@ -353,20 +353,77 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
       this.view.set('live_room');
 
       if (tokenRes.role === 'host') {
-        // Publicar cámara + micro como anfitrión
-        const videoTrack = await createLocalVideoTrack();
-        const audioTrack = await createLocalAudioTrack();
-        await room.localParticipant.publishTrack(videoTrack);
-        await room.localParticipant.publishTrack(audioTrack);
-        const localEl = videoTrack.attach();
-        const lc = document.getElementById('xzoom-local-media');
-        if (lc) lc.appendChild(localEl);
+        // Publicar cámara + micro como anfitrión. Capturamos errores de
+        // permisos por separado: el host sigue conectado a la sala aunque
+        // falle la cámara, así puede reintentarla sin reconectar.
+        try {
+          const videoTrack = await createLocalVideoTrack();
+          await room.localParticipant.publishTrack(videoTrack);
+          const localEl = videoTrack.attach();
+          const lc = document.getElementById('xzoom-local-media');
+          if (lc) lc.appendChild(localEl);
+        } catch (e: any) {
+          console.error('[xzoom] error publicando cámara:', e);
+          this.errorMsg.set(this.friendlyMediaError('cámara', e));
+          this.liveCameraOn.set(false);
+        }
+
+        try {
+          const audioTrack = await createLocalAudioTrack();
+          await room.localParticipant.publishTrack(audioTrack);
+        } catch (e: any) {
+          console.error('[xzoom] error publicando micrófono:', e);
+          this.errorMsg.set(this.friendlyMediaError('micrófono', e));
+          this.liveMicOn.set(false);
+        }
       }
     } catch (err: any) {
-      this.errorMsg.set(err?.message ?? 'Error uniéndose a la sala');
+      console.error('[xzoom] error uniéndose a sala:', err);
+      this.errorMsg.set(this.friendlyMediaError('dispositivos', err));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Traduce los errores comunes de getUserMedia / LiveKit a mensajes
+   * accionables para el usuario.
+   */
+  private friendlyMediaError(device: string, err: any): string {
+    const name = (err?.name ?? '').toString();
+    const msg = (err?.message ?? '').toString().toLowerCase();
+
+    if (
+      name === 'NotAllowedError' ||
+      name === 'PermissionDeniedError' ||
+      msg.includes('permission') ||
+      msg.includes('permiso') ||
+      msg.includes('denied')
+    ) {
+      return (
+        `🔒 Permiso de ${device} denegado. Para transmitir necesitas ` +
+        `autorizar el acceso a tu cámara y micrófono: toca el ícono del ` +
+        `candado 🔒 junto a la URL del navegador, activa "Cámara" y ` +
+        `"Micrófono", recarga la página y vuelve a intentar.`
+      );
+    }
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+      return (
+        `📷 No encontramos tu ${device}. Verifica que esté conectada y ` +
+        `que ninguna otra aplicación la esté usando.`
+      );
+    }
+    if (name === 'NotReadableError' || name === 'TrackStartError') {
+      return (
+        `⚠️ Tu ${device} está siendo usada por otra aplicación. Cierra ` +
+        `Zoom, Meet, Teams u otra app que pueda tenerla ocupada y vuelve ` +
+        `a intentar.`
+      );
+    }
+    if (msg.includes('https') || msg.includes('secure')) {
+      return `Necesitas HTTPS para usar cámara y micrófono. Abre la página con https://`;
+    }
+    return err?.message ?? `Error activando ${device}`;
   }
 
   async toggleCamera(): Promise<void> {
