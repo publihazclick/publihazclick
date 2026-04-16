@@ -39,8 +39,10 @@ export interface XzoomHostSubscription {
 
 export interface XzoomViewerSubscription {
   id: string;
-  viewer_user_id: string;
+  viewer_user_id: string | null;
   host_id: string;
+  guest_email: string | null;
+  guest_full_name: string | null;
   status: XzoomSubscriptionStatus;
   price_cop: number;
   currency: string;

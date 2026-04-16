@@ -380,16 +380,37 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
 
     const isHost = this.host()?.id === hostId && this.host()?.user_id === this.userId();
 
-    // ── PASO 1: Pedir permisos de cámara/micrófono ANTES de conectar ──
-    // Esto asegura que el navegador muestre el prompt de permisos
-    // inmediatamente al hacer clic en "Iniciar transmisión".
-    if (isHost) {
+    // ── PASO 1: Verificar y pedir permisos de cámara/micrófono ──
+    if (isHost && typeof navigator !== 'undefined' && navigator.mediaDevices) {
+      // Verificar el estado actual de los permisos
+      let camState = 'prompt';
+      let micState = 'prompt';
+      try {
+        if (navigator.permissions?.query) {
+          const [cam, mic] = await Promise.all([
+            navigator.permissions.query({ name: 'camera' as PermissionName }).catch(() => null),
+            navigator.permissions.query({ name: 'microphone' as PermissionName }).catch(() => null),
+          ]);
+          camState = cam?.state ?? 'prompt';
+          micState = mic?.state ?? 'prompt';
+        }
+      } catch { /* permissions API no soportada — continuar con getUserMedia */ }
+
+      if (camState === 'denied' || micState === 'denied') {
+        this.errorMsg.set(
+          '🔒 Los permisos de cámara o micrófono están bloqueados. ' +
+          'Para activarlos: toca el candado 🔒 en la barra de URL → ' +
+          'cambia Cámara y Micrófono a "Permitir" → recarga la página.',
+        );
+        this.loading.set(false);
+        return;
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         });
-        // Liberar el stream temporal; los tracks reales los crea LiveKit
         stream.getTracks().forEach(t => t.stop());
       } catch (e: any) {
         console.error('[xzoom] permiso de cámara/mic denegado:', e);
@@ -397,6 +418,10 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
         this.loading.set(false);
         return;
       }
+    } else if (isHost) {
+      this.errorMsg.set('Tu navegador no soporta cámara/micrófono. Usa Chrome, Edge o Safari.');
+      this.loading.set(false);
+      return;
     }
 
     // ── PASO 2: Obtener token de LiveKit ──

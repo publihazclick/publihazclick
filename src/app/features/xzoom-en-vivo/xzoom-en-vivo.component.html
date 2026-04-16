@@ -65,7 +65,7 @@
         <h3>Mis suscripciones a otros anfitriones</h3>
         @for (s of mySubscriptions(); track s.id) {
           <div class="xzoom-sub-row">
-            <span>Host {{ s.host_id.substring(0,8) }} — {{ formatCOP(s.price_cop) }}/mes</span>
+            <span>Host {{ s.host_id?.substring(0,8) ?? '—' }} — {{ formatUSD(s.price_cop) }}/mes</span>
             <span class="badge" [class.active]="s.status === 'active'">{{ s.status }}</span>
           </div>
         }
@@ -233,7 +233,7 @@
         }
         @for (s of subscribers(); track s.id) {
           <div class="xzoom-sub-row">
-            <span>User {{ s.viewer_user_id.substring(0, 8) }}</span>
+            <span>{{ s.viewer_user_id ? 'User ' + s.viewer_user_id.substring(0, 8) : (s.guest_email ?? 'Invitado') }}</span>
             <span class="badge" [class.active]="s.status === 'active'">{{ s.status }}</span>
           </div>
         }
@@ -253,7 +253,7 @@
       }
       @for (s of mySubscriptions(); track s.id) {
         <div class="xzoom-sub-row">
-          <span>Host {{ s.host_id.substring(0, 8) }}</span>
+          <span>Host {{ s.host_id?.substring(0, 8) ?? '—' }}</span>
           <span class="badge" [class.active]="s.status === 'active'">{{ s.status }}</span>
           @if (s.status === 'active') {
             <button (click)="joinLiveRoomAsViewer(s.host_id)">Entrar a sala</button>
