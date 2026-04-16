@@ -1,6 +1,6 @@
 import { Component, signal, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationStart } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService, Currency } from '../../../../core/services/currency.service';
@@ -47,6 +47,21 @@ export class AdvertiserLayoutComponent implements OnInit, OnDestroy {
       }
       document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
       document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+
+      // Interceptar back button en módulos para no salir a Publihazclick
+      this.router.events.subscribe((e) => {
+        if (e instanceof NavigationStart && e.navigationTrigger === 'popstate') {
+          if (this.isModuleRoute()) {
+            const moduleSegs = ['/cursos', '/trading-bot', '/trading-operation', '/ai',
+              '/sms-masivos', '/automatic-whatsapp', '/punto-pago', '/dinamicas', '/xzoom-en-vivo'];
+            const targetIsModule = moduleSegs.some(s => e.url.includes(s));
+            if (!targetIsModule) {
+              const stay = this.router.url;
+              setTimeout(() => this.router.navigateByUrl(stay, { replaceUrl: true }));
+            }
+          }
+        }
+      });
     }
     // Si el perfil ya fue cargado (ej. desde el flujo de login), reutilizarlo
     // para evitar que un getUser() con timing incorrecto borre el balance.

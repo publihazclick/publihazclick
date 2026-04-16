@@ -1,6 +1,6 @@
 import { Component, signal, Inject, PLATFORM_ID, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationStart } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
@@ -62,6 +62,21 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
       }
       document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
       document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+
+      // Interceptar back button en módulos para no salir a Publihazclick
+      this.router.events.subscribe((e) => {
+        if (e instanceof NavigationStart && (e as any).navigationTrigger === 'popstate') {
+          if (this.isModuleRoute()) {
+            const moduleSegs = ['/cursos', '/trading-bot', '/trading-operation', '/ai',
+              '/sms-masivos', '/automatic-whatsapp', '/punto-pago', '/dinamicas', '/xzoom-en-vivo'];
+            const targetIsModule = moduleSegs.some(s => e.url.includes(s));
+            if (!targetIsModule) {
+              const stay = this.router.url;
+              setTimeout(() => this.router.navigateByUrl(stay, { replaceUrl: true }));
+            }
+          }
+        }
+      });
     }
     this.loadPendingCount();
     this.loadPendingPaymentsCount();

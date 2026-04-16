@@ -1,6 +1,6 @@
 import { Component, signal, computed, ViewChild, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser, DatePipe } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationStart } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -114,6 +114,22 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
       }
       document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
       document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
+
+      // Interceptar back button: si estamos en un módulo y el back intenta
+      // salir a una ruta no-módulo, bloquear y quedarnos en el módulo.
+      this.router.events.subscribe((e) => {
+        if (e instanceof NavigationStart && e.navigationTrigger === 'popstate') {
+          if (this.isModuleRoute()) {
+            const moduleSegs = ['/cursos', '/trading-bot', '/trading-operation', '/ai',
+              '/sms-masivos', '/automatic-whatsapp', '/punto-pago', '/dinamicas', '/xzoom-en-vivo'];
+            const targetIsModule = moduleSegs.some(s => e.url.includes(s));
+            if (!targetIsModule) {
+              const stay = this.router.url;
+              setTimeout(() => this.router.navigateByUrl(stay, { replaceUrl: true }));
+            }
+          }
+        }
+      });
     }
     this.loadProfile().then(() => {
       this.initialRole = this.profile()?.role ?? null;
