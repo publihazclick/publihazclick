@@ -71,6 +71,8 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
   readonly showDeleteConfirm = signal(false);
 
   readonly myAd = signal<MyAd | null>(null);
+  /** Anuncio del ciclo anterior cuando el usuario aún no ha creado uno en el ciclo actual */
+  readonly previousAd = signal<MyAd | null>(null);
   readonly successMsg = signal<string | null>(null);
   readonly errorMsg = signal<string | null>(null);
 
@@ -118,15 +120,51 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await this.supabase
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('package_started_at')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // 1) Buscar el anuncio del CICLO ACTUAL (creado después de package_started_at)
+    let currentQuery = this.supabase
       .from('ptc_tasks')
       .select('*')
-      .eq('advertiser_id', user.id)
+      .eq('advertiser_id', user.id);
+
+    if (profile?.package_started_at) {
+      currentQuery = currentQuery.gte('created_at', profile.package_started_at);
+    }
+
+    const { data: currentAd } = await currentQuery
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    this.myAd.set(data as MyAd | null);
+    if (currentAd) {
+      this.myAd.set(currentAd as MyAd);
+      this.previousAd.set(null);
+      return;
+    }
+
+    // 2) No tiene anuncio del ciclo actual → buscar el último de cualquier ciclo anterior
+    this.myAd.set(null);
+
+    if (!profile?.package_started_at) {
+      this.previousAd.set(null);
+      return;
+    }
+
+    const { data: prevAd } = await this.supabase
+      .from('ptc_tasks')
+      .select('*')
+      .eq('advertiser_id', user.id)
+      .lt('created_at', profile.package_started_at)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    this.previousAd.set(prevAd as MyAd | null);
   }
 
   private async loadGalleryAds(): Promise<void> {
@@ -226,7 +264,7 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
             image_url: ad.imageUrl || null,
             ad_type: 'standard_400',
             daily_limit: 50,
-            status: 'active',
+            status: 'pending',
           })
           .eq('id', existing.id);
 
@@ -243,7 +281,7 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
             ad_type: 'standard_400',
             daily_limit: 50,
             advertiser_id: user.id,
-            status: 'active',
+            status: 'pending',
             location: 'app',
             reward: 0,
             duration: 60,
@@ -251,14 +289,23 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
           });
 
         if (error) throw error;
+
+        // Si tenía un anuncio del ciclo anterior, pausarlo
+        const prev = this.previousAd();
+        if (prev) {
+          await this.supabase
+            .from('ptc_tasks')
+            .update({ status: 'paused' })
+            .eq('id', prev.id)
+            .eq('status', 'active');
+        }
       }
 
       await this.loadMyAd();
       this.showForm.set(false);
       this.selectedGalleryAd.set(null);
       this.cloningFrom.set(null);
-      this.showSuccess('¡Has creado tu anuncio PTC!');
-      this.scheduleAutoApproval();
+      this.showSuccess('Tu anuncio se ha enviado a revisión.');
 
       if (isPlatformBrowser(this.platformId)) {
         setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
@@ -323,6 +370,7 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
 
     try {
       if (existing) {
+        // Editar anuncio del ciclo actual: se queda en pending para re-revisión
         const { error } = await this.supabase
           .from('ptc_tasks')
           .update({
@@ -333,12 +381,14 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
             image_url: f.image_url.trim() || null,
             ad_type: 'standard_400',
             daily_limit: 50,
-            status: 'active',
+            status: 'pending',
           })
           .eq('id', existing.id);
 
         if (error) throw error;
       } else {
+        // Crear nuevo (puede venir del form normal o de "editar anuncio anterior").
+        // Siempre nace en estado pending → revisión.
         const { error } = await this.supabase
           .from('ptc_tasks')
           .insert({
@@ -350,7 +400,7 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
             ad_type: 'standard_400',
             daily_limit: 50,
             advertiser_id: user.id,
-            status: 'active',
+            status: 'pending',
             location: 'app',
             reward: 0,
             duration: 60,
@@ -358,12 +408,22 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
           });
 
         if (error) throw error;
+
+        // Si venía de "editar anuncio anterior", pausar el viejo para no duplicar
+        const prev = this.previousAd();
+        if (prev) {
+          await this.supabase
+            .from('ptc_tasks')
+            .update({ status: 'paused' })
+            .eq('id', prev.id)
+            .eq('status', 'active');
+        }
       }
 
       await this.loadMyAd();
       this.showForm.set(false);
       this.cloningFrom.set(null);
-      this.scheduleAutoApproval();
+      this.showSuccess('Tu anuncio se ha enviado a revisión.');
     } catch {
       this.showError('Error al guardar. Intenta de nuevo.');
     }
@@ -372,8 +432,19 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
   }
 
   async deleteAd(): Promise<void> {
-    const ad = this.myAd();
-    if (!ad) return;
+    // SOLO se puede eliminar el anuncio del CICLO ANTERIOR.
+    // El del ciclo actual está bloqueado hasta que el usuario renueve.
+    if (this.myAd()) {
+      this.showDeleteConfirm.set(false);
+      this.showError('No puedes eliminar tu anuncio hasta que pasen los 30 días desde tu activación o renovación.');
+      return;
+    }
+
+    const ad = this.previousAd();
+    if (!ad) {
+      this.showDeleteConfirm.set(false);
+      return;
+    }
 
     const { error } = await this.supabase
       .from('ptc_tasks')
@@ -383,11 +454,84 @@ export class AdvertiserAdsComponent implements OnInit, OnDestroy {
     this.showDeleteConfirm.set(false);
 
     if (error) {
-      this.showError('Error al eliminar el anuncio.');
+      console.error('[deleteAd] error', error);
+      this.showError('No se pudo eliminar el anuncio: ' + (error.message || 'error desconocido'));
     } else {
       this.myAd.set(null);
-      this.showSuccess('Anuncio eliminado correctamente.');
+      this.previousAd.set(null);
+      this.showSuccess('Anuncio eliminado. Ya puedes crear o clonar uno nuevo.');
+      await this.loadMyAd();
     }
+  }
+
+  /**
+   * Vuelve a usar el anuncio del ciclo anterior: clona sus datos como uno nuevo
+   * en estado `pending` para revisión. Conserva el viejo en la DB para historial.
+   */
+  async reusePreviousAd(): Promise<void> {
+    const prev = this.previousAd();
+    if (!prev) return;
+
+    this.saving.set(true);
+    this.clearMessages();
+
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) { this.saving.set(false); return; }
+
+    try {
+      const { error } = await this.supabase
+        .from('ptc_tasks')
+        .insert({
+          title: prev.title,
+          description: prev.description,
+          url: prev.url,
+          youtube_url: prev.youtube_url,
+          image_url: prev.image_url,
+          ad_type: 'standard_400',
+          daily_limit: prev.daily_limit ?? 50,
+          advertiser_id: user.id,
+          status: 'pending',
+          location: 'app',
+          reward: 0,
+          duration: 60,
+          total_clicks: 0,
+        });
+
+      if (error) throw error;
+
+      // Pausar el anuncio viejo para que no aparezca duplicado en el feed
+      await this.supabase
+        .from('ptc_tasks')
+        .update({ status: 'paused' })
+        .eq('id', prev.id)
+        .eq('status', 'active');
+
+      await this.loadMyAd();
+      this.showSuccess('Tu anuncio se ha enviado a revisión.');
+    } catch {
+      this.showError('No se pudo reenviar el anuncio. Intenta de nuevo.');
+    }
+
+    this.saving.set(false);
+  }
+
+  /**
+   * Editar el anuncio del ciclo anterior: abre el formulario con sus datos.
+   * Al guardar, se crea uno NUEVO en estado pending (no muta el viejo).
+   */
+  editPreviousAd(): void {
+    const prev = this.previousAd();
+    if (!prev) return;
+    this.cloningFrom.set(null);
+    this.form.set({
+      title: prev.title,
+      description: prev.description,
+      url: prev.url,
+      youtube_url: prev.youtube_url ?? '',
+      image_url: prev.image_url ?? '',
+    });
+    this.showForm.set(true);
+    this.clearMessages();
   }
 
   ngOnDestroy(): void {

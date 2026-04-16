@@ -3,6 +3,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.client';
 import { LoggerService } from './logger.service';
 import { sanitizePostgrestFilter } from '../utils/sanitize';
+import { traducirError } from './error-translator';
 import type {
   Package,
   CreatePackageData,
@@ -790,15 +791,18 @@ export class AdminPackageService {
     try {
       const user = await this.supabase.auth.getUser();
       const userId = user.data.user?.id;
-      if (!userId) return { success: false, error: 'No autenticado' };
+      if (!userId) return { success: false, error: 'No has iniciado sesión.' };
 
       const { data, error } = await this.supabase.rpc('renew_package_with_balance', {
         p_user_id: userId,
         p_package_id: packageId,
       });
 
-      if (error) return { success: false, error: error.message };
-      if (!data?.success) return { success: false, error: data?.error ?? 'Error desconocido' };
+      if (error) {
+        this.logger.error('renewWithBalance RPC error', error);
+        return { success: false, error: traducirError(error) };
+      }
+      if (!data?.success) return { success: false, error: data?.error ?? 'No se pudo renovar el paquete.' };
 
       return {
         success: true,
@@ -807,7 +811,8 @@ export class AdminPackageService {
         amount_charged: data.amount_charged,
       };
     } catch (e: unknown) {
-      return { success: false, error: e instanceof Error ? e.message : 'Error al renovar' };
+      this.logger.error('renewWithBalance threw', e);
+      return { success: false, error: traducirError(e) };
     }
   }
 }

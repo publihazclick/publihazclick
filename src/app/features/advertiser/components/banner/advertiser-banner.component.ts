@@ -73,6 +73,8 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
   readonly showDeleteConfirm = signal(false);
 
   readonly myBanner = signal<MyBanner | null>(null);
+  /** Banner del ciclo anterior si aún no creó uno en el ciclo actual */
+  readonly previousBanner = signal<MyBanner | null>(null);
   readonly successMsg = signal<string | null>(null);
   readonly errorMsg = signal<string | null>(null);
 
@@ -161,7 +163,7 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
             name: banner.name,
             description: banner.description,
             image_url: banner.image_url,
-            status: 'active',
+            status: 'pending',
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
@@ -177,7 +179,7 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
             url: banner.url,
             position: 'header',
             advertiser_id: user.id,
-            status: 'active',
+            status: 'pending',
             location: 'app',
             impressions_limit: 10000,
             clicks_limit: 1000,
@@ -185,14 +187,22 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
           });
 
         if (error) throw error;
+
+        const prev = this.previousBanner();
+        if (prev) {
+          await this.supabase
+            .from('banner_ads')
+            .update({ status: 'paused' })
+            .eq('id', prev.id)
+            .eq('status', 'active');
+        }
       }
 
       await this.loadMyBanner();
       this.showForm.set(false);
       this.selectedGalleryBanner.set(null);
       this.cloningFrom.set(null);
-      this.showSuccess('¡Has creado tu anuncio banner!');
-      this.scheduleAutoApproval();
+      this.showSuccess('Tu banner se ha enviado a revisión.');
 
       if (isPlatformBrowser(this.platformId)) {
         setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
@@ -208,15 +218,51 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await this.supabase
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('package_started_at')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // 1) Banner del ciclo actual
+    let currentQuery = this.supabase
       .from('banner_ads')
       .select('*')
-      .eq('advertiser_id', user.id)
+      .eq('advertiser_id', user.id);
+
+    if (profile?.package_started_at) {
+      currentQuery = currentQuery.gte('created_at', profile.package_started_at);
+    }
+
+    const { data: currentBanner } = await currentQuery
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    this.myBanner.set(data as MyBanner | null);
+    if (currentBanner) {
+      this.myBanner.set(currentBanner as MyBanner);
+      this.previousBanner.set(null);
+      return;
+    }
+
+    // 2) No tiene del ciclo actual → último de ciclos anteriores
+    this.myBanner.set(null);
+
+    if (!profile?.package_started_at) {
+      this.previousBanner.set(null);
+      return;
+    }
+
+    const { data: prevBanner } = await this.supabase
+      .from('banner_ads')
+      .select('*')
+      .eq('advertiser_id', user.id)
+      .lt('created_at', profile.package_started_at)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    this.previousBanner.set(prevBanner as MyBanner | null);
   }
 
   openCreateForm(): void {
@@ -303,7 +349,7 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
             image_url: f.image_url,
             url: f.url.trim(),
             position: f.position,
-            status: 'active',
+            status: 'pending',
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
@@ -319,7 +365,7 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
             url: f.url.trim(),
             position: f.position,
             advertiser_id: user.id,
-            status: 'active',
+            status: 'pending',
             location: 'app',
             impressions_limit: 10000,
             clicks_limit: 1000,
@@ -327,11 +373,20 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
           });
 
         if (error) throw error;
+
+        const prev = this.previousBanner();
+        if (prev) {
+          await this.supabase
+            .from('banner_ads')
+            .update({ status: 'paused' })
+            .eq('id', prev.id)
+            .eq('status', 'active');
+        }
       }
 
       await this.loadMyBanner();
       this.showForm.set(false);
-      this.scheduleAutoApproval();
+      this.showSuccess('Tu banner se ha enviado a revisión.');
     } catch {
       this.showError('Error al guardar. Intenta de nuevo.');
     }
@@ -339,9 +394,81 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
     this.saving.set(false);
   }
 
+  /** Vuelve a usar el banner del ciclo anterior: clona en estado pending */
+  async reusePreviousBanner(): Promise<void> {
+    const prev = this.previousBanner();
+    if (!prev) return;
+
+    this.saving.set(true);
+    this.clearMessages();
+
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) { this.saving.set(false); return; }
+
+    try {
+      const { error } = await this.supabase
+        .from('banner_ads')
+        .insert({
+          name: prev.name,
+          description: prev.description,
+          image_url: prev.image_url,
+          url: prev.url,
+          position: prev.position,
+          advertiser_id: user.id,
+          status: 'pending',
+          location: 'app',
+          impressions_limit: 10000,
+          clicks_limit: 1000,
+          reward: 0,
+        });
+
+      if (error) throw error;
+
+      // Pausar el viejo
+      await this.supabase
+        .from('banner_ads')
+        .update({ status: 'paused' })
+        .eq('id', prev.id)
+        .eq('status', 'active');
+
+      await this.loadMyBanner();
+      this.showSuccess('Tu banner se ha enviado a revisión.');
+    } catch {
+      this.showError('No se pudo reenviar el banner. Intenta de nuevo.');
+    }
+
+    this.saving.set(false);
+  }
+
+  /** Editar banner del ciclo anterior: abre el form con sus datos */
+  editPreviousBanner(): void {
+    const prev = this.previousBanner();
+    if (!prev) return;
+    this.form.set({
+      name: prev.name,
+      description: prev.description ?? '',
+      image_url: prev.image_url,
+      url: prev.url,
+      position: prev.position,
+    });
+    this.showForm.set(true);
+    this.clearMessages();
+  }
+
   async deleteBanner(): Promise<void> {
-    const b = this.myBanner();
-    if (!b) return;
+    // SOLO se puede eliminar el banner del CICLO ANTERIOR.
+    // El del ciclo actual está bloqueado hasta que el usuario renueve.
+    if (this.myBanner()) {
+      this.showDeleteConfirm.set(false);
+      this.showError('No puedes eliminar tu banner hasta que pasen los 30 días desde tu activación o renovación.');
+      return;
+    }
+
+    const b = this.previousBanner();
+    if (!b) {
+      this.showDeleteConfirm.set(false);
+      return;
+    }
 
     const { error } = await this.supabase
       .from('banner_ads')
@@ -351,10 +478,13 @@ export class AdvertiserBannerComponent implements OnInit, OnDestroy {
     this.showDeleteConfirm.set(false);
 
     if (error) {
-      this.showError('Error al eliminar el banner.');
+      console.error('[deleteBanner] error', error);
+      this.showError('No se pudo eliminar el banner: ' + (error.message || 'error desconocido'));
     } else {
       this.myBanner.set(null);
-      this.showSuccess('Banner eliminado correctamente.');
+      this.previousBanner.set(null);
+      this.showSuccess('Banner eliminado. Ya puedes crear o clonar uno nuevo.');
+      await this.loadMyBanner();
     }
   }
 

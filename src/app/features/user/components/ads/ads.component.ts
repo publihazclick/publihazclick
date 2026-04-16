@@ -6,6 +6,7 @@ import { AdminPtcTaskService } from '../../../../core/services/admin-ptc-task.se
 import { AdminBannerService } from '../../../../core/services/admin-banner.service';
 import { AdminPackageService } from '../../../../core/services/admin-package.service';
 import { StorageService } from '../../../../core/services/storage.service';
+import { traducirError } from '../../../../core/services/error-translator';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { UserTrackingService } from '../../../../core/services/user-tracking.service';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -483,11 +484,18 @@ export class UserAdsComponent implements OnInit, OnDestroy {
 
   async savePtcAd(): Promise<void> {
     if (!this.ptcFormData.title || !this.ptcFormData.url) {
-      this.ptcModalError.set('El nombre y la URL de destino son obligatorios');
+      this.ptcModalError.set('El nombre y la URL de destino son obligatorios.');
+      return;
+    }
+    if (!this.ptcFormData.image_url) {
+      this.ptcModalError.set('Sube una imagen para el anuncio antes de guardarlo.');
       return;
     }
     const userId = this.profile()?.id;
-    if (!userId) return;
+    if (!userId) {
+      this.ptcModalError.set('No has iniciado sesión.');
+      return;
+    }
 
     this.savingPtc.set(true);
     this.ptcModalError.set(null);
@@ -507,12 +515,13 @@ export class UserAdsComponent implements OnInit, OnDestroy {
         is_demo_only: false,
         total_clicks: 0,
       } as any);
-      if (!result) throw new Error('No se pudo crear el anuncio');
+      if (!result) throw new Error('No se pudo crear el anuncio.');
       this.closePtcModal();
-      this.showToast('Anuncio enviado para revisión. El equipo lo activará pronto.');
+      this.showToast('Anuncio creado correctamente. Ya puedes empezar a recibir clics.');
       await this.loadAds();
-    } catch (err: any) {
-      this.ptcModalError.set(err.message || 'Error al crear el anuncio');
+    } catch (err: unknown) {
+      console.error('[savePtcAd] error', err);
+      this.ptcModalError.set(traducirError(err));
     } finally {
       this.savingPtc.set(false);
     }
@@ -547,11 +556,18 @@ export class UserAdsComponent implements OnInit, OnDestroy {
 
   async saveBannerAd(): Promise<void> {
     if (!this.bannerFormData.name || !this.bannerFormData.url) {
-      this.bannerModalError.set('El nombre y la URL de destino son obligatorios');
+      this.bannerModalError.set('El nombre y la URL de destino son obligatorios.');
+      return;
+    }
+    if (!this.bannerFormData.image_url) {
+      this.bannerModalError.set('Sube una imagen para el banner antes de guardarlo.');
       return;
     }
     const userId = this.profile()?.id;
-    if (!userId) return;
+    if (!userId) {
+      this.bannerModalError.set('No has iniciado sesión.');
+      return;
+    }
 
     this.savingBanner.set(true);
     this.bannerModalError.set(null);
@@ -566,12 +582,13 @@ export class UserAdsComponent implements OnInit, OnDestroy {
         location: 'app',
         advertiser_id: userId,
       } as any);
-      if (!result) throw new Error('No se pudo crear el banner');
+      if (!result) throw new Error('No se pudo crear el banner.');
       this.closeBannerModal();
-      this.showToast('Banner enviado para revisión. El equipo lo activará pronto.');
+      this.showToast('Banner creado correctamente.');
       await this.loadAds();
-    } catch (err: any) {
-      this.bannerModalError.set(err.message || 'Error al crear el banner');
+    } catch (err: unknown) {
+      console.error('[saveBannerAd] error', err);
+      this.bannerModalError.set(traducirError(err));
     } finally {
       this.savingBanner.set(false);
     }

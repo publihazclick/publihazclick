@@ -14,6 +14,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CurrencyService } from '../../core/services/currency.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { XzoomService } from '../../core/services/xzoom.service';
+import { StorageService } from '../../core/services/storage.service';
 import type {
   XzoomHost,
   XzoomHostSubscription,
@@ -56,9 +57,16 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   private readonly currency = inject(CurrencyService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly storage = inject(StorageService);
 
   readonly view = signal<View>('loading');
   readonly errorMsg = signal<string | null>(null);
+  readonly editError = signal<string | null>(null);
+
+  // Upload states
+  readonly uploadingAvatar = signal(false);
+  readonly uploadingCover = signal(false);
+  readonly uploadingVideo = signal(false);
   readonly loading = signal(false);
 
   readonly userId = signal<string | null>(null);
@@ -686,6 +694,63 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       if (this.copyFeedback() === key) this.copyFeedback.set(null);
     }, 1800);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // SUBIR ARCHIVOS (avatar, portada, video)
+  // ─────────────────────────────────────────────────────────────
+  async onFileUpload(event: Event, type: 'avatar' | 'cover' | 'video'): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const h = this.host();
+    if (!h) return;
+
+    // Validate
+    if (type === 'video') {
+      if (file.size > 50 * 1024 * 1024) {
+        this.editError.set('El video no debe superar 50MB');
+        return;
+      }
+    } else {
+      if (!this.storage.isValidImage(file)) {
+        this.editError.set('Formato no válido. Usa JPG, PNG o WebP.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        this.editError.set('La imagen no debe superar 5MB');
+        return;
+      }
+    }
+
+    this.editError.set(null);
+    if (type === 'avatar') this.uploadingAvatar.set(true);
+    else if (type === 'cover') this.uploadingCover.set(true);
+    else this.uploadingVideo.set(true);
+
+    try {
+      const folder = `xzoom/${h.id}`;
+      const result = await this.storage.uploadImage('xzoom-media', file, folder);
+
+      if (!result.success || !result.url) {
+        this.editError.set(result.error ?? 'Error al subir el archivo');
+        return;
+      }
+
+      if (type === 'avatar') {
+        this.editAvatarUrl.set(result.url);
+      } else if (type === 'cover') {
+        this.editCoverUrl.set(result.url);
+      } else {
+        this.editPitchVideoUrl.set(result.url);
+      }
+    } catch (e: any) {
+      this.editError.set(e?.message ?? 'Error al subir');
+    } finally {
+      if (type === 'avatar') this.uploadingAvatar.set(false);
+      else if (type === 'cover') this.uploadingCover.set(false);
+      else this.uploadingVideo.set(false);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────

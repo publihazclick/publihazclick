@@ -30,8 +30,79 @@
       </div>
     } @else if (!showForm()) {
 
-      @if (!myAd()) {
-        <!-- Sin anuncio: CTA crear -->
+      @if (!myAd() && previousAd(); as prev) {
+        <!-- Anuncio del ciclo ANTERIOR: editar, eliminar o volver a usar -->
+        <div class="bg-card-dark border border-amber-500/20 rounded-2xl overflow-hidden">
+          <div class="px-5 py-3 bg-amber-500/5 border-b border-amber-500/15 flex items-start gap-2">
+            <span class="material-symbols-outlined text-amber-400 flex-shrink-0" style="font-size:18px">history</span>
+            <p class="text-xs text-amber-300">
+              <span class="font-bold">Tu anuncio del ciclo anterior.</span>
+              Puedes <span class="font-bold">volver a usarlo</span>, editarlo o eliminarlo.
+              Si quieres uno distinto, clónalo de la galería más abajo.
+            </p>
+          </div>
+
+          <div class="relative">
+            @if (prev.image_url) {
+              <img [src]="prev.image_url" [alt]="prev.title" class="w-full h-48 sm:h-56 object-cover">
+            } @else {
+              <div class="w-full h-48 sm:h-56 bg-zinc-900 flex items-center justify-center">
+                <span class="material-symbols-outlined text-zinc-700 text-6xl">image</span>
+              </div>
+            }
+            <div class="absolute top-3 right-3">
+              <span class="text-[10px] font-black px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                Ciclo anterior
+              </span>
+            </div>
+          </div>
+
+          <div class="p-5 space-y-3">
+            <h3 class="text-lg font-black text-white">{{ prev.title }}</h3>
+            @if (prev.description) {
+              <p class="text-slate-400 text-sm">{{ prev.description }}</p>
+            }
+            <div class="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5 min-w-0">
+              <span class="material-symbols-outlined text-accent flex-shrink-0" style="font-size:16px">link</span>
+              <a [href]="prev.url" target="_blank" rel="noopener"
+                 class="text-xs text-slate-400 hover:text-accent transition-colors truncate flex-1">
+                {{ prev.url }}
+              </a>
+            </div>
+
+            <div class="flex gap-3 pt-2 flex-wrap">
+              <button
+                (click)="reusePreviousAd()"
+                [disabled]="saving()"
+                class="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all"
+              >
+                @if (saving()) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span>
+                  Enviando...
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+                  Volver a usar
+                }
+              </button>
+              <button
+                (click)="editPreviousAd()"
+                class="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-bold rounded-xl text-sm transition-all"
+              >
+                <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+                Editar
+              </button>
+              <button
+                (click)="showDeleteConfirm.set(true)"
+                class="flex items-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 font-bold rounded-xl text-sm transition-all"
+              >
+                <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      } @else if (!myAd()) {
+        <!-- Sin anuncio anterior ni del ciclo: CTA crear desde cero -->
         <div class="bg-card-dark border border-dashed border-white/10 rounded-2xl p-10 flex flex-col items-center text-center gap-4">
           <div class="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center">
             <span class="material-symbols-outlined text-accent text-3xl">add_circle</span>
@@ -127,13 +198,14 @@
                 <span class="material-symbols-outlined" style="font-size:16px">edit</span>
                 Editar
               </button>
-              <button
-                (click)="showDeleteConfirm.set(true)"
-                class="flex items-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 font-bold rounded-xl text-sm transition-all"
-              >
-                <span class="material-symbols-outlined" style="font-size:16px">delete</span>
-                Eliminar
-              </button>
+            </div>
+
+            <!-- Aviso: el anuncio del ciclo actual no se puede eliminar -->
+            <div class="flex items-start gap-2 px-4 py-3 bg-amber-500/5 border border-amber-500/15 rounded-xl mt-2">
+              <span class="material-symbols-outlined text-amber-400 flex-shrink-0" style="font-size:16px">lock</span>
+              <p class="text-xs text-amber-300">
+                <span class="font-bold">No puedes eliminar este anuncio</span> hasta que pasen los 30 días desde tu activación o renovación. Mientras tanto, puedes editarlo cuantas veces quieras.
+              </p>
             </div>
           </div>
         </div>
@@ -342,31 +414,28 @@
                 }
               </button>
             </div>
+
+            <!-- Botón Guardar inline (solo cuando este card está seleccionado) -->
+            @if (selectedGalleryAd()?.id === ad.id) {
+              <div class="px-3 pb-3 pt-0">
+                <button
+                  (click)="saveSelectedAd()"
+                  [disabled]="saving()"
+                  class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-accent/20"
+                >
+                  @if (saving()) {
+                    <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span>
+                    Guardando...
+                  } @else {
+                    <span class="material-symbols-outlined" style="font-size:16px">save</span>
+                    Guardar y enviar a revisión
+                  }
+                </button>
+              </div>
+            }
           </div>
         }
       </div>
-
-      <!-- Botón guardar selección -->
-      @if (selectedGalleryAd()) {
-        <div class="flex flex-col items-center gap-3 pt-4">
-          <p class="text-xs text-slate-400">
-            Has seleccionado: <span class="text-white font-bold">{{ selectedGalleryAd()!.title }}</span>
-          </p>
-          <button
-            (click)="saveSelectedAd()"
-            [disabled]="saving()"
-            class="flex items-center gap-2 px-8 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all"
-          >
-            @if (saving()) {
-              <span class="material-symbols-outlined animate-spin" style="font-size:16px">sync</span>
-              Guardando...
-            } @else {
-              <span class="material-symbols-outlined" style="font-size:16px">save</span>
-              Guardar
-            }
-          </button>
-        </div>
-      }
     }
   </section>
 

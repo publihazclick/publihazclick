@@ -526,35 +526,34 @@ export class AdminPtcTaskService {
    * Crear nuevo anuncio PTC
    */
   async createPtcTask(data: CreatePtcTaskData): Promise<{ id: string } | null> {
-    try {
-      const { data: result, error } = await this.supabase
-        .from('ptc_tasks')
-        .insert({
-          title: data.title,
-          description: data.description,
-          url: data.url,
-          youtube_url: data.youtube_url || null,
-          image_url: data.image_url,
-          reward: data.reward,
-          duration: data.duration,
-          daily_limit: data.daily_limit,
-          advertiser_id: data.advertiser_id,
-          ad_type: data.ad_type,
-          is_demo_only: data.is_demo_only,
-          status: 'active',
-          location: data.location,
-          total_clicks: data.total_clicks || 0
-        })
-        .select('id')
-        .single();
+    const { data: result, error } = await this.supabase
+      .from('ptc_tasks')
+      .insert({
+        title: data.title,
+        description: data.description,
+        url: data.url,
+        youtube_url: data.youtube_url || null,
+        image_url: data.image_url,
+        reward: data.reward,
+        duration: data.duration,
+        daily_limit: data.daily_limit,
+        advertiser_id: data.advertiser_id,
+        ad_type: data.ad_type,
+        is_demo_only: data.is_demo_only,
+        status: 'active',
+        location: data.location,
+        total_clicks: data.total_clicks || 0
+      })
+      .select('id')
+      .single();
 
-      if (error) throw error;
-
-      return result;
-    } catch (error: any) {
-      // Failed to create PTC task
-      return null;
+    if (error) {
+      // Lanzar el error original para que el componente pueda traducirlo
+      // y mostrar un mensaje específico al usuario.
+      throw error;
     }
+
+    return result;
   }
 
   /**

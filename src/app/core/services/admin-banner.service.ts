@@ -171,35 +171,34 @@ export class AdminBannerService {
    * Crear nuevo banner
    */
   async createBannerAd(data: CreateBannerAdData): Promise<{ id: string } | null> {
-    try {
-      const { data: result, error } = await this.supabase
-        .from('banner_ads')
-        .insert({
-          name: data.name,
-          description: data.description,
-          image_url: data.image_url,
-          url: data.url,
-          position: data.position,
-          impressions_limit: data.impressions_limit || 10000,
-          clicks_limit: data.clicks_limit || 1000,
-          reward: data.reward || 0,
-          start_date: data.start_date,
-          end_date: data.end_date,
-          advertiser_id: data.advertiser_id,
-          campaign_id: data.campaign_id,
-          location: data.location,
-          status: 'active'
-        })
-        .select('id')
-        .single();
+    const { data: result, error } = await this.supabase
+      .from('banner_ads')
+      .insert({
+        name: data.name,
+        description: data.description,
+        image_url: data.image_url,
+        url: data.url,
+        position: data.position,
+        impressions_limit: data.impressions_limit || 10000,
+        clicks_limit: data.clicks_limit || 1000,
+        reward: data.reward || 0,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        advertiser_id: data.advertiser_id,
+        campaign_id: data.campaign_id,
+        location: data.location,
+        status: 'active'
+      })
+      .select('id')
+      .single();
 
-      if (error) throw error;
-
-      return result;
-    } catch (error: any) {
-      // Failed to create banner ad
-      return null;
+    if (error) {
+      // Lanzar el error original para que el componente pueda traducirlo
+      // y mostrar un mensaje específico al usuario.
+      throw error;
     }
+
+    return result;
   }
 
   /**
