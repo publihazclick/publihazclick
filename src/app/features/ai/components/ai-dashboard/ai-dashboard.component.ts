@@ -51,7 +51,7 @@ export class AiDashboardComponent implements OnInit {
       badge: 'Avatar IA',
       icon: 'face',
       embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
-        'https://www.youtube.com/embed/2bL_2M6L4Cw?rel=0&modestbranding=1',
+        'https://www.youtube.com/embed/3xNHjd43Umg?rel=0&modestbranding=1',
       ),
     },
     {
@@ -62,18 +62,18 @@ export class AiDashboardComponent implements OnInit {
       badge: 'Video IA',
       icon: 'movie',
       embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
-        'https://www.youtube.com/embed/HhkPMkNpN5c?rel=0&modestbranding=1',
+        'https://www.youtube.com/embed/n1EqV2ONYQU?rel=0&modestbranding=1',
       ),
     },
     {
       id: 'image',
-      title: 'Imágenes Únicas con IA',
-      shortDesc: 'Fotografías imposibles, creadas al instante',
-      description: 'Genera imágenes profesionales para redes sociales, anuncios y campañas en segundos.',
-      badge: 'Imagen IA',
+      title: 'Los Resultados Más Realistas',
+      shortDesc: 'Videos e imágenes imposibles de distinguir',
+      description: 'Genera contenido visual de calidad profesional para redes sociales, anuncios y campañas.',
+      badge: 'Visual IA',
       icon: 'image',
       embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
-        'https://www.youtube.com/embed/sqQrN0iZBs0?rel=0&modestbranding=1',
+        'https://www.youtube.com/embed/Dr974k2RCLk?rel=0&modestbranding=1',
       ),
     },
     {
@@ -84,7 +84,7 @@ export class AiDashboardComponent implements OnInit {
       badge: 'Voz IA',
       icon: 'record_voice_over',
       embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
-        'https://www.youtube.com/embed/0elMh4Dg27Y?rel=0&modestbranding=1',
+        'https://www.youtube.com/embed/Vs6vJwmJL0Y?rel=0&modestbranding=1',
       ),
     },
   ];
