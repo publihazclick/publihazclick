@@ -391,6 +391,195 @@
   color: #94a3b8;
 }
 
+/* ───────── Invite card ───────── */
+.invite-card {
+  background: linear-gradient(135deg, rgba(255, 59, 48, 0.12), rgba(10, 10, 10, 0.95));
+  border: 1px solid rgba(255, 59, 48, 0.35);
+
+  .invite-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+
+    h3 {
+      margin: 0 0 6px;
+      color: #ff6b6b;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #94a3b8;
+    }
+  }
+
+  .invite-row {
+    display: flex;
+    gap: 10px;
+
+    input {
+      flex: 1;
+      padding: 12px 14px;
+      background: #0a0a0a;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+.btn-ghost-sm,
+.btn-primary-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 100px;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+  }
+}
+.btn-ghost-sm {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+
+  &:hover {
+    background: rgba(255, 59, 48, 0.12);
+    border-color: #ff3b30;
+  }
+}
+.btn-primary-sm {
+  background: linear-gradient(135deg, #ff3b30, #ff6b6b);
+  color: #fff;
+  box-shadow: 0 8px 24px -8px rgba(255, 59, 48, 0.6);
+
+  &:hover { transform: translateY(-1px); }
+}
+
+/* ───────── Session row with copy button ───────── */
+.session-row {
+  align-items: center;
+  gap: 10px;
+
+  .session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+
+    strong {
+      font-size: 13px;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .session-date {
+      font-size: 11px;
+      color: #64748b;
+    }
+  }
+
+  .session-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-copy-session {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: rgba(255, 59, 48, 0.12);
+    border: 1px solid rgba(255, 59, 48, 0.35);
+    color: #ff6b6b;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+
+    .material-symbols-outlined { font-size: 14px; }
+    &:hover { background: rgba(255, 59, 48, 0.2); }
+  }
+
+  .btn-cancel-session {
+    padding: 6px 10px;
+    background: #1e293b;
+    color: #94a3b8;
+    border: none;
+    border-radius: 8px;
+    font-size: 11px;
+    cursor: pointer;
+    &:hover { color: #fff; }
+  }
+}
+
+/* ───────── Edit channel card ───────── */
+.edit-channel {
+  .hint {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 4px;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .save-msg {
+    margin: 12px 0 0;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    &.success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .invite-card .invite-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .invite-card .invite-row {
+    flex-direction: column;
+  }
+  .invite-card .btn-primary-sm {
+    width: 100%;
+    justify-content: center;
+  }
+  .session-row {
+    flex-direction: column;
+    align-items: stretch;
+
+    .session-actions {
+      justify-content: flex-end;
+    }
+  }
+}
+
 /* ───────── Responsive ───────── */
 @media (max-width: 768px) {
   :host { padding: 14px; }

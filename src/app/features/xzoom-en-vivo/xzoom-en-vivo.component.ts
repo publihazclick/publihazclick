@@ -78,6 +78,30 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   readonly formBio = signal('');
   readonly formCategory = signal('');
 
+  // Edit channel form
+  readonly editDisplayName = signal('');
+  readonly editBio = signal('');
+  readonly editCategory = signal('');
+  readonly editPriceCop = signal(20000);
+  readonly editAvatarUrl = signal('');
+  readonly editCoverUrl = signal('');
+  readonly editPitchVideoUrl = signal('');
+  readonly savingProfile = signal(false);
+  readonly profileSaveMsg = signal<string | null>(null);
+
+  // Copy-to-clipboard feedback: 'invite' o el sessionId cuyo botón mostró "Copiado"
+  readonly copyFeedback = signal<string | null>(null);
+
+  // Link de invitación absoluto basado en el slug del host
+  readonly inviteLink = computed(() => {
+    const h = this.host();
+    if (!h) return '';
+    const origin = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'https://www.publihazclick.com';
+    return `${origin}/xzoom/h/${h.slug}`;
+  });
+
   // Scheduling form
   readonly scheduleTitle = signal('');
   readonly scheduleDescription = signal('');
@@ -162,6 +186,15 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
         this.scheduledSessions.set(sessions);
         this.recordings.set(recs);
         this.subscribers.set(subs);
+
+        // Precargar el form de edición con los datos actuales del host
+        this.editDisplayName.set(host.display_name ?? '');
+        this.editBio.set(host.bio ?? '');
+        this.editCategory.set(host.category ?? '');
+        this.editPriceCop.set(host.subscriber_price_cop ?? 20000);
+        this.editAvatarUrl.set(host.avatar_url ?? '');
+        this.editCoverUrl.set(host.cover_url ?? '');
+        this.editPitchVideoUrl.set(host.pitch_video_url ?? '');
 
         // Sin paywall: el host entra directo al dashboard tras crear su perfil
         this.view.set('host_dashboard');
@@ -476,6 +509,98 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     this.liveCameraOn.set(true);
     this.liveMicOn.set(true);
     this.liveScreenSharing.set(false);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // COPIAR LINKS AL PORTAPAPELES
+  // ─────────────────────────────────────────────────────────────
+  async copyInviteLink(): Promise<void> {
+    const link = this.inviteLink();
+    if (!link) return;
+    await this.copyToClipboard(link);
+    this.flashCopyFeedback('invite');
+  }
+
+  async copySessionLink(sessionId: string): Promise<void> {
+    const h = this.host();
+    if (!h) return;
+    const origin = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'https://www.publihazclick.com';
+    const link = `${origin}/xzoom/h/${h.slug}?session=${sessionId}`;
+    await this.copyToClipboard(link);
+    this.flashCopyFeedback(sessionId);
+  }
+
+  private async copyToClipboard(text: string): Promise<void> {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+    } catch {
+      /* fallback below */
+    }
+    // Fallback para navegadores sin Clipboard API (iOS viejo, http, etc.)
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {
+      console.error('[xzoom] No se pudo copiar al portapapeles', e);
+    }
+  }
+
+  private flashCopyFeedback(key: string): void {
+    this.copyFeedback.set(key);
+    setTimeout(() => {
+      if (this.copyFeedback() === key) this.copyFeedback.set(null);
+    }, 1800);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // GUARDAR CAMBIOS DEL CANAL
+  // ─────────────────────────────────────────────────────────────
+  async saveHostProfile(): Promise<void> {
+    const h = this.host();
+    if (!h) return;
+    const displayName = this.editDisplayName().trim();
+    const priceCop = this.editPriceCop();
+    if (!displayName) {
+      this.errorMsg.set('El nombre del canal es obligatorio');
+      return;
+    }
+    if (!priceCop || priceCop < 1000) {
+      this.errorMsg.set('El precio mínimo es 1.000 COP');
+      return;
+    }
+
+    this.savingProfile.set(true);
+    this.profileSaveMsg.set(null);
+    this.errorMsg.set(null);
+    try {
+      const updated = await this.xzoom.updateHostProfile(h.id, {
+        display_name: displayName,
+        bio: this.editBio().trim() || null,
+        category: this.editCategory().trim() || null,
+        subscriber_price_cop: priceCop,
+        avatar_url: this.editAvatarUrl().trim() || null,
+        cover_url: this.editCoverUrl().trim() || null,
+        pitch_video_url: this.editPitchVideoUrl().trim() || null,
+      });
+      this.host.set(updated);
+      this.profileSaveMsg.set('Cambios guardados correctamente ✓');
+      setTimeout(() => this.profileSaveMsg.set(null), 3000);
+    } catch (err: any) {
+      this.errorMsg.set(err?.message ?? 'No pudimos guardar los cambios');
+    } finally {
+      this.savingProfile.set(false);
+    }
   }
 
   formatCOP(v: number | null | undefined): string {

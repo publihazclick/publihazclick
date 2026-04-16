@@ -75,6 +75,30 @@
 
   <!-- HOST DASHBOARD -->
   @if (view() === 'host_dashboard') {
+
+    <!-- Link de invitación del canal -->
+    <section class="xzoom-card invite-card">
+      <div class="invite-head">
+        <div>
+          <h3>Link de invitación de tu canal</h3>
+          <p class="muted">Comparte este link con tus seguidores. Al abrirlo verán tu landing privada con tu video de presentación y el botón para suscribirse.</p>
+        </div>
+        <a class="btn-ghost-sm" [href]="inviteLink()" target="_blank" rel="noopener">
+          <span class="material-symbols-outlined">open_in_new</span>
+          Ver mi landing
+        </a>
+      </div>
+      <div class="invite-row">
+        <input type="text" readonly [value]="inviteLink()" (click)="$any($event.target).select()" />
+        <button type="button" class="btn-primary-sm" (click)="copyInviteLink()">
+          <span class="material-symbols-outlined">
+            {{ copyFeedback() === 'invite' ? 'check' : 'content_copy' }}
+          </span>
+          {{ copyFeedback() === 'invite' ? '¡Copiado!' : 'Copiar' }}
+        </button>
+      </div>
+    </section>
+
     <div class="xzoom-grid">
 
       <section class="xzoom-card stats">
@@ -114,11 +138,74 @@
         @if (scheduledSessions().length > 0) {
           <h4>Próximas sesiones</h4>
           @for (s of scheduledSessions(); track s.id) {
-            <div class="xzoom-sub-row">
-              <span><strong>{{ s.title }}</strong> — {{ formatDate(s.scheduled_at) }}</span>
-              <button (click)="cancelSession(s.id)">Cancelar</button>
+            <div class="xzoom-sub-row session-row">
+              <div class="session-info">
+                <strong>{{ s.title }}</strong>
+                <span class="session-date">{{ formatDate(s.scheduled_at) }}</span>
+              </div>
+              <div class="session-actions">
+                <button
+                  type="button"
+                  class="btn-copy-session"
+                  title="Copiar link de esta sesión"
+                  (click)="copySessionLink(s.id)">
+                  <span class="material-symbols-outlined">
+                    {{ copyFeedback() === s.id ? 'check' : 'link' }}
+                  </span>
+                  {{ copyFeedback() === s.id ? 'Copiado' : 'Copiar link' }}
+                </button>
+                <button type="button" class="btn-cancel-session" (click)="cancelSession(s.id)">
+                  Cancelar
+                </button>
+              </div>
             </div>
           }
+        }
+      </section>
+
+      <!-- EDITAR MI CANAL -->
+      <section class="xzoom-card edit-channel">
+        <h3>Editar mi canal</h3>
+        <p class="muted">Personaliza cómo se ve tu landing privada para tus invitados.</p>
+
+        <label>Nombre público del canal</label>
+        <input type="text" [value]="editDisplayName()" (input)="editDisplayName.set($any($event.target).value)" placeholder="Mi canal" />
+
+        <label>Descripción / biografía</label>
+        <textarea [value]="editBio()" (input)="editBio.set($any($event.target).value)" placeholder="Cuéntales a tus invitados de qué trata tu canal…"></textarea>
+
+        <label>Categoría</label>
+        <select [value]="editCategory()" (change)="editCategory.set($any($event.target).value)">
+          <option value="">Sin categoría</option>
+          <option value="educacion">Educación</option>
+          <option value="entretenimiento">Entretenimiento</option>
+          <option value="negocios">Negocios</option>
+          <option value="deportes">Deportes</option>
+          <option value="salud">Salud y bienestar</option>
+          <option value="tecnologia">Tecnología</option>
+          <option value="espiritualidad">Espiritualidad</option>
+          <option value="arte">Arte y cultura</option>
+        </select>
+
+        <label>Precio mensual de suscripción (COP)</label>
+        <input type="number" min="1000" step="1000" [value]="editPriceCop()" (input)="editPriceCop.set(+$any($event.target).value)" />
+
+        <label>URL de tu foto de perfil</label>
+        <input type="url" [value]="editAvatarUrl()" (input)="editAvatarUrl.set($any($event.target).value)" placeholder="https://..." />
+
+        <label>URL de tu imagen de portada</label>
+        <input type="url" [value]="editCoverUrl()" (input)="editCoverUrl.set($any($event.target).value)" placeholder="https://..." />
+
+        <label>URL del video de presentación (YouTube, Vimeo o MP4)</label>
+        <input type="url" [value]="editPitchVideoUrl()" (input)="editPitchVideoUrl.set($any($event.target).value)" placeholder="https://www.youtube.com/watch?v=..." />
+        <small class="hint">Este es el video que verán los invitados en tu landing privada antes de suscribirse.</small>
+
+        <button class="btn-primary" (click)="saveHostProfile()" [disabled]="savingProfile()">
+          @if (savingProfile()) { Guardando… } @else { Guardar cambios }
+        </button>
+
+        @if (profileSaveMsg()) {
+          <p class="save-msg success">{{ profileSaveMsg() }}</p>
         }
       </section>
 
