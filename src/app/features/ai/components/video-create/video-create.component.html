@@ -1,47 +1,32 @@
-<!-- ═══ BLOQUEO: Saldo insuficiente — con video demo motivacional ═══ -->
+<!-- ═══ BLOQUEO: Saldo insuficiente ═══ -->
 @if (walletLoaded() && walletBalance() <= 0) {
   <div class="min-h-screen bg-black flex items-center justify-center p-4">
-    <div class="max-w-lg w-full">
-      <!-- Video demo de lo que puede crear -->
-      <div class="rounded-2xl overflow-hidden border border-purple-500/30 shadow-2xl shadow-purple-500/20 mb-6">
-        <div class="aspect-video">
-          <iframe
-            src="https://www.youtube.com/embed/n1EqV2ONYQU?rel=0&modestbranding=1"
-            class="w-full h-full"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen>
-          </iframe>
-        </div>
+    <div class="max-w-md w-full text-center">
+      <div class="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center mb-6"
+           style="background: linear-gradient(135deg, #7c3aed, #d946ef);">
+        <span class="material-symbols-outlined text-white" style="font-size:40px">auto_awesome</span>
       </div>
-
-      <div class="text-center">
-        <div class="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4"
-             style="background: linear-gradient(135deg, #7c3aed, #d946ef);">
-          <span class="material-symbols-outlined text-white" style="font-size:32px">auto_awesome</span>
-        </div>
-        <h2 class="text-2xl font-black text-white mb-2">¡Crea videos así de impresionantes!</h2>
-        <p class="text-sm text-slate-400 leading-relaxed mb-5 max-w-sm mx-auto">
-          Recarga tu billetera y empieza a crear <strong class="text-purple-400">videos profesionales</strong>
-          con IA en minutos. Sin cámaras, sin estudio, sin experiencia.
-        </p>
-        <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl px-4 py-3 mb-6 inline-flex items-center gap-3">
+      <h2 class="text-2xl font-black text-white mb-2">Recarga Requerida</h2>
+      <p class="text-sm text-slate-400 leading-relaxed mb-6">
+        Para usar el <strong class="text-white">Creador de Videos IA</strong> necesitas saldo en tu billetera.
+        Recarga ahora y crea videos profesionales al instante.
+      </p>
+      <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl px-4 py-3 mb-6">
+        <div class="flex items-center justify-center gap-2">
           <span class="material-symbols-outlined text-purple-400" style="font-size:18px">bolt</span>
           <span class="text-sm font-bold text-purple-300">Un video profesional desde $500 COP</span>
         </div>
-        <div>
-          <a routerLink="/advertiser/ai/wallet"
-             class="inline-flex items-center gap-2 px-8 py-4 rounded-full text-white font-black text-sm uppercase tracking-wider transition-all hover:scale-105 shadow-lg shadow-purple-500/30"
-             style="background: linear-gradient(90deg, #7c3aed, #8b5cf6, #d946ef);">
-            <span class="material-symbols-outlined" style="font-size:18px">add_circle</span>
-            Recargar y empezar a crear
-          </a>
-        </div>
-        <div class="mt-4">
-          <a routerLink="/advertiser/ai/creator" class="text-sm text-slate-500 hover:text-violet-400 transition-colors">
-            ← Volver al panel
-          </a>
-        </div>
+      </div>
+      <a routerLink="/advertiser/ai/wallet"
+         class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all hover:opacity-90 shadow-lg shadow-violet-500/20"
+         style="background: linear-gradient(90deg, #7c3aed, #8b5cf6, #d946ef);">
+        <span class="material-symbols-outlined" style="font-size:18px">add_circle</span>
+        Recargar Billetera
+      </a>
+      <div class="mt-4">
+        <a routerLink="/advertiser/ai/creator" class="text-sm text-slate-500 hover:text-violet-400 transition-colors">
+          ← Volver al panel
+        </a>
       </div>
     </div>
   </div>
