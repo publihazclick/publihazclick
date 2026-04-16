@@ -801,6 +801,44 @@ Deno.serve(async (req) => {
       return ok('curso_purchase_approved');
     }
 
+    // ── 4C. Si es compra de tokens LiveCam Pro ──────────────────────────────
+    if (x_extra3 === 'livecam_token_purchase' && x_extra1) {
+      const tokensToCredit = parseInt(x_extra2 || '0', 10);
+      if (tokensToCredit <= 0) {
+        console.error('livecam_token_purchase: tokens inválidos:', x_extra2);
+        return fail('Invalid token amount', 400);
+      }
+
+      // Update purchase status
+      await supabase.from('livecam_token_purchases')
+        .update({ status: 'completed' })
+        .eq('id', x_extra1);
+
+      // Get user_id from purchase
+      const { data: purchase } = await supabase.from('livecam_token_purchases')
+        .select('user_id')
+        .eq('id', x_extra1)
+        .single();
+
+      if (purchase?.user_id) {
+        // Credit tokens to user balance
+        await supabase.from('livecam_profiles')
+          .update({
+            token_balance: supabase.rpc ? undefined : 0, // handled by raw SQL below
+          })
+          .eq('id', purchase.user_id);
+
+        // Use raw update for atomic increment
+        await supabase.rpc('livecam_credit_tokens', {
+          p_user_id: purchase.user_id,
+          p_tokens: tokensToCredit,
+        });
+      }
+
+      console.log(`LiveCam token purchase ${x_extra1} completed — ${tokensToCredit} tokens credited — ref: ${x_ref_payco}`);
+      return ok('livecam_token_purchase_approved');
+    }
+
     // ── 4. Buscar pago en DB (flujo paquetes) ────────────────────────────────
     // Intentar por extra1 (payment UUID) o por gateway_reference (invoice)
     let paymentId: string | null = null;
