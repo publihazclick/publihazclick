@@ -143,9 +143,28 @@
   }
 
   .row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 100px;
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    > * {
+      flex: 1 1 150px;
+      min-width: 0;
+    }
+  }
+}
+
+/* Grid del dashboard: los hijos deben poder encogerse por debajo de su ancho
+   intrínseco (especialmente los inputs date/time que traen mínimo 130-140px).
+   Sin min-width: 0, los inputs desbordan y “invaden” la tarjeta vecina. */
+.xzoom-grid > * { min-width: 0; }
+.xzoom-card { overflow: hidden; }
+
+/* La tarjeta de programar sesión necesita espacio para título + fecha + hora + duración.
+   Si la cuadrícula la pone junto a otra tarjeta y queda estrecha, le damos dos columnas. */
+.xzoom-card.schedule {
+  @media (min-width: 769px) {
+    grid-column: span 2;
   }
 }
 
@@ -620,8 +639,10 @@
       border-radius: 9px;
     }
     .row {
-      grid-template-columns: 1fr;
-      gap: 6px;
+      flex-direction: column;
+      gap: 8px;
+
+      > * { flex: 1 1 100%; width: 100%; }
     }
   }
 
