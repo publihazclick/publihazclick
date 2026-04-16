@@ -1,10 +1,21 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+
+interface DemoVideo {
+  id: string;
+  title: string;
+  shortDesc: string;
+  description: string;
+  badge: string;
+  icon: string;
+  embedUrl: SafeResourceUrl;
+}
 
 @Component({
   selector: 'app-ai-dashboard',
@@ -18,11 +29,65 @@ export class AiDashboardComponent implements OnInit {
   readonly currencyService = inject(CurrencyService);
   private readonly walletService = inject(AiWalletService);
   private readonly router = inject(Router);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly profile = this.profileService.profile;
   readonly billingCycle = signal<'monthly' | 'annual'>('monthly');
   readonly walletBalance = this.walletService.balance;
   readonly walletLoaded = signal(false);
+  readonly activeDemo = signal(0);
+
+  /**
+   * Videos demo embebidos en el dashboard. Para reemplazar un video:
+   * cambia la URL en el campo 'url' y el componente la sanitiza automáticamente.
+   * Acepta YouTube (embed), Vimeo (player), o cualquier URL de iframe.
+   */
+  readonly demoVideos: DemoVideo[] = [
+    {
+      id: 'avatar',
+      title: 'Avatar IA Hiperrealista',
+      shortDesc: 'Avatares que hablan con tu guión',
+      description: 'Crea un avatar profesional que habla tu guión en cualquier idioma. Sin cámaras ni estudio.',
+      badge: 'Avatar IA',
+      icon: 'face',
+      embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
+        'https://www.youtube.com/embed/2bL_2M6L4Cw?rel=0&modestbranding=1',
+      ),
+    },
+    {
+      id: 'video',
+      title: 'Video Profesional en Segundos',
+      shortDesc: 'De texto a video con un click',
+      description: 'Escribe una idea → la IA genera guión, imágenes, voz y edita el video completo.',
+      badge: 'Video IA',
+      icon: 'movie',
+      embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
+        'https://www.youtube.com/embed/HhkPMkNpN5c?rel=0&modestbranding=1',
+      ),
+    },
+    {
+      id: 'image',
+      title: 'Imágenes Únicas con IA',
+      shortDesc: 'Fotografías imposibles, creadas al instante',
+      description: 'Genera imágenes profesionales para redes sociales, anuncios y campañas en segundos.',
+      badge: 'Imagen IA',
+      icon: 'image',
+      embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
+        'https://www.youtube.com/embed/sqQrN0iZBs0?rel=0&modestbranding=1',
+      ),
+    },
+    {
+      id: 'voice',
+      title: 'Voces Ultra Realistas',
+      shortDesc: 'Narración profesional sin locutor',
+      description: 'Voces naturales en 30+ idiomas. Ideales para videos, podcasts y presentaciones.',
+      badge: 'Voz IA',
+      icon: 'record_voice_over',
+      embedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
+        'https://www.youtube.com/embed/0elMh4Dg27Y?rel=0&modestbranding=1',
+      ),
+    },
+  ];
 
   async ngOnInit(): Promise<void> {
     try {
