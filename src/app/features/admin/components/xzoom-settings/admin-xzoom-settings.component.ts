@@ -58,10 +58,10 @@ const COMMISSION_KEY = 'xzoom_commission_rate';
           </label>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            @for (usd of [5, 10, 25]; track usd) {
+            @for (usd of exampleAmounts; track usd) {
               <div class="p-4 bg-black/40 border border-white/10 rounded-xl">
                 <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
-                  Ejemplo ${{ usd }} USD
+                  Ejemplo \${{ usd }} USD
                 </div>
                 <div class="text-sm text-slate-300">
                   Plataforma: <strong class="text-red-400">{{ formatUSDExample(exampleUsdAt(usd).platform) }}</strong>
@@ -122,6 +122,8 @@ export class AdminXzoomSettingsComponent implements OnInit {
 
   percentInput = 12;
   private loadedPercent = 12;
+
+  readonly exampleAmounts = [5, 10, 25];
 
   readonly canSave = computed(() => {
     const n = Number(this.percentInput);
