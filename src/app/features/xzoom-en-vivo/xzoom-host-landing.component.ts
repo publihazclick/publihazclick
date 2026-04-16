@@ -15,8 +15,6 @@ import { CurrencyService } from '../../core/services/currency.service';
 import { XzoomService } from '../../core/services/xzoom.service';
 import type { XzoomHost } from '../../core/models/xzoom.model';
 
-declare const ePayco: any;
-
 @Component({
   selector: 'app-xzoom-host-landing',
   standalone: true,
@@ -742,12 +740,30 @@ export class XzoomHostLandingComponent implements OnInit {
     }
   }
 
-  private openEpaycoCheckout(params: any): void {
-    if (typeof ePayco === 'undefined') {
-      this.errorMsg.set('Checkout ePayco no cargado. Recarga la página e intenta de nuevo.');
+  private loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as any)['ePayco']) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = 'https://checkout.epayco.co/checkout.js';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('No se pudo cargar ePayco'));
+      document.head.appendChild(s);
+    });
+  }
+
+  private async openEpaycoCheckout(params: any): Promise<void> {
+    try {
+      await this.loadEpaycoScript();
+    } catch {
+      this.errorMsg.set('No se pudo cargar el checkout de ePayco. Verifica tu conexión e intenta de nuevo.');
       return;
     }
-    const handler = ePayco.checkout.configure({
+    const epayco = (window as any)['ePayco'];
+    if (!epayco) {
+      this.errorMsg.set('Error cargando ePayco. Recarga la página e intenta de nuevo.');
+      return;
+    }
+    const handler = epayco.checkout.configure({
       key: params.publicKey,
       test: params.test,
     });
