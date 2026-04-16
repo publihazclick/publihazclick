@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ProfileService } from '../../core/services/profile.service';
 
 // Video explicativo de la plataforma. Reemplazar por el embed real cuando esté listo.
 const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ';
@@ -28,7 +29,7 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
             <span class="brand-text">XZOOM <em>EN VIVO</em></span>
           </div>
           @if (isLoggedIn()) {
-            <a routerLink="/xzoom/panel" class="nav-cta">
+            <a [routerLink]="dashboardRoute()" class="nav-cta">
               <span class="material-symbols-outlined">dashboard</span>
               Mi panel
             </a>
@@ -707,6 +708,7 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
 })
 export class XzoomPublicLandingComponent {
   private readonly auth = inject(AuthService);
+  private readonly profileService = inject(ProfileService);
   private readonly sanitizer = inject(DomSanitizer);
 
   readonly explainerVideoUrl: SafeResourceUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
@@ -714,6 +716,14 @@ export class XzoomPublicLandingComponent {
   );
 
   readonly isLoggedIn = computed(() => !!this.auth.getCurrentUser());
+
+  readonly dashboardRoute = computed(() => {
+    const p = this.profileService.profile();
+    const role = p?.role ?? 'guest';
+    if (role === 'admin' || role === 'dev') return '/admin/xzoom-en-vivo';
+    if (role === 'advertiser') return '/advertiser/xzoom-en-vivo';
+    return '/dashboard/xzoom-en-vivo';
+  });
 
   scrollToHowItWorks(): void {
     if (typeof document === 'undefined') return;
