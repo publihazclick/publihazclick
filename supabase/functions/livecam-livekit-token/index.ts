@@ -92,6 +92,8 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
+    console.log(`[livecam-token] ENV: SUPABASE_URL=${SUPABASE_URL ? 'SET' : 'EMPTY'}, SERVICE_KEY=${SUPABASE_SERVICE_KEY ? 'SET' : 'EMPTY'}, LIVEKIT_KEY=${LIVEKIT_API_KEY ? 'SET' : 'EMPTY'}`);
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return json({ error: 'Configuracion Supabase incompleta en el servidor' }, 500);
     if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) return json({ error: 'LiveKit no configurado' }, 500);
 
     const authHeader = req.headers.get('Authorization');
@@ -102,26 +104,75 @@ Deno.serve(async (req) => {
     const modelId = body?.model_id as string | undefined;
     if (!modelId) return json({ error: 'model_id requerido' }, 400);
 
-    // Validate user JWT
+    // Validate user JWT via /auth/v1/user (supports ES256)
     let userId: string | null = null;
+    let userEmail = '';
     try {
-      const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { Authorization: `Bearer ${userJwt}`, apikey: SUPABASE_SERVICE_KEY } });
-      if (r.ok) userId = (await r.json())?.id ?? null;
-    } catch {}
-    if (!userId) {
-      try { userId = JSON.parse(atob(userJwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))?.sub ?? null; } catch {}
+      const verifyResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { Authorization: `Bearer ${userJwt}`, apikey: SUPABASE_SERVICE_KEY },
+      });
+      console.log(`[livecam-token] /auth/v1/user status=${verifyResp.status}`);
+      if (verifyResp.ok) {
+        const u = await verifyResp.json();
+        userId = u?.id ?? null;
+        userEmail = u?.email ?? '';
+        console.log(`[livecam-token] verified userId=${userId}, email=${userEmail}`);
+      } else {
+        const errText = await verifyResp.text();
+        console.log(`[livecam-token] /auth/v1/user failed: ${errText}`);
+      }
+    } catch (e) {
+      console.error(`[livecam-token] /auth/v1/user exception:`, e);
     }
-    if (!userId) return json({ error: 'Sesión inválida' }, 401);
+    // Fallback: decode JWT payload
+    if (!userId) {
+      try {
+        const payload = JSON.parse(atob(userJwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        userId = payload?.sub ?? null;
+        userEmail = payload?.email ?? '';
+        console.log(`[livecam-token] fallback decoded userId=${userId}`);
+      } catch (e) {
+        console.error(`[livecam-token] JWT decode failed:`, e);
+      }
+    }
+    if (!userId) return json({ error: 'Sesion invalida. Cierra sesion y vuelve a iniciar.' }, 401);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    const [{ data: profile }, { data: model }] = await Promise.all([
-      supabase.from('livecam_profiles').select('username, email').eq('id', userId).maybeSingle(),
-      supabase.from('livecam_models').select('id, user_id, display_name, livekit_room_name, is_active').eq('id', modelId).maybeSingle(),
-    ]);
+    console.log(`[livecam-token] userId=${userId}, modelId=${modelId}`);
 
-    if (!profile) return json({ error: 'Perfil no encontrado' }, 404);
-    if (!model) return json({ error: 'Modelo no encontrado' }, 404);
+    const { data: profile, error: profileErr } = await supabase.from('livecam_profiles').select('username, email').eq('id', userId).maybeSingle();
+    console.log(`[livecam-token] profile query: data=${JSON.stringify(profile)}, error=${JSON.stringify(profileErr)}`);
+
+    // Try find model by ID first, then by user_id as fallback
+    let model: any = null;
+    const { data: m1 } = await supabase.from('livecam_models').select('id, user_id, display_name, livekit_room_name, is_active').eq('id', modelId).maybeSingle();
+    if (m1) {
+      model = m1;
+    } else {
+      // Fallback: maybe modelId is actually the user's own model
+      const { data: m2 } = await supabase.from('livecam_models').select('id, user_id, display_name, livekit_room_name, is_active').eq('user_id', modelId).maybeSingle();
+      if (m2) model = m2;
+      else {
+        // Last fallback: user's own model
+        const { data: m3 } = await supabase.from('livecam_models').select('id, user_id, display_name, livekit_room_name, is_active').eq('user_id', userId).maybeSingle();
+        if (m3) model = m3;
+      }
+    }
+
+    console.log(`[livecam-token] profile=${profile?.username ?? 'null'}, model=${model?.display_name ?? 'null'}`);
+
+    // Auto-create profile if missing
+    if (!profile && userId) {
+      console.log(`[livecam-token] Auto-creating profile for ${userId} (${userEmail})`);
+      await supabase.from('livecam_profiles').insert({
+        id: userId, email: userEmail, username: userEmail.split('@')[0] || 'usuario', role: 'model', is_age_verified: true,
+      });
+      const { data: p2 } = await supabase.from('livecam_profiles').select('username, email').eq('id', userId).maybeSingle();
+      if (p2) (profile as any) = p2;
+    }
+    if (!profile) return json({ error: 'Perfil no encontrado. Completa tu registro primero.' }, 404);
+    if (!model) return json({ error: 'No tienes un perfil de modelo. Crea uno en el dashboard.' }, 404);
 
     const isModel = model.user_id === userId;
 

@@ -29,12 +29,12 @@ function calcChargeAmount(base: number): number {
 
 // Token packs
 const PACKS: Record<number, { tokens: number; priceCop: number }> = {
-  50:   { tokens: 50,   priceCop: 10000 },
-  120:  { tokens: 120,  priceCop: 20000 },
-  300:  { tokens: 300,  priceCop: 45000 },
-  650:  { tokens: 650,  priceCop: 80000 },
-  1500: { tokens: 1500, priceCop: 150000 },
-  5000: { tokens: 5000, priceCop: 400000 },
+  50:   { tokens: 50,   priceCop: 9900 },
+  110:  { tokens: 110,  priceCop: 19900 },
+  250:  { tokens: 250,  priceCop: 39900 },
+  550:  { tokens: 550,  priceCop: 79900 },
+  1100: { tokens: 1100, priceCop: 149900 },
+  2500: { tokens: 2500, priceCop: 299900 },
 };
 
 Deno.serve(async (req) => {

@@ -718,11 +718,7 @@ export class XzoomPublicLandingComponent {
   readonly isLoggedIn = computed(() => !!this.auth.getCurrentUser());
 
   readonly dashboardRoute = computed(() => {
-    const p = this.profileService.profile();
-    const role = p?.role ?? 'guest';
-    if (role === 'admin' || role === 'dev') return '/admin/xzoom-en-vivo';
-    if (role === 'advertiser') return '/advertiser/xzoom-en-vivo';
-    return '/dashboard/xzoom-en-vivo';
+    return '/xzoom/panel';
   });
 
   scrollToHowItWorks(): void {
