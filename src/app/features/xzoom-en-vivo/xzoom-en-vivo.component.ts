@@ -367,134 +367,103 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   async goLive(): Promise<void> {
     const host = this.host();
     if (!host) return;
-    await this.joinLiveRoom(host.id);
-  }
-
-  async joinLiveRoomAsViewer(hostId: string): Promise<void> {
-    await this.joinLiveRoom(hostId);
-  }
-
-  private async joinLiveRoom(hostId: string): Promise<void> {
     this.loading.set(true);
     this.errorMsg.set(null);
 
-    const isHost = this.host()?.id === hostId && this.host()?.user_id === this.userId();
-
-    // ── PASO 1: Verificar y pedir permisos de cámara/micrófono ──
-    if (isHost && typeof navigator !== 'undefined' && navigator.mediaDevices) {
-      // Verificar el estado actual de los permisos
-      let camState = 'prompt';
-      let micState = 'prompt';
-      try {
-        if (navigator.permissions?.query) {
-          const [cam, mic] = await Promise.all([
-            navigator.permissions.query({ name: 'camera' as PermissionName }).catch(() => null),
-            navigator.permissions.query({ name: 'microphone' as PermissionName }).catch(() => null),
-          ]);
-          camState = cam?.state ?? 'prompt';
-          micState = mic?.state ?? 'prompt';
-        }
-      } catch { /* permissions API no soportada — continuar con getUserMedia */ }
-
-      if (camState === 'denied' || micState === 'denied') {
-        this.errorMsg.set(
-          '🔒 Los permisos de cámara o micrófono están bloqueados. ' +
-          'Para activarlos: toca el candado 🔒 en la barra de URL → ' +
-          'cambia Cámara y Micrófono a "Permitir" → recarga la página.',
-        );
-        this.loading.set(false);
-        return;
-      }
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        stream.getTracks().forEach(t => t.stop());
-      } catch (e: any) {
-        console.error('[xzoom] permiso de cámara/mic denegado:', e);
-        this.errorMsg.set(this.friendlyMediaError('cámara y micrófono', e));
-        this.loading.set(false);
-        return;
-      }
-    } else if (isHost) {
-      this.errorMsg.set('Tu navegador no soporta cámara/micrófono. Usa Chrome, Edge o Safari.');
-      this.loading.set(false);
-      return;
-    }
-
-    // ── PASO 2: Obtener token de LiveKit ──
+    // PASO 1 — Conectar a la sala primero (sin cámara)
     let tokenRes: any;
     try {
-      tokenRes = await this.xzoom.getLivekitToken(hostId);
+      tokenRes = await this.xzoom.getLivekitToken(host.id);
     } catch (err: any) {
-      console.error('[xzoom] error obteniendo token:', err);
-      this.errorMsg.set(err?.message ?? 'Error conectando al servidor de transmisión');
+      this.errorMsg.set(err?.message ?? 'Error conectando al servidor');
       this.loading.set(false);
       return;
     }
 
-    // ── PASO 3: Conectar a la sala de LiveKit ──
     try {
-      const room = new Room({
-        adaptiveStream: true,
-        dynacast: true,
-      });
-
-      room.on(RoomEvent.ParticipantConnected, () => {
-        this.liveParticipantCount.set(room.numParticipants);
-      });
-      room.on(RoomEvent.ParticipantDisconnected, () => {
-        this.liveParticipantCount.set(room.numParticipants);
-      });
-      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub, participant: RemoteParticipant) => {
-        if (track.kind === Track.Kind.Video || track.kind === Track.Kind.Audio) {
-          const el = track.attach();
-          const container = document.getElementById('xzoom-remote-media');
-          if (container) container.appendChild(el);
-        }
-      });
-      room.on(RoomEvent.Disconnected, () => {
-        this.liveRole.set(null);
-        this.view.set(this.host() ? 'host_dashboard' : 'viewer_dashboard');
-      });
-
+      const room = new Room({ adaptiveStream: true, dynacast: true });
+      this.setupRoomEvents(room);
       await room.connect(tokenRes.url, tokenRes.token);
       this.liveRoom = room;
       this.liveRole.set(tokenRes.role);
       this.liveParticipantCount.set(room.numParticipants);
       this.view.set('live_room');
-
-      // ── PASO 4: Publicar cámara y micro (solo host) ──
-      if (tokenRes.role === 'host') {
-        try {
-          const videoTrack = await createLocalVideoTrack({ resolution: { width: 1280, height: 720 } });
-          await room.localParticipant.publishTrack(videoTrack);
-          const localEl = videoTrack.attach();
-          const lc = document.getElementById('xzoom-local-media');
-          if (lc) lc.appendChild(localEl);
-        } catch (e: any) {
-          console.error('[xzoom] error publicando cámara:', e);
-          this.errorMsg.set(this.friendlyMediaError('cámara', e));
-          this.liveCameraOn.set(false);
-        }
-
-        try {
-          const audioTrack = await createLocalAudioTrack();
-          await room.localParticipant.publishTrack(audioTrack);
-        } catch (e: any) {
-          console.error('[xzoom] error publicando micrófono:', e);
-          this.errorMsg.set(this.friendlyMediaError('micrófono', e));
-          this.liveMicOn.set(false);
-        }
-      }
+      this.liveCameraOn.set(false);
+      this.liveMicOn.set(false);
     } catch (err: any) {
-      console.error('[xzoom] error uniéndose a sala:', err);
-      this.errorMsg.set(this.friendlyMediaError('dispositivos', err));
+      this.errorMsg.set('Error conectando a la sala: ' + (err?.message ?? ''));
+      this.loading.set(false);
+      return;
+    }
+    this.loading.set(false);
+
+    // PASO 2 — Activar cámara y micrófono usando el método de Room
+    // (esto internamente llama getUserMedia y muestra el prompt del navegador)
+    if (tokenRes.role === 'host' && this.liveRoom) {
+      try {
+        await this.liveRoom.localParticipant.setCameraEnabled(true);
+        this.liveCameraOn.set(true);
+        const camEl = document.getElementById('xzoom-local-media');
+        if (camEl) {
+          this.liveRoom.localParticipant.videoTrackPublications.forEach(pub => {
+            if (pub.track) {
+              const el = pub.track.attach();
+              camEl.appendChild(el);
+            }
+          });
+        }
+      } catch (e: any) {
+        console.error('[xzoom] cámara:', e);
+        this.errorMsg.set(this.friendlyMediaError('cámara', e));
+      }
+
+      try {
+        await this.liveRoom.localParticipant.setMicrophoneEnabled(true);
+        this.liveMicOn.set(true);
+      } catch (e: any) {
+        console.error('[xzoom] micrófono:', e);
+        this.errorMsg.set(this.friendlyMediaError('micrófono', e));
+      }
+    }
+  }
+
+  async joinLiveRoomAsViewer(hostId: string): Promise<void> {
+    this.loading.set(true);
+    this.errorMsg.set(null);
+    try {
+      const tokenRes = await this.xzoom.getLivekitToken(hostId);
+      const room = new Room({ adaptiveStream: true, dynacast: true });
+      this.setupRoomEvents(room);
+      await room.connect(tokenRes.url, tokenRes.token);
+      this.liveRoom = room;
+      this.liveRole.set(tokenRes.role);
+      this.liveParticipantCount.set(room.numParticipants);
+      this.view.set('live_room');
+    } catch (err: any) {
+      this.errorMsg.set(err?.message ?? 'Error uniéndose a la sala');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private setupRoomEvents(room: Room): void {
+    room.on(RoomEvent.ParticipantConnected, () => {
+      this.liveParticipantCount.set(room.numParticipants);
+    });
+    room.on(RoomEvent.ParticipantDisconnected, () => {
+      this.liveParticipantCount.set(room.numParticipants);
+    });
+    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, _participant: RemoteParticipant) => {
+      if (track.kind === Track.Kind.Video || track.kind === Track.Kind.Audio) {
+        const el = track.attach();
+        const container = document.getElementById('xzoom-remote-media');
+        if (container) container.appendChild(el);
+      }
+    });
+    room.on(RoomEvent.Disconnected, () => {
+      this.liveRole.set(null);
+      this.view.set(this.host() ? 'host_dashboard' : 'viewer_dashboard');
+    });
   }
 
   /**
