@@ -28,18 +28,11 @@ import { ProfileService } from '../../core/services/profile.service';
                     </div>
                   </button>
                 }
-                <div class="academy-logo-sm flex items-center gap-1.5" aria-label="Academy Pro 180">
-                  <!-- Shield icon -->
-                  <div class="relative flex-shrink-0" style="width:28px;height:28px">
-                    <div class="absolute inset-0 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 opacity-15"></div>
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <span class="material-symbols-outlined bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text" style="font-size:20px;-webkit-text-fill-color:transparent">shield</span>
-                    </div>
-                  </div>
-                  <!-- Text -->
-                  <span class="text-xs sm:text-sm font-black tracking-wider bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 bg-clip-text" style="-webkit-text-fill-color:transparent">ACADEMY</span>
-                  <span class="text-xs sm:text-sm font-black tracking-wide text-gray-500">PRO</span>
-                  <span class="text-[10px] sm:text-xs font-black text-white bg-gradient-to-r from-amber-500 to-red-500 px-1.5 py-0.5 rounded-md leading-tight shadow-lg shadow-red-500/25">180</span>
+                <div class="flex items-center gap-1" aria-label="Academy Pro 180">
+                  <span class="material-symbols-outlined text-cyan-500" style="font-size:22px">school</span>
+                  <span class="text-xs sm:text-sm font-black tracking-wider text-cyan-600">ACADEMY</span>
+                  <span class="text-xs sm:text-sm font-black tracking-wide text-slate-500">PRO</span>
+                  <span class="text-[10px] sm:text-xs font-black text-white bg-red-500 px-1.5 py-0.5 rounded-md leading-tight">180</span>
                 </div>
                 <span class="hidden md:inline text-sm font-black text-gray-800 ml-2">· Hola, {{ profile()?.full_name || profile()?.username || 'Usuario' }}</span>
               </div>
@@ -73,19 +66,16 @@ import { ProfileService } from '../../core/services/profile.service';
           <!-- Menu header -->
           <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div class="flex items-center gap-2" aria-label="Academy Pro 180">
-              <div class="relative flex-shrink-0 w-9 h-9">
-                <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 opacity-15"></div>
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <span class="material-symbols-outlined bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text" style="font-size:24px;-webkit-text-fill-color:transparent">shield</span>
-                </div>
+              <div class="w-9 h-9 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-cyan-600" style="font-size:22px">school</span>
               </div>
               <div class="flex flex-col">
                 <div class="flex items-center gap-1.5">
-                  <span class="text-sm font-black tracking-wider bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 bg-clip-text" style="-webkit-text-fill-color:transparent">ACADEMY</span>
-                  <span class="text-sm font-black tracking-wide text-gray-500">PRO</span>
-                  <span class="text-[10px] font-black text-white bg-gradient-to-r from-amber-500 to-red-500 px-1.5 py-0.5 rounded-md leading-tight shadow-lg shadow-red-500/25">180</span>
+                  <span class="text-sm font-black tracking-wider text-cyan-600">ACADEMY</span>
+                  <span class="text-sm font-black tracking-wide text-slate-500">PRO</span>
+                  <span class="text-[10px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded-md leading-tight">180</span>
                 </div>
-                <span class="text-[8px] font-semibold tracking-[3px] text-gray-400 uppercase">Transforma tu futuro</span>
+                <span class="text-[8px] font-semibold tracking-[3px] text-slate-400 uppercase">Transforma tu futuro</span>
               </div>
             </div>
             <button (click)="menuOpen.set(false)"
@@ -309,10 +299,6 @@ import { ProfileService } from '../../core/services/profile.service';
     }
     .animate-slide-in {
       animation: slide-in 0.2s ease-out;
-    }
-    .academy-logo-sm {
-      flex-shrink: 1;
-      min-width: 0;
     }
   `],
 })
