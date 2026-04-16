@@ -38,8 +38,8 @@
       <label>Nombre público del canal</label>
       <input type="text" [value]="formDisplayName()" (input)="formDisplayName.set($any($event.target).value)" placeholder="Mi canal en vivo" />
 
-      <label>Precio mensual que cobrarás a tus suscriptores (COP)</label>
-      <input type="number" [value]="formPriceCop()" (input)="formPriceCop.set(+$any($event.target).value)" min="1000" step="1000" />
+      <label>Precio mensual que cobrarás a tus suscriptores (USD)</label>
+      <input type="number" [value]="formPriceUsd()" (input)="formPriceUsd.set(+$any($event.target).value)" min="1" step="0.5" placeholder="5" />
 
       <label>Descripción (opcional)</label>
       <textarea [value]="formBio()" (input)="formBio.set($any($event.target).value)" placeholder="¿De qué trata tu canal?"></textarea>
@@ -108,11 +108,11 @@
         </div>
         <div class="stat">
           <span class="stat-label">Ingresos estimados/mes</span>
-          <strong>{{ formatCOP(monthlyRevenueEstimate()) }}</strong>
+          <strong>{{ formatUSD(monthlyRevenueEstimate()) }}</strong>
         </div>
         <div class="stat">
           <span class="stat-label">Precio por suscriptor</span>
-          <strong>{{ formatCOP(host()?.subscriber_price_cop) }}</strong>
+          <strong>{{ formatUSD(host()?.subscriber_price_cop) }}</strong>
         </div>
       </section>
 
@@ -187,8 +187,8 @@
           <option value="arte">Arte y cultura</option>
         </select>
 
-        <label>Precio mensual de suscripción (COP)</label>
-        <input type="number" min="1000" step="1000" [value]="editPriceCop()" (input)="editPriceCop.set(+$any($event.target).value)" />
+        <label>Precio mensual de suscripción (USD)</label>
+        <input type="number" min="1" step="0.5" [value]="editPriceUsd()" (input)="editPriceUsd.set(+$any($event.target).value)" placeholder="5" />
 
         <label>URL de tu foto de perfil</label>
         <input type="url" [value]="editAvatarUrl()" (input)="editAvatarUrl.set($any($event.target).value)" placeholder="https://..." />

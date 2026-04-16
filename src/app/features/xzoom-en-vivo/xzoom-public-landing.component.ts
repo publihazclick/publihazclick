@@ -54,11 +54,17 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
             y vean tus transmisiones en vivo o tus grabaciones.
           </p>
           <div class="hero-actions">
+            <button
+              type="button"
+              class="btn-ghost is-current"
+              (click)="scrollToHowItWorks()">
+              <span class="material-symbols-outlined">play_circle</span>
+              ¿Cómo funciona?
+            </button>
             <a routerLink="/xzoom/auth" class="btn-primary">
               Empieza ahora
               <span class="material-symbols-outlined">arrow_forward</span>
             </a>
-            <a href="#que-es" class="btn-ghost">¿Cómo funciona?</a>
           </div>
 
           <div class="hero-stats">
@@ -391,6 +397,17 @@ const PLATFORM_EXPLAINER_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
       font-size: 14px;
     }
     .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+    .btn-ghost.is-current {
+      background: rgba(255, 59, 48, 0.12);
+      border-color: rgba(255, 59, 48, 0.5);
+      color: #ff9f9a;
+    }
+    .btn-ghost.is-current:hover {
+      background: rgba(255, 59, 48, 0.18);
+      border-color: #ff3b30;
+      color: #fff;
+    }
+    .btn-ghost .material-symbols-outlined { font-size: 18px; }
     .btn-primary-big {
       padding: 20px 44px;
       background: linear-gradient(135deg, #ff3b30, #ff6b6b);
@@ -697,4 +714,10 @@ export class XzoomPublicLandingComponent {
   );
 
   readonly isLoggedIn = computed(() => !!this.auth.getCurrentUser());
+
+  scrollToHowItWorks(): void {
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById('que-es');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }

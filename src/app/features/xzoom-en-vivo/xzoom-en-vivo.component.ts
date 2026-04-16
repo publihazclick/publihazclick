@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { CurrencyService } from '../../core/services/currency.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { XzoomService } from '../../core/services/xzoom.service';
 import type {
@@ -54,6 +55,7 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly profileService = inject(ProfileService);
   private readonly xzoom = inject(XzoomService);
+  private readonly currency = inject(CurrencyService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -72,17 +74,17 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   readonly subscribers = signal<XzoomViewerSubscription[]>([]);
   readonly mySubscriptions = signal<XzoomViewerSubscription[]>([]);
 
-  // Onboarding form
+  // Onboarding form — precio en USD (se convierte a COP al guardar)
   readonly formDisplayName = signal('');
-  readonly formPriceCop = signal(20000);
+  readonly formPriceUsd = signal(5);
   readonly formBio = signal('');
   readonly formCategory = signal('');
 
-  // Edit channel form
+  // Edit channel form — precio en USD
   readonly editDisplayName = signal('');
   readonly editBio = signal('');
   readonly editCategory = signal('');
-  readonly editPriceCop = signal(20000);
+  readonly editPriceUsd = signal(5);
   readonly editAvatarUrl = signal('');
   readonly editCoverUrl = signal('');
   readonly editPitchVideoUrl = signal('');
@@ -129,7 +131,7 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   readonly monthlyRevenueEstimate = computed(() => {
     const count = this.subscribersCount();
     const price = this.host()?.subscriber_price_cop ?? 0;
-    return Math.floor(count * price * 0.85); // 85% al anfitrión
+    return Math.floor(count * price * 0.88); // 88% al anfitrión (12% plataforma)
   });
 
   async ngOnInit(): Promise<void> {
@@ -187,11 +189,15 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
         this.recordings.set(recs);
         this.subscribers.set(subs);
 
-        // Precargar el form de edición con los datos actuales del host
+        // Precargar el form de edición con los datos actuales del host.
+        // El precio se muestra en USD convertido desde COP.
         this.editDisplayName.set(host.display_name ?? '');
         this.editBio.set(host.bio ?? '');
         this.editCategory.set(host.category ?? '');
-        this.editPriceCop.set(host.subscriber_price_cop ?? 20000);
+        const rate = this.currency.copRate || 3850;
+        this.editPriceUsd.set(
+          Math.round(((host.subscriber_price_cop ?? 20000) / rate) * 100) / 100,
+        );
         this.editAvatarUrl.set(host.avatar_url ?? '');
         this.editCoverUrl.set(host.cover_url ?? '');
         this.editPitchVideoUrl.set(host.pitch_video_url ?? '');
@@ -216,11 +222,12 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     const uid = this.userId();
     if (!uid) return;
     const displayName = this.formDisplayName().trim();
-    const priceCop = this.formPriceCop();
-    if (!displayName || priceCop < 1000) {
-      this.errorMsg.set('Completa nombre y precio mínimo de 1.000 COP');
+    const priceUsd = this.formPriceUsd();
+    if (!displayName || priceUsd < 1) {
+      this.errorMsg.set('Completa el nombre y un precio mínimo de $1 USD');
       return;
     }
+    const priceCop = this.currency.usdToCop(priceUsd);
     this.loading.set(true);
     this.errorMsg.set(null);
     try {
@@ -570,15 +577,16 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     const h = this.host();
     if (!h) return;
     const displayName = this.editDisplayName().trim();
-    const priceCop = this.editPriceCop();
+    const priceUsd = this.editPriceUsd();
     if (!displayName) {
       this.errorMsg.set('El nombre del canal es obligatorio');
       return;
     }
-    if (!priceCop || priceCop < 1000) {
-      this.errorMsg.set('El precio mínimo es 1.000 COP');
+    if (!priceUsd || priceUsd < 1) {
+      this.errorMsg.set('El precio mínimo es $1 USD');
       return;
     }
+    const priceCop = this.currency.usdToCop(priceUsd);
 
     this.savingProfile.set(true);
     this.profileSaveMsg.set(null);
@@ -609,6 +617,18 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(v ?? 0);
+  }
+
+  /** Convierte un monto COP a USD y lo formatea como "$X.XX USD". */
+  formatUSD(cop: number | null | undefined): string {
+    const rate = this.currency.copRate || 3850;
+    const usd = (cop ?? 0) / rate;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(usd) + ' USD';
   }
 
   formatDate(iso: string | null): string {

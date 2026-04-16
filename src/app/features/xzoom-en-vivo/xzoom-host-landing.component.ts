@@ -11,6 +11,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { CurrencyService } from '../../core/services/currency.service';
 import { XzoomService } from '../../core/services/xzoom.service';
 import type { XzoomHost } from '../../core/models/xzoom.model';
 
@@ -110,7 +111,7 @@ declare const ePayco: any;
             <div class="price-row">
               <div>
                 <span class="price-label">Suscripción mensual</span>
-                <strong class="price">{{ formatCOP(h.subscriber_price_cop) }}</strong>
+                <strong class="price">{{ formatUSD(h.subscriber_price_cop) }}</strong>
                 <span class="price-sub">/ mes · cancela cuando quieras</span>
               </div>
               <span class="material-symbols-outlined badge">workspace_premium</span>
@@ -657,6 +658,7 @@ declare const ePayco: any;
 export class XzoomHostLandingComponent implements OnInit {
   private readonly xzoom = inject(XzoomService);
   private readonly auth = inject(AuthService);
+  private readonly currency = inject(CurrencyService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
@@ -797,5 +799,17 @@ export class XzoomHostLandingComponent implements OnInit {
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(v ?? 0);
+  }
+
+  /** Convierte un monto COP a USD y lo formatea como "$X.XX USD" */
+  formatUSD(cop: number | null | undefined): string {
+    const rate = this.currency.copRate || 3850;
+    const usd = (cop ?? 0) / rate;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(usd) + ' USD';
   }
 }

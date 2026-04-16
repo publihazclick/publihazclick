@@ -58,39 +58,19 @@ const COMMISSION_KEY = 'xzoom_commission_rate';
           </label>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            <div class="p-4 bg-black/40 border border-white/10 rounded-xl">
-              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
-                Ejemplo $20.000
+            @for (usd of [5, 10, 25]; track usd) {
+              <div class="p-4 bg-black/40 border border-white/10 rounded-xl">
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                  Ejemplo ${{ usd }} USD
+                </div>
+                <div class="text-sm text-slate-300">
+                  Plataforma: <strong class="text-red-400">{{ formatUSDExample(exampleUsdAt(usd).platform) }}</strong>
+                </div>
+                <div class="text-sm text-slate-300">
+                  Anfitrión: <strong class="text-green-400">{{ formatUSDExample(exampleUsdAt(usd).host) }}</strong>
+                </div>
               </div>
-              <div class="text-sm text-slate-300">
-                Plataforma: <strong class="text-red-400">{{ formatCOP(exampleAt(20000).platform) }}</strong>
-              </div>
-              <div class="text-sm text-slate-300">
-                Anfitrión: <strong class="text-green-400">{{ formatCOP(exampleAt(20000).host) }}</strong>
-              </div>
-            </div>
-            <div class="p-4 bg-black/40 border border-white/10 rounded-xl">
-              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
-                Ejemplo $50.000
-              </div>
-              <div class="text-sm text-slate-300">
-                Plataforma: <strong class="text-red-400">{{ formatCOP(exampleAt(50000).platform) }}</strong>
-              </div>
-              <div class="text-sm text-slate-300">
-                Anfitrión: <strong class="text-green-400">{{ formatCOP(exampleAt(50000).host) }}</strong>
-              </div>
-            </div>
-            <div class="p-4 bg-black/40 border border-white/10 rounded-xl">
-              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
-                Ejemplo $100.000
-              </div>
-              <div class="text-sm text-slate-300">
-                Plataforma: <strong class="text-red-400">{{ formatCOP(exampleAt(100000).platform) }}</strong>
-              </div>
-              <div class="text-sm text-slate-300">
-                Anfitrión: <strong class="text-green-400">{{ formatCOP(exampleAt(100000).host) }}</strong>
-              </div>
-            </div>
+            }
           </div>
 
           @if (errorMsg()) {
@@ -167,6 +147,21 @@ export class AdminXzoomSettingsComponent implements OnInit {
     const rate = Math.max(0, Math.min(99, Number(this.percentInput) || 0)) / 100;
     const platform = Math.floor(base * rate);
     return { platform, host: base - platform };
+  }
+
+  exampleUsdAt(baseUsd: number): { platform: number; host: number } {
+    const rate = Math.max(0, Math.min(99, Number(this.percentInput) || 0)) / 100;
+    const platform = baseUsd * rate;
+    return { platform, host: baseUsd - platform };
+  }
+
+  formatUSDExample(v: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(v);
   }
 
   async save(): Promise<void> {
