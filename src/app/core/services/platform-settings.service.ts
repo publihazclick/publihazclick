@@ -10,7 +10,7 @@ export class PlatformSettingsService {
       .from('platform_settings')
       .select('value')
       .eq('key', key)
-      .single();
+      .maybeSingle();
     if (error || !data) return '';
     return data.value ?? '';
   }

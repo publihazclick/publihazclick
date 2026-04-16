@@ -143,6 +143,13 @@ export class CurrencyService {
   }
 
   async fetchRates(): Promise<void> {
+    // Cooldown: no refetchear si la última llamada fue hace menos de 10 min
+    // (evita 429 por recargas frecuentes o múltiples tabs)
+    if (isPlatformBrowser(this.platformId)) {
+      const lastAttempt = parseInt(localStorage.getItem('currency_last_fetch') ?? '0', 10);
+      if (Date.now() - lastAttempt < 600_000) return;
+      localStorage.setItem('currency_last_fetch', String(Date.now()));
+    }
     this._loading.set(true);
     try {
       const url = `${this.BASE_URL}?apikey=${this.API_KEY}&base_currency=USD`;
