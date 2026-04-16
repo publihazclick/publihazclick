@@ -73,7 +73,7 @@ export class XzoomService {
         category: params.category ?? null,
         subscriber_price_cop: params.subscriberPriceCop,
         currency: 'COP',
-        is_active: false,
+        is_active: true,
         livekit_room_name: livekitRoomName,
       })
       .select('*')
