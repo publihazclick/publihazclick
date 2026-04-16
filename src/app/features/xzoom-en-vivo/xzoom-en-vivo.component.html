@@ -269,7 +269,7 @@
       <div class="live-header">
         <span class="live-dot"></span>
         <h2>EN VIVO — {{ liveParticipantCount() }} participantes</h2>
-        <button class="btn-leave" (click)="leaveRoom()">Salir</button>
+        <button class="btn-leave" type="button" (click)="leaveRoom()">Salir</button>
       </div>
 
       <div class="live-video">
@@ -279,14 +279,21 @@
 
       @if (liveRole() === 'host') {
         <div class="live-controls">
-          <button (click)="toggleCamera()" [class.off]="!liveCameraOn()">
+          <button type="button" class="ctrl-btn" [class.off]="!liveCameraOn()" [class.on]="liveCameraOn()" (click)="toggleCamera()">
             <span class="material-symbols-outlined">{{ liveCameraOn() ? 'videocam' : 'videocam_off' }}</span>
+            <span class="ctrl-label">{{ liveCameraOn() ? 'Cámara' : 'Activar cámara' }}</span>
           </button>
-          <button (click)="toggleMic()" [class.off]="!liveMicOn()">
+          <button type="button" class="ctrl-btn" [class.off]="!liveMicOn()" [class.on]="liveMicOn()" (click)="toggleMic()">
             <span class="material-symbols-outlined">{{ liveMicOn() ? 'mic' : 'mic_off' }}</span>
+            <span class="ctrl-label">{{ liveMicOn() ? 'Micrófono' : 'Activar micro' }}</span>
           </button>
-          <button (click)="toggleScreenShare()" [class.on]="liveScreenSharing()">
+          <button type="button" class="ctrl-btn" [class.on]="liveScreenSharing()" (click)="toggleScreenShare()">
             <span class="material-symbols-outlined">screen_share</span>
+            <span class="ctrl-label">Pantalla</span>
+          </button>
+          <button type="button" class="ctrl-btn end" (click)="leaveRoom()">
+            <span class="material-symbols-outlined">call_end</span>
+            <span class="ctrl-label">Terminar</span>
           </button>
         </div>
       }

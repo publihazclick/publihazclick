@@ -375,7 +375,7 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     try {
       tokenRes = await this.xzoom.getLivekitToken(host.id);
     } catch (err: any) {
-      this.errorMsg.set(err?.message ?? 'Error conectando al servidor');
+      this.errorMsg.set(err?.message ?? 'Error al conectar con el servidor de transmisión.');
       this.loading.set(false);
       return;
     }
@@ -391,7 +391,7 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
       this.liveCameraOn.set(false);
       this.liveMicOn.set(false);
     } catch (err: any) {
-      this.errorMsg.set('Error conectando a la sala: ' + (err?.message ?? ''));
+      this.errorMsg.set('No se pudo conectar a la sala. Verifica tu conexión a internet e intenta de nuevo.');
       this.loading.set(false);
       return;
     }
@@ -478,33 +478,38 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
       name === 'NotAllowedError' ||
       name === 'PermissionDeniedError' ||
       msg.includes('permission') ||
-      msg.includes('permiso') ||
-      msg.includes('denied')
+      msg.includes('denied') ||
+      msg.includes('not allowed')
     ) {
       return (
-        `🔒 Permiso de ${device} denegado. Para transmitir necesitas ` +
-        `autorizar el acceso a tu cámara y micrófono: toca el ícono del ` +
-        `candado 🔒 junto a la URL del navegador, activa "Cámara" y ` +
-        `"Micrófono", recarga la página y vuelve a intentar.`
+        `Permiso de ${device} denegado. Para activar tu ${device}: ` +
+        `1) Toca el candado en la barra de dirección del navegador. ` +
+        `2) Cambia "Cámara" y "Micrófono" a "Permitir". ` +
+        `3) Recarga la página y vuelve a intentar.`
       );
     }
     if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
       return (
-        `📷 No encontramos tu ${device}. Verifica que esté conectada y ` +
-        `que ninguna otra aplicación la esté usando.`
+        `No encontramos tu ${device}. Verifica que esté conectada ` +
+        `y que ninguna otra aplicación la esté usando.`
       );
     }
     if (name === 'NotReadableError' || name === 'TrackStartError') {
       return (
-        `⚠️ Tu ${device} está siendo usada por otra aplicación. Cierra ` +
-        `Zoom, Meet, Teams u otra app que pueda tenerla ocupada y vuelve ` +
-        `a intentar.`
+        `Tu ${device} está siendo usada por otra aplicación. ` +
+        `Cierra Zoom, Meet, Teams u otra app y vuelve a intentar.`
       );
     }
     if (msg.includes('https') || msg.includes('secure')) {
-      return `Necesitas HTTPS para usar cámara y micrófono. Abre la página con https://`;
+      return `La página debe abrirse con https:// para usar ${device}.`;
     }
-    return err?.message ?? `Error activando ${device}`;
+    if (msg.includes('policy') || msg.includes('feature')) {
+      return (
+        `La política del sitio no permite acceso a ${device}. ` +
+        `Recarga la página e intenta de nuevo.`
+      );
+    }
+    return `Error activando ${device}. Recarga la página e intenta de nuevo.`;
   }
 
   async toggleCamera(): Promise<void> {
