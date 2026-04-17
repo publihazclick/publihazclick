@@ -199,35 +199,33 @@
 
         <!-- FOTO DE PERFIL -->
         <label>Foto de perfil</label>
-        <small class="hint">Tamaño recomendado: 400×400 px. Formatos: JPG, PNG, WebP. Máximo 5MB.</small>
+        <small class="hint">Tamaño recomendado: 400 × 400 px (cuadrada). Máximo 5MB.</small>
         <div class="upload-row">
           <input type="file" accept="image/*" (change)="onFileUpload($event, 'avatar')" class="file-input" #avatarFile />
           <button type="button" class="btn-upload" (click)="avatarFile.click()" [disabled]="uploadingAvatar()">
-            @if (uploadingAvatar()) { Subiendo… } @else { Subir imagen }
+            @if (uploadingAvatar()) { Subiendo… } @else { Subir foto de perfil }
           </button>
-          <span class="upload-or">ó</span>
-          <input type="url" [value]="editAvatarUrl()" (input)="editAvatarUrl.set($any($event.target).value)" placeholder="Pegar URL de imagen" />
         </div>
         @if (editAvatarUrl()) {
           <div class="preview-thumb">
             <img [src]="editAvatarUrl()" alt="Preview perfil" />
+            <button type="button" class="btn-remove-img" (click)="editAvatarUrl.set('')">Quitar</button>
           </div>
         }
 
         <!-- IMAGEN DE PORTADA -->
         <label>Imagen de portada</label>
-        <small class="hint">Tamaño recomendado: 1280×400 px (3:1). Formatos: JPG, PNG, WebP. Máximo 5MB.</small>
+        <small class="hint">Tamaño recomendado: 1280 × 400 px (horizontal). Se verá como banner en tu landing. Máximo 5MB.</small>
         <div class="upload-row">
           <input type="file" accept="image/*" (change)="onFileUpload($event, 'cover')" class="file-input" #coverFile />
           <button type="button" class="btn-upload" (click)="coverFile.click()" [disabled]="uploadingCover()">
-            @if (uploadingCover()) { Subiendo… } @else { Subir imagen }
+            @if (uploadingCover()) { Subiendo… } @else { Subir imagen de portada }
           </button>
-          <span class="upload-or">ó</span>
-          <input type="url" [value]="editCoverUrl()" (input)="editCoverUrl.set($any($event.target).value)" placeholder="Pegar URL de imagen" />
         </div>
         @if (editCoverUrl()) {
           <div class="preview-cover">
             <img [src]="editCoverUrl()" alt="Preview portada" />
+            <button type="button" class="btn-remove-img" (click)="editCoverUrl.set('')">Quitar</button>
           </div>
         }
 
