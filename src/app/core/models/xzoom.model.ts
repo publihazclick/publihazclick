@@ -15,6 +15,8 @@ export interface XzoomHost {
   currency: string;
   is_active: boolean;
   is_live: boolean;
+  xzoom_balance: number;
+  xzoom_total_earned: number;
   livekit_room_name: string;
   pitch_video_url: string | null;
   created_at: string;

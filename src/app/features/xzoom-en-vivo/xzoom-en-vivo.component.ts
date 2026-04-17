@@ -98,6 +98,11 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   readonly savingProfile = signal(false);
   readonly profileSaveMsg = signal<string | null>(null);
 
+  // Billetera XZOOM
+  readonly withdrawAmount = signal(10000);
+  readonly withdrawingXzoom = signal(false);
+  readonly withdrawMsg = signal<string | null>(null);
+
   // Copy-to-clipboard feedback: 'invite' o el sessionId cuyo botón mostró "Copiado"
   readonly copyFeedback = signal<string | null>(null);
 
@@ -840,6 +845,26 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
       this.editError.set(msg);
     } finally {
       this.savingProfile.set(false);
+    }
+  }
+
+  async requestXzoomWithdraw(): Promise<void> {
+    const h = this.host();
+    if (!h) return;
+    const amount = this.withdrawAmount();
+    if (amount < 10000) { this.withdrawMsg.set('Error: El mínimo de retiro es $10,000 COP'); return; }
+    if (amount > (h.xzoom_balance ?? 0)) { this.withdrawMsg.set('Error: Saldo insuficiente en tu billetera XZOOM'); return; }
+    this.withdrawingXzoom.set(true);
+    this.withdrawMsg.set(null);
+    try {
+      await this.xzoom.requestXzoomWithdrawal(h.id, amount);
+      this.withdrawMsg.set(`Retiro de ${this.formatCOP(amount)} solicitado. Se procesará en 3-5 días hábiles.`);
+      // Actualizar balance local
+      this.host.set({ ...h, xzoom_balance: (h.xzoom_balance ?? 0) - amount });
+    } catch (e: any) {
+      this.withdrawMsg.set('Error: ' + (e?.message ?? 'No se pudo procesar el retiro'));
+    } finally {
+      this.withdrawingXzoom.set(false);
     }
   }
 

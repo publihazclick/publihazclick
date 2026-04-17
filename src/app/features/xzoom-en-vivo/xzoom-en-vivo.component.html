@@ -101,6 +101,28 @@
 
     <div class="xzoom-grid">
 
+      <!-- BILLETERA XZOOM EXCLUSIVA -->
+      <section class="xzoom-card wallet-card">
+        <div class="wallet-header">
+          <div>
+            <span class="wallet-label">Billetera XZOOM EN VIVO</span>
+            <div class="wallet-balance">{{ formatCOP(host()?.xzoom_balance ?? 0) }}</div>
+            <span class="wallet-sub">Total ganado: {{ formatCOP(host()?.xzoom_total_earned ?? 0) }}</span>
+          </div>
+          <span class="material-symbols-outlined wallet-icon">account_balance_wallet</span>
+        </div>
+        <div class="wallet-withdraw">
+          <input type="number" min="10000" step="1000" [value]="withdrawAmount()" (input)="withdrawAmount.set(+$any($event.target).value)" placeholder="Monto en COP" />
+          <button class="btn-withdraw" (click)="requestXzoomWithdraw()" [disabled]="withdrawingXzoom()">
+            @if (withdrawingXzoom()) { Procesando… } @else { Retirar }
+          </button>
+        </div>
+        @if (withdrawMsg()) {
+          <p class="wallet-msg" [class.error]="withdrawMsg()!.startsWith('Error')">{{ withdrawMsg() }}</p>
+        }
+        <small class="hint">Mínimo de retiro: $10,000 COP. Solo refleja ingresos de suscripciones XZOOM.</small>
+      </section>
+
       <section class="xzoom-card stats">
         <div class="stat">
           <span class="stat-label">Suscriptores activos</span>

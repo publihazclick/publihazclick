@@ -642,6 +642,71 @@
   color: #94a3b8;
 }
 
+/* ───────── Billetera XZOOM ───────── */
+.wallet-card {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 100%);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+}
+.wallet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.wallet-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff6b6b;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.wallet-balance {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  margin: 4px 0;
+}
+.wallet-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+.wallet-icon {
+  font-size: 36px;
+  color: #ff3b30;
+  opacity: 0.3;
+}
+.wallet-withdraw {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+
+  input {
+    flex: 1;
+  }
+}
+.btn-withdraw {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.wallet-msg {
+  font-size: 12px;
+  color: #10b981;
+  margin: 8px 0 0;
+
+  &.error { color: #f87171; }
+}
+
 /* ───────── Upload row ───────── */
 .upload-row {
   display: flex;

@@ -262,6 +262,18 @@ export class XzoomService {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // BILLETERA XZOOM — RETIRO DE GANANCIAS
+  // ─────────────────────────────────────────────────────────────
+
+  async requestXzoomWithdrawal(hostId: string, amountCop: number): Promise<string> {
+    const { data, error } = await this.supabase.rpc('xzoom_request_withdrawal', {
+      p_host_id: hostId,
+      p_amount_cop: amountCop,
+    });
+    if (error) throw error;
+    return data as string;
+  }
+
   // LIVE SESSIONS / GRABACIONES
   // ─────────────────────────────────────────────────────────────
 
