@@ -855,19 +855,44 @@ export class XzoomHostLandingComponent implements OnInit {
   private toEmbedUrl(url: string): string | null {
     try {
       const u = new URL(url);
+
+      // Ya es embed
       if (u.pathname.startsWith('/embed/')) return url;
+
+      // YouTube: youtube.com/watch?v=ID | m.youtube.com/watch?v=ID
       if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) {
         return `https://www.youtube.com/embed/${u.searchParams.get('v')}`;
       }
-      if (u.hostname === 'youtu.be') {
-        return `https://www.youtube.com/embed${u.pathname}`;
+
+      // YouTube Shorts: youtube.com/shorts/ID | m.youtube.com/shorts/ID
+      const shortsMatch = u.pathname.match(/\/shorts\/([a-zA-Z0-9_-]+)/);
+      if (u.hostname.includes('youtube.com') && shortsMatch) {
+        return `https://www.youtube.com/embed/${shortsMatch[1]}`;
       }
+
+      // YouTube Live: youtube.com/live/ID
+      const liveMatch = u.pathname.match(/\/live\/([a-zA-Z0-9_-]+)/);
+      if (u.hostname.includes('youtube.com') && liveMatch) {
+        return `https://www.youtube.com/embed/${liveMatch[1]}`;
+      }
+
+      // youtu.be/ID (short links)
+      if (u.hostname === 'youtu.be') {
+        const id = u.pathname.replace('/', '');
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+
+      // Vimeo
       if (u.hostname.includes('vimeo.com')) {
         const id = u.pathname.replace(/\//g, '');
         if (/^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
       }
+
+      // Direct video files (MP4, WebM, etc) — handled by pitchVideoDirect
       if (/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return null;
-      return url;
+
+      // Unknown URL — don't try to embed it
+      return null;
     } catch {
       return null;
     }
