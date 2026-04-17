@@ -33,13 +33,14 @@ import { CursosLandingComponent } from './features/cursos/components/landing/cur
 export class App {
   protected readonly title = signal('publihazclick');
 
+  private readonly router = inject(Router);
+  private readonly initialUrl = this.router.url.split('?')[0].split('#')[0];
+
   readonly isAuthRoute = signal(false);
   readonly isAdminOrDashboardRoute = signal(false);
-  readonly isLandingRoute = signal(true);
-  readonly isAndaGanaRoute = signal(false);
-  readonly isXzoomRoute = signal(false);
-
-  private readonly router = inject(Router);
+  readonly isLandingRoute = signal(this.initialUrl === '/' || this.initialUrl === '');
+  readonly isAndaGanaRoute = signal(this.initialUrl.includes('/anda-gana'));
+  readonly isXzoomRoute = signal(this.initialUrl === '/xzoom' || this.initialUrl.startsWith('/xzoom/'));
 
   constructor() {
     this.updateAuthRoute(this.router.url);
