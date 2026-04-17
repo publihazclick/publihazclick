@@ -96,7 +96,7 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
                 <p class="live-banner-title">{{ h.display_name }} está EN VIVO ahora</p>
                 <p class="live-banner-sub">La transmisión está en curso. ¡Entra antes de que termine!</p>
               </div>
-              <a [routerLink]="['/dashboard/xzoom-en-vivo']" class="btn-enter-live">
+              <a [routerLink]="['/xzoom/panel']" class="btn-enter-live">
                 <span class="material-symbols-outlined">play_arrow</span>
                 Entrar a la sala
               </a>

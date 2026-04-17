@@ -129,7 +129,7 @@ async function notifySubscribers(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(batch.map(email => ({
-          from: `${hostName} via XZOOM EN VIVO <noreply@publihazclick.com>`,
+          from: RESEND_FROM.replace(/^[^<]*</, `${hostName} via XZOOM EN VIVO <`),
           to: [email],
           subject: `🔴 ${hostName} está EN VIVO ahora — XZOOM EN VIVO`,
           html: `
