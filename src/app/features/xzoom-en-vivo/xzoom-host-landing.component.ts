@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  OnDestroy,
   computed,
   inject,
   signal,
@@ -85,6 +86,23 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
             </div>
           </div>
         </div>
+
+        <!-- Banner EN VIVO -->
+        @if (h.is_live) {
+          <div class="live-banner">
+            <div class="live-banner-inner">
+              <span class="live-dot-big"></span>
+              <div>
+                <p class="live-banner-title">{{ h.display_name }} está EN VIVO ahora</p>
+                <p class="live-banner-sub">La transmisión está en curso. ¡Entra antes de que termine!</p>
+              </div>
+              <a [routerLink]="['/dashboard/xzoom-en-vivo']" class="btn-enter-live">
+                <span class="material-symbols-outlined">play_arrow</span>
+                Entrar a la sala
+              </a>
+            </div>
+          </div>
+        }
 
         <section class="pitch">
 
@@ -312,6 +330,78 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
       color: #fff;
     }
     .state.error p { margin: 0 0 24px; }
+
+    /* ── Banner EN VIVO ── */
+    .live-banner {
+      max-width: 960px;
+      margin: 0 auto 16px;
+      padding: 0 16px;
+      position: relative;
+      z-index: 3;
+    }
+    .live-banner-inner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, rgba(220,38,38,0.15), rgba(239,68,68,0.08));
+      border: 1px solid rgba(239,68,68,0.4);
+      border-radius: 16px;
+      animation: live-glow 2s ease-in-out infinite alternate;
+    }
+    @keyframes live-glow {
+      0% { box-shadow: 0 0 20px rgba(239,68,68,0.1); }
+      100% { box-shadow: 0 0 30px rgba(239,68,68,0.25); }
+    }
+    .live-dot-big {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #ef4444;
+      flex-shrink: 0;
+      animation: live-pulse-dot 1.5s infinite;
+    }
+    @keyframes live-pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+      50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+    }
+    .live-banner-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0;
+    }
+    .live-banner-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin: 2px 0 0;
+    }
+    .btn-enter-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-enter-live:hover { background: #dc2626; }
+    .btn-enter-live .material-symbols-outlined { font-size: 18px; }
+
+    @media (max-width: 768px) {
+      .live-banner-inner { flex-direction: column; text-align: center; gap: 12px; }
+      .btn-enter-live { width: 100%; justify-content: center; }
+    }
 
     /* ── Cover estilo Facebook ── */
     .cover-section {
@@ -717,7 +807,8 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
     }
   `],
 })
-export class XzoomHostLandingComponent implements OnInit {
+export class XzoomHostLandingComponent implements OnInit, OnDestroy {
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
   private readonly xzoom = inject(XzoomService);
   private readonly auth = inject(AuthService);
   private readonly currency = inject(CurrencyService);
@@ -767,6 +858,20 @@ export class XzoomHostLandingComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+
+    // Polling cada 15 segundos para detectar si el anfitrión inicia transmisión
+    if (slug) {
+      this.pollInterval = setInterval(async () => {
+        try {
+          const updated = await this.xzoom.getHostBySlug(slug);
+          if (updated) this.host.set(updated);
+        } catch {}
+      }, 15000);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollInterval) { clearInterval(this.pollInterval); this.pollInterval = null; }
   }
 
   async onSubscribe(): Promise<void> {
