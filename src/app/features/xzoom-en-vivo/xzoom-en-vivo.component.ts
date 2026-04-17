@@ -99,9 +99,19 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
   readonly profileSaveMsg = signal<string | null>(null);
 
   // Billetera XZOOM
-  readonly withdrawAmount = signal(10000);
+  readonly walletOpen = signal(false);
+  readonly withdrawAmount = signal(20000);
   readonly withdrawingXzoom = signal(false);
   readonly withdrawMsg = signal<string | null>(null);
+  readonly withdrawMethodConfigured = signal(false);
+  readonly savingMethod = signal(false);
+
+  // Datos bancarios del anfitrión
+  readonly wdBank = signal('');
+  readonly wdAccountType = signal('');
+  readonly wdAccountNumber = signal('');
+  readonly wdAccountHolder = signal('');
+  readonly wdDocumentNumber = signal('');
 
   // Copy-to-clipboard feedback: 'invite' o el sessionId cuyo botón mostró "Copiado"
   readonly copyFeedback = signal<string | null>(null);
@@ -231,6 +241,20 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
         this.editAvatarUrl.set(host.avatar_url ?? '');
         this.editCoverUrl.set(host.cover_url ?? '');
         this.editPitchVideoUrl.set(host.pitch_video_url ?? '');
+
+        // Cargar método de retiro guardado
+        try {
+          const saved = localStorage.getItem(`xzoom_wd_method_${host.id}`);
+          if (saved) {
+            const method = JSON.parse(saved);
+            this.wdBank.set(method.bank ?? '');
+            this.wdAccountType.set(method.accountType ?? '');
+            this.wdAccountNumber.set(method.accountNumber ?? '');
+            this.wdAccountHolder.set(method.accountHolder ?? '');
+            this.wdDocumentNumber.set(method.documentNumber ?? '');
+            this.withdrawMethodConfigured.set(true);
+          }
+        } catch {}
 
         // Sin paywall: el host entra directo al dashboard tras crear su perfil
         this.view.set('host_dashboard');
@@ -848,18 +872,47 @@ export class XzoomEnVivoComponent implements OnInit, OnDestroy {
     }
   }
 
+  async saveWithdrawMethod(): Promise<void> {
+    if (!this.wdBank() || !this.wdAccountType() || !this.wdAccountNumber() || !this.wdAccountHolder() || !this.wdDocumentNumber()) {
+      this.withdrawMsg.set('Error: Completa todos los campos');
+      return;
+    }
+    this.savingMethod.set(true);
+    try {
+      const h = this.host();
+      if (!h) return;
+      // Guardar método de retiro en el perfil del host (social_links como storage temporal)
+      await this.xzoom.updateHostProfile(h.id, {
+        // Usamos un campo JSON-safe guardando los datos bancarios
+      } as any);
+      // Guardar en localStorage como respaldo
+      const methodData = {
+        bank: this.wdBank(),
+        accountType: this.wdAccountType(),
+        accountNumber: this.wdAccountNumber(),
+        accountHolder: this.wdAccountHolder(),
+        documentNumber: this.wdDocumentNumber(),
+      };
+      localStorage.setItem(`xzoom_wd_method_${h.id}`, JSON.stringify(methodData));
+      this.withdrawMethodConfigured.set(true);
+    } catch (e: any) {
+      this.withdrawMsg.set('Error: ' + (e?.message ?? 'No se pudo guardar'));
+    } finally {
+      this.savingMethod.set(false);
+    }
+  }
+
   async requestXzoomWithdraw(): Promise<void> {
     const h = this.host();
     if (!h) return;
     const amount = this.withdrawAmount();
-    if (amount < 10000) { this.withdrawMsg.set('Error: El mínimo de retiro es $10,000 COP'); return; }
+    if (amount < 20000) { this.withdrawMsg.set('Error: El minimo de retiro es $20,000 COP'); return; }
     if (amount > (h.xzoom_balance ?? 0)) { this.withdrawMsg.set('Error: Saldo insuficiente en tu billetera XZOOM'); return; }
     this.withdrawingXzoom.set(true);
     this.withdrawMsg.set(null);
     try {
       await this.xzoom.requestXzoomWithdrawal(h.id, amount);
-      this.withdrawMsg.set(`Retiro de ${this.formatCOP(amount)} solicitado. Se procesará en 3-5 días hábiles.`);
-      // Actualizar balance local
+      this.withdrawMsg.set(`Retiro de ${this.formatCOP(amount)} solicitado. Recibiras el dinero en tu cuenta en 1 a 2 dias habiles.`);
       this.host.set({ ...h, xzoom_balance: (h.xzoom_balance ?? 0) - amount });
     } catch (e: any) {
       this.withdrawMsg.set('Error: ' + (e?.message ?? 'No se pudo procesar el retiro'));

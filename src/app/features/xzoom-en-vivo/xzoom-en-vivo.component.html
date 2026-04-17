@@ -102,7 +102,7 @@
     <div class="xzoom-grid">
 
       <!-- BILLETERA XZOOM EXCLUSIVA -->
-      <section class="xzoom-card wallet-card">
+      <section class="xzoom-card wallet-card" (click)="walletOpen.set(true)">
         <div class="wallet-header">
           <div>
             <span class="wallet-label">Billetera XZOOM EN VIVO</span>
@@ -111,17 +111,114 @@
           </div>
           <span class="material-symbols-outlined wallet-icon">account_balance_wallet</span>
         </div>
-        <div class="wallet-withdraw">
-          <input type="number" min="10000" step="1000" [value]="withdrawAmount()" (input)="withdrawAmount.set(+$any($event.target).value)" placeholder="Monto en COP" />
-          <button class="btn-withdraw" (click)="requestXzoomWithdraw()" [disabled]="withdrawingXzoom()">
-            @if (withdrawingXzoom()) { Procesando… } @else { Retirar }
-          </button>
-        </div>
-        @if (withdrawMsg()) {
-          <p class="wallet-msg" [class.error]="withdrawMsg()!.startsWith('Error')">{{ withdrawMsg() }}</p>
-        }
-        <small class="hint">Mínimo de retiro: $10,000 COP. Solo refleja ingresos de suscripciones XZOOM.</small>
+        <p class="wallet-tap">Toca para ver opciones de retiro</p>
       </section>
+
+      <!-- MODAL BILLETERA -->
+      @if (walletOpen()) {
+        <div class="wallet-overlay" (click)="walletOpen.set(false)">
+          <div class="wallet-modal" (click)="$event.stopPropagation()">
+            <div class="wallet-modal-header">
+              <div>
+                <span class="wallet-label">Billetera XZOOM EN VIVO</span>
+                <div class="wallet-balance">{{ formatCOP(host()?.xzoom_balance ?? 0) }}</div>
+              </div>
+              <button class="wallet-close" (click)="walletOpen.set(false)">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <!-- ESTADO 1: Saldo menor a $20,000 -->
+            @if ((host()?.xzoom_balance ?? 0) < 20000) {
+              <div class="wallet-state">
+                <span class="material-symbols-outlined wallet-state-icon green">savings</span>
+                <h4>Con nosotros es super facil retirar el dinero de tus suscripciones</h4>
+                <p class="wallet-state-sub">Monto minimo de retiro: <strong>$20,000 COP</strong></p>
+                <p class="wallet-state-hint">Sigue compartiendo tu link de invitacion para recibir mas suscriptores y alcanzar el monto minimo.</p>
+                <div class="wallet-progress">
+                  <div class="wallet-progress-bar" [style.width.%]="((host()?.xzoom_balance ?? 0) / 20000) * 100"></div>
+                </div>
+                <span class="wallet-progress-text">{{ formatCOP(host()?.xzoom_balance ?? 0) }} de $20,000 COP</span>
+              </div>
+
+            <!-- ESTADO 2: Saldo >= $20,000 pero sin método configurado -->
+            } @else if (!withdrawMethodConfigured()) {
+              <div class="wallet-state">
+                <span class="material-symbols-outlined wallet-state-icon blue">account_balance</span>
+                <h4>Configura tu metodo de retiro</h4>
+                <p class="wallet-state-sub">Para retirar tu dinero necesitamos los datos de tu cuenta bancaria.</p>
+
+                <div class="withdraw-form">
+                  <label>Banco</label>
+                  <select [value]="wdBank()" (change)="wdBank.set($any($event.target).value)">
+                    <option value="">Selecciona tu banco</option>
+                    <option value="bancolombia">Bancolombia</option>
+                    <option value="davivienda">Davivienda</option>
+                    <option value="bbva">BBVA</option>
+                    <option value="banco_bogota">Banco de Bogota</option>
+                    <option value="banco_occidente">Banco de Occidente</option>
+                    <option value="banco_popular">Banco Popular</option>
+                    <option value="scotiabank">Scotiabank Colpatria</option>
+                    <option value="nequi">Nequi</option>
+                    <option value="daviplata">Daviplata</option>
+                    <option value="otro">Otro</option>
+                  </select>
+
+                  <label>Tipo de cuenta</label>
+                  <select [value]="wdAccountType()" (change)="wdAccountType.set($any($event.target).value)">
+                    <option value="">Selecciona</option>
+                    <option value="ahorros">Cuenta de ahorros</option>
+                    <option value="corriente">Cuenta corriente</option>
+                    <option value="billetera">Billetera digital (Nequi/Daviplata)</option>
+                  </select>
+
+                  <label>Numero de cuenta o celular</label>
+                  <input type="text" [value]="wdAccountNumber()" (input)="wdAccountNumber.set($any($event.target).value)" placeholder="Ej: 1234567890" />
+
+                  <label>Titular de la cuenta (como aparece en el banco)</label>
+                  <input type="text" [value]="wdAccountHolder()" (input)="wdAccountHolder.set($any($event.target).value)" placeholder="Nombre completo" />
+
+                  <label>Cedula del titular</label>
+                  <input type="text" [value]="wdDocumentNumber()" (input)="wdDocumentNumber.set($any($event.target).value)" placeholder="1234567890" />
+
+                  <button class="btn-primary" (click)="saveWithdrawMethod()" [disabled]="savingMethod()">
+                    @if (savingMethod()) { Guardando… } @else { Guardar metodo de retiro }
+                  </button>
+                </div>
+              </div>
+
+            <!-- ESTADO 3: Todo listo para retirar -->
+            } @else {
+              <div class="wallet-state">
+                <span class="material-symbols-outlined wallet-state-icon green">check_circle</span>
+                <h4>Todo listo para retirar</h4>
+                <p class="wallet-state-sub">Tu dinero llegara a tu cuenta en <strong>1 a 2 dias habiles</strong>.</p>
+
+                <div class="withdraw-method-info">
+                  <span class="material-symbols-outlined">account_balance</span>
+                  <div>
+                    <strong>{{ wdBank() | uppercase }}</strong>
+                    <span>{{ wdAccountType() }} · **** {{ wdAccountNumber().slice(-4) }}</span>
+                    <span>{{ wdAccountHolder() }}</span>
+                  </div>
+                  <button class="btn-change-method" (click)="withdrawMethodConfigured.set(false)">Cambiar</button>
+                </div>
+
+                <div class="wallet-withdraw">
+                  <input type="number" min="20000" step="1000" [value]="withdrawAmount()" (input)="withdrawAmount.set(+$any($event.target).value)" placeholder="Monto a retirar" />
+                  <button class="btn-withdraw" (click)="requestXzoomWithdraw()" [disabled]="withdrawingXzoom()">
+                    @if (withdrawingXzoom()) { Procesando… } @else { Retirar dinero }
+                  </button>
+                </div>
+                @if (withdrawMsg()) {
+                  <p class="wallet-msg" [class.error]="withdrawMsg()!.startsWith('Error')">{{ withdrawMsg() }}</p>
+                }
+                <small class="hint">Minimo $20,000 COP. Solo refleja ingresos de suscripciones XZOOM.</small>
+              </div>
+            }
+          </div>
+        </div>
+      }
 
       <section class="xzoom-card stats">
         <div class="stat">
