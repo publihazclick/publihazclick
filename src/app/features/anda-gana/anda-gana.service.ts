@@ -205,22 +205,42 @@ export class AndaGanaService {
 
       if (userError) return { success: false, error: userError.message };
 
-      const { error: driverError } = await this.supabase.from('ag_drivers').insert({
+      const { data: driverRow, error: driverError } = await this.supabase.from('ag_drivers').insert({
         ag_user_id: agUser.id,
         license_number: form.licenseNumber,
         license_category: form.licenseCategory,
         license_expiry: form.licenseExpiry,
         plate: form.plate.toUpperCase(),
+        vehicle_plate: form.plate.toUpperCase(),
         vehicle_type: form.vehicleType,
         vehicle_brand: form.vehicleBrand,
         vehicle_model: form.vehicleModel,
         vehicle_year: form.vehicleYear,
         vehicle_color: form.vehicleColor,
+        id_number: form.idNumber,
+        id_front_url:            documents['idFront']            ?? null,
+        id_back_url:             documents['idBack']             ?? null,
+        selfie_with_id_url:      documents['selfieWithId']       ?? null,
+        license_photo_url:       documents['licensePhoto']       ?? null,
+        license_back_url:        documents['licenseBack']        ?? null,
+        vehicle_photo_url:       documents['vehiclePhoto']       ?? null,
+        vehicle_side_photo_url:  documents['vehicleSidePhoto']   ?? null,
+        soat_photo_url:          documents['soatPhoto']          ?? null,
+        property_card_front_url: documents['propertyCardFront']  ?? null,
+        property_card_back_url:  documents['propertyCardBack']   ?? null,
+        tecno_photo_url:         documents['tecnoPhoto']         ?? null,
+        civil_liability_url:     documents['civilLiability']     ?? null,
+        criminal_record_url:     documents['criminalRecord']     ?? null,
         documents,
         status: 'pending',
-      });
+      }).select('id').single();
 
       if (driverError) return { success: false, error: driverError.message };
+
+      // Disparar verificación automática con GPT-4o Vision (no bloquea el registro)
+      if (driverRow?.id) {
+        this.triggerDriverVerification(driverRow.id).catch(() => {});
+      }
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e?.message ?? 'Error inesperado.' };
@@ -1077,6 +1097,35 @@ export class AndaGanaService {
       p_token: token,
       p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
     });
+  }
+
+  async triggerDriverVerification(driverId: string): Promise<{ score: number; decision: string; flags: string[] } | null> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      const token = session?.access_token ?? environment.supabase.anonKey;
+      const res = await fetch(`${environment.supabase.url}/functions/v1/ag-verify-driver-docs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: environment.supabase.anonKey,
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ driver_id: driverId }),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  async getLatestDriverVerification(driverId: string): Promise<{ score: number; auto_decision: string; flags: any; extracted: any; created_at: string } | null> {
+    const { data } = await this.supabase
+      .from('ag_driver_verifications')
+      .select('score, auto_decision, flags, extracted, created_at')
+      .eq('driver_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data as any;
   }
 
   async sendPush(payload: { userIds: string[]; title: string; body?: string; url?: string; tag?: string; urgent?: boolean }): Promise<void> {
