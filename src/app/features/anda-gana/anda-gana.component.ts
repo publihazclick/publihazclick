@@ -909,6 +909,21 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @if (passengerSection() === 'security') {
           <div class="flex flex-col gap-4">
             <h2 class="text-white font-black text-lg">Seguridad</h2>
+            <!-- Notificaciones push -->
+            @if (pushSupported()) {
+              <div class="rounded-2xl p-4 flex items-center gap-3" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2)">
+                <span class="material-symbols-outlined text-blue-400" style="font-size:22px">notifications_active</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-white font-black text-sm">Notificaciones push</p>
+                  <p class="text-slate-400 text-xs">Avisos cuando llegue el conductor o aceptes una oferta</p>
+                </div>
+                @if (pushEnabled()) {
+                  <button (click)="disablePush()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400" style="background:rgba(255,255,255,0.08)">Activadas</button>
+                } @else {
+                  <button (click)="enablePush()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style="background:#3b82f6">Activar</button>
+                }
+              </div>
+            }
             <!-- Botón de pánico -->
             <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
               <div class="flex items-center gap-3">
@@ -918,13 +933,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <p class="text-slate-400 text-xs">Llama a tu contacto de emergencia</p>
                 </div>
               </div>
-              <button (click)="panicActivated.set(true)"
-                class="w-full py-3 rounded-xl font-black text-sm transition-all active:scale-[0.98]"
-                [style.background]="panicActivated() ? 'rgba(239,68,68,0.3)' : 'linear-gradient(135deg,#dc2626,#b91c1c)'"
+              <button (click)="triggerPanic()" [disabled]="panicSending()"
+                class="w-full py-3 rounded-xl font-black text-sm transition-all active:scale-[0.98] disabled:opacity-60"
+                [style.background]="panicActivated() ? 'rgba(34,197,94,0.3)' : 'linear-gradient(135deg,#dc2626,#b91c1c)'"
                 style="color:#fff">
-                @if (panicActivated()) { Pánico activado — llamando... }
-                @else { Activar pánico }
+                @if (panicActivated()) { ✓ Alerta enviada — {{ panicContactsNotified() }} contactos notificados }
+                @else if (panicSending()) { Enviando alerta... }
+                @else { 🚨 Activar pánico }
               </button>
+              @if (panicActivated() && panicMapsLink()) {
+                <a [href]="panicMapsLink()" target="_blank" class="text-[11px] text-red-300 underline text-center">Ver ubicación compartida</a>
+              }
             </div>
             <!-- Contactos de emergencia -->
             <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
@@ -3039,6 +3058,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   rechargeLoading    = signal(false);
   rechargeError      = signal<string | null>(null);
   panicActivated     = signal(false);
+  panicSending       = signal(false);
+  panicContactsNotified = signal(0);
+  panicMapsLink      = signal<string>('');
+  pushSupported      = signal(false);
+  pushEnabled        = signal(false);
   emergencyContacts  = signal<{ name: string; phone: string }[]>([]);
   newContactName     = '';
   newContactPhone    = '';
@@ -3153,6 +3177,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Capturar referido desde query param ?ref=
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');
 
+    // Detectar soporte push y estado
+    this.checkPushSupport();
+
     // Splash: logo empieza en 10px y crece lentamente hasta llenar la pantalla
     if (isPlatformBrowser(this.platformId)) {
       const maxDim = Math.max(window.innerWidth, window.innerHeight) * 1.6;
@@ -3215,6 +3242,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._unsubscribeChat();
     this.stopGpsTracking();
     this._unsubscribeLocations();
+    this._stopTrackingAssignedDriver();
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
   }
 
@@ -4469,8 +4497,55 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this._unsubscribeOffers();
       this.tripAccepted.set(offer);
       this.tripSent.set(false);
+      this._startTrackingAssignedDriver(offer.driver_id);
+      // Notificar al conductor que su oferta fue aceptada
+      try {
+        const driverAuthUserId = (offer as any)?.ag_drivers?.ag_users?.auth_user_id;
+        if (driverAuthUserId) {
+          this.agService.sendPush({
+            userIds: [driverAuthUserId],
+            title: '🎉 Tu oferta fue aceptada',
+            body: 'Dirígete al punto de recogida. Revisa detalles en la app.',
+            tag: `offer-accepted-${offer.id}`, urgent: true,
+          }).catch(() => {});
+        }
+      } catch {}
     }
     this.acceptingOfferId.set(null);
+  }
+
+  /** Tracking en vivo del conductor asignado: muestra marker + ETA + centra mapa */
+  private _assignedDriverChannel: any = null;
+  private _assignedDriverMarker: any = null;
+  private _startTrackingAssignedDriver(driverId: string): void {
+    this._stopTrackingAssignedDriver();
+    // Dibujar marker con última ubicación conocida
+    this.agService.getLatestDriverLocation(driverId).then(loc => {
+      if (loc) this._drawAssignedDriverMarker(loc.lat, loc.lng);
+    });
+    this._assignedDriverChannel = this.agService.subscribeDriverLocation(driverId, (loc) => {
+      this._drawAssignedDriverMarker(loc.lat, loc.lng, loc.heading);
+    });
+  }
+
+  private _stopTrackingAssignedDriver(): void {
+    if (this._assignedDriverChannel) { try { this._assignedDriverChannel.unsubscribe(); } catch {} this._assignedDriverChannel = null; }
+    if (this._assignedDriverMarker) { try { this._assignedDriverMarker.remove(); } catch {} this._assignedDriverMarker = null; }
+  }
+
+  private _drawAssignedDriverMarker(lat: number, lng: number, heading = 0): void {
+    if (!this._map) return;
+    const mapboxgl = (window as any).mapboxgl;
+    if (!mapboxgl) return;
+    if (this._assignedDriverMarker) {
+      this._assignedDriverMarker.setLngLat([lng, lat]);
+    } else {
+      const el = this._carElement(heading, '#10b981');
+      el.style.filter = 'drop-shadow(0 0 12px rgba(16,185,129,0.8))';
+      this._assignedDriverMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng, lat]).addTo(this._map);
+      this._map.flyTo({ center: [lng, lat], zoom: 15.5, duration: 1000 });
+    }
   }
 
   async rejectOfferCard(offer: AgTripOffer) {
@@ -5084,6 +5159,105 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.savingPassengerSettings.set(true);
     await new Promise(r => setTimeout(r, 400));
     this.savingPassengerSettings.set(false);
+  }
+
+  // ═════════════ Push notifications ═════════════
+  private _urlB64ToUint8(base64: string): Uint8Array {
+    const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+    const b = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(b);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  async checkPushSupport(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+    this.pushSupported.set(supported);
+    if (!supported) return;
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('/sw-movi.js');
+      const sub = await reg?.pushManager.getSubscription();
+      this.pushEnabled.set(!!sub);
+    } catch {}
+  }
+
+  async enablePush(): Promise<void> {
+    const vapid = (environment as any).vapidPublicKey;
+    if (!vapid) { alert('Notificaciones no configuradas'); return; }
+    try {
+      const reg = await navigator.serviceWorker.register('/sw-movi.js');
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { alert('Permiso denegado por el navegador'); return; }
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const key = this._urlB64ToUint8(vapid);
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key.buffer as ArrayBuffer });
+      }
+      await this.agService.registerPushSubscription(sub);
+      this.pushEnabled.set(true);
+    } catch (e: any) { alert('Error: ' + (e?.message ?? 'No se pudo activar')); }
+  }
+
+  async disablePush(): Promise<void> {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('/sw-movi.js');
+      const sub = await reg?.pushManager.getSubscription();
+      if (sub) {
+        await this.agService.unregisterPushSubscription(sub.endpoint);
+        await sub.unsubscribe();
+      }
+      this.pushEnabled.set(false);
+    } catch {}
+  }
+
+  async triggerPanic(): Promise<void> {
+    if (this.panicActivated() || this.panicSending()) return;
+    this.panicSending.set(true);
+    try {
+      // Obtener ubicación actual
+      let lat: number | undefined;
+      let lng: number | undefined;
+      let accuracy: number | undefined;
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 8000 })
+          );
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+          accuracy = pos.coords.accuracy;
+        } catch {}
+      }
+      // Sincronizar contactos locales con DB antes (si no están)
+      try {
+        const userId = (await this.agService['supabase'].auth.getUser()).data.user?.id;
+        if (userId) {
+          const existing = await this.agService.listEmergencyContacts(userId);
+          const existingPhones = new Set((existing ?? []).map((c: any) => c.phone));
+          const locals = this.passengerSecurityContacts();
+          for (const c of locals) {
+            if (!existingPhones.has(c.phone)) {
+              await this.agService.addEmergencyContact(userId, c.name, c.phone).catch(() => {});
+            }
+          }
+        }
+      } catch {}
+
+      const tripId = this.currentTripRequestId();
+      const result = await this.agService.triggerSos({ tripId: tripId ?? null, lat, lng, accuracy, message: 'Activado desde la app' });
+      this.panicActivated.set(true);
+      this.panicContactsNotified.set(result.contactsNotified ?? 0);
+      this.panicMapsLink.set(result.mapsLink ?? '');
+      if (typeof alert !== 'undefined') {
+        alert(`🚨 Alerta enviada. ${result.contactsNotified ?? 0} contacto(s) notificado(s).\n\nSi es una emergencia real, llama al 123.`);
+      }
+    } catch (e: any) {
+      alert('Error: ' + (e?.message ?? 'No se pudo enviar alerta'));
+    } finally {
+      this.panicSending.set(false);
+    }
   }
 
   togglePassengerFaq(q: string) {

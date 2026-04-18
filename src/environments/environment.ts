@@ -47,6 +47,7 @@ export const environment = {
   },
   // YouTube Data API v3 key — get from console.cloud.google.com
   youtubeApiKey: 'AIzaSyCLn_rNDe8iOHzdDFeHw4pWHrV3RvWgoV8',
+  vapidPublicKey: 'BHJwsxK-mQi6rjb7-VHyhhO8gDGBSw6s4R0r7SyavMazAgp2xvGx2yjeP32boRAo96DUcceX4vH3oHRfpfg3WKo',
 };
 
 /**

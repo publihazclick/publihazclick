@@ -1,14 +1,14 @@
 import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SlicePipe } from '@angular/common';
+import { SlicePipe, DatePipe } from '@angular/common';
 import { AndaGanaService, AgUser, AgDriver } from '../../../../features/anda-gana/anda-gana.service';
 
-type AdminTab = 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion';
+type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes';
 
 @Component({
   selector: 'app-anda-gana-admin',
   standalone: true,
-  imports: [FormsModule, SlicePipe],
+  imports: [FormsModule, SlicePipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col py-6 px-4 max-w-5xl mx-auto gap-6">
@@ -48,6 +48,11 @@ type AdminTab = 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'config
 
   <!-- Tabs -->
   <div class="flex gap-2 border-b border-white/8 pb-0 overflow-x-auto scrollbar-hide" style="scrollbar-width:none">
+    <button (click)="tab.set('analytics'); loadAnalytics()"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition"
+      [class]="tab() === 'analytics' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'">
+      📊 Analytics
+    </button>
     <button (click)="tab.set('conductores-pendientes')"
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'conductores-pendientes' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-500 hover:text-slate-300'">
@@ -62,6 +67,17 @@ type AdminTab = 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'config
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'pasajeros' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-slate-500 hover:text-slate-300'">
       Pasajeros
+    </button>
+    <button (click)="tab.set('sos'); loadSos()"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1.5"
+      [class]="tab() === 'sos' ? 'text-red-400 border-b-2 border-red-400' : 'text-slate-500 hover:text-slate-300'">
+      <span class="material-symbols-outlined" style="font-size:14px">emergency</span>SOS
+      @if (sosActiveCount() > 0) { <span class="px-1.5 py-0.5 bg-red-600 rounded-full text-[10px] font-black text-white">{{ sosActiveCount() }}</span> }
+    </button>
+    <button (click)="tab.set('viajes'); loadActiveTrips()"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition"
+      [class]="tab() === 'viajes' ? 'text-green-400 border-b-2 border-green-400' : 'text-slate-500 hover:text-slate-300'">
+      Viajes activos
     </button>
     <button (click)="tab.set('configuracion')"
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
@@ -324,6 +340,110 @@ type AdminTab = 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'config
     }
   }
 
+  <!-- ═══ ANALYTICS ═══ -->
+  @if (tab() === 'analytics') {
+    <div class="mb-4 flex items-center gap-2">
+      @for (p of [7, 30, 90]; track p) {
+        <button (click)="analyticsPeriod.set(p); loadAnalytics()" class="px-3 py-1 rounded-lg text-xs font-bold"
+          [class]="analyticsPeriod() === p ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-400'">{{ p }}d</button>
+      }
+    </div>
+    @if (analyticsData(); as a) {
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Viajes completados</p>
+          <p class="text-2xl font-black text-green-400 mt-1">{{ a.completed_trips }}</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">GMV</p>
+          <p class="text-2xl font-black text-amber-400 mt-1">{{ formatCOP(a.gmv_cop) }}</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Tasa completitud</p>
+          <p class="text-2xl font-black text-blue-400 mt-1">{{ a.completion_rate }}%</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Conductores activos</p>
+          <p class="text-2xl font-black text-purple-400 mt-1">{{ a.active_drivers }}</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Pasajeros únicos</p>
+          <p class="text-2xl font-black text-pink-400 mt-1">{{ a.unique_passengers }}</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Nuevos conductores</p>
+          <p class="text-2xl font-black text-cyan-400 mt-1">{{ a.new_drivers }}</p>
+        </div>
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider">Nuevos pasajeros</p>
+          <p class="text-2xl font-black text-orange-400 mt-1">{{ a.new_passengers }}</p>
+        </div>
+        <div class="bg-white/[0.03] border border-red-500/30 rounded-2xl p-4">
+          <p class="text-[10px] text-red-400 uppercase tracking-wider">SOS triggers</p>
+          <p class="text-2xl font-black text-red-400 mt-1">{{ a.sos_events }}</p>
+        </div>
+      </div>
+
+      @if (dailySeries().length > 0) {
+        <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Viajes completados por día</p>
+          <div class="flex items-end gap-1 h-24">
+            @for (d of dailySeries(); track d.day) {
+              <div class="flex-1 bg-blue-500/70 rounded-t" [style.height.%]="barHeight(d.trips)" [title]="d.day + ': ' + d.trips + ' viajes'"></div>
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+
+  <!-- ═══ SOS EVENTS ═══ -->
+  @if (tab() === 'sos') {
+    @if (sosEvents().length === 0) {
+      <div class="text-center py-16 text-slate-500 text-sm">Sin eventos SOS activos.</div>
+    }
+    @for (s of sosEvents(); track s.id) {
+      <div class="bg-red-500/5 border border-red-500/30 rounded-2xl p-4 mb-3">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-red-400 animate-pulse" style="font-size:20px">emergency</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase"
+              [class]="s.status === 'active' ? 'bg-red-600 text-white' : s.status === 'resolved' ? 'bg-green-600/30 text-green-400' : 'bg-gray-700 text-gray-400'">{{ s.status }}</span>
+            <span class="text-[10px] text-slate-500">{{ s.created_at | date:'short' }}</span>
+          </div>
+          @if (s.status === 'active') {
+            <div class="flex gap-2">
+              <button (click)="resolveSos(s.id, 'resolved')" class="px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-bold">Atendido</button>
+              <button (click)="resolveSos(s.id, 'false_alarm')" class="px-3 py-1 bg-gray-700 text-white rounded-lg text-xs font-bold">Falsa alarma</button>
+            </div>
+          }
+        </div>
+        @if (s.lat && s.lng) {
+          <a [href]="'https://maps.google.com/?q=' + s.lat + ',' + s.lng" target="_blank" class="text-xs text-blue-400 underline">Ver ubicación en Maps</a>
+        }
+        @if (s.message) { <p class="text-xs text-slate-300 mt-1 italic">"{{ s.message }}"</p> }
+        <p class="text-[10px] text-slate-500 mt-1">User: {{ s.user_id.slice(0,8) }}... · Contactos notificados: {{ s.notified_contacts }}</p>
+      </div>
+    }
+  }
+
+  <!-- ═══ VIAJES ACTIVOS ═══ -->
+  @if (tab() === 'viajes') {
+    @if (activeTrips().length === 0) {
+      <div class="text-center py-16 text-slate-500 text-sm">Sin viajes en curso.</div>
+    }
+    @for (t of activeTrips(); track t.id) {
+      <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4 mb-3">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <p class="text-white font-bold text-sm">{{ t.dest_name ?? 'Viaje en curso' }}</p>
+          <span class="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] font-bold uppercase">{{ t.status }}</span>
+        </div>
+        <p class="text-[11px] text-slate-400">Pasajero: {{ t.passenger_user_id?.slice(0,8) }}... · Conductor: {{ t.driver_id ? t.driver_id.slice(0,8) : '—' }}</p>
+        <p class="text-[11px] text-amber-400 font-bold mt-1">{{ formatCOP(t.offered_price) }} · {{ t.distance_km }}km</p>
+      </div>
+    }
+  }
+
 </div>
   `,
 })
@@ -348,9 +468,20 @@ export class AndaGanaAdminComponent implements OnInit {
   savingCommission = signal(false);
   exampleCommission = computed(() => Math.ceil(10000 * this.commissionPct() / 100));
 
+  // SOS + Viajes activos
+  sosEvents      = signal<any[]>([]);
+  sosActiveCount = signal(0);
+  activeTrips    = signal<any[]>([]);
+
+  // Analytics
+  analyticsPeriod = signal(30);
+  analyticsData   = signal<any | null>(null);
+  dailySeries     = signal<{ day: string; trips: number; gmv: number }[]>([]);
+
   async ngOnInit() {
     await this.load();
     await this.loadCommission();
+    await this.loadSos();
   }
 
   async load() {
@@ -427,5 +558,37 @@ export class AndaGanaAdminComponent implements OnInit {
 
   formatCOP(amount: number): string {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(amount);
+  }
+
+  // SOS
+  async loadSos(): Promise<void> {
+    const { data } = await this.agService['supabase'].from('ag_sos_events').select('*').in('status', ['active', 'resolved', 'false_alarm']).order('created_at', { ascending: false }).limit(100);
+    this.sosEvents.set(data ?? []);
+    this.sosActiveCount.set((data ?? []).filter((s: any) => s.status === 'active').length);
+  }
+
+  async resolveSos(id: string, status: 'resolved' | 'false_alarm'): Promise<void> {
+    await this.agService['supabase'].from('ag_sos_events').update({ status, resolved_at: new Date().toISOString() }).eq('id', id);
+    await this.loadSos();
+  }
+
+  async loadActiveTrips(): Promise<void> {
+    const { data } = await this.agService['supabase'].from('ag_trip_requests').select('*').in('status', ['in_progress', 'accepted', 'pickup', 'on_route', 'arrived']).order('created_at', { ascending: false }).limit(50);
+    this.activeTrips.set(data ?? []);
+  }
+
+  async loadAnalytics(): Promise<void> {
+    const sb = this.agService['supabase'];
+    const [statsR, seriesR] = await Promise.all([
+      sb.rpc('ag_admin_stats', { p_days: this.analyticsPeriod() }),
+      sb.rpc('ag_admin_daily_series', { p_days: this.analyticsPeriod() }),
+    ]);
+    this.analyticsData.set(statsR.data ?? null);
+    this.dailySeries.set((seriesR.data ?? []).map((r: any) => ({ day: r.day, trips: Number(r.trips), gmv: Number(r.gmv) })));
+  }
+
+  barHeight(val: number): number {
+    const max = Math.max(...this.dailySeries().map(d => d.trips), 1);
+    return Math.round((val / max) * 100);
   }
 }

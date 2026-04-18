@@ -687,4 +687,160 @@ export class AndaGanaService {
       rejected: rej.count ?? 0,
     };
   }
+
+  // ═══════════════════════════════════════════════════
+  // SOS / Emergencias
+  // ═══════════════════════════════════════════════════
+  async triggerSos(payload: { tripId?: string | null; lat?: number; lng?: number; accuracy?: number; message?: string }): Promise<{ ok: boolean; sosId?: string; contactsNotified?: number; mapsLink?: string }> {
+    const { data: sess } = await this.supabase.auth.getSession();
+    const accessToken = sess?.session?.access_token;
+    if (!accessToken) throw new Error('Sesión no iniciada');
+    const r = await fetch(`${environment.supabase.url}/functions/v1/ag-sos-trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: environment.supabase.anonKey, Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        trip_id: payload.tripId ?? null,
+        lat: payload.lat ?? null, lng: payload.lng ?? null,
+        accuracy_m: payload.accuracy ?? null, message: payload.message ?? null,
+      }),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      let msg = `Error ${r.status}`;
+      try { msg = JSON.parse(text).error ?? msg; } catch {}
+      throw new Error(msg);
+    }
+    const out = JSON.parse(text);
+    return { ok: out.ok, sosId: out.sos_id, contactsNotified: out.contacts_notified, mapsLink: out.maps_link };
+  }
+
+  async listEmergencyContacts(userId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_emergency_contacts').select('*').eq('user_id', userId).order('created_at');
+    return data ?? [];
+  }
+
+  async addEmergencyContact(userId: string, name: string, phone: string, relationship?: string): Promise<void> {
+    const { error } = await this.supabase.from('ag_emergency_contacts').insert({ user_id: userId, name, phone, relationship: relationship ?? null });
+    if (error) throw error;
+  }
+
+  async removeEmergencyContact(id: string): Promise<void> {
+    const { error } = await this.supabase.from('ag_emergency_contacts').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Share trip
+  // ═══════════════════════════════════════════════════
+  async createTripShare(userId: string, tripId: string, hours = 4): Promise<string> {
+    const { data, error } = await this.supabase.rpc('ag_create_trip_share', { p_user_id: userId, p_trip_id: tripId, p_hours: hours });
+    if (error) throw error;
+    return data as string;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Favoritos
+  // ═══════════════════════════════════════════════════
+  async listFavorites(userId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_favorite_addresses').select('*').eq('user_id', userId).order('sort_order');
+    return data ?? [];
+  }
+
+  async addFavorite(userId: string, payload: { label: string; icon?: string; address: string; lat: number; lng: number }): Promise<void> {
+    const { error } = await this.supabase.from('ag_favorite_addresses').insert({ user_id: userId, ...payload, icon: payload.icon ?? 'place' });
+    if (error) throw error;
+  }
+
+  async removeFavorite(id: string): Promise<void> {
+    const { error } = await this.supabase.from('ag_favorite_addresses').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Viajes programados
+  // ═══════════════════════════════════════════════════
+  async listScheduledTrips(userId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_scheduled_trips').select('*').eq('user_id', userId).in('status', ['pending', 'notified']).order('scheduled_for', { ascending: true });
+    return data ?? [];
+  }
+
+  async scheduleTrip(payload: {
+    userId: string; origin: { address: string; lat: number; lng: number };
+    destination: { address: string; lat: number; lng: number };
+    vehicleType?: string; suggestedPrice?: number; paymentMethod?: string; scheduledFor: string;
+  }): Promise<void> {
+    const { error } = await this.supabase.from('ag_scheduled_trips').insert({
+      user_id: payload.userId,
+      origin_address: payload.origin.address, origin_lat: payload.origin.lat, origin_lng: payload.origin.lng,
+      destination_address: payload.destination.address, destination_lat: payload.destination.lat, destination_lng: payload.destination.lng,
+      vehicle_type: payload.vehicleType ?? null, suggested_price: payload.suggestedPrice ?? null,
+      payment_method: payload.paymentMethod ?? null, scheduled_for: payload.scheduledFor,
+    });
+    if (error) throw error;
+  }
+
+  async cancelScheduledTrip(id: string): Promise<void> {
+    const { error } = await this.supabase.from('ag_scheduled_trips').update({ status: 'cancelled' }).eq('id', id);
+    if (error) throw error;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Driver tracking live (sub realtime)
+  // ═══════════════════════════════════════════════════
+  subscribeDriverLocation(driverId: string, cb: (loc: { lat: number; lng: number; heading?: number }) => void): RealtimeChannel {
+    return this.supabase.channel(`ag-driver-loc-${driverId}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'ag_driver_locations',
+        filter: `driver_id=eq.${driverId}`,
+      }, (payload: any) => {
+        const row = payload.new ?? payload.record;
+        if (row) cb({ lat: row.lat, lng: row.lng, heading: row.heading });
+      }).subscribe();
+  }
+
+  async getLatestDriverLocation(driverId: string): Promise<{ lat: number; lng: number } | null> {
+    const { data } = await this.supabase.from('ag_driver_locations').select('lat, lng').eq('driver_id', driverId).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    return data as any;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Propinas
+  // ═══════════════════════════════════════════════════
+  async tipDriver(tripId: string, amount: number): Promise<void> {
+    const { error } = await this.supabase.rpc('ag_tip_driver', { p_trip_id: tripId, p_amount: amount });
+    if (error) throw error;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Push notifications
+  // ═══════════════════════════════════════════════════
+  async registerPushSubscription(sub: PushSubscription): Promise<void> {
+    const userId = (await this.supabase.auth.getUser()).data.user?.id;
+    if (!userId) return;
+    const json: any = sub.toJSON();
+    await this.supabase.from('ag_push_subs').upsert({
+      user_id: userId,
+      endpoint: json.endpoint,
+      p256dh: json.keys?.p256dh,
+      auth: json.keys?.auth,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+    }, { onConflict: 'endpoint' });
+  }
+
+  async unregisterPushSubscription(endpoint: string): Promise<void> {
+    await this.supabase.from('ag_push_subs').delete().eq('endpoint', endpoint);
+  }
+
+  async sendPush(payload: { userIds: string[]; title: string; body?: string; url?: string; tag?: string; urgent?: boolean }): Promise<void> {
+    try {
+      await fetch(`${environment.supabase.url}/functions/v1/ag-send-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: environment.supabase.anonKey },
+        body: JSON.stringify({
+          user_ids: payload.userIds, title: payload.title, body: payload.body,
+          url: payload.url ?? '/anda-gana', tag: payload.tag, urgent: payload.urgent,
+        }),
+      });
+    } catch {}
+  }
 }

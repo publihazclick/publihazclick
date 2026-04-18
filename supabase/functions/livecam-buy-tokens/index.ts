@@ -27,14 +27,14 @@ function calcChargeAmount(base: number): number {
   return Math.ceil((base + EPAYCO_FIXED) / (1 - EPAYCO_RATE));
 }
 
-// Token packs
+// Token packs — precios YA incluyen comisión ePayco (el usuario paga esto exacto)
 const PACKS: Record<number, { tokens: number; priceCop: number }> = {
-  50:   { tokens: 50,   priceCop: 9900 },
-  110:  { tokens: 110,  priceCop: 19900 },
-  250:  { tokens: 250,  priceCop: 39900 },
-  550:  { tokens: 550,  priceCop: 79900 },
-  1100: { tokens: 1100, priceCop: 149900 },
-  2500: { tokens: 2500, priceCop: 299900 },
+  50:   { tokens: 50,   priceCop: 11900 },
+  110:  { tokens: 110,  priceCop: 21900 },
+  250:  { tokens: 250,  priceCop: 42900 },
+  550:  { tokens: 550,  priceCop: 83900 },
+  1100: { tokens: 1100, priceCop: 156900 },
+  2500: { tokens: 2500, priceCop: 312900 },
 };
 
 Deno.serve(async (req) => {
@@ -87,8 +87,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Error registrando compra' }, 500);
     }
 
-    const chargeAmount = calcChargeAmount(pack.priceCop);
-
+    // Precio ya incluye comisión ePayco — se pasa directo sin recargo adicional
     return json({
       publicKey:     EPAYCO_PUBLIC_KEY,
       test:          EPAYCO_TEST === 'true',
@@ -96,7 +95,7 @@ Deno.serve(async (req) => {
       description:   `Compra de ${pack.tokens} tokens en LiveCam Pro`,
       invoice,
       currency:      'cop',
-      amount:        String(chargeAmount),
+      amount:        String(pack.priceCop),
       tax_base:      '0',
       tax:           '0',
       country:       'CO',
