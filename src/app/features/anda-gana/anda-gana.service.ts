@@ -27,6 +27,12 @@ export interface AgUser {
   full_name: string; birth_date: string; city: string;
   phone: string; email: string; status: string;
   created_at: string;
+  selfie_url?: string;
+  selfie_verified?: boolean;
+  loyalty_points?: number;
+  total_trips_as_passenger?: number;
+  passenger_level?: string;
+  passenger_wallet_balance?: number;
 }
 
 export interface AgDriver {
@@ -47,6 +53,15 @@ export interface AgDriver {
   is_online: boolean;
   created_at: string;
   ag_users?: AgUser;
+  level?: string;
+  level_points?: number;
+  auto_accept_enabled?: boolean;
+  auto_accept_min_price?: number;
+  auto_accept_max_distance?: number;
+  rating_avg?: number;
+  rating_count?: number;
+  trips_completed?: number;
+  tutorial_completed?: boolean;
 }
 
 export interface AgTripOffer {
@@ -827,7 +842,7 @@ export class AndaGanaService {
   // Propinas
   // ═══════════════════════════════════════════════════
   async tipDriver(tripId: string, amount: number): Promise<void> {
-    const { error } = await this.supabase.rpc('ag_tip_driver', { p_trip_id: tripId, p_amount: amount });
+    const { error } = await this.supabase.rpc('ag_tip_driver', { p_trip_request_id: tripId, p_amount: amount });
     if (error) throw error;
   }
 
@@ -1359,5 +1374,295 @@ export class AndaGanaService {
       .eq('trip_request_id', tripRequestId)
       .eq('rater_user_id', raterUserId);
     return (count ?? 0) > 0;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: payment methods
+  // ═══════════════════════════════════════════════════
+  async listPaymentMethods(agUserId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_payment_methods').select('*')
+      .eq('user_id', agUserId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  async addPaymentMethod(agUserId: string, payload: {
+    kind: 'card'|'nequi'|'daviplata'|'bancolombia'|'efectivo';
+    label: string; last4?: string; brand?: string; account?: string; isDefault?: boolean;
+  }): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_payment_methods').insert({
+      user_id: agUserId, kind: payload.kind, label: payload.label,
+      last4: payload.last4 ?? null, brand: payload.brand ?? null,
+      account: payload.account ?? null, is_default: payload.isDefault ?? false,
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async deletePaymentMethod(id: string): Promise<void> {
+    await this.supabase.from('ag_payment_methods').delete().eq('id', id);
+  }
+
+  async setDefaultPaymentMethod(id: string, agUserId: string): Promise<void> {
+    await this.supabase.from('ag_payment_methods').update({ is_default: true })
+      .eq('id', id).eq('user_id', agUserId);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: wallet
+  // ═══════════════════════════════════════════════════
+  async getPassengerWalletBalance(agUserId: string): Promise<number> {
+    const { data } = await this.supabase
+      .from('ag_users').select('passenger_wallet_balance')
+      .eq('id', agUserId).maybeSingle();
+    return (data as any)?.passenger_wallet_balance ?? 0;
+  }
+
+  async getPassengerWalletHistory(agUserId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_passenger_wallet_tx').select('*')
+      .eq('user_id', agUserId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    return data ?? [];
+  }
+
+  async creditPassengerWallet(amount: number, kind: 'recharge'|'bonus', desc?: string): Promise<void> {
+    await this.supabase.rpc('ag_passenger_wallet_credit', {
+      p_amount: amount, p_kind: kind, p_desc: desc ?? null,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: favoritos
+  // ═══════════════════════════════════════════════════
+  async listPassengerFavorites(authUserId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_favorite_addresses').select('*')
+      .eq('user_id', authUserId)
+      .order('sort_order', { ascending: true });
+    return data ?? [];
+  }
+
+  async addPassengerFavorite(authUserId: string, fav: {
+    label: string; icon?: string; address: string; lat: number; lng: number;
+  }): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_favorite_addresses').insert({
+      user_id: authUserId, label: fav.label, icon: fav.icon ?? 'home',
+      address: fav.address, lat: fav.lat, lng: fav.lng,
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async removePassengerFavorite(id: string): Promise<void> {
+    await this.supabase.from('ag_favorite_addresses').delete().eq('id', id);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: scheduled trips
+  // ═══════════════════════════════════════════════════
+  async listPassengerScheduledTrips(authUserId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_scheduled_trips').select('*')
+      .eq('user_id', authUserId)
+      .gte('scheduled_for', new Date().toISOString())
+      .in('status', ['pending', 'notified'])
+      .order('scheduled_for', { ascending: true });
+    return data ?? [];
+  }
+
+  async createScheduledTrip(authUserId: string, payload: {
+    originAddress: string; originLat: number; originLng: number;
+    destinationAddress: string; destinationLat: number; destinationLng: number;
+    vehicleType: string; suggestedPrice: number; paymentMethod: string;
+    scheduledFor: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_scheduled_trips').insert({
+      user_id: authUserId,
+      origin_address: payload.originAddress, origin_lat: payload.originLat, origin_lng: payload.originLng,
+      destination_address: payload.destinationAddress, destination_lat: payload.destinationLat, destination_lng: payload.destinationLng,
+      vehicle_type: payload.vehicleType, suggested_price: payload.suggestedPrice,
+      payment_method: payload.paymentMethod, scheduled_for: payload.scheduledFor, status: 'pending',
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: trip share (wrapper)
+  // ═══════════════════════════════════════════════════
+  async createPassengerTripShare(tripId: string, authUserId: string, hours: number = 4): Promise<string | null> {
+    try {
+      return await this.createTripShare(authUserId, tripId, hours);
+    } catch {
+      return null;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: reportar problema
+  // ═══════════════════════════════════════════════════
+  async submitPassengerReport(agUserId: string, kind: 'driver'|'incident'|'payment'|'vehicle'|'other',
+    description: string, tripId?: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_reports').insert({
+      reporter_user_id: agUserId, type: kind, description: description.trim(),
+      trip_id: tripId ?? null, status: 'open',
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async listPassengerReports(agUserId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_reports')
+      .select('*').eq('reporter_user_id', agUserId)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: objetos olvidados (vista)
+  // ═══════════════════════════════════════════════════
+  async listPassengerLostItems(agUserId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_lost_items').select('*, ag_passenger_lost_items_v!inner(driver_name, driver_phone, driver_plate)')
+      .eq('passenger_user_id', agUserId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    return data ?? [];
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: detalle viaje
+  // ═══════════════════════════════════════════════════
+  async getPassengerTripDetail(tripRequestId: string): Promise<any | null> {
+    const { data } = await this.supabase
+      .from('ag_passenger_trip_detail_v').select('*')
+      .eq('id', tripRequestId).maybeSingle();
+    return data ?? null;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: repeat / tip
+  // ═══════════════════════════════════════════════════
+  async repeatTrip(previousTripId: string): Promise<string | null> {
+    const { data } = await this.supabase.rpc('ag_passenger_repeat_trip', { p_previous_trip_id: previousTripId });
+    return (data as string) ?? null;
+  }
+
+  async tipDriverSafe(tripRequestId: string, amount: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await this.supabase.rpc('ag_tip_driver', {
+        p_trip_request_id: tripRequestId, p_amount: amount,
+      });
+      return error ? { success: false, error: error.message } : { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message ?? 'error' };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: editar perfil
+  // ═══════════════════════════════════════════════════
+  async updatePassengerProfile(payload: {
+    fullName?: string; phone?: string; city?: string; selfieFile?: File;
+  }): Promise<{ success: boolean; error?: string }> {
+    let selfieUrl: string | null = null;
+    if (payload.selfieFile) {
+      const userId = (await this.supabase.auth.getUser()).data.user?.id;
+      const ext = payload.selfieFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${userId}/${Date.now()}.${ext}`;
+      const up = await this.supabase.storage.from('movi-passenger-profile').upload(path, payload.selfieFile, { upsert: true });
+      if (!up.error) {
+        const { data } = this.supabase.storage.from('movi-passenger-profile').getPublicUrl(path);
+        selfieUrl = data.publicUrl;
+      }
+    }
+    const { error } = await this.supabase.rpc('ag_update_passenger_profile', {
+      p_full_name: payload.fullName ?? null,
+      p_phone: payload.phone ?? null,
+      p_city: payload.city ?? null,
+      p_selfie_url: selfieUrl,
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: driver public info (rating + nivel para mostrar en oferta)
+  // ═══════════════════════════════════════════════════
+  async getDriverPublicInfo(driverId: string): Promise<any | null> {
+    const { data } = await this.supabase
+      .from('ag_driver_public_v').select('*')
+      .eq('driver_id', driverId).maybeSingle();
+    return data ?? null;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: loyalty info
+  // ═══════════════════════════════════════════════════
+  async getPassengerLoyalty(agUserId: string): Promise<{
+    points: number; level: string; total_trips: number;
+  } | null> {
+    const { data } = await this.supabase
+      .from('ag_users').select('loyalty_points, passenger_level, total_trips_as_passenger')
+      .eq('id', agUserId).maybeSingle();
+    if (!data) return null;
+    return {
+      points: (data as any).loyalty_points ?? 0,
+      level: (data as any).passenger_level ?? 'bronce',
+      total_trips: (data as any).total_trips_as_passenger ?? 0,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: corporate
+  // ═══════════════════════════════════════════════════
+  async listCorporateAccounts(agUserId: string): Promise<any[]> {
+    const { data: memberships } = await this.supabase
+      .from('ag_corporate_members').select('corporate_id, role, monthly_limit, ag_corporate_accounts(*)')
+      .eq('user_id', agUserId);
+    return (memberships ?? []).map((m: any) => ({
+      ...m.ag_corporate_accounts, role: m.role, monthly_limit: m.monthly_limit,
+    }));
+  }
+
+  async createCorporateAccount(agUserId: string, payload: {
+    name: string; nit?: string; monthlyBudget?: number;
+  }): Promise<{ success: boolean; error?: string }> {
+    const { data: acc, error: accErr } = await this.supabase.from('ag_corporate_accounts').insert({
+      name: payload.name, nit: payload.nit ?? null,
+      owner_user_id: agUserId, monthly_budget: payload.monthlyBudget ?? 0,
+    }).select('id').single();
+    if (accErr) return { success: false, error: accErr.message };
+    const { error: memErr } = await this.supabase.from('ag_corporate_members').insert({
+      corporate_id: (acc as any).id, user_id: agUserId, role: 'owner',
+    });
+    return memErr ? { success: false, error: memErr.message } : { success: true };
+  }
+
+  async getDriverLocation(driverId: string): Promise<{ lat: number; lng: number; heading?: number } | null> {
+    const { data } = await this.supabase
+      .from('ag_driver_locations').select('lat, lng, heading')
+      .eq('driver_id', driverId).maybeSingle();
+    return data as any;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: real-time trip stage subscription
+  // ═══════════════════════════════════════════════════
+  subscribeTripStage(tripId: string, onUpdate: (stage: string) => void): RealtimeChannel {
+    const channel = this.supabase.channel(`trip-stage-${tripId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'ag_trip_requests', filter: `id=eq.${tripId}`,
+      }, (payload: any) => {
+        if (payload.new?.driver_stage) onUpdate(payload.new.driver_stage);
+      })
+      .subscribe();
+    return channel;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Utility: unsubscribe channel
+  // ═══════════════════════════════════════════════════
+  unsubscribeChannel(channel: RealtimeChannel | null): void {
+    if (channel) this.supabase.removeChannel(channel);
   }
 }
