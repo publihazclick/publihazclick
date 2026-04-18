@@ -23,20 +23,7 @@ function json(d: unknown, s = 200) {
 }
 
 async function sendSms(to: string, text: string): Promise<boolean> {
-  // Prefer Twilio (soporta mejor COL); fallback Telnyx
-  if (TWILIO_SID && TWILIO_TOKEN && TWILIO_PHONE) {
-    try {
-      const body = new URLSearchParams({ To: to, From: TWILIO_PHONE, Body: text });
-      const auth = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
-      const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
-        method: 'POST',
-        headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      });
-      if (r.ok) return true;
-      console.error('[twilio]', r.status, await r.text());
-    } catch (e) { console.error('twilio err', e); }
-  }
+  // Telnyx primario (proveedor actual), Twilio fallback
   if (TELNYX_API_KEY && TELNYX_FROM) {
     try {
       const r = await fetch('https://api.telnyx.com/v2/messages', {
@@ -50,6 +37,19 @@ async function sendSms(to: string, text: string): Promise<boolean> {
       if (r.ok) return true;
       console.error('[telnyx]', r.status, await r.text());
     } catch (e) { console.error('telnyx err', e); }
+  }
+  if (TWILIO_SID && TWILIO_TOKEN && TWILIO_PHONE) {
+    try {
+      const body = new URLSearchParams({ To: to, From: TWILIO_PHONE, Body: text });
+      const auth = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
+      const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
+        method: 'POST',
+        headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      if (r.ok) return true;
+      console.error('[twilio]', r.status, await r.text());
+    } catch (e) { console.error('twilio err', e); }
   }
   return false;
 }
