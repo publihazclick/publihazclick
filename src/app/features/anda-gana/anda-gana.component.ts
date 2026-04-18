@@ -480,7 +480,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                 }
 
-                <!-- Chat + Finalizar / Cancelar -->
+                <!-- Chat + Llamar + Finalizar / Cancelar -->
                 <div class="flex gap-2">
                   <button (click)="openTripChat()"
                     class="px-4 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
@@ -490,6 +490,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     @if (chatUnread() > 0) {
                       <span class="min-w-[16px] h-4 px-1 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center">{{ chatUnread() }}</span>
                     }
+                  </button>
+                  <button (click)="callDriver()" [disabled]="callingDriver()"
+                    class="px-4 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-50"
+                    style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+                    <span class="material-symbols-outlined" style="font-size:15px">{{ callingDriver() ? 'hourglass_empty' : 'call' }}</span>
+                    {{ callingDriver() ? '...' : 'Llamar' }}
                   </button>
                   <button (click)="finishTrip()"
                     class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
@@ -596,9 +602,41 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <div class="text-center">
                   <p class="text-slate-400 text-[10px] uppercase tracking-wider">Valor sugerido</p>
                   <p class="text-slate-800 font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
+                  @if (surgeMultiplier() > 1) {
+                    <p class="text-orange-600 text-[10px] font-black mt-0.5">⚡ Alta demanda ×{{ surgeMultiplier() }}</p>
+                  }
                 </div>
                 <button (click)="adjustTripPrice(500)"
                   class="w-11 h-11 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0">+</button>
+              </div>
+
+              <!-- Cupón -->
+              <div class="px-4 pt-2 pb-1 border-b border-slate-200">
+                <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2">Cupón (opcional)</p>
+                @if (appliedCoupon(); as ac) {
+                  <div class="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <span class="material-symbols-outlined text-green-600" style="font-size:16px">local_activity</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-black text-green-800 truncate">{{ ac.title }}</p>
+                      <p class="text-[10px] text-green-600">−{{ formatCOP(ac.discount) }}</p>
+                    </div>
+                    <button (click)="removeCoupon()" class="w-6 h-6 rounded-md bg-red-100 flex items-center justify-center">
+                      <span class="material-symbols-outlined text-red-600" style="font-size:14px">close</span>
+                    </button>
+                  </div>
+                } @else {
+                  <div class="flex gap-2">
+                    <input [(ngModel)]="couponInput" placeholder="Código"
+                      class="flex-1 px-3 py-2 rounded-lg text-sm text-slate-800 outline-none uppercase"
+                      style="background:#f8fafc;border:1px solid #e2e8f0" />
+                    <button (click)="applyCouponCode()" [disabled]="validatingCoupon()"
+                      class="px-3 py-2 rounded-lg text-xs font-black uppercase disabled:opacity-50"
+                      style="background:#ec4899;color:#fff">
+                      {{ validatingCoupon() ? '...' : 'Aplicar' }}
+                    </button>
+                  </div>
+                  @if (couponError()) { <p class="text-[10px] text-red-500 mt-1">{{ couponError() }}</p> }
+                }
               </div>
 
               <!-- Método de pago -->
@@ -3063,6 +3101,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   panicMapsLink      = signal<string>('');
   pushSupported      = signal(false);
   pushEnabled        = signal(false);
+
+  // Cupón
+  couponInput        = '';
+  appliedCoupon      = signal<{ couponId: string; discount: number; title: string; description?: string } | null>(null);
+  validatingCoupon   = signal(false);
+  couponError        = signal<string | null>(null);
+
+  // Surge
+  surgeMultiplier    = signal(1);
+  surgeZoneId        = signal<string | null>(null);
+
+  // Llamadas enmascaradas
+  callingDriver      = signal(false);
   emergencyContacts  = signal<{ name: string; phone: string }[]>([]);
   newContactName     = '';
   newContactPhone    = '';
@@ -3179,6 +3230,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     // Detectar soporte push y estado
     this.checkPushSupport();
+
+    // Cargar surge actual
+    this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
 
     // Splash: logo empieza en 10px y crece lentamente hasta llenar la pantalla
     if (isPlatformBrowser(this.platformId)) {
@@ -4430,6 +4484,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.currentTripRequestId.set(result.tripId);
         this.receivedOffers.set([]);
         this.tripAccepted.set(null);
+        // Aplicar cupón si hay uno
+        const ac = this.appliedCoupon();
+        if (ac) {
+          try { await this.agService.applyCoupon(ac.couponId, result.tripId, ac.discount); } catch {}
+        }
         this._subscribeToOffers(result.tripId);
 
         // Auto-buscar conductores cercanos y enviarles la solicitud
@@ -4654,7 +4713,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const raw = vehicle === 'carro'
       ? Math.max(4500, 4500 + km * 1200)
       : Math.max(3000, 3000 + km * 800);
-    return Math.round(raw / 500) * 500;
+    const surge = this.surgeMultiplier() ?? 1;
+    return Math.round((raw * surge) / 500) * 500;
   }
 
   private _distKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -5210,6 +5270,42 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       }
       this.pushEnabled.set(false);
     } catch {}
+  }
+
+  async callDriver(): Promise<void> {
+    const tripId = this.currentTripRequestId();
+    if (!tripId || this.callingDriver()) return;
+    this.callingDriver.set(true);
+    try {
+      const r = await this.agService.startMaskedCall(tripId);
+      if (r.ok) {
+        alert('📞 Te estamos llamando. Contesta y serás conectado con el conductor.');
+      } else {
+        alert('Error: ' + (r.error ?? 'No se pudo iniciar llamada'));
+      }
+    } finally { this.callingDriver.set(false); }
+  }
+
+  // ═══════════ Cupones ═══════════
+  async applyCouponCode(): Promise<void> {
+    const code = (this.couponInput ?? '').trim();
+    if (!code) return;
+    this.validatingCoupon.set(true);
+    this.couponError.set(null);
+    try {
+      const r = await this.agService.validateCoupon(code, this.tripPrice());
+      if (r.ok && r.couponId != null && r.discount != null) {
+        this.appliedCoupon.set({ couponId: r.couponId, discount: r.discount, title: r.title ?? code, description: r.description });
+      } else {
+        this.couponError.set(r.error ?? 'Cupón inválido');
+      }
+    } finally { this.validatingCoupon.set(false); }
+  }
+
+  removeCoupon(): void {
+    this.appliedCoupon.set(null);
+    this.couponInput = '';
+    this.couponError.set(null);
   }
 
   async triggerPanic(): Promise<void> {

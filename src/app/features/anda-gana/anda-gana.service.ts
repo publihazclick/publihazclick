@@ -812,6 +812,91 @@ export class AndaGanaService {
   }
 
   // ═══════════════════════════════════════════════════
+  // Llamada enmascarada (Twilio)
+  // ═══════════════════════════════════════════════════
+  async startMaskedCall(tripRequestId: string): Promise<{ ok: boolean; callSid?: string; error?: string }> {
+    const { data: sess } = await this.supabase.auth.getSession();
+    const accessToken = sess?.session?.access_token;
+    if (!accessToken) return { ok: false, error: 'No autenticado' };
+    try {
+      const r = await fetch(`${environment.supabase.url}/functions/v1/ag-masked-call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: environment.supabase.anonKey, Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ trip_request_id: tripRequestId }),
+      });
+      const out = await r.json();
+      if (!r.ok) return { ok: false, error: out.error ?? 'Error llamando' };
+      return { ok: true, callSid: out.call_sid };
+    } catch (e: any) {
+      return { ok: false, error: e?.message ?? 'No se pudo iniciar llamada' };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Surge / Zonas
+  // ═══════════════════════════════════════════════════
+  async detectZone(lat: number, lng: number): Promise<string | null> {
+    const { data } = await this.supabase.rpc('ag_detect_zone', { p_lat: lat, p_lng: lng });
+    return (data as any) ?? null;
+  }
+
+  async currentSurge(zoneId?: string | null): Promise<number> {
+    const { data } = await this.supabase.rpc('ag_current_surge', { p_zone_id: zoneId ?? null });
+    return Number(data ?? 1);
+  }
+
+  async listZones(): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_zones').select('*').order('name');
+    return data ?? [];
+  }
+
+  async listSurgeRules(): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_surge_rules').select('*').order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Cupones
+  // ═══════════════════════════════════════════════════
+  async validateCoupon(code: string, tripPrice: number): Promise<{ ok: boolean; couponId?: string; discount?: number; title?: string; description?: string; error?: string }> {
+    const userId = (await this.supabase.auth.getUser()).data.user?.id;
+    if (!userId) return { ok: false, error: 'No autenticado' };
+    const { data, error } = await this.supabase.rpc('ag_validate_coupon', {
+      p_user_id: userId, p_code: code.toUpperCase(), p_trip_price: tripPrice,
+    });
+    if (error) return { ok: false, error: error.message };
+    const r = data as any;
+    return { ok: r.ok, couponId: r.coupon_id, discount: r.discount, title: r.title, description: r.description, error: r.error };
+  }
+
+  async applyCoupon(couponId: string, tripRequestId: string, discount: number): Promise<void> {
+    const userId = (await this.supabase.auth.getUser()).data.user?.id;
+    if (!userId) return;
+    await this.supabase.rpc('ag_apply_coupon', { p_user_id: userId, p_coupon_id: couponId, p_trip_request_id: tripRequestId, p_discount: discount });
+  }
+
+  // Admin: gestión cupones
+  async listCoupons(): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_coupons').select('*').order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  async createCoupon(payload: { code: string; title: string; description?: string; discountType: 'percent' | 'fixed' | 'first_trip'; discountValue: number; maxDiscountCop?: number; minTripCop?: number; maxUses?: number; maxUsesPerUser?: number; validUntil?: string }): Promise<void> {
+    const { error } = await this.supabase.from('ag_coupons').insert({
+      code: payload.code.toUpperCase(), title: payload.title, description: payload.description ?? null,
+      discount_type: payload.discountType, discount_value: payload.discountValue,
+      max_discount_cop: payload.maxDiscountCop ?? null, min_trip_cop: payload.minTripCop ?? 5000,
+      max_uses: payload.maxUses ?? null, max_uses_per_user: payload.maxUsesPerUser ?? 1,
+      valid_until: payload.validUntil ?? null,
+    });
+    if (error) throw error;
+  }
+
+  async toggleCoupon(id: string, active: boolean): Promise<void> {
+    await this.supabase.from('ag_coupons').update({ is_active: active }).eq('id', id);
+  }
+
+  // ═══════════════════════════════════════════════════
   // Push notifications
   // ═══════════════════════════════════════════════════
   async registerPushSubscription(sub: PushSubscription): Promise<void> {

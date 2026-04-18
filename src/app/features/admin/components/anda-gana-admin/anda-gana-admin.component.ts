@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { SlicePipe, DatePipe } from '@angular/common';
 import { AndaGanaService, AgUser, AgDriver } from '../../../../features/anda-gana/anda-gana.service';
 
-type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes';
+type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'cupones';
 
 @Component({
   selector: 'app-anda-gana-admin',
@@ -78,6 +78,11 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition"
       [class]="tab() === 'viajes' ? 'text-green-400 border-b-2 border-green-400' : 'text-slate-500 hover:text-slate-300'">
       Viajes activos
+    </button>
+    <button (click)="tab.set('cupones'); loadCoupons()"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition"
+      [class]="tab() === 'cupones' ? 'text-pink-400 border-b-2 border-pink-400' : 'text-slate-500 hover:text-slate-300'">
+      🎟️ Cupones
     </button>
     <button (click)="tab.set('configuracion')"
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
@@ -427,6 +432,54 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
     }
   }
 
+  <!-- ═══ CUPONES ═══ -->
+  @if (tab() === 'cupones') {
+    <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4 mb-4">
+      <p class="text-sm font-black text-white mb-3">Crear cupón</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <input [(ngModel)]="couponCode" placeholder="Código (ej: PROMO10)" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+        <input [(ngModel)]="couponTitle" placeholder="Título" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+        <input [(ngModel)]="couponDescription" placeholder="Descripción" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm md:col-span-2" />
+        <select [(ngModel)]="couponType" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
+          <option value="percent">Porcentaje</option>
+          <option value="fixed">Monto fijo (COP)</option>
+          <option value="first_trip">Solo primer viaje</option>
+        </select>
+        <input [(ngModel)]="couponValue" type="number" placeholder="Valor (% o COP)" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+        <input [(ngModel)]="couponMaxDiscount" type="number" placeholder="Techo COP (opcional)" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+        <input [(ngModel)]="couponMaxUses" type="number" placeholder="Usos máximos (opcional)" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+        <input [(ngModel)]="couponValidUntil" type="date" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+      </div>
+      <button (click)="saveCoupon()" [disabled]="savingCoupon()" class="mt-2 w-full py-2 bg-pink-600 hover:bg-pink-700 disabled:opacity-50 rounded-lg text-xs font-black uppercase text-white">
+        {{ savingCoupon() ? 'Creando...' : 'Crear cupón' }}
+      </button>
+    </div>
+
+    @for (c of coupons(); track c.id) {
+      <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4 mb-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <code class="px-2 py-1 bg-pink-500/10 text-pink-400 rounded font-black text-sm">{{ c.code }}</code>
+              <span class="text-white font-bold text-sm truncate">{{ c.title }}</span>
+              @if (!c.is_active) { <span class="text-[10px] text-slate-500">(inactivo)</span> }
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">{{ c.description }}</p>
+            <p class="text-[10px] text-slate-500 mt-1">
+              {{ c.discount_type === 'percent' ? c.discount_value + '%' : formatCOP(c.discount_value) }}
+              · Usos: {{ c.total_uses }}{{ c.max_uses ? '/' + c.max_uses : '' }}
+              @if (c.valid_until) { · Expira {{ c.valid_until | date:'shortDate' }} }
+            </p>
+          </div>
+          <button (click)="toggleCoupon(c)" class="px-3 py-1.5 rounded-lg text-xs font-bold"
+            [class]="c.is_active ? 'bg-gray-700 text-gray-300' : 'bg-green-600 text-white'">
+            {{ c.is_active ? 'Desactivar' : 'Activar' }}
+          </button>
+        </div>
+      </div>
+    }
+  }
+
   <!-- ═══ VIAJES ACTIVOS ═══ -->
   @if (tab() === 'viajes') {
     @if (activeTrips().length === 0) {
@@ -477,6 +530,14 @@ export class AndaGanaAdminComponent implements OnInit {
   analyticsPeriod = signal(30);
   analyticsData   = signal<any | null>(null);
   dailySeries     = signal<{ day: string; trips: number; gmv: number }[]>([]);
+
+  // Cupones
+  coupons          = signal<any[]>([]);
+  savingCoupon     = signal(false);
+  couponCode = ''; couponTitle = ''; couponDescription = '';
+  couponType: 'percent' | 'fixed' | 'first_trip' = 'percent';
+  couponValue = 10; couponMaxDiscount: number | null = null;
+  couponMaxUses: number | null = null; couponValidUntil = '';
 
   async ngOnInit() {
     await this.load();
@@ -590,5 +651,34 @@ export class AndaGanaAdminComponent implements OnInit {
   barHeight(val: number): number {
     const max = Math.max(...this.dailySeries().map(d => d.trips), 1);
     return Math.round((val / max) * 100);
+  }
+
+  async loadCoupons(): Promise<void> {
+    this.coupons.set(await this.agService.listCoupons());
+  }
+
+  async saveCoupon(): Promise<void> {
+    if (!this.couponCode.trim() || !this.couponTitle.trim()) return;
+    this.savingCoupon.set(true);
+    try {
+      await this.agService.createCoupon({
+        code: this.couponCode.trim(),
+        title: this.couponTitle.trim(),
+        description: this.couponDescription.trim() || undefined,
+        discountType: this.couponType,
+        discountValue: Number(this.couponValue) || 0,
+        maxDiscountCop: this.couponMaxDiscount ? Number(this.couponMaxDiscount) : undefined,
+        maxUses: this.couponMaxUses ? Number(this.couponMaxUses) : undefined,
+        validUntil: this.couponValidUntil ? new Date(this.couponValidUntil).toISOString() : undefined,
+      });
+      this.couponCode = ''; this.couponTitle = ''; this.couponDescription = '';
+      await this.loadCoupons();
+    } catch (e: any) { alert('Error: ' + (e?.message ?? 'No se pudo')); }
+    finally { this.savingCoupon.set(false); }
+  }
+
+  async toggleCoupon(c: any): Promise<void> {
+    await this.agService.toggleCoupon(c.id, !c.is_active);
+    await this.loadCoupons();
   }
 }
