@@ -1695,8 +1695,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
-        <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
-          [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+        <div class="relative">
+          <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
+            [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+          @if (driverData() && driverOnline()) {
+            <button (click)="toggleHeatmap()" title="Zonas con demanda"
+              class="absolute top-2 right-2 w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition"
+              [style]="heatmapVisible() ? 'background:linear-gradient(135deg,#f97316,#ef4444);color:#fff' : 'background:rgba(0,0,0,0.7);color:#fb923c'">
+              <span class="material-symbols-outlined" style="font-size:22px">local_fire_department</span>
+            </button>
+          }
+        </div>
 
         @if (gpsStatus() === 'denied') {
           <div class="flex items-center justify-between">
@@ -4670,6 +4679,61 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (typeof window !== 'undefined') window.open(url, '_blank');
   }
 
+  // ═══════════ Heatmap demanda ═══════════
+  heatmapVisible = signal(false);
+  private _heatmapLoaded = false;
+
+  async toggleHeatmap(): Promise<void> {
+    const next = !this.heatmapVisible();
+    this.heatmapVisible.set(next);
+    if (next) await this._showHeatmap();
+    else this._hideHeatmap();
+  }
+
+  private async _showHeatmap(): Promise<void> {
+    if (!this._map) return;
+    try {
+      const b = this._map.getBounds();
+      const pts = await this.agService.getHeatmap({
+        latMin: b.getSouth(), lngMin: b.getWest(),
+        latMax: b.getNorth(), lngMax: b.getEast(),
+      });
+      const features = pts.map(p => ({
+        type: 'Feature' as const, properties: { weight: p.weight },
+        geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
+      }));
+      const geojson = { type: 'FeatureCollection' as const, features };
+      if (this._map.getSource('ag-heatmap')) {
+        (this._map.getSource('ag-heatmap') as any).setData(geojson);
+      } else {
+        this._map.addSource('ag-heatmap', { type: 'geojson', data: geojson });
+        this._map.addLayer({
+          id: 'ag-heatmap-layer', type: 'heatmap', source: 'ag-heatmap',
+          paint: {
+            'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 10, 1],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 3],
+            'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+              0, 'rgba(0,0,255,0)', 0.2, 'rgb(0,100,255)',
+              0.4, 'rgb(0,255,100)', 0.6, 'rgb(255,200,0)',
+              0.8, 'rgb(255,100,0)', 1, 'rgb(255,0,0)'],
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 15, 15, 40],
+            'heatmap-opacity': 0.7,
+          },
+        });
+        this._heatmapLoaded = true;
+      }
+    } catch (e) { console.warn('heatmap err', e); }
+  }
+
+  private _hideHeatmap(): void {
+    if (!this._map || !this._heatmapLoaded) return;
+    try {
+      if (this._map.getLayer('ag-heatmap-layer')) this._map.removeLayer('ag-heatmap-layer');
+      if (this._map.getSource('ag-heatmap')) this._map.removeSource('ag-heatmap');
+      this._heatmapLoaded = false;
+    } catch {}
+  }
+
   async callPassengerFromTrip(trip: any): Promise<void> {
     const tripReqId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripReqId) return;
@@ -4712,11 +4776,26 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const driver = this.driverData();
     if (!driver) return;
     const refresh = async () => {
-      try { this.onlineTodaySeconds.set(await this.agService.getTodayOnlineSeconds(driver.id)); } catch {}
+      try {
+        const sec = await this.agService.getTodayOnlineSeconds(driver.id);
+        this.onlineTodaySeconds.set(sec);
+        // Modo descanso: alerta a las 8h (28800s), obligatorio a las 10h (36000s)
+        if (sec >= 36000 && !this.restEnforced()) {
+          this.restEnforced.set(true);
+          alert('🛏️ Has trabajado 10 horas seguidas. Por tu seguridad te ponemos fuera de línea. Descansa al menos 30 minutos antes de volver a conectarte.');
+          await this.toggleOnline();
+        } else if (sec >= 28800 && !this.restWarned()) {
+          this.restWarned.set(true);
+          alert('⚠️ Llevas 8 horas trabajando. Te recomendamos descansar pronto. En 2 horas te desconectaremos automáticamente por seguridad.');
+        }
+      } catch {}
     };
     await refresh();
     this._onlineTimer = setInterval(refresh, 30000);
   }
+
+  restWarned = signal(false);
+  restEnforced = signal(false);
 
   private _stopOnlineTimer() {
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
