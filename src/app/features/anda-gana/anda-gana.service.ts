@@ -1140,4 +1140,224 @@ export class AndaGanaService {
       });
     } catch {}
   }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: documentos
+  // ═══════════════════════════════════════════════════
+  async listDriverDocuments(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_driver_documents')
+      .select('*')
+      .eq('driver_id', driverId)
+      .order('doc_type');
+    return data ?? [];
+  }
+
+  async uploadDriverDocument(
+    driverId: string,
+    docType: 'license' | 'soat' | 'tecnomecanica' | 'cedula' | 'vehicle_front' | 'vehicle_back' | 'insurance',
+    file: File,
+    meta: { number?: string; expires_at?: string | null } = {},
+  ): Promise<{ success: boolean; error?: string }> {
+    const userId = (await this.supabase.auth.getUser()).data.user?.id;
+    if (!userId) return { success: false, error: 'No session' };
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${userId}/${docType}-${Date.now()}.${ext}`;
+    const up = await this.supabase.storage.from('movi-driver-docs').upload(path, file, { upsert: true });
+    if (up.error) return { success: false, error: up.error.message };
+    const { data: signed } = await this.supabase.storage.from('movi-driver-docs').createSignedUrl(path, 60 * 60 * 24 * 30);
+    const fileUrl = signed?.signedUrl ?? '';
+    const { error } = await this.supabase.from('ag_driver_documents').upsert({
+      driver_id: driverId,
+      doc_type: docType,
+      file_url: fileUrl,
+      file_path: path,
+      number: meta.number ?? null,
+      expires_at: meta.expires_at ?? null,
+      status: 'pending',
+      rejection_reason: null,
+    }, { onConflict: 'driver_id,doc_type' });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async refreshDocumentUrl(filePath: string): Promise<string | null> {
+    const { data } = await this.supabase.storage.from('movi-driver-docs').createSignedUrl(filePath, 60 * 60 * 24);
+    return data?.signedUrl ?? null;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: métricas aceptación/cancelación
+  // ═══════════════════════════════════════════════════
+  async getDriverMetrics(): Promise<{
+    acceptance_rate: number; cancellation_rate: number; completion_rate: number;
+    offers_seen: number; offers_made: number;
+    trips_accepted: number; trips_cancelled: number; trips_completed: number;
+    window_start: string;
+  } | null> {
+    const { data } = await this.supabase.rpc('ag_get_driver_metrics');
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ?? null;
+  }
+
+  async logMetricEvent(eventType: 'offer_seen' | 'offer_made' | 'trip_cancelled_self', tripId?: string): Promise<void> {
+    await this.supabase.rpc('ag_log_metric_event', { p_event_type: eventType, p_trip_id: tripId ?? null });
+  }
+
+  async driverCancelTrip(tripRequestId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.rpc('ag_driver_cancel_trip', {
+      p_trip_request_id: tripRequestId, p_reason: reason ?? null,
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: objetos perdidos
+  // ═══════════════════════════════════════════════════
+  async listLostItems(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_lost_items')
+      .select('*, ag_users!passenger_user_id(full_name, phone)')
+      .eq('driver_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    return data ?? [];
+  }
+
+  async reportLostItem(payload: {
+    tripRequestId: string; driverId: string; passengerUserId: string;
+    description: string; photo?: File;
+  }): Promise<{ success: boolean; error?: string }> {
+    let photoUrl: string | null = null;
+    if (payload.photo) {
+      const ext = payload.photo.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const userId = (await this.supabase.auth.getUser()).data.user?.id;
+      const path = `${userId}/${payload.tripRequestId}-${Date.now()}.${ext}`;
+      const up = await this.supabase.storage.from('movi-lost-items').upload(path, payload.photo, { upsert: true });
+      if (!up.error) {
+        const { data } = this.supabase.storage.from('movi-lost-items').getPublicUrl(path);
+        photoUrl = data.publicUrl;
+      }
+    }
+    const { error } = await this.supabase.from('ag_lost_items').insert({
+      trip_request_id: payload.tripRequestId,
+      driver_id: payload.driverId,
+      passenger_user_id: payload.passengerUserId,
+      description: payload.description.trim(),
+      photo_url: photoUrl,
+      status: 'reported',
+    });
+    if (error) return { success: false, error: error.message };
+    try {
+      const passenger = await this.supabase.from('ag_users').select('auth_user_id, full_name').eq('id', payload.passengerUserId).maybeSingle();
+      if (passenger.data?.auth_user_id) {
+        await this.sendPush({
+          userIds: [passenger.data.auth_user_id],
+          title: '📦 Objeto olvidado',
+          body: `Un conductor reportó que dejaste algo: ${payload.description.slice(0, 80)}`,
+          url: '/anda-gana?view=lost',
+          tag: `lost-${payload.tripRequestId}`,
+          urgent: true,
+        });
+      }
+    } catch {}
+    return { success: true };
+  }
+
+  async updateLostItemStatus(itemId: string, status: 'reported' | 'contacted' | 'returned' | 'closed', notes?: string): Promise<void> {
+    await this.supabase.from('ag_lost_items').update({
+      status, driver_notes: notes ?? null, updated_at: new Date().toISOString(),
+    }).eq('id', itemId);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: detalle de viaje con desglose
+  // ═══════════════════════════════════════════════════
+  async getTripDetail(tripRequestId: string): Promise<any | null> {
+    const { data } = await this.supabase
+      .from('ag_trip_detail_v')
+      .select('*')
+      .eq('id', tripRequestId)
+      .maybeSingle();
+    return data ?? null;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: viajes programados
+  // ═══════════════════════════════════════════════════
+  async listAvailableScheduledTrips(driverId: string, maxDistanceKm: number = 30): Promise<any[]> {
+    const { data: driver } = await this.supabase
+      .from('ag_driver_locations').select('lat, lng').eq('driver_id', driverId).maybeSingle();
+    const { data } = await this.supabase
+      .from('ag_scheduled_trips')
+      .select('*, ag_users!user_id(full_name)')
+      .eq('status', 'pending')
+      .is('driver_id', null)
+      .gte('scheduled_for', new Date().toISOString())
+      .order('scheduled_for', { ascending: true })
+      .limit(30);
+    if (!driver || !data) return data ?? [];
+    return data.filter((t: any) => {
+      if (!t.origin_lat || !t.origin_lng) return true;
+      const d = this._haversine(driver.lat, driver.lng, t.origin_lat, t.origin_lng);
+      return d <= maxDistanceKm;
+    });
+  }
+
+  async claimScheduledTrip(scheduledTripId: string, driverId: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_scheduled_trips').update({
+      driver_id: driverId, status: 'claimed', updated_at: new Date().toISOString(),
+    }).eq('id', scheduledTripId).eq('status', 'pending').is('driver_id', null);
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async listMyScheduledTrips(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_scheduled_trips')
+      .select('*, ag_users!user_id(full_name, phone)')
+      .eq('driver_id', driverId)
+      .in('status', ['claimed', 'active'])
+      .order('scheduled_for', { ascending: true });
+    return data ?? [];
+  }
+
+  async releaseScheduledTrip(scheduledTripId: string): Promise<void> {
+    await this.supabase.from('ag_scheduled_trips').update({
+      driver_id: null, status: 'pending', updated_at: new Date().toISOString(),
+    }).eq('id', scheduledTripId);
+  }
+
+  private _haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371; const toRad = (v: number) => v * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1); const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: rating pasajero con tags
+  // ═══════════════════════════════════════════════════
+  async submitPassengerRating(
+    tripRequestId: string, raterUserId: string, ratedUserId: string,
+    stars: number, tags: string[], comment: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_trip_ratings').insert({
+      trip_request_id: tripRequestId,
+      rated_by_role: 'driver',
+      rater_user_id: raterUserId,
+      rated_user_id: ratedUserId,
+      stars,
+      tags,
+      comment: comment.trim() || null,
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async hasRatedTrip(tripRequestId: string, raterUserId: string): Promise<boolean> {
+    const { count } = await this.supabase
+      .from('ag_trip_ratings')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_request_id', tripRequestId)
+      .eq('rater_user_id', raterUserId);
+    return (count ?? 0) > 0;
+  }
 }

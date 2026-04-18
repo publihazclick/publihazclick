@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { isPlatformBrowser, SlicePipe, DatePipe } from '@angular/common';
+import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -13,7 +13,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 @Component({
   selector: 'app-anda-gana',
   standalone: true,
-  imports: [FormsModule, SlicePipe, DatePipe],
+  imports: [FormsModule, SlicePipe, DatePipe, DecimalPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
@@ -1736,11 +1736,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                  driverSection() === 'trips' ? 'Mis Viajes' :
                  driverSection() === 'referrals' ? 'Recomienda y Gana' :
                  driverSection() === 'analytics' ? 'Analytics' :
+                 driverSection() === 'performance' ? 'Rendimiento' :
                  driverSection() === 'quests' ? 'Metas y bonos' :
                  driverSection() === 'vehicles' ? 'Mis vehículos' :
                  driverSection() === 'blacklist' ? 'Pasajeros bloqueados' :
                  driverSection() === 'tutorial' ? 'Tutorial' :
                  driverSection() === 'preferences' ? 'Preferencias' :
+                 driverSection() === 'autoaccept' ? 'Auto-aceptar' :
+                 driverSection() === 'documents' ? 'Mis documentos' :
+                 driverSection() === 'lost' ? 'Objetos olvidados' :
+                 driverSection() === 'scheduled' ? 'Viajes programados' :
                  driverSection() === 'security' ? 'Seguridad' :
                  driverSection() === 'support' ? 'Soporte' :
                  driverSection() === 'settings' ? 'Configuración' : '' }}
@@ -1991,7 +1996,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             }
             @for (trip of driverCompletedTrips(); track trip.id) {
-              <div class="rounded-2xl p-4 flex flex-col gap-2"
+              <button (click)="openTripDetail(trip)"
+                class="rounded-2xl p-4 flex flex-col gap-2 text-left w-full cursor-pointer hover:bg-white/5 transition-colors"
                 style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
                 <div class="flex items-center justify-between">
                   <p class="text-white font-bold text-sm">{{ trip.ag_users?.full_name ?? 'Pasajero' }}</p>
@@ -2001,8 +2007,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <span class="material-symbols-outlined text-slate-500" style="font-size:14px">place</span>
                   <p class="text-slate-400 text-xs truncate">→ {{ trip.dest_name }}</p>
                 </div>
-                <p class="text-slate-600 text-[10px]">{{ trip.completed_at | slice:0:10 }}</p>
-              </div>
+                <div class="flex items-center justify-between">
+                  <p class="text-slate-600 text-[10px]">{{ trip.completed_at | slice:0:10 }}</p>
+                  <span class="text-cyan-400 text-[10px] font-bold flex items-center gap-1">
+                    Ver detalle <span class="material-symbols-outlined" style="font-size:12px">chevron_right</span>
+                  </span>
+                </div>
+              </button>
             }
           }
 
@@ -2464,10 +2475,520 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           }
 
+          <!-- ── MIS DOCUMENTOS ── -->
+          @if (!loadingSection() && driverSection() === 'documents') {
+            <div class="flex flex-col gap-3">
+              <p class="text-slate-400 text-xs leading-relaxed">
+                Mantén tus documentos al día. Si se vencen, tu cuenta quedará suspendida hasta renovarlos. Sube imagen clara, legible y sin recortes.
+              </p>
+
+              @for (dt of docTypes; track dt.key) {
+                <div class="rounded-2xl p-4 flex flex-col gap-3"
+                  style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-cyan-400" style="font-size:20px">{{ dt.icon }}</span>
+                      <span class="text-white font-black text-sm">{{ dt.label }}</span>
+                    </div>
+                    @if (getDocByType(dt.key); as doc) {
+                      <span class="text-xs font-bold" [class]="docStatusColor(doc.status)">{{ docStatusLabel(doc.status) }}</span>
+                    } @else {
+                      <span class="text-xs font-bold text-slate-500">Sin subir</span>
+                    }
+                  </div>
+
+                  @if (getDocByType(dt.key); as doc) {
+                    <div class="flex items-center gap-3">
+                      <a [href]="doc.file_url" target="_blank" rel="noopener"
+                        class="w-16 h-16 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
+                        style="background:rgba(8,145,178,0.15);border:1px solid rgba(8,145,178,0.3)">
+                        <span class="material-symbols-outlined text-cyan-400" style="font-size:24px">visibility</span>
+                      </a>
+                      <div class="flex-1 text-xs text-slate-300 space-y-1">
+                        @if (doc.number) { <p><span class="text-slate-500">N°:</span> {{ doc.number }}</p> }
+                        @if (doc.expires_at) {
+                          <p>
+                            <span class="text-slate-500">Vence:</span>
+                            <span [class.text-yellow-400]="docIsExpiringSoon(doc)" [class.font-bold]="docIsExpiringSoon(doc)">
+                              {{ doc.expires_at }}
+                            </span>
+                          </p>
+                        }
+                        @if (doc.status === 'rejected' && doc.rejection_reason) {
+                          <p class="text-red-400">⚠ {{ doc.rejection_reason }}</p>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  @if (dt.requiresExpiry) {
+                    <input type="date" [value]="docExpiryInput[dt.key] || (getDocByType(dt.key)?.expires_at || '')"
+                      (change)="onDocExpiryChange(dt.key, $any($event.target).value)"
+                      class="w-full px-3 py-2 rounded-lg text-white text-xs"
+                      style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)" />
+                  }
+                  <input type="text" placeholder="Número (opcional)"
+                    [value]="docNumberInput[dt.key] || (getDocByType(dt.key)?.number || '')"
+                    (input)="onDocNumberChange(dt.key, $any($event.target).value)"
+                    class="w-full px-3 py-2 rounded-lg text-white text-xs"
+                    style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)" />
+
+                  <label class="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+                    style="background:linear-gradient(135deg,#0891b2,#0e7490)"
+                    [class.opacity-50]="uploadingDoc() === dt.key">
+                    @if (uploadingDoc() === dt.key) {
+                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span>
+                      Subiendo...
+                    } @else {
+                      <span class="material-symbols-outlined" style="font-size:14px">upload</span>
+                      {{ getDocByType(dt.key) ? 'Reemplazar' : 'Subir archivo' }}
+                    }
+                    <input type="file" accept="image/*,application/pdf" class="hidden"
+                      [disabled]="uploadingDoc() !== null"
+                      (change)="onUploadDoc(dt.key, $event)" />
+                  </label>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ── RENDIMIENTO (aceptación / cancelación) ── -->
+          @if (!loadingSection() && driverSection() === 'performance') {
+            <div class="flex flex-col gap-4">
+              @if (driverMetrics(); as m) {
+                <!-- KPIs principales -->
+                <div class="grid grid-cols-1 gap-3">
+                  <div class="rounded-2xl p-4" style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05));border:1px solid rgba(16,185,129,0.3)">
+                    <p class="text-emerald-300/80 text-xs font-bold uppercase tracking-widest mb-1">Tasa de aceptación</p>
+                    <p class="text-4xl font-black" [class]="metricColor(m.acceptance_rate, 'positive')">{{ m.acceptance_rate }}%</p>
+                    <p class="text-slate-400 text-xs mt-1">{{ m.offers_made }} ofertas hechas de {{ m.offers_seen }} vistas</p>
+                  </div>
+                  <div class="rounded-2xl p-4" style="background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(239,68,68,0.03));border:1px solid rgba(239,68,68,0.3)">
+                    <p class="text-red-300/80 text-xs font-bold uppercase tracking-widest mb-1">Tasa de cancelación</p>
+                    <p class="text-4xl font-black" [class]="metricColor(m.cancellation_rate, 'negative')">{{ m.cancellation_rate }}%</p>
+                    <p class="text-slate-400 text-xs mt-1">{{ m.trips_cancelled }} cancelados de {{ m.trips_accepted }} aceptados</p>
+                  </div>
+                  <div class="rounded-2xl p-4" style="background:linear-gradient(135deg,rgba(8,145,178,0.15),rgba(8,145,178,0.05));border:1px solid rgba(8,145,178,0.3)">
+                    <p class="text-cyan-300/80 text-xs font-bold uppercase tracking-widest mb-1">Tasa de finalización</p>
+                    <p class="text-4xl font-black" [class]="metricColor(m.completion_rate, 'positive')">{{ m.completion_rate }}%</p>
+                    <p class="text-slate-400 text-xs mt-1">{{ m.trips_completed }} completados de {{ m.trips_accepted }}</p>
+                  </div>
+                </div>
+
+                <!-- Guía -->
+                <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                  <p class="text-white font-bold text-sm mb-2">💡 ¿Cómo mejorar?</p>
+                  <ul class="text-slate-300 text-xs leading-relaxed space-y-1 list-disc list-inside">
+                    <li>Acepta más viajes para subir tu <span class="text-emerald-400">tasa de aceptación</span>.</li>
+                    <li>Evita cancelar viajes aceptados. Si algo pasa, contacta al pasajero por chat primero.</li>
+                    <li>Una tasa superior al 90% te da prioridad en solicitudes y promos.</li>
+                  </ul>
+                </div>
+
+                <p class="text-slate-500 text-xs text-center">Métricas desde {{ m.window_start | date:'dd MMM yyyy' }}</p>
+              } @else {
+                <p class="text-slate-500 text-center py-6 text-sm">Aún no tienes datos suficientes.</p>
+              }
+            </div>
+          }
+
+          <!-- ── AUTO-ACEPTAR ── -->
+          @if (!loadingSection() && driverSection() === 'autoaccept') {
+            <div class="flex flex-col gap-4">
+              <p class="text-slate-400 text-xs leading-relaxed">
+                Cuando está activado, Movi aceptará automáticamente viajes que cumplan tus condiciones mínimas mientras estás en línea.
+              </p>
+
+              <!-- Toggle -->
+              <div class="rounded-2xl p-4 flex items-center justify-between"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-cyan-400" style="font-size:20px">auto_mode</span>
+                  <span class="text-white font-bold text-sm">Activar auto-aceptar</span>
+                </div>
+                <button (click)="toggleAutoAcceptEnabled()"
+                  class="w-12 h-6 rounded-full transition-colors"
+                  [style.background]="autoAcceptCfg().enabled ? '#10b981' : 'rgba(255,255,255,0.15)'">
+                  <div class="w-5 h-5 rounded-full bg-white transition-transform"
+                    [style.transform]="autoAcceptCfg().enabled ? 'translateX(26px)' : 'translateX(2px)'"></div>
+                </button>
+              </div>
+
+              <!-- Min price -->
+              <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-white font-bold text-sm">Precio mínimo</span>
+                  <span class="text-cyan-400 font-black text-sm">{{ '$' + autoAcceptCfg().minPrice.toLocaleString('es-CO') }}</span>
+                </div>
+                <input type="range" min="5000" max="50000" step="1000"
+                  [value]="autoAcceptCfg().minPrice"
+                  (input)="setAutoAcceptMinPrice(+$any($event.target).value)"
+                  class="w-full accent-cyan-400" />
+                <p class="text-slate-500 text-xs mt-1">Solo aceptará viajes iguales o mayores a este precio</p>
+              </div>
+
+              <!-- Max distance -->
+              <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-white font-bold text-sm">Distancia máxima al pasajero</span>
+                  <span class="text-cyan-400 font-black text-sm">{{ autoAcceptCfg().maxDistance }} km</span>
+                </div>
+                <input type="range" min="1" max="20" step="1"
+                  [value]="autoAcceptCfg().maxDistance"
+                  (input)="setAutoAcceptMaxDistance(+$any($event.target).value)"
+                  class="w-full accent-cyan-400" />
+                <p class="text-slate-500 text-xs mt-1">Solo aceptará si estás dentro de este radio del punto de recogida</p>
+              </div>
+
+              <button (click)="saveAutoAccept()" [disabled]="savingAutoAccept()"
+                class="w-full py-3 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                @if (savingAutoAccept()) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:16px">save</span>
+                }
+                Guardar configuración
+              </button>
+            </div>
+          }
+
+          <!-- ── OBJETOS OLVIDADOS ── -->
+          @if (!loadingSection() && driverSection() === 'lost') {
+            <div class="flex flex-col gap-3">
+              <p class="text-slate-400 text-xs leading-relaxed">
+                Reporta objetos que los pasajeros hayan olvidado en tu vehículo para que puedan recuperarlos.
+              </p>
+
+              <!-- Formulario nuevo -->
+              @if (newLostTripId()) {
+                <div class="rounded-2xl p-4 flex flex-col gap-3"
+                  style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3)">
+                  <p class="text-white font-bold text-sm">Reportar objeto olvidado</p>
+                  <textarea [(ngModel)]="newLostDesc" maxlength="300" rows="3"
+                    placeholder="Ej: Billetera de cuero negra con documentos"
+                    class="w-full px-3 py-2 rounded-lg text-white text-sm"
+                    style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1)"></textarea>
+                  <label class="w-full py-2 rounded-lg text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+                    style="background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2)">
+                    <span class="material-symbols-outlined" style="font-size:14px">camera_alt</span>
+                    {{ newLostPhoto ? newLostPhoto.name : 'Agregar foto (opcional)' }}
+                    <input type="file" accept="image/*" class="hidden" (change)="onLostPhotoChange($event)" />
+                  </label>
+                  <div class="flex gap-2">
+                    <button (click)="newLostTripId.set(null)"
+                      class="flex-1 py-2 rounded-xl text-slate-300 font-bold text-xs"
+                      style="background:rgba(255,255,255,0.05)">Cancelar</button>
+                    <button (click)="submitLostItem()" [disabled]="submittingLost() || !newLostDesc.trim()"
+                      class="flex-1 py-2 rounded-xl text-white font-black text-xs disabled:opacity-50"
+                      style="background:linear-gradient(135deg,#10b981,#059669)">
+                      @if (submittingLost()) { Enviando... } @else { Reportar }
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- Botón disparador por viaje completado -->
+              @if (!newLostTripId() && driverCompletedTrips().length > 0) {
+                <div class="rounded-2xl p-3 flex flex-col gap-2"
+                  style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                  <p class="text-white text-xs font-bold">Reportar sobre un viaje reciente:</p>
+                  @for (t of driverCompletedTrips().slice(0, 5); track t.id) {
+                    <button (click)="openReportLost(t.ag_trip_requests?.id ?? t.trip_request_id)"
+                      class="flex items-center justify-between py-2 px-3 rounded-lg text-left"
+                      style="background:rgba(255,255,255,0.03)">
+                      <div class="flex-1 min-w-0">
+                        <p class="text-white text-xs font-bold truncate">{{ t.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}</p>
+                        <p class="text-slate-500 text-[10px] truncate">{{ t.ag_trip_requests?.dest_name ?? '-' }}</p>
+                      </div>
+                      <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">add_circle</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              <!-- Lista de reportes -->
+              @if (lostItems().length === 0) {
+                <p class="text-slate-500 text-center py-6 text-sm">No has reportado objetos olvidados.</p>
+              } @else {
+                @for (item of lostItems(); track item.id) {
+                  <div class="rounded-2xl p-4 flex flex-col gap-2"
+                    style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                    <div class="flex items-start gap-3">
+                      @if (item.photo_url) {
+                        <img [src]="item.photo_url" class="w-16 h-16 rounded-xl object-cover" />
+                      }
+                      <div class="flex-1 min-w-0">
+                        <p class="text-white text-sm font-bold">{{ item.ag_users?.full_name ?? 'Pasajero' }}</p>
+                        <p class="text-slate-300 text-xs mt-1">{{ item.description }}</p>
+                        <p class="text-slate-500 text-[10px] mt-1">{{ item.created_at | date:'dd MMM HH:mm' }}</p>
+                      </div>
+                      <span class="text-[10px] font-bold uppercase"
+                        [class.text-yellow-400]="item.status === 'reported'"
+                        [class.text-cyan-400]="item.status === 'contacted'"
+                        [class.text-green-400]="item.status === 'returned'"
+                        [class.text-slate-500]="item.status === 'closed'">
+                        {{ item.status === 'reported' ? 'Reportado' : item.status === 'contacted' ? 'En contacto' : item.status === 'returned' ? 'Devuelto' : 'Cerrado' }}
+                      </span>
+                    </div>
+                    <div class="flex gap-2">
+                      @if (item.ag_users?.phone) {
+                        <a [href]="'tel:' + item.ag_users.phone"
+                          class="flex-1 py-1.5 rounded-lg text-white text-xs font-bold text-center"
+                          style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.3)">
+                          📞 Llamar
+                        </a>
+                      }
+                      @if (item.status !== 'returned' && item.status !== 'closed') {
+                        <button (click)="changeLostStatus(item.id, 'returned')"
+                          class="flex-1 py-1.5 rounded-lg text-white text-xs font-bold"
+                          style="background:rgba(8,145,178,0.2);border:1px solid rgba(8,145,178,0.3)">
+                          Marcar devuelto
+                        </button>
+                      }
+                      @if (item.status === 'reported') {
+                        <button (click)="changeLostStatus(item.id, 'contacted')"
+                          class="flex-1 py-1.5 rounded-lg text-white text-xs font-bold"
+                          style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.3)">
+                          En contacto
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          <!-- ── VIAJES PROGRAMADOS ── -->
+          @if (!loadingSection() && driverSection() === 'scheduled') {
+            <div class="flex flex-col gap-4">
+              <!-- Mis reservas -->
+              <div>
+                <p class="text-white font-black text-sm mb-2">Mis reservas</p>
+                @if (myScheduledTrips().length === 0) {
+                  <p class="text-slate-500 text-xs text-center py-4">No tienes viajes reservados.</p>
+                } @else {
+                  <div class="flex flex-col gap-2">
+                    @for (st of myScheduledTrips(); track st.id) {
+                      <div class="rounded-2xl p-4 flex flex-col gap-2"
+                        style="background:linear-gradient(135deg,rgba(8,145,178,0.1),rgba(8,145,178,0.03));border:1px solid rgba(8,145,178,0.3)">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">event</span>
+                            <span class="text-white font-bold text-sm">{{ st.scheduled_for | date:'dd MMM HH:mm' }}</span>
+                          </div>
+                          <span class="text-emerald-400 font-black text-sm">{{ '$' + (st.estimated_price ?? 0).toLocaleString('es-CO') }}</span>
+                        </div>
+                        <div class="text-slate-300 text-xs space-y-1">
+                          <p><span class="text-slate-500">Pasajero:</span> {{ st.ag_users?.full_name ?? 'N/A' }}</p>
+                          <p><span class="text-slate-500">Origen:</span> {{ st.origin_name ?? '-' }}</p>
+                          <p><span class="text-slate-500">Destino:</span> {{ st.dest_name ?? '-' }}</p>
+                        </div>
+                        <div class="flex gap-2">
+                          @if (st.ag_users?.phone) {
+                            <a [href]="'tel:' + st.ag_users.phone"
+                              class="flex-1 py-1.5 rounded-lg text-white text-xs font-bold text-center"
+                              style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.3)">
+                              📞 Llamar
+                            </a>
+                          }
+                          <button (click)="releaseScheduled(st.id)"
+                            class="flex-1 py-1.5 rounded-lg text-red-300 text-xs font-bold"
+                            style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3)">
+                            Liberar
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Disponibles -->
+              <div>
+                <p class="text-white font-black text-sm mb-2">Disponibles cerca</p>
+                @if (availableScheduledTrips().length === 0) {
+                  <p class="text-slate-500 text-xs text-center py-4">No hay viajes programados disponibles.</p>
+                } @else {
+                  <div class="flex flex-col gap-2">
+                    @for (st of availableScheduledTrips(); track st.id) {
+                      <div class="rounded-2xl p-4 flex flex-col gap-2"
+                        style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber-400" style="font-size:18px">schedule</span>
+                            <span class="text-white font-bold text-sm">{{ st.scheduled_for | date:'dd MMM HH:mm' }}</span>
+                          </div>
+                          <span class="text-emerald-400 font-black text-sm">{{ '$' + (st.estimated_price ?? 0).toLocaleString('es-CO') }}</span>
+                        </div>
+                        <div class="text-slate-300 text-xs space-y-1">
+                          <p><span class="text-slate-500">Origen:</span> {{ st.origin_name ?? '-' }}</p>
+                          <p><span class="text-slate-500">Destino:</span> {{ st.dest_name ?? '-' }}</p>
+                        </div>
+                        <button (click)="claimScheduled(st.id)" [disabled]="claimingScheduledId() === st.id"
+                          class="w-full py-2 rounded-xl text-white font-black text-xs disabled:opacity-50"
+                          style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                          @if (claimingScheduledId() === st.id) { Reservando... } @else { Reservar este viaje }
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
         </div>
       }
 
     </div>
+
+    <!-- ══ Modal: Detalle de viaje con desglose ══ -->
+    @if (tripDetailOpen()) {
+      <div (click)="closeTripDetail()" class="fixed inset-0 z-50"
+        style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
+      <div class="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col gap-4 px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto"
+        style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -8px 40px rgba(0,0,0,0.5)">
+        <div class="mx-auto w-10 h-1 rounded-full bg-white/20 mb-1"></div>
+        <div class="flex items-center justify-between">
+          <p class="text-white font-black text-base">Detalle del viaje</p>
+          <button (click)="closeTripDetail()"
+            class="w-8 h-8 rounded-lg flex items-center justify-center"
+            style="background:rgba(255,255,255,0.06)">
+            <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+          </button>
+        </div>
+
+        @if (loadingTripDetail()) {
+          <div class="flex items-center justify-center py-12">
+            <span class="material-symbols-outlined text-cyan-400 animate-spin" style="font-size:32px">autorenew</span>
+          </div>
+        } @else if (tripDetail(); as d) {
+          <div class="flex flex-col gap-3">
+            <!-- Info general -->
+            <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-white font-bold text-sm">{{ d.passenger_name ?? 'Pasajero' }}</p>
+                <p class="text-slate-500 text-xs">{{ d.completed_at | date:'dd MMM yyyy HH:mm' }}</p>
+              </div>
+              <p class="text-slate-300 text-xs">
+                <span class="text-slate-500">Destino:</span> {{ d.dest_name ?? '-' }}
+              </p>
+              <p class="text-slate-300 text-xs">
+                <span class="text-slate-500">Distancia:</span> {{ (d.distance_km ?? 0) | number:'1.2-2' }} km
+              </p>
+              <p class="text-slate-300 text-xs">
+                <span class="text-slate-500">Vehículo:</span> {{ d.vehicle_type ?? '-' }}
+              </p>
+            </div>
+
+            <!-- Desglose tarifa -->
+            <div class="rounded-2xl p-4 flex flex-col gap-2" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+              <p class="text-cyan-400 font-bold text-xs uppercase tracking-widest mb-1">Desglose</p>
+
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 text-xs">Tarifa base</span>
+                <span class="text-white text-xs font-bold">{{ '$' + (d.base_fare ?? 0).toLocaleString('es-CO') }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 text-xs">Distancia</span>
+                <span class="text-white text-xs font-bold">{{ '$' + (d.distance_fare ?? 0).toLocaleString('es-CO') }}</span>
+              </div>
+              @if (d.surge_multiplier > 1) {
+                <div class="flex items-center justify-between">
+                  <span class="text-amber-400 text-xs">⚡ Alta demanda x{{ d.surge_multiplier }}</span>
+                  <span class="text-amber-400 text-xs font-bold">{{ '+$' + (d.surge_amount ?? 0).toLocaleString('es-CO') }}</span>
+                </div>
+              }
+              <div class="border-t border-white/10 my-1"></div>
+              <div class="flex items-center justify-between">
+                <span class="text-white text-sm font-bold">Total al pasajero</span>
+                <span class="text-white text-sm font-black">{{ '$' + (d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO') }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-red-400 text-xs">Comisión plataforma ({{ d.commission_pct ?? 0 }}%)</span>
+                <span class="text-red-400 text-xs font-bold">{{ '-$' + (d.commission_amount ?? 0).toLocaleString('es-CO') }}</span>
+              </div>
+              <div class="border-t border-white/10 my-1"></div>
+              <div class="flex items-center justify-between rounded-xl p-3"
+                style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05))">
+                <span class="text-emerald-300 text-sm font-bold">Tu ganancia neta</span>
+                <span class="text-emerald-300 text-lg font-black">{{ '$' + (d.driver_net ?? 0).toLocaleString('es-CO') }}</span>
+              </div>
+            </div>
+
+            <button (click)="downloadReceipt()"
+              class="w-full py-3 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2"
+              style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+              <span class="material-symbols-outlined" style="font-size:16px">download</span>
+              Descargar recibo
+            </button>
+          </div>
+        } @else {
+          <p class="text-slate-500 text-center py-8 text-sm">No se pudo cargar el detalle.</p>
+        }
+      </div>
+    }
+
+    <!-- ══ Modal: Calificar pasajero (con tags) ══ -->
+    @if (passengerRatingModal()) {
+      <div class="fixed inset-0 z-50" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)"></div>
+      <div class="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col gap-4 px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto"
+        style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -8px 40px rgba(0,0,0,0.5)">
+        <div class="mx-auto w-10 h-1 rounded-full bg-white/20 mb-1"></div>
+
+        <div class="text-center">
+          <p class="text-white font-black text-lg">Califica al pasajero</p>
+          <p class="text-slate-400 text-xs mt-1">{{ pendingRatingTrip()?.passenger_name ?? 'Pasajero' }}</p>
+        </div>
+
+        <!-- Estrellas -->
+        <div class="flex items-center justify-center gap-2">
+          @for (i of [1,2,3,4,5]; track i) {
+            <button (click)="passengerRatingStars.set(i)"
+              class="w-12 h-12 flex items-center justify-center transition-transform"
+              [class.scale-110]="passengerRatingStars() >= i">
+              <span class="material-symbols-outlined" style="font-size:36px"
+                [style.color]="passengerRatingStars() >= i ? '#fbbf24' : 'rgba(255,255,255,0.15)'">
+                star
+              </span>
+            </button>
+          }
+        </div>
+
+        <!-- Tags -->
+        <div class="flex flex-wrap gap-2 justify-center">
+          @for (tag of passengerRatingTagOptions; track tag.key) {
+            <button (click)="togglePassengerRatingTag(tag.key)"
+              class="px-3 py-1.5 rounded-full text-xs font-bold transition-colors"
+              [style.background]="passengerRatingTags().has(tag.key) ? 'rgba(8,145,178,0.3)' : 'rgba(255,255,255,0.05)'"
+              [style.border]="passengerRatingTags().has(tag.key) ? '1px solid rgba(8,145,178,0.6)' : '1px solid rgba(255,255,255,0.1)'"
+              [style.color]="passengerRatingTags().has(tag.key) ? '#67e8f9' : 'rgba(255,255,255,0.7)'">
+              {{ tag.label }}
+            </button>
+          }
+        </div>
+
+        <!-- Comentario -->
+        <textarea [(ngModel)]="passengerRatingComment" maxlength="300" rows="2"
+          placeholder="Comentario (opcional)"
+          class="w-full px-3 py-2 rounded-lg text-white text-sm"
+          style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1)"></textarea>
+
+        <div class="flex gap-2">
+          <button (click)="skipPassengerRating()"
+            class="flex-1 py-3 rounded-xl text-slate-300 font-bold text-sm"
+            style="background:rgba(255,255,255,0.05)">Omitir</button>
+          <button (click)="submitPassengerRating()"
+            [disabled]="passengerRatingStars() === 0 || submittingPassengerRating()"
+            class="flex-1 py-3 rounded-xl text-white font-black text-sm disabled:opacity-50"
+            style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+            @if (submittingPassengerRating()) { Enviando... } @else { Enviar }
+          </button>
+        </div>
+      </div>
+    }
 
     <!-- ══ Modal: hacer oferta ══ -->
     @if (makingOfferFor()) {
@@ -3405,6 +3926,69 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   wdMsg              = signal<string | null>(null);
   driverWithdrawals  = signal<any[]>([]);
 
+  // ── Documentos del conductor ─────────────────────────
+  driverDocs         = signal<any[]>([]);
+  readonly docTypes: Array<{ key: string; label: string; requiresExpiry: boolean; icon: string }> = [
+    { key: 'license',        label: 'Licencia de conducción', requiresExpiry: true,  icon: 'badge' },
+    { key: 'soat',           label: 'SOAT',                   requiresExpiry: true,  icon: 'health_and_safety' },
+    { key: 'tecnomecanica',  label: 'Tecnomecánica',          requiresExpiry: true,  icon: 'build' },
+    { key: 'cedula',         label: 'Cédula',                 requiresExpiry: false, icon: 'fingerprint' },
+    { key: 'vehicle_front',  label: 'Vehículo — frente',      requiresExpiry: false, icon: 'directions_car' },
+    { key: 'vehicle_back',   label: 'Vehículo — atrás',       requiresExpiry: false, icon: 'directions_car' },
+    { key: 'insurance',      label: 'Seguro (opcional)',      requiresExpiry: true,  icon: 'verified_user' },
+  ];
+  uploadingDoc       = signal<string | null>(null);
+  docExpiryInput: Record<string, string> = {};
+  docNumberInput: Record<string, string> = {};
+
+  // ── Métricas performance ─────────────────────────────
+  driverMetrics      = signal<{
+    acceptance_rate: number; cancellation_rate: number; completion_rate: number;
+    offers_seen: number; offers_made: number;
+    trips_accepted: number; trips_cancelled: number; trips_completed: number;
+    window_start: string;
+  } | null>(null);
+
+  // ── Detalle de viaje ─────────────────────────────────
+  tripDetailOpen     = signal(false);
+  tripDetail         = signal<any | null>(null);
+  loadingTripDetail  = signal(false);
+
+  // ── Auto-aceptar ─────────────────────────────────────
+  autoAcceptCfg      = signal({ enabled: false, minPrice: 5000, maxDistance: 5 });
+  savingAutoAccept   = signal(false);
+
+  // ── Objetos perdidos ─────────────────────────────────
+  lostItems          = signal<any[]>([]);
+  newLostDesc        = '';
+  newLostTripId      = signal<string | null>(null);
+  newLostPhoto: File | null = null;
+  submittingLost     = signal(false);
+
+  // ── Viajes programados ───────────────────────────────
+  availableScheduledTrips = signal<any[]>([]);
+  myScheduledTrips        = signal<any[]>([]);
+  claimingScheduledId     = signal<string | null>(null);
+
+  // ── Rating pasajero (post-viaje) ─────────────────────
+  passengerRatingModal = signal(false);
+  passengerRatingStars = signal(0);
+  passengerRatingTags  = signal<Set<string>>(new Set());
+  passengerRatingComment = '';
+  submittingPassengerRating = signal(false);
+  pendingRatingTrip    = signal<any | null>(null);
+  readonly passengerRatingTagOptions = [
+    { key: 'amable',    label: 'Amable' },
+    { key: 'puntual',   label: 'Puntual' },
+    { key: 'limpio',    label: 'Limpio' },
+    { key: 'respetuoso', label: 'Respetuoso' },
+    { key: 'buena_conversacion', label: 'Buena conversación' },
+    { key: 'propina',   label: 'Dejó propina' },
+    { key: 'grosero',   label: 'Grosero' },
+    { key: 'impuntual', label: 'Impuntual' },
+    { key: 'maltrato',  label: 'Maltrato' },
+  ];
+
   wdPlaceholder(): string {
     const m = this.wdMethod;
     if (m === 'bank') return 'Ej: Bancolombia 1234567890';
@@ -3585,23 +4169,28 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   readonly rechargePresets = [10000, 20000, 50000, 100000, 200000, 500000];
 
   readonly driverMenuItems = [
-    { icon: 'person',         label: 'Mi Perfil',         action: 'profile',      sectionLabel: 'Principal', danger: false, divider: false },
-    { icon: 'wifi_tethering', label: 'Estado / En Línea', action: 'status',       sectionLabel: '',          danger: false, divider: false },
-    { icon: 'payments',       label: 'Ganancias',         action: 'earnings',     sectionLabel: '',          danger: false, divider: false },
-    { icon: 'route',          label: 'Mis Viajes',        action: 'trips',        sectionLabel: '',          danger: false, divider: false },
-    { icon: 'analytics',      label: 'Analytics',         action: 'analytics',    sectionLabel: '',          danger: false, divider: false },
-    { icon: 'emoji_events',   label: 'Metas y bonos',     action: 'quests',       sectionLabel: '',          danger: false, divider: false },
-    { icon: '',               label: '',                  action: '',             sectionLabel: 'Ganancias',     danger: false, divider: true },
-    { icon: 'card_giftcard',  label: 'Recomienda y Gana', action: 'referrals',    sectionLabel: '',          danger: false, divider: false },
-    { icon: '',               label: '',                  action: '',             sectionLabel: 'Configuración', danger: false, divider: true },
-    { icon: 'tune',           label: 'Preferencias',      action: 'preferences',  sectionLabel: '',          danger: false, divider: false },
-    { icon: 'directions_car', label: 'Mis vehículos',     action: 'vehicles',     sectionLabel: '',          danger: false, divider: false },
-    { icon: 'shield',         label: 'Seguridad',         action: 'security',     sectionLabel: '',          danger: false, divider: false },
-    { icon: 'block',          label: 'Pasajeros bloqueados', action: 'blacklist', sectionLabel: '',          danger: false, divider: false },
-    { icon: 'support_agent',  label: 'Soporte',           action: 'support',      sectionLabel: '',          danger: false, divider: false },
-    { icon: 'school',         label: 'Tutorial',          action: 'tutorial',     sectionLabel: '',          danger: false, divider: false },
-    { icon: '',               label: '',                  action: '',             sectionLabel: '',          danger: false, divider: true },
-    { icon: 'logout',         label: 'Cerrar Sesión',     action: 'logout',       sectionLabel: '',          danger: true,  divider: false },
+    { icon: 'person',          label: 'Mi Perfil',            action: 'profile',      sectionLabel: 'Principal',     danger: false, divider: false },
+    { icon: 'wifi_tethering',  label: 'Estado / En Línea',    action: 'status',       sectionLabel: '',              danger: false, divider: false },
+    { icon: 'payments',        label: 'Ganancias',            action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'route',           label: 'Mis Viajes',           action: 'trips',        sectionLabel: '',              danger: false, divider: false },
+    { icon: 'schedule',        label: 'Viajes programados',   action: 'scheduled',    sectionLabel: '',              danger: false, divider: false },
+    { icon: 'analytics',       label: 'Analytics',            action: 'analytics',    sectionLabel: '',              danger: false, divider: false },
+    { icon: 'insights',        label: 'Rendimiento',          action: 'performance',  sectionLabel: '',              danger: false, divider: false },
+    { icon: 'emoji_events',    label: 'Metas y bonos',        action: 'quests',       sectionLabel: '',              danger: false, divider: false },
+    { icon: '',                label: '',                     action: '',             sectionLabel: 'Ganancias',     danger: false, divider: true },
+    { icon: 'card_giftcard',   label: 'Recomienda y Gana',    action: 'referrals',    sectionLabel: '',              danger: false, divider: false },
+    { icon: '',                label: '',                     action: '',             sectionLabel: 'Configuración', danger: false, divider: true },
+    { icon: 'description',     label: 'Mis documentos',       action: 'documents',    sectionLabel: '',              danger: false, divider: false },
+    { icon: 'tune',            label: 'Preferencias',         action: 'preferences',  sectionLabel: '',              danger: false, divider: false },
+    { icon: 'auto_mode',       label: 'Auto-aceptar',         action: 'autoaccept',   sectionLabel: '',              danger: false, divider: false },
+    { icon: 'directions_car',  label: 'Mis vehículos',        action: 'vehicles',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'shield',          label: 'Seguridad',            action: 'security',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'block',           label: 'Pasajeros bloqueados', action: 'blacklist',    sectionLabel: '',              danger: false, divider: false },
+    { icon: 'inventory_2',     label: 'Objetos olvidados',    action: 'lost',         sectionLabel: '',              danger: false, divider: false },
+    { icon: 'support_agent',   label: 'Soporte',              action: 'support',      sectionLabel: '',              danger: false, divider: false },
+    { icon: 'school',          label: 'Tutorial',             action: 'tutorial',     sectionLabel: '',              danger: false, divider: false },
+    { icon: '',                label: '',                     action: '',             sectionLabel: '',              danger: false, divider: true },
+    { icon: 'logout',          label: 'Cerrar Sesión',        action: 'logout',       sectionLabel: '',              danger: true,  divider: false },
   ];
 
   driverMenuOpen = signal(false);
@@ -4473,18 +5062,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const tripRequestId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripRequestId) return;
     await this.agService.completeTrip(tripRequestId);
-    const passenger = trip.ag_trip_requests?.ag_users;
-    this.ratingTripId.set(tripRequestId);
-    this.ratingTarget.set({
-      userId: passenger?.id ?? '',
-      name:   passenger?.full_name ?? 'El pasajero',
-      role:   'passenger',
-    });
-    this.ratingStars.set(0);
-    this.ratingCommentValue = '';
-    this.ratingSkipped.set(false);
-    this.ratingModal.set(true);
     this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
+    // Disparar rating detallado de pasajero (con tags)
+    await this.promptRatePassenger(trip);
   }
 
   async submitRating() {
@@ -4614,8 +5194,326 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       });
     } else if (action === 'referrals') {
       await this.loadReferralData();
+    } else if (action === 'documents') {
+      await this.loadDriverDocs();
+    } else if (action === 'performance') {
+      await this.loadDriverMetrics();
+    } else if (action === 'autoaccept') {
+      this.autoAcceptCfg.set({
+        enabled: driver.auto_accept_enabled ?? false,
+        minPrice: driver.auto_accept_min_price ?? 5000,
+        maxDistance: driver.auto_accept_max_distance ?? 5,
+      });
+    } else if (action === 'lost') {
+      await this.loadLostItems();
+    } else if (action === 'scheduled') {
+      await this.loadScheduledTrips();
     }
     this.loadingSection.set(false);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Documentos
+  // ═══════════════════════════════════════════════════
+  async loadDriverDocs(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    const docs = await this.agService.listDriverDocuments(d.id);
+    this.driverDocs.set(docs);
+  }
+
+  getDocByType(type: string): any | null {
+    return this.driverDocs().find(doc => doc.doc_type === type) ?? null;
+  }
+
+  docStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'En revisión', approved: 'Aprobado', rejected: 'Rechazado', expired: 'Vencido',
+    };
+    return map[status] ?? status;
+  }
+
+  docStatusColor(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'text-yellow-400', approved: 'text-green-400',
+      rejected: 'text-red-400', expired: 'text-red-400',
+    };
+    return map[status] ?? 'text-gray-400';
+  }
+
+  docIsExpiringSoon(doc: any): boolean {
+    if (!doc?.expires_at) return false;
+    const exp = new Date(doc.expires_at).getTime();
+    const diff = exp - Date.now();
+    return diff > 0 && diff < 1000 * 60 * 60 * 24 * 30;
+  }
+
+  async onUploadDoc(type: string, event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const d = this.driverData();
+    if (!d) return;
+    this.uploadingDoc.set(type);
+    const meta: any = { number: this.docNumberInput[type] };
+    if (this.docExpiryInput[type]) meta.expires_at = this.docExpiryInput[type];
+    const res = await this.agService.uploadDriverDocument(d.id, type as any, file, meta);
+    this.uploadingDoc.set(null);
+    input.value = '';
+    if (res.success) {
+      await this.loadDriverDocs();
+    } else {
+      alert('Error subiendo: ' + (res.error ?? 'desconocido'));
+    }
+  }
+
+  async onDocNumberChange(type: string, value: string): Promise<void> {
+    this.docNumberInput[type] = value;
+  }
+
+  async onDocExpiryChange(type: string, value: string): Promise<void> {
+    this.docExpiryInput[type] = value;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Métricas performance
+  // ═══════════════════════════════════════════════════
+  async loadDriverMetrics(): Promise<void> {
+    const m = await this.agService.getDriverMetrics();
+    this.driverMetrics.set(m);
+  }
+
+  metricColor(rate: number, kind: 'positive' | 'negative'): string {
+    if (kind === 'positive') {
+      if (rate >= 90) return 'text-green-400';
+      if (rate >= 70) return 'text-yellow-400';
+      return 'text-red-400';
+    }
+    if (rate <= 5) return 'text-green-400';
+    if (rate <= 15) return 'text-yellow-400';
+    return 'text-red-400';
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Detalle de viaje
+  // ═══════════════════════════════════════════════════
+  async openTripDetail(trip: any): Promise<void> {
+    const id = trip.id ?? trip.trip_request_id;
+    if (!id) return;
+    this.loadingTripDetail.set(true);
+    this.tripDetailOpen.set(true);
+    const detail = await this.agService.getTripDetail(id);
+    this.tripDetail.set(detail);
+    this.loadingTripDetail.set(false);
+  }
+
+  closeTripDetail(): void {
+    this.tripDetailOpen.set(false);
+    this.tripDetail.set(null);
+  }
+
+  downloadReceipt(): void {
+    const d = this.tripDetail();
+    if (!d) return;
+    const driver = this.driverData();
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Recibo Movi</title>
+<style>body{font-family:Arial,sans-serif;max-width:600px;margin:20px auto;padding:20px;color:#222}
+h1{color:#00E5FF;border-bottom:2px solid #00E5FF;padding-bottom:10px}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}
+.total{font-weight:bold;font-size:18px;color:#00E5FF}</style></head>
+<body><h1>Recibo de viaje — Movi</h1>
+<p><strong>Viaje ID:</strong> ${d.id}<br><strong>Fecha:</strong> ${d.completed_at ? new Date(d.completed_at).toLocaleString('es-CO') : '-'}</p>
+<p><strong>Conductor:</strong> ${driver?.ag_users?.full_name ?? '-'}<br>
+<strong>Pasajero:</strong> ${d.passenger_name ?? '-'}<br>
+<strong>Destino:</strong> ${d.dest_name ?? '-'}<br>
+<strong>Distancia:</strong> ${(d.distance_km ?? 0).toFixed(2)} km</p>
+<h2>Desglose</h2>
+<div class="row"><span>Tarifa base</span><span>$${(d.base_fare ?? 0).toLocaleString('es-CO')}</span></div>
+<div class="row"><span>Distancia</span><span>$${(d.distance_fare ?? 0).toLocaleString('es-CO')}</span></div>
+${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multiplier}</span><span>+$${(d.surge_amount ?? 0).toLocaleString('es-CO')}</span></div>` : ''}
+<div class="row"><span>Total cobrado al pasajero</span><span>$${(d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO')}</span></div>
+<div class="row"><span>Comisión plataforma (${d.commission_pct ?? 0}%)</span><span>-$${(d.commission_amount ?? 0).toLocaleString('es-CO')}</span></div>
+<div class="row total"><span>Ganancia neta conductor</span><span>$${(d.driver_net ?? 0).toLocaleString('es-CO')}</span></div>
+<p style="margin-top:30px;font-size:12px;color:#666">Este recibo fue generado automáticamente por Movi (Publihazclick). Para facturación electrónica, contacta soporte.</p>
+</body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `recibo-movi-${d.id?.slice(0, 8)}.html`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Auto-aceptar
+  // ═══════════════════════════════════════════════════
+  async saveAutoAccept(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    this.savingAutoAccept.set(true);
+    const cfg = this.autoAcceptCfg();
+    await this.agService.updateAutoAccept(d.id, cfg.enabled, cfg.minPrice, cfg.maxDistance);
+    this.savingAutoAccept.set(false);
+  }
+
+  toggleAutoAcceptEnabled(): void {
+    this.autoAcceptCfg.update(c => ({ ...c, enabled: !c.enabled }));
+  }
+
+  setAutoAcceptMinPrice(value: number): void {
+    this.autoAcceptCfg.update(c => ({ ...c, minPrice: value }));
+  }
+
+  setAutoAcceptMaxDistance(value: number): void {
+    this.autoAcceptCfg.update(c => ({ ...c, maxDistance: value }));
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Objetos perdidos
+  // ═══════════════════════════════════════════════════
+  async loadLostItems(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    const items = await this.agService.listLostItems(d.id);
+    this.lostItems.set(items);
+  }
+
+  openReportLost(tripId: string): void {
+    this.newLostTripId.set(tripId);
+    this.newLostDesc = '';
+    this.newLostPhoto = null;
+  }
+
+  onLostPhotoChange(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    this.newLostPhoto = file ?? null;
+  }
+
+  async submitLostItem(): Promise<void> {
+    const tripId = this.newLostTripId();
+    const d = this.driverData();
+    if (!tripId || !d || !this.newLostDesc.trim()) return;
+    const trip = this.driverCompletedTrips().find(
+      t => (t.ag_trip_requests?.id ?? t.trip_request_id) === tripId,
+    ) ?? this.driverActiveTrips().find(
+      t => (t.ag_trip_requests?.id ?? t.trip_request_id) === tripId,
+    );
+    const passengerUserId = trip?.ag_trip_requests?.passenger_user_id;
+    if (!passengerUserId) {
+      alert('No se encontró el pasajero de este viaje.');
+      return;
+    }
+    this.submittingLost.set(true);
+    const res = await this.agService.reportLostItem({
+      tripRequestId: tripId,
+      driverId: d.id,
+      passengerUserId,
+      description: this.newLostDesc,
+      photo: this.newLostPhoto ?? undefined,
+    });
+    this.submittingLost.set(false);
+    if (res.success) {
+      this.newLostTripId.set(null);
+      this.newLostDesc = '';
+      this.newLostPhoto = null;
+      await this.loadLostItems();
+    } else {
+      alert('Error: ' + (res.error ?? 'desconocido'));
+    }
+  }
+
+  async changeLostStatus(itemId: string, status: 'reported' | 'contacted' | 'returned' | 'closed'): Promise<void> {
+    await this.agService.updateLostItemStatus(itemId, status);
+    await this.loadLostItems();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Viajes programados
+  // ═══════════════════════════════════════════════════
+  async loadScheduledTrips(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    const [available, mine] = await Promise.all([
+      this.agService.listAvailableScheduledTrips(d.id, d.max_distance_km ?? 30),
+      this.agService.listMyScheduledTrips(d.id),
+    ]);
+    this.availableScheduledTrips.set(available);
+    this.myScheduledTrips.set(mine);
+  }
+
+  async claimScheduled(id: string): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    this.claimingScheduledId.set(id);
+    const res = await this.agService.claimScheduledTrip(id, d.id);
+    this.claimingScheduledId.set(null);
+    if (res.success) {
+      await this.loadScheduledTrips();
+    } else {
+      alert('No se pudo reservar el viaje: ' + (res.error ?? 'desconocido'));
+    }
+  }
+
+  async releaseScheduled(id: string): Promise<void> {
+    if (!confirm('¿Liberar esta reserva? Volverá a estar disponible para otros conductores.')) return;
+    await this.agService.releaseScheduledTrip(id);
+    await this.loadScheduledTrips();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Rating pasajero post-viaje
+  // ═══════════════════════════════════════════════════
+  async promptRatePassenger(trip: any): Promise<void> {
+    const tripId = trip.ag_trip_requests?.id ?? trip.trip_request_id ?? trip.id;
+    if (!tripId) return;
+    const profile = this.agProfile();
+    if (!profile) return;
+    const already = await this.agService.hasRatedTrip(tripId, profile.id);
+    if (already) return;
+    this.pendingRatingTrip.set({
+      trip_request_id: tripId,
+      passenger_user_id: trip.ag_trip_requests?.passenger_user_id ?? trip.passenger_user_id,
+      passenger_name: trip.ag_trip_requests?.ag_users?.full_name ?? trip.ag_users?.full_name ?? 'Pasajero',
+    });
+    this.passengerRatingStars.set(0);
+    this.passengerRatingTags.set(new Set());
+    this.passengerRatingComment = '';
+    this.passengerRatingModal.set(true);
+  }
+
+  togglePassengerRatingTag(tag: string): void {
+    this.passengerRatingTags.update(set => {
+      const next = new Set(set);
+      if (next.has(tag)) next.delete(tag); else next.add(tag);
+      return next;
+    });
+  }
+
+  async submitPassengerRating(): Promise<void> {
+    const pending = this.pendingRatingTrip();
+    const profile = this.agProfile();
+    if (!pending || !profile || this.passengerRatingStars() === 0) return;
+    this.submittingPassengerRating.set(true);
+    const res = await this.agService.submitPassengerRating(
+      pending.trip_request_id,
+      profile.id,
+      pending.passenger_user_id,
+      this.passengerRatingStars(),
+      Array.from(this.passengerRatingTags()),
+      this.passengerRatingComment,
+    );
+    this.submittingPassengerRating.set(false);
+    if (res.success) {
+      this.passengerRatingModal.set(false);
+      this.pendingRatingTrip.set(null);
+    } else {
+      alert('Error enviando calificación: ' + (res.error ?? 'desconocido'));
+    }
+  }
+
+  skipPassengerRating(): void {
+    this.passengerRatingModal.set(false);
+    this.pendingRatingTrip.set(null);
   }
 
   private _gpsWatchId: number | null = null;
@@ -5262,6 +6160,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   _loadDriverRequests(vehicleType?: string) {
     this.agService.getSearchingRequests(vehicleType).then(reqs => {
       this.driverRequests.set(reqs);
+      if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
     });
     // Limpiar intervalo previo antes de crear uno nuevo (evita duplicados)
     if (this._driverRefreshInterval) {
@@ -5323,6 +6222,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (result.success) {
       this.offerSentFor.update(s => { const ns = new Set(s); ns.add(req.id); return ns; });
       this.makingOfferFor.set(null);
+      this.agService.logMetricEvent('offer_made', req.id).catch(() => {});
     }
   }
 
