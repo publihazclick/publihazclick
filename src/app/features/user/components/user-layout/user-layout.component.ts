@@ -115,19 +115,13 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
       document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
       document.addEventListener('touchend', this.handleTouchEnd, { passive: true });
 
-      // Interceptar back button: si estamos en un módulo y el back intenta
-      // salir a una ruta no-módulo, bloquear y quedarnos en el módulo.
+      // Interceptar back button: bloquear salida hacia landing desde cualquier
+      // apartado interno del área autenticada. Única forma de salir: menú.
       this.router.events.subscribe((e) => {
         if (e instanceof NavigationStart && e.navigationTrigger === 'popstate') {
-          if (this.isModuleRoute()) {
-            const moduleSegs = ['/cursos', '/trading-bot', '/trading-operation', '/ai',
-              '/sms-masivos', '/automatic-whatsapp', '/punto-pago', '/dinamicas', '/xzoom-en-vivo',
-              '/anda-gana'];
-            const targetIsModule = moduleSegs.some(s => e.url.includes(s));
-            if (!targetIsModule) {
-              const stay = this.router.url;
-              setTimeout(() => this.router.navigateByUrl(stay, { replaceUrl: true }));
-            }
+          if (this.isInternalRoute(this.router.url) && !this.isInternalRoute(e.url)) {
+            const stay = this.router.url;
+            setTimeout(() => this.router.navigateByUrl(stay, { replaceUrl: true }));
           }
         }
       });
@@ -301,6 +295,17 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
       u.includes('/ai') || u.includes('/sms-masivos') || u.includes('/automatic-whatsapp') ||
       u.includes('/punto-pago') || u.includes('/dinamicas') || u.includes('/xzoom-en-vivo') ||
       u.includes('/anda-gana');
+  }
+
+  /** True si la URL pertenece al área autenticada (dashboard/advertiser/admin/social + módulos). */
+  isInternalRoute(url: string): boolean {
+    const u = (url || '').split('?')[0];
+    if (!u || u === '/') return false;
+    return u.startsWith('/dashboard') || u.startsWith('/advertiser') || u.startsWith('/admin') ||
+      u.startsWith('/social') || u.startsWith('/cursos') || u.startsWith('/trading-bot') ||
+      u.startsWith('/trading-operation') || u.startsWith('/ai') || u.startsWith('/sms-masivos') ||
+      u.startsWith('/automatic-whatsapp') || u.startsWith('/punto-pago') ||
+      u.startsWith('/dinamicas') || u.startsWith('/xzoom-en-vivo') || u.startsWith('/anda-gana');
   }
 
   hideWalletAndCurrency(): boolean {
