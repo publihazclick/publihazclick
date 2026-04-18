@@ -256,12 +256,16 @@ export const dashboardGuard: CanActivateFn = async (route, state) => {
     const profile = await profileService.getCurrentProfile();
     if (!profile) return router.createUrlTree(['/login']);
 
+    // Preservar la sub-ruta al redirigir al layout correcto del rol.
+    // Ej: /dashboard/anda-gana?x=1 → /advertiser/anda-gana?x=1
+    const subPath = state.url.replace(/^\/dashboard/, '') || '';
+
     switch (profile.role) {
       case 'advertiser':
-        return router.createUrlTree(['/advertiser']);
+        return router.parseUrl('/advertiser' + subPath);
       case 'admin':
       case 'dev':
-        return router.createUrlTree(['/admin']);
+        return router.parseUrl('/admin' + subPath);
       default:
         return true; // guest puede entrar a /dashboard
     }

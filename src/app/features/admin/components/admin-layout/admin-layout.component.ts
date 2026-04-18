@@ -68,7 +68,8 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
         if (e instanceof NavigationStart && (e as any).navigationTrigger === 'popstate') {
           if (this.isModuleRoute()) {
             const moduleSegs = ['/cursos', '/trading-bot', '/trading-operation', '/ai',
-              '/sms-masivos', '/automatic-whatsapp', '/punto-pago', '/dinamicas', '/xzoom-en-vivo'];
+              '/sms-masivos', '/automatic-whatsapp', '/punto-pago', '/dinamicas', '/xzoom-en-vivo',
+              '/anda-gana'];
             const targetIsModule = moduleSegs.some(s => e.url.includes(s));
             if (!targetIsModule) {
               const stay = this.router.url;
@@ -166,7 +167,8 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     const u = this.router.url;
     return u.includes('/cursos') || u.includes('/trading-bot') || u.includes('/trading-operation') ||
       u.includes('/ai') || u.includes('/sms-masivos') || u.includes('/automatic-whatsapp') ||
-      u.includes('/punto-pago') || u.includes('/dinamicas') || u.includes('/xzoom-en-vivo');
+      u.includes('/punto-pago') || u.includes('/dinamicas') || u.includes('/xzoom-en-vivo') ||
+      u.includes('/anda-gana');
   }
 
   logout(): void {

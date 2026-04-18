@@ -167,6 +167,22 @@ export const routes: Routes = [
       {
         path: 'xzoom-settings',
         loadComponent: () => import('./features/admin/components/xzoom-settings/admin-xzoom-settings.component').then(m => m.AdminXzoomSettingsComponent)
+      },
+      {
+        path: 'automatic-whatsapp',
+        loadComponent: () => import('./features/automatic-whatsapp/components/automatic-whatsapp/automatic-whatsapp.component').then(m => m.AutomaticWhatsappComponent)
+      },
+      {
+        path: 'dinamicas',
+        loadComponent: () => import('./features/dinamicas/components/dinamicas/dinamicas.component').then(m => m.DinamicasComponent)
+      },
+      {
+        path: 'trading-operation',
+        loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
+      },
+      {
+        path: 'trading-operation/:packageId',
+        loadComponent: () => import('./features/user/components/trading-operation/trading-operation.component').then(m => m.TradingOperationComponent)
       }
     ]
   },
