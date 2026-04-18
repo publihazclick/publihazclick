@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, signal, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { isPlatformBrowser, SlicePipe } from '@angular/common';
+import { isPlatformBrowser, SlicePipe, DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -13,7 +13,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 @Component({
   selector: 'app-anda-gana',
   standalone: true,
-  imports: [FormsModule, SlicePipe],
+  imports: [FormsModule, SlicePipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
@@ -1418,18 +1418,49 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                   <p class="text-emerald-400 font-black text-sm flex-shrink-0">{{ formatCOP(trip.offered_price) }}</p>
                 </div>
-                <div class="px-4 pb-3 flex gap-2">
+                <!-- Estados del viaje -->
+                <div class="px-4 pb-2 flex items-center gap-1">
+                  @for (st of tripStages; track st.key) {
+                    <div class="flex-1 flex flex-col items-center gap-0.5">
+                      <div class="w-full h-1 rounded-full"
+                        [style.background]="isStageReached(trip.ag_trip_requests?.driver_stage, st.key) ? '#10b981' : 'rgba(255,255,255,0.1)'"></div>
+                      <span class="text-[9px] font-bold"
+                        [style.color]="isStageReached(trip.ag_trip_requests?.driver_stage, st.key) ? '#10b981' : '#64748b'">{{ st.label }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="px-4 pb-3 flex flex-wrap gap-2">
                   <button (click)="openDriverChat(trip)"
-                    class="px-4 py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
                     style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
-                    <span class="material-symbols-outlined" style="font-size:16px">chat</span>
-                    Chat
+                    <span class="material-symbols-outlined" style="font-size:15px">chat</span>Chat
                   </button>
+                  <button (click)="callPassengerFromTrip(trip)"
+                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+                    style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+                    <span class="material-symbols-outlined" style="font-size:15px">call</span>Llamar
+                  </button>
+                  <button (click)="navigateTo(trip.ag_trip_requests?.origin_lat, trip.ag_trip_requests?.origin_lng, 'pickup')"
+                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1"
+                    style="background:linear-gradient(135deg,#8b5cf6,#6366f1)">
+                    <span class="material-symbols-outlined" style="font-size:15px">navigation</span>Origen
+                  </button>
+                  <button (click)="navigateTo(trip.ag_trip_requests?.dest_lat, trip.ag_trip_requests?.dest_lng, 'dest')"
+                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1"
+                    style="background:linear-gradient(135deg,#f59e0b,#f97316)">
+                    <span class="material-symbols-outlined" style="font-size:15px">place</span>Destino
+                  </button>
+                  @if (trip.ag_trip_requests?.driver_stage !== 'picked_up' && trip.ag_trip_requests?.driver_stage !== 'on_route') {
+                    <button (click)="advanceStage(trip, 'picked_up')"
+                      class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1"
+                      style="background:linear-gradient(135deg,#0891b2,#06b6d4)">
+                      <span class="material-symbols-outlined" style="font-size:15px">person_check</span>Pasajero a bordo
+                    </button>
+                  }
                   <button (click)="finishDriverTrip(trip)"
-                    class="flex-1 py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                    class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
                     style="background:linear-gradient(135deg,#16a34a,#15803d)">
-                    <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
-                    Finalizar viaje
+                    <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>Finalizar
                   </button>
                 </div>
               </div>
@@ -1695,6 +1726,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                  driverSection() === 'earnings' ? 'Ganancias' :
                  driverSection() === 'trips' ? 'Mis Viajes' :
                  driverSection() === 'referrals' ? 'Recomienda y Gana' :
+                 driverSection() === 'analytics' ? 'Analytics' :
+                 driverSection() === 'quests' ? 'Metas y bonos' :
+                 driverSection() === 'vehicles' ? 'Mis vehículos' :
+                 driverSection() === 'blacklist' ? 'Pasajeros bloqueados' :
+                 driverSection() === 'tutorial' ? 'Tutorial' :
                  driverSection() === 'preferences' ? 'Preferencias' :
                  driverSection() === 'security' ? 'Seguridad' :
                  driverSection() === 'support' ? 'Soporte' :
@@ -1730,6 +1766,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               }
             </div>
+            <!-- Nivel + horas online -->
+            @if (driverOnline()) {
+              <div class="rounded-2xl p-3 flex items-center justify-between"
+                style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2)">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-emerald-400 animate-pulse" style="font-size:18px">schedule</span>
+                  <div>
+                    <p class="text-white font-black text-sm">{{ onlineTodayFormatted() }}</p>
+                    <p class="text-slate-400 text-[10px]">online hoy</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg" [style.background]="driverLevelColor()">
+                  <span class="material-symbols-outlined" style="font-size:14px">{{ driverLevelIcon() }}</span>
+                  <span class="text-xs font-black uppercase">{{ driverData()?.level ?? 'bronce' }}</span>
+                </div>
+              </div>
+            }
             <!-- Stats -->
             <div class="grid grid-cols-3 gap-3">
               <div class="rounded-2xl p-4 flex flex-col items-center gap-1"
@@ -1844,6 +1897,49 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </button>
                 <p class="text-slate-600 text-[10px] text-center">Mínimo {{ formatCOP(5000) }} · Seguro con ePayco</p>
               </div>
+
+              <!-- Retirar ganancias -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2)">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">payments</span>
+                  <p class="text-white font-black text-sm">Retirar ganancias</p>
+                </div>
+                <p class="text-slate-500 text-[11px]">Mínimo 20.000 COP. Recibes en 1-3 días hábiles.</p>
+                <input type="number" [(ngModel)]="wdAmount" placeholder="Monto en COP" min="20000"
+                  class="w-full px-3 py-2 rounded-lg text-white text-sm outline-none"
+                  style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)" />
+                <select [(ngModel)]="wdMethod"
+                  class="w-full px-3 py-2 rounded-lg text-white text-sm outline-none"
+                  style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)">
+                  <option value="bank">Transferencia bancaria</option>
+                  <option value="nequi">Nequi</option>
+                  <option value="daviplata">Daviplata</option>
+                  <option value="efectivo">Efectivo (oficina)</option>
+                </select>
+                <input type="text" [(ngModel)]="wdAccount" [placeholder]="wdPlaceholder()"
+                  class="w-full px-3 py-2 rounded-lg text-white text-sm outline-none"
+                  style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)" />
+                <button (click)="requestDriverWithdraw()" [disabled]="wdLoading() || (wdAmount ?? 0) < 20000"
+                  class="w-full py-2.5 rounded-xl font-black text-xs uppercase disabled:opacity-40"
+                  style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
+                  {{ wdLoading() ? 'Procesando...' : 'Solicitar retiro' }}
+                </button>
+                @if (wdMsg()) { <p class="text-xs text-center" [class]="wdMsg()!.startsWith('Error') ? 'text-rose-400' : 'text-emerald-300'">{{ wdMsg() }}</p> }
+                @if (driverWithdrawals().length > 0) {
+                  <div class="pt-2 border-t border-white/10 space-y-1">
+                    <p class="text-[10px] text-slate-500 uppercase tracking-wide">Solicitudes recientes</p>
+                    @for (w of driverWithdrawals().slice(0, 5); track w.id) {
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">{{ w.created_at | date:'short' }}</span>
+                        <span class="text-white">{{ formatCOP(w.amount) }}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                          [class]="w.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : w.status === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'">{{ w.status }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
             </div>
             <!-- Historial -->
             <p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Historial de movimientos</p>
@@ -1899,6 +1995,160 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <p class="text-slate-600 text-[10px]">{{ trip.completed_at | slice:0:10 }}</p>
               </div>
             }
+          }
+
+          <!-- ── ANALYTICS ── -->
+          @if (!loadingSection() && driverSection() === 'analytics') {
+            <div class="flex flex-col gap-4">
+              <div class="flex items-center gap-2 flex-wrap">
+                @for (p of [7, 14, 30, 90]; track p) {
+                  <button (click)="setAnalyticsPeriod(p)" class="px-3 py-1.5 rounded-lg text-xs font-bold"
+                    [class]="analyticsPeriodDriver() === p ? 'bg-emerald-600 text-white' : 'bg-white/5 text-slate-400'">{{ p }}d</button>
+                }
+              </div>
+              @if (driverAnalytics(); as a) {
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="rounded-2xl p-4" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
+                    <p class="text-[10px] text-emerald-400 uppercase tracking-wide">Ganado</p>
+                    <p class="text-2xl font-black text-emerald-300 mt-1">{{ formatCOP(a.total_earned) }}</p>
+                  </div>
+                  <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                    <p class="text-[10px] text-slate-400 uppercase">Viajes</p>
+                    <p class="text-2xl font-black text-white mt-1">{{ a.completed_trips }}</p>
+                  </div>
+                  <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                    <p class="text-[10px] text-slate-400 uppercase">Cancelados</p>
+                    <p class="text-2xl font-black text-rose-300 mt-1">{{ a.cancelled_trips }}</p>
+                  </div>
+                  <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                    <p class="text-[10px] text-slate-400 uppercase">Horas online</p>
+                    <p class="text-2xl font-black text-cyan-300 mt-1">{{ a.online_hours }}h</p>
+                  </div>
+                  <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                    <p class="text-[10px] text-slate-400 uppercase">Rating</p>
+                    <p class="text-2xl font-black text-amber-300 mt-1">{{ a.avg_rating }} <span class="text-xs text-slate-500">({{ a.ratings_count }})</span></p>
+                  </div>
+                  <div class="rounded-2xl p-4" style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2)">
+                    <p class="text-[10px] text-purple-400 uppercase">Nivel</p>
+                    <p class="text-xl font-black text-purple-300 mt-1 uppercase">{{ a.level }}</p>
+                  </div>
+                </div>
+                @if (driverDailyEarnings().length > 0) {
+                  <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">Ganancias diarias</p>
+                    <div class="flex items-end gap-1 h-24">
+                      @for (d of driverDailyEarnings(); track d.day) {
+                        <div class="flex-1 bg-emerald-500/70 rounded-t" [style.height.%]="dailyBarHeight(d.earnings)" [title]="d.day + ': ' + formatCOP(d.earnings)"></div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          <!-- ── QUESTS ── -->
+          @if (!loadingSection() && driverSection() === 'quests') {
+            <div class="flex flex-col gap-3">
+              <p class="text-slate-400 text-sm">Completa estas metas para ganar bonos extras.</p>
+              @for (q of quests(); track q.id) {
+                <div class="rounded-2xl p-4" style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2)">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="material-symbols-outlined text-purple-400" style="font-size:22px">emoji_events</span>
+                    <p class="text-white font-black text-sm flex-1">{{ q.title }}</p>
+                    <span class="text-amber-400 font-black text-sm">+{{ formatCOP(q.reward_cop) }}</span>
+                  </div>
+                  <p class="text-slate-400 text-xs mb-2">{{ q.description }}</p>
+                  <p class="text-[10px] text-slate-500">Expira: {{ q.valid_until | date:'shortDate' }} · {{ q.period }}</p>
+                </div>
+              }
+              @if (quests().length === 0) {
+                <p class="text-slate-500 text-center py-8">No hay metas activas</p>
+              }
+            </div>
+          }
+
+          <!-- ── MIS VEHÍCULOS ── -->
+          @if (!loadingSection() && driverSection() === 'vehicles') {
+            <div class="flex flex-col gap-3">
+              @for (v of myVehicles(); track v.id) {
+                <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                  <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-cyan-400" style="font-size:24px">{{ v.vehicle_type === 'moto' ? 'two_wheeler' : 'directions_car' }}</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-white font-bold">{{ v.brand }} {{ v.model }}</p>
+                      <p class="text-slate-500 text-xs">{{ v.plate }} · {{ v.color }} · {{ v.year }}</p>
+                    </div>
+                    @if (v.is_current) {
+                      <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-black rounded-lg uppercase">Activo</span>
+                    } @else {
+                      <button (click)="switchVehicle(v.id)" class="px-2 py-1 bg-cyan-600 text-white text-[10px] font-bold rounded-lg">Usar</button>
+                    }
+                  </div>
+                </div>
+              }
+              <button (click)="openAddVehicle()" class="py-3 rounded-xl text-white text-sm font-black"
+                style="background:linear-gradient(135deg,#0891b2,#06b6d4)">+ Agregar vehículo</button>
+              @if (addingVehicle()) {
+                <div class="flex flex-col gap-2 rounded-2xl p-3" style="background:rgba(255,255,255,0.04)">
+                  <div class="grid grid-cols-2 gap-2">
+                    <select [(ngModel)]="newVehicle.vehicle_type" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
+                      <option value="carro">Carro</option>
+                      <option value="moto">Moto</option>
+                      <option value="suv">SUV</option>
+                      <option value="van">Van</option>
+                      <option value="camion">Camión</option>
+                    </select>
+                    <input [(ngModel)]="newVehicle.plate" placeholder="Placa" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm uppercase" />
+                    <input [(ngModel)]="newVehicle.brand" placeholder="Marca" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+                    <input [(ngModel)]="newVehicle.model" placeholder="Modelo" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+                    <input [(ngModel)]="newVehicle.color" placeholder="Color" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+                    <input [(ngModel)]="newVehicle.year" type="number" placeholder="Año" class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+                  </div>
+                  <button (click)="saveNewVehicle()" class="py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg">Guardar</button>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ── BLACKLIST ── -->
+          @if (!loadingSection() && driverSection() === 'blacklist') {
+            <div class="flex flex-col gap-2">
+              <p class="text-slate-400 text-sm">Pasajeros con los que prefieres no volver a viajar.</p>
+              @for (b of blacklist(); track b.id) {
+                <div class="flex items-center justify-between rounded-xl p-3" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2)">
+                  <div>
+                    <p class="text-white text-xs font-mono">{{ b.passenger_user_id.slice(0, 8) }}...</p>
+                    @if (b.reason) { <p class="text-slate-400 text-[10px]">{{ b.reason }}</p> }
+                  </div>
+                  <button (click)="removeFromBlacklist(b.id)" class="text-emerald-400 text-xs">Desbloquear</button>
+                </div>
+              }
+              @if (blacklist().length === 0) {
+                <p class="text-slate-500 text-center py-8">Sin pasajeros bloqueados</p>
+              }
+            </div>
+          }
+
+          <!-- ── TUTORIAL ── -->
+          @if (!loadingSection() && driverSection() === 'tutorial') {
+            <div class="flex flex-col gap-4">
+              @for (t of tutorialSteps; track t.title) {
+                <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-cyan-400" style="font-size:22px">{{ t.icon }}</span>
+                    <p class="text-white font-black">{{ t.title }}</p>
+                  </div>
+                  <p class="text-slate-300 text-sm">{{ t.body }}</p>
+                </div>
+              }
+              @if (!tutorialDone()) {
+                <button (click)="completeTutorial()" class="py-3 rounded-xl text-white text-sm font-black"
+                  style="background:linear-gradient(135deg,#16a34a,#059669)">He leído todo · Completar</button>
+              } @else {
+                <p class="text-emerald-400 text-sm text-center">✓ Tutorial completado</p>
+              }
+            </div>
           }
 
           <!-- ── PREFERENCIAS ── -->
@@ -3114,6 +3364,150 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // Llamadas enmascaradas
   callingDriver      = signal(false);
+
+  // Driver analytics
+  analyticsPeriodDriver = signal(30);
+  driverAnalytics       = signal<any | null>(null);
+  driverDailyEarnings   = signal<{ day: string; trips: number; earnings: number }[]>([]);
+
+  // Quests + vehicles + blacklist + tutorial
+  quests      = signal<any[]>([]);
+  myVehicles  = signal<any[]>([]);
+  blacklist   = signal<any[]>([]);
+  addingVehicle = signal(false);
+  newVehicle = { vehicle_type: 'carro', plate: '', brand: '', model: '', color: '', year: new Date().getFullYear() };
+
+  readonly tutorialSteps = [
+    { icon: 'directions_car', title: '1. Antes de salir', body: 'Revisa SOAT vigente, tecnomecánica, combustible y limpieza del vehículo. Los pasajeros califican todo.' },
+    { icon: 'wifi_tethering', title: '2. Ponte en línea', body: 'Activa el botón verde de "En línea" cuando estés listo para trabajar. Necesitas GPS activado y permiso de ubicación.' },
+    { icon: 'local_offer', title: '3. Recibes solicitudes', body: 'Verás solicitudes cercanas con precio sugerido. Puedes aceptar el precio del pasajero o hacer una contraoferta.' },
+    { icon: 'navigation', title: '4. Navega con Google Maps', body: 'Usa el botón "Origen" para ir a recoger, y "Destino" para llegar al final del viaje. El pasajero verá tu ubicación en tiempo real.' },
+    { icon: 'person_check', title: '5. Recoge al pasajero', body: 'Cuando el pasajero se suba, toca "Pasajero a bordo" para avanzar el estado.' },
+    { icon: 'check_circle', title: '6. Finaliza y cobra', body: 'Al terminar el viaje, toca "Finalizar". Si el pago es efectivo, cobra antes de bajarlo. Si es digital, confirma con el pasajero por chat.' },
+    { icon: 'star', title: '7. Califica al pasajero', body: 'Después de cada viaje, califica al pasajero. Esto nos ayuda a proteger a conductores como tú.' },
+    { icon: 'emergency', title: '🚨 Botón de pánico', body: 'En caso de emergencia, usa el botón rojo. Enviaremos alerta a tus contactos con tu ubicación actual.' },
+  ];
+
+  // Driver withdrawals
+  wdAmount: number | null = null;
+  wdMethod: 'bank'|'nequi'|'daviplata'|'efectivo' = 'bank';
+  wdAccount = '';
+  wdLoading          = signal(false);
+  wdMsg              = signal<string | null>(null);
+  driverWithdrawals  = signal<any[]>([]);
+
+  wdPlaceholder(): string {
+    const m = this.wdMethod;
+    if (m === 'bank') return 'Ej: Bancolombia 1234567890';
+    if (m === 'nequi' || m === 'daviplata') return '+57 300 1234567';
+    return 'Opcional';
+  }
+
+  // Driver analytics
+  async setAnalyticsPeriod(days: number): Promise<void> {
+    this.analyticsPeriodDriver.set(days);
+    await this.loadDriverAnalytics();
+  }
+
+  async loadDriverAnalytics(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    const days = this.analyticsPeriodDriver();
+    const [a, series] = await Promise.all([
+      this.agService.getDriverAnalytics(d.id, days),
+      this.agService.getDriverDailyEarnings(d.id, Math.min(days, 30)),
+    ]);
+    this.driverAnalytics.set(a);
+    this.driverDailyEarnings.set(series);
+  }
+
+  dailyBarHeight(val: number): number {
+    const max = Math.max(...this.driverDailyEarnings().map(d => d.earnings), 1);
+    return Math.round((val / max) * 100);
+  }
+
+  // Quests
+  async loadQuests(): Promise<void> {
+    this.quests.set(await this.agService.listQuests());
+  }
+
+  // Vehicles
+  async loadVehicles(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    this.myVehicles.set(await this.agService.listVehicles(d.id));
+  }
+
+  openAddVehicle(): void { this.addingVehicle.set(!this.addingVehicle()); }
+
+  async saveNewVehicle(): Promise<void> {
+    const d = this.driverData();
+    if (!d || !this.newVehicle.plate.trim()) return;
+    try {
+      await this.agService.addVehicle(d.id, {
+        vehicle_type: this.newVehicle.vehicle_type,
+        brand: this.newVehicle.brand.trim(),
+        model: this.newVehicle.model.trim(),
+        year: Number(this.newVehicle.year),
+        color: this.newVehicle.color.trim(),
+        plate: this.newVehicle.plate.trim().toUpperCase(),
+      });
+      this.newVehicle = { vehicle_type: 'carro', plate: '', brand: '', model: '', color: '', year: new Date().getFullYear() };
+      this.addingVehicle.set(false);
+      await this.loadVehicles();
+    } catch (e: any) { alert('Error: ' + (e?.message ?? 'No se pudo')); }
+  }
+
+  async switchVehicle(vehicleId: string): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    await this.agService.setCurrentVehicle(d.id, vehicleId);
+    await this.loadVehicles();
+  }
+
+  // Blacklist
+  async loadBlacklist(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    this.blacklist.set(await this.agService.listBlacklist(d.id));
+  }
+
+  async removeFromBlacklist(id: string): Promise<void> {
+    await this.agService.removeFromBlacklist(id);
+    await this.loadBlacklist();
+  }
+
+  tutorialDone(): boolean {
+    return !!((this.driverData() as any)?.tutorial_completed);
+  }
+
+  // Tutorial
+  async completeTutorial(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    await this.agService.markTutorialCompleted(d.id);
+    if ((d as any).tutorial_completed !== undefined) (d as any).tutorial_completed = true;
+    alert('✓ Tutorial completado. ¡Ya puedes trabajar!');
+  }
+
+  async requestDriverWithdraw(): Promise<void> {
+    const d = this.driverData();
+    const amt = Number(this.wdAmount);
+    if (!d || !amt || amt < 20000) { this.wdMsg.set('Error: mínimo 20.000 COP'); return; }
+    this.wdLoading.set(true);
+    this.wdMsg.set(null);
+    try {
+      await this.agService.requestDriverWithdrawal(d.id, amt, this.wdMethod, { account: this.wdAccount.trim() });
+      this.wdMsg.set('Retiro solicitado. Recibirás en 1-3 días hábiles.');
+      this.wdAmount = null;
+      this.wdAccount = '';
+      this.driverWithdrawals.set(await this.agService.listDriverWithdrawals(d.id));
+      // Refrescar balance visible (ajustar localmente en memoria)
+      (d as any).wallet_balance = ((d as any).wallet_balance ?? 0) - amt;
+    } catch (e: any) {
+      this.wdMsg.set('Error: ' + (e?.message ?? 'No se pudo'));
+    } finally { this.wdLoading.set(false); }
+  }
   emergencyContacts  = signal<{ name: string; phone: string }[]>([]);
   newContactName     = '';
   newContactPhone    = '';
@@ -3186,13 +3580,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'wifi_tethering', label: 'Estado / En Línea', action: 'status',       sectionLabel: '',          danger: false, divider: false },
     { icon: 'payments',       label: 'Ganancias',         action: 'earnings',     sectionLabel: '',          danger: false, divider: false },
     { icon: 'route',          label: 'Mis Viajes',        action: 'trips',        sectionLabel: '',          danger: false, divider: false },
+    { icon: 'analytics',      label: 'Analytics',         action: 'analytics',    sectionLabel: '',          danger: false, divider: false },
+    { icon: 'emoji_events',   label: 'Metas y bonos',     action: 'quests',       sectionLabel: '',          danger: false, divider: false },
     { icon: '',               label: '',                  action: '',             sectionLabel: 'Ganancias',     danger: false, divider: true },
     { icon: 'card_giftcard',  label: 'Recomienda y Gana', action: 'referrals',    sectionLabel: '',          danger: false, divider: false },
     { icon: '',               label: '',                  action: '',             sectionLabel: 'Configuración', danger: false, divider: true },
     { icon: 'tune',           label: 'Preferencias',      action: 'preferences',  sectionLabel: '',          danger: false, divider: false },
+    { icon: 'directions_car', label: 'Mis vehículos',     action: 'vehicles',     sectionLabel: '',          danger: false, divider: false },
     { icon: 'shield',         label: 'Seguridad',         action: 'security',     sectionLabel: '',          danger: false, divider: false },
+    { icon: 'block',          label: 'Pasajeros bloqueados', action: 'blacklist', sectionLabel: '',          danger: false, divider: false },
     { icon: 'support_agent',  label: 'Soporte',           action: 'support',      sectionLabel: '',          danger: false, divider: false },
-    { icon: 'settings',       label: 'Configuración',     action: 'settings',     sectionLabel: '',          danger: false, divider: false },
+    { icon: 'school',         label: 'Tutorial',          action: 'tutorial',     sectionLabel: '',          danger: false, divider: false },
     { icon: '',               label: '',                  action: '',             sectionLabel: '',          danger: false, divider: true },
     { icon: 'logout',         label: 'Cerrar Sesión',     action: 'logout',       sectionLabel: '',          danger: true,  divider: false },
   ];
@@ -4169,14 +4567,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const stats = await this.agService.getDriverStats(driver.id);
       this.driverStats.set(stats);
     } else if (action === 'earnings') {
-      const [history, total] = await Promise.all([
+      const [history, total, withdrawals] = await Promise.all([
         this.agService.getDriverWalletHistory(driver.id),
         this.agService.getDriverEarningsSummary(driver.id),
+        this.agService.listDriverWithdrawals(driver.id),
       ]);
       this.driverEarnings.set({ total, walletHistory: history });
+      this.driverWithdrawals.set(withdrawals);
     } else if (action === 'trips') {
       const trips = await this.agService.getDriverCompletedTrips(driver.id);
       this.driverCompletedTrips.set(trips);
+    } else if (action === 'analytics') {
+      await this.loadDriverAnalytics();
+    } else if (action === 'quests') {
+      await this.loadQuests();
+    } else if (action === 'vehicles') {
+      await this.loadVehicles();
+    } else if (action === 'blacklist') {
+      await this.loadBlacklist();
     } else if (action === 'preferences') {
       this.driverPrefs.set({
         maxDistance:      driver.max_distance_km   ?? 20,
@@ -4212,15 +4620,106 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.driverOnline.set(next);
 
     if (next) {
-      // Iniciar tracking GPS
+      // Iniciar tracking GPS + sesión online
       this.startGpsTracking(driver.id);
+      try {
+        const sessionId = await this.agService.startOnlineSession(driver.id);
+        this._onlineSessionId = sessionId;
+      } catch {}
+      this._startOnlineTimer();
     } else {
-      // Detener tracking y eliminar ubicación
+      // Detener tracking y cerrar sesión
       this.stopGpsTracking();
       await this.agService.removeDriverLocation(driver.id);
+      if (this._onlineSessionId) {
+        await this.agService.endOnlineSession(this._onlineSessionId);
+        this._onlineSessionId = null;
+      }
+      this._stopOnlineTimer();
     }
 
     this.togglingOnline.set(false);
+  }
+
+  // Estados del viaje (conductor)
+  readonly tripStages = [
+    { key: 'heading_to_pickup', label: 'Yendo' },
+    { key: 'arrived_at_pickup', label: 'Llegó' },
+    { key: 'picked_up', label: 'A bordo' },
+    { key: 'on_route', label: 'En ruta' },
+    { key: 'arrived_at_destination', label: 'Llegó destino' },
+  ];
+
+  isStageReached(current: string | null | undefined, target: string): boolean {
+    if (!current) return false;
+    const order = ['heading_to_pickup', 'arrived_at_pickup', 'picked_up', 'on_route', 'arrived_at_destination', 'completed'];
+    return order.indexOf(current) >= order.indexOf(target);
+  }
+
+  async advanceStage(trip: any, stage: 'heading_to_pickup'|'arrived_at_pickup'|'picked_up'|'on_route'|'arrived_at_destination'|'completed'): Promise<void> {
+    const tripReqId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
+    if (!tripReqId) return;
+    await this.agService.updateTripStage(tripReqId, stage);
+    if (trip.ag_trip_requests) trip.ag_trip_requests.driver_stage = stage;
+  }
+
+  navigateTo(lat: number, lng: number, label: 'pickup' | 'dest' = 'dest'): void {
+    if (!lat || !lng) return;
+    // Google Maps funciona en Android/iOS; Waze alt
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    if (typeof window !== 'undefined') window.open(url, '_blank');
+  }
+
+  async callPassengerFromTrip(trip: any): Promise<void> {
+    const tripReqId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
+    if (!tripReqId) return;
+    const r = await this.agService.startMaskedCall(tripReqId);
+    if (r.ok) {
+      alert('📞 Te estamos llamando. Al contestar conectaremos con el pasajero.');
+    } else {
+      alert('Error: ' + (r.error ?? 'No se pudo llamar'));
+    }
+  }
+
+  driverLevelColor(): string {
+    const lvl = (this.driverData() as any)?.level ?? 'bronce';
+    const map: Record<string, string> = {
+      bronce: 'rgba(180,83,9,0.2);color:#fbbf24',
+      plata: 'rgba(148,163,184,0.2);color:#e2e8f0',
+      oro: 'rgba(251,191,36,0.2);color:#fbbf24',
+      platino: 'rgba(103,232,249,0.2);color:#67e8f9',
+      diamante: 'rgba(192,132,252,0.25);color:#c084fc',
+    };
+    return map[lvl] ?? map['bronce'];
+  }
+  driverLevelIcon(): string {
+    const lvl = (this.driverData() as any)?.level ?? 'bronce';
+    const map: Record<string, string> = { bronce: 'workspace_premium', plata: 'military_tech', oro: 'emoji_events', platino: 'diamond', diamante: 'auto_awesome' };
+    return map[lvl] ?? 'workspace_premium';
+  }
+
+  // Tracking horas online del día (signal hh:mm:ss)
+  private _onlineSessionId: string | null = null;
+  private _onlineTimer: any = null;
+  onlineTodaySeconds = signal(0);
+  onlineTodayFormatted = computed(() => {
+    const s = this.onlineTodaySeconds();
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return `${h}h ${m}m`;
+  });
+
+  private async _startOnlineTimer() {
+    const driver = this.driverData();
+    if (!driver) return;
+    const refresh = async () => {
+      try { this.onlineTodaySeconds.set(await this.agService.getTodayOnlineSeconds(driver.id)); } catch {}
+    };
+    await refresh();
+    this._onlineTimer = setInterval(refresh, 30000);
+  }
+
+  private _stopOnlineTimer() {
+    if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
   }
 
   private startGpsTracking(driverId: string): void {
@@ -4261,6 +4760,43 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
+
+    // Background tracking con Capacitor (solo app nativa Android/iOS)
+    this._startBackgroundTracking(driverId).catch(() => {});
+  }
+
+  private _bgWatcherId: string | null = null;
+  private async _startBackgroundTracking(driverId: string): Promise<void> {
+    try {
+      const w = window as any;
+      const cap = w.Capacitor;
+      if (!cap?.isNativePlatform?.()) return; // solo nativa
+      const BackgroundGeolocation = cap.Plugins?.BackgroundGeolocation;
+      if (!BackgroundGeolocation) return;
+      this._bgWatcherId = await BackgroundGeolocation.addWatcher({
+        backgroundMessage: 'Movi Conductor: tracking activo',
+        backgroundTitle: 'Recibiendo solicitudes',
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 20,
+      }, (location: any, error: any) => {
+        if (error) { console.error('bg-loc', error); return; }
+        if (location) {
+          this.agService.updateDriverLocation(driverId, location.latitude, location.longitude, location.bearing ?? 0);
+        }
+      });
+    } catch (e) { console.warn('BG geo init:', e); }
+  }
+
+  private async _stopBackgroundTracking(): Promise<void> {
+    try {
+      const w = window as any;
+      const BackgroundGeolocation = w.Capacitor?.Plugins?.BackgroundGeolocation;
+      if (BackgroundGeolocation && this._bgWatcherId) {
+        await BackgroundGeolocation.removeWatcher({ id: this._bgWatcherId });
+        this._bgWatcherId = null;
+      }
+    } catch {}
   }
 
   private stopGpsTracking(): void {
@@ -4268,6 +4804,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       navigator.geolocation.clearWatch(this._gpsWatchId);
       this._gpsWatchId = null;
     }
+    this._stopBackgroundTracking();
   }
 
   async savePreferences() {

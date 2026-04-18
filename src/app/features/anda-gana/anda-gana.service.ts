@@ -897,6 +897,161 @@ export class AndaGanaService {
   }
 
   // ═══════════════════════════════════════════════════
+  // DRIVER: online sessions (tracking horas)
+  // ═══════════════════════════════════════════════════
+  async startOnlineSession(driverId: string): Promise<string | null> {
+    await this.supabase.from('ag_online_sessions').update({
+      ended_at: new Date().toISOString(),
+    }).eq('driver_id', driverId).is('ended_at', null);
+    const { data } = await this.supabase.from('ag_online_sessions').insert({ driver_id: driverId }).select('id').single();
+    return data?.id ?? null;
+  }
+
+  async endOnlineSession(sessionId: string): Promise<void> {
+    const { data: sess } = await this.supabase.from('ag_online_sessions').select('started_at').eq('id', sessionId).maybeSingle();
+    if (!sess) return;
+    const total = Math.floor((Date.now() - new Date((sess as any).started_at).getTime()) / 1000);
+    await this.supabase.from('ag_online_sessions').update({ ended_at: new Date().toISOString(), total_seconds: total }).eq('id', sessionId);
+  }
+
+  async getTodayOnlineSeconds(driverId: string): Promise<number> {
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const { data } = await this.supabase.from('ag_online_sessions')
+      .select('started_at, ended_at, total_seconds').eq('driver_id', driverId).gte('started_at', startOfDay.toISOString());
+    let total = 0;
+    for (const s of (data ?? [])) {
+      if ((s as any).total_seconds) total += (s as any).total_seconds;
+      else if (!(s as any).ended_at) total += Math.floor((Date.now() - new Date((s as any).started_at).getTime()) / 1000);
+    }
+    return total;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: retiros
+  // ═══════════════════════════════════════════════════
+  async requestDriverWithdrawal(driverId: string, amount: number, method: 'bank'|'nequi'|'daviplata'|'efectivo', details: Record<string, string>): Promise<string> {
+    const { data, error } = await this.supabase.rpc('ag_request_withdrawal', {
+      p_driver_id: driverId, p_amount: amount, p_method: method, p_details: details,
+    });
+    if (error) throw error;
+    return data as string;
+  }
+
+  async listDriverWithdrawals(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_withdrawals').select('*').eq('driver_id', driverId).order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: analytics + niveles + quests
+  // ═══════════════════════════════════════════════════
+  async getDriverAnalytics(driverId: string, days = 30): Promise<any> {
+    const { data } = await this.supabase.rpc('ag_driver_analytics', { p_driver_id: driverId, p_days: days });
+    return data;
+  }
+
+  async getDriverDailyEarnings(driverId: string, days = 14): Promise<{ day: string; trips: number; earnings: number }[]> {
+    const { data } = await this.supabase.rpc('ag_driver_daily_earnings', { p_driver_id: driverId, p_days: days });
+    return (data ?? []).map((r: any) => ({ day: r.day, trips: Number(r.trips), earnings: Number(r.earnings) }));
+  }
+
+  async recalcDriverLevel(driverId: string): Promise<string> {
+    const { data } = await this.supabase.rpc('ag_recalc_driver_level', { p_driver_id: driverId });
+    return data as string;
+  }
+
+  async listQuests(): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_quests').select('*').eq('is_active', true).order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  async getQuestProgress(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_quest_progress').select('*, ag_quests(*)').eq('driver_id', driverId);
+    return data ?? [];
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: blacklist pasajeros
+  // ═══════════════════════════════════════════════════
+  async listBlacklist(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_passenger_blacklist').select('*').eq('driver_id', driverId).order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  async addToBlacklist(driverId: string, passengerUserId: string, reason?: string): Promise<void> {
+    await this.supabase.from('ag_passenger_blacklist').insert({ driver_id: driverId, passenger_user_id: passengerUserId, reason: reason ?? null });
+  }
+
+  async removeFromBlacklist(id: string): Promise<void> {
+    await this.supabase.from('ag_passenger_blacklist').delete().eq('id', id);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: multi-vehículo
+  // ═══════════════════════════════════════════════════
+  async listVehicles(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_driver_vehicles').select('*').eq('driver_id', driverId).order('is_current', { ascending: false });
+    return data ?? [];
+  }
+
+  async addVehicle(driverId: string, payload: { vehicle_type: string; brand: string; model: string; year: number; color: string; plate: string; photo_url?: string }): Promise<void> {
+    await this.supabase.from('ag_driver_vehicles').insert({ driver_id: driverId, ...payload });
+  }
+
+  async setCurrentVehicle(driverId: string, vehicleId: string): Promise<void> {
+    await this.supabase.from('ag_driver_vehicles').update({ is_current: false }).eq('driver_id', driverId);
+    await this.supabase.from('ag_driver_vehicles').update({ is_current: true }).eq('id', vehicleId);
+  }
+
+  async removeVehicle(id: string): Promise<void> {
+    await this.supabase.from('ag_driver_vehicles').delete().eq('id', id);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: auto-accept + tutorial
+  // ═══════════════════════════════════════════════════
+  async updateAutoAccept(driverId: string, enabled: boolean, minPrice?: number, maxDistance?: number): Promise<void> {
+    await this.supabase.from('ag_drivers').update({
+      auto_accept_enabled: enabled,
+      auto_accept_min_price: minPrice ?? null,
+      auto_accept_max_distance: maxDistance ?? null,
+    }).eq('id', driverId);
+  }
+
+  async markTutorialCompleted(driverId: string): Promise<void> {
+    await this.supabase.from('ag_drivers').update({
+      tutorial_completed: true,
+      tutorial_completed_at: new Date().toISOString(),
+    }).eq('id', driverId);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: estados viaje + paradas
+  // ═══════════════════════════════════════════════════
+  async updateTripStage(tripRequestId: string, stage: 'heading_to_pickup'|'arrived_at_pickup'|'picked_up'|'on_route'|'arrived_at_destination'|'completed'): Promise<void> {
+    const patch: any = { driver_stage: stage };
+    if (stage === 'heading_to_pickup') patch['driver_started_at'] = new Date().toISOString();
+    if (stage === 'picked_up') patch['passenger_picked_at'] = new Date().toISOString();
+    await this.supabase.from('ag_trip_requests').update(patch).eq('id', tripRequestId);
+  }
+
+  async addWaypoint(tripRequestId: string, waypoint: { address: string; lat: number; lng: number }): Promise<void> {
+    const { data: trip } = await this.supabase.from('ag_trip_requests').select('waypoints').eq('id', tripRequestId).maybeSingle();
+    const current = (trip as any)?.waypoints ?? [];
+    await this.supabase.from('ag_trip_requests').update({ waypoints: [...current, { ...waypoint, order: current.length }] }).eq('id', tripRequestId);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: heatmap
+  // ═══════════════════════════════════════════════════
+  async getHeatmap(bbox: { latMin: number; lngMin: number; latMax: number; lngMax: number }): Promise<{ lat: number; lng: number; weight: number }[]> {
+    const { data } = await this.supabase.rpc('ag_heatmap_zones', {
+      p_lat_min: bbox.latMin, p_lng_min: bbox.lngMin, p_lat_max: bbox.latMax, p_lng_max: bbox.lngMax,
+    });
+    return (data ?? []).map((r: any) => ({ lat: r.lat, lng: r.lng, weight: Number(r.weight) }));
+  }
+
+  // ═══════════════════════════════════════════════════
   // Push notifications
   // ═══════════════════════════════════════════════════
   async registerPushSubscription(sub: PushSubscription): Promise<void> {
