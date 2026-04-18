@@ -1723,6 +1723,66 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
+        <!-- ── CONDUCTORES BLOQUEADOS ── -->
+        @if (passengerSection() === 'blockeddrivers') {
+          <div class="flex flex-col gap-3">
+            <h2 class="text-white font-black text-lg">Conductores bloqueados</h2>
+            <p class="text-slate-400 text-xs">Estos conductores no verán tus próximas solicitudes de viaje.</p>
+
+            @if (passengerBlockedDrivers().length === 0) {
+              <p class="text-slate-500 text-center py-6 text-sm">No tienes conductores bloqueados.</p>
+            } @else {
+              @for (b of passengerBlockedDrivers(); track b.id) {
+                <div class="rounded-2xl p-3 flex items-center gap-3"
+                  style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style="background:rgba(239,68,68,0.15)">
+                    <span class="material-symbols-outlined text-red-400" style="font-size:20px">block</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-white font-bold text-sm truncate">
+                      {{ b.ag_drivers?.ag_users?.full_name ?? 'Conductor' }}
+                    </p>
+                    <p class="text-slate-400 text-xs truncate">
+                      {{ b.ag_drivers?.vehicle_brand }} {{ b.ag_drivers?.vehicle_model }} · {{ b.ag_drivers?.plate }}
+                    </p>
+                    @if (b.reason) {
+                      <p class="text-red-300 text-[10px] mt-0.5">Motivo: {{ b.reason }}</p>
+                    }
+                  </div>
+                  <button (click)="unblockDriverAction(b.id)"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-400"
+                    style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3)">
+                    Desbloquear
+                  </button>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <!-- ── TUTORIAL PASAJERO ── -->
+        @if (passengerSection() === 'tutorial') {
+          <div class="flex flex-col gap-3">
+            <h2 class="text-white font-black text-lg">Cómo usar Movi</h2>
+            @for (step of passengerTutorialSteps; track step.title) {
+              <div class="rounded-2xl p-4 flex items-start gap-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:24px">{{ step.icon }}</span>
+                <div>
+                  <p class="text-white font-bold text-sm">{{ step.title }}</p>
+                  <p class="text-slate-400 text-xs leading-relaxed mt-1">{{ step.body }}</p>
+                </div>
+              </div>
+            }
+            <button (click)="completePassengerTutorial()" [disabled]="passengerTutorialDone()"
+              class="w-full py-3 rounded-xl text-white font-black text-sm disabled:opacity-50"
+              style="background:linear-gradient(135deg,#f97316,#ea580c)">
+              @if (passengerTutorialDone()) { ✓ Completado } @else { He leído todo · Completar }
+            </button>
+          </div>
+        }
+
         <!-- ── CUENTA EMPRESA ── -->
         @if (passengerSection() === 'corporate') {
           <div class="flex flex-col gap-4">
@@ -2300,6 +2360,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                  driverSection() === 'scheduled' ? 'Viajes programados' :
                  driverSection() === 'security' ? 'Seguridad' :
                  driverSection() === 'support' ? 'Soporte' :
+                 driverSection() === 'notifications' ? 'Notificaciones' :
+                 driverSection() === 'report' ? 'Reportar problema' :
                  driverSection() === 'settings' ? 'Configuración' : '' }}
             </h2>
           </div>
@@ -3308,6 +3370,111 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                   </div>
                 }
+              }
+            </div>
+          }
+
+          <!-- ── NOTIFICACIONES CONDUCTOR ── -->
+          @if (!loadingSection() && driverSection() === 'notifications') {
+            <div class="flex flex-col gap-3">
+              <p class="text-slate-400 text-xs">Controla qué notificaciones recibes.</p>
+
+              <div class="rounded-2xl p-4 flex items-center justify-between"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div>
+                  <p class="text-white font-bold text-sm">Nuevas solicitudes</p>
+                  <p class="text-slate-500 text-xs">Alerta cuando haya pasajeros cercanos</p>
+                </div>
+                <button (click)="toggleDriverNotifyRequests()"
+                  class="w-12 h-6 rounded-full transition-colors"
+                  [style.background]="driverNotifySettings().newRequests ? '#10b981' : 'rgba(255,255,255,0.15)'">
+                  <div class="w-5 h-5 rounded-full bg-white transition-transform"
+                    [style.transform]="driverNotifySettings().newRequests ? 'translateX(26px)' : 'translateX(2px)'"></div>
+                </button>
+              </div>
+
+              <div class="rounded-2xl p-4 flex items-center justify-between"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div>
+                  <p class="text-white font-bold text-sm">Actualizaciones de viaje</p>
+                  <p class="text-slate-500 text-xs">Pasajero acepta oferta, cancela, etc.</p>
+                </div>
+                <button (click)="toggleDriverNotifyTripUpdates()"
+                  class="w-12 h-6 rounded-full transition-colors"
+                  [style.background]="driverNotifySettings().tripUpdates ? '#10b981' : 'rgba(255,255,255,0.15)'">
+                  <div class="w-5 h-5 rounded-full bg-white transition-transform"
+                    [style.transform]="driverNotifySettings().tripUpdates ? 'translateX(26px)' : 'translateX(2px)'"></div>
+                </button>
+              </div>
+
+              <div class="rounded-2xl p-4 flex items-center justify-between"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <div>
+                  <p class="text-white font-bold text-sm">Ganancias y pagos</p>
+                  <p class="text-slate-500 text-xs">Retiros aprobados, propinas, bonos</p>
+                </div>
+                <button (click)="toggleDriverNotifyEarnings()"
+                  class="w-12 h-6 rounded-full transition-colors"
+                  [style.background]="driverNotifySettings().earnings ? '#10b981' : 'rgba(255,255,255,0.15)'">
+                  <div class="w-5 h-5 rounded-full bg-white transition-transform"
+                    [style.transform]="driverNotifySettings().earnings ? 'translateX(26px)' : 'translateX(2px)'"></div>
+                </button>
+              </div>
+
+              <button (click)="saveDriverNotifySettings()" [disabled]="savingDriverNotify()"
+                class="w-full py-3 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                @if (savingDriverNotify()) { Guardando... } @else { Guardar }
+              </button>
+            </div>
+          }
+
+          <!-- ── REPORTAR PROBLEMA CONDUCTOR ── -->
+          @if (!loadingSection() && driverSection() === 'report') {
+            <div class="flex flex-col gap-4">
+              <div class="rounded-2xl p-4 flex flex-col gap-3"
+                style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                <select [value]="driverReportKind()" (change)="driverReportKind.set($any($event.target).value)"
+                  class="w-full px-3 py-2 rounded-lg text-white text-sm"
+                  style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1)">
+                  <option value="passenger">Pasajero problemático</option>
+                  <option value="incident">Incidente en viaje</option>
+                  <option value="app">Problema con la app</option>
+                  <option value="vehicle">Problema con vehículo</option>
+                  <option value="other">Otro</option>
+                </select>
+                <textarea [(ngModel)]="driverReportDesc" rows="4" maxlength="500"
+                  placeholder="Describe el problema con detalle"
+                  class="w-full px-3 py-2 rounded-lg text-white text-sm"
+                  style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1)"></textarea>
+                <button (click)="submitDriverReport()" [disabled]="submittingDriverReport() || !driverReportDesc.trim()"
+                  class="w-full py-3 rounded-xl text-white font-black text-sm disabled:opacity-50"
+                  style="background:linear-gradient(135deg,#ef4444,#dc2626)">
+                  @if (submittingDriverReport()) { Enviando... } @else { Enviar reporte }
+                </button>
+              </div>
+
+              @if (driverReports().length > 0) {
+                <div>
+                  <p class="text-white font-bold text-sm mb-2">Mis reportes</p>
+                  @for (r of driverReports(); track r.id) {
+                    <div class="rounded-xl p-3 mb-2"
+                      style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+                      <div class="flex items-center justify-between">
+                        <span class="text-white text-xs font-bold uppercase">{{ r.type }}</span>
+                        <span class="text-[10px] font-bold"
+                          [class.text-yellow-400]="r.status === 'open'"
+                          [class.text-cyan-400]="r.status === 'reviewing'"
+                          [class.text-green-400]="r.status === 'resolved'"
+                          [class.text-slate-500]="r.status === 'closed'">
+                          {{ r.status }}
+                        </span>
+                      </div>
+                      <p class="text-slate-300 text-xs mt-1">{{ r.description }}</p>
+                      <p class="text-slate-500 text-[10px] mt-1">{{ r.created_at | date:'dd MMM HH:mm' }}</p>
+                    </div>
+                  }
+                </div>
               }
             </div>
           }
@@ -5038,10 +5205,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { divider: true,  section: 'Cuenta', icon: '', label: '', action: '' },
     { icon: 'notifications',    label: 'Notificaciones',           action: 'notifications',     divider: false, section: '' },
     { icon: 'shield',           label: 'Seguridad',                action: 'security',          divider: false, section: '' },
+    { icon: 'block',            label: 'Conductores bloqueados',   action: 'blockeddrivers',    divider: false, section: '' },
     { icon: 'settings',         label: 'Configuración',            action: 'settings',          divider: false, section: '' },
+    { icon: 'school',           label: 'Tutorial',                 action: 'tutorial',          divider: false, section: '' },
     { icon: 'help',             label: 'Ayuda',                    action: 'support',           divider: false, section: '' },
     { divider: true,  section: '', icon: '', label: '', action: '' },
     { icon: 'drive_eta',        label: 'Conductor',                action: 'driver',            divider: false, section: '' },
+    { icon: 'logout',           label: 'Cerrar sesión',            action: 'logout',            divider: false, section: '' },
   ];
 
   readonly rechargePresets = [10000, 20000, 50000, 100000, 200000, 500000];
@@ -5065,6 +5235,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'shield',          label: 'Seguridad',            action: 'security',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'block',           label: 'Pasajeros bloqueados', action: 'blacklist',    sectionLabel: '',              danger: false, divider: false },
     { icon: 'inventory_2',     label: 'Objetos olvidados',    action: 'lost',         sectionLabel: '',              danger: false, divider: false },
+    { icon: 'notifications',   label: 'Notificaciones',       action: 'notifications', sectionLabel: '',             danger: false, divider: false },
+    { icon: 'settings',        label: 'Configuración',        action: 'settings',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'flag',            label: 'Reportar problema',    action: 'report',       sectionLabel: '',              danger: false, divider: false },
     { icon: 'support_agent',   label: 'Soporte',              action: 'support',      sectionLabel: '',              danger: false, divider: false },
     { icon: 'school',          label: 'Tutorial',             action: 'tutorial',     sectionLabel: '',              danger: false, divider: false },
     { icon: '',                label: '',                     action: '',             sectionLabel: '',              danger: false, divider: true },
@@ -6086,6 +6259,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       await this.loadLostItems();
     } else if (action === 'scheduled') {
       await this.loadScheduledTrips();
+    } else if (action === 'notifications') {
+      this.driverNotifySettings.set({
+        newRequests: (driver as any).notify_new_requests ?? true,
+        tripUpdates: (driver as any).notify_trip_updates ?? true,
+        earnings: (driver as any).notify_earnings ?? true,
+      });
+    } else if (action === 'report') {
+      await this.loadDriverReports();
     }
     this.loadingSection.set(false);
   }
@@ -7621,6 +7802,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.screen.set('driver-home');
       return;
     }
+    if (action === 'logout') {
+      this.doPassengerLogout();
+      return;
+    }
     this.passengerSection.set(action);
     if (action === 'history') this.loadPassengerHistory();
     if (action === 'referrals') this.loadReferralData();
@@ -7633,6 +7818,115 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (action === 'loyalty') this.loadPassengerLoyalty();
     if (action === 'corporate') this.loadCorporateAccounts();
     if (action === 'profile') this.openEditProfile();
+    if (action === 'blockeddrivers') this.loadPassengerBlockedDrivers();
+  }
+
+  async doPassengerLogout() {
+    if (!confirm('¿Cerrar sesión?')) return;
+    await this.agService.signOut();
+    window.location.href = '/login';
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: blocked drivers
+  // ═══════════════════════════════════════════════════
+  passengerBlockedDrivers = signal<any[]>([]);
+
+  async loadPassengerBlockedDrivers() {
+    const profile = this.agProfile();
+    if (!profile) return;
+    const list = await this.agService.listPassengerBlockedDrivers(profile.id);
+    this.passengerBlockedDrivers.set(list);
+  }
+
+  async unblockDriverAction(id: string) {
+    await this.agService.unblockDriver(id);
+    await this.loadPassengerBlockedDrivers();
+  }
+
+  async blockDriverFromTrip(driverId: string, reason?: string) {
+    const profile = this.agProfile();
+    if (!profile) return;
+    const res = await this.agService.blockDriver(profile.id, driverId, reason);
+    if (res.success) alert('Conductor bloqueado. No aparecerá en tus futuras solicitudes.');
+    else alert('Error: ' + (res.error ?? 'desconocido'));
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: tutorial
+  // ═══════════════════════════════════════════════════
+  passengerTutorialDone = signal(false);
+  readonly passengerTutorialSteps = [
+    { icon: 'search', title: '1. Busca tu destino', body: 'Toca "¿A dónde vas?" y escribe la dirección. Puedes guardar lugares frecuentes en Favoritos.' },
+    { icon: 'tune', title: '2. Elige tu categoría', body: 'Economy (más barato), Comfort (más espacio), XL (grupos), Premium (ejecutivo). Cada uno tiene un multiplicador.' },
+    { icon: 'accessibility', title: '3. Indica necesidades', body: 'Marca si llevas mascota, equipaje grande, silla de bebé o silla de ruedas para que el conductor sepa qué esperar.' },
+    { icon: 'payments', title: '4. Selecciona pago', body: 'Efectivo, Nequi, Daviplata, Bancolombia o tarjeta. Guarda tus métodos frecuentes en "Métodos de pago".' },
+    { icon: 'local_offer', title: '5. Propón tu precio', body: 'Ajusta el monto que quieres pagar. Varios conductores verán tu solicitud y harán ofertas en vivo.' },
+    { icon: 'star', title: '6. Elige la mejor oferta', body: 'Cada conductor muestra su rating, nivel y viajes completados. Acepta al que prefieras.' },
+    { icon: 'navigation', title: '7. Sigue el viaje en vivo', body: 'Verás al conductor moverse en el mapa en tiempo real. Usa el chat o llamada enmascarada para coordinar.' },
+    { icon: 'share_location', title: '8. Comparte tu viaje', body: 'Comparte un link con tu familia para que vean dónde vas. El link expira al llegar.' },
+    { icon: 'emoji_events', title: '9. Gana puntos', body: 'Cada viaje te da +10 puntos. Sube de Bronce a Diamante para desbloquear descuentos y beneficios.' },
+    { icon: 'emergency', title: '🚨 Botón de pánico', body: 'Si tienes una emergencia, activa el botón rojo en Seguridad. Se avisará a tus contactos con tu ubicación.' },
+  ];
+
+  async completePassengerTutorial() {
+    const profile = this.agProfile();
+    if (!profile) return;
+    await this.agService.markPassengerTutorialCompleted(profile.id);
+    this.passengerTutorialDone.set(true);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: notificaciones / settings / report
+  // ═══════════════════════════════════════════════════
+  driverNotifySettings = signal({ newRequests: true, tripUpdates: true, earnings: true });
+  savingDriverNotify   = signal(false);
+  driverReports        = signal<any[]>([]);
+  driverReportKind     = signal<'passenger'|'incident'|'app'|'vehicle'|'other'>('passenger');
+  driverReportDesc     = '';
+  submittingDriverReport = signal(false);
+
+  toggleDriverNotifyRequests(): void {
+    this.driverNotifySettings.update(s => ({ ...s, newRequests: !s.newRequests }));
+  }
+  toggleDriverNotifyTripUpdates(): void {
+    this.driverNotifySettings.update(s => ({ ...s, tripUpdates: !s.tripUpdates }));
+  }
+  toggleDriverNotifyEarnings(): void {
+    this.driverNotifySettings.update(s => ({ ...s, earnings: !s.earnings }));
+  }
+
+  async saveDriverNotifySettings() {
+    this.savingDriverNotify.set(true);
+    const cfg = this.driverNotifySettings();
+    await this.agService.updateDriverNotifySettings({
+      newRequests: cfg.newRequests, tripUpdates: cfg.tripUpdates, earnings: cfg.earnings,
+    });
+    this.savingDriverNotify.set(false);
+  }
+
+  async loadDriverReports() {
+    const profile = this.agProfile();
+    if (!profile) return;
+    const rs = await this.agService.listDriverReports(profile.id);
+    this.driverReports.set(rs);
+  }
+
+  async submitDriverReport() {
+    const profile = this.agProfile();
+    if (!profile || !this.driverReportDesc.trim()) return;
+    this.submittingDriverReport.set(true);
+    const res = await this.agService.submitDriverReport(
+      profile.id, this.driverReportKind(), this.driverReportDesc,
+    );
+    this.submittingDriverReport.set(false);
+    if (res.success) {
+      this.driverReportDesc = '';
+      await this.loadDriverReports();
+      alert('Reporte enviado. Te contactaremos pronto.');
+    } else {
+      alert('Error: ' + (res.error ?? 'desconocido'));
+    }
   }
 
   // ═══════════════════════════════════════════════════

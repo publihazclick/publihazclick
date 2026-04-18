@@ -1660,6 +1660,84 @@ export class AndaGanaService {
   }
 
   // ═══════════════════════════════════════════════════
+  // PASSENGER: blacklist conductores
+  // ═══════════════════════════════════════════════════
+  async listPassengerBlockedDrivers(agUserId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_driver_blacklist')
+      .select('id, reason, created_at, ag_drivers(id, plate, vehicle_brand, vehicle_model, ag_users(full_name))')
+      .eq('passenger_user_id', agUserId)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  async blockDriver(passengerUserId: string, driverId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_driver_blacklist').insert({
+      passenger_user_id: passengerUserId, driver_id: driverId, reason: reason ?? null,
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async unblockDriver(id: string): Promise<void> {
+    await this.supabase.from('ag_driver_blacklist').delete().eq('id', id);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PASSENGER: tutorial
+  // ═══════════════════════════════════════════════════
+  async markPassengerTutorialCompleted(agUserId: string): Promise<void> {
+    await this.supabase.from('ag_users').update({
+      tutorial_completed: true,
+      tutorial_completed_at: new Date().toISOString(),
+    }).eq('id', agUserId);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Settings unificados
+  // ═══════════════════════════════════════════════════
+  async updateUserSettings(payload: {
+    notifySound?: boolean; notifyVibration?: boolean; notifyNewOffers?: boolean;
+    hidePhone?: boolean; language?: string;
+  }): Promise<void> {
+    await this.supabase.rpc('ag_update_user_settings', {
+      p_notify_sound: payload.notifySound ?? null,
+      p_notify_vibration: payload.notifyVibration ?? null,
+      p_notify_new_offers: payload.notifyNewOffers ?? null,
+      p_hide_phone: payload.hidePhone ?? null,
+      p_language: payload.language ?? null,
+    });
+  }
+
+  async updateDriverNotifySettings(payload: {
+    newRequests?: boolean; tripUpdates?: boolean; earnings?: boolean;
+  }): Promise<void> {
+    await this.supabase.rpc('ag_update_driver_notify_settings', {
+      p_notify_new_requests: payload.newRequests ?? null,
+      p_notify_trip_updates: payload.tripUpdates ?? null,
+      p_notify_earnings: payload.earnings ?? null,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DRIVER: reportar problema (reutiliza ag_reports)
+  // ═══════════════════════════════════════════════════
+  async submitDriverReport(agUserId: string, kind: 'passenger'|'incident'|'app'|'vehicle'|'other',
+    description: string, tripId?: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_reports').insert({
+      reporter_user_id: agUserId, type: kind, description: description.trim(),
+      trip_id: tripId ?? null, status: 'open',
+    });
+    return error ? { success: false, error: error.message } : { success: true };
+  }
+
+  async listDriverReports(agUserId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_reports')
+      .select('*').eq('reporter_user_id', agUserId)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  }
+
+  // ═══════════════════════════════════════════════════
   // Utility: unsubscribe channel
   // ═══════════════════════════════════════════════════
   unsubscribeChannel(channel: RealtimeChannel | null): void {
