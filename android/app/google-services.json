@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "492581194770",
+    "project_id": "movi-5ae91",
+    "storage_bucket": "movi-5ae91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:492581194770:android:ae910ae351fbb893e9dccb",
+        "android_client_info": {
+          "package_name": "com.publihazclick.movi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQALDEZly-vfv4uojDVIzp1WONLHyxBA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

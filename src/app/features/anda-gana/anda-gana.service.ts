@@ -1071,6 +1071,14 @@ export class AndaGanaService {
     await this.supabase.from('ag_push_subs').delete().eq('endpoint', endpoint);
   }
 
+  async registerFcmToken(token: string): Promise<void> {
+    if (!token) return;
+    await this.supabase.rpc('ag_register_fcm_token', {
+      p_token: token,
+      p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+    });
+  }
+
   async sendPush(payload: { userIds: string[]; title: string; body?: string; url?: string; tag?: string; urgent?: boolean }): Promise<void> {
     try {
       await fetch(`${environment.supabase.url}/functions/v1/ag-send-push`, {

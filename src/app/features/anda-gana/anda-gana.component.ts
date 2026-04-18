@@ -4842,6 +4842,34 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     // Background tracking con Capacitor (solo app nativa Android/iOS)
     this._startBackgroundTracking(driverId).catch(() => {});
+    this._registerNativePush().catch(() => {});
+  }
+
+  private async _registerNativePush(): Promise<void> {
+    try {
+      const w = window as any;
+      const cap = w.Capacitor;
+      if (!cap?.isNativePlatform?.()) return;
+      const PushNotifications = cap.Plugins?.PushNotifications;
+      if (!PushNotifications) return;
+
+      const perm = await PushNotifications.checkPermissions();
+      if (perm.receive !== 'granted') {
+        const req = await PushNotifications.requestPermissions();
+        if (req.receive !== 'granted') return;
+      }
+
+      PushNotifications.addListener('registration', async (token: { value: string }) => {
+        try { await this.agService.registerFcmToken(token.value); } catch (e) { console.warn('fcm reg', e); }
+      });
+      PushNotifications.addListener('registrationError', (err: any) => console.warn('fcm regErr', err));
+      PushNotifications.addListener('pushNotificationActionPerformed', (ev: any) => {
+        const url = ev?.notification?.data?.url;
+        if (url && typeof window !== 'undefined') window.location.href = url;
+      });
+
+      await PushNotifications.register();
+    } catch (e) { console.warn('native push init:', e); }
   }
 
   private _bgWatcherId: string | null = null;
