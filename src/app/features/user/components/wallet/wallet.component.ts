@@ -356,7 +356,8 @@ export class UserWalletComponent implements OnInit {
   get canWithdraw(): boolean {
     return (
       (this.profile()?.real_balance ?? 0) >= this.MIN_WITHDRAWAL &&
-      this.savedMethods().length > 0
+      this.savedMethods().length > 0 &&
+      this.hasActiveAffiliate()
     );
   }
 
@@ -649,30 +650,52 @@ export class UserWalletComponent implements OnInit {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
-      const method = this.selectedSavedMethod()!;
-      const { error } = await this.supabase.from('withdrawal_requests').insert({
+      const methodId = this.withdrawMethod();
+      const account = this.withdrawAccount().trim();
+      const amount = this.withdrawAmount();
+      const balance = this.profile()?.real_balance ?? 0;
+
+      if (!methodId) throw new Error('Selecciona un metodo de retiro');
+      if (account.length < 3) throw new Error('Ingresa una cuenta valida');
+      if (amount < this.MIN_WITHDRAWAL) {
+        throw new Error(`El monto minimo de retiro es ${this.formatCOP(this.MIN_WITHDRAWAL)}`);
+      }
+      if (amount > balance) throw new Error('Monto mayor al saldo disponible');
+      if (!this.hasActiveAffiliate()) {
+        throw new Error('Necesitas al menos 1 invitado activo para retirar');
+      }
+
+      const methodDef = this.withdrawMethods().find(m => m.id === methodId);
+      if (!methodDef) throw new Error('Metodo de pago no valido');
+
+      const savedMatch = this.savedMethods().find(m => m.methodId === methodId);
+
+      const insertPromise = this.supabase.from('withdrawal_requests').insert({
         user_id: user.id,
-        amount: this.withdrawAmount(),
-        method: method.methodId,
+        amount,
+        method: methodId,
         details: {
-          method: method.label,
-          account: this.getMethodSummary(method),
-          category: method.category,
-          ...method.data,
+          method: methodDef.name,
+          account,
+          category: methodDef.category,
+          ...(savedMatch?.data ?? {}),
         },
         status: 'pending',
       });
 
-      if (error) throw error;
+      const [{ error }] = await Promise.all([
+        insertPromise,
+        new Promise(resolve => setTimeout(resolve, 1500)),
+      ]);
 
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (error) throw error;
 
       this.withdrawStep.set('done');
       await this.loadWithdrawals();
       this.profileService.getCurrentProfile().catch(() => {});
     } catch (err: any) {
       this.withdrawError.set(err.message || 'Error al procesar el retiro');
-      this.withdrawStep.set('select-method');
+      this.withdrawStep.set('form');
     }
   }
 

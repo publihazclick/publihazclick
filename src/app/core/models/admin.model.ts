@@ -196,12 +196,17 @@ export interface WithdrawalAdmin {
   username?: string;
   full_name?: string;
   amount: number;
-  method: 'nequi' | 'daviplata' | 'bank_transfer' | 'crypto';
+  method: string;
   details: WithdrawalDetails;
   status: WithdrawalStatus;
   processed_at: string | null;
   processed_by?: string;
   rejection_reason?: string;
+  receipt_url?: string | null;
+  admin_notes?: string | null;
+  receipt_uploaded_at?: string | null;
+  acknowledged_at?: string | null;
+  user_comment?: string | null;
   created_at: string;
 }
 
@@ -363,12 +368,24 @@ export interface UserReferralItem {
   has_active_package: boolean;
 }
 
+export interface UserReferrerInfo {
+  id: string;
+  username: string;
+  full_name: string | null;
+  email: string;
+  role: string;
+  is_active: boolean;
+  has_active_package: boolean;
+  referral_code: string;
+}
+
 export interface UserDetailData {
   packageName: string | null;
   clicksByCategory: UserClickStats[];
   totalClicks: number;
   activeReferrals: number;
   referralsList: UserReferralItem[];
+  referrer: UserReferrerInfo | null;
 }
 
 export interface CreateUserAdminData {

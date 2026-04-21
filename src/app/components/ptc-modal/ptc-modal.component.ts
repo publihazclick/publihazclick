@@ -443,7 +443,11 @@ export class PtcModalComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.countdown.set(this.ad().duration || 60);
-    this.alreadyViewed.set(!this.userTracking.canClaimReward(this.ad().id));
+    const adId = this.ad().id;
+    const adType = this.ad().adType;
+    const v2Types: PtcAdType[] = ['mega_2000','mega_5000','mega_10000','mega_20000','mega_50000','mega_100000'];
+    const isMegaV2 = adId.includes('__v2_') || v2Types.includes(adType);
+    this.alreadyViewed.set(!isMegaV2 && !this.userTracking.canClaimReward(adId));
 
     document.addEventListener('visibilitychange', this.visibilityHandler);
 

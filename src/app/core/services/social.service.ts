@@ -38,16 +38,14 @@ export class SocialService {
   async getDirectory(search = '', page = 0, limit = 20): Promise<AdvertiserCard[]> {
     const userId = await this.getUserId();
 
-    // Obtener perfiles de advertiser, admin y dev
+    // Obtener TODOS los perfiles registrados (excepto el usuario actual)
     let query = this.supabase
       .from('profiles')
       .select(`
         id, username, full_name, avatar_url, total_referrals_count, role,
         social_business_profiles (business_name, description, category, location)
       `)
-      .in('role', ['advertiser', 'admin', 'dev'])
       .neq('id', userId)
-      .eq('is_active', true)
       .range(page * limit, (page + 1) * limit - 1);
 
     if (search.trim()) {

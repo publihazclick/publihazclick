@@ -149,32 +149,6 @@
             </div>
           </div>
 
-          <!-- Bonificaciones adicionales -->
-          @if (currentPackage()!.ptc_reward_bonus > 0 || currentPackage()!.referral_bonus > 0 || currentPackage()!.banner_reward_bonus > 0) {
-            <div>
-              <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Bonificaciones extras</p>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                @if (currentPackage()!.ptc_reward_bonus > 0) {
-                  <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
-                    <p class="text-xl font-black text-primary">+{{ currentPackage()!.ptc_reward_bonus }}%</p>
-                    <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Bonus Click</p>
-                  </div>
-                }
-                @if (currentPackage()!.referral_bonus > 0) {
-                  <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
-                    <p class="text-xl font-black text-accent">+{{ currentPackage()!.referral_bonus }}%</p>
-                    <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Bonus Ref.</p>
-                  </div>
-                }
-                @if (currentPackage()!.banner_reward_bonus > 0) {
-                  <div class="bg-black/30 border border-white/5 rounded-xl p-3 text-center">
-                    <p class="text-xl font-black text-emerald-400">+{{ currentPackage()!.banner_reward_bonus }}%</p>
-                    <p class="text-[10px] text-slate-500 uppercase font-bold mt-0.5">Bonus Banner</p>
-                  </div>
-                }
-              </div>
-            </div>
-          }
         </div>
       </div>
 
@@ -297,42 +271,6 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Bonificaciones extras (si aplica) -->
-              @if (pkg.ptc_reward_bonus > 0 || pkg.referral_bonus > 0 || pkg.banner_reward_bonus > 0) {
-                <div>
-                  <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">Bonificaciones</p>
-                  <div class="space-y-1.5">
-                    @if (pkg.ptc_reward_bonus > 0) {
-                      <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                          <span class="material-symbols-outlined text-primary" style="font-size:14px">ads_click</span>
-                          <span class="text-sm text-slate-300">Bonus click</span>
-                        </div>
-                        <span class="text-sm font-bold text-primary">+{{ pkg.ptc_reward_bonus }}%</span>
-                      </div>
-                    }
-                    @if (pkg.referral_bonus > 0) {
-                      <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                          <span class="material-symbols-outlined text-accent" style="font-size:14px">group_add</span>
-                          <span class="text-sm text-slate-300">Bonus referido</span>
-                        </div>
-                        <span class="text-sm font-bold text-accent">+{{ pkg.referral_bonus }}%</span>
-                      </div>
-                    }
-                    @if (pkg.banner_reward_bonus > 0) {
-                      <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                          <span class="material-symbols-outlined text-emerald-400" style="font-size:14px">image</span>
-                          <span class="text-sm text-slate-300">Bonus banner</span>
-                        </div>
-                        <span class="text-sm font-bold text-emerald-400">+{{ pkg.banner_reward_bonus }}%</span>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
 
               <!-- Features del paquete -->
               @if (pkg.features.length > 0) {

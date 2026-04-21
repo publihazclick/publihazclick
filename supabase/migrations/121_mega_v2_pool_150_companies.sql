@@ -1,0 +1,188 @@
+-- =============================================================================
+-- Migración 121: Pool v2 de 150 empresas reales para mega anuncios v2
+--
+-- Contexto:
+--   Los 4 placeholders (mega_2000/5000/10000/20000) en location='app' usaban
+--   todos la misma imagen de Unsplash. Se reemplaza por un pool de 150
+--   empresas reales (logos vía Clearbit) distribuidas en 6 tiers × 25.
+--
+-- Aislamiento:
+--   - Todas las filas usan location = 'v2_pool' (fuera del listado normal de
+--     usuarios, que filtra por location = 'app').
+--   - Solo se mostrarán al referidor cuando éste tenga grants activos en
+--     referral_mega_grants (lógica v2 sin tocar).
+--   - Los placeholders anteriores se pausan pero no se borran (auditoría).
+-- =============================================================================
+
+-- 1. Permitir el nuevo valor 'v2_pool' en la columna location.
+ALTER TABLE ptc_tasks DROP CONSTRAINT IF EXISTS ptc_tasks_location_check;
+ALTER TABLE ptc_tasks
+  ADD CONSTRAINT ptc_tasks_location_check
+  CHECK (location = ANY (ARRAY['landing'::text, 'app'::text, 'v2_pool'::text]));
+
+-- 2. Pausar los placeholders v2 antiguos (location='app') para que no se
+--    mezclen con el pool nuevo. No se borran; quedan como histórico.
+UPDATE ptc_tasks
+   SET status = 'paused',
+       updated_at = NOW()
+ WHERE location = 'app'
+   AND ad_type::text LIKE 'mega\_%'
+   AND status = 'active';
+
+-- 3. Insertar el pool real de 150 empresas (25 por tier).
+INSERT INTO ptc_tasks (
+  title, description, url, image_url,
+  reward, duration, daily_limit, total_clicks,
+  status, ad_type, location, created_at
+)
+VALUES
+  ('Bavaria', 'Bavaria anuncia en Publihazclick', 'https://bavaria.co', 'https://logo.clearbit.com/bavaria.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Postobón', 'Postobón anuncia en Publihazclick', 'https://postobon.com', 'https://logo.clearbit.com/postobon.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Colanta', 'Colanta anuncia en Publihazclick', 'https://colanta.com.co', 'https://logo.clearbit.com/colanta.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Alpina', 'Alpina anuncia en Publihazclick', 'https://alpina.com', 'https://logo.clearbit.com/alpina.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Alquería', 'Alquería anuncia en Publihazclick', 'https://alqueria.com.co', 'https://logo.clearbit.com/alqueria.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Grupo Nutresa', 'Grupo Nutresa anuncia en Publihazclick', 'https://gruponutresa.com', 'https://logo.clearbit.com/gruponutresa.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Zenú', 'Zenú anuncia en Publihazclick', 'https://zenu.com.co', 'https://logo.clearbit.com/zenu.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Ramo', 'Ramo anuncia en Publihazclick', 'https://ramo.com.co', 'https://logo.clearbit.com/ramo.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Colombina', 'Colombina anuncia en Publihazclick', 'https://colombina.com', 'https://logo.clearbit.com/colombina.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Noel', 'Noel anuncia en Publihazclick', 'https://alimentosnoel.com', 'https://logo.clearbit.com/alimentosnoel.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Quala', 'Quala anuncia en Publihazclick', 'https://quala.com.co', 'https://logo.clearbit.com/quala.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Bimbo', 'Bimbo anuncia en Publihazclick', 'https://grupobimbo.com', 'https://logo.clearbit.com/grupobimbo.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Colcafé', 'Colcafé anuncia en Publihazclick', 'https://colcafe.com', 'https://logo.clearbit.com/colcafe.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Juan Valdez', 'Juan Valdez anuncia en Publihazclick', 'https://juanvaldezcafe.com', 'https://logo.clearbit.com/juanvaldezcafe.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('OMA', 'OMA anuncia en Publihazclick', 'https://oma.com.co', 'https://logo.clearbit.com/oma.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Tosh', 'Tosh anuncia en Publihazclick', 'https://tosh.co', 'https://logo.clearbit.com/tosh.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Manitoba', 'Manitoba anuncia en Publihazclick', 'https://manitoba.com.co', 'https://logo.clearbit.com/manitoba.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('La Fina', 'La Fina anuncia en Publihazclick', 'https://lafina.com.co', 'https://logo.clearbit.com/lafina.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Pony Malta', 'Pony Malta anuncia en Publihazclick', 'https://ponymalta.com', 'https://logo.clearbit.com/ponymalta.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Cerveza Águila', 'Cerveza Águila anuncia en Publihazclick', 'https://cervezaaguila.com.co', 'https://logo.clearbit.com/cervezaaguila.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Club Colombia', 'Club Colombia anuncia en Publihazclick', 'https://clubcolombia.com', 'https://logo.clearbit.com/clubcolombia.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Don Maíz', 'Don Maíz anuncia en Publihazclick', 'https://donmaiz.com', 'https://logo.clearbit.com/donmaiz.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Frito-Lay', 'Frito-Lay anuncia en Publihazclick', 'https://fritolay.com', 'https://logo.clearbit.com/fritolay.com?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Crem Helado', 'Crem Helado anuncia en Publihazclick', 'https://cremhelado.com.co', 'https://logo.clearbit.com/cremhelado.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('La Constancia', 'La Constancia anuncia en Publihazclick', 'https://laconstancia.com.co', 'https://logo.clearbit.com/laconstancia.com.co?size=400', 2000, 30, 10000, 0, 'active', 'mega_2000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Éxito', 'Éxito anuncia en Publihazclick', 'https://exito.com', 'https://logo.clearbit.com/exito.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Olímpica', 'Olímpica anuncia en Publihazclick', 'https://olimpica.com', 'https://logo.clearbit.com/olimpica.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Carulla', 'Carulla anuncia en Publihazclick', 'https://carulla.com', 'https://logo.clearbit.com/carulla.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Falabella', 'Falabella anuncia en Publihazclick', 'https://falabella.com.co', 'https://logo.clearbit.com/falabella.com.co?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Alkosto', 'Alkosto anuncia en Publihazclick', 'https://alkosto.com', 'https://logo.clearbit.com/alkosto.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Homecenter', 'Homecenter anuncia en Publihazclick', 'https://homecenter.com.co', 'https://logo.clearbit.com/homecenter.com.co?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Jumbo', 'Jumbo anuncia en Publihazclick', 'https://tiendasjumbo.co', 'https://logo.clearbit.com/tiendasjumbo.co?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Tiendas D1', 'Tiendas D1 anuncia en Publihazclick', 'https://tiendasd1.com', 'https://logo.clearbit.com/tiendasd1.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Tiendas Ara', 'Tiendas Ara anuncia en Publihazclick', 'https://tiendasara.com', 'https://logo.clearbit.com/tiendasara.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Makro', 'Makro anuncia en Publihazclick', 'https://makrovirtual.com', 'https://logo.clearbit.com/makrovirtual.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('PriceSmart', 'PriceSmart anuncia en Publihazclick', 'https://pricesmart.com', 'https://logo.clearbit.com/pricesmart.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Cencosud', 'Cencosud anuncia en Publihazclick', 'https://cencosud.com', 'https://logo.clearbit.com/cencosud.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Arturo Calle', 'Arturo Calle anuncia en Publihazclick', 'https://arturocalle.com', 'https://logo.clearbit.com/arturocalle.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Leonisa', 'Leonisa anuncia en Publihazclick', 'https://leonisa.com', 'https://logo.clearbit.com/leonisa.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Studio F', 'Studio F anuncia en Publihazclick', 'https://studiofmoda.com', 'https://logo.clearbit.com/studiofmoda.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Totto', 'Totto anuncia en Publihazclick', 'https://totto.com', 'https://logo.clearbit.com/totto.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Vélez', 'Vélez anuncia en Publihazclick', 'https://velez.com.co', 'https://logo.clearbit.com/velez.com.co?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Mario Hernández', 'Mario Hernández anuncia en Publihazclick', 'https://mariohernandez.com.co', 'https://logo.clearbit.com/mariohernandez.com.co?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Ktronix', 'Ktronix anuncia en Publihazclick', 'https://ktronix.com', 'https://logo.clearbit.com/ktronix.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Panamericana', 'Panamericana anuncia en Publihazclick', 'https://panamericana.com', 'https://logo.clearbit.com/panamericana.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Unicentro', 'Unicentro anuncia en Publihazclick', 'https://unicentro.com', 'https://logo.clearbit.com/unicentro.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Ripley', 'Ripley anuncia en Publihazclick', 'https://ripley.com.co', 'https://logo.clearbit.com/ripley.com.co?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('H&M', 'H&M anuncia en Publihazclick', 'https://hm.com', 'https://logo.clearbit.com/hm.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Zara', 'Zara anuncia en Publihazclick', 'https://zara.com', 'https://logo.clearbit.com/zara.com?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('MercadoLibre', 'MercadoLibre anuncia en Publihazclick', 'https://mercadolibre.com.co', 'https://logo.clearbit.com/mercadolibre.com.co?size=400', 5000, 30, 10000, 0, 'active', 'mega_5000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Bancolombia', 'Bancolombia anuncia en Publihazclick', 'https://grupobancolombia.com', 'https://logo.clearbit.com/grupobancolombia.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Davivienda', 'Davivienda anuncia en Publihazclick', 'https://davivienda.com', 'https://logo.clearbit.com/davivienda.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('BBVA Colombia', 'BBVA Colombia anuncia en Publihazclick', 'https://bbva.com.co', 'https://logo.clearbit.com/bbva.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Banco de Bogotá', 'Banco de Bogotá anuncia en Publihazclick', 'https://bancodebogota.com', 'https://logo.clearbit.com/bancodebogota.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Banco Popular', 'Banco Popular anuncia en Publihazclick', 'https://bancopopular.com.co', 'https://logo.clearbit.com/bancopopular.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Banco AV Villas', 'Banco AV Villas anuncia en Publihazclick', 'https://avvillas.com.co', 'https://logo.clearbit.com/avvillas.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Banco Caja Social', 'Banco Caja Social anuncia en Publihazclick', 'https://bancocajasocial.com', 'https://logo.clearbit.com/bancocajasocial.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Banco Agrario', 'Banco Agrario anuncia en Publihazclick', 'https://bancoagrario.gov.co', 'https://logo.clearbit.com/bancoagrario.gov.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Itaú Colombia', 'Itaú Colombia anuncia en Publihazclick', 'https://itau.com.co', 'https://logo.clearbit.com/itau.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Scotiabank Colpatria', 'Scotiabank Colpatria anuncia en Publihazclick', 'https://scotiabankcolpatria.com', 'https://logo.clearbit.com/scotiabankcolpatria.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Claro', 'Claro anuncia en Publihazclick', 'https://claro.com.co', 'https://logo.clearbit.com/claro.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Movistar', 'Movistar anuncia en Publihazclick', 'https://movistar.co', 'https://logo.clearbit.com/movistar.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Tigo', 'Tigo anuncia en Publihazclick', 'https://tigo.com.co', 'https://logo.clearbit.com/tigo.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('WOM', 'WOM anuncia en Publihazclick', 'https://wom.co', 'https://logo.clearbit.com/wom.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('ETB', 'ETB anuncia en Publihazclick', 'https://etb.com', 'https://logo.clearbit.com/etb.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('EPM', 'EPM anuncia en Publihazclick', 'https://epm.com.co', 'https://logo.clearbit.com/epm.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Enel Colombia', 'Enel Colombia anuncia en Publihazclick', 'https://enel.com.co', 'https://logo.clearbit.com/enel.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Colsanitas', 'Colsanitas anuncia en Publihazclick', 'https://colsanitas.com', 'https://logo.clearbit.com/colsanitas.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Sura', 'Sura anuncia en Publihazclick', 'https://sura.com', 'https://logo.clearbit.com/sura.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Compensar', 'Compensar anuncia en Publihazclick', 'https://compensar.com', 'https://logo.clearbit.com/compensar.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Coomeva', 'Coomeva anuncia en Publihazclick', 'https://coomeva.com.co', 'https://logo.clearbit.com/coomeva.com.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Colmena Seguros', 'Colmena Seguros anuncia en Publihazclick', 'https://colmenaseguros.com', 'https://logo.clearbit.com/colmenaseguros.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Protección', 'Protección anuncia en Publihazclick', 'https://proteccion.com', 'https://logo.clearbit.com/proteccion.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Seguros Bolívar', 'Seguros Bolívar anuncia en Publihazclick', 'https://segurosbolivar.com', 'https://logo.clearbit.com/segurosbolivar.com?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Positiva Seguros', 'Positiva Seguros anuncia en Publihazclick', 'https://positiva.gov.co', 'https://logo.clearbit.com/positiva.gov.co?size=400', 10000, 30, 10000, 0, 'active', 'mega_10000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Toyota Colombia', 'Toyota Colombia anuncia en Publihazclick', 'https://toyota.com.co', 'https://logo.clearbit.com/toyota.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Renault Colombia', 'Renault Colombia anuncia en Publihazclick', 'https://renault.com.co', 'https://logo.clearbit.com/renault.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Chevrolet Colombia', 'Chevrolet Colombia anuncia en Publihazclick', 'https://chevrolet.com.co', 'https://logo.clearbit.com/chevrolet.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Mazda Colombia', 'Mazda Colombia anuncia en Publihazclick', 'https://mazda.com.co', 'https://logo.clearbit.com/mazda.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Kia', 'Kia anuncia en Publihazclick', 'https://kia.com', 'https://logo.clearbit.com/kia.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Hyundai Colombia', 'Hyundai Colombia anuncia en Publihazclick', 'https://hyundai.com.co', 'https://logo.clearbit.com/hyundai.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Ford Colombia', 'Ford Colombia anuncia en Publihazclick', 'https://ford.com.co', 'https://logo.clearbit.com/ford.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Nissan Colombia', 'Nissan Colombia anuncia en Publihazclick', 'https://nissan.com.co', 'https://logo.clearbit.com/nissan.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Mercedes-Benz', 'Mercedes-Benz anuncia en Publihazclick', 'https://mercedes-benz.com.co', 'https://logo.clearbit.com/mercedes-benz.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('BMW Colombia', 'BMW Colombia anuncia en Publihazclick', 'https://bmw.com.co', 'https://logo.clearbit.com/bmw.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Volkswagen', 'Volkswagen anuncia en Publihazclick', 'https://vw.com.co', 'https://logo.clearbit.com/vw.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Audi Colombia', 'Audi Colombia anuncia en Publihazclick', 'https://audi.com.co', 'https://logo.clearbit.com/audi.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Ecopetrol', 'Ecopetrol anuncia en Publihazclick', 'https://ecopetrol.com.co', 'https://logo.clearbit.com/ecopetrol.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Terpel', 'Terpel anuncia en Publihazclick', 'https://terpel.com', 'https://logo.clearbit.com/terpel.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Primax', 'Primax anuncia en Publihazclick', 'https://primax.com.co', 'https://logo.clearbit.com/primax.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Cemex Colombia', 'Cemex Colombia anuncia en Publihazclick', 'https://cemexcolombia.com', 'https://logo.clearbit.com/cemexcolombia.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Cementos Argos', 'Cementos Argos anuncia en Publihazclick', 'https://argos.co', 'https://logo.clearbit.com/argos.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Corona', 'Corona anuncia en Publihazclick', 'https://corona.com.co', 'https://logo.clearbit.com/corona.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Promigas', 'Promigas anuncia en Publihazclick', 'https://promigas.com', 'https://logo.clearbit.com/promigas.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Grupo Aval', 'Grupo Aval anuncia en Publihazclick', 'https://grupoaval.com', 'https://logo.clearbit.com/grupoaval.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Grupo Bolívar', 'Grupo Bolívar anuncia en Publihazclick', 'https://grupobolivar.com', 'https://logo.clearbit.com/grupobolivar.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('ISA', 'ISA anuncia en Publihazclick', 'https://isa.co', 'https://logo.clearbit.com/isa.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Celsia', 'Celsia anuncia en Publihazclick', 'https://celsia.com', 'https://logo.clearbit.com/celsia.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Air-e', 'Air-e anuncia en Publihazclick', 'https://aire.com.co', 'https://logo.clearbit.com/aire.com.co?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Tecnoglass', 'Tecnoglass anuncia en Publihazclick', 'https://tecnoglass.com', 'https://logo.clearbit.com/tecnoglass.com?size=400', 20000, 30, 10000, 0, 'active', 'mega_20000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Apple', 'Apple anuncia en Publihazclick', 'https://apple.com', 'https://logo.clearbit.com/apple.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Samsung', 'Samsung anuncia en Publihazclick', 'https://samsung.com', 'https://logo.clearbit.com/samsung.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('LG', 'LG anuncia en Publihazclick', 'https://lg.com', 'https://logo.clearbit.com/lg.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Sony', 'Sony anuncia en Publihazclick', 'https://sony.com', 'https://logo.clearbit.com/sony.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Huawei', 'Huawei anuncia en Publihazclick', 'https://huawei.com', 'https://logo.clearbit.com/huawei.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Xiaomi', 'Xiaomi anuncia en Publihazclick', 'https://mi.com', 'https://logo.clearbit.com/mi.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Nike', 'Nike anuncia en Publihazclick', 'https://nike.com', 'https://logo.clearbit.com/nike.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Adidas', 'Adidas anuncia en Publihazclick', 'https://adidas.com', 'https://logo.clearbit.com/adidas.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Puma', 'Puma anuncia en Publihazclick', 'https://puma.com', 'https://logo.clearbit.com/puma.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Under Armour', 'Under Armour anuncia en Publihazclick', 'https://underarmour.com', 'https://logo.clearbit.com/underarmour.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Coca-Cola', 'Coca-Cola anuncia en Publihazclick', 'https://coca-cola.com', 'https://logo.clearbit.com/coca-cola.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Pepsi', 'Pepsi anuncia en Publihazclick', 'https://pepsi.com', 'https://logo.clearbit.com/pepsi.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Red Bull', 'Red Bull anuncia en Publihazclick', 'https://redbull.com', 'https://logo.clearbit.com/redbull.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Heineken', 'Heineken anuncia en Publihazclick', 'https://heineken.com', 'https://logo.clearbit.com/heineken.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('AB InBev', 'AB InBev anuncia en Publihazclick', 'https://ab-inbev.com', 'https://logo.clearbit.com/ab-inbev.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Unilever', 'Unilever anuncia en Publihazclick', 'https://unilever.com', 'https://logo.clearbit.com/unilever.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Procter & Gamble', 'Procter & Gamble anuncia en Publihazclick', 'https://pg.com', 'https://logo.clearbit.com/pg.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Johnson & Johnson', 'Johnson & Johnson anuncia en Publihazclick', 'https://jnj.com', 'https://logo.clearbit.com/jnj.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('L’Oréal', 'L’Oréal anuncia en Publihazclick', 'https://loreal.com', 'https://logo.clearbit.com/loreal.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Nestlé', 'Nestlé anuncia en Publihazclick', 'https://nestle.com', 'https://logo.clearbit.com/nestle.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('IKEA', 'IKEA anuncia en Publihazclick', 'https://ikea.com', 'https://logo.clearbit.com/ikea.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Starbucks', 'Starbucks anuncia en Publihazclick', 'https://starbucks.com', 'https://logo.clearbit.com/starbucks.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('McDonald’s', 'McDonald’s anuncia en Publihazclick', 'https://mcdonalds.com', 'https://logo.clearbit.com/mcdonalds.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('KFC', 'KFC anuncia en Publihazclick', 'https://kfc.com', 'https://logo.clearbit.com/kfc.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Burger King', 'Burger King anuncia en Publihazclick', 'https://bk.com', 'https://logo.clearbit.com/bk.com?size=400', 50000, 30, 10000, 0, 'active', 'mega_50000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Microsoft', 'Microsoft anuncia en Publihazclick', 'https://microsoft.com', 'https://logo.clearbit.com/microsoft.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Google', 'Google anuncia en Publihazclick', 'https://google.com', 'https://logo.clearbit.com/google.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Amazon', 'Amazon anuncia en Publihazclick', 'https://amazon.com', 'https://logo.clearbit.com/amazon.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Meta', 'Meta anuncia en Publihazclick', 'https://meta.com', 'https://logo.clearbit.com/meta.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Netflix', 'Netflix anuncia en Publihazclick', 'https://netflix.com', 'https://logo.clearbit.com/netflix.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Spotify', 'Spotify anuncia en Publihazclick', 'https://spotify.com', 'https://logo.clearbit.com/spotify.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Disney', 'Disney anuncia en Publihazclick', 'https://disney.com', 'https://logo.clearbit.com/disney.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('HBO Max', 'HBO Max anuncia en Publihazclick', 'https://hbomax.com', 'https://logo.clearbit.com/hbomax.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('YouTube', 'YouTube anuncia en Publihazclick', 'https://youtube.com', 'https://logo.clearbit.com/youtube.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Intel', 'Intel anuncia en Publihazclick', 'https://intel.com', 'https://logo.clearbit.com/intel.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('NVIDIA', 'NVIDIA anuncia en Publihazclick', 'https://nvidia.com', 'https://logo.clearbit.com/nvidia.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('AMD', 'AMD anuncia en Publihazclick', 'https://amd.com', 'https://logo.clearbit.com/amd.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('IBM', 'IBM anuncia en Publihazclick', 'https://ibm.com', 'https://logo.clearbit.com/ibm.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Oracle', 'Oracle anuncia en Publihazclick', 'https://oracle.com', 'https://logo.clearbit.com/oracle.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Salesforce', 'Salesforce anuncia en Publihazclick', 'https://salesforce.com', 'https://logo.clearbit.com/salesforce.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Adobe', 'Adobe anuncia en Publihazclick', 'https://adobe.com', 'https://logo.clearbit.com/adobe.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('SAP', 'SAP anuncia en Publihazclick', 'https://sap.com', 'https://logo.clearbit.com/sap.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Cisco', 'Cisco anuncia en Publihazclick', 'https://cisco.com', 'https://logo.clearbit.com/cisco.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Tesla', 'Tesla anuncia en Publihazclick', 'https://tesla.com', 'https://logo.clearbit.com/tesla.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Uber', 'Uber anuncia en Publihazclick', 'https://uber.com', 'https://logo.clearbit.com/uber.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Airbnb', 'Airbnb anuncia en Publihazclick', 'https://airbnb.com', 'https://logo.clearbit.com/airbnb.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Visa', 'Visa anuncia en Publihazclick', 'https://visa.com', 'https://logo.clearbit.com/visa.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('Mastercard', 'Mastercard anuncia en Publihazclick', 'https://mastercard.com', 'https://logo.clearbit.com/mastercard.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('PayPal', 'PayPal anuncia en Publihazclick', 'https://paypal.com', 'https://logo.clearbit.com/paypal.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW()),
+  ('LinkedIn', 'LinkedIn anuncia en Publihazclick', 'https://linkedin.com', 'https://logo.clearbit.com/linkedin.com?size=400', 100000, 30, 10000, 0, 'active', 'mega_100000'::ptc_ad_type, 'v2_pool', NOW());

@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
+import * as QRCode from 'qrcode';
 import { getSupabaseClient } from '../supabase.client';
+import { environment } from '../../../environments/environment';
 import {
   WaSubscription,
   WaSession,
@@ -60,11 +62,52 @@ export class WhatsappService {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async callEngine(action: string, params: Record<string, unknown> = {}): Promise<any> {
-    const { data, error } = await this.supabase.functions.invoke('wa-engine', {
-      body: { action, ...params },
-    });
-    if (error) throw new Error(error.message);
-    return data;
+    // 1) Garantizar sesión válida (el SDK a veces no refresca a tiempo).
+    const { data: sessionData } = await this.supabase.auth.getSession();
+    let session = sessionData.session;
+    if (!session) {
+      throw new Error('Sesión expirada. Por favor vuelve a iniciar sesión.');
+    }
+    const expiresAtMs = (session.expires_at ?? 0) * 1000;
+    if (expiresAtMs && expiresAtMs - Date.now() < 60_000) {
+      const { data: refreshed, error: refreshErr } = await this.supabase.auth.refreshSession();
+      if (refreshErr || !refreshed.session) {
+        throw new Error('No se pudo refrescar la sesión. Vuelve a iniciar sesión.');
+      }
+      session = refreshed.session;
+    }
+
+    // 2) Llamada directa con fetch para controlar la respuesta completa.
+    //    Evitamos supabase.functions.invoke porque consume el body del error
+    //    internamente y pierde el mensaje real.
+    const url = `${environment.supabase.url}/functions/v1/wa-engine`;
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': environment.supabase.anonKey,
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action, ...params }),
+      });
+    } catch (e) {
+      console.error('[wa-engine] network error', e);
+      throw new Error('Error de red al contactar wa-engine');
+    }
+
+    const raw = await response.text();
+    let parsed: unknown;
+    try { parsed = raw ? JSON.parse(raw) : null; } catch { parsed = null; }
+
+    if (!response.ok) {
+      const body = parsed as { error?: string; message?: string } | null;
+      const msg = body?.error || body?.message || raw || `HTTP ${response.status}`;
+      console.error('[wa-engine]', { action, status: response.status, body: parsed, raw });
+      throw new Error(msg);
+    }
+    return parsed;
   }
 
   // ─── Sessions ───────────────────────────────
@@ -82,27 +125,66 @@ export class WhatsappService {
 
   async createSession(name: string): Promise<{ session: WaSession | null; instance: string | null }> {
     const result = await this.callEngine('create_instance', { name });
-    const instance = result?.instance || null;
+    const instance = result?.instance ?? null;
+    const sessionId = result?.session_id ?? null;
 
-    const sessions = await this.getSessions();
-    const session = sessions[0] ?? null;
-
-    if (session && instance) {
-      await this.supabase.from('wa_sessions')
-        .update({ phone_number: instance })
-        .eq('id', session.id);
+    if (sessionId) {
+      const { data } = await this.supabase
+        .from('wa_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .maybeSingle();
+      return { session: data ?? null, instance };
     }
-
-    return { session, instance };
+    // Fallback: intentar recuperar por instance/phone_number
+    if (instance) {
+      const { data } = await this.supabase
+        .from('wa_sessions')
+        .select('*')
+        .eq('phone_number', instance)
+        .maybeSingle();
+      return { session: data ?? null, instance };
+    }
+    return { session: null, instance };
   }
 
-  async getQRCode(instance: string): Promise<{ qrCode: string | null; pairingCode: string | null }> {
+  async getQRCode(instance: string): Promise<{ qrCode: string | null; qrImage: string | null; pairingCode: string | null }> {
     const result = await this.callEngine('get_qr', { instance });
-    const data = result?.data;
-    return {
-      qrCode: data?.code ?? null,
-      pairingCode: data?.pairingCode ?? null,
-    };
+    console.log('[wa-engine get_qr response JSON]', JSON.stringify(result, null, 2));
+
+    // Evolution API puede devolver la respuesta en varias formas según version:
+    //  - result.data.base64 (imagen lista como data URL)
+    //  - result.data.code (string plano del QR que renderizamos localmente)
+    //  - result.data.qrcode.{base64|code}
+    //  - result.base64 / result.code (plano, sin anidar)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r: any = result ?? {};
+    const d = r.data ?? r;
+    const qr = d.qrcode ?? d;
+
+    const rawBase64: string | null = qr.base64 ?? d.base64 ?? r.base64 ?? null;
+    const code: string | null = qr.code ?? d.code ?? r.code ?? null;
+    const pairingCode: string | null = qr.pairingCode ?? d.pairingCode ?? r.pairingCode ?? null;
+
+    let qrImage: string | null = null;
+    if (rawBase64) {
+      qrImage = rawBase64.startsWith('data:') ? rawBase64 : `data:image/png;base64,${rawBase64}`;
+    } else if (code) {
+      // Renderizamos el QR en el cliente con la librería qrcode. No depende
+      // de que Evolution API envíe la imagen.
+      try {
+        qrImage = await QRCode.toDataURL(code, {
+          errorCorrectionLevel: 'L',
+          margin: 1,
+          scale: 8,
+          color: { dark: '#000000', light: '#FFFFFF' },
+        });
+      } catch (e) {
+        console.error('[wa-engine] error generando QR local', e);
+      }
+    }
+
+    return { qrCode: code, qrImage, pairingCode };
   }
 
   async getInstanceStatus(instance: string): Promise<string> {
@@ -110,13 +192,26 @@ export class WhatsappService {
       const result = await this.callEngine('get_status', { instance });
       const data = result?.data;
       if (Array.isArray(data) && data.length) {
-        const state = data[0]?.connectionStatus || data[0]?.state || 'disconnected';
-        return state === 'open' ? 'connected' : state;
+        const raw = (data[0]?.connectionStatus || data[0]?.state || 'disconnected') as string;
+        return this.mapEvolutionState(raw);
       }
       return 'disconnected';
     } catch {
       return 'disconnected';
     }
+  }
+
+  /**
+   * Mapea los estados de Evolution API a los 4 valores permitidos por el
+   * CHECK constraint de wa_sessions.status: connected | disconnected |
+   * qr_pending | banned.
+   */
+  private mapEvolutionState(raw: string): string {
+    const s = (raw || '').toLowerCase();
+    if (s === 'open' || s === 'connected') return 'connected';
+    if (s === 'connecting' || s === 'qrcode' || s === 'qr' || s === 'qr_pending') return 'qr_pending';
+    if (s === 'banned' || s === 'blocked') return 'banned';
+    return 'disconnected';
   }
 
   async updateSession(id: string, status: string): Promise<void> {

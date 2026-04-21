@@ -1,0 +1,13 @@
+project_id = "btkdmdhzouzvzgyuzgbh"
+
+# verify_jwt = false — el gateway rechaza tokens ES256 (firma asimétrica).
+# La función valida el JWT internamente con supabase.auth.getUser(token),
+# que sí soporta ES256. Mantiene la misma seguridad.
+[functions.wa-engine]
+verify_jwt = false
+
+[functions.wa-campaign-worker]
+verify_jwt = false
+
+[functions.wa-evolution-webhook]
+verify_jwt = false

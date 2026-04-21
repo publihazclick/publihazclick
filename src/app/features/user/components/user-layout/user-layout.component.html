@@ -513,7 +513,7 @@
               } @else {
                 @for (notif of notifications(); track notif.id) {
                   <div
-                    (click)="markAsRead(notif.id)"
+                    (click)="onNotificationClick(notif)"
                     class="px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
                     [class.bg-white/[0.02]]="!notif.is_read">
                     <div class="flex items-start gap-3">
@@ -1099,4 +1099,12 @@
       </div>
     </div>
   </div>
+}
+
+<!-- Modal global: confirmar recibo de retiro ──────────────────────────────── -->
+@if (pendingWithdrawalAck()) {
+  <app-withdrawal-receipt-modal
+    [withdrawal]="pendingWithdrawalAck()!"
+    (acknowledged)="onWithdrawalAcknowledged()"
+  ></app-withdrawal-receipt-modal>
 }

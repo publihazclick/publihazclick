@@ -11,6 +11,10 @@ import { AdminPackageService } from '../../../../core/services/admin-package.ser
 import { UserReferralModalComponent } from '../user-referral-modal/user-referral-modal.component';
 import { BannerSliderComponent } from '../../../../components/banner-slider/banner-slider.component';
 import { getSupabaseClient } from '../../../../core/supabase.client';
+import {
+  WithdrawalReceiptModalComponent,
+  PendingWithdrawalAck,
+} from '../withdrawal-receipt-modal/withdrawal-receipt-modal.component';
 
 interface LayoutPaymentMethod {
   id: string;
@@ -43,7 +47,7 @@ const LAYOUT_PAYMENT_METHODS: LayoutPaymentMethod[] = [
 @Component({
   selector: 'app-user-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, DatePipe, FormsModule, UserReferralModalComponent, BannerSliderComponent],
+  imports: [CommonModule, RouterModule, DatePipe, FormsModule, UserReferralModalComponent, BannerSliderComponent, WithdrawalReceiptModalComponent],
   templateUrl: './user-layout.component.html',
   styleUrl: './user-layout.component.scss',
 })
@@ -85,6 +89,10 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
   readonly notifications = signal<any[]>([]);
   readonly unreadCount = signal(0);
   readonly showNotifPanel = signal(false);
+
+  // Retiro pendiente de confirmar (bloquea tareas diarias)
+  readonly pendingWithdrawalAck = signal<PendingWithdrawalAck | null>(null);
+  private withdrawalAckPollHandle: ReturnType<typeof setInterval> | null = null;
 
   // Toast de activación de cuenta
   readonly upgradeToast = signal(false);
@@ -141,12 +149,22 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
         this.checkPackagePromo();
         // Cargar notificaciones
         this.loadNotifications();
+        // Poll de pago recibido cada 45s mientras no haya ack pendiente abierto
+        this.withdrawalAckPollHandle = setInterval(() => {
+          if (!this.pendingWithdrawalAck()) {
+            this.checkPendingWithdrawalAck();
+          }
+        }, 45_000);
       }
     });
   }
 
   ngOnDestroy(): void {
     this.profileService.stopRealtimeProfileWatch();
+    if (this.withdrawalAckPollHandle) {
+      clearInterval(this.withdrawalAckPollHandle);
+      this.withdrawalAckPollHandle = null;
+    }
     if (isPlatformBrowser(this.platformId)) {
       document.removeEventListener('touchstart', this.handleTouchStart);
       document.removeEventListener('touchend', this.handleTouchEnd);
@@ -338,7 +356,47 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
 
       this.notifications.set(data ?? []);
       this.unreadCount.set((data ?? []).filter((n: any) => !n.is_read).length);
+
+      // Verificar si hay un retiro pagado sin confirmar
+      this.checkPendingWithdrawalAck();
     } catch {}
+  }
+
+  async checkPendingWithdrawalAck(): Promise<void> {
+    try {
+      const { data, error } = await getSupabaseClient().rpc('get_pending_withdrawal_ack');
+      if (error) return;
+      const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
+      if (!row) {
+        this.pendingWithdrawalAck.set(null);
+        return;
+      }
+      this.pendingWithdrawalAck.set({
+        id: row.id,
+        amount: Number(row.amount) || 0,
+        method: row.method ?? null,
+        receipt_url: row.receipt_url ?? null,
+        admin_notes: row.admin_notes ?? null,
+        receipt_uploaded_at: row.receipt_uploaded_at ?? null,
+        created_at: row.created_at,
+      });
+    } catch {}
+  }
+
+  onWithdrawalAcknowledged(): void {
+    this.pendingWithdrawalAck.set(null);
+    this.loadNotifications();
+  }
+
+  async onNotificationClick(notif: any): Promise<void> {
+    if (notif?.title === 'Pago de retiro exitoso') {
+      // Abre el modal con el comprobante; el click de "confirmar recibido"
+      // marcará la notificación como leída.
+      this.showNotifPanel.set(false);
+      await this.checkPendingWithdrawalAck();
+      return;
+    }
+    this.markAsRead(notif.id);
   }
 
   async markAsRead(notifId: string): Promise<void> {

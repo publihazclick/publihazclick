@@ -24,7 +24,23 @@ function json(data: unknown, status = 200) {
   });
 }
 
-async function evoSendText(instance: string, number: string, text: string, delayMs: number): Promise<boolean> {
+interface SendResult { ok: boolean; messageId: string | null; error?: string }
+
+function extractKeyId(resp: unknown): string | null {
+  const r = resp as Record<string, unknown> | null;
+  if (!r) return null;
+  const key = r.key as Record<string, unknown> | undefined;
+  if (key && typeof key.id === 'string') return key.id;
+  // Algunos endpoints devuelven en `data` o en root
+  const data = (r.data as Record<string, unknown>) ?? null;
+  if (data) {
+    const dKey = data.key as Record<string, unknown> | undefined;
+    if (dKey && typeof dKey.id === 'string') return dKey.id;
+  }
+  return null;
+}
+
+async function evoSendText(instance: string, number: string, text: string, delayMs: number): Promise<SendResult> {
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instance}`, {
       method: 'POST',
@@ -32,13 +48,14 @@ async function evoSendText(instance: string, number: string, text: string, delay
       body: JSON.stringify({ number, text, delay: delayMs }),
     });
     const data = await res.json();
-    return !!data?.key;
-  } catch {
-    return false;
+    const id = extractKeyId(data);
+    return { ok: !!id, messageId: id, error: id ? undefined : JSON.stringify(data).slice(0, 500) };
+  } catch (e) {
+    return { ok: false, messageId: null, error: String(e).slice(0, 500) };
   }
 }
 
-async function evoSendMedia(instance: string, number: string, mediatype: string, media: string, caption: string, mimetype: string, fileName: string): Promise<boolean> {
+async function evoSendMedia(instance: string, number: string, mediatype: string, media: string, caption: string, mimetype: string, fileName: string): Promise<SendResult> {
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${instance}`, {
       method: 'POST',
@@ -46,13 +63,14 @@ async function evoSendMedia(instance: string, number: string, mediatype: string,
       body: JSON.stringify({ number, mediatype, mimetype, caption, media, fileName }),
     });
     const data = await res.json();
-    return !!data?.key;
-  } catch {
-    return false;
+    const id = extractKeyId(data);
+    return { ok: !!id, messageId: id, error: id ? undefined : JSON.stringify(data).slice(0, 500) };
+  } catch (e) {
+    return { ok: false, messageId: null, error: String(e).slice(0, 500) };
   }
 }
 
-async function evoSendAudio(instance: string, number: string, audio: string): Promise<boolean> {
+async function evoSendAudio(instance: string, number: string, audio: string): Promise<SendResult> {
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/message/sendWhatsAppAudio/${instance}`, {
       method: 'POST',
@@ -60,9 +78,10 @@ async function evoSendAudio(instance: string, number: string, audio: string): Pr
       body: JSON.stringify({ number, audio }),
     });
     const data = await res.json();
-    return !!data?.key;
-  } catch {
-    return false;
+    const id = extractKeyId(data);
+    return { ok: !!id, messageId: id, error: id ? undefined : JSON.stringify(data).slice(0, 500) };
+  } catch (e) {
+    return { ok: false, messageId: null, error: String(e).slice(0, 500) };
   }
 }
 
@@ -111,9 +130,13 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Obtener la instancia de Evolution API asociada
-    // Usamos el nombre de la sesion como referencia
-    const sessionName = sessions[0].session_name;
+    // Obtener la instancia de Evolution API asociada.
+    // El nombre de la instancia en Evolution API se guarda en `phone_number`.
+    const instanceName = sessions[0].phone_number as string | null;
+    if (!instanceName) {
+      await supabase.from('wa_campaigns').update({ status: 'failed' }).eq('id', campaign.id);
+      continue;
+    }
 
     // Obtener plantilla
     const { data: template } = await supabase
@@ -157,31 +180,31 @@ Deno.serve(async (req) => {
       // Marcar como enviando
       await supabase.from('wa_campaign_messages').update({ status: 'sending' }).eq('id', msg.id);
 
-      let success = false;
+      let result: SendResult = { ok: false, messageId: null, error: 'No enviado' };
       const messageContent = msg.content || template?.content || '';
 
       try {
         if (template?.message_type === 'image' && template.media_url) {
-          success = await evoSendMedia(sessionName, contact.phone, 'image', template.media_url, messageContent, 'image/jpeg', template.media_filename || 'imagen.jpg');
+          result = await evoSendMedia(instanceName, contact.phone, 'image', template.media_url, messageContent, 'image/jpeg', template.media_filename || 'imagen.jpg');
         } else if (template?.message_type === 'pdf' && template.media_url) {
-          success = await evoSendMedia(sessionName, contact.phone, 'document', template.media_url, messageContent, 'application/pdf', template.media_filename || 'documento.pdf');
+          result = await evoSendMedia(instanceName, contact.phone, 'document', template.media_url, messageContent, 'application/pdf', template.media_filename || 'documento.pdf');
         } else if (template?.message_type === 'video' && template.media_url) {
-          success = await evoSendMedia(sessionName, contact.phone, 'video', template.media_url, messageContent, 'video/mp4', template.media_filename || 'video.mp4');
+          result = await evoSendMedia(instanceName, contact.phone, 'video', template.media_url, messageContent, 'video/mp4', template.media_filename || 'video.mp4');
         } else if (template?.message_type === 'audio' && template.media_url) {
-          success = await evoSendAudio(sessionName, contact.phone, template.media_url);
+          result = await evoSendAudio(instanceName, contact.phone, template.media_url);
         } else {
-          // Texto simple
-          success = await evoSendText(sessionName, contact.phone, messageContent, 0);
+          result = await evoSendText(instanceName, contact.phone, messageContent, 0);
         }
-      } catch {
-        success = false;
+      } catch (e) {
+        result = { ok: false, messageId: null, error: String(e).slice(0, 500) };
       }
 
       // Actualizar estado del mensaje
       await supabase.from('wa_campaign_messages').update({
-        status: success ? 'sent' : 'failed',
-        sent_at: success ? new Date().toISOString() : null,
-        error_message: success ? null : 'Error al enviar mensaje',
+        status: result.ok ? 'sent' : 'failed',
+        sent_at: result.ok ? new Date().toISOString() : null,
+        evolution_message_id: result.messageId,
+        error_message: result.ok ? null : (result.error ?? 'Error al enviar mensaje'),
       }).eq('id', msg.id);
 
       totalProcessed++;

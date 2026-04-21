@@ -170,14 +170,14 @@
           </div>
         </div>
         <button
-          (click)="openWithdrawModal()"
+          (click)="onRetiroCardClick()"
           class="flex items-center gap-2 font-black py-2.5 px-5 rounded-xl transition-all text-sm"
-          [class]="hasEnoughBalance && hasSavedMethod ? 'bg-accent hover:bg-accent/90 text-white' : 'bg-white/5 text-slate-500 cursor-not-allowed'"
+          [class]="canWithdraw ? 'bg-accent hover:bg-accent/90 text-white' : 'bg-white/5 text-slate-500'"
         >
           <span class="material-symbols-outlined" style="font-size:18px">
-            {{ hasEnoughBalance && hasSavedMethod ? 'download' : 'lock' }}
+            {{ canWithdraw ? 'download' : 'lock' }}
           </span>
-          {{ hasEnoughBalance && hasSavedMethod ? 'Retirar fondos' : 'Retiro bloqueado' }}
+          {{ canWithdraw ? 'Retirar fondos' : 'Retiro bloqueado' }}
         </button>
       </div>
 

@@ -14,10 +14,11 @@
   <div class="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
     <div class="flex-1">
       <h2 class="text-2xl font-black text-white">Directorio de la Comunidad</h2>
-      <p class="text-sm text-slate-400 mt-1">Descubre y conecta con anunciantes, administradores y equipo</p>
+      <p class="text-sm text-slate-400 mt-1">Descubre y conecta con toda la comunidad de Publihazclick</p>
     </div>
     <!-- Leyenda de roles -->
-    <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
+    <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-wrap">
+      <span class="flex items-center gap-1 text-slate-300"><span class="w-2 h-2 rounded-full bg-slate-300"></span>Usuario</span>
       <span class="flex items-center gap-1 text-accent"><span class="w-2 h-2 rounded-full bg-accent"></span>Anunciante</span>
       <span class="flex items-center gap-1 text-blue-400"><span class="w-2 h-2 rounded-full bg-blue-400"></span>Admin</span>
       <span class="flex items-center gap-1 text-violet-400"><span class="w-2 h-2 rounded-full bg-violet-400"></span>Dev</span>
@@ -103,9 +104,13 @@
                 <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-violet-500/10 border border-violet-500/20 rounded text-[9px] font-black text-violet-400 uppercase tracking-wider">
                   <span class="material-symbols-outlined" style="font-size:10px">code</span>Dev
                 </span>
-              } @else {
+              } @else if (advertiser.role === 'advertiser') {
                 <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-accent/10 border border-accent/20 rounded text-[9px] font-black text-accent uppercase tracking-wider">
                   <span class="material-symbols-outlined" style="font-size:10px">storefront</span>Anunciante
+                </span>
+              } @else {
+                <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-black text-slate-300 uppercase tracking-wider">
+                  <span class="material-symbols-outlined" style="font-size:10px">person</span>Usuario
                 </span>
               }
             </div>
@@ -135,12 +140,6 @@
               <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
                 <span class="material-symbols-outlined" style="font-size:11px">location_on</span>
                 {{ advertiser.location }}
-              </span>
-            }
-            @if (advertiser.role === 'advertiser') {
-              <span class="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 flex items-center gap-1">
-                <span class="material-symbols-outlined" style="font-size:11px">group</span>
-                {{ advertiser.total_referrals_count }} afiliados
               </span>
             }
           </div>

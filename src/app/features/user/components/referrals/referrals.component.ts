@@ -21,7 +21,11 @@ interface InvitadoItem {
   has_active_package: boolean;
   avatar_url: string | null;
   created_at: string;
+  referred_by: string | null;
+  invited_by_username?: string | null;
 }
+
+type Tab = 'nivel1' | 'nivel2';
 
 @Component({
   selector: 'app-user-referrals',
@@ -36,11 +40,24 @@ export class UserReferralsComponent implements OnInit {
 
   profile = this.profileService.profile;
 
-  invitados = signal<InvitadoItem[]>([]);
+  invitadosNivel1 = signal<InvitadoItem[]>([]);
+  invitadosNivel2 = signal<InvitadoItem[]>([]);
   loading = signal(true);
+  activeTab = signal<Tab>('nivel1');
 
-  totalInvitados = computed(() => this.invitados().length);
-  invitadosConPaquete = computed(() => this.invitados().filter(a => a.has_active_package).length);
+  totalNivel1 = computed(() => this.invitadosNivel1().length);
+  totalNivel2 = computed(() => this.invitadosNivel2().length);
+  totalInvitados = computed(() => this.totalNivel1() + this.totalNivel2());
+
+  invitadosConPaquete = computed(
+    () =>
+      this.invitadosNivel1().filter(a => a.has_active_package).length +
+      this.invitadosNivel2().filter(a => a.has_active_package).length
+  );
+
+  invitadosActivos = computed(() =>
+    this.activeTab() === 'nivel1' ? this.invitadosNivel1() : this.invitadosNivel2()
+  );
 
   async ngOnInit(): Promise<void> {
     const {
@@ -56,15 +73,65 @@ export class UserReferralsComponent implements OnInit {
     this.loading.set(false);
   }
 
-  private async loadInvitados(userId: string): Promise<void> {
-    const { data, error } = await this.supabase
-      .from('profiles')
-      .select('id, username, full_name, level, total_referrals_count, has_active_package, avatar_url, created_at')
-      .eq('referred_by', userId);
+  setTab(tab: Tab): void {
+    this.activeTab.set(tab);
+  }
 
-    if (!error && data) {
-      this.invitados.set(data as InvitadoItem[]);
+  private async loadInvitados(userId: string): Promise<void> {
+    const { data, error } = await this.supabase.rpc('get_my_referral_network');
+
+    if (error || !data) {
+      await this.loadInvitadosFallback(userId);
+      return;
     }
+
+    const rows = data as Array<InvitadoItem & { referral_depth: number }>;
+
+    const nivel1 = rows
+      .filter(r => r.referral_depth === 1)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const nivel2 = rows
+      .filter(r => r.referral_depth === 2)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    this.invitadosNivel1.set(nivel1);
+    this.invitadosNivel2.set(nivel2);
+  }
+
+  private async loadInvitadosFallback(userId: string): Promise<void> {
+    const selectCols =
+      'id, username, full_name, level, total_referrals_count, has_active_package, avatar_url, created_at, referred_by';
+
+    const { data: nivel1 } = await this.supabase
+      .from('profiles')
+      .select(selectCols)
+      .eq('referred_by', userId)
+      .order('created_at', { ascending: false });
+
+    if (!nivel1) return;
+    this.invitadosNivel1.set(nivel1 as InvitadoItem[]);
+
+    const nivel1Ids = nivel1.map(n => n.id);
+    if (nivel1Ids.length === 0) return;
+
+    const usernameById = new Map<string, string>();
+    nivel1.forEach(n => usernameById.set(n.id, n.username));
+
+    const { data: nivel2 } = await this.supabase
+      .from('profiles')
+      .select(selectCols)
+      .in('referred_by', nivel1Ids)
+      .order('created_at', { ascending: false });
+
+    if (!nivel2) return;
+
+    const enriched = (nivel2 as InvitadoItem[]).map(n => ({
+      ...n,
+      invited_by_username: n.referred_by ? usernameById.get(n.referred_by) ?? null : null,
+    }));
+
+    this.invitadosNivel2.set(enriched);
   }
 
   getTierInfo(referrals: number): { name: string; color: string } {

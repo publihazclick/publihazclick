@@ -267,25 +267,62 @@ export class UserAdsComponent implements OnInit, OnDestroy {
         const megaRemaining = limits['mega']?.remaining ?? 0;
         filtered.push(...(byType['mega'] || []).filter(a => !megaMonthClicked.has(a.id)).slice(0, megaRemaining));
 
-        // mega V2: cargar grants disponibles y agregar como ads clickeables
+        // mega V2: N tarjetas distintas por tier (N = grants remaining),
+        // tomadas del pool aislado location='v2_pool'. Solo visibles para
+        // referidores con grants activos en referral_mega_grants.
         if (userId) {
           const { data: grants } = await supabase.rpc('get_available_mega_grants', { p_user_id: userId });
-          if (grants && Array.isArray(grants)) {
+          if (grants && Array.isArray(grants) && grants.some((g: any) => g.available > 0)) {
             this.megaV2Grants.set(grants);
+
+            // Cargar el pool una sola vez
+            const { data: poolData } = await supabase
+              .from('ptc_tasks')
+              .select('id, title, description, url, image_url, youtube_url, ad_type, total_clicks')
+              .eq('location', 'v2_pool')
+              .eq('status', 'active');
+
+            const pool = poolData || [];
+            const poolIds = pool.map((t: any) => t.id);
+
+            // Excluir companies que el usuario ya clickeó (grants consumidos previamente)
+            const clickedIds = new Set<string>();
+            if (poolIds.length > 0) {
+              const { data: prevClicks } = await supabase
+                .from('ptc_clicks')
+                .select('task_id')
+                .eq('user_id', userId)
+                .in('task_id', poolIds);
+              for (const c of (prevClicks || [])) clickedIds.add((c as any).task_id);
+            }
+
             for (const grant of grants) {
-              // Buscar un ptc_task del tipo correspondiente para usarlo como contenido
-              const megaTask = allAds.find(a => a.adType === grant.ad_type);
-              if (megaTask) {
-                for (let i = 0; i < grant.available; i++) {
-                  filtered.push({
-                    ...megaTask,
-                    id: megaTask.id,
-                    rewardCOP: grant.reward_per_ad,
-                    adType: grant.ad_type as PtcAdType,
-                  });
-                }
+              if (grant.available <= 0) continue;
+
+              const unclicked = pool
+                .filter((t: any) => t.ad_type === grant.ad_type && !clickedIds.has(t.id))
+                .sort(() => Math.random() - 0.5)
+                .slice(0, grant.available);
+
+              for (const company of unclicked) {
+                filtered.push({
+                  id: (company as any).id,
+                  companyName: (company as any).title,
+                  description: (company as any).description || '',
+                  advertiserType: 'company' as const,
+                  imageUrl: (company as any).image_url || '',
+                  videoUrl: (company as any).youtube_url || '',
+                  destinationUrl: (company as any).url || '',
+                  adType: grant.ad_type as PtcAdType,
+                  rewardCOP: grant.reward_per_ad,
+                  dailyLimit: 0,
+                  totalClicks: (company as any).total_clicks || 0,
+                  status: 'active',
+                });
               }
             }
+          } else {
+            this.megaV2Grants.set([]);
           }
         }
 
@@ -315,6 +352,16 @@ export class UserAdsComponent implements OnInit, OnDestroy {
     return this.ads().filter(ad => ad.adType === type);
   }
 
+  getMegaV2Ads(): PtcAdCard[] {
+    const v2Types = ['mega_2000','mega_5000','mega_10000','mega_20000','mega_50000','mega_100000'];
+    return this.ads().filter(ad => v2Types.includes(ad.adType));
+  }
+
+  getMegaV2Available(adType: string): number {
+    const grant = this.megaV2Grants().find(g => g.ad_type === adType);
+    return grant?.available ?? 0;
+  }
+
   getRewardDisplay(rewardCOP: number): string {
     return this.currencyService.formatFromCOP(rewardCOP, 2);
   }
@@ -329,7 +376,9 @@ export class UserAdsComponent implements OnInit, OnDestroy {
   }
 
   openAdModal(ad: PtcAdCard): void {
-    if (this.userTracking.hasViewedAd(ad.id)) return;
+    const v2Types: string[] = ['mega_2000','mega_5000','mega_10000','mega_20000','mega_50000','mega_100000'];
+    const isMegaV2 = v2Types.includes(ad.adType);
+    if (!isMegaV2 && this.userTracking.hasViewedAd(ad.id)) return;
     this.selectedAd.set({
       id: ad.id,
       title: ad.companyName,
@@ -399,12 +448,13 @@ export class UserAdsComponent implements OnInit, OnDestroy {
       const clickedAd = this.selectedAd();
       const megaV2Types = ['mega_2000','mega_5000','mega_10000','mega_20000','mega_50000','mega_100000'];
       const adTypeOverride = clickedAd && megaV2Types.includes(clickedAd.adType) ? clickedAd.adType : null;
+      const realTaskId = taskId;
 
       const data = await this.sessionService.callRpc<{ success: boolean; reward?: number; donation?: number; error?: string }>(
         'record_ptc_click',
         {
           p_user_id: userId,
-          p_task_id: taskId,
+          p_task_id: realTaskId,
           p_ip_address: ip,
           p_user_agent: ua,
           p_session_fingerprint: fingerprint,

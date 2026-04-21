@@ -1,8 +1,8 @@
 <div class="space-y-6">
   <!-- Header -->
   <div>
-    <h2 class="text-xl font-black text-white">Mis Invitados</h2>
-    <p class="text-xs text-slate-400">Personas que se registraron con tu enlace de invitado</p>
+    <h2 class="text-xl font-black text-white">Mi Red de Invitados</h2>
+    <p class="text-xs text-slate-400">Tus invitados directos y los invitados de ellos (2 niveles)</p>
   </div>
 
   <!-- Código de invitado + enlace -->
@@ -42,53 +42,95 @@
           </div>
         </div>
       </div>
-      <!-- Total invitados -->
+      <!-- Total red -->
       <div class="flex flex-col items-center justify-center bg-black/30 rounded-xl px-6 py-4 border border-white/10 min-w-[100px]">
-        <span class="material-symbols-outlined text-primary mb-1" style="font-size:28px;">group</span>
+        <span class="material-symbols-outlined text-primary mb-1" style="font-size:28px;">hub</span>
         <p class="text-2xl font-black text-white">{{ totalInvitados() }}</p>
-        <p class="text-[10px] text-slate-400 uppercase font-bold text-center">Invitados</p>
+        <p class="text-[10px] text-slate-400 uppercase font-bold text-center">Red Total</p>
       </div>
     </div>
   </div>
 
   <!-- Stats row -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
     <div class="bg-card-dark border border-white/5 rounded-xl p-4 text-center">
-      <p class="text-2xl font-black text-white">{{ totalInvitados() }}</p>
-      <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Total Invitados</p>
+      <p class="text-2xl font-black text-white">{{ totalNivel1() }}</p>
+      <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Nivel 1 Directos</p>
     </div>
     <div class="bg-card-dark border border-white/5 rounded-xl p-4 text-center">
-      <p class="text-2xl font-black text-amber-400">
-        {{ invitadosConPaquete() }}
-      </p>
+      <p class="text-2xl font-black text-accent">{{ totalNivel2() }}</p>
+      <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Nivel 2 Indirectos</p>
+    </div>
+    <div class="bg-card-dark border border-white/5 rounded-xl p-4 text-center">
+      <p class="text-2xl font-black text-amber-400">{{ invitadosConPaquete() }}</p>
       <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Con Cuenta Activa</p>
-      <span class="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20">activos</span>
     </div>
     <div class="bg-card-dark border border-white/5 rounded-xl p-4 text-center">
       <p class="text-2xl font-black text-primary">
         {{ formatCOP(profile()?.referral_earnings || 0) }}
       </p>
-      <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Ganancias Invitados</p>
+      <p class="text-[10px] text-slate-400 uppercase font-bold mt-1">Ganancias</p>
     </div>
   </div>
 
-  <!-- Lista de invitados -->
+  <!-- Tabs -->
+  <div class="flex items-center gap-2 border-b border-white/5 pb-2">
+    <button
+      (click)="setTab('nivel1')"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+      [class]="activeTab() === 'nivel1'
+        ? 'bg-primary/15 text-primary border border-primary/30'
+        : 'text-slate-400 hover:text-white hover:bg-white/5'"
+    >
+      <span class="material-symbols-outlined" style="font-size:16px;">person</span>
+      Nivel 1 · Directos
+      <span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-white/10">{{ totalNivel1() }}</span>
+    </button>
+    <button
+      (click)="setTab('nivel2')"
+      class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+      [class]="activeTab() === 'nivel2'
+        ? 'bg-accent/15 text-accent border border-accent/30'
+        : 'text-slate-400 hover:text-white hover:bg-white/5'"
+    >
+      <span class="material-symbols-outlined" style="font-size:16px;">groups</span>
+      Nivel 2 · Indirectos
+      <span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-white/10">{{ totalNivel2() }}</span>
+    </button>
+  </div>
+
+  <!-- Lista -->
   @if (loading()) {
     <div class="flex items-center justify-center py-16">
       <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
     </div>
-  } @else if (invitados().length === 0) {
+  } @else if (invitadosActivos().length === 0) {
     <div class="bg-card-dark border border-white/5 rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center">
-      <span class="material-symbols-outlined text-slate-600" style="font-size:48px;">group</span>
-      <p class="text-white font-bold text-base">Aún no tienes invitados</p>
-      <p class="text-slate-400 text-sm max-w-xs">
-        Comparte tu enlace para empezar a ganar. Cuando alguien se registre con tu código, aparecerá aquí.
-      </p>
+      <span class="material-symbols-outlined text-slate-600" style="font-size:48px;">
+        {{ activeTab() === 'nivel1' ? 'group' : 'groups' }}
+      </span>
+      @if (activeTab() === 'nivel1') {
+        <p class="text-white font-bold text-base">Aún no tienes invitados directos</p>
+        <p class="text-slate-400 text-sm max-w-xs">
+          Comparte tu enlace para empezar a ganar. Cuando alguien se registre con tu código, aparecerá aquí.
+        </p>
+      } @else {
+        <p class="text-white font-bold text-base">Aún no hay invitados de nivel 2</p>
+        <p class="text-slate-400 text-sm max-w-xs">
+          Cuando tus invitados directos empiecen a invitar personas, esos nuevos usuarios aparecerán aquí.
+        </p>
+      }
     </div>
   } @else {
     <div class="space-y-3">
-      <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Lista de Invitados</h3>
-      @for (invitado of invitados(); track invitado.id) {
+      <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">
+        @if (activeTab() === 'nivel1') {
+          Tus Invitados Directos
+        } @else {
+          Invitados de tus Invitados
+        }
+      </h3>
+      @for (invitado of invitadosActivos(); track invitado.id) {
         <div class="bg-card-dark border border-white/5 rounded-xl p-4 flex items-center gap-4">
           <!-- Avatar -->
           @if (invitado.avatar_url) {
@@ -111,8 +153,16 @@
               {{ invitado.full_name || invitado.username }}
             </p>
             <p class="text-slate-500 text-xs">&#64;{{ invitado.username }}</p>
+
+            @if (activeTab() === 'nivel2' && invitado.invited_by_username) {
+              <p class="text-[11px] text-accent/80 mt-0.5 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:11px;">link</span>
+                Invitado por &#64;{{ invitado.invited_by_username }}
+              </p>
+            }
+
             <div class="flex items-center gap-2 mt-1 flex-wrap">
-              <!-- Nivel -->
+              <!-- Nivel (tier) -->
               <span
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                 [ngClass]="getTierInfo(invitado.total_referrals_count).color"

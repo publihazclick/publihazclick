@@ -74,6 +74,11 @@ export class AdminWithdrawalService {
         processed_at: w.processed_at,
         processed_by: w.processed_by,
         rejection_reason: w.rejection_reason,
+        receipt_url: w.receipt_url ?? null,
+        admin_notes: w.admin_notes ?? null,
+        receipt_uploaded_at: w.receipt_uploaded_at ?? null,
+        acknowledged_at: w.acknowledged_at ?? null,
+        user_comment: w.user_comment ?? null,
         created_at: w.created_at
       }));
 
@@ -125,6 +130,11 @@ export class AdminWithdrawalService {
         processed_at: data.processed_at,
         processed_by: data.processed_by,
         rejection_reason: data.rejection_reason,
+        receipt_url: data.receipt_url ?? null,
+        admin_notes: data.admin_notes ?? null,
+        receipt_uploaded_at: data.receipt_uploaded_at ?? null,
+        acknowledged_at: data.acknowledged_at ?? null,
+        user_comment: data.user_comment ?? null,
         created_at: data.created_at
       };
     } catch (error: any) {
@@ -184,24 +194,24 @@ export class AdminWithdrawalService {
   }
 
   /**
-   * Rechazar retiro y devolver saldo al usuario
+   * Rechazar retiro. El saldo no se descuenta al enviar la solicitud,
+   * por lo que rechazar solo marca el estado y guarda la razón.
    */
   async rejectWithdrawal(id: string, reason: string): Promise<boolean> {
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
 
-      // Obtener el retiro para saber el monto y usuario
       const { data: withdrawal, error: fetchError } = await this.supabase
         .from('withdrawal_requests')
-        .select('user_id, amount, status')
+        .select('status')
         .eq('id', id)
         .single();
 
       if (fetchError) throw fetchError;
       if (!withdrawal) throw new Error('Retiro no encontrado');
-      if (withdrawal.status !== 'pending') throw new Error('El retiro ya fue procesado');
+      if (withdrawal.status === 'completed') throw new Error('No se puede rechazar un retiro ya pagado');
+      if (withdrawal.status === 'rejected') throw new Error('El retiro ya fue rechazado');
 
-      // Actualizar estado del retiro
       const { error } = await this.supabase
         .from('withdrawal_requests')
         .update({
@@ -213,33 +223,59 @@ export class AdminWithdrawalService {
         .eq('id', id);
 
       if (error) throw error;
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
-      // Devolver el saldo al usuario
-      const { error: balanceError } = await this.supabase.rpc('add_to_balance', {
-        p_user_id: withdrawal.user_id,
-        p_amount: Number(withdrawal.amount)
+  /**
+   * Marcar retiro como pagado: sube la imagen del comprobante al storage
+   * y llama al RPC `mark_withdrawal_paid`, que descuenta el saldo, guarda el
+   * receipt_url y envía la notificación al usuario.
+   */
+  async markWithdrawalPaid(
+    id: string,
+    receiptFile: File,
+    adminNotes?: string
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      if (!receiptFile) return { ok: false, error: 'Se requiere la imagen del comprobante' };
+
+      const ext = receiptFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await this.supabase.storage
+        .from('withdrawal-receipts')
+        .upload(path, receiptFile, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: receiptFile.type || 'image/jpeg',
+        });
+
+      if (uploadError) return { ok: false, error: uploadError.message };
+
+      const { data: pub } = this.supabase.storage
+        .from('withdrawal-receipts')
+        .getPublicUrl(path);
+
+      const receiptUrl = pub.publicUrl;
+
+      const { error: rpcError } = await this.supabase.rpc('mark_withdrawal_paid', {
+        p_withdrawal_id: id,
+        p_receipt_url: receiptUrl,
+        p_admin_notes: adminNotes ?? null,
       });
 
-      // Si RPC falla, intentamos actualizar directamente
-      if (balanceError) {
-        const { data: profile } = await this.supabase
-          .from('profiles')
-          .select('real_balance')
-          .eq('id', withdrawal.user_id)
-          .single();
-
-        const newBalance = (profile?.real_balance || 0) + Number(withdrawal.amount);
-        
-        await this.supabase
-          .from('profiles')
-          .update({ real_balance: newBalance })
-          .eq('id', withdrawal.user_id);
+      if (rpcError) {
+        // Rollback: borrar el archivo subido para no dejar basura
+        await this.supabase.storage.from('withdrawal-receipts').remove([path]);
+        return { ok: false, error: rpcError.message };
       }
 
-      return true;
-    } catch (error: any) {
-      // Failed to reject withdrawal
-      return false;
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? 'Error inesperado' };
     }
   }
 

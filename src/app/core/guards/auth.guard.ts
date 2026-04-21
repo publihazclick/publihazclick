@@ -145,6 +145,13 @@ export const guestGuard: CanActivateFn = async (route, state) => {
     return true;
   }
 
+  // Si trae ?returnUrl=/algo, respetarlo: así un refresh que pasó por /login
+  // devuelve al usuario exactamente donde estaba (no al root del rol).
+  const returnUrl = route.queryParams['returnUrl'];
+  if (typeof returnUrl === 'string' && returnUrl.startsWith('/') && !returnUrl.startsWith('/login') && !returnUrl.startsWith('/register')) {
+    return router.parseUrl(returnUrl);
+  }
+
   // Usuario autenticado, redirigir segun su rol
   try {
     const profile = await profileService.getCurrentProfile();

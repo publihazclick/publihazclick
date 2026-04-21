@@ -83,6 +83,9 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   // Realtime
   private realtimeChannel: RealtimeChannel | null = null;
 
+  // Debounce para búsqueda server-side
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
   // Balance
   readonly balanceOperation = signal<'add' | 'subtract' | 'set'>('add');
   readonly balanceAmount = signal<number>(0);
@@ -116,23 +119,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   readonly totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
 
-  readonly filteredUsers = computed(() =>
-    this.users().filter((u) => {
-      const q = this.searchQuery().toLowerCase();
-      const matchesSearch =
-        !q ||
-        u.username.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.full_name && u.full_name.toLowerCase().includes(q)) ||
-        (u.phone && u.phone.toLowerCase().includes(q));
-      const matchesRole = this.selectedRole() === 'all' || u.role === this.selectedRole();
-      const matchesStatus =
-        this.selectedStatus() === 'all' ||
-        (this.selectedStatus() === 'active' && u.is_active) ||
-        (this.selectedStatus() === 'inactive' && !u.is_active);
-      return matchesSearch && matchesRole && matchesStatus;
-    })
-  );
+  readonly filteredUsers = computed(() => this.users());
 
   readonly roles: { value: UserRole | 'all'; label: string }[] = [
     { value: 'all', label: 'Todos los roles' },
@@ -169,6 +156,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.notifTimer) clearTimeout(this.notifTimer);
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
     if (this.realtimeChannel) {
       getSupabaseClient().removeChannel(this.realtimeChannel);
     }
@@ -256,9 +244,19 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (this.selectedRole() !== 'all') query = query.eq('role', this.selectedRole());
-    if (this.selectedStatus() !== 'all')
-      query = query.eq('is_active', this.selectedStatus() === 'active');
+    const rawQ = this.searchQuery().trim();
+    if (rawQ) {
+      const safe = rawQ.replace(/[,()%]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (safe) {
+        query = query.or(
+          `username.ilike.%${safe}%,email.ilike.%${safe}%,full_name.ilike.%${safe}%,phone.ilike.%${safe}%`
+        );
+      }
+    } else {
+      if (this.selectedRole() !== 'all') query = query.eq('role', this.selectedRole());
+      if (this.selectedStatus() !== 'all')
+        query = query.eq('is_active', this.selectedStatus() === 'active');
+    }
 
     const { data, error, count } = await query;
     if (error) throw error;
@@ -275,6 +273,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   onSearch(query: string): void {
     this.searchQuery.set(query);
     this.currentPage.set(1);
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    this.searchDebounceTimer = setTimeout(() => this.loadUsers(), 300);
   }
 
   onRoleChange(role: UserRole | 'all'): void {
@@ -700,10 +700,32 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       }));
       const activeReferrals = referralsList.filter((r) => r.has_active_package).length;
 
-      this.userDetailData.set({ packageName, clicksByCategory, totalClicks, activeReferrals, referralsList });
+      // Referidor (quien refirió a este usuario)
+      let referrer: UserDetailData['referrer'] = null;
+      if (user.referred_by) {
+        const { data: refProfile } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, email, role, is_active, has_active_package, referral_code')
+          .eq('id', user.referred_by)
+          .single();
+        if (refProfile) {
+          referrer = {
+            id: refProfile.id,
+            username: refProfile.username,
+            full_name: refProfile.full_name,
+            email: refProfile.email,
+            role: refProfile.role,
+            is_active: refProfile.is_active ?? false,
+            has_active_package: refProfile.has_active_package ?? false,
+            referral_code: refProfile.referral_code,
+          };
+        }
+      }
+
+      this.userDetailData.set({ packageName, clicksByCategory, totalClicks, activeReferrals, referralsList, referrer });
     } catch (err) {
       // Failed to load user detail
-      this.userDetailData.set({ packageName: null, clicksByCategory: [], totalClicks: 0, activeReferrals: 0, referralsList: [] });
+      this.userDetailData.set({ packageName: null, clicksByCategory: [], totalClicks: 0, activeReferrals: 0, referralsList: [], referrer: null });
     } finally {
       this.detailLoading.set(false);
     }

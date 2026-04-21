@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import * as XLSX from 'xlsx';
 import { WhatsappService } from '../../../../core/services/whatsapp.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import {
@@ -31,7 +32,7 @@ type TemplateModal = 'none' | 'create';
   styleUrl: './automatic-whatsapp.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AutomaticWhatsappComponent implements OnInit {
+export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   private wa = inject(WhatsappService);
   private currency = inject(CurrencyService);
   private route = inject(ActivatedRoute);
@@ -97,6 +98,7 @@ export class AutomaticWhatsappComponent implements OnInit {
   newSessionName = signal('');
   activeInstance = signal<string | null>(null);
   qrCode = signal<string | null>(null);
+  qrImage = signal<string | null>(null);
   pairingCode = signal<string | null>(null);
   sessionLoading = signal(false);
   sessionError = signal<string | null>(null);
@@ -137,6 +139,8 @@ export class AutomaticWhatsappComponent implements OnInit {
     { id: 'settings', label: 'Ajustes', icon: 'settings' },
   ];
 
+  private qrPollHandle: ReturnType<typeof setInterval> | null = null;
+
   ngOnInit() {
     this.loadSubscription();
 
@@ -149,6 +153,13 @@ export class AutomaticWhatsappComponent implements OnInit {
           setTimeout(() => this.loadSubscription(), 2000);
         }
       });
+    }
+  }
+
+  ngOnDestroy() {
+    if (this.qrPollHandle) {
+      clearInterval(this.qrPollHandle);
+      this.qrPollHandle = null;
     }
   }
 
@@ -287,9 +298,14 @@ export class AutomaticWhatsappComponent implements OnInit {
   }
 
   async addContact() {
-    if (!this.newContactPhone() || !this.requireSubscription()) return;
+    if (!this.requireSubscription()) return;
+    const phone = this.normalizePhone(this.newContactPhone());
+    if (!phone) {
+      // No hacer nada si teléfono inválido
+      return;
+    }
     await this.wa.createContact({
-      phone: this.newContactPhone(),
+      phone,
       name: this.newContactName() || null,
     });
     this.newContactPhone.set('');
@@ -322,15 +338,18 @@ export class AutomaticWhatsappComponent implements OnInit {
   async importContacts() {
     if (!this.requireSubscription()) return;
     const lines = this.importText().split('\n').filter(l => l.trim());
-    const parsed = lines.map(line => {
+    const seen = new Set<string>();
+    const parsed: { phone: string; name?: string }[] = [];
+    for (const line of lines) {
       const parts = line.split(/[,;\t]/).map(p => p.trim());
-      const phone = parts[0]?.replace(/[^0-9+]/g, '');
-      const name = parts[1] || undefined;
-      return { phone, name };
-    }).filter(c => c.phone.length >= 7);
+      const phone = this.normalizePhone(parts[0]);
+      if (!phone || seen.has(phone)) continue;
+      seen.add(phone);
+      parsed.push({ phone, name: parts[1] || undefined });
+    }
 
     if (parsed.length === 0) {
-      this.importResult.set('No se encontraron numeros validos');
+      this.importResult.set('No se encontraron números válidos');
       return;
     }
 
@@ -344,6 +363,17 @@ export class AutomaticWhatsappComponent implements OnInit {
   excelImportResult = signal('');
   excelFileName = signal('');
 
+  /**
+   * Normaliza un teléfono: deja solo dígitos, valida 7-15 chars.
+   * Devuelve null si es inválido.
+   */
+  private normalizePhone(raw: unknown): string | null {
+    if (raw === null || raw === undefined) return null;
+    const s = String(raw).replace(/[^0-9]/g, '');
+    if (s.length < 7 || s.length > 15) return null;
+    return s;
+  }
+
   onExcelFileSelected(event: Event) {
     if (!this.requireSubscription()) return;
     const input = event.target as HTMLInputElement;
@@ -356,38 +386,86 @@ export class AutomaticWhatsappComponent implements OnInit {
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const text = reader.result as string;
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-      const hasHeader = lines.length > 0 && !/^[+\d]/.test(lines[0]);
-      const start = hasHeader ? 1 : 0;
-
-      const contacts: { phone: string; name?: string }[] = [];
-      const seen = new Set<string>();
-
-      for (let i = start; i < lines.length; i++) {
-        const cols = lines[i].split(/[,;\t]/);
-        const raw = cols[0]?.trim() ?? '';
-        const phone = raw.replace(/[^0-9+]/g, '');
-        if (phone.length >= 7 && phone.length <= 15 && !seen.has(phone)) {
-          seen.add(phone);
-          contacts.push({ phone, name: cols[1]?.trim() || undefined });
+      try {
+        const buf = reader.result as ArrayBuffer;
+        const wb = XLSX.read(buf, { type: 'array' });
+        const firstSheet = wb.Sheets[wb.SheetNames[0]];
+        if (!firstSheet) {
+          this.excelImportResult.set('El archivo no tiene hojas');
+          this.excelImportLoading.set(false);
+          return;
         }
-      }
 
-      if (contacts.length === 0) {
-        this.excelImportResult.set('No se encontraron numeros validos en el archivo');
-      } else {
-        const count = await this.wa.importContacts(contacts);
-        this.excelImportResult.set(`${count} contactos importados desde ${file.name}`);
+        // Convertir a matriz (cada fila = array de celdas)
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
+          header: 1,
+          defval: '',
+          raw: false,
+          blankrows: false,
+        });
+
+        if (!rows.length) {
+          this.excelImportResult.set('El archivo está vacío');
+          this.excelImportLoading.set(false);
+          return;
+        }
+
+        // Detectar si la primera fila es encabezado: si ninguna celda parece un número.
+        const firstRow = rows[0] ?? [];
+        const firstCellLooksLikePhone = !!this.normalizePhone(firstRow[0]);
+        const startIdx = firstCellLooksLikePhone ? 0 : 1;
+
+        // Heurística: localizar columna de teléfono y de nombre por cabecera.
+        let phoneCol = 0;
+        let nameCol = 1;
+        if (!firstCellLooksLikePhone) {
+          const headerRow = (firstRow as unknown[]).map(c => String(c).toLowerCase().trim());
+          headerRow.forEach((h, idx) => {
+            if (/tel|phone|celular|movil|numero|whatsapp|wa/.test(h)) phoneCol = idx;
+            if (/nombre|name|nombres|contacto|client/.test(h)) nameCol = idx;
+          });
+        }
+
+        const contacts: { phone: string; name?: string }[] = [];
+        const seen = new Set<string>();
+
+        for (let i = startIdx; i < rows.length; i++) {
+          const row = rows[i] ?? [];
+          const phone = this.normalizePhone(row[phoneCol]);
+          if (!phone || seen.has(phone)) continue;
+          seen.add(phone);
+          const nameRaw = row[nameCol];
+          const name = nameRaw === null || nameRaw === undefined
+            ? undefined
+            : String(nameRaw).trim() || undefined;
+          contacts.push({ phone, name });
+        }
+
+        if (contacts.length === 0) {
+          this.excelImportResult.set('No se encontraron números válidos en el archivo');
+          this.excelImportLoading.set(false);
+          return;
+        }
+
+        // Importar en lotes de 500 para no chocar con Supabase
+        let total = 0;
+        for (let i = 0; i < contacts.length; i += 500) {
+          const batch = contacts.slice(i, i + 500);
+          total += await this.wa.importContacts(batch);
+        }
+        this.excelImportResult.set(`${total} contactos importados desde ${file.name}`);
         await this.loadContacts();
+      } catch (e) {
+        this.excelImportResult.set('Error al procesar el archivo. Verifica que sea un Excel o CSV válido.');
+      } finally {
+        this.excelImportLoading.set(false);
       }
-      this.excelImportLoading.set(false);
     };
     reader.onerror = () => {
       this.excelImportResult.set('Error al leer el archivo');
       this.excelImportLoading.set(false);
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
     input.value = '';
   }
 
@@ -603,20 +681,21 @@ export class AutomaticWhatsappComponent implements OnInit {
     this.sessionLoading.set(true);
     this.sessionError.set(null);
     this.qrCode.set(null);
+    this.qrImage.set(null);
     this.pairingCode.set(null);
 
     try {
       const { instance } = await this.wa.createSession(this.newSessionName());
       if (instance) {
         this.activeInstance.set(instance);
-        // Esperar un momento y obtener el QR
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 1500));
         await this.refreshQR(instance);
+        this.startQrPolling(instance);
       }
       this.newSessionName.set('');
       await this.loadSettings();
     } catch (e: unknown) {
-      this.sessionError.set(e instanceof Error ? e.message : 'Error al crear sesion');
+      this.sessionError.set(e instanceof Error ? e.message : 'Error al crear sesión');
     } finally {
       this.sessionLoading.set(false);
     }
@@ -625,10 +704,14 @@ export class AutomaticWhatsappComponent implements OnInit {
   async connectSession(session: WaSession) {
     if (!session.phone_number) return;
     this.sessionLoading.set(true);
+    this.sessionError.set(null);
     this.activeInstance.set(session.phone_number);
     this.qrCode.set(null);
+    this.qrImage.set(null);
+    this.pairingCode.set(null);
     try {
       await this.refreshQR(session.phone_number);
+      this.startQrPolling(session.phone_number);
     } catch {
       this.sessionError.set('Error al obtener QR');
     } finally {
@@ -637,19 +720,77 @@ export class AutomaticWhatsappComponent implements OnInit {
   }
 
   async refreshQR(instance: string) {
-    const { qrCode, pairingCode } = await this.wa.getQRCode(instance);
+    const { qrCode, qrImage, pairingCode } = await this.wa.getQRCode(instance);
     this.qrCode.set(qrCode);
+    this.qrImage.set(qrImage);
     this.pairingCode.set(pairingCode);
+  }
+
+  /**
+   * Polling de conexión cada 3s hasta 3 min. Cuando Evolution reporte
+   * `connected`, actualiza la DB y cierra el QR automáticamente.
+   */
+  private startQrPolling(instance: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (this.qrPollHandle) {
+      clearInterval(this.qrPollHandle);
+      this.qrPollHandle = null;
+    }
+    let ticks = 0;
+    const MAX_TICKS = 60; // 60 * 3s = 3 min
+    this.qrPollHandle = setInterval(async () => {
+      ticks++;
+      if (this.activeInstance() !== instance || ticks > MAX_TICKS) {
+        if (this.qrPollHandle) {
+          clearInterval(this.qrPollHandle);
+          this.qrPollHandle = null;
+        }
+        return;
+      }
+      try {
+        // Si todavia no tenemos el QR en pantalla, volver a pedirlo.
+        // Evolution lo genera asincrono: puede llegar por webhook despues
+        // de la llamada inicial.
+        if (!this.qrImage() && !this.pairingCode()) {
+          try { await this.refreshQR(instance); } catch { /* noop */ }
+        }
+        const status = await this.wa.getInstanceStatus(instance);
+        if (status === 'connected') {
+          // Actualizar DB para que el worker pueda procesar campañas
+          const session = this.sessions().find(s => s.phone_number === instance);
+          if (session) {
+            await this.wa.updateSession(session.id, 'connected');
+          }
+          this.qrCode.set(null);
+          this.qrImage.set(null);
+          this.pairingCode.set(null);
+          this.activeInstance.set(null);
+          if (this.qrPollHandle) {
+            clearInterval(this.qrPollHandle);
+            this.qrPollHandle = null;
+          }
+          await this.loadSettings();
+        }
+      } catch { /* ignore */ }
+    }, 3000);
   }
 
   async checkConnection() {
     const instance = this.activeInstance();
     if (!instance) return;
     const status = await this.wa.getInstanceStatus(instance);
+    const session = this.sessions().find(s => s.phone_number === instance);
+    if (session && status !== session.status) {
+      await this.wa.updateSession(session.id, status);
+    }
     if (status === 'connected') {
       this.qrCode.set(null);
       this.pairingCode.set(null);
       this.activeInstance.set(null);
+      if (this.qrPollHandle) {
+        clearInterval(this.qrPollHandle);
+        this.qrPollHandle = null;
+      }
       await this.loadSettings();
     }
   }
@@ -660,16 +801,21 @@ export class AutomaticWhatsappComponent implements OnInit {
   }
 
   async sendTest() {
-    if (!this.testPhone() || !this.testMessage()) return;
+    if (!this.requireSubscription()) return;
+    const phone = this.normalizePhone(this.testPhone());
+    if (!phone || !this.testMessage()) {
+      this.testResult.set('Ingresa un teléfono válido y un mensaje');
+      return;
+    }
     const sessions = this.sessions().filter(s => s.status === 'connected');
     if (!sessions.length || !sessions[0].phone_number) {
-      this.testResult.set('No hay sesion conectada');
+      this.testResult.set('No hay sesión conectada. Escanea el QR primero.');
       return;
     }
     this.testSending.set(true);
     this.testResult.set(null);
-    const ok = await this.wa.sendTestMessage(sessions[0].phone_number, this.testPhone(), this.testMessage());
-    this.testResult.set(ok ? 'Mensaje enviado correctamente' : 'Error al enviar el mensaje');
+    const ok = await this.wa.sendTestMessage(sessions[0].phone_number, phone, this.testMessage());
+    this.testResult.set(ok ? 'Mensaje enviado correctamente ✓' : 'Error al enviar el mensaje');
     this.testSending.set(false);
   }
 

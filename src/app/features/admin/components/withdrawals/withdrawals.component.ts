@@ -36,6 +36,15 @@ export class AdminWithdrawalsComponent implements OnInit {
   readonly rejectingId = signal<string | null>(null);
   readonly rejectionReason = signal('');
 
+  // Modal de pago exitoso
+  readonly showPaidModal = signal(false);
+  readonly payingWithdrawal = signal<WithdrawalAdmin | null>(null);
+  readonly payReceiptFile = signal<File | null>(null);
+  readonly payReceiptPreview = signal<string | null>(null);
+  readonly payAdminNotes = signal('');
+  readonly paySubmitting = signal(false);
+  readonly payError = signal<string | null>(null);
+
   // Modal de detalles
   readonly showDetailModal = signal(false);
   readonly selectedWithdrawal = signal<WithdrawalAdmin | null>(null);
@@ -140,6 +149,84 @@ export class AdminWithdrawalsComponent implements OnInit {
   closeDetailModal(): void {
     this.showDetailModal.set(false);
     this.selectedWithdrawal.set(null);
+  }
+
+  // ── Modal "Pago exitoso" ────────────────────────────────────────────────
+  openPaidModal(withdrawal: WithdrawalAdmin): void {
+    this.payingWithdrawal.set(withdrawal);
+    this.payReceiptFile.set(null);
+    this.payReceiptPreview.set(null);
+    this.payAdminNotes.set('');
+    this.payError.set(null);
+    this.showPaidModal.set(true);
+  }
+
+  closePaidModal(): void {
+    const preview = this.payReceiptPreview();
+    if (preview) URL.revokeObjectURL(preview);
+    this.showPaidModal.set(false);
+    this.payingWithdrawal.set(null);
+    this.payReceiptFile.set(null);
+    this.payReceiptPreview.set(null);
+    this.payAdminNotes.set('');
+    this.payError.set(null);
+  }
+
+  onReceiptFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.payError.set(null);
+
+    const prev = this.payReceiptPreview();
+    if (prev) URL.revokeObjectURL(prev);
+
+    if (!file) {
+      this.payReceiptFile.set(null);
+      this.payReceiptPreview.set(null);
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.payError.set('El archivo debe ser una imagen (JPG, PNG, WEBP o GIF)');
+      this.payReceiptFile.set(null);
+      this.payReceiptPreview.set(null);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.payError.set('La imagen no puede superar los 10 MB');
+      this.payReceiptFile.set(null);
+      this.payReceiptPreview.set(null);
+      return;
+    }
+
+    this.payReceiptFile.set(file);
+    this.payReceiptPreview.set(URL.createObjectURL(file));
+  }
+
+  async confirmPayment(): Promise<void> {
+    const withdrawal = this.payingWithdrawal();
+    const file = this.payReceiptFile();
+    if (!withdrawal || !file || this.paySubmitting()) return;
+
+    this.paySubmitting.set(true);
+    this.payError.set(null);
+
+    const result = await this.withdrawalService.markWithdrawalPaid(
+      withdrawal.id,
+      file,
+      this.payAdminNotes().trim() || undefined
+    );
+
+    this.paySubmitting.set(false);
+
+    if (!result.ok) {
+      this.payError.set(result.error ?? 'Error al marcar como pagado');
+      return;
+    }
+
+    this.showNotification('success', 'Retiro marcado como pagado. Comprobante enviado al usuario.');
+    this.closePaidModal();
+    await this.loadWithdrawals();
   }
 
   private showNotification(type: 'success' | 'error', message: string): void {

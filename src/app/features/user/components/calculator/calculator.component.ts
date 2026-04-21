@@ -237,7 +237,7 @@ export class CalculatorComponent implements OnInit {
 
   readonly maxMonthlyInTiers = computed(() => {
     const lastTier = this.PLATFORM_TIERS[this.PLATFORM_TIERS.length - 1];
-    return lastTier.ownClicksCOP + 40 * lastTier.megaRewardTotalCOP;
+    return lastTier.ownClicksCOP + 100 * lastTier.megaRewardTotalCOP;
   });
 
   tierBarWidth(tier: PlatformTier): number {
@@ -249,7 +249,7 @@ export class CalculatorComponent implements OnInit {
     return tier.ownClicksCOP + tier.minReferrals * tier.megaRewardTotalCOP;
   }
 
-  readonly numbers = Array.from({ length: 40 }, (_, i) => i + 1);
+  readonly numbers = Array.from({ length: 100 }, (_, i) => i + 1);
 
   readonly nextTier = computed<PlatformTier | null>(() => {
     const current = this.currentTier();
@@ -269,7 +269,7 @@ export class CalculatorComponent implements OnInit {
 
   setSimulatedRefs(event: Event): void {
     const val = Number((event.target as HTMLSelectElement).value);
-    this.simulatedRefs.set(Math.max(1, Math.min(40, val)));
+    this.simulatedRefs.set(Math.max(1, Math.min(100, val)));
   }
 
   ngOnInit(): void {
@@ -282,7 +282,7 @@ export class CalculatorComponent implements OnInit {
         await this.profileService.getCurrentProfile();
       }
       const refs = this.profile()?.total_referrals_count;
-      if (refs && refs > 0) this.simulatedRefs.set(Math.min(refs, 40));
+      if (refs && refs > 0) this.simulatedRefs.set(Math.min(refs, 100));
     } catch {}
   }
 

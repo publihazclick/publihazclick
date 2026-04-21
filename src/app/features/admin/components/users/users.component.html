@@ -30,7 +30,7 @@
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
         <input
           type="text"
-          placeholder="Buscar por nombre, usuario o email..."
+          placeholder="Buscar por usuario, email, nombre, apellido o celular..."
           [value]="searchQuery()"
           (input)="onSearch($any($event).target.value)"
           class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -678,6 +678,103 @@
                       <p class="text-slate-300 font-semibold">{{ formatDate(user.last_sign_in_at) }}</p>
                     }
                   </div>
+                </div>
+
+                <!-- ── Información de registro ────────────────────────────── -->
+                <div>
+                  <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">assignment_ind</span>
+                    Información de registro
+                  </h4>
+                  <div class="bg-white/5 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Usuario</p>
+                      <p class="text-sm font-semibold text-white break-all">{{ user.username }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Nombre completo</p>
+                      <p class="text-sm font-semibold text-white break-words">{{ user.full_name || '—' }}</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Correo electrónico</p>
+                      <p class="text-sm font-semibold text-white break-all">{{ user.email }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Celular</p>
+                      <p class="text-sm font-semibold text-white">
+                        @if (user.phone) {
+                          {{ user.country_code }} {{ user.phone }}
+                        } @else {
+                          —
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">País</p>
+                      <p class="text-sm font-semibold text-white">{{ user.country || '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Departamento / Estado</p>
+                      <p class="text-sm font-semibold text-white">{{ user.department || '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Ciudad</p>
+                      <p class="text-sm font-semibold text-white">{{ user.city || '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Código de referido</p>
+                      <p class="text-sm font-mono font-semibold text-primary break-all">{{ user.referral_code || '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-500 uppercase tracking-wider">Fecha de registro</p>
+                      <p class="text-sm font-semibold text-white">{{ formatDate(user.created_at) }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ── Referidor ──────────────────────────────────────────── -->
+                <div>
+                  <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">person_pin</span>
+                    Referidor
+                  </h4>
+                  @if (detailLoading()) {
+                    <div class="bg-white/5 rounded-xl p-4 animate-pulse h-20"></div>
+                  } @else {
+                    @let referrer = userDetailData()?.referrer;
+                    @if (referrer) {
+                      <div class="bg-white/5 rounded-xl p-4">
+                        <div class="flex items-start gap-3">
+                          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-amber-400">person</span>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-white truncate">{{ referrer.full_name || referrer.username }}</p>
+                            <p class="text-xs text-slate-400 truncate">&#64;{{ referrer.username }} · {{ referrer.email }}</p>
+                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class]="getRoleBadgeClass(referrer.role)">
+                                {{ getRoleLabel(referrer.role) }}
+                              </span>
+                              @if (referrer.is_active) {
+                                <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold uppercase">Activo</span>
+                              } @else {
+                                <span class="px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded text-[10px] font-bold uppercase">Inactivo</span>
+                              }
+                              @if (referrer.has_active_package) {
+                                <span class="px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase">Paquete activo</span>
+                              }
+                              <span class="px-2 py-0.5 bg-white/5 text-slate-300 rounded text-[10px] font-mono font-semibold">{{ referrer.referral_code }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="bg-white/5 rounded-xl p-4 flex items-center gap-3 text-slate-500">
+                        <span class="material-symbols-outlined text-2xl">person_off</span>
+                        <p class="text-sm">Este usuario no fue referido por nadie</p>
+                      </div>
+                    }
+                  }
                 </div>
 
                 <!-- ── Paquete activo ─────────────────────────────────────── -->
