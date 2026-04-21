@@ -82,6 +82,7 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   newTemplateContent = signal('');
   newTemplateMediaFile = signal<File | null>(null); // legacy - ya no se usa para guardar
   newTemplateMediaItems = signal<WaMediaItem[]>([]); // archivos ya subidos
+  newTemplateVariants = signal<string[]>([]); // variaciones del mensaje para rotador
   templateMediaUploading = signal(false);
   templateSaving = signal(false);
   editingTemplate = signal<WaTemplate | null>(null);
@@ -103,6 +104,42 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   campaignExcelResult = signal('');
   campaignExcelContactIds = signal<string[]>([]);
   campaignExcelTotal = signal(0);
+
+  // División en bloques
+  newCampaignBlockCount = signal(1);
+
+  // Ventana horaria
+  newCampaignScheduleEnabled = signal(false);
+  newCampaignScheduleStart = signal('09:00');
+  newCampaignScheduleEnd = signal('18:00');
+  newCampaignScheduleDays = signal<number[]>([1, 2, 3, 4, 5]); // Lun-Vie
+
+  weekDays: { dow: number; label: string }[] = [
+    { dow: 1, label: 'L' },
+    { dow: 2, label: 'M' },
+    { dow: 3, label: 'X' },
+    { dow: 4, label: 'J' },
+    { dow: 5, label: 'V' },
+    { dow: 6, label: 'S' },
+    { dow: 0, label: 'D' },
+  ];
+
+  toggleScheduleDay(dow: number) {
+    this.newCampaignScheduleDays.update(days =>
+      days.includes(dow) ? days.filter(d => d !== dow) : [...days, dow].sort(),
+    );
+  }
+
+  /** Cuántos destinatarios por bloque (aproximadamente) */
+  campaignBlockPreview = computed(() => {
+    const total = this.newCampaignTargetType() === 'excel'
+      ? this.campaignExcelContactIds().length
+      : 0;
+    const n = Math.max(1, this.newCampaignBlockCount());
+    if (total === 0) return '';
+    const per = Math.ceil(total / n);
+    return `${total} números ÷ ${n} bloque${n > 1 ? 's' : ''} = ~${per} por bloque`;
+  });
 
   // Estado de envío del modal de campaña
   campaignSaving = signal(false);
@@ -559,6 +596,7 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.newTemplateContent.set('');
     this.newTemplateMediaFile.set(null);
     this.newTemplateMediaItems.set([]);
+    this.newTemplateVariants.set([]);
     this.templateMediaUploading.set(false);
     this.templateSaving.set(false);
     this.templateModal.set('create');
@@ -571,10 +609,23 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.newTemplateType.set(t.message_type);
     this.newTemplateContent.set(t.content);
     this.newTemplateMediaItems.set(Array.isArray(t.media_items) ? [...t.media_items] : []);
+    this.newTemplateVariants.set(Array.isArray(t.content_variants) ? [...t.content_variants] : []);
     this.newTemplateMediaFile.set(null);
     this.templateMediaUploading.set(false);
     this.templateSaving.set(false);
     this.templateModal.set('create');
+  }
+
+  addTemplateVariant() {
+    this.newTemplateVariants.update(v => [...v, '']);
+  }
+
+  updateTemplateVariant(index: number, text: string) {
+    this.newTemplateVariants.update(v => v.map((val, i) => (i === index ? text : val)));
+  }
+
+  removeTemplateVariant(index: number) {
+    this.newTemplateVariants.update(v => v.filter((_, i) => i !== index));
   }
 
   /**
@@ -650,11 +701,14 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
         ? (first.kind as WaMessageType)
         : 'text';
 
+      const variants = this.newTemplateVariants().map(v => (v || '').trim()).filter(v => v.length > 0);
+
       const payload: Partial<WaTemplate> = {
         name: this.newTemplateName(),
         category: this.newTemplateCategory(),
         message_type: derivedType,
         content: this.newTemplateContent(),
+        content_variants: variants,
         media_items: items,
         media_url: first?.url ?? null,
         media_filename: first?.filename ?? null,
@@ -718,6 +772,11 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.campaignExcelLoading.set(false);
     this.campaignSaving.set(false);
     this.campaignSaveError.set(null);
+    this.newCampaignBlockCount.set(1);
+    this.newCampaignScheduleEnabled.set(false);
+    this.newCampaignScheduleStart.set('09:00');
+    this.newCampaignScheduleEnd.set('18:00');
+    this.newCampaignScheduleDays.set([1, 2, 3, 4, 5]);
     this.campaignModal.set('create');
   }
 
@@ -890,6 +949,26 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
       storedTargetType = 'custom';
     }
 
+    // Bloques (solo aplica a excel/custom; en all/group el bloque queda en 1)
+    const blockCount = targetType === 'excel' || targetType === 'custom'
+      ? Math.max(1, this.newCampaignBlockCount() || 1)
+      : 1;
+
+    const scheduleOn = this.newCampaignScheduleEnabled();
+    const schedulePayload = scheduleOn
+      ? {
+          schedule_start_time: this.newCampaignScheduleStart(),
+          schedule_end_time: this.newCampaignScheduleEnd(),
+          schedule_days: [...this.newCampaignScheduleDays()],
+          schedule_timezone: 'America/Bogota',
+        }
+      : {
+          schedule_start_time: null,
+          schedule_end_time: null,
+          schedule_days: [] as number[],
+          schedule_timezone: 'America/Bogota',
+        };
+
     this.campaignSaving.set(true);
     try {
       const { data, error } = await this.wa.createCampaign({
@@ -900,6 +979,9 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
         target_group_id: targetGroupId,
         target_contact_ids: targetContactIds,
         total_contacts: totalContacts,
+        block_count: blockCount,
+        current_block: 0,
+        ...schedulePayload,
         ...config,
       });
 

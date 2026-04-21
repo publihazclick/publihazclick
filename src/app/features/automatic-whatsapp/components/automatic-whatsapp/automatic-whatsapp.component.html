@@ -639,6 +639,78 @@
                   }
                 </div>
 
+                <!-- División en bloques (solo para Excel/custom) -->
+                @if (newCampaignTargetType() === 'excel' || newCampaignTargetType() === 'custom') {
+                  <div class="space-y-2">
+                    <h4 class="text-sm font-bold text-cyan-400 uppercase flex items-center gap-2">
+                      <span class="material-symbols-outlined text-lg">view_agenda</span>
+                      División en bloques
+                    </h4>
+                    <p class="text-[11px] text-slate-500">
+                      Parte tu lista en N bloques. El sistema envía un bloque a la vez hasta terminarlo, luego pasa al siguiente. Útil para listas grandes y respeto de horarios.
+                    </p>
+                    <div class="flex items-center gap-2">
+                      <input type="number" min="1" [ngModel]="newCampaignBlockCount()"
+                        (ngModelChange)="newCampaignBlockCount.set(+$event || 1)"
+                        class="w-24 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500/50 focus:outline-none">
+                      <span class="text-xs text-slate-500">bloques</span>
+                    </div>
+                    @if (campaignBlockPreview()) {
+                      <p class="text-[11px] text-cyan-400/80">{{ campaignBlockPreview() }}</p>
+                    }
+                  </div>
+                }
+
+                <!-- Ventana horaria -->
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-bold text-purple-400 uppercase flex items-center gap-2">
+                      <span class="material-symbols-outlined text-lg">schedule</span>
+                      Horario de envío
+                    </h4>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" [checked]="newCampaignScheduleEnabled()"
+                        (change)="newCampaignScheduleEnabled.set(!newCampaignScheduleEnabled())"
+                        class="accent-purple-500">
+                      <span class="text-xs text-slate-400">Activar horario</span>
+                    </label>
+                  </div>
+
+                  @if (newCampaignScheduleEnabled()) {
+                    <div class="bg-black/20 border border-purple-500/15 rounded-xl p-3 space-y-3">
+                      <div class="grid grid-cols-2 gap-3">
+                        <div>
+                          <label class="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Desde</label>
+                          <input type="time" [ngModel]="newCampaignScheduleStart()"
+                            (ngModelChange)="newCampaignScheduleStart.set($event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500/50 focus:outline-none">
+                        </div>
+                        <div>
+                          <label class="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Hasta</label>
+                          <input type="time" [ngModel]="newCampaignScheduleEnd()"
+                            (ngModelChange)="newCampaignScheduleEnd.set($event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500/50 focus:outline-none">
+                        </div>
+                      </div>
+                      <div>
+                        <label class="text-[10px] text-slate-500 uppercase font-bold mb-2 block">Días permitidos</label>
+                        <div class="flex gap-1.5">
+                          @for (d of weekDays; track d.dow) {
+                            <button type="button" (click)="toggleScheduleDay(d.dow)"
+                              class="w-9 h-9 rounded-lg text-sm font-bold transition-colors"
+                              [class]="newCampaignScheduleDays().includes(d.dow) ? 'bg-purple-500 text-white' : 'bg-black/40 border border-white/10 text-slate-500 hover:text-white'">
+                              {{ d.label }}
+                            </button>
+                          }
+                        </div>
+                      </div>
+                      <p class="text-[10px] text-slate-600">
+                        El envío arranca automáticamente al entrar en la ventana y se pausa al salir. Reanuda al día siguiente permitido hasta terminar todos los bloques.
+                      </p>
+                    </div>
+                  }
+                </div>
+
                 <!-- Anti-Block Config -->
                 <div class="space-y-3">
                   <h4 class="text-sm font-bold text-amber-400 uppercase flex items-center gap-2">
@@ -918,6 +990,43 @@
                     placeholder="Hola {nombre}, te invitamos a aprovechar nuestra promo..."
                     class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none resize-none"></textarea>
                   <p class="text-xs text-slate-600 mt-1">Usa {{'{'}}variable{{'}'}} para personalizar: {{'{'}}nombre{{'}'}}, {{'{'}}empresa{{'}'}}, {{'{'}}telefono{{'}'}}</p>
+                </div>
+
+                <!-- Rotador de mensajes: variaciones -->
+                <div>
+                  <label class="text-sm text-slate-400 mb-1 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base text-amber-400">shuffle</span>
+                    Variaciones del mensaje (rotador anti-bloqueo)
+                    <span class="text-xs text-slate-600 font-normal">— opcional</span>
+                  </label>
+                  <p class="text-[11px] text-slate-600 mb-2">
+                    Escribe varias versiones del mismo mensaje. El sistema elegirá una al azar para cada destinatario, reduciendo el riesgo de bloqueo por texto idéntico.
+                  </p>
+
+                  @if (newTemplateVariants().length > 0) {
+                    <div class="space-y-2 mb-2">
+                      @for (v of newTemplateVariants(); track $index) {
+                        <div class="flex gap-2 items-start">
+                          <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-bold flex items-center justify-center shrink-0 mt-1">
+                            {{ $index + 2 }}
+                          </div>
+                          <textarea rows="3" [ngModel]="v" (ngModelChange)="updateTemplateVariant($index, $event)"
+                            [placeholder]="'Variación ' + ($index + 2)"
+                            class="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-amber-500/50 focus:outline-none resize-none"></textarea>
+                          <button type="button" (click)="removeTemplateVariant($index)"
+                            class="text-slate-500 hover:text-red-400 transition-colors shrink-0 mt-1" title="Quitar">
+                            <span class="material-symbols-outlined">close</span>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <button type="button" (click)="addTemplateVariant()"
+                    class="w-full border border-dashed border-amber-500/20 hover:border-amber-500/50 hover:bg-amber-500/5 rounded-lg px-4 py-2 text-xs text-amber-400 transition-colors flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">add</span>
+                    Agregar variación
+                  </button>
                 </div>
 
                 <!-- Multi-media: imágenes + audios + videos + PDFs -->

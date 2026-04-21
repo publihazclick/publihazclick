@@ -452,17 +452,28 @@ Deno.serve(async (req) => {
         status: 'running',
         started_at: new Date().toISOString(),
         total_contacts: contacts.length,
+        current_block: 0,
       }).eq('id', campaignId);
 
-      // Crear registros de mensajes pendientes
-      const messageRows = contacts.map(c => ({
-        campaign_id: campaignId,
-        contact_id: c.id,
-        status: 'pending',
-        content: campaign.template.content
-          .replace(/\{nombre\}/gi, c.name || '')
-          .replace(/\{telefono\}/gi, c.phone || ''),
-      }));
+      // División en bloques: si block_count > 1 repartimos los destinatarios
+      // uniformemente. Cada mensaje lleva su block_index para que el worker
+      // procese un bloque a la vez.
+      const blockCount = Math.max(1, (campaign.block_count as number) || 1);
+      const perBlock = Math.ceil(contacts.length / blockCount);
+
+      // Crear registros de mensajes pendientes con block_index
+      const messageRows = contacts.map((c, idx) => {
+        const blockIndex = Math.min(blockCount - 1, Math.floor(idx / perBlock));
+        return {
+          campaign_id: campaignId,
+          contact_id: c.id,
+          status: 'pending',
+          block_index: blockIndex,
+          content: campaign.template.content
+            .replace(/\{nombre\}/gi, c.name || '')
+            .replace(/\{telefono\}/gi, c.phone || ''),
+        };
+      });
 
       await supabase.from('wa_campaign_messages').insert(messageRows);
 

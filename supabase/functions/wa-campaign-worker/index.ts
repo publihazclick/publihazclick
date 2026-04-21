@@ -93,6 +93,66 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Verifica si la campaña está dentro de su ventana horaria. Si no tiene
+ * schedule definido, siempre devuelve true. Respeta schedule_timezone,
+ * schedule_days (0=dom..6=sab; vacío = todos) y soporta ventanas que
+ * cruzan medianoche.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function inSchedule(campaign: any): boolean {
+  const start: string | null = campaign.schedule_start_time;
+  const end:   string | null = campaign.schedule_end_time;
+  if (!start || !end) return true;
+
+  const tz = (campaign.schedule_timezone as string) || 'America/Bogota';
+  const days: number[] = Array.isArray(campaign.schedule_days) ? campaign.schedule_days : [];
+
+  // Obtener hora y día en la TZ especificada
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    weekday: 'short', hour12: false, timeZone: tz,
+  });
+  const parts = fmt.formatToParts(now);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const p: any = {};
+  for (const pp of parts) p[pp.type] = pp.value;
+
+  const wdMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const currentDow = wdMap[p.weekday as string] ?? 0;
+
+  if (days.length > 0 && !days.includes(currentDow)) return false;
+
+  const toMinutes = (hm: string) => {
+    const [h, m] = hm.split(':').map((x) => parseInt(x, 10));
+    return (h || 0) * 60 + (m || 0);
+  };
+  const curMin = parseInt(p.hour as string, 10) * 60 + parseInt(p.minute as string, 10);
+  const startMin = toMinutes(start);
+  const endMin   = toMinutes(end);
+
+  if (startMin <= endMin) return curMin >= startMin && curMin <= endMin;
+  // Ventana que cruza medianoche
+  return curMin >= startMin || curMin <= endMin;
+}
+
+/**
+ * Selecciona el texto del mensaje para un destinatario. Si la plantilla
+ * tiene content_variants, hace rotación aleatoria entre content + variants
+ * para reducir el riesgo de bloqueo por enviar el mismo texto idéntico a
+ * muchos destinatarios.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pickContent(template: any, baseContent: string): string {
+  const variants: string[] = Array.isArray(template?.content_variants) ? template.content_variants : [];
+  const clean = variants.map((s) => (s || '').trim()).filter((s) => s.length > 0);
+  if (clean.length === 0) return baseContent;
+  // Incluimos el contenido base como una opción más
+  const pool = [baseContent, ...clean];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -116,6 +176,14 @@ Deno.serve(async (req) => {
   let totalProcessed = 0;
 
   for (const campaign of campaigns) {
+    // ── Ventana horaria ────────────────────────────────────────────────
+    // Si la campaña tiene horario configurado y ahora estamos FUERA de él,
+    // simplemente la saltamos y esperamos a que el siguiente cron (dentro
+    // de la ventana) la retome. La campaña queda 'running', no failed.
+    if (!inSchedule(campaign)) {
+      continue;
+    }
+
     // Obtener sesion conectada del usuario
     const { data: sessions } = await supabase
       .from('wa_sessions')
@@ -145,24 +213,48 @@ Deno.serve(async (req) => {
       .eq('id', campaign.template_id)
       .single();
 
-    // Calcular limite para esta ejecucion
-    const batchSize = campaign.batch_size || 10;
+    // ── Bloque actual ──────────────────────────────────────────────────
+    // El worker procesa SOLO el bloque current_block. Si ese bloque ya no
+    // tiene pendientes, avanzamos al siguiente (o marcamos completed si
+    // ya procesamos todos los bloques).
+    const blockCount   = Math.max(1, (campaign.block_count as number) || 1);
+    const currentBlock = Math.min(blockCount - 1, (campaign.current_block as number) || 0);
+    const batchSize    = campaign.batch_size || 10;
 
-    // Obtener mensajes pendientes (limitado al batch)
+    // Obtener mensajes pendientes del bloque actual (limitado al batch)
     const { data: pendingMsgs } = await supabase
       .from('wa_campaign_messages')
       .select('*, contact:wa_contacts(id,phone,name)')
       .eq('campaign_id', campaign.id)
       .eq('status', 'pending')
+      .eq('block_index', currentBlock)
       .order('created_at', { ascending: true })
       .limit(batchSize);
 
     if (!pendingMsgs?.length) {
-      // No hay mas mensajes pendientes - completar campaña
-      await supabase.from('wa_campaigns').update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      }).eq('id', campaign.id);
+      // ¿Quedan bloques siguientes?
+      if (currentBlock + 1 < blockCount) {
+        await supabase.from('wa_campaigns')
+          .update({ current_block: currentBlock + 1 })
+          .eq('id', campaign.id);
+        // El próximo cron tomará el nuevo bloque
+        continue;
+      }
+
+      // Revisar que realmente no queden pendings en ningún bloque antes de completar
+      const { data: anyPending } = await supabase
+        .from('wa_campaign_messages')
+        .select('id')
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'pending')
+        .limit(1);
+
+      if (!anyPending?.length) {
+        await supabase.from('wa_campaigns').update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        }).eq('id', campaign.id);
+      }
       continue;
     }
 
@@ -181,7 +273,14 @@ Deno.serve(async (req) => {
       await supabase.from('wa_campaign_messages').update({ status: 'sending' }).eq('id', msg.id);
 
       let result: SendResult = { ok: false, messageId: null, error: 'No enviado' };
-      const messageContent = msg.content || template?.content || '';
+      // Rotador: elige una variante aleatoria (incluyendo la base) para
+      // reducir riesgo de bloqueo por texto idéntico repetido.
+      const baseContent = msg.content || template?.content || '';
+      const rotated = pickContent(template, baseContent);
+      // Re-aplicar variables sobre la variante rotada
+      const messageContent = rotated
+        .replace(/\{nombre\}/gi, contact.name || '')
+        .replace(/\{telefono\}/gi, contact.phone || '');
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mediaItems: Array<{ kind: string; url: string; filename?: string; mimetype?: string }> =

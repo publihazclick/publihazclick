@@ -80,6 +80,7 @@ export interface WaTemplate {
   category: WaTemplateCategory;
   message_type: WaMessageType;
   content: string;
+  content_variants: string[];
   media_url: string | null;
   media_filename: string | null;
   media_items: WaMediaItem[];
@@ -113,6 +114,12 @@ export interface WaCampaign {
   scheduled_at: string | null;
   started_at: string | null;
   completed_at: string | null;
+  block_count: number;
+  current_block: number;
+  schedule_start_time: string | null; // HH:mm o HH:mm:ss
+  schedule_end_time: string | null;
+  schedule_days: number[]; // 0=dom ... 6=sab, vacío = todos
+  schedule_timezone: string;
   total_contacts: number;
   sent_count: number;
   delivered_count: number;
