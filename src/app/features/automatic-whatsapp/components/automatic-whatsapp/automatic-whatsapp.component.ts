@@ -97,6 +97,21 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   newCampaignGroupId = signal('');
   antiBlockConfig = signal<WaAntiBlockConfig>({ ...DEFAULT_ANTI_BLOCK_CONFIG });
   activeCampaignDetail = signal<WaCampaign | null>(null);
+  campaignEditing = signal(false);
+  campaignEditSaving = signal(false);
+  // Snapshots editables
+  editCampaignName = signal('');
+  editCampaignDescription = signal('');
+  editCampaignScheduleEnabled = signal(false);
+  editCampaignScheduleStart = signal('09:00');
+  editCampaignScheduleEnd = signal('18:00');
+  editCampaignScheduleDays = signal<number[]>([]);
+  editCampaignMinDelay = signal(15);
+  editCampaignMaxDelay = signal(45);
+  editCampaignDailyLimit = signal(80);
+  editCampaignHourlyLimit = signal(20);
+  editCampaignBatchSize = signal(8);
+  editCampaignBatchPause = signal(180);
 
   // Excel para campaña (destinatarios)
   campaignExcelLoading = signal(false);
@@ -1045,6 +1060,87 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   getProgressPercent(c: WaCampaign): number {
     if (c.total_contacts === 0) return 0;
     return Math.round((c.sent_count / c.total_contacts) * 100);
+  }
+
+  // ─── Detalle / Edición en vuelo ────────────
+
+  /** Abre el modal de detalle en modo solo-lectura */
+  openCampaignDetail(c: WaCampaign) {
+    this.activeCampaignDetail.set(c);
+    this.campaignEditing.set(false);
+  }
+
+  closeCampaignDetail() {
+    this.activeCampaignDetail.set(null);
+    this.campaignEditing.set(false);
+  }
+
+  /** Alterna al modo edición cargando los valores actuales */
+  startEditingCampaign() {
+    const c = this.activeCampaignDetail();
+    if (!c) return;
+    this.editCampaignName.set(c.name || '');
+    this.editCampaignDescription.set(c.description || '');
+    const hasSchedule = !!(c.schedule_start_time && c.schedule_end_time);
+    this.editCampaignScheduleEnabled.set(hasSchedule);
+    this.editCampaignScheduleStart.set((c.schedule_start_time || '09:00').slice(0, 5));
+    this.editCampaignScheduleEnd.set((c.schedule_end_time || '18:00').slice(0, 5));
+    this.editCampaignScheduleDays.set(Array.isArray(c.schedule_days) ? [...c.schedule_days] : []);
+    this.editCampaignMinDelay.set(c.min_delay_seconds);
+    this.editCampaignMaxDelay.set(c.max_delay_seconds);
+    this.editCampaignDailyLimit.set(c.daily_limit);
+    this.editCampaignHourlyLimit.set(c.hourly_limit);
+    this.editCampaignBatchSize.set(c.batch_size);
+    this.editCampaignBatchPause.set(c.batch_pause_seconds);
+    this.campaignEditing.set(true);
+  }
+
+  cancelEditingCampaign() {
+    this.campaignEditing.set(false);
+  }
+
+  toggleEditScheduleDay(dow: number) {
+    this.editCampaignScheduleDays.update(days =>
+      days.includes(dow) ? days.filter(d => d !== dow) : [...days, dow].sort(),
+    );
+  }
+
+  async saveCampaignEdit() {
+    const c = this.activeCampaignDetail();
+    if (!c) return;
+
+    this.campaignEditSaving.set(true);
+    try {
+      const scheduleOn = this.editCampaignScheduleEnabled();
+      const patch: Partial<WaCampaign> = {
+        name: this.editCampaignName() || c.name,
+        description: this.editCampaignDescription() || null,
+        min_delay_seconds: Math.max(1, this.editCampaignMinDelay()),
+        max_delay_seconds: Math.max(1, this.editCampaignMaxDelay()),
+        daily_limit: Math.max(1, this.editCampaignDailyLimit()),
+        hourly_limit: Math.max(1, this.editCampaignHourlyLimit()),
+        batch_size: Math.max(1, this.editCampaignBatchSize()),
+        batch_pause_seconds: Math.max(0, this.editCampaignBatchPause()),
+        schedule_start_time: scheduleOn ? this.editCampaignScheduleStart() : null,
+        schedule_end_time: scheduleOn ? this.editCampaignScheduleEnd() : null,
+        schedule_days: scheduleOn ? [...this.editCampaignScheduleDays()] : [],
+      };
+
+      const updated = await this.wa.updateCampaign(c.id, patch);
+      if (updated) {
+        this.activeCampaignDetail.set(updated);
+      }
+      this.campaignEditing.set(false);
+      await this.loadCampaigns();
+    } finally {
+      this.campaignEditSaving.set(false);
+    }
+  }
+
+  getScheduleDaysLabel(days: number[]): string {
+    if (!days || days.length === 0) return 'Todos';
+    const names = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+    return [...days].sort().map(d => names[d] ?? '?').join(' · ');
   }
 
   // ─── Settings ──────────────────────────────

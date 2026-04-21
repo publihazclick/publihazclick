@@ -459,7 +459,11 @@
                         <p class="text-sm text-slate-400">{{ c.description }}</p>
                       }
                     </div>
-                    <div class="flex gap-2 shrink-0">
+                    <div class="flex gap-2 shrink-0 flex-wrap">
+                      <button (click)="openCampaignDetail(c)"
+                        class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors font-medium">
+                        <span class="material-symbols-outlined text-sm">visibility</span> Ver
+                      </button>
                       @if (c.status === 'draft' || c.status === 'paused') {
                         <button (click)="startCampaign(c.id)"
                           class="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors font-medium">
@@ -881,6 +885,223 @@
                     <span>Crear Campaña</span>
                   }
                 </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ══════════ MODAL: DETALLE / EDICIÓN DE CAMPAÑA ══════════ -->
+        @if (activeCampaignDetail(); as det) {
+          <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+               (click)="closeCampaignDetail()">
+            <div class="bg-card-dark border border-white/10 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col"
+                 (click)="$event.stopPropagation()">
+              <!-- Header -->
+              <div class="flex items-center justify-between p-5 border-b border-white/10 shrink-0">
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                  <span class="material-symbols-outlined text-2xl shrink-0" [class]="getCampaignStatusColor(det.status).split(' ')[0]">campaign</span>
+                  <div class="min-w-0">
+                    <h3 class="text-lg font-bold text-white truncate">{{ det.name }}</h3>
+                    <span class="text-xs px-2 py-0.5 rounded-full" [class]="getCampaignStatusColor(det.status)">
+                      {{ getCampaignStatusLabel(det.status) }}
+                    </span>
+                  </div>
+                </div>
+                <button (click)="closeCampaignDetail()" class="text-slate-500 hover:text-white shrink-0">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <!-- Body -->
+              <div class="flex-1 overflow-y-auto p-5 space-y-5">
+                <!-- Progreso -->
+                <div>
+                  <div class="flex justify-between text-xs text-slate-400 mb-1">
+                    <span>{{ det.sent_count }} enviados · {{ det.failed_count }} fallidos · {{ det.total_contacts - det.sent_count - det.failed_count }} pendientes</span>
+                    <span>{{ getProgressPercent(det) }}%</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all"
+                         [style.width.%]="getProgressPercent(det)"></div>
+                  </div>
+                </div>
+
+                @if (!campaignEditing()) {
+                  <!-- ── VISTA DE SOLO LECTURA ─────────────────────────── -->
+                  <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-black/20 rounded-lg p-3">
+                      <p class="text-[10px] uppercase text-slate-500 font-bold mb-1">Total</p>
+                      <p class="text-xl font-bold text-white">{{ det.total_contacts }}</p>
+                    </div>
+                    <div class="bg-black/20 rounded-lg p-3">
+                      <p class="text-[10px] uppercase text-slate-500 font-bold mb-1">Bloques</p>
+                      <p class="text-xl font-bold text-cyan-400">{{ det.current_block + 1 }} / {{ det.block_count }}</p>
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
+                      <span class="material-symbols-outlined text-sm">info</span> General
+                    </h4>
+                    <div class="bg-black/20 rounded-lg p-3 space-y-1.5 text-sm">
+                      <div class="flex justify-between"><span class="text-slate-500">Descripción</span><span class="text-white">{{ det.description || '—' }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Destinatarios</span><span class="text-white">{{ det.target_type }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Iniciada</span><span class="text-white">{{ det.started_at ? (det.started_at | date:'short') : '—' }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Completada</span><span class="text-white">{{ det.completed_at ? (det.completed_at | date:'short') : '—' }}</span></div>
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-purple-400 uppercase flex items-center gap-2">
+                      <span class="material-symbols-outlined text-sm">schedule</span> Horario
+                    </h4>
+                    <div class="bg-black/20 rounded-lg p-3 space-y-1.5 text-sm">
+                      @if (det.schedule_start_time && det.schedule_end_time) {
+                        <div class="flex justify-between"><span class="text-slate-500">Ventana</span><span class="text-white">{{ det.schedule_start_time }} → {{ det.schedule_end_time }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Días</span><span class="text-white">{{ getScheduleDaysLabel(det.schedule_days) }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Zona horaria</span><span class="text-white">{{ det.schedule_timezone }}</span></div>
+                      } @else {
+                        <p class="text-slate-400 text-xs">Sin ventana horaria — envía 24/7</p>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-amber-400 uppercase flex items-center gap-2">
+                      <span class="material-symbols-outlined text-sm">shield</span> Anti-bloqueo
+                    </h4>
+                    <div class="bg-black/20 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
+                      <div class="flex justify-between"><span class="text-slate-500">Delay min</span><span class="text-white">{{ det.min_delay_seconds }}s</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Delay max</span><span class="text-white">{{ det.max_delay_seconds }}s</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Por hora</span><span class="text-white">{{ det.hourly_limit }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Por día</span><span class="text-white">{{ det.daily_limit }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Lote</span><span class="text-white">{{ det.batch_size }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Pausa lote</span><span class="text-white">{{ det.batch_pause_seconds }}s</span></div>
+                    </div>
+                  </div>
+                } @else {
+                  <!-- ── MODO EDICIÓN ───────────────────────────────────── -->
+                  <div class="bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-amber-300 flex items-start gap-2">
+                    <span class="material-symbols-outlined text-sm shrink-0 mt-0.5">info</span>
+                    <span>Puedes editar nombre, horario y anti-bloqueo mientras la campaña está activa. La plantilla y los destinatarios quedan fijos.</span>
+                  </div>
+
+                  <div class="space-y-3">
+                    <div>
+                      <label class="text-xs text-slate-400 mb-1 block">Nombre</label>
+                      <input type="text" [ngModel]="editCampaignName()" (ngModelChange)="editCampaignName.set($event)"
+                        class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-400 mb-1 block">Descripción</label>
+                      <input type="text" [ngModel]="editCampaignDescription()" (ngModelChange)="editCampaignDescription.set($event)"
+                        class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                    </div>
+                  </div>
+
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-xs font-bold text-purple-400 uppercase">Horario</h4>
+                      <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" [checked]="editCampaignScheduleEnabled()"
+                          (change)="editCampaignScheduleEnabled.set(!editCampaignScheduleEnabled())" class="accent-purple-500">
+                        <span class="text-[11px] text-slate-400">Activar</span>
+                      </label>
+                    </div>
+                    @if (editCampaignScheduleEnabled()) {
+                      <div class="grid grid-cols-2 gap-3">
+                        <div>
+                          <label class="text-[10px] uppercase text-slate-500 block mb-1">Desde</label>
+                          <input type="time" [ngModel]="editCampaignScheduleStart()" (ngModelChange)="editCampaignScheduleStart.set($event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500/50 focus:outline-none">
+                        </div>
+                        <div>
+                          <label class="text-[10px] uppercase text-slate-500 block mb-1">Hasta</label>
+                          <input type="time" [ngModel]="editCampaignScheduleEnd()" (ngModelChange)="editCampaignScheduleEnd.set($event)"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500/50 focus:outline-none">
+                        </div>
+                      </div>
+                      <div>
+                        <label class="text-[10px] uppercase text-slate-500 block mb-1">Días</label>
+                        <div class="flex gap-1.5">
+                          @for (d of weekDays; track d.dow) {
+                            <button type="button" (click)="toggleEditScheduleDay(d.dow)"
+                              class="w-9 h-9 rounded-lg text-sm font-bold transition-colors"
+                              [class]="editCampaignScheduleDays().includes(d.dow) ? 'bg-purple-500 text-white' : 'bg-black/40 border border-white/10 text-slate-500 hover:text-white'">
+                              {{ d.label }}
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-amber-400 uppercase">Anti-bloqueo</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="text-[10px] uppercase text-slate-500 block mb-1">Delay min (s)</label>
+                        <input type="number" min="1" [ngModel]="editCampaignMinDelay()" (ngModelChange)="editCampaignMinDelay.set(+$event || 1)"
+                          class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/50 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="text-[10px] uppercase text-slate-500 block mb-1">Delay max (s)</label>
+                        <input type="number" min="1" [ngModel]="editCampaignMaxDelay()" (ngModelChange)="editCampaignMaxDelay.set(+$event || 1)"
+                          class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/50 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="text-[10px] uppercase text-slate-500 block mb-1">Por hora</label>
+                        <input type="number" min="1" [ngModel]="editCampaignHourlyLimit()" (ngModelChange)="editCampaignHourlyLimit.set(+$event || 1)"
+                          class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/50 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="text-[10px] uppercase text-slate-500 block mb-1">Por día</label>
+                        <input type="number" min="1" [ngModel]="editCampaignDailyLimit()" (ngModelChange)="editCampaignDailyLimit.set(+$event || 1)"
+                          class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/50 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="text-[10px] uppercase text-slate-500 block mb-1">Tamaño lote</label>
+                        <input type="number" min="1" [ngModel]="editCampaignBatchSize()" (ngModelChange)="editCampaignBatchSize.set(+$event || 1)"
+                          class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/50 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="text-[10px] uppercase text-slate-500 block mb-1">Pausa entre lotes (s)</label>
+                        <input type="number" min="0" [ngModel]="editCampaignBatchPause()" (ngModelChange)="editCampaignBatchPause.set(+$event || 0)"
+                          class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/50 focus:outline-none">
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Footer -->
+              <div class="p-4 border-t border-white/10 flex gap-2 shrink-0">
+                @if (!campaignEditing()) {
+                  <button (click)="closeCampaignDetail()"
+                    class="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-medium transition-colors">
+                    Cerrar
+                  </button>
+                  @if (det.status !== 'completed' && det.status !== 'cancelled') {
+                    <button (click)="startEditingCampaign()"
+                      class="flex-1 py-2.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                      <span class="material-symbols-outlined text-base">edit</span> Editar
+                    </button>
+                  }
+                } @else {
+                  <button (click)="cancelEditingCampaign()" [disabled]="campaignEditSaving()"
+                    class="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-medium transition-colors disabled:opacity-50">
+                    Cancelar
+                  </button>
+                  <button (click)="saveCampaignEdit()" [disabled]="campaignEditSaving()"
+                    class="flex-1 py-2.5 rounded-lg bg-green-500 hover:bg-green-400 text-black text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    @if (campaignEditSaving()) {
+                      <span class="material-symbols-outlined animate-spin text-base">progress_activity</span> Guardando...
+                    } @else {
+                      <span class="material-symbols-outlined text-base">check</span>
+                      <span>Guardar cambios</span>
+                    }
+                  </button>
+                }
               </div>
             </div>
           </div>
