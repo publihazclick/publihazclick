@@ -41,6 +41,8 @@ export interface Profile {
   current_package_id: string | null;
   package_started_at: string | null;
   package_expires_at: string | null;
+  // Flags internas
+  ai_free_access?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -137,8 +137,8 @@
     <!-- Content -->
     <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 bg-white">
 
-      <!-- ═══ BANNER: Recarga requerida ═══ -->
-      @if (walletLoaded() && walletBalance() <= 0) {
+      <!-- ═══ BANNER: Recarga requerida (excepto usuarios con ai_free_access) ═══ -->
+      @if (walletLoaded() && walletBalance() <= 0 && !profile()?.ai_free_access) {
         <div class="flex flex-col sm:flex-row items-center gap-4 p-5 rounded-2xl border border-amber-200"
              style="background: linear-gradient(135deg, #fffbeb, #fef3c7);">
           <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"

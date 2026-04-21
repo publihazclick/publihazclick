@@ -1,5 +1,5 @@
-<!-- ═══ BLOQUEO: Saldo insuficiente ═══ -->
-@if (walletLoaded() && walletBalance() <= 0) {
+<!-- ═══ BLOQUEO: Saldo insuficiente (excepto usuarios con ai_free_access) ═══ -->
+@if (walletLoaded() && walletBalance() <= 0 && !profile()?.ai_free_access) {
   <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
     <div class="max-w-md w-full text-center">
       <div class="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center mb-6"
