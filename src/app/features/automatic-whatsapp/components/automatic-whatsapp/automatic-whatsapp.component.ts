@@ -48,8 +48,8 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   // Dashboard
   stats = signal<WaDashboardStats>({
     totalContacts: 0, totalGroups: 0, totalCampaigns: 0, totalTemplates: 0,
-    totalSent: 0, totalDelivered: 0, totalFailed: 0, totalReplies: 0,
-    deliveryRate: 0, replyRate: 0, activeCampaigns: 0, todaySent: 0,
+    totalSent: 0, totalFailed: 0, totalPending: 0, totalSending: 0,
+    successRate: 0, failureRate: 0, activeCampaigns: 0, todaySent: 0,
   });
 
   // Contacts

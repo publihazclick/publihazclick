@@ -523,20 +523,48 @@ export class WhatsappService {
     ]);
 
     const allCampaigns: WaCampaign[] = campaigns.data ?? [];
-    const totalSent = allCampaigns.reduce((s, c) => s + c.sent_count, 0);
-    const totalDelivered = allCampaigns.reduce((s, c) => s + c.delivered_count, 0);
-    const totalFailed = allCampaigns.reduce((s, c) => s + c.failed_count, 0);
-    const totalReplies = allCampaigns.reduce((s, c) => s + c.reply_count, 0);
-    const activeCampaigns = allCampaigns.filter(c => c.status === 'running').length;
+    const campaignIds = allCampaigns.map(c => c.id);
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const { count: todaySent } = await this.supabase
-      .from('wa_campaign_messages')
-      .select('*', { count: 'exact', head: true })
-      .in('campaign_id', allCampaigns.map(c => c.id))
-      .gte('sent_at', todayStart.toISOString())
-      .in('status', ['sent', 'delivered', 'replied']);
+    const totalSent   = allCampaigns.reduce((s, c) => s + (c.sent_count   || 0), 0);
+    const totalFailed = allCampaigns.reduce((s, c) => s + (c.failed_count || 0), 0);
+    // Activas = todo lo que el usuario tiene "en marcha" (no completed/failed/cancelled)
+    const activeCampaigns = allCampaigns.filter(c =>
+      c.status === 'running' || c.status === 'paused' || c.status === 'scheduled',
+    ).length;
+
+    // Contadores en tiempo real desde wa_campaign_messages
+    let totalPending = 0;
+    let totalSending = 0;
+    let todaySent    = 0;
+    if (campaignIds.length > 0) {
+      const [pendingQ, sendingQ, todayQ] = await Promise.all([
+        this.supabase
+          .from('wa_campaign_messages')
+          .select('*', { count: 'exact', head: true })
+          .in('campaign_id', campaignIds)
+          .eq('status', 'pending'),
+        this.supabase
+          .from('wa_campaign_messages')
+          .select('*', { count: 'exact', head: true })
+          .in('campaign_id', campaignIds)
+          .eq('status', 'sending'),
+        (async () => {
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          return this.supabase
+            .from('wa_campaign_messages')
+            .select('*', { count: 'exact', head: true })
+            .in('campaign_id', campaignIds)
+            .gte('sent_at', todayStart.toISOString())
+            .in('status', ['sent', 'delivered', 'replied']);
+        })(),
+      ]);
+      totalPending = pendingQ.count ?? 0;
+      totalSending = sendingQ.count ?? 0;
+      todaySent    = todayQ.count ?? 0;
+    }
+
+    const processed = totalSent + totalFailed;
 
     return {
       totalContacts: contacts.count ?? 0,
@@ -544,13 +572,13 @@ export class WhatsappService {
       totalCampaigns: allCampaigns.length,
       totalTemplates: templates.count ?? 0,
       totalSent,
-      totalDelivered,
       totalFailed,
-      totalReplies,
-      deliveryRate: totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0,
-      replyRate: totalDelivered > 0 ? (totalReplies / totalDelivered) * 100 : 0,
+      totalPending,
+      totalSending,
+      successRate: processed > 0 ? (totalSent   / processed) * 100 : 0,
+      failureRate: processed > 0 ? (totalFailed / processed) * 100 : 0,
       activeCampaigns,
-      todaySent: todaySent ?? 0,
+      todaySent,
     };
   }
 
@@ -614,8 +642,8 @@ export class WhatsappService {
   private emptyStats(): WaDashboardStats {
     return {
       totalContacts: 0, totalGroups: 0, totalCampaigns: 0, totalTemplates: 0,
-      totalSent: 0, totalDelivered: 0, totalFailed: 0, totalReplies: 0,
-      deliveryRate: 0, replyRate: 0, activeCampaigns: 0, todaySent: 0,
+      totalSent: 0, totalFailed: 0, totalPending: 0, totalSending: 0,
+      successRate: 0, failureRate: 0, activeCampaigns: 0, todaySent: 0,
     };
   }
 }

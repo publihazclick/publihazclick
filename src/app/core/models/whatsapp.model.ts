@@ -160,11 +160,11 @@ export interface WaDashboardStats {
   totalCampaigns: number;
   totalTemplates: number;
   totalSent: number;
-  totalDelivered: number;
   totalFailed: number;
-  totalReplies: number;
-  deliveryRate: number;
-  replyRate: number;
+  totalPending: number;
+  totalSending: number;
+  successRate: number;
+  failureRate: number;
   activeCampaigns: number;
   todaySent: number;
 }
