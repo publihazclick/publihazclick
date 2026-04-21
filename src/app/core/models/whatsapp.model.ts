@@ -64,6 +64,15 @@ export interface WaContactGroup {
   updated_at: string;
 }
 
+export type WaMediaKind = 'image' | 'audio' | 'video' | 'pdf';
+
+export interface WaMediaItem {
+  kind: WaMediaKind;
+  url: string;
+  filename: string;
+  mimetype: string;
+}
+
 export interface WaTemplate {
   id: string;
   user_id: string;
@@ -73,6 +82,7 @@ export interface WaTemplate {
   content: string;
   media_url: string | null;
   media_filename: string | null;
+  media_items: WaMediaItem[];
   variables: string[];
   is_favorite: boolean;
   use_count: number;

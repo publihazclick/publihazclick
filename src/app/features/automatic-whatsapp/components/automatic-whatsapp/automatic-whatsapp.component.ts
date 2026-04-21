@@ -16,6 +16,7 @@ import {
   WaAntiBlockConfig,
   WaMessageType,
   WaTemplateCategory,
+  WaMediaItem,
   DEFAULT_ANTI_BLOCK_CONFIG,
 } from '../../../../core/models/whatsapp.model';
 
@@ -79,7 +80,10 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   newTemplateCategory = signal<WaTemplateCategory>('general');
   newTemplateType = signal<WaMessageType>('text');
   newTemplateContent = signal('');
-  newTemplateMediaFile = signal<File | null>(null);
+  newTemplateMediaFile = signal<File | null>(null); // legacy - ya no se usa para guardar
+  newTemplateMediaItems = signal<WaMediaItem[]>([]); // archivos ya subidos
+  templateMediaUploading = signal(false);
+  templateSaving = signal(false);
   editingTemplate = signal<WaTemplate | null>(null);
 
   // Campaigns
@@ -554,6 +558,9 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.newTemplateType.set('text');
     this.newTemplateContent.set('');
     this.newTemplateMediaFile.set(null);
+    this.newTemplateMediaItems.set([]);
+    this.templateMediaUploading.set(false);
+    this.templateSaving.set(false);
     this.templateModal.set('create');
   }
 
@@ -563,37 +570,107 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.newTemplateCategory.set(t.category);
     this.newTemplateType.set(t.message_type);
     this.newTemplateContent.set(t.content);
+    this.newTemplateMediaItems.set(Array.isArray(t.media_items) ? [...t.media_items] : []);
+    this.newTemplateMediaFile.set(null);
+    this.templateMediaUploading.set(false);
+    this.templateSaving.set(false);
     this.templateModal.set('create');
   }
 
-  async saveTemplate() {
-    if (!this.newTemplateName() || !this.newTemplateContent() || !this.requireSubscription()) return;
+  /**
+   * Sube uno o varios archivos y los agrega a la plantilla. No reemplaza
+   * lo que ya hay — cada llamada suma. El usuario puede elegir imágenes,
+   * audios, videos y PDFs en la misma plantilla.
+   */
+  async onTemplateMediaFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (!files || files.length === 0) return;
 
-    let mediaUrl: string | null = null;
-    const file = this.newTemplateMediaFile();
-    if (file) {
-      mediaUrl = await this.wa.uploadMedia(file);
+    this.templateMediaUploading.set(true);
+    try {
+      const uploaded: WaMediaItem[] = [];
+      for (const file of Array.from(files)) {
+        const item = await this.wa.uploadMediaItem(file);
+        if (item) uploaded.push(item);
+      }
+      if (uploaded.length > 0) {
+        this.newTemplateMediaItems.update(current => [...current, ...uploaded]);
+      }
+    } finally {
+      this.templateMediaUploading.set(false);
+      input.value = '';
     }
+  }
 
-    const payload: Partial<WaTemplate> = {
-      name: this.newTemplateName(),
-      category: this.newTemplateCategory(),
-      message_type: this.newTemplateType(),
-      content: this.newTemplateContent(),
+  removeTemplateMediaItem(index: number) {
+    this.newTemplateMediaItems.update(items => items.filter((_, i) => i !== index));
+  }
+
+  getMediaIcon(kind: string): string {
+    const map: Record<string, string> = {
+      image: 'image',
+      video: 'videocam',
+      audio: 'graphic_eq',
+      pdf: 'picture_as_pdf',
     };
-    if (mediaUrl) {
-      payload.media_url = mediaUrl;
-      payload.media_filename = file!.name;
-    }
+    return map[kind] ?? 'description';
+  }
 
-    const editing = this.editingTemplate();
-    if (editing) {
-      await this.wa.updateTemplate(editing.id, payload);
-    } else {
-      await this.wa.createTemplate(payload);
+  getMediaColor(kind: string): string {
+    const map: Record<string, string> = {
+      image: 'text-blue-400',
+      video: 'text-purple-400',
+      audio: 'text-amber-400',
+      pdf: 'text-red-400',
+    };
+    return map[kind] ?? 'text-slate-400';
+  }
+
+  async saveTemplate() {
+    if (!this.requireSubscription()) return;
+    if (!this.newTemplateName() || !this.newTemplateContent()) return;
+    if (this.templateMediaUploading()) return;
+
+    this.templateSaving.set(true);
+    try {
+      const items = this.newTemplateMediaItems();
+
+      // Si hay un media “suelto” en el file input legacy, también lo subimos
+      const legacyFile = this.newTemplateMediaFile();
+      if (legacyFile) {
+        const extra = await this.wa.uploadMediaItem(legacyFile);
+        if (extra) items.push(extra);
+      }
+
+      // Para retrocompatibilidad con worker viejo: guardamos también
+      // media_url/filename/message_type basado en el primer media (si existe).
+      const first = items[0];
+      const derivedType: WaMessageType = first
+        ? (first.kind as WaMessageType)
+        : 'text';
+
+      const payload: Partial<WaTemplate> = {
+        name: this.newTemplateName(),
+        category: this.newTemplateCategory(),
+        message_type: derivedType,
+        content: this.newTemplateContent(),
+        media_items: items,
+        media_url: first?.url ?? null,
+        media_filename: first?.filename ?? null,
+      };
+
+      const editing = this.editingTemplate();
+      if (editing) {
+        await this.wa.updateTemplate(editing.id, payload);
+      } else {
+        await this.wa.createTemplate(payload);
+      }
+      this.templateModal.set('none');
+      await this.loadTemplates();
+    } finally {
+      this.templateSaving.set(false);
     }
-    this.templateModal.set('none');
-    await this.loadTemplates();
   }
 
   async deleteTemplate(id: string) {

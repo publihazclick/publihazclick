@@ -183,8 +183,71 @@ Deno.serve(async (req) => {
       let result: SendResult = { ok: false, messageId: null, error: 'No enviado' };
       const messageContent = msg.content || template?.content || '';
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mediaItems: Array<{ kind: string; url: string; filename?: string; mimetype?: string }> =
+        Array.isArray(template?.media_items) ? template!.media_items as any[] : [];
+
       try {
-        if (template?.message_type === 'image' && template.media_url) {
+        if (mediaItems.length > 0) {
+          // Envío multi-media: imágenes, audios, videos y PDFs en el mismo
+          // mensaje. El texto viaja como caption del PRIMER image/video; si
+          // no hay image/video, se manda como texto separado al final.
+          const captionableIdx = mediaItems.findIndex(
+            (m) => m.kind === 'image' || m.kind === 'video',
+          );
+
+          const results: SendResult[] = [];
+          for (let i = 0; i < mediaItems.length; i++) {
+            const item = mediaItems[i];
+            const caption = i === captionableIdx ? messageContent : '';
+            const filename = item.filename || 'archivo';
+            const mimetype = item.mimetype || '';
+
+            let r: SendResult;
+            if (item.kind === 'image') {
+              r = await evoSendMedia(
+                instanceName, contact.phone, 'image', item.url,
+                caption, mimetype || 'image/jpeg', filename,
+              );
+            } else if (item.kind === 'video') {
+              r = await evoSendMedia(
+                instanceName, contact.phone, 'video', item.url,
+                caption, mimetype || 'video/mp4', filename,
+              );
+            } else if (item.kind === 'pdf') {
+              r = await evoSendMedia(
+                instanceName, contact.phone, 'document', item.url,
+                caption, mimetype || 'application/pdf', filename,
+              );
+            } else if (item.kind === 'audio') {
+              r = await evoSendAudio(instanceName, contact.phone, item.url);
+            } else {
+              r = { ok: false, messageId: null, error: `tipo media desconocido: ${item.kind}` };
+            }
+            results.push(r);
+
+            // Delay corto entre items del MISMO mensaje (2-4s)
+            if (i < mediaItems.length - 1) {
+              await sleep(randomDelay(2000, 4000));
+            }
+          }
+
+          // Si había texto y ningún media lo llevó como caption, enviar al final
+          if (captionableIdx === -1 && messageContent.trim()) {
+            await sleep(randomDelay(1500, 3000));
+            const rText = await evoSendText(instanceName, contact.phone, messageContent, 0);
+            results.push(rText);
+          }
+
+          const okCount = results.filter(r => r.ok).length;
+          const firstOk = results.find(r => r.ok);
+          const firstErr = results.find(r => !r.ok);
+          result = {
+            ok: okCount > 0 && okCount === results.length,
+            messageId: firstOk?.messageId ?? null,
+            error: okCount === results.length ? undefined : (firstErr?.error || 'Alguno de los envíos falló'),
+          };
+        } else if (template?.message_type === 'image' && template.media_url) {
           result = await evoSendMedia(instanceName, contact.phone, 'image', template.media_url, messageContent, 'image/jpeg', template.media_filename || 'imagen.jpg');
         } else if (template?.message_type === 'pdf' && template.media_url) {
           result = await evoSendMedia(instanceName, contact.phone, 'document', template.media_url, messageContent, 'application/pdf', template.media_filename || 'documento.pdf');

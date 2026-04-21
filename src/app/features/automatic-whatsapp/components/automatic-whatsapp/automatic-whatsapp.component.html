@@ -902,25 +902,14 @@
                     class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none">
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="text-sm text-slate-400 mb-1 block">Categoria</label>
-                    <select [ngModel]="newTemplateCategory()" (ngModelChange)="newTemplateCategory.set($event)"
-                      class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
-                      @for (cat of templateCategories; track cat.value) {
-                        <option [value]="cat.value">{{ cat.label }}</option>
-                      }
-                    </select>
-                  </div>
-                  <div>
-                    <label class="text-sm text-slate-400 mb-1 block">Tipo de mensaje</label>
-                    <select [ngModel]="newTemplateType()" (ngModelChange)="newTemplateType.set($event)"
-                      class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
-                      @for (mt of messageTypes; track mt.value) {
-                        <option [value]="mt.value">{{ mt.label }}</option>
-                      }
-                    </select>
-                  </div>
+                <div>
+                  <label class="text-sm text-slate-400 mb-1 block">Categoria</label>
+                  <select [ngModel]="newTemplateCategory()" (ngModelChange)="newTemplateCategory.set($event)"
+                    class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-green-500/50 focus:outline-none">
+                    @for (cat of templateCategories; track cat.value) {
+                      <option [value]="cat.value">{{ cat.label }}</option>
+                    }
+                  </select>
                 </div>
 
                 <div>
@@ -928,26 +917,69 @@
                   <textarea [ngModel]="newTemplateContent()" (ngModelChange)="newTemplateContent.set($event)" rows="5"
                     placeholder="Hola {nombre}, te invitamos a aprovechar nuestra promo..."
                     class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-green-500/50 focus:outline-none resize-none"></textarea>
-                  <p class="text-xs text-slate-600 mt-1">Usa {{'{'}}variable{{'}'}}) para personalizar: {{'{'}}nombre{{'}'}}, {{'{'}}empresa{{'}'}}, {{'{'}}telefono{{'}'}}</p>
+                  <p class="text-xs text-slate-600 mt-1">Usa {{'{'}}variable{{'}'}} para personalizar: {{'{'}}nombre{{'}'}}, {{'{'}}empresa{{'}'}}, {{'{'}}telefono{{'}'}}</p>
                 </div>
 
-                @if (newTemplateType() !== 'text') {
-                  <div>
-                    <label class="text-sm text-slate-400 mb-1 block">Archivo adjunto</label>
-                    <div class="border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-green-500/30 transition-colors">
-                      <input type="file" (change)="onMediaFileSelected($event)" class="hidden" #fileInput
-                        [accept]="newTemplateType() === 'image' ? 'image/*' : newTemplateType() === 'audio' ? 'audio/*' : newTemplateType() === 'pdf' ? '.pdf' : 'video/*'">
-                      <button (click)="fileInput.click()" class="text-slate-400 hover:text-white transition-colors">
-                        <span class="material-symbols-outlined text-2xl mb-1">cloud_upload</span>
-                        <p class="text-sm">{{ newTemplateMediaFile()?.name || 'Click para subir archivo' }}</p>
-                      </button>
-                    </div>
-                  </div>
-                }
+                <!-- Multi-media: imágenes + audios + videos + PDFs -->
+                <div>
+                  <label class="text-sm text-slate-400 mb-1 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base text-green-400">attach_file</span>
+                    Archivos adjuntos
+                    <span class="text-xs text-slate-600 font-normal">(imágenes, audios, videos, PDFs — puedes agregar varios)</span>
+                  </label>
 
-                <button (click)="saveTemplate()" [disabled]="!newTemplateName() || !newTemplateContent()"
-                  class="w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold transition-all disabled:opacity-50">
-                  {{ editingTemplate() ? 'Guardar Cambios' : 'Crear Plantilla' }}
+                  @if (newTemplateMediaItems().length > 0) {
+                    <div class="space-y-2 mb-3">
+                      @for (item of newTemplateMediaItems(); track $index) {
+                        <div class="flex items-center gap-3 bg-black/30 border border-white/10 rounded-lg px-3 py-2">
+                          <span class="material-symbols-outlined text-xl shrink-0" [class]="getMediaColor(item.kind)">
+                            {{ getMediaIcon(item.kind) }}
+                          </span>
+                          @if (item.kind === 'image') {
+                            <img [src]="item.url" alt="preview" class="w-10 h-10 object-cover rounded border border-white/10 shrink-0">
+                          }
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm text-white truncate">{{ item.filename }}</p>
+                            <p class="text-[10px] text-slate-500 uppercase">{{ item.kind }}</p>
+                          </div>
+                          <button type="button" (click)="removeTemplateMediaItem($index)"
+                            class="text-slate-500 hover:text-red-400 transition-colors shrink-0" title="Quitar">
+                            <span class="material-symbols-outlined text-lg">close</span>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <label class="block cursor-pointer">
+                    <input type="file" multiple
+                      accept="image/*,video/*,audio/*,application/pdf"
+                      (change)="onTemplateMediaFilesSelected($event)"
+                      [disabled]="templateMediaUploading()"
+                      class="hidden">
+                    <div class="border-2 border-dashed border-white/15 hover:border-green-500/40 hover:bg-green-500/5 rounded-xl px-4 py-4 text-center transition-colors">
+                      @if (templateMediaUploading()) {
+                        <span class="material-symbols-outlined animate-spin text-xl text-amber-400 block mb-1">progress_activity</span>
+                        <p class="text-xs text-amber-400">Subiendo archivos...</p>
+                      } @else {
+                        <span class="material-symbols-outlined text-2xl text-slate-400 block mb-1">add_circle</span>
+                        <p class="text-xs text-white">
+                          {{ newTemplateMediaItems().length === 0 ? 'Agregar archivos' : 'Agregar más archivos' }}
+                        </p>
+                        <p class="text-[10px] text-slate-600 mt-0.5">Selecciona uno o varios</p>
+                      }
+                    </div>
+                  </label>
+                </div>
+
+                <button (click)="saveTemplate()"
+                  [disabled]="!newTemplateName() || !newTemplateContent() || templateMediaUploading() || templateSaving()"
+                  class="w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  @if (templateSaving()) {
+                    <span class="material-symbols-outlined animate-spin">progress_activity</span> Guardando...
+                  } @else {
+                    <span>{{ editingTemplate() ? 'Guardar Cambios' : 'Crear Plantilla' }}</span>
+                  }
                 </button>
               </div>
             </div>

@@ -12,6 +12,8 @@ import {
   WaCampaignMessage,
   WaDashboardStats,
   WaAntiBlockConfig,
+  WaMediaItem,
+  WaMediaKind,
 } from '../models/whatsapp.model';
 
 @Injectable({ providedIn: 'root' })
@@ -555,14 +557,50 @@ export class WhatsappService {
   // ─── Media Upload ───────────────────────────
 
   async uploadMedia(file: File): Promise<string | null> {
+    const meta = await this.uploadMediaItem(file);
+    return meta?.url ?? null;
+  }
+
+  /**
+   * Sube un archivo al storage y devuelve metadata completa para guardar
+   * dentro de `wa_templates.media_items` y usar luego al enviar el mensaje.
+   */
+  async uploadMediaItem(file: File): Promise<WaMediaItem | null> {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return null;
-    const ext = file.name.split('.').pop();
-    const path = `wa-media/${user.id}/${Date.now()}.${ext}`;
-    const { error } = await this.supabase.storage.from('public').upload(path, file);
-    if (error) return null;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const safeExt = ext.replace(/[^a-z0-9]/g, '') || 'bin';
+    const path = `wa-media/${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+    const { error } = await this.supabase.storage.from('public').upload(path, file, {
+      contentType: file.type || undefined,
+      upsert: false,
+    });
+    if (error) {
+      console.error('[wa uploadMediaItem]', error);
+      return null;
+    }
     const { data } = this.supabase.storage.from('public').getPublicUrl(path);
-    return data.publicUrl;
+    return {
+      kind: this.inferMediaKind(file.type, file.name),
+      url: data.publicUrl,
+      filename: file.name,
+      mimetype: file.type || 'application/octet-stream',
+    };
+  }
+
+  private inferMediaKind(mime: string, filename: string): WaMediaKind {
+    const m = (mime || '').toLowerCase();
+    if (m.startsWith('image/')) return 'image';
+    if (m.startsWith('video/')) return 'video';
+    if (m.startsWith('audio/')) return 'audio';
+    if (m === 'application/pdf') return 'pdf';
+    // Fallback por extensión
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    if (['jpg','jpeg','png','gif','webp','bmp','heic'].includes(ext)) return 'image';
+    if (['mp4','mov','avi','mkv','webm','3gp'].includes(ext)) return 'video';
+    if (['mp3','wav','ogg','m4a','aac','opus'].includes(ext)) return 'audio';
+    if (ext === 'pdf') return 'pdf';
+    return 'image';
   }
 
   // ─── Helpers ────────────────────────────────
