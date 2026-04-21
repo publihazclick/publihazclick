@@ -437,15 +437,19 @@ export class WhatsappService {
     return data ?? [];
   }
 
-  async createCampaign(campaign: Partial<WaCampaign>): Promise<WaCampaign | null> {
+  async createCampaign(campaign: Partial<WaCampaign>): Promise<{ data: WaCampaign | null; error: string | null }> {
     const { data: { user } } = await this.supabase.auth.getUser();
-    if (!user) return null;
-    const { data } = await this.supabase
+    if (!user) return { data: null, error: 'Sesión no válida' };
+    const { data, error } = await this.supabase
       .from('wa_campaigns')
       .insert({ ...campaign, user_id: user.id })
       .select('*, template:wa_templates(*), target_group:wa_contact_groups(*)')
       .single();
-    return data;
+    if (error) {
+      console.error('[wa createCampaign]', error);
+      return { data: null, error: error.message || 'No se pudo crear la campaña' };
+    }
+    return { data, error: null };
   }
 
   async updateCampaign(id: string, updates: Partial<WaCampaign>): Promise<WaCampaign | null> {

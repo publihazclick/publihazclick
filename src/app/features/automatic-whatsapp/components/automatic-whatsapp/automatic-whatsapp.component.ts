@@ -100,6 +100,24 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   campaignExcelContactIds = signal<string[]>([]);
   campaignExcelTotal = signal(0);
 
+  // Estado de envío del modal de campaña
+  campaignSaving = signal(false);
+  campaignSaveError = signal<string | null>(null);
+
+  /**
+   * Devuelve true si los destinatarios actuales son válidos para crear
+   * la campaña. Se usa para habilitar/deshabilitar el botón "Crear Campaña"
+   * y evitar envíos silenciosos sin audiencia.
+   */
+  canSaveCampaign = computed(() => {
+    if (!this.newCampaignName() || !this.newCampaignTemplateId()) return false;
+    const t = this.newCampaignTargetType();
+    if (t === 'excel') return this.campaignExcelContactIds().length > 0;
+    if (t === 'group') return !!this.newCampaignGroupId();
+    if (t === 'custom') return this.selectedContacts().size > 0;
+    return true; // 'all'
+  });
+
   // Settings / Sessions
   sessions = signal<WaSession[]>([]);
   newSessionName = signal('');
@@ -596,6 +614,8 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.campaignExcelContactIds.set([]);
     this.campaignExcelTotal.set(0);
     this.campaignExcelLoading.set(false);
+    this.campaignSaving.set(false);
+    this.campaignSaveError.set(null);
     this.campaignModal.set('create');
   }
 
@@ -717,7 +737,10 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   }
 
   async saveCampaign() {
-    if (!this.newCampaignName() || !this.newCampaignTemplateId() || !this.requireSubscription()) return;
+    this.campaignSaveError.set(null);
+    if (!this.requireSubscription()) return;
+    if (!this.newCampaignName()) { this.campaignSaveError.set('Falta el nombre de la campaña.'); return; }
+    if (!this.newCampaignTemplateId()) { this.campaignSaveError.set('Selecciona una plantilla.'); return; }
 
     const targetType = this.newCampaignTargetType();
     const config = this.antiBlockConfig();
@@ -730,37 +753,60 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     if (targetType === 'excel') {
       targetContactIds = this.campaignExcelContactIds();
       if (targetContactIds.length === 0) {
-        // No bloqueamos con alert para no romper UX, solo no se crea
+        this.campaignSaveError.set('Sube un archivo Excel con los destinatarios antes de crear la campaña.');
         return;
       }
       totalContacts = targetContactIds.length;
       storedTargetType = 'custom';
     } else if (targetType === 'all') {
       totalContacts = await this.wa.getContactCount();
+      if (totalContacts === 0) {
+        this.campaignSaveError.set('No tienes contactos guardados. Importa o elige otra opción de destinatarios.');
+        return;
+      }
       storedTargetType = 'all';
     } else if (targetType === 'group') {
+      if (!this.newCampaignGroupId()) {
+        this.campaignSaveError.set('Selecciona un grupo.');
+        return;
+      }
       totalContacts = this.groups().find(g => g.id === this.newCampaignGroupId())?.contacts_count ?? 0;
       targetGroupId = this.newCampaignGroupId();
       storedTargetType = 'group';
     } else {
       // custom (selección manual de contactos)
       targetContactIds = [...this.selectedContacts()];
+      if (targetContactIds.length === 0) {
+        this.campaignSaveError.set('Selecciona al menos un contacto destinatario.');
+        return;
+      }
       totalContacts = targetContactIds.length;
       storedTargetType = 'custom';
     }
 
-    await this.wa.createCampaign({
-      name: this.newCampaignName(),
-      description: this.newCampaignDescription() || null,
-      template_id: this.newCampaignTemplateId(),
-      target_type: storedTargetType,
-      target_group_id: targetGroupId,
-      target_contact_ids: targetContactIds,
-      total_contacts: totalContacts,
-      ...config,
-    });
-    this.campaignModal.set('none');
-    await this.loadCampaigns();
+    this.campaignSaving.set(true);
+    try {
+      const { data, error } = await this.wa.createCampaign({
+        name: this.newCampaignName(),
+        description: this.newCampaignDescription() || null,
+        template_id: this.newCampaignTemplateId(),
+        target_type: storedTargetType,
+        target_group_id: targetGroupId,
+        target_contact_ids: targetContactIds,
+        total_contacts: totalContacts,
+        ...config,
+      });
+
+      if (error || !data) {
+        this.campaignSaveError.set(error || 'No se pudo crear la campaña. Intenta de nuevo.');
+        return;
+      }
+
+      this.campaignModal.set('none');
+      await this.loadCampaigns();
+    } finally {
+      this.campaignSaving.set(false);
+    }
   }
 
   async startCampaign(id: string) {
