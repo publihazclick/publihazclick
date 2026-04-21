@@ -343,6 +343,61 @@ export class VideoStudioComponent implements OnInit {
     this.suggestedTitles.set([]);
   }
 
+  // ── Modo manual (fallback si la IA falla o se quiere escribir a mano) ───
+
+  /** Estado visual del modo manual del título */
+  readonly manualTitleActive = signal(false);
+  /** Estado visual del modo manual del guión */
+  readonly scriptSaved = signal<'none' | 'ai' | 'manual'>('none');
+  readonly savingScript = signal(false);
+
+  /**
+   * Activa el modo título manual. Oculta sugerencias de IA, limpia el
+   * error y deja el foco en el input para que el usuario escriba libremente.
+   */
+  useManualTitle(): void {
+    this.suggestedTitles.set([]);
+    this.manualTitleActive.set(true);
+    this.scriptError.set(null);
+    // Pequeño ayuda visual: si el input está vacío, mantener como está;
+    // el usuario ya está en el input y puede escribir.
+  }
+
+  /**
+   * Guarda el guión escrito manualmente en ai_projects como respaldo e
+   * historial. También marca scriptSaved='manual' para feedback en UI.
+   * Si scriptContent está vacío, avisa y no guarda.
+   */
+  async saveManualScript(): Promise<void> {
+    const content = this.scriptContent().trim();
+    if (!content) {
+      this.scriptError.set('Escribe el guion antes de guardarlo.');
+      return;
+    }
+    this.savingScript.set(true);
+    this.scriptError.set(null);
+    try {
+      await this.aiVideo.saveProject({
+        kind: 'script',
+        title: this.videoTopic() || 'Guion manual',
+        prompt: this.videoTopic() || undefined,
+        provider: 'manual',
+        data: {
+          platform: this.selectedPlatform(),
+          duration: this.duration(),
+          content,
+          chars: content.length,
+        },
+      });
+      this.scriptSaved.set('manual');
+    } catch (e) {
+      console.error('Error guardando guion manual:', e);
+      this.scriptError.set(e instanceof Error ? e.message : 'Error guardando el guión');
+    } finally {
+      this.savingScript.set(false);
+    }
+  }
+
   /** Parsea la duración seleccionada (ej: "1:30 minutos", "30 segundos") a segundos */
   private parseDurationToSeconds(): number {
     const dur = this.duration();
@@ -394,14 +449,33 @@ export class VideoStudioComponent implements OnInit {
           .map((s: { narration: string }) => s.narration)
           .join('\n\n');
         this.scriptContent.set(narration);
+        this.scriptSaved.set('ai');
+        // Guardar en historial ai_projects
+        try {
+          await this.aiVideo.saveProject({
+            kind: 'script',
+            title: this.videoTopic() || 'Guion IA',
+            prompt: topic,
+            provider: 'gemini',
+            data: {
+              platform,
+              duration: durationSec,
+              script: parsed.script,
+              content: narration,
+            },
+          });
+        } catch { /* historial es best-effort */ }
       } else {
         throw new Error('No se generaron escenas');
       }
     } catch (e: unknown) {
       console.error('Error generando guion:', e);
       const msg = e instanceof Error ? e.message : 'Error generando el guión';
-      this.scriptError.set(msg);
-      this.scriptContent.set('');
+      // Mensaje claro que invita a usar modo manual
+      this.scriptError.set(
+        `${msg}. Puedes escribir el guion manualmente abajo y continuar.`,
+      );
+      // NO borramos scriptContent si ya tenía algo escrito a mano — respeta el trabajo del usuario
     } finally {
       this.generatingScript.set(false);
     }
