@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
         name: v.name?.trim(),
         gender: v.gender,
         language: v.language,
+        preview_audio: v.preview_audio ?? null,
       }));
 
     return json({ voices });

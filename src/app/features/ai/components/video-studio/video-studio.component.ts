@@ -20,6 +20,7 @@ interface HeyGenVoice {
   name: string;
   gender: string;
   language: string;
+  preview_audio?: string | null;
 }
 
 type CreationMode = 'images' | 'avatar' | 'photo' | 'product';
@@ -310,6 +311,61 @@ export class VideoStudioComponent implements OnInit {
     this.selectedVoice.set(voice);
   }
 
+  // ── Voice preview audio ─────────────────────────────────────────────────
+  readonly playingVoiceId = signal<string | null>(null);
+  private previewAudio: HTMLAudioElement | null = null;
+
+  playVoicePreview(voice: HeyGenVoice, event?: Event): void {
+    event?.stopPropagation();
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (!voice.preview_audio) {
+      this.selectVoice(voice);
+      return;
+    }
+
+    // Si ya está sonando la misma voz, la detiene
+    if (this.playingVoiceId() === voice.voice_id && this.previewAudio) {
+      this.previewAudio.pause();
+      this.previewAudio.currentTime = 0;
+      this.previewAudio = null;
+      this.playingVoiceId.set(null);
+      return;
+    }
+
+    // Detener cualquier preview activo
+    if (this.previewAudio) {
+      this.previewAudio.pause();
+      this.previewAudio = null;
+    }
+
+    const audio = new Audio(voice.preview_audio);
+    audio.onended = () => {
+      if (this.playingVoiceId() === voice.voice_id) {
+        this.playingVoiceId.set(null);
+        this.previewAudio = null;
+      }
+    };
+    audio.onerror = () => {
+      this.playingVoiceId.set(null);
+      this.previewAudio = null;
+    };
+    audio.play().catch(() => {
+      this.playingVoiceId.set(null);
+      this.previewAudio = null;
+    });
+    this.previewAudio = audio;
+    this.playingVoiceId.set(voice.voice_id);
+    this.selectVoice(voice);
+  }
+
+  stopVoicePreview(): void {
+    if (this.previewAudio) {
+      this.previewAudio.pause();
+      this.previewAudio = null;
+    }
+    this.playingVoiceId.set(null);
+  }
+
   // ── Script ──────────────────────────────────────────────────────────────
 
   async generateWinnerTitle(): Promise<void> {
@@ -488,42 +544,64 @@ export class VideoStudioComponent implements OnInit {
     if (!voice || !this.scriptContent().trim()) return;
 
     this.videoError.set(null);
+
+    // Validación previa según el modo seleccionado para evitar el 400 del edge
+    const mode = this.selectedMode();
+    if (mode === 'avatar' && !this.selectedAvatar()) {
+      this.videoError.set('Selecciona un avatar antes de generar el video.');
+      return;
+    }
+    if ((mode === 'photo' || mode === 'product') && !this.talkingPhotoId()) {
+      this.videoError.set('Sube una foto antes de generar el video.');
+      return;
+    }
+    if (mode === 'images') {
+      this.videoError.set(
+        'El modo "Videos con Imágenes en Movimiento" aún no está disponible en este asistente. Usa "Avatar del Sistema" o "Mi Avatar Personal".',
+      );
+      return;
+    }
+
     this.generatingVideo.set(true);
 
     try {
-      const mode = this.selectedMode();
-      let characterConfig: Record<string, unknown>;
+      const characterType = mode === 'avatar' ? 'avatar' : 'talking_photo';
+      const payload: Record<string, unknown> = {
+        voice_id: voice.voice_id,
+        script: this.scriptContent(),
+        title: this.videoTopic() || 'Video PubliHazClick',
+        dimension: this.getDimension(),
+        character_type: characterType,
+      };
+      if (mode === 'avatar') payload['avatar_id'] = this.selectedAvatar()!.avatar_id;
+      else payload['talking_photo_id'] = this.talkingPhotoId();
 
-      if (mode === 'avatar') {
-        characterConfig = {
-          type: 'avatar',
-          avatar_id: this.selectedAvatar()!.avatar_id,
-          avatar_style: 'normal',
-        };
-      } else {
-        characterConfig = {
-          type: 'talking_photo',
-          talking_photo_id: this.talkingPhotoId(),
-        };
+      // Llamamos vía fetch para poder leer el body del error (supabase.functions.invoke
+      // descarta el JSON del error y no podemos mostrar el mensaje real al usuario).
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch(
+        `${environment.supabase.url}/functions/v1/generate-heygen-video`,
+        { method: 'POST', headers, body: JSON.stringify(payload) },
+      );
+
+      const data = await res.json().catch(() => null) as
+        | { video_id?: string; error?: string; status?: string; video_url?: string; thumbnail_url?: string }
+        | null;
+
+      if (!res.ok || !data?.video_id) {
+        throw new Error(data?.error ?? `Error al generar video (${res.status})`);
       }
 
-      const { data, error } = await this.supabase.functions.invoke('generate-heygen-video', {
-        body: {
-          avatar_id: mode === 'avatar' ? this.selectedAvatar()!.avatar_id : undefined,
-          talking_photo_id: mode !== 'avatar' ? this.talkingPhotoId() : undefined,
-          voice_id: voice.voice_id,
-          script: this.scriptContent(),
-          title: this.videoTopic() || 'Video PubliHazClick',
-          dimension: this.getDimension(),
-          character_type: mode === 'avatar' ? 'avatar' : 'talking_photo',
-        },
+      const videoId = data.video_id;
+      this.videoResult.set({
+        video_id: videoId,
+        status: data.status ?? 'processing',
+        video_url: data.video_url,
+        thumbnail_url: data.thumbnail_url,
       });
-
-      if (error || !data?.video_id) {
-        throw new Error(data?.error ?? 'Error al generar video');
-      }
-
-      this.videoResult.set(data);
       // Crear proyecto "processing" en historial para que el usuario lo vea
       const projectId = await this.aiVideo.saveProject({
         kind: 'video',
@@ -531,7 +609,7 @@ export class VideoStudioComponent implements OnInit {
         prompt: this.scriptContent().slice(0, 200),
         status: 'processing',
         provider: 'heygen',
-        external_id: data.video_id,
+        external_id: videoId,
         data: {
           platform: this.selectedPlatform() ?? null,
           voice_id: this.selectedVoice()?.voice_id ?? null,
@@ -543,7 +621,7 @@ export class VideoStudioComponent implements OnInit {
       if (projectId) this.currentProjectId.set(projectId);
       // Refrescar balance
       await this.walletService.loadWallet();
-      this.pollVideoStatus(data.video_id);
+      this.pollVideoStatus(videoId);
     } catch (e: unknown) {
       this.videoError.set(e instanceof Error ? e.message : 'Error al generar video');
     } finally {
