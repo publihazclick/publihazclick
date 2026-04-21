@@ -11,3 +11,65 @@ verify_jwt = false
 
 [functions.wa-evolution-webhook]
 verify_jwt = false
+
+# ── AI edge functions ──
+# Todas validan el JWT internamente con supabase.auth.getUser(token).
+[functions.generate-reel-script]
+verify_jwt = false
+
+[functions.generate-openai-script]
+verify_jwt = false
+
+[functions.generate-niches]
+verify_jwt = false
+
+[functions.generate-vertex-image]
+verify_jwt = false
+
+[functions.generate-flux-image]
+verify_jwt = false
+
+[functions.generate-face-swap]
+verify_jwt = false
+
+[functions.generate-heygen-video]
+verify_jwt = false
+
+[functions.check-heygen-video]
+verify_jwt = false
+
+[functions.generate-runway-video]
+verify_jwt = false
+
+[functions.check-runway-video]
+verify_jwt = false
+
+[functions.generate-elevenlabs-tts]
+verify_jwt = false
+
+[functions.clone-elevenlabs-voice]
+verify_jwt = false
+
+[functions.generate-tts-audio]
+verify_jwt = false
+
+[functions.create-heygen-photo-avatar]
+verify_jwt = false
+
+[functions.list-heygen-avatars]
+verify_jwt = false
+
+[functions.list-heygen-voices]
+verify_jwt = false
+
+[functions.list-heygen-voices-all]
+verify_jwt = false
+
+[functions.list-elevenlabs-voices]
+verify_jwt = false
+
+[functions.search-youtube-titles]
+verify_jwt = false
+
+[functions.create-ai-wallet-recharge]
+verify_jwt = false
