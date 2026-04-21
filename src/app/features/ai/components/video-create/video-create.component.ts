@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AiVideoService } from '../../../../core/services/ai-video.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+import { ProfileService } from '../../../../core/services/profile.service';
 import type {
   AiScene,
   AiScript,
@@ -40,9 +41,11 @@ export class VideoCreateComponent implements OnInit, OnDestroy {
   readonly aiVideoService = inject(AiVideoService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly walletService = inject(AiWalletService);
+  private readonly profileService = inject(ProfileService);
 
   readonly walletBalance = this.walletService.balance;
   readonly walletLoaded = signal(false);
+  readonly profile = this.profileService.profile;
 
   async ngOnInit(): Promise<void> {
     try { await this.walletService.loadWallet(); } catch {}
