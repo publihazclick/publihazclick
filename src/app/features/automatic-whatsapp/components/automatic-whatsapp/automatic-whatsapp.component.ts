@@ -389,13 +389,34 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   excelFileName = signal('');
 
   /**
-   * Normaliza un teléfono: deja solo dígitos, valida 7-15 chars.
-   * Devuelve null si es inválido.
+   * Convierte cualquier valor proveniente de Excel/CSV a un string seguro
+   * sin pasar por notación científica. Un número grande como 573118117854
+   * en Excel formato "Número" puede llegar aquí ya serializado como
+   * "5,73118E+11" (locale ES) o "5.73118e+11" (locale EN). Si dejamos que
+   * `String(x)` o `x.toString()` actúen sobre eso, extraer los dígitos da
+   * un teléfono truncado. Por eso, cuando recibimos un Number lo pasamos
+   * por `toFixed(0)` para obtener la forma entera completa.
+   */
+  private cellToString(raw: unknown): string {
+    if (raw === null || raw === undefined) return '';
+    if (typeof raw === 'number') {
+      if (!Number.isFinite(raw)) return '';
+      return Number.isInteger(raw) ? raw.toFixed(0) : String(raw);
+    }
+    if (typeof raw === 'bigint') return raw.toString();
+    return String(raw);
+  }
+
+  /**
+   * Normaliza un teléfono: deja solo dígitos, valida 10-15 chars (móviles
+   * internacionales van de 10 a 15 dígitos; 10 es el mínimo de Colombia
+   * sin prefijo, 12 con prefijo 57). Devuelve null si es inválido.
    */
   private normalizePhone(raw: unknown): string | null {
-    if (raw === null || raw === undefined) return null;
-    const s = String(raw).replace(/[^0-9]/g, '');
-    if (s.length < 7 || s.length > 15) return null;
+    const str = this.cellToString(raw);
+    if (!str) return null;
+    const s = str.replace(/[^0-9]/g, '');
+    if (s.length < 10 || s.length > 15) return null;
     return s;
   }
 
@@ -422,10 +443,14 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
         }
 
         // Convertir a matriz (cada fila = array de celdas)
+        // raw: true devuelve el valor nativo (number/string). Evita que
+        // XLSX serialice teléfonos como "5,73118E+11" cuando la celda es
+        // número — esa serialización trunca teléfonos largos al extraer
+        // los dígitos. cellToString() maneja la conversión sin perder.
         const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
           header: 1,
           defval: '',
-          raw: false,
+          raw: true,
           blankrows: false,
         });
 
@@ -649,10 +674,14 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
           return;
         }
 
+        // raw: true devuelve el valor nativo (number/string). Evita que
+        // XLSX serialice teléfonos como "5,73118E+11" cuando la celda es
+        // número — esa serialización trunca teléfonos largos al extraer
+        // los dígitos. cellToString() maneja la conversión sin perder.
         const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
           header: 1,
           defval: '',
-          raw: false,
+          raw: true,
           blankrows: false,
         });
 
