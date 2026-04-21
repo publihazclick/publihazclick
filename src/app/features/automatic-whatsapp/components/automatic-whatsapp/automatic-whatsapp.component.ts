@@ -88,10 +88,17 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   newCampaignName = signal('');
   newCampaignDescription = signal('');
   newCampaignTemplateId = signal('');
-  newCampaignTargetType = signal<'all' | 'group' | 'custom'>('all');
+  newCampaignTargetType = signal<'excel' | 'all' | 'group' | 'custom'>('excel');
   newCampaignGroupId = signal('');
   antiBlockConfig = signal<WaAntiBlockConfig>({ ...DEFAULT_ANTI_BLOCK_CONFIG });
   activeCampaignDetail = signal<WaCampaign | null>(null);
+
+  // Excel para campaña (destinatarios)
+  campaignExcelLoading = signal(false);
+  campaignExcelFileName = signal('');
+  campaignExcelResult = signal('');
+  campaignExcelContactIds = signal<string[]>([]);
+  campaignExcelTotal = signal(0);
 
   // Settings / Sessions
   sessions = signal<WaSession[]>([]);
@@ -580,29 +587,175 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.newCampaignName.set('');
     this.newCampaignDescription.set('');
     this.newCampaignTemplateId.set('');
-    this.newCampaignTargetType.set('all');
+    this.newCampaignTargetType.set('excel');
     this.newCampaignGroupId.set('');
     this.antiBlockConfig.set({ ...DEFAULT_ANTI_BLOCK_CONFIG });
     this.activeCampaignDetail.set(null);
+    this.campaignExcelFileName.set('');
+    this.campaignExcelResult.set('');
+    this.campaignExcelContactIds.set([]);
+    this.campaignExcelTotal.set(0);
+    this.campaignExcelLoading.set(false);
     this.campaignModal.set('create');
+  }
+
+  /**
+   * Sube un Excel/CSV con los destinatarios de la campaña.
+   * Acepta cualquier formato (xlsx, xls, csv) — autodetecta cabecera y la
+   * columna de teléfono. Importa los contactos a la cuenta del usuario y
+   * guarda los IDs para usarlos como target_contact_ids al crear la campaña.
+   */
+  onCampaignExcelFileSelected(event: Event) {
+    if (!this.requireSubscription()) return;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.campaignExcelFileName.set(file.name);
+    this.campaignExcelLoading.set(true);
+    this.campaignExcelResult.set('');
+    this.campaignExcelContactIds.set([]);
+    this.campaignExcelTotal.set(0);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const buf = reader.result as ArrayBuffer;
+        const wb = XLSX.read(buf, { type: 'array' });
+        const firstSheet = wb.Sheets[wb.SheetNames[0]];
+        if (!firstSheet) {
+          this.campaignExcelResult.set('El archivo no tiene hojas');
+          this.campaignExcelLoading.set(false);
+          return;
+        }
+
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
+          header: 1,
+          defval: '',
+          raw: false,
+          blankrows: false,
+        });
+
+        if (!rows.length) {
+          this.campaignExcelResult.set('El archivo está vacío');
+          this.campaignExcelLoading.set(false);
+          return;
+        }
+
+        const firstRow = rows[0] ?? [];
+        const firstCellLooksLikePhone = !!this.normalizePhone(firstRow[0]);
+        const startIdx = firstCellLooksLikePhone ? 0 : 1;
+
+        let phoneCol = 0;
+        let nameCol = 1;
+        if (!firstCellLooksLikePhone) {
+          const headerRow = (firstRow as unknown[]).map(c => String(c).toLowerCase().trim());
+          headerRow.forEach((h, idx) => {
+            if (/tel|phone|celular|movil|numero|whatsapp|wa/.test(h)) phoneCol = idx;
+            if (/nombre|name|nombres|contacto|client/.test(h)) nameCol = idx;
+          });
+        }
+
+        const contacts: { phone: string; name?: string }[] = [];
+        const seen = new Set<string>();
+
+        for (let i = startIdx; i < rows.length; i++) {
+          const row = rows[i] ?? [];
+          const phone = this.normalizePhone(row[phoneCol]);
+          if (!phone || seen.has(phone)) continue;
+          seen.add(phone);
+          const nameRaw = row[nameCol];
+          const name = nameRaw === null || nameRaw === undefined
+            ? undefined
+            : String(nameRaw).trim() || undefined;
+          contacts.push({ phone, name });
+        }
+
+        if (contacts.length === 0) {
+          this.campaignExcelResult.set('No se encontraron números válidos en el archivo');
+          this.campaignExcelLoading.set(false);
+          return;
+        }
+
+        // Importar en lotes y recolectar IDs
+        const allIds: string[] = [];
+        let totalImported = 0;
+        for (let i = 0; i < contacts.length; i += 500) {
+          const batch = contacts.slice(i, i + 500);
+          const { ids, imported } = await this.wa.importContactsForCampaign(batch);
+          allIds.push(...ids);
+          totalImported += imported;
+        }
+
+        const uniqueIds = Array.from(new Set(allIds));
+        this.campaignExcelContactIds.set(uniqueIds);
+        this.campaignExcelTotal.set(contacts.length);
+        const newCount = totalImported;
+        const existing = uniqueIds.length - newCount;
+        this.campaignExcelResult.set(
+          `${uniqueIds.length} destinatarios listos (${newCount} nuevos, ${existing > 0 ? existing : 0} ya existían)`,
+        );
+      } catch {
+        this.campaignExcelResult.set('Error al procesar el archivo. Verifica que sea un Excel o CSV válido.');
+      } finally {
+        this.campaignExcelLoading.set(false);
+      }
+    };
+    reader.onerror = () => {
+      this.campaignExcelResult.set('Error al leer el archivo');
+      this.campaignExcelLoading.set(false);
+    };
+    reader.readAsArrayBuffer(file);
+    input.value = '';
+  }
+
+  clearCampaignExcel() {
+    this.campaignExcelFileName.set('');
+    this.campaignExcelResult.set('');
+    this.campaignExcelContactIds.set([]);
+    this.campaignExcelTotal.set(0);
   }
 
   async saveCampaign() {
     if (!this.newCampaignName() || !this.newCampaignTemplateId() || !this.requireSubscription()) return;
+
+    const targetType = this.newCampaignTargetType();
     const config = this.antiBlockConfig();
-    const totalContacts = this.newCampaignTargetType() === 'all'
-      ? await this.wa.getContactCount()
-      : this.newCampaignTargetType() === 'group'
-        ? (this.groups().find(g => g.id === this.newCampaignGroupId())?.contacts_count ?? 0)
-        : this.selectedContacts().size;
+
+    let totalContacts = 0;
+    let targetContactIds: string[] = [];
+    let storedTargetType: 'all' | 'group' | 'custom' = 'all';
+    let targetGroupId: string | null = null;
+
+    if (targetType === 'excel') {
+      targetContactIds = this.campaignExcelContactIds();
+      if (targetContactIds.length === 0) {
+        // No bloqueamos con alert para no romper UX, solo no se crea
+        return;
+      }
+      totalContacts = targetContactIds.length;
+      storedTargetType = 'custom';
+    } else if (targetType === 'all') {
+      totalContacts = await this.wa.getContactCount();
+      storedTargetType = 'all';
+    } else if (targetType === 'group') {
+      totalContacts = this.groups().find(g => g.id === this.newCampaignGroupId())?.contacts_count ?? 0;
+      targetGroupId = this.newCampaignGroupId();
+      storedTargetType = 'group';
+    } else {
+      // custom (selección manual de contactos)
+      targetContactIds = [...this.selectedContacts()];
+      totalContacts = targetContactIds.length;
+      storedTargetType = 'custom';
+    }
 
     await this.wa.createCampaign({
       name: this.newCampaignName(),
       description: this.newCampaignDescription() || null,
       template_id: this.newCampaignTemplateId(),
-      target_type: this.newCampaignTargetType(),
-      target_group_id: this.newCampaignTargetType() === 'group' ? this.newCampaignGroupId() : null,
-      target_contact_ids: this.newCampaignTargetType() === 'custom' ? [...this.selectedContacts()] : [],
+      target_type: storedTargetType,
+      target_group_id: targetGroupId,
+      target_contact_ids: targetContactIds,
       total_contacts: totalContacts,
       ...config,
     });

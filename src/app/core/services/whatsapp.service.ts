@@ -300,6 +300,42 @@ export class WhatsappService {
     return data?.length ?? 0;
   }
 
+  /**
+   * Importa contactos desde Excel y devuelve los IDs (existentes + nuevos)
+   * para usarlos como target_contact_ids en una campaña. A diferencia de
+   * importContacts, hace una segunda consulta para asegurar que los IDs
+   * de contactos previamente existentes tambien se incluyan.
+   */
+  async importContactsForCampaign(
+    contacts: { phone: string; name?: string }[],
+  ): Promise<{ ids: string[]; imported: number; total: number }> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user || contacts.length === 0) return { ids: [], imported: 0, total: 0 };
+
+    const phones = Array.from(new Set(contacts.map(c => c.phone)));
+    const rows = contacts.map(c => ({ user_id: user.id, phone: c.phone, name: c.name ?? null }));
+
+    const { data: imported } = await this.supabase
+      .from('wa_contacts')
+      .upsert(rows, { onConflict: 'user_id,phone', ignoreDuplicates: true })
+      .select('id');
+
+    // Recuperar IDs de TODOS los telefonos (los nuevos + los que ya existian).
+    // Supabase limita .in() a ~1000 valores; partimos en lotes para listas grandes.
+    const ids: string[] = [];
+    for (let i = 0; i < phones.length; i += 800) {
+      const batch = phones.slice(i, i + 800);
+      const { data } = await this.supabase
+        .from('wa_contacts')
+        .select('id')
+        .eq('user_id', user.id)
+        .in('phone', batch);
+      if (data) ids.push(...data.map(r => r.id));
+    }
+
+    return { ids, imported: imported?.length ?? 0, total: phones.length };
+  }
+
   // ─── Contact Groups ─────────────────────────
 
   async getGroups(): Promise<WaContactGroup[]> {
