@@ -329,21 +329,38 @@
           </div>
         </div>
 
-        <!-- Generar guion con IA -->
-        <div class="flex justify-end mb-4">
+        <!-- Botones: generar con IA + crear manual -->
+        <div class="flex flex-wrap justify-end gap-2 mb-4">
           <button (click)="generateScript()"
-            [disabled]="generatingScript()"
-            class="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-xs sm:text-sm disabled:opacity-50"
+            [disabled]="generatingScript() || savingScript()"
+            class="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-xs sm:text-sm transition-all disabled:opacity-50 hover:opacity-90 shadow-sm hover:shadow-md"
             style="background: linear-gradient(90deg, #7e22ce, #a855f7);">
             @if (generatingScript()) {
               <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
+              Generando...
             } @else {
               <span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>
+              Generar Guion con IA
             }
-            Generar Guion con IA
+          </button>
+
+          <button (click)="saveManualScript()" type="button"
+            [disabled]="savingScript() || generatingScript() || !scriptContent().trim()"
+            class="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-xs sm:text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 shadow-sm hover:shadow-md"
+            style="background: linear-gradient(90deg, #059669, #10b981);">
+            @if (savingScript()) {
+              <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Guardando...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:16px">edit_note</span>
+              Crear Guion Manual
+            }
           </button>
         </div>
 
@@ -360,29 +377,14 @@
 
         <div class="mt-2 flex flex-wrap items-center gap-3 justify-between">
           <div class="flex items-center gap-2">
-            <button (click)="saveManualScript()" type="button"
-              [disabled]="savingScript() || !scriptContent().trim()"
-              class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 font-black text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-              @if (savingScript()) {
-                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                Guardando...
-              } @else {
-                <span class="material-symbols-outlined" style="font-size:16px">edit_note</span>
-                Crear guion manual
-              }
-            </button>
-
             @if (scriptSaved() === 'manual') {
-              <span class="text-[10px] text-green-700 font-bold flex items-center gap-1">
+              <span class="text-[11px] text-emerald-700 font-bold flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200">
                 <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
                 Guion manual guardado
               </span>
             }
             @if (scriptSaved() === 'ai') {
-              <span class="text-[10px] text-purple-700 font-bold flex items-center gap-1">
+              <span class="text-[11px] text-purple-700 font-bold flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-50 border border-purple-200">
                 <span class="material-symbols-outlined" style="font-size:14px">auto_awesome</span>
                 Guion IA guardado
               </span>
