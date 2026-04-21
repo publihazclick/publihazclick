@@ -116,6 +116,7 @@ export interface WaCampaign {
   completed_at: string | null;
   block_count: number;
   current_block: number;
+  block_completed_at: string | null;
   schedule_start_time: string | null; // HH:mm o HH:mm:ss
   schedule_end_time: string | null;
   schedule_days: number[]; // 0=dom ... 6=sab, vacío = todos

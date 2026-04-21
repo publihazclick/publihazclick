@@ -138,6 +138,55 @@ function inSchedule(campaign: any): boolean {
 }
 
 /**
+ * Devuelve la fecha local ("YYYY-MM-DD") del timestamp en la TZ dada.
+ * Útil para comparar si dos momentos caen en el mismo día local.
+ */
+function localDateStr(d: Date, tz: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+}
+
+/**
+ * Minutos de pausa entre bloques cuando la campaña está configurada en
+ * modo "un solo día" (schedule_days tiene exactamente 1 valor).
+ */
+const SINGLE_DAY_BLOCK_PAUSE_MIN = 80; // 1h 20min
+
+/**
+ * Decide si ya se puede avanzar al siguiente bloque según el tipo de
+ * horario de la campaña. Cuatro escenarios:
+ *   1) Sin schedule        → avanza inmediatamente
+ *   2) Schedule sin días   → modo multi-día (7 días): 1 bloque por día
+ *   3) Schedule >1 día     → multi-día: 1 bloque por día (espera el
+ *                             próximo día LOCAL distinto)
+ *   4) Schedule con 1 día  → mismo día: espera 80 min
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function canAdvanceBlock(campaign: any, blockCompletedAt: Date): boolean {
+  const start = campaign.schedule_start_time;
+  const end   = campaign.schedule_end_time;
+  const days: number[] = Array.isArray(campaign.schedule_days) ? campaign.schedule_days : [];
+  const tz = (campaign.schedule_timezone as string) || 'America/Bogota';
+
+  // 1) Sin schedule → sin pausa
+  if (!start || !end) return true;
+
+  const singleDay = days.length === 1;
+
+  if (singleDay) {
+    // Espera 80 minutos
+    const elapsedMs = Date.now() - blockCompletedAt.getTime();
+    return elapsedMs >= SINGLE_DAY_BLOCK_PAUSE_MIN * 60 * 1000;
+  }
+
+  // Multi-día: avanza solo cuando cambie el día LOCAL respecto al bloque anterior
+  const completedDay = localDateStr(blockCompletedAt, tz);
+  const todayLocal   = localDateStr(new Date(), tz);
+  return todayLocal > completedDay;
+}
+
+/**
  * Selecciona el texto del mensaje para un destinatario. Si la plantilla
  * tiene content_variants, hace rotación aleatoria entre content + variants
  * para reducir el riesgo de bloqueo por enviar el mismo texto idéntico a
@@ -234,10 +283,27 @@ Deno.serve(async (req) => {
     if (!pendingMsgs?.length) {
       // ¿Quedan bloques siguientes?
       if (currentBlock + 1 < blockCount) {
-        await supabase.from('wa_campaigns')
-          .update({ current_block: currentBlock + 1 })
-          .eq('id', campaign.id);
-        // El próximo cron tomará el nuevo bloque
+        // Si todavía no hay block_completed_at, significa que recién
+        // acabamos este bloque. Lo marcamos y esperamos al próximo cron.
+        if (!campaign.block_completed_at) {
+          await supabase.from('wa_campaigns')
+            .update({ block_completed_at: new Date().toISOString() })
+            .eq('id', campaign.id);
+          continue;
+        }
+
+        // Evaluar si ya podemos avanzar al siguiente bloque
+        const blockCompletedAt = new Date(campaign.block_completed_at as string);
+        if (canAdvanceBlock(campaign, blockCompletedAt)) {
+          await supabase.from('wa_campaigns')
+            .update({
+              current_block: currentBlock + 1,
+              block_completed_at: null,
+            })
+            .eq('id', campaign.id);
+          // El próximo cron tomará el nuevo bloque
+        }
+        // Si todavía no toca, quedamos esperando silenciosamente
         continue;
       }
 
@@ -253,6 +319,7 @@ Deno.serve(async (req) => {
         await supabase.from('wa_campaigns').update({
           status: 'completed',
           completed_at: new Date().toISOString(),
+          block_completed_at: new Date().toISOString(),
         }).eq('id', campaign.id);
       }
       continue;
