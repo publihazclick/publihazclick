@@ -426,6 +426,21 @@ Deno.serve(async (req) => {
             .eq('is_blocked', false);
           contacts = data ?? [];
         }
+      } else if (campaign.target_type === 'custom') {
+        // Campaña con destinatarios específicos (ej. Excel). Leemos de
+        // target_contact_ids — puede ser una lista larga, consultamos en lotes.
+        const targetIds = Array.isArray(campaign.target_contact_ids) ? campaign.target_contact_ids as string[] : [];
+        for (let i = 0; i < targetIds.length; i += 800) {
+          const batch = targetIds.slice(i, i + 800);
+          const { data } = await supabase
+            .from('wa_contacts')
+            .select('id, phone, name')
+            .eq('user_id', userId)
+            .in('id', batch)
+            .eq('is_valid', true)
+            .eq('is_blocked', false);
+          if (data) contacts.push(...data);
+        }
       }
 
       if (contacts.length === 0) {
