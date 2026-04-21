@@ -8,6 +8,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -303,36 +304,78 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
 
     const prompt = isLongForm ? longFormPrompt : shortFormPrompt;
 
-    // ── 5. Llamar a Gemini API ────────────────────────────────────────────
-    if (!GEMINI_API_KEY) {
+    // ── 5. Llamar a Gemini con fallback automático a OpenAI ────────────────
+    if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
       return json({ error: 'Servicio de IA no configurado.' }, 503);
     }
 
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.85,
-          topP: 0.95,
-          maxOutputTokens: isLongForm ? 4096 : 2048,
-        },
-      }),
-    });
+    let rawText: string | null = null;
+    let providerUsed: 'gemini' | 'openai' = 'gemini';
 
-    if (!geminiRes.ok) {
-      const errBody = await geminiRes.text().catch(() => '');
-      console.error('Gemini error:', geminiRes.status, errBody);
-      return json({ error: `Error IA (${geminiRes.status}): ${errBody.substring(0, 150)}` }, 502);
+    // Intento 1: Gemini
+    if (GEMINI_API_KEY) {
+      try {
+        const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.85,
+              topP: 0.95,
+              maxOutputTokens: isLongForm ? 4096 : 2048,
+            },
+          }),
+        });
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+        } else {
+          const errBody = await geminiRes.text().catch(() => '');
+          console.error('[reel-script] Gemini error:', geminiRes.status, errBody);
+        }
+      } catch (e) {
+        console.error('[reel-script] Gemini fetch failed:', e);
+      }
     }
 
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Intento 2: OpenAI como fallback si Gemini no produjo resultado
+    if (!rawText && OPENAI_API_KEY) {
+      try {
+        const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.85,
+            response_format: { type: 'json_object' },
+          }),
+        });
+        if (openaiRes.ok) {
+          const data = await openaiRes.json();
+          rawText = data?.choices?.[0]?.message?.content ?? null;
+          providerUsed = 'openai';
+        } else {
+          const errBody = await openaiRes.text().catch(() => '');
+          console.error('[reel-script] OpenAI error:', openaiRes.status, errBody);
+        }
+      } catch (e) {
+        console.error('[reel-script] OpenAI fetch failed:', e);
+      }
+    }
 
     if (!rawText) {
-      return json({ error: 'No se recibió respuesta de la IA' }, 502);
+      return json({
+        error: 'El servicio de IA está temporalmente saturado. Por favor intenta de nuevo en 1 minuto.',
+      }, 503);
     }
+
+    console.log('[reel-script] provider used:', providerUsed);
 
     // ── 6. Parsear JSON de la respuesta ───────────────────────────────────
     const cleanJson = rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
