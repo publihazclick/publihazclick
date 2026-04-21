@@ -7,6 +7,7 @@ import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 import { AiVideoService } from '../../../../core/services/ai-video.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 import { environment } from '../../../../../environments/environment';
+import type { AiPlatform } from '../../../../core/models/ai-video.model';
 
 interface Niche {
   name: string;
@@ -190,29 +191,24 @@ export class VideoGeneratorComponent {
       const topic = niche
         ? `${niche.name}: ${niche.description ?? ''}`.trim()
         : `${this.selectedVideoType()} para ${this.selectedPlatform()}`;
-      // Cobra script_openai y llama a la edge real
-      await this.aiVideo.chargeAction('script_openai', { topic, platform: this.selectedPlatform() });
-      const { data: { session } } = await this.supabase.auth.getSession();
-      if (!session) throw new Error('Sesión no encontrada');
-      const res = await fetch(`${environment.supabase.url}/functions/v1/generate-openai-script`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic,
-          platform: this.selectedPlatform() || 'instagram',
-          duration: 30,
-        }),
+      const platform = this.selectedPlatform() || 'instagram';
+
+      // Usamos generate-reel-script (Gemini) — más estable y económico.
+      // El servicio ya hace el chargeAction('script_gemini') internamente.
+      const result = await this.aiVideo.generateScript(topic, platform as AiPlatform, {
+        video_type: this.selectedVideoType() ?? undefined,
+        monetization: this.selectedMonetization() ?? undefined,
+        duration: 30,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Error al generar guión');
-      const scriptText = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+
+      const scriptText = JSON.stringify(result, null, 2);
       this.generatedScript.set(scriptText);
       await this.aiVideo.saveProject({
         kind: 'script',
-        title: `Guion ${this.selectedPlatform()} — ${niche?.name ?? topic}`,
+        title: `Guion ${platform} — ${niche?.name ?? topic}`,
         prompt: topic,
-        provider: 'openai',
-        data: { script: data, platform: this.selectedPlatform() },
+        provider: 'gemini',
+        data: { script: result, platform },
       });
       await this.walletService.loadWallet();
     } catch (e) {
