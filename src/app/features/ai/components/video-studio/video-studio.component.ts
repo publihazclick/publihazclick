@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+import { AiVideoService } from '../../../../core/services/ai-video.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 import { environment } from '../../../../../environments/environment';
 
@@ -35,8 +36,10 @@ type WizardStep = 'mode' | 'platform' | 'avatar' | 'script' | 'config' | 'genera
 export class VideoStudioComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly walletService = inject(AiWalletService);
+  private readonly aiVideo = inject(AiVideoService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly supabase = getSupabaseClient();
+  readonly currentProjectId = signal<string | null>(null);
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
@@ -237,20 +240,53 @@ export class VideoStudioComponent implements OnInit {
     this.selectedAvatar.set(avatar);
   }
 
+  readonly uploadingPhoto = signal(false);
+  readonly photoUploadError = signal<string | null>(null);
+
   async onPhotoSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
 
+    // Preview local inmediato
     const reader = new FileReader();
-    reader.onload = () => {
-      this.userPhotoUrl.set(reader.result as string);
-    };
+    const dataUrlPromise = new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    });
     reader.readAsDataURL(file);
 
-    // Para el plan free usamos talking_photo existente
-    // En producción: subir foto a HeyGen para crear talking photo
-    this.talkingPhotoId.set('6013fc758b5446a2ba17d8c459538bb4');
+    this.uploadingPhoto.set(true);
+    this.photoUploadError.set(null);
+    try {
+      const dataUrl = await dataUrlPromise;
+      this.userPhotoUrl.set(dataUrl);
+
+      // Subir la foto a HeyGen para crear un talking_photo personalizado.
+      // Cobra 'photo_avatar_heygen' en el edge function.
+      const { data, error } = await this.supabase.functions.invoke('create-heygen-photo-avatar', {
+        body: { image_base64: dataUrl },
+      });
+
+      if (error) {
+        const errMsg = (error as { context?: { error?: string }; message?: string })?.message
+          || (error as { context?: { error?: string }; message?: string })?.context?.error
+          || 'Error al subir foto';
+        throw new Error(errMsg);
+      }
+      if (!data?.talking_photo_id) {
+        throw new Error(data?.error || 'HeyGen no devolvió talking_photo_id');
+      }
+
+      this.talkingPhotoId.set(data.talking_photo_id);
+    } catch (e) {
+      this.photoUploadError.set(e instanceof Error ? e.message : 'Error al subir foto');
+      this.userPhotoUrl.set(null);
+      this.talkingPhotoId.set(null);
+    } finally {
+      this.uploadingPhoto.set(false);
+      input.value = '';
+    }
   }
 
   // ── Voices ──────────────────────────────────────────────────────────────
@@ -414,6 +450,25 @@ export class VideoStudioComponent implements OnInit {
       }
 
       this.videoResult.set(data);
+      // Crear proyecto "processing" en historial para que el usuario lo vea
+      const projectId = await this.aiVideo.saveProject({
+        kind: 'video',
+        title: this.videoTopic() || 'Video Avatar HeyGen',
+        prompt: this.scriptContent().slice(0, 200),
+        status: 'processing',
+        provider: 'heygen',
+        external_id: data.video_id,
+        data: {
+          platform: this.selectedPlatform() ?? null,
+          voice_id: this.selectedVoice()?.voice_id ?? null,
+          avatar_id: this.selectedAvatar()?.avatar_id ?? null,
+          talking_photo_id: this.talkingPhotoId() ?? null,
+          mode: this.selectedMode(),
+        },
+      });
+      if (projectId) this.currentProjectId.set(projectId);
+      // Refrescar balance
+      await this.walletService.loadWallet();
       this.pollVideoStatus(data.video_id);
     } catch (e: unknown) {
       this.videoError.set(e instanceof Error ? e.message : 'Error al generar video');
@@ -436,11 +491,22 @@ export class VideoStudioComponent implements OnInit {
         if (data?.status === 'completed' && data?.video_url) {
           this.videoResult.set(data);
           this.checkingStatus.set(false);
+          const pid = this.currentProjectId();
+          if (pid) {
+            await this.aiVideo.updateProjectStatus(pid, 'completed', {
+              url: data.video_url,
+              thumbnail: data.thumbnail_url ?? undefined,
+            });
+          }
           return;
         }
         if (data?.status === 'failed') {
           this.videoError.set('El video fallo al generarse. Intenta de nuevo.');
           this.checkingStatus.set(false);
+          const pid = this.currentProjectId();
+          if (pid) {
+            await this.aiVideo.updateProjectStatus(pid, 'failed');
+          }
           return;
         }
         if (attempts < 60) setTimeout(check, 5000);

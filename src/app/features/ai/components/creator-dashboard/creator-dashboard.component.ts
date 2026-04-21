@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+import { AiVideoService } from '../../../../core/services/ai-video.service';
 
 interface QuickAction {
   icon: string;
@@ -36,9 +37,11 @@ interface Template {
 export class CreatorDashboardComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly walletService = inject(AiWalletService);
+  private readonly aiVideo = inject(AiVideoService);
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
   readonly walletLoaded = signal(false);
+  readonly loadingProjects = signal(false);
 
   readonly sidebarOpen = signal(false);
   readonly showRetiroModal = signal(false);
@@ -62,6 +65,85 @@ export class CreatorDashboardComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     try { await this.walletService.loadWallet(); } catch {}
     this.walletLoaded.set(true);
+    await this.loadRealStats();
+  }
+
+  private async loadRealStats(): Promise<void> {
+    this.loadingProjects.set(true);
+    try {
+      const [counts, projects] = await Promise.all([
+        this.aiVideo.getProjectCounts(),
+        this.aiVideo.listProjects(8),
+      ]);
+
+      // Construir stats reales
+      const totalConsumed = this.walletService.totalConsumed?.() ?? 0;
+      const successful = projects.filter(p => p['status'] === 'completed').length;
+      const rate = projects.length > 0 ? Math.round((successful / projects.length) * 100) : 0;
+
+      this.stats.set([
+        { icon: 'auto_awesome', value: String(counts.total), label: 'Proyectos Totales', change: '' },
+        { icon: 'bolt', value: this.formatCOPShort(totalConsumed), label: 'Gastado en IA', change: '' },
+        { icon: 'videocam', value: String(counts.byKind['video'] ?? 0), label: 'Videos creados', change: '' },
+        { icon: 'trending_up', value: `${rate}%`, label: 'Tasa de éxito', change: '' },
+      ]);
+
+      // Construir recent projects a partir de ai_projects real
+      const recent: RecentProject[] = projects.slice(0, 6).map((p): RecentProject => ({
+        icon: this.projectIcon(p['kind'] as string),
+        title: (p['title'] as string) || (p['prompt'] as string) || 'Sin título',
+        type: this.projectTypeLabel(p['kind'] as string),
+        status: ((p['status'] as string) === 'completed' ? 'completed'
+               : (p['status'] as string) === 'failed' ? 'draft'
+               : 'in_progress'),
+        timeAgo: this.timeAgo(p['created_at'] as string),
+      }));
+      if (recent.length > 0) {
+        this.recentProjects.set(recent);
+      }
+    } catch (e) {
+      console.warn('[creator-dashboard] loadRealStats failed:', e);
+    } finally {
+      this.loadingProjects.set(false);
+    }
+  }
+
+  private projectIcon(kind: string): string {
+    const map: Record<string, string> = {
+      video: 'videocam', image: 'image', script: 'description',
+      audio: 'graphic_eq', niches: 'lightbulb', ideas: 'auto_awesome',
+      photo_avatar: 'face',
+    };
+    return map[kind] ?? 'auto_awesome';
+  }
+
+  private projectTypeLabel(kind: string): string {
+    const map: Record<string, string> = {
+      video: 'Video', image: 'Imagen', script: 'Guión',
+      audio: 'Audio', niches: 'Nichos', ideas: 'Ideas',
+      photo_avatar: 'Avatar',
+    };
+    return map[kind] ?? kind;
+  }
+
+  private timeAgo(iso: string): string {
+    if (!iso) return '';
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'Hace instantes';
+    if (min < 60) return `Hace ${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `Hace ${h} h`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'Hace 1 día';
+    if (d < 7) return `Hace ${d} días`;
+    return new Date(iso).toLocaleDateString('es-CO');
+  }
+
+  private formatCOPShort(n: number): string {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+    return String(n);
   }
 
   readonly menuItems = [
@@ -112,12 +194,7 @@ export class CreatorDashboardComponent implements OnInit {
     },
   ];
 
-  readonly recentProjects: RecentProject[] = [
-    { icon: 'videocam', title: 'Video Promocional', type: 'Video', status: 'in_progress', timeAgo: 'Hace 2 horas' },
-    { icon: 'image', title: 'Banner para redes', type: 'Imagen', status: 'completed', timeAgo: 'Hace 5 horas' },
-    { icon: 'chat', title: 'Chatbot de soporte', type: 'Chatbot', status: 'in_progress', timeAgo: 'Hace 1 día' },
-    { icon: 'smart_toy', title: 'Email Automation', type: 'Automatización', status: 'completed', timeAgo: 'Hace 2 días' },
-  ];
+  readonly recentProjects = signal<RecentProject[]>([]);
 
   readonly templates: Template[] = [
     { title: 'Video Reel Viral', description: 'Plantilla profesional para reels y TikToks virales' },

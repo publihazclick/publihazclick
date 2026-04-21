@@ -212,21 +212,36 @@
           </div>
         </div>
 
+        @if (errorMsg()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 text-sm text-red-700">{{ errorMsg() }}</div>
+        }
+
         @if (generatedNiches().length > 0) {
           <h3 class="text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3">Nichos sugeridos</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            @for (niche of generatedNiches(); track niche) {
+            @for (niche of generatedNiches(); track niche.name) {
               <button (click)="selectNiche(niche)"
-                class="flex items-center gap-2.5 rounded-xl border-2 p-3 sm:p-4 text-left transition-all hover:shadow-md"
-                [class]="selectedNiche() === niche
+                class="flex flex-col items-start gap-2 rounded-xl border-2 p-3 sm:p-4 text-left transition-all hover:shadow-md"
+                [class]="selectedNiche()?.name === niche.name
                   ? 'border-purple-500 bg-purple-50 shadow-md'
                   : 'border-gray-200 bg-white hover:border-purple-200'">
-                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0"
-                     [class]="selectedNiche() === niche ? 'bg-purple-500' : 'bg-purple-100'">
-                  <span class="material-symbols-outlined" style="font-size:18px"
-                        [class]="selectedNiche() === niche ? 'text-white' : 'text-purple-500'">lightbulb</span>
+                <div class="flex items-center gap-2.5 w-full">
+                  <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0"
+                       [class]="selectedNiche()?.name === niche.name ? 'bg-purple-500' : 'bg-purple-100'">
+                    <span class="material-symbols-outlined" style="font-size:18px"
+                          [class]="selectedNiche()?.name === niche.name ? 'text-white' : 'text-purple-500'">lightbulb</span>
+                  </div>
+                  <p class="text-xs sm:text-sm font-bold text-gray-900 flex-1">{{ niche.name }}</p>
+                  @if (niche.viralScore != null) {
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">⚡ {{ niche.viralScore }}/10</span>
+                  }
                 </div>
-                <p class="text-xs sm:text-sm font-medium text-gray-900">{{ niche }}</p>
+                @if (niche.description) {
+                  <p class="text-[11px] text-gray-600 leading-snug">{{ niche.description }}</p>
+                }
+                @if (niche.monetization) {
+                  <p class="text-[10px] text-emerald-600 font-medium">💰 {{ niche.monetization }}</p>
+                }
               </button>
             }
           </div>
@@ -251,7 +266,7 @@
           </div>
           <div class="bg-gray-50 rounded-xl p-3 sm:p-4 border border-gray-100">
             <p class="text-[8px] sm:text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5 sm:mb-1">Nicho</p>
-            <p class="text-xs sm:text-sm font-bold text-gray-900">{{ selectedNiche() }}</p>
+            <p class="text-xs sm:text-sm font-bold text-gray-900">{{ selectedNiche()?.name }}</p>
           </div>
         </div>
 

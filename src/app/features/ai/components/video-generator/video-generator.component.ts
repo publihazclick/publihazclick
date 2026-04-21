@@ -4,6 +4,17 @@ import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+import { AiVideoService } from '../../../../core/services/ai-video.service';
+import { getSupabaseClient } from '../../../../core/supabase.client';
+import { environment } from '../../../../../environments/environment';
+
+interface Niche {
+  name: string;
+  description: string;
+  audience?: string;
+  viralScore?: number;
+  monetization?: string;
+}
 
 interface Platform {
   id: string;
@@ -30,7 +41,10 @@ interface MonetizationType {
 export class VideoGeneratorComponent {
   private readonly profileService = inject(ProfileService);
   private readonly walletService = inject(AiWalletService);
+  private readonly aiVideo = inject(AiVideoService);
+  private readonly supabase = getSupabaseClient();
   private readonly router = inject(Router);
+  readonly errorMsg = signal<string | null>(null);
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
@@ -78,8 +92,8 @@ export class VideoGeneratorComponent {
 
   // Step 3 - Nicho
   nicheInput = '';
-  readonly generatedNiches = signal<string[]>([]);
-  readonly selectedNiche = signal<string | null>(null);
+  readonly generatedNiches = signal<Niche[]>([]);
+  readonly selectedNiche = signal<Niche | null>(null);
   readonly generatingNiche = signal(false);
 
   // Step 4 - Guion
@@ -101,7 +115,7 @@ export class VideoGeneratorComponent {
     this.selectedVideoType.set(id);
   }
 
-  selectNiche(niche: string): void {
+  selectNiche(niche: Niche): void {
     this.selectedNiche.set(niche);
   }
 
@@ -135,28 +149,77 @@ export class VideoGeneratorComponent {
 
   async generateNiches(): Promise<void> {
     this.generatingNiche.set(true);
-    // Simulación - aquí se conectaría con la IA
-    setTimeout(() => {
-      const platform = this.selectedPlatform() ?? '';
-      const type = this.selectedVideoType() ?? '';
-      this.generatedNiches.set([
-        `${type} de cocina saludable para ${platform}`,
-        `${type} de fitness en casa`,
-        `${type} de tecnología y gadgets`,
-        `${type} de finanzas personales`,
-        `${type} de productividad y hábitos`,
-      ]);
+    this.errorMsg.set(null);
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no encontrada');
+      const res = await fetch(`${environment.supabase.url}/functions/v1/generate-niches`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: this.selectedPlatform(),
+          monetization: this.selectedMonetization(),
+          count: 8,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Error al generar nichos');
+      const niches: Niche[] = Array.isArray(data.niches) ? data.niches : [];
+      if (niches.length === 0) throw new Error('La IA no devolvió nichos válidos');
+      this.generatedNiches.set(niches);
+      await this.aiVideo.saveProject({
+        kind: 'niches',
+        title: `Nichos ${this.selectedPlatform()} / ${this.selectedMonetization()}`,
+        provider: 'openai',
+        cost_cop: data.charged ?? 0,
+        data: { platform: this.selectedPlatform(), monetization: this.selectedMonetization(), niches },
+      });
+      await this.walletService.loadWallet();
+    } catch (e) {
+      this.errorMsg.set(e instanceof Error ? e.message : 'Error al generar nichos');
+    } finally {
       this.generatingNiche.set(false);
-    }, 1500);
+    }
   }
 
   async generateScript(): Promise<void> {
     this.generatingScript.set(true);
-    // Simulación - aquí se conectaría con la IA
-    setTimeout(() => {
-      this.generatedScript.set(`# Guion generado\n\n**Plataforma:** ${this.selectedPlatform()}\n**Nicho:** ${this.selectedNiche()}\n**Tipo:** ${this.selectedVideoType()}\n\n## Introducción\nHook de apertura que captura la atención...\n\n## Desarrollo\nContenido principal del video...\n\n## Cierre\nCall to action y despedida...`);
+    this.errorMsg.set(null);
+    try {
+      const niche = this.selectedNiche();
+      const topic = niche
+        ? `${niche.name}: ${niche.description ?? ''}`.trim()
+        : `${this.selectedVideoType()} para ${this.selectedPlatform()}`;
+      // Cobra script_openai y llama a la edge real
+      await this.aiVideo.chargeAction('script_openai', { topic, platform: this.selectedPlatform() });
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no encontrada');
+      const res = await fetch(`${environment.supabase.url}/functions/v1/generate-openai-script`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic,
+          platform: this.selectedPlatform() || 'instagram',
+          duration: 30,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Error al generar guión');
+      const scriptText = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      this.generatedScript.set(scriptText);
+      await this.aiVideo.saveProject({
+        kind: 'script',
+        title: `Guion ${this.selectedPlatform()} — ${niche?.name ?? topic}`,
+        prompt: topic,
+        provider: 'openai',
+        data: { script: data, platform: this.selectedPlatform() },
+      });
+      await this.walletService.loadWallet();
+    } catch (e) {
+      this.errorMsg.set(e instanceof Error ? e.message : 'Error al generar guión');
+    } finally {
       this.generatingScript.set(false);
-    }, 2000);
+    }
   }
 
   getPlatformIconColor(id: string): string {

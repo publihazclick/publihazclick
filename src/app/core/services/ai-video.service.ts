@@ -58,6 +58,91 @@ export class AiVideoService {
     return { charged: data.charged, balance_after: data.balance_after };
   }
 
+  /**
+   * Guarda una generación en el historial ai_projects.
+   * No lanza si falla (historial no debe bloquear el flujo principal).
+   */
+  async saveProject(project: {
+    kind: 'image' | 'video' | 'script' | 'audio' | 'niches' | 'ideas' | 'photo_avatar';
+    title?: string;
+    prompt?: string;
+    status?: 'completed' | 'processing' | 'failed';
+    provider?: string;
+    cost_cop?: number;
+    url?: string;
+    thumbnail?: string;
+    external_id?: string;
+    data?: Record<string, unknown>;
+  }): Promise<string | null> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await this.supabase
+        .from('ai_projects')
+        .insert({
+          user_id: user.id,
+          kind: project.kind,
+          title: project.title ?? null,
+          prompt: project.prompt ?? null,
+          status: project.status ?? 'completed',
+          provider: project.provider ?? null,
+          cost_cop: project.cost_cop ?? 0,
+          url: project.url ?? null,
+          thumbnail: project.thumbnail ?? null,
+          external_id: project.external_id ?? null,
+          data: project.data ?? {},
+        })
+        .select('id')
+        .single();
+      return data?.id ?? null;
+    } catch (e) {
+      console.warn('[ai saveProject] failed:', e);
+      return null;
+    }
+  }
+
+  async updateProjectStatus(
+    id: string,
+    status: 'completed' | 'processing' | 'failed',
+    patch: Partial<{ url: string; thumbnail: string; data: Record<string, unknown> }> = {},
+  ): Promise<void> {
+    try {
+      await this.supabase.from('ai_projects').update({ status, ...patch }).eq('id', id);
+    } catch (e) {
+      console.warn('[ai updateProjectStatus] failed:', e);
+    }
+  }
+
+  async listProjects(limit = 20, kind?: string): Promise<Array<Record<string, unknown>>> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) return [];
+    let q = this.supabase
+      .from('ai_projects')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (kind) q = q.eq('kind', kind);
+    const { data } = await q;
+    return (data ?? []) as Array<Record<string, unknown>>;
+  }
+
+  async getProjectCounts(): Promise<{ total: number; byKind: Record<string, number> }> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) return { total: 0, byKind: {} };
+    const { data } = await this.supabase
+      .from('ai_projects')
+      .select('kind')
+      .eq('user_id', user.id);
+    const rows = data ?? [];
+    const byKind: Record<string, number> = {};
+    for (const r of rows) {
+      const k = (r as Record<string, unknown>)['kind'] as string;
+      byKind[k] = (byKind[k] ?? 0) + 1;
+    }
+    return { total: rows.length, byKind };
+  }
+
   /** Obtener precios de todas las acciones IA */
   async getActionPricing(): Promise<{ id: string; label: string; category: string; price_cop: number }[]> {
     const { data } = await this.supabase.rpc('get_ai_pricing');

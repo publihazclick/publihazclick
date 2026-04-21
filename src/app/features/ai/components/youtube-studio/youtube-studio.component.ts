@@ -4,7 +4,9 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+import { AiVideoService } from '../../../../core/services/ai-video.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
+import { environment } from '../../../../../environments/environment';
 
 interface HeyGenVoice {
   voice_id: string;
@@ -23,7 +25,10 @@ interface HeyGenVoice {
 export class YoutubeStudioComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly walletService = inject(AiWalletService);
+  private readonly aiVideo = inject(AiVideoService);
   private readonly supabase = getSupabaseClient();
+
+  readonly ideaSuggestions = signal<Array<{ title: string; reason?: string }>>([]);
 
   readonly profile = this.profileService.profile;
   readonly walletBalance = this.walletService.balance;
@@ -123,25 +128,140 @@ export class YoutubeStudioComponent implements OnInit {
 
   selectVoice(voice: HeyGenVoice): void { this.selectedVoice.set(voice); }
 
+  /**
+   * Genera ideas virales para YouTube: usa search-youtube-titles para traer
+   * títulos trending y los presenta como sugerencias. Cobra 'ideas_youtube'.
+   */
   async generateIdeas(): Promise<void> {
     this.generatingIdeas.set(true);
-    setTimeout(() => {
-      this.videoTopic = this.videoTopic || 'Tutorial de cocina saludable para principiantes';
+    this.videoError.set(null);
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no encontrada');
+
+      // Cobro de la acción
+      await this.aiVideo.chargeAction('ideas_youtube', { query: this.videoTopic || '' });
+
+      const res = await fetch(`${environment.supabase.url}/functions/v1/search-youtube-titles`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: this.videoTopic || 'viral',
+          max_results: 10,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Error al generar ideas');
+      const titles = Array.isArray(data.titles)
+        ? data.titles
+        : Array.isArray(data?.results)
+          ? data.results.map((r: { title: string; channel?: string }) => ({ title: r.title, reason: r.channel }))
+          : [];
+      if (titles.length === 0) throw new Error('No se encontraron ideas virales');
+      this.ideaSuggestions.set(titles.slice(0, 10));
+      // Si no hay topic, usar el primero como sugerencia principal
+      if (!this.videoTopic && titles[0]?.title) {
+        this.videoTopic = titles[0].title;
+      }
+      await this.aiVideo.saveProject({
+        kind: 'ideas',
+        title: `Ideas YouTube — ${this.videoTopic || 'virales'}`,
+        provider: 'youtube',
+        data: { query: this.videoTopic, ideas: titles },
+      });
+      await this.walletService.loadWallet();
+    } catch (e) {
+      this.videoError.set(e instanceof Error ? e.message : 'Error al generar ideas');
+    } finally {
       this.generatingIdeas.set(false);
-    }, 1500);
+    }
   }
 
+  useIdea(idea: { title: string }): void {
+    this.videoTopic = idea.title;
+  }
+
+  /**
+   * Genera guión real con generate-reel-script (Gemini) para el tema,
+   * duración y formato seleccionado. Cobra 'script_gemini'.
+   */
   async generateScript(): Promise<void> {
     this.generatingScript.set(true);
-    setTimeout(() => {
-      this.scriptContent = `Hook: "¿Sabías que puedes preparar comidas saludables en menos de 15 minutos?"\n\nIntro: Presentación del tema y lo que aprenderán.\n\nDesarrollo:\n- Ingredientes necesarios\n- Paso 1: Preparación\n- Paso 2: Cocción\n- Paso 3: Emplatado\n\nCierre: Resumen + Call to action (suscribirse, comentar, compartir)`;
+    this.videoError.set(null);
+    try {
+      if (!this.videoTopic.trim()) {
+        throw new Error('Escribe o genera un tema primero');
+      }
+      const platform = this.contentType() === 'shorts' ? 'shorts' : 'youtube';
+      const durationSec = this.parseDurationSeconds();
+
+      // Cobrar
+      await this.aiVideo.chargeAction('script_gemini', { topic: this.videoTopic, platform, duration: durationSec });
+
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no encontrada');
+      const res = await fetch(`${environment.supabase.url}/functions/v1/generate-reel-script`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: this.videoTopic, platform, duration: durationSec }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Error al generar guión');
+
+      // Convertir a texto narrativo para mostrar en el textarea
+      const scriptText = this.scriptObjectToText(data);
+      this.scriptContent = scriptText;
+
+      await this.aiVideo.saveProject({
+        kind: 'script',
+        title: `Guion YouTube ${platform} — ${this.videoTopic}`,
+        prompt: this.videoTopic,
+        provider: 'gemini',
+        data: { platform, duration: durationSec, script: data },
+      });
+      await this.walletService.loadWallet();
+    } catch (e) {
+      this.videoError.set(e instanceof Error ? e.message : 'Error al generar guión');
+    } finally {
       this.generatingScript.set(false);
-    }, 2000);
+    }
   }
 
   async generateNewScript(): Promise<void> {
     this.scriptContent = '';
     await this.generateScript();
+  }
+
+  private parseDurationSeconds(): number {
+    const d = this.duration();
+    // "1:00 minuto" → 60s, "15 segundos" → 15s
+    if (d.includes('segundo')) {
+      const n = parseInt(d, 10);
+      return isNaN(n) ? 15 : n;
+    }
+    const m = d.match(/(\d+):(\d+)/);
+    if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    const n2 = parseInt(d, 10);
+    return isNaN(n2) ? 60 : n2 * 60;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private scriptObjectToText(data: any): string {
+    // El edge devuelve un JSON con hook, scenes, etc. Creamos un texto simple.
+    if (typeof data === 'string') return data;
+    if (!data) return '';
+    const parts: string[] = [];
+    if (data.hook) parts.push(`🎬 HOOK\n${data.hook}\n`);
+    if (data.script) parts.push(`📜 GUION\n${data.script}\n`);
+    if (Array.isArray(data.scenes)) {
+      data.scenes.forEach((s: { voiceover?: string; visual?: string }, i: number) => {
+        parts.push(`Escena ${i + 1}:`);
+        if (s.voiceover) parts.push(`  Narración: ${s.voiceover}`);
+        if (s.visual)    parts.push(`  Visual: ${s.visual}`);
+      });
+    }
+    if (data.cta) parts.push(`\n🎯 CTA\n${data.cta}`);
+    return parts.length ? parts.join('\n') : JSON.stringify(data, null, 2);
   }
 
   async generateVideo(): Promise<void> {

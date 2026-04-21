@@ -218,8 +218,19 @@
       <!-- Recent Projects -->
       <section>
         <h2 class="text-lg sm:text-xl font-black text-gray-900 mb-4">Proyectos Recientes</h2>
+        @if (loadingProjects()) {
+          <div class="bg-white border border-gray-100 rounded-2xl p-8 text-center text-xs text-gray-400">
+            <span class="material-symbols-outlined animate-spin block mb-2" style="font-size:24px">progress_activity</span>
+            Cargando proyectos...
+          </div>
+        } @else if (recentProjects().length === 0) {
+          <div class="bg-white border border-gray-100 rounded-2xl p-8 text-center text-xs text-gray-500">
+            <span class="material-symbols-outlined text-gray-300 block mb-2" style="font-size:32px">auto_awesome</span>
+            Aún no has creado proyectos. Empieza con un Video IA o una Imagen IA.
+          </div>
+        } @else {
         <div class="bg-white border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-          @for (project of recentProjects; track project.title) {
+          @for (project of recentProjects(); track project.title) {
             <div class="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 hover:bg-gray-50/50 transition-colors">
               <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
                 <span class="material-symbols-outlined text-gray-500" style="font-size:20px">{{ project.icon }}</span>
@@ -237,6 +248,7 @@
             </div>
           }
         </div>
+        }
       </section>
 
       <!-- Templates -->

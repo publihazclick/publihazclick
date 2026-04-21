@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
 import { AiWalletService } from '../../../../core/services/ai-wallet.service';
+import { AiVideoService } from '../../../../core/services/ai-video.service';
 
 interface DemoVideo {
   id: string;
@@ -28,6 +29,7 @@ export class AiDashboardComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   readonly currencyService = inject(CurrencyService);
   private readonly walletService = inject(AiWalletService);
+  private readonly aiVideo = inject(AiVideoService);
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
 
@@ -36,6 +38,8 @@ export class AiDashboardComponent implements OnInit {
   readonly walletBalance = this.walletService.balance;
   readonly walletLoaded = signal(false);
   readonly activeDemo = signal(0);
+  readonly recentProjects = signal<Array<Record<string, unknown>>>([]);
+  readonly loadingProjects = signal(false);
 
   /**
    * Videos demo embebidos en el dashboard. Para reemplazar un video:
@@ -94,6 +98,42 @@ export class AiDashboardComponent implements OnInit {
       await this.walletService.loadWallet();
     } catch {}
     this.walletLoaded.set(true);
+    this.loadingProjects.set(true);
+    try {
+      const projects = await this.aiVideo.listProjects(6);
+      this.recentProjects.set(projects);
+    } catch { /* silent */ }
+    this.loadingProjects.set(false);
+  }
+
+  getProjectIcon(kind: string): string {
+    const map: Record<string, string> = {
+      video: 'videocam', image: 'image', script: 'description',
+      audio: 'graphic_eq', niches: 'lightbulb', ideas: 'auto_awesome',
+      photo_avatar: 'face',
+    };
+    return map[kind] ?? 'auto_awesome';
+  }
+
+  getProjectTypeLabel(kind: string): string {
+    const map: Record<string, string> = {
+      video: 'Video', image: 'Imagen', script: 'Guión',
+      audio: 'Audio', niches: 'Nichos', ideas: 'Ideas',
+      photo_avatar: 'Avatar personal',
+    };
+    return map[kind] ?? kind;
+  }
+
+  getProjectTimeAgo(iso: unknown): string {
+    if (!iso || typeof iso !== 'string') return '';
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'Ahora';
+    if (min < 60) return `${min}min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h}h`;
+    const d = Math.floor(h / 24);
+    return d === 1 ? '1d' : `${d}d`;
   }
 
   formatCOP(amount: number): string {

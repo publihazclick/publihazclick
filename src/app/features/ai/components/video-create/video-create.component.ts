@@ -216,6 +216,20 @@ export class VideoCreateComponent implements OnInit, OnDestroy {
       this.platformConfig.set(result.platform_config);
       this.scenes.set(result.script.scenes);
       this.progress.set(100);
+
+      // Guardar en historial
+      await this.aiVideoService.saveProject({
+        kind: 'script',
+        title: `${platform} — ${this.topic()}`,
+        prompt: this.topic(),
+        provider: 'gemini',
+        data: {
+          platform,
+          duration: this.selectedDuration(),
+          tone: this.selectedTone(),
+          scenes_count: result.script.scenes.length,
+        },
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error generando el guión';
       this.error.set(msg);

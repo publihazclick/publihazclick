@@ -143,6 +143,21 @@ export class ImageGeneratorComponent implements OnInit {
           aspect: aspect.label,
           createdAt: new Date(),
         });
+
+        // Persistir en historial ai_projects
+        await this.aiService.saveProject({
+          kind: 'image',
+          title: `${style.label} — ${this.prompt().trim().slice(0, 60)}`,
+          prompt: this.prompt().trim(),
+          provider: 'vertex',
+          url: result.dataUrl,
+          thumbnail: result.dataUrl,
+          data: {
+            style: style.label,
+            aspect: `${aspect.width}x${aspect.height}`,
+            full_prompt: fullPrompt,
+          },
+        });
       }
 
       this.generationProgress.set(100);

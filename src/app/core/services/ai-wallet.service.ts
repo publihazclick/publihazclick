@@ -48,6 +48,8 @@ export class AiWalletService {
   readonly error = signal<string | null>(null);
 
   readonly balance = computed(() => this.wallet()?.balance ?? 0);
+  readonly totalConsumed = computed(() => this.wallet()?.total_consumed ?? 0);
+  readonly totalRecharged = computed(() => this.wallet()?.total_recharged ?? 0);
 
   async loadWallet(): Promise<void> {
     this.loading.set(true);
