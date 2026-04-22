@@ -765,9 +765,31 @@ export class VideoStudioComponent implements OnInit {
   }
 
   /**
-   * Genera una imagen con Vertex y, si falla (credenciales o timeout), reintenta
-   * con Flux. Cada proveedor se intenta hasta 2 veces con backoff para tolerar
-   * 'Failed to fetch' de edge functions saturadas.
+   * Genera una imagen usando Pollinations.ai — gratis e ilimitado, backed por
+   * Flux Schnell. Devuelve un data URL para poder usarlo también en el render
+   * offline a video (canvas.drawImage necesita CORS y base64).
+   */
+  private async generateWithPollinations(prompt: string, aspect: string): Promise<string> {
+    const [w, h] = aspect === '9:16' ? [720, 1280] : [1280, 720];
+    const seed = Math.floor(Math.random() * 1_000_000_000);
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt).slice(0, 1800)}`
+      + `?width=${w}&height=${h}&model=flux&nologo=true&enhance=true&seed=${seed}`;
+
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`Pollinations ${res.status}`);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('No se pudo leer la imagen de Pollinations'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /**
+   * Intenta Vertex → Flux (Replicate) → Pollinations (gratis). Cada proveedor
+   * se reintenta una vez tras un pequeño backoff para tolerar timeouts de edge.
+   * Pollinations es el último recurso: siempre disponible, sin API key.
    */
   private async generateSceneImageWithFallback(
     prompt: string,
@@ -775,7 +797,7 @@ export class VideoStudioComponent implements OnInit {
   ): Promise<string> {
     let lastErr: unknown = null;
 
-    // Vertex primero: 2 intentos
+    // 1. Vertex AI (si hay credenciales Google)
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const r = await this.aiVideo.generateImage(prompt, aspect);
@@ -787,7 +809,7 @@ export class VideoStudioComponent implements OnInit {
       }
     }
 
-    // Flux fallback: 2 intentos
+    // 2. Flux Replicate (si hay créditos)
     const aspectFlux = aspect === '9:16' ? '9:16' : '16:9';
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -796,6 +818,17 @@ export class VideoStudioComponent implements OnInit {
       } catch (err) {
         lastErr = err;
         console.warn(`[video-studio] Flux intento ${attempt + 1} falló:`, err);
+        if (attempt === 0) await this.wait(2000);
+      }
+    }
+
+    // 3. Pollinations.ai — gratis, ilimitado, Flux backed
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await this.generateWithPollinations(prompt, aspect);
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[video-studio] Pollinations intento ${attempt + 1} falló:`, err);
         if (attempt === 0) await this.wait(2000);
       }
     }
