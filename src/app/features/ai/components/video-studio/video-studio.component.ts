@@ -170,6 +170,22 @@ export class VideoStudioComponent implements OnInit {
   readonly recordingVideo = signal(false);
   readonly generatingImages = signal(false);
   readonly regeneratingIndex = signal<number | null>(null);
+  readonly loadedImages = signal<Set<number>>(new Set());
+
+  onImageLoaded(index: number): void {
+    const s = new Set(this.loadedImages());
+    s.add(index);
+    this.loadedImages.set(s);
+  }
+
+  onImageError(index: number): void {
+    // En caso de error, limpiar la URL para que el usuario pueda regenerar
+    const scenes = [...this.generatedScenes()];
+    if (scenes[index]) {
+      scenes[index] = { ...scenes[index], image_url: undefined };
+      this.generatedScenes.set(scenes);
+    }
+  }
   readonly motionOptions: { id: string; label: string; icon: string }[] = [
     { id: 'zoom-in', label: 'Zoom in', icon: 'zoom_in' },
     { id: 'zoom-out', label: 'Zoom out', icon: 'zoom_out' },
@@ -765,107 +781,31 @@ export class VideoStudioComponent implements OnInit {
   }
 
   /**
-   * Pollinations free tier limita a ~1 request cada 5s por IP. Serializamos
-   * los requests a través de esta promesa para evitar 429 "Too Many Requests".
+   * Genera la URL de imagen de Pollinations.ai. NO hace fetch manual — retorna
+   * la URL y deja que el <img> del navegador la cargue bajo demanda. Así
+   * evitamos rate limits (429) porque cada navegador carga sus imágenes a su
+   * ritmo, con cache de Cloudflare, y sin compartir nuestra IP en paralelo.
+   *
+   * Pollinations genera on-demand cuando la URL se visita (tarda ~5-10s la
+   * primera vez, luego cacheada permanentemente por seed).
    */
-  private pollinationsQueue: Promise<unknown> = Promise.resolve();
-  private pollinationsLastTs = 0;
-
-  /**
-   * Genera una imagen usando Pollinations.ai — gratis, backed por Flux Schnell.
-   * Requests serializados + throttle 5s + retry con backoff exponencial en 429.
-   */
-  private async generateWithPollinations(prompt: string, aspect: string): Promise<string> {
+  private generatePollinationsUrl(prompt: string, aspect: string, seed?: number): string {
     const [w, h] = aspect === '9:16' ? [720, 1280] : [1280, 720];
-    const seed = Math.floor(Math.random() * 1_000_000_000);
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt).slice(0, 1800)}`
-      + `?width=${w}&height=${h}&model=flux&nologo=true&enhance=true&seed=${seed}`;
-
-    // Encolar para serializar
-    const task = this.pollinationsQueue.then(async () => {
-      // Throttle: al menos 3s entre requests para no saturar Pollinations
-      const since = Date.now() - this.pollinationsLastTs;
-      if (since < 3000 && this.pollinationsLastTs > 0) await this.wait(3000 - since);
-
-      // Hasta 4 intentos con backoff exponencial si vuelve 429
-      let delay = 4000;
-      for (let attempt = 0; attempt < 4; attempt++) {
-        this.pollinationsLastTs = Date.now();
-        const res = await fetch(url, { method: 'GET' });
-        if (res.ok) {
-          const blob = await res.blob();
-          return await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
-            reader.readAsDataURL(blob);
-          });
-        }
-        if (res.status === 429) {
-          console.warn(`[pollinations] 429 — esperando ${delay}ms`);
-          await this.wait(delay);
-          delay *= 2;
-          continue;
-        }
-        throw new Error(`Pollinations ${res.status}`);
-      }
-      throw new Error('Pollinations rate limited (429)');
-    });
-
-    this.pollinationsQueue = task.catch(() => null);
-    return task as Promise<string>;
+    const s = seed ?? Math.floor(Math.random() * 1_000_000_000);
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt).slice(0, 1800)}`
+      + `?width=${w}&height=${h}&model=flux&nologo=true&enhance=true&seed=${s}`;
   }
 
   /**
-   * Intenta Vertex → Flux (Replicate) → Pollinations (gratis). Cada proveedor
-   * se reintenta una vez tras un pequeño backoff para tolerar timeouts de edge.
-   * Pollinations es el último recurso: siempre disponible, sin API key.
+   * Devuelve la URL de Pollinations para la escena. Rápido, gratis, ilimitado.
+   * La imagen se genera en Pollinations cuando el navegador la carga con el
+   * <img src>. No hacemos fetch desde el cliente.
    */
   private async generateSceneImageWithFallback(
     prompt: string,
     aspect: string,
   ): Promise<string> {
-    let lastErr: unknown = null;
-
-    // 1. Vertex AI (si hay credenciales Google)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const r = await this.aiVideo.generateImage(prompt, aspect);
-        return r.dataUrl;
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[video-studio] Vertex intento ${attempt + 1} falló:`, err);
-        if (attempt === 0) await this.wait(1500);
-      }
-    }
-
-    // 2. Flux Replicate (si hay créditos)
-    const aspectFlux = aspect === '9:16' ? '9:16' : '16:9';
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const urls = await this.aiVideo.generateFluxImage(prompt, aspectFlux, 1);
-        if (urls?.[0]) return urls[0];
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[video-studio] Flux intento ${attempt + 1} falló:`, err);
-        if (attempt === 0) await this.wait(2000);
-      }
-    }
-
-    // 3. Pollinations.ai — gratis, ilimitado, Flux backed
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        return await this.generateWithPollinations(prompt, aspect);
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[video-studio] Pollinations intento ${attempt + 1} falló:`, err);
-        if (attempt === 0) await this.wait(2000);
-      }
-    }
-
-    throw lastErr instanceof Error
-      ? lastErr
-      : new Error('No se pudo generar la imagen con ningún proveedor');
+    return this.generatePollinationsUrl(prompt, aspect);
   }
 
   /**
@@ -891,56 +831,31 @@ export class VideoStudioComponent implements OnInit {
 
     // Arranca con las escenas vacías visibles (cada una muestra su propio spinner)
     this.generatedScenes.set(workingScenes);
+    this.loadedImages.set(new Set());
     this.videoError.set(null);
     this.generatingImages.set(true);
     this.imagesProgress.set(0);
     this.imagesStep.set(`Generando ${workingScenes.length} imágenes…`);
 
     const aspect = this.getAspectRatioString();
-    let completed = 0;
-    let successCount = 0;
-    const failures: string[] = [];
 
-    // Genera una escena con su prompt y actualiza el signal en cuanto termina
-    const generateOne = async (index: number): Promise<void> => {
-      const s = workingScenes[index];
-      const prompt = this.enrichImagePrompt(s.visual_description, s.narration);
-      try {
-        const dataUrl = await this.generateSceneImageWithFallback(prompt, aspect);
-        const next = [...this.generatedScenes()];
-        next[index] = { ...next[index], image_url: dataUrl };
-        this.generatedScenes.set(next);
-        successCount++;
-      } catch (err) {
-        console.error(`Escena ${index + 1} falló:`, err);
-        failures.push(err instanceof Error ? err.message : 'error');
-      } finally {
-        completed++;
-        this.imagesProgress.set(Math.round((completed / workingScenes.length) * 100));
-        this.imagesStep.set(`${completed} / ${workingScenes.length} listas`);
-      }
-    };
-
-    // Ejecuta en lotes de 3 en paralelo para acelerar sin saturar los edge functions
-    const batchSize = 3;
+    // Asigna las URLs de Pollinations de forma escalonada para evitar que el
+    // navegador dispare 13 img loads en paralelo (Pollinations encola la
+    // generación — mejor repartir en el tiempo).
     try {
-      for (let i = 0; i < workingScenes.length; i += batchSize) {
-        const batch = workingScenes
-          .slice(i, i + batchSize)
-          .map((_, k) => generateOne(i + k));
-        await Promise.all(batch);
-      }
+      for (let i = 0; i < workingScenes.length; i++) {
+        const s = workingScenes[i];
+        const prompt = this.enrichImagePrompt(s.visual_description, s.narration);
+        const url = this.generatePollinationsUrl(prompt, aspect);
+        const next = [...this.generatedScenes()];
+        next[i] = { ...next[i], image_url: url };
+        this.generatedScenes.set(next);
+        this.imagesProgress.set(Math.round(((i + 1) / workingScenes.length) * 100));
+        this.imagesStep.set(`${i + 1} / ${workingScenes.length} en proceso…`);
 
-      if (successCount === 0) {
-        this.videoError.set(
-          `No se pudo generar ninguna imagen. Razón: ${failures[0] ?? 'desconocida'}. ` +
-          `Verifica que las credenciales de Vertex AI y/o Replicate estén configuradas en Supabase.`,
-        );
-      } else if (failures.length) {
-        this.videoError.set(
-          `Se generaron ${successCount} de ${workingScenes.length} imágenes. ` +
-          `Usa el botón ↻ sobre las escenas vacías para reintentar.`,
-        );
+        // 1.5s entre asignaciones: el browser dispara el GET y Pollinations
+        // tiene tiempo de procesar sin saturarse
+        if (i < workingScenes.length - 1) await this.wait(1500);
       }
     } finally {
       this.generatingImages.set(false);
