@@ -721,13 +721,39 @@ export class VideoStudioComponent implements OnInit {
   }
 
   /**
-   * Paso 'scenes': genera solo las imágenes a partir del guion. Se ejecuta una
-   * sola vez al entrar al paso; luego el usuario puede regenerar/ajustar
-   * individualmente cada escena.
+   * Genera una imagen con Vertex y, si falla (p.ej. credenciales de Google no
+   * configuradas en Supabase), reintenta automáticamente con Flux (Replicate).
+   */
+  private async generateSceneImageWithFallback(
+    prompt: string,
+    aspect: string,
+  ): Promise<string> {
+    // Vertex primero
+    try {
+      const r = await this.aiVideo.generateImage(prompt, aspect);
+      return r.dataUrl;
+    } catch (vertexErr) {
+      console.warn('[video-studio] Vertex falló, probando Flux:', vertexErr);
+    }
+    // Flux como fallback
+    try {
+      const aspectFlux = aspect === '9:16' ? '9:16' : '16:9';
+      const urls = await this.aiVideo.generateFluxImage(prompt, aspectFlux, 1);
+      if (urls?.[0]) return urls[0];
+    } catch (fluxErr) {
+      throw fluxErr instanceof Error ? fluxErr : new Error('Error generando imagen');
+    }
+    throw new Error('No se pudo generar la imagen con ningún proveedor');
+  }
+
+  /**
+   * Paso 'scenes': genera las imágenes secuencialmente a partir del guion.
+   * Reporta errores reales al UI y actualiza la grilla a medida que cada
+   * imagen termina (mejor UX que esperar el lote completo).
    */
   async generateScenesImages(): Promise<void> {
     if (this.generatedScenes().length && this.generatedScenes().every(s => !!s.image_url)) {
-      return; // Ya hay imágenes, no regenerar en masa
+      return;
     }
 
     const scenes = this.buildScenesFromScript();
@@ -739,29 +765,50 @@ export class VideoStudioComponent implements OnInit {
     const maxScenes = 8;
     const workingScenes = scenes.slice(0, maxScenes).map(s => ({
       ...s,
-      // Asignar un movimiento por defecto rotando entre variantes
       camera_direction: s.camera_direction || this.defaultMotionFor(s.scene - 1),
     }));
 
+    // Arranca con las escenas vacías visibles (cada una muestra su propio spinner)
+    this.generatedScenes.set(workingScenes);
     this.videoError.set(null);
     this.generatingImages.set(true);
     this.imagesProgress.set(0);
     this.imagesStep.set('Generando imágenes acorde al guion…');
 
-    try {
-      const aspect = this.getAspectRatioString();
-      // Construir prompt enriquecido por escena (usa título + visual_description)
-      const enrichedScenes = workingScenes.map(s => ({
-        ...s,
-        visual_description: this.enrichImagePrompt(s.visual_description, s.narration),
-      }));
+    const aspect = this.getAspectRatioString();
+    let successCount = 0;
+    const failures: string[] = [];
 
-      this.generatedScenes.set(enrichedScenes);
-      const withImages = await this.aiVideo.generateSceneImages(enrichedScenes, aspect);
-      this.generatedScenes.set(withImages);
-      this.imagesProgress.set(100);
-    } catch (e) {
-      this.videoError.set(e instanceof Error ? e.message : 'Error generando imágenes');
+    try {
+      for (let i = 0; i < workingScenes.length; i++) {
+        const s = workingScenes[i];
+        this.imagesStep.set(`Escena ${i + 1} de ${workingScenes.length}…`);
+        try {
+          const prompt = this.enrichImagePrompt(s.visual_description, s.narration);
+          const dataUrl = await this.generateSceneImageWithFallback(prompt, aspect);
+          // Actualiza inmediatamente esta escena en el signal
+          const next = [...this.generatedScenes()];
+          next[i] = { ...next[i], image_url: dataUrl };
+          this.generatedScenes.set(next);
+          successCount++;
+        } catch (err) {
+          console.error(`Escena ${i + 1} falló:`, err);
+          failures.push(err instanceof Error ? err.message : 'error');
+        }
+        this.imagesProgress.set(Math.round(((i + 1) / workingScenes.length) * 100));
+      }
+
+      if (successCount === 0) {
+        this.videoError.set(
+          `No se pudo generar ninguna imagen. Razón: ${failures[0] ?? 'desconocida'}. ` +
+          `Verifica que las credenciales de Vertex AI y/o Replicate estén configuradas en Supabase.`,
+        );
+      } else if (failures.length) {
+        this.videoError.set(
+          `Se generaron ${successCount} de ${workingScenes.length} imágenes. ` +
+          `Puedes regenerar las escenas vacías con el botón ↻.`,
+        );
+      }
     } finally {
       this.generatingImages.set(false);
       this.imagesStep.set('');
@@ -789,7 +836,7 @@ export class VideoStudioComponent implements OnInit {
     this.generatedScenes.set(scenes);
   }
 
-  /** Regenera la imagen de una escena específica (el usuario puede reintentar si no le gustó). */
+  /** Regenera la imagen de una escena específica (con fallback Vertex → Flux). */
   async regenerateSceneImage(index: number): Promise<void> {
     const scenes = [...this.generatedScenes()];
     if (index < 0 || index >= scenes.length) return;
@@ -798,11 +845,11 @@ export class VideoStudioComponent implements OnInit {
     this.videoError.set(null);
     try {
       const aspect = this.getAspectRatioString();
-      const result = await this.aiVideo.generateImage(
+      const dataUrl = await this.generateSceneImageWithFallback(
         this.enrichImagePrompt(scene.visual_description, scene.narration),
         aspect,
       );
-      scenes[index] = { ...scene, image_url: result.dataUrl };
+      scenes[index] = { ...scene, image_url: dataUrl };
       this.generatedScenes.set(scenes);
     } catch (e) {
       this.videoError.set(e instanceof Error ? e.message : 'Error regenerando imagen');
