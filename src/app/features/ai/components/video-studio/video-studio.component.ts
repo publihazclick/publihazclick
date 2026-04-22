@@ -652,31 +652,70 @@ export class VideoStudioComponent implements OnInit {
 
   // ── Escenas sintéticas desde texto manual ───────────────────────────────
 
+  /** Calcula cuántas escenas debería tener el video según su duración. */
+  private scenesCountForDuration(): number {
+    const totalSec = this.parseDurationToSeconds();
+    // ~4-5 segundos por escena para mantener el ritmo viral
+    const perScene = 4.5;
+    const count = Math.round(totalSec / perScene);
+    return Math.min(25, Math.max(3, count));
+  }
+
   /** Parte el guion plano en escenas para el modo 'images'. */
   private buildScenesFromScript(): AiScene[] {
-    // Si ya tenemos un AiScript estructurado (venido de la IA), usarlo
-    const existing = this.currentScript();
-    if (existing?.scenes?.length) return existing.scenes;
+    const totalSec = this.parseDurationToSeconds();
+    const targetCount = this.scenesCountForDuration();
+    const topic = this.videoTopic() || 'escena';
 
-    // Si no, partir el texto plano en párrafos
+    // Si ya tenemos un AiScript estructurado (venido de la IA), adaptar al conteo objetivo
+    const existing = this.currentScript();
+    if (existing?.scenes?.length) {
+      const scenes = existing.scenes;
+      // Si la IA dio menos escenas de las que necesitamos, duplicamos las últimas con variaciones
+      if (scenes.length >= targetCount) return scenes.slice(0, targetCount);
+
+      const expanded: AiScene[] = [...scenes];
+      const perScene = Math.max(3, Math.round(totalSec / targetCount));
+      while (expanded.length < targetCount) {
+        const src = scenes[expanded.length % scenes.length];
+        expanded.push({
+          ...src,
+          scene: expanded.length + 1,
+          duration_seconds: perScene,
+          visual_description: `${src.visual_description} (toma alternativa ${expanded.length + 1})`,
+        });
+      }
+      return expanded;
+    }
+
+    // Script manual: partir el texto en frases y distribuir en targetCount escenas
     const content = this.scriptContent().trim();
     if (!content) return [];
-    const paragraphs = content.split(/\n{2,}|(?<=\.)\s+(?=[A-ZÁÉÍÓÚÑ])/)
+    const sentences = content
+      .split(/\n{2,}|(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])/)
       .map(p => p.trim())
       .filter(p => p.length > 0);
 
-    const totalSec = this.parseDurationToSeconds();
-    const perScene = Math.max(3, Math.round(totalSec / Math.max(1, paragraphs.length)));
-    const topic = this.videoTopic() || 'escena';
+    // Distribuir frases entre targetCount escenas (agrupar si hay más frases que escenas)
+    const perScene = Math.max(3, Math.round(totalSec / targetCount));
+    const scenes: AiScene[] = [];
+    const groupSize = Math.max(1, Math.ceil(sentences.length / targetCount));
 
-    return paragraphs.map((narration, i) => ({
-      scene: i + 1,
-      duration_seconds: perScene,
-      narration,
-      visual_description: `${topic} — ${narration.slice(0, 120)}`,
-      camera_direction: 'static',
-      text_overlay: '',
-    }));
+    for (let i = 0; i < targetCount; i++) {
+      const start = i * groupSize;
+      const chunk = sentences.slice(start, start + groupSize).join(' ');
+      if (!chunk && scenes.length >= Math.min(sentences.length, 3)) break;
+      const narration = chunk || sentences[i % Math.max(1, sentences.length)] || topic;
+      scenes.push({
+        scene: scenes.length + 1,
+        duration_seconds: perScene,
+        narration,
+        visual_description: `${topic} — ${narration.slice(0, 140)}`,
+        camera_direction: 'static',
+        text_overlay: '',
+      });
+    }
+    return scenes;
   }
 
   /** Mapea la voz HeyGen seleccionada a un voice_id de Azure Neural TTS. */
@@ -720,30 +759,50 @@ export class VideoStudioComponent implements OnInit {
     return '16:9';
   }
 
+  /** Espera `ms` milisegundos. */
+  private wait(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   /**
-   * Genera una imagen con Vertex y, si falla (p.ej. credenciales de Google no
-   * configuradas en Supabase), reintenta automáticamente con Flux (Replicate).
+   * Genera una imagen con Vertex y, si falla (credenciales o timeout), reintenta
+   * con Flux. Cada proveedor se intenta hasta 2 veces con backoff para tolerar
+   * 'Failed to fetch' de edge functions saturadas.
    */
   private async generateSceneImageWithFallback(
     prompt: string,
     aspect: string,
   ): Promise<string> {
-    // Vertex primero
-    try {
-      const r = await this.aiVideo.generateImage(prompt, aspect);
-      return r.dataUrl;
-    } catch (vertexErr) {
-      console.warn('[video-studio] Vertex falló, probando Flux:', vertexErr);
+    let lastErr: unknown = null;
+
+    // Vertex primero: 2 intentos
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await this.aiVideo.generateImage(prompt, aspect);
+        return r.dataUrl;
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[video-studio] Vertex intento ${attempt + 1} falló:`, err);
+        if (attempt === 0) await this.wait(1500);
+      }
     }
-    // Flux como fallback
-    try {
-      const aspectFlux = aspect === '9:16' ? '9:16' : '16:9';
-      const urls = await this.aiVideo.generateFluxImage(prompt, aspectFlux, 1);
-      if (urls?.[0]) return urls[0];
-    } catch (fluxErr) {
-      throw fluxErr instanceof Error ? fluxErr : new Error('Error generando imagen');
+
+    // Flux fallback: 2 intentos
+    const aspectFlux = aspect === '9:16' ? '9:16' : '16:9';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const urls = await this.aiVideo.generateFluxImage(prompt, aspectFlux, 1);
+        if (urls?.[0]) return urls[0];
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[video-studio] Flux intento ${attempt + 1} falló:`, err);
+        if (attempt === 0) await this.wait(2000);
+      }
     }
-    throw new Error('No se pudo generar la imagen con ningún proveedor');
+
+    throw lastErr instanceof Error
+      ? lastErr
+      : new Error('No se pudo generar la imagen con ningún proveedor');
   }
 
   /**
@@ -762,8 +821,7 @@ export class VideoStudioComponent implements OnInit {
       return;
     }
 
-    const maxScenes = 8;
-    const workingScenes = scenes.slice(0, maxScenes).map(s => ({
+    const workingScenes = scenes.map(s => ({
       ...s,
       camera_direction: s.camera_direction || this.defaultMotionFor(s.scene - 1),
     }));
@@ -773,29 +831,41 @@ export class VideoStudioComponent implements OnInit {
     this.videoError.set(null);
     this.generatingImages.set(true);
     this.imagesProgress.set(0);
-    this.imagesStep.set('Generando imágenes acorde al guion…');
+    this.imagesStep.set(`Generando ${workingScenes.length} imágenes…`);
 
     const aspect = this.getAspectRatioString();
+    let completed = 0;
     let successCount = 0;
     const failures: string[] = [];
 
+    // Genera una escena con su prompt y actualiza el signal en cuanto termina
+    const generateOne = async (index: number): Promise<void> => {
+      const s = workingScenes[index];
+      const prompt = this.enrichImagePrompt(s.visual_description, s.narration);
+      try {
+        const dataUrl = await this.generateSceneImageWithFallback(prompt, aspect);
+        const next = [...this.generatedScenes()];
+        next[index] = { ...next[index], image_url: dataUrl };
+        this.generatedScenes.set(next);
+        successCount++;
+      } catch (err) {
+        console.error(`Escena ${index + 1} falló:`, err);
+        failures.push(err instanceof Error ? err.message : 'error');
+      } finally {
+        completed++;
+        this.imagesProgress.set(Math.round((completed / workingScenes.length) * 100));
+        this.imagesStep.set(`${completed} / ${workingScenes.length} listas`);
+      }
+    };
+
+    // Ejecuta en lotes de 3 en paralelo para acelerar sin saturar los edge functions
+    const batchSize = 3;
     try {
-      for (let i = 0; i < workingScenes.length; i++) {
-        const s = workingScenes[i];
-        this.imagesStep.set(`Escena ${i + 1} de ${workingScenes.length}…`);
-        try {
-          const prompt = this.enrichImagePrompt(s.visual_description, s.narration);
-          const dataUrl = await this.generateSceneImageWithFallback(prompt, aspect);
-          // Actualiza inmediatamente esta escena en el signal
-          const next = [...this.generatedScenes()];
-          next[i] = { ...next[i], image_url: dataUrl };
-          this.generatedScenes.set(next);
-          successCount++;
-        } catch (err) {
-          console.error(`Escena ${i + 1} falló:`, err);
-          failures.push(err instanceof Error ? err.message : 'error');
-        }
-        this.imagesProgress.set(Math.round(((i + 1) / workingScenes.length) * 100));
+      for (let i = 0; i < workingScenes.length; i += batchSize) {
+        const batch = workingScenes
+          .slice(i, i + batchSize)
+          .map((_, k) => generateOne(i + k));
+        await Promise.all(batch);
       }
 
       if (successCount === 0) {
@@ -806,7 +876,7 @@ export class VideoStudioComponent implements OnInit {
       } else if (failures.length) {
         this.videoError.set(
           `Se generaron ${successCount} de ${workingScenes.length} imágenes. ` +
-          `Puedes regenerar las escenas vacías con el botón ↻.`,
+          `Usa el botón ↻ sobre las escenas vacías para reintentar.`,
         );
       }
     } finally {
