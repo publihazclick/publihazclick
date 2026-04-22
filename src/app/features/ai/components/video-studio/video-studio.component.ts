@@ -315,46 +315,126 @@ export class VideoStudioComponent implements OnInit {
   readonly playingVoiceId = signal<string | null>(null);
   private previewAudio: HTMLAudioElement | null = null;
 
+  /**
+   * Mapea el idioma textual de HeyGen ("Spanish", "English"…) al código BCP-47
+   * que usa SpeechSynthesis. Español se prefiere es-MX (más neutro para LATAM).
+   */
+  private mapLangToBcp47(language: string | undefined): string {
+    const l = (language ?? '').toLowerCase();
+    if (l.includes('spanish') || l.includes('español')) return 'es-MX';
+    if (l.includes('english') || l.includes('inglés')) return 'en-US';
+    if (l.includes('portuguese') || l.includes('portugués')) return 'pt-BR';
+    if (l.includes('french') || l.includes('francés')) return 'fr-FR';
+    if (l.includes('german') || l.includes('alemán')) return 'de-DE';
+    if (l.includes('italian') || l.includes('italiano')) return 'it-IT';
+    if (l.includes('chinese') || l.includes('chino')) return 'zh-CN';
+    if (l.includes('japanese') || l.includes('japonés')) return 'ja-JP';
+    if (l.includes('korean') || l.includes('coreano')) return 'ko-KR';
+    if (l.includes('arabic') || l.includes('árabe')) return 'ar-SA';
+    if (l.includes('hindi')) return 'hi-IN';
+    if (l.includes('dutch') || l.includes('holandés')) return 'nl-NL';
+    if (l.includes('russian') || l.includes('ruso')) return 'ru-RU';
+    if (l.includes('turkish') || l.includes('turco')) return 'tr-TR';
+    if (l.includes('polish') || l.includes('polaco')) return 'pl-PL';
+    if (l.includes('swedish') || l.includes('sueco')) return 'sv-SE';
+    if (l.includes('indonesian') || l.includes('indonesio')) return 'id-ID';
+    if (l.includes('vietnamese') || l.includes('vietnamita')) return 'vi-VN';
+    if (l.includes('thai') || l.includes('tailandés')) return 'th-TH';
+    if (l.includes('filipino')) return 'fil-PH';
+    return 'es-MX';
+  }
+
+  /** Heurística para elegir una voz del sistema según género. */
+  private pickBrowserVoice(lang: string, gender: string | undefined): SpeechSynthesisVoice | null {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+    const all = window.speechSynthesis.getVoices();
+    if (!all.length) return null;
+
+    const base = lang.split('-')[0].toLowerCase();
+    const byLang = all.filter(v => v.lang.toLowerCase().startsWith(base));
+    const pool = byLang.length ? byLang : all;
+
+    const maleHints = /male|hombre|masculin|diego|jorge|miguel|carlos|pablo|antonio|pedro|juan|luis|david|jose|enrique|francisco|ricardo|daniel|alex/i;
+    const femaleHints = /female|mujer|feminin|maria|sofia|lucia|paulina|ana|laura|elena|paula|carmen|pilar|monica|sara|teresa|isabel|valeria|camila|gabriela|helena/i;
+
+    if (gender === 'male') {
+      return pool.find(v => maleHints.test(v.name)) || pool.find(v => !femaleHints.test(v.name)) || pool[0];
+    }
+    if (gender === 'female') {
+      return pool.find(v => femaleHints.test(v.name)) || pool.find(v => !maleHints.test(v.name)) || pool[0];
+    }
+    return pool[0];
+  }
+
   playVoicePreview(voice: HeyGenVoice, event?: Event): void {
     event?.stopPropagation();
     if (!isPlatformBrowser(this.platformId)) return;
-    if (!voice.preview_audio) {
+
+    // Si ya está sonando la misma voz, la detiene (toggle)
+    if (this.playingVoiceId() === voice.voice_id) {
+      this.stopVoicePreview();
       this.selectVoice(voice);
       return;
     }
 
-    // Si ya está sonando la misma voz, la detiene
-    if (this.playingVoiceId() === voice.voice_id && this.previewAudio) {
-      this.previewAudio.pause();
-      this.previewAudio.currentTime = 0;
-      this.previewAudio = null;
-      this.playingVoiceId.set(null);
+    // Detener cualquier preview activo antes de empezar otro
+    this.stopVoicePreview();
+
+    const script = this.scriptContent().trim();
+
+    // Preferencia 1: leer el guion del usuario con SpeechSynthesis del navegador
+    if (script && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const utter = new SpeechSynthesisUtterance(script.slice(0, 600));
+      const bcp47 = this.mapLangToBcp47(voice.language);
+      utter.lang = bcp47;
+      utter.rate = 1.0;
+      utter.pitch = voice.gender === 'female' ? 1.1 : 0.95;
+
+      const sysVoice = this.pickBrowserVoice(bcp47, voice.gender);
+      if (sysVoice) utter.voice = sysVoice;
+
+      utter.onend = () => {
+        if (this.playingVoiceId() === voice.voice_id) this.playingVoiceId.set(null);
+      };
+      utter.onerror = () => {
+        if (this.playingVoiceId() === voice.voice_id) this.playingVoiceId.set(null);
+      };
+
+      // En algunos navegadores getVoices() es async; cargamos si hace falta
+      if (!window.speechSynthesis.getVoices().length) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          const v = this.pickBrowserVoice(bcp47, voice.gender);
+          if (v) utter.voice = v;
+        };
+      }
+
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+      this.playingVoiceId.set(voice.voice_id);
+      this.selectVoice(voice);
       return;
     }
 
-    // Detener cualquier preview activo
-    if (this.previewAudio) {
-      this.previewAudio.pause();
-      this.previewAudio = null;
-    }
-
-    const audio = new Audio(voice.preview_audio);
-    audio.onended = () => {
-      if (this.playingVoiceId() === voice.voice_id) {
+    // Preferencia 2: si no hay guion aún, usar el preview genérico de HeyGen
+    if (voice.preview_audio) {
+      const audio = new Audio(voice.preview_audio);
+      audio.onended = () => {
+        if (this.playingVoiceId() === voice.voice_id) {
+          this.playingVoiceId.set(null);
+          this.previewAudio = null;
+        }
+      };
+      audio.onerror = () => {
         this.playingVoiceId.set(null);
         this.previewAudio = null;
-      }
-    };
-    audio.onerror = () => {
-      this.playingVoiceId.set(null);
-      this.previewAudio = null;
-    };
-    audio.play().catch(() => {
-      this.playingVoiceId.set(null);
-      this.previewAudio = null;
-    });
-    this.previewAudio = audio;
-    this.playingVoiceId.set(voice.voice_id);
+      };
+      audio.play().catch(() => {
+        this.playingVoiceId.set(null);
+        this.previewAudio = null;
+      });
+      this.previewAudio = audio;
+      this.playingVoiceId.set(voice.voice_id);
+    }
     this.selectVoice(voice);
   }
 
@@ -362,6 +442,9 @@ export class VideoStudioComponent implements OnInit {
     if (this.previewAudio) {
       this.previewAudio.pause();
       this.previewAudio = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
     this.playingVoiceId.set(null);
   }

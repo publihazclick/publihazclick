@@ -448,6 +448,24 @@
             </button>
           </div>
 
+          <!-- Aviso: el preview lee el guion escrito -->
+          @if (scriptContent().trim()) {
+            <div class="mb-3 flex items-start gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+              <span class="material-symbols-outlined text-purple-500 mt-0.5" style="font-size:14px">graphic_eq</span>
+              <p class="text-[11px] text-purple-700">
+                Toca <strong>▶</strong> en cualquier voz para escuchar tu guion leído (preview en el navegador).
+                El video final se generará con la voz profesional de HeyGen que elijas.
+              </p>
+            </div>
+          } @else {
+            <div class="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <span class="material-symbols-outlined text-amber-500 mt-0.5" style="font-size:14px">info</span>
+              <p class="text-[11px] text-amber-700">
+                Escribe primero el guion en el paso anterior para poder escucharlo con cada voz.
+              </p>
+            </div>
+          }
+
           @if (loadingVoices()) {
             <div class="flex items-center justify-center py-6 text-gray-400 text-xs gap-2">
               <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -467,9 +485,8 @@
                   <!-- Play / Pause preview -->
                   <button type="button"
                     (click)="playVoicePreview(voice, $event)"
-                    [disabled]="!voice.preview_audio"
-                    [title]="voice.preview_audio ? 'Escuchar voz' : 'Sin preview disponible'"
-                    class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    [title]="scriptContent().trim() ? 'Escuchar guion con esta voz' : 'Escribe el guion para escucharlo con esta voz'"
+                    class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-all"
                     [class]="playingVoiceId() === voice.voice_id
                       ? 'bg-purple-500 text-white'
                       : 'bg-gray-200 text-gray-600 hover:bg-purple-100 hover:text-purple-600'">
