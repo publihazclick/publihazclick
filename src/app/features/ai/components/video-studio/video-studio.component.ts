@@ -765,9 +765,15 @@ export class VideoStudioComponent implements OnInit {
   }
 
   /**
-   * Genera una imagen usando Pollinations.ai — gratis e ilimitado, backed por
-   * Flux Schnell. Devuelve un data URL para poder usarlo también en el render
-   * offline a video (canvas.drawImage necesita CORS y base64).
+   * Pollinations free tier limita a ~1 request cada 5s por IP. Serializamos
+   * los requests a través de esta promesa para evitar 429 "Too Many Requests".
+   */
+  private pollinationsQueue: Promise<unknown> = Promise.resolve();
+  private pollinationsLastTs = 0;
+
+  /**
+   * Genera una imagen usando Pollinations.ai — gratis, backed por Flux Schnell.
+   * Requests serializados + throttle 5s + retry con backoff exponencial en 429.
    */
   private async generateWithPollinations(prompt: string, aspect: string): Promise<string> {
     const [w, h] = aspect === '9:16' ? [720, 1280] : [1280, 720];
@@ -775,15 +781,39 @@ export class VideoStudioComponent implements OnInit {
     const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt).slice(0, 1800)}`
       + `?width=${w}&height=${h}&model=flux&nologo=true&enhance=true&seed=${seed}`;
 
-    const res = await fetch(url, { method: 'GET' });
-    if (!res.ok) throw new Error(`Pollinations ${res.status}`);
-    const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error('No se pudo leer la imagen de Pollinations'));
-      reader.readAsDataURL(blob);
+    // Encolar para serializar
+    const task = this.pollinationsQueue.then(async () => {
+      // Throttle: al menos 3s entre requests para no saturar Pollinations
+      const since = Date.now() - this.pollinationsLastTs;
+      if (since < 3000 && this.pollinationsLastTs > 0) await this.wait(3000 - since);
+
+      // Hasta 4 intentos con backoff exponencial si vuelve 429
+      let delay = 4000;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        this.pollinationsLastTs = Date.now();
+        const res = await fetch(url, { method: 'GET' });
+        if (res.ok) {
+          const blob = await res.blob();
+          return await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+            reader.readAsDataURL(blob);
+          });
+        }
+        if (res.status === 429) {
+          console.warn(`[pollinations] 429 — esperando ${delay}ms`);
+          await this.wait(delay);
+          delay *= 2;
+          continue;
+        }
+        throw new Error(`Pollinations ${res.status}`);
+      }
+      throw new Error('Pollinations rate limited (429)');
     });
+
+    this.pollinationsQueue = task.catch(() => null);
+    return task as Promise<string>;
   }
 
   /**
