@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, PLATFORM_ID, ViewChild } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -7,6 +7,8 @@ import { AiWalletService } from '../../../../core/services/ai-wallet.service';
 import { AiVideoService } from '../../../../core/services/ai-video.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 import { environment } from '../../../../../environments/environment';
+import { VideoPreviewComponent } from '../video-preview/video-preview.component';
+import type { AiScene, AiScript } from '../../../../core/models/ai-video.model';
 
 interface HeyGenAvatar {
   avatar_id: string;
@@ -30,7 +32,7 @@ type WizardStep = 'mode' | 'platform' | 'avatar' | 'script' | 'config' | 'genera
 @Component({
   selector: 'app-video-studio',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, VideoPreviewComponent],
   templateUrl: './video-studio.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -158,6 +160,13 @@ export class VideoStudioComponent implements OnInit {
   readonly videoResult = signal<{ video_id: string; status: string; video_url?: string; thumbnail_url?: string } | null>(null);
   readonly videoError = signal<string | null>(null);
   readonly checkingStatus = signal(false);
+
+  // Images mode: script estructurado + escenas con imágenes/audio generados
+  readonly currentScript = signal<AiScript | null>(null);
+  readonly generatedScenes = signal<AiScene[]>([]);
+  readonly imagesProgress = signal(0);
+  readonly imagesStep = signal('');
+  readonly recordingVideo = signal(false);
 
   async ngOnInit(): Promise<void> {
     try { await this.walletService.loadWallet(); } catch {}
@@ -588,6 +597,7 @@ export class VideoStudioComponent implements OnInit {
           .map((s: { narration: string }) => s.narration)
           .join('\n\n');
         this.scriptContent.set(narration);
+        this.currentScript.set(parsed.script as AiScript);
         this.scriptSaved.set('ai');
         // Guardar en historial ai_projects
         try {
@@ -620,6 +630,233 @@ export class VideoStudioComponent implements OnInit {
     }
   }
 
+  // ── Escenas sintéticas desde texto manual ───────────────────────────────
+
+  /** Parte el guion plano en escenas para el modo 'images'. */
+  private buildScenesFromScript(): AiScene[] {
+    // Si ya tenemos un AiScript estructurado (venido de la IA), usarlo
+    const existing = this.currentScript();
+    if (existing?.scenes?.length) return existing.scenes;
+
+    // Si no, partir el texto plano en párrafos
+    const content = this.scriptContent().trim();
+    if (!content) return [];
+    const paragraphs = content.split(/\n{2,}|(?<=\.)\s+(?=[A-ZÁÉÍÓÚÑ])/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+
+    const totalSec = this.parseDurationToSeconds();
+    const perScene = Math.max(3, Math.round(totalSec / Math.max(1, paragraphs.length)));
+    const topic = this.videoTopic() || 'escena';
+
+    return paragraphs.map((narration, i) => ({
+      scene: i + 1,
+      duration_seconds: perScene,
+      narration,
+      visual_description: `${topic} — ${narration.slice(0, 120)}`,
+      camera_direction: 'static',
+      text_overlay: '',
+    }));
+  }
+
+  /** Mapea la voz HeyGen seleccionada a un voice_id de Azure Neural TTS. */
+  private mapHeygenVoiceToAzure(): string {
+    const voice = this.selectedVoice();
+    const lang = (voice?.language ?? 'Spanish').toLowerCase();
+    const gender = voice?.gender ?? 'male';
+
+    const table: Record<string, { male: string; female: string }> = {
+      spanish: { male: 'es-CO-GonzaloNeural', female: 'es-CO-SalomeNeural' },
+      english: { male: 'en-US-GuyNeural', female: 'en-US-JennyNeural' },
+      portuguese: { male: 'pt-BR-AntonioNeural', female: 'pt-BR-FranciscaNeural' },
+      french: { male: 'fr-FR-HenriNeural', female: 'fr-FR-DeniseNeural' },
+      german: { male: 'de-DE-ConradNeural', female: 'de-DE-KatjaNeural' },
+      italian: { male: 'it-IT-DiegoNeural', female: 'it-IT-ElsaNeural' },
+      chinese: { male: 'zh-CN-YunxiNeural', female: 'zh-CN-XiaoxiaoNeural' },
+      japanese: { male: 'ja-JP-KeitaNeural', female: 'ja-JP-NanamiNeural' },
+      korean: { male: 'ko-KR-InJoonNeural', female: 'ko-KR-SunHiNeural' },
+      arabic: { male: 'ar-SA-HamedNeural', female: 'ar-SA-ZariyahNeural' },
+      hindi: { male: 'hi-IN-MadhurNeural', female: 'hi-IN-SwaraNeural' },
+      dutch: { male: 'nl-NL-MaartenNeural', female: 'nl-NL-ColetteNeural' },
+      russian: { male: 'ru-RU-DmitryNeural', female: 'ru-RU-SvetlanaNeural' },
+      turkish: { male: 'tr-TR-AhmetNeural', female: 'tr-TR-EmelNeural' },
+      polish: { male: 'pl-PL-MarekNeural', female: 'pl-PL-ZofiaNeural' },
+      swedish: { male: 'sv-SE-MattiasNeural', female: 'sv-SE-SofieNeural' },
+      indonesian: { male: 'id-ID-ArdiNeural', female: 'id-ID-GadisNeural' },
+      vietnamese: { male: 'vi-VN-NamMinhNeural', female: 'vi-VN-HoaiMyNeural' },
+      thai: { male: 'th-TH-NiwatNeural', female: 'th-TH-PremwadeeNeural' },
+      filipino: { male: 'fil-PH-AngeloNeural', female: 'fil-PH-BlessicaNeural' },
+    };
+
+    const key = Object.keys(table).find(k => lang.includes(k)) ?? 'spanish';
+    const slot = table[key];
+    return gender === 'female' ? slot.female : slot.male;
+  }
+
+  /** Aspect ratio en formato "16:9" o "9:16" según plataforma. */
+  getAspectRatioString(): string {
+    const p = this.selectedPlatform();
+    if (p === 'tiktok' || p === 'instagram' || p === 'shorts') return '9:16';
+    return '16:9';
+  }
+
+  /** Pipeline completo modo 'images': construye escenas, genera imágenes y audio. */
+  async generateImagesVideo(): Promise<void> {
+    const scenes = this.buildScenesFromScript();
+    if (!scenes.length) {
+      this.videoError.set('No hay guion para generar el video. Escribe o genera el guion primero.');
+      return;
+    }
+
+    // Limite pragmático para evitar costos excesivos en una primera ejecución
+    const maxScenes = 8;
+    const workingScenes = scenes.slice(0, maxScenes);
+
+    this.videoError.set(null);
+    this.generatingVideo.set(true);
+    this.generatedScenes.set([]);
+    this.imagesProgress.set(0);
+
+    try {
+      const aspect = this.getAspectRatioString();
+      const azureVoiceId = this.mapHeygenVoiceToAzure();
+
+      // 1. Generar imágenes
+      this.imagesStep.set('Generando imágenes...');
+      const withImages = await this.aiVideo.generateSceneImages(workingScenes, aspect);
+      this.generatedScenes.set(withImages);
+      this.imagesProgress.set(50);
+
+      // 2. Generar audio TTS
+      this.imagesStep.set('Generando narración...');
+      const withAudio = await this.aiVideo.generateSceneAudios(withImages, azureVoiceId);
+      this.generatedScenes.set(withAudio);
+      this.imagesProgress.set(100);
+      this.imagesStep.set('');
+
+      // 3. Guardar proyecto
+      const pid = await this.aiVideo.saveProject({
+        kind: 'video',
+        title: this.videoTopic() || 'Video Imágenes en Movimiento',
+        prompt: this.scriptContent().slice(0, 200),
+        status: 'completed',
+        provider: 'images+tts',
+        data: {
+          platform: this.selectedPlatform() ?? null,
+          scenes_count: withAudio.length,
+          voice_azure: azureVoiceId,
+          mode: 'images',
+        },
+      });
+      if (pid) this.currentProjectId.set(pid);
+      await this.walletService.loadWallet();
+    } catch (e) {
+      this.videoError.set(e instanceof Error ? e.message : 'Error generando video de imágenes');
+    } finally {
+      this.generatingVideo.set(false);
+      this.imagesStep.set('');
+    }
+  }
+
+  /** Descarga el preview como .webm usando MediaRecorder sobre canvas + audio. */
+  @ViewChild(VideoPreviewComponent) previewRef?: VideoPreviewComponent;
+
+  async downloadImagesVideo(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const scenes = this.generatedScenes();
+    if (!scenes.length) return;
+
+    this.recordingVideo.set(true);
+    try {
+      const aspect = this.getAspectRatioString();
+      const [w, h] = aspect.split(':').map(Number);
+      const canvas = document.createElement('canvas');
+      canvas.width = aspect === '9:16' ? 720 : 1280;
+      canvas.height = aspect === '9:16' ? 1280 : 720;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas no soportado');
+
+      const videoStream = canvas.captureStream(30);
+      const audioCtx = new AudioContext();
+      const dest = audioCtx.createMediaStreamDestination();
+      const combined = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks(),
+      ]);
+
+      const chunks: Blob[] = [];
+      const recorder = new MediaRecorder(combined, {
+        mimeType: 'video/webm;codecs=vp9,opus',
+      });
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      const done = new Promise<Blob>(resolve => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+      });
+      recorder.start();
+
+      // Reproducir y dibujar cada escena
+      for (const scene of scenes) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        if (scene.image_url) {
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('img load'));
+            img.src = scene.image_url!;
+          }).catch(() => null);
+        }
+
+        // Reproducir audio vía AudioContext para mezclar en el stream
+        let source: AudioBufferSourceNode | null = null;
+        if (scene.audio_url) {
+          try {
+            const res = await fetch(scene.audio_url);
+            const ab = await res.arrayBuffer();
+            const buf = await audioCtx.decodeAudioData(ab);
+            source = audioCtx.createBufferSource();
+            source.buffer = buf;
+            source.connect(dest);
+            source.start();
+          } catch { /* audio opcional */ }
+        }
+
+        const durationMs = Math.max(scene.duration_seconds, 3) * 1000;
+        const start = performance.now();
+        await new Promise<void>(resolve => {
+          const draw = () => {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (img.complete && img.naturalWidth) {
+              const ratio = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+              const dw = img.naturalWidth * ratio;
+              const dh = img.naturalHeight * ratio;
+              ctx.drawImage(img, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+            }
+            const elapsed = performance.now() - start;
+            if (elapsed < durationMs) requestAnimationFrame(draw);
+            else resolve();
+          };
+          draw();
+        });
+        if (source) try { source.stop(); } catch { /* ignore */ }
+      }
+
+      recorder.stop();
+      const blob = await done;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `video-${Date.now()}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      this.videoError.set(e instanceof Error ? e.message : 'Error al descargar video');
+    } finally {
+      this.recordingVideo.set(false);
+    }
+  }
+
   // ── Generate Video ──────────────────────────────────────────────────────
 
   async generateVideo(): Promise<void> {
@@ -638,10 +875,9 @@ export class VideoStudioComponent implements OnInit {
       this.videoError.set('Sube una foto antes de generar el video.');
       return;
     }
+    // Modo 'images': usa pipeline local (imágenes + TTS + reproductor)
     if (mode === 'images') {
-      this.videoError.set(
-        'El modo "Videos con Imágenes en Movimiento" aún no está disponible en este asistente. Usa "Avatar del Sistema" o "Mi Avatar Personal".',
-      );
+      await this.generateImagesVideo();
       return;
     }
 

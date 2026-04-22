@@ -569,12 +569,12 @@
         <!-- Preview del guion -->
         <div class="mt-4 bg-gray-50 rounded-xl p-3 sm:p-4">
           <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Guion</p>
-          <p class="text-xs text-gray-700 line-clamp-4 whitespace-pre-wrap">{{ scriptContent }}</p>
+          <p class="text-xs text-gray-700 line-clamp-4 whitespace-pre-wrap">{{ scriptContent() }}</p>
         </div>
       </div>
 
-      <!-- Botón generar -->
-      @if (!videoResult()?.video_url && !checkingStatus()) {
+      <!-- Botón generar (oculto si ya hay resultado en algún modo) -->
+      @if (!videoResult()?.video_url && !checkingStatus() && !generatedScenes().length) {
         <button (click)="generateVideo()"
           [disabled]="generatingVideo()"
           class="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-black text-sm transition-all disabled:opacity-50 hover:opacity-90 shadow-lg"
@@ -584,12 +584,61 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>
-            <span>Enviando a generar...</span>
+            <span>{{ imagesStep() || 'Enviando a generar...' }}</span>
           } @else {
             <span class="material-symbols-outlined" style="font-size:22px">movie</span>
             <span>Generar Video con IA</span>
           }
         </button>
+      }
+
+      <!-- Progreso modo 'images' -->
+      @if (selectedMode() === 'images' && generatingVideo() && imagesStep()) {
+        <div class="mt-4 bg-purple-50 border border-purple-200 rounded-2xl p-4">
+          <p class="text-xs font-bold text-purple-700 mb-2">{{ imagesStep() }}</p>
+          <div class="w-full h-2 bg-purple-100 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 transition-all duration-300"
+                 [style.width.%]="imagesProgress()"></div>
+          </div>
+        </div>
+      }
+
+      <!-- Resultado modo 'images': preview con escenas generadas -->
+      @if (selectedMode() === 'images' && generatedScenes().length) {
+        <div class="mt-4 bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-green-600" style="font-size:24px">check_circle</span>
+            <h3 class="text-base sm:text-lg font-black text-green-700">Video generado!</h3>
+          </div>
+
+          <app-video-preview
+            [scenes]="generatedScenes()"
+            [aspectRatio]="getAspectRatioString()"
+            [watermark]="false">
+          </app-video-preview>
+
+          <div class="mt-4 flex flex-col sm:flex-row gap-2">
+            <button (click)="downloadImagesVideo()"
+              [disabled]="recordingVideo()"
+              class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-all disabled:opacity-50">
+              @if (recordingVideo()) {
+                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Grabando video...
+              } @else {
+                <span class="material-symbols-outlined" style="font-size:18px">download</span>
+                Descargar Video (.webm)
+              }
+            </button>
+            <button (click)="generatedScenes.set([]); videoError.set(null)"
+              class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all">
+              <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+              Nuevo intento
+            </button>
+          </div>
+        </div>
       }
 
       <!-- Error -->
