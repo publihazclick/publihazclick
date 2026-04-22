@@ -15,15 +15,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'prompt required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
-    // Use Flux 1.1 Pro on Replicate
-    const resp = await fetch('https://api.replicate.com/v1/predictions', {
+    // Use Flux Schnell (rápido + barato) en el endpoint de modelo oficial de Replicate.
+    // El endpoint /v1/predictions requiere un `version` hash; para modelos oficiales
+    // usamos /v1/models/{owner}/{model}/predictions que solo necesita el `input`.
+    const resp = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${REPLICATE_API_TOKEN}`,
         'Content-Type': 'application/json',
+        'Prefer': 'wait=60',
       },
       body: JSON.stringify({
-        version: 'black-forest-labs/flux-1.1-pro',
         input: {
           prompt,
           aspect_ratio: aspect_ratio ?? '16:9',
@@ -37,30 +39,39 @@ Deno.serve(async (req) => {
 
     if (!resp.ok) {
       const err = await resp.text();
-      throw new Error(`Replicate Flux error: ${resp.status} - ${err}`);
+      console.error('[flux] replicate error:', resp.status, err);
+      throw new Error(`Replicate Flux error: ${resp.status} - ${err.substring(0, 300)}`);
     }
 
     const prediction = await resp.json();
 
-    // Poll for result (max 90 seconds)
-    const predictionId = prediction.id;
-    for (let i = 0; i < 45; i++) {
-      await new Promise(r => setTimeout(r, 2000));
+    // Si Replicate ya terminó durante el Prefer:wait, devolvemos inmediato
+    if (prediction.status === 'succeeded') {
+      const output = Array.isArray(prediction.output) ? prediction.output : [prediction.output];
+      return new Response(JSON.stringify({ status: 'completed', images: output }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+    if (prediction.status === 'failed') {
+      throw new Error(prediction.error ?? 'Image generation failed');
+    }
 
-      const pollResp = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+    // Fallback: polling por si no terminó dentro del wait
+    const predictionUrl = prediction.urls?.get ?? `https://api.replicate.com/v1/predictions/${prediction.id}`;
+    for (let i = 0; i < 25; i++) {
+      await new Promise(r => setTimeout(r, 1500));
+      const pollResp = await fetch(predictionUrl, {
         headers: { 'Authorization': `Bearer ${REPLICATE_API_TOKEN}` },
       });
       const pollData = await pollResp.json();
 
       if (pollData.status === 'succeeded') {
         const output = Array.isArray(pollData.output) ? pollData.output : [pollData.output];
-        return new Response(JSON.stringify({
-          status: 'completed',
-          images: output,
-        }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ status: 'completed', images: output }), {
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
       }
-
-      if (pollData.status === 'failed') {
+      if (pollData.status === 'failed' || pollData.status === 'canceled') {
         throw new Error(pollData.error ?? 'Image generation failed');
       }
     }
