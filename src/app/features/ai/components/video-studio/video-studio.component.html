@@ -537,6 +537,112 @@
       </div>
     }
 
+    <!-- ═══ STEP: SCENES (solo modo 'images') ═══ -->
+    @if (currentStep() === 'scenes') {
+      <div class="text-center mb-4 sm:mb-6">
+        <h2 class="text-xl sm:text-2xl font-black text-gray-900 mb-2">Escenas del video</h2>
+        <p class="text-gray-500 text-xs sm:text-sm">
+          Cada escena es una imagen generada por IA acorde al guion. Ajusta el movimiento o regenera las que no te gusten.
+        </p>
+      </div>
+
+      <!-- Progreso generación inicial -->
+      @if (generatingImages()) {
+        <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 sm:p-6 text-center mb-4">
+          <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
+            <svg class="animate-spin h-8 w-8 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+          </div>
+          <p class="text-sm font-black text-purple-700 mb-1">{{ imagesStep() || 'Creando imágenes con IA…' }}</p>
+          <p class="text-xs text-purple-500">Esto tarda unos segundos por escena.</p>
+        </div>
+      }
+
+      @if (videoError()) {
+        <div class="mb-4 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs">
+          <span class="material-symbols-outlined mt-0.5" style="font-size:16px">error</span>
+          {{ videoError() }}
+        </div>
+      }
+
+      <!-- Grid de escenas -->
+      @if (generatedScenes().length) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (scene of generatedScenes(); track scene.scene; let i = $index) {
+            <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <!-- Imagen -->
+              <div class="relative bg-gray-100 aspect-square overflow-hidden">
+                @if (scene.image_url) {
+                  <img [src]="scene.image_url" alt="Escena {{ scene.scene }}"
+                       class="w-full h-full object-cover">
+                } @else {
+                  <div class="w-full h-full flex items-center justify-center">
+                    <svg class="animate-spin h-6 w-6 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                  </div>
+                }
+                <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-full">
+                  Escena {{ scene.scene }}
+                </div>
+                @if (scene.image_url) {
+                  <button (click)="regenerateSceneImage(i)"
+                    [disabled]="regeneratingIndex() !== null"
+                    class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md transition-all disabled:opacity-50"
+                    title="Regenerar esta imagen">
+                    @if (regeneratingIndex() === i) {
+                      <svg class="animate-spin h-4 w-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                    } @else {
+                      <span class="material-symbols-outlined text-purple-600" style="font-size:16px">refresh</span>
+                    }
+                  </button>
+                }
+              </div>
+
+              <!-- Narración -->
+              <div class="p-3 border-b border-gray-100">
+                <p class="text-[11px] text-gray-600 line-clamp-3">{{ scene.narration }}</p>
+              </div>
+
+              <!-- Selector de movimiento -->
+              <div class="p-3">
+                <p class="text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Movimiento</p>
+                <div class="grid grid-cols-5 gap-1">
+                  @for (m of motionOptions; track m.id) {
+                    <button (click)="setSceneMotion(i, m.id)"
+                      [title]="m.label"
+                      class="flex flex-col items-center gap-0.5 py-1.5 rounded-lg border text-[9px] font-bold transition-all"
+                      [class]="scene.camera_direction === m.id
+                        ? 'border-purple-500 bg-purple-50 text-purple-700'
+                        : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'">
+                      <span class="material-symbols-outlined" style="font-size:14px">{{ m.icon }}</span>
+                      <span class="text-[8px]">{{ m.label.split(' ')[0] }}</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Reintentar generar todas -->
+        <div class="mt-4 flex justify-center">
+          <button (click)="generatedScenes.set([]); generateScenesImages()"
+            [disabled]="generatingImages() || regeneratingIndex() !== null"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold text-xs hover:bg-gray-50 disabled:opacity-50">
+            <span class="material-symbols-outlined" style="font-size:14px">autorenew</span>
+            Regenerar todas las imágenes
+          </button>
+        </div>
+      }
+    }
+
     <!-- ═══ STEP: GENERATE ═══ -->
     @if (currentStep() === 'generate') {
       <div class="text-center mb-6 sm:mb-8">
@@ -573,8 +679,12 @@
         </div>
       </div>
 
-      <!-- Botón generar (oculto si ya hay resultado en algún modo) -->
-      @if (!videoResult()?.video_url && !checkingStatus() && !generatedScenes().length) {
+      <!-- Botón generar: se oculta cuando ya hay resultado completo -->
+      @if (
+        !videoResult()?.video_url
+        && !checkingStatus()
+        && !(selectedMode() === 'images' && generatedScenes().length && generatedScenes()[0].audio_url)
+      ) {
         <button (click)="generateVideo()"
           [disabled]="generatingVideo()"
           class="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-black text-sm transition-all disabled:opacity-50 hover:opacity-90 shadow-lg"
@@ -587,7 +697,7 @@
             <span>{{ imagesStep() || 'Enviando a generar...' }}</span>
           } @else {
             <span class="material-symbols-outlined" style="font-size:22px">movie</span>
-            <span>Generar Video con IA</span>
+            <span>{{ selectedMode() === 'images' ? 'Generar narración y reproducir' : 'Generar Video con IA' }}</span>
           }
         </button>
       }
@@ -603,8 +713,8 @@
         </div>
       }
 
-      <!-- Resultado modo 'images': preview con escenas generadas -->
-      @if (selectedMode() === 'images' && generatedScenes().length) {
+      <!-- Resultado modo 'images': preview con escenas generadas (con audio) -->
+      @if (selectedMode() === 'images' && generatedScenes().length && generatedScenes()[0].audio_url) {
         <div class="mt-4 bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-6">
           <div class="flex items-center gap-2 mb-4">
             <span class="material-symbols-outlined text-green-600" style="font-size:24px">check_circle</span>
@@ -693,7 +803,7 @@
       }
 
       @if (currentStep() !== 'generate') {
-        <button (click)="nextStep(); currentStep() === 'avatar' && selectedMode() === 'avatar' ? loadAvatars() : null; currentStep() === 'config' ? loadVoices() : null"
+        <button (click)="nextStep()"
           [disabled]="!canAdvance()"
           class="flex items-center gap-1 px-5 py-2.5 rounded-full text-white font-bold text-xs sm:text-sm transition-all disabled:opacity-30 hover:opacity-90"
           style="background: linear-gradient(90deg, #7e22ce, #d946ef);">

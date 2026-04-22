@@ -44,6 +44,17 @@ export class VideoPreviewComponent implements OnDestroy {
   );
 
   readonly kenBurnsClass = computed(() => {
+    // Si la escena tiene camera_direction definido, respetarlo
+    const dir = this.currentScene()?.camera_direction;
+    const explicit: Record<string, string> = {
+      'static': '',
+      'zoom-in': 'kb-zoom-in',
+      'zoom-out': 'kb-zoom-out',
+      'pan-left': 'kb-pan-left',
+      'pan-right': 'kb-pan-right',
+    };
+    if (dir && dir in explicit) return explicit[dir];
+    // Fallback: rotación por índice (comportamiento previo)
     const variants = ['kb-zoom-in', 'kb-zoom-out', 'kb-pan-left', 'kb-pan-right'];
     return variants[this.currentSceneIndex() % variants.length];
   });

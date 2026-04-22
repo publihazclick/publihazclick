@@ -27,7 +27,7 @@ interface HeyGenVoice {
 
 type CreationMode = 'images' | 'avatar' | 'photo' | 'product';
 type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'shorts';
-type WizardStep = 'mode' | 'platform' | 'avatar' | 'script' | 'config' | 'generate';
+type WizardStep = 'mode' | 'platform' | 'avatar' | 'script' | 'config' | 'scenes' | 'generate';
 
 @Component({
   selector: 'app-video-studio',
@@ -56,6 +56,7 @@ export class VideoStudioComponent implements OnInit {
     { id: 'avatar', label: 'Avatar', icon: 'person' },
     { id: 'script', label: 'Guion', icon: 'description' },
     { id: 'config', label: 'Configurar', icon: 'tune' },
+    { id: 'scenes', label: 'Escenas', icon: 'image' },
     { id: 'generate', label: 'Generar', icon: 'movie' },
   ];
 
@@ -167,6 +168,15 @@ export class VideoStudioComponent implements OnInit {
   readonly imagesProgress = signal(0);
   readonly imagesStep = signal('');
   readonly recordingVideo = signal(false);
+  readonly generatingImages = signal(false);
+  readonly regeneratingIndex = signal<number | null>(null);
+  readonly motionOptions: { id: string; label: string; icon: string }[] = [
+    { id: 'zoom-in', label: 'Zoom in', icon: 'zoom_in' },
+    { id: 'zoom-out', label: 'Zoom out', icon: 'zoom_out' },
+    { id: 'pan-left', label: 'Pan izquierda', icon: 'arrow_back' },
+    { id: 'pan-right', label: 'Pan derecha', icon: 'arrow_forward' },
+    { id: 'static', label: 'Estático', icon: 'crop_square' },
+  ];
 
   async ngOnInit(): Promise<void> {
     try { await this.walletService.loadWallet(); } catch {}
@@ -184,7 +194,8 @@ export class VideoStudioComponent implements OnInit {
 
   private getStepOrder(): WizardStep[] {
     if (this.selectedMode() === 'images') {
-      return ['mode', 'platform', 'script', 'config', 'generate'];
+      // Modo imágenes: paso extra 'scenes' para generar + ajustar movimiento
+      return ['mode', 'platform', 'script', 'config', 'scenes', 'generate'];
     }
     return ['mode', 'platform', 'avatar', 'script', 'config', 'generate'];
   }
@@ -192,7 +203,14 @@ export class VideoStudioComponent implements OnInit {
   nextStep(): void {
     const order = this.getStepOrder();
     const idx = order.indexOf(this.currentStep());
-    if (idx < order.length - 1) this.currentStep.set(order[idx + 1]);
+    if (idx >= order.length - 1) return;
+    const next = order[idx + 1];
+    this.currentStep.set(next);
+
+    // Side effects al entrar a un paso
+    if (next === 'avatar' && this.selectedMode() === 'avatar') this.loadAvatars();
+    if (next === 'config') this.loadVoices();
+    if (next === 'scenes') this.generateScenesImages();
   }
 
   prevStep(): void {
@@ -211,6 +229,8 @@ export class VideoStudioComponent implements OnInit {
         return !!this.talkingPhotoId();
       case 'script': return !!this.scriptContent().trim();
       case 'config': return !!this.selectedVoice();
+      case 'scenes':
+        return this.generatedScenes().some(s => !!s.image_url) && !this.generatingImages();
       default: return false;
     }
   }
@@ -700,41 +720,120 @@ export class VideoStudioComponent implements OnInit {
     return '16:9';
   }
 
-  /** Pipeline completo modo 'images': construye escenas, genera imágenes y audio. */
-  async generateImagesVideo(): Promise<void> {
+  /**
+   * Paso 'scenes': genera solo las imágenes a partir del guion. Se ejecuta una
+   * sola vez al entrar al paso; luego el usuario puede regenerar/ajustar
+   * individualmente cada escena.
+   */
+  async generateScenesImages(): Promise<void> {
+    if (this.generatedScenes().length && this.generatedScenes().every(s => !!s.image_url)) {
+      return; // Ya hay imágenes, no regenerar en masa
+    }
+
     const scenes = this.buildScenesFromScript();
     if (!scenes.length) {
-      this.videoError.set('No hay guion para generar el video. Escribe o genera el guion primero.');
+      this.videoError.set('No hay guion para generar imágenes. Escribe el guion primero.');
       return;
     }
 
-    // Limite pragmático para evitar costos excesivos en una primera ejecución
     const maxScenes = 8;
-    const workingScenes = scenes.slice(0, maxScenes);
+    const workingScenes = scenes.slice(0, maxScenes).map(s => ({
+      ...s,
+      // Asignar un movimiento por defecto rotando entre variantes
+      camera_direction: s.camera_direction || this.defaultMotionFor(s.scene - 1),
+    }));
 
     this.videoError.set(null);
-    this.generatingVideo.set(true);
-    this.generatedScenes.set([]);
+    this.generatingImages.set(true);
     this.imagesProgress.set(0);
+    this.imagesStep.set('Generando imágenes acorde al guion…');
 
     try {
       const aspect = this.getAspectRatioString();
-      const azureVoiceId = this.mapHeygenVoiceToAzure();
+      // Construir prompt enriquecido por escena (usa título + visual_description)
+      const enrichedScenes = workingScenes.map(s => ({
+        ...s,
+        visual_description: this.enrichImagePrompt(s.visual_description, s.narration),
+      }));
 
-      // 1. Generar imágenes
-      this.imagesStep.set('Generando imágenes...');
-      const withImages = await this.aiVideo.generateSceneImages(workingScenes, aspect);
+      this.generatedScenes.set(enrichedScenes);
+      const withImages = await this.aiVideo.generateSceneImages(enrichedScenes, aspect);
       this.generatedScenes.set(withImages);
-      this.imagesProgress.set(50);
+      this.imagesProgress.set(100);
+    } catch (e) {
+      this.videoError.set(e instanceof Error ? e.message : 'Error generando imágenes');
+    } finally {
+      this.generatingImages.set(false);
+      this.imagesStep.set('');
+    }
+  }
 
-      // 2. Generar audio TTS
-      this.imagesStep.set('Generando narración...');
-      const withAudio = await this.aiVideo.generateSceneAudios(withImages, azureVoiceId);
+  /** Construye un prompt visual más rico combinando título del video + descripción de escena. */
+  private enrichImagePrompt(visual: string, narration: string): string {
+    const topic = this.videoTopic().trim();
+    const base = visual || narration;
+    const style = 'cinematic, high detail, professional photography, dramatic lighting, 4k';
+    return topic ? `${topic} — ${base}. ${style}` : `${base}. ${style}`;
+  }
+
+  private defaultMotionFor(index: number): string {
+    const variants = ['zoom-in', 'zoom-out', 'pan-left', 'pan-right'];
+    return variants[index % variants.length];
+  }
+
+  /** Cambia el movimiento (Ken Burns) de una escena específica. */
+  setSceneMotion(index: number, motion: string): void {
+    const scenes = [...this.generatedScenes()];
+    if (index < 0 || index >= scenes.length) return;
+    scenes[index] = { ...scenes[index], camera_direction: motion };
+    this.generatedScenes.set(scenes);
+  }
+
+  /** Regenera la imagen de una escena específica (el usuario puede reintentar si no le gustó). */
+  async regenerateSceneImage(index: number): Promise<void> {
+    const scenes = [...this.generatedScenes()];
+    if (index < 0 || index >= scenes.length) return;
+    const scene = scenes[index];
+    this.regeneratingIndex.set(index);
+    this.videoError.set(null);
+    try {
+      const aspect = this.getAspectRatioString();
+      const result = await this.aiVideo.generateImage(
+        this.enrichImagePrompt(scene.visual_description, scene.narration),
+        aspect,
+      );
+      scenes[index] = { ...scene, image_url: result.dataUrl };
+      this.generatedScenes.set(scenes);
+    } catch (e) {
+      this.videoError.set(e instanceof Error ? e.message : 'Error regenerando imagen');
+    } finally {
+      this.regeneratingIndex.set(null);
+    }
+  }
+
+  /**
+   * Paso 'generate' para modo images: genera narración TTS por escena y
+   * prepara el preview reproducible. Las imágenes ya están listas del paso
+   * anterior.
+   */
+  async generateImagesVideo(): Promise<void> {
+    const scenes = this.generatedScenes();
+    if (!scenes.length || !scenes.every(s => s.image_url)) {
+      this.videoError.set('Primero genera las imágenes en el paso Escenas.');
+      return;
+    }
+
+    this.videoError.set(null);
+    this.generatingVideo.set(true);
+    this.imagesProgress.set(0);
+    this.imagesStep.set('Generando narración con IA…');
+
+    try {
+      const azureVoiceId = this.mapHeygenVoiceToAzure();
+      const withAudio = await this.aiVideo.generateSceneAudios(scenes, azureVoiceId);
       this.generatedScenes.set(withAudio);
       this.imagesProgress.set(100);
-      this.imagesStep.set('');
 
-      // 3. Guardar proyecto
       const pid = await this.aiVideo.saveProject({
         kind: 'video',
         title: this.videoTopic() || 'Video Imágenes en Movimiento',
@@ -751,7 +850,7 @@ export class VideoStudioComponent implements OnInit {
       if (pid) this.currentProjectId.set(pid);
       await this.walletService.loadWallet();
     } catch (e) {
-      this.videoError.set(e instanceof Error ? e.message : 'Error generando video de imágenes');
+      this.videoError.set(e instanceof Error ? e.message : 'Error generando narración');
     } finally {
       this.generatingVideo.set(false);
       this.imagesStep.set('');
