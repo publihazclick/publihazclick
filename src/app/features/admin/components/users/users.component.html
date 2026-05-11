@@ -86,6 +86,7 @@
               <th class="px-6 py-4">Usuario</th>
               <th class="px-6 py-4">Rol</th>
               <th class="px-6 py-4">Balance</th>
+              <th class="px-6 py-4">Paquete</th>
               <th class="px-6 py-4">Estado</th>
               <th class="px-6 py-4">Registro</th>
               <th class="px-6 py-4 text-right">Acciones</th>
@@ -115,6 +116,23 @@
                   </span>
                 </td>
                 <td class="px-6 py-4 font-bold text-white text-sm">{{ formatCurrency(user.real_balance ?? user.balance ?? 0) }}</td>
+                <td class="px-6 py-4">
+                  @if (user.has_active_package) {
+                    <div>
+                      <span class="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-bold uppercase">Activo</span>
+                      @if (getDaysRemaining(user.package_expires_at) <= 7 && getDaysRemaining(user.package_expires_at) > 0) {
+                        <p class="text-[10px] text-amber-400 mt-1">Vence en {{ getDaysRemaining(user.package_expires_at) }}d</p>
+                      }
+                    </div>
+                  } @else if (user.package_expires_at) {
+                    <div>
+                      <span class="px-2 py-1 bg-rose-500/10 text-rose-400 rounded text-xs font-bold uppercase">Vencido</span>
+                      <p class="text-[10px] text-slate-500 mt-1">{{ formatDate(user.package_expires_at) }}</p>
+                    </div>
+                  } @else {
+                    <span class="text-xs text-slate-600">—</span>
+                  }
+                </td>
                 <td class="px-6 py-4">
                   @if (user.is_active) {
                     <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-xs font-bold uppercase">Activo</span>
@@ -819,9 +837,21 @@
                       }
                     </div>
                   } @else {
-                    <div class="bg-white/5 rounded-xl p-4 flex items-center gap-3 text-slate-500">
-                      <span class="material-symbols-outlined text-2xl">inventory_2</span>
-                      <p class="text-sm">Sin paquete activo</p>
+                    <div class="bg-white/5 rounded-xl p-4 flex items-center gap-3">
+                      <span class="material-symbols-outlined text-2xl text-slate-500">inventory_2</span>
+                      @if (user.package_expires_at) {
+                        <div>
+                          <p class="text-sm font-semibold text-rose-400">Paquete vencido</p>
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            Venció el {{ formatDate(user.package_expires_at) }}
+                            @if (user.package_started_at) {
+                              &nbsp;·&nbsp;Inició el {{ formatDate(user.package_started_at) }}
+                            }
+                          </p>
+                        </div>
+                      } @else {
+                        <p class="text-sm text-slate-500">Sin paquete activo</p>
+                      }
                     </div>
                   }
                 </div>
