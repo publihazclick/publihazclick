@@ -311,6 +311,11 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
 
     let rawText: string | null = null;
     let providerUsed: 'gemini' | 'openai' = 'gemini';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const debug: Record<string, any> = {
+      gemini_configured: !!GEMINI_API_KEY,
+      openai_configured: !!OPENAI_API_KEY,
+    };
 
     // Intento 1: Gemini
     if (GEMINI_API_KEY) {
@@ -328,14 +333,18 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
           }),
         });
 
+        debug.gemini_status = geminiRes.status;
         if (geminiRes.ok) {
           const geminiData = await geminiRes.json();
           rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+          if (!rawText) debug.gemini_note = 'empty text in response';
         } else {
           const errBody = await geminiRes.text().catch(() => '');
+          debug.gemini_error = errBody.substring(0, 400);
           console.error('[reel-script] Gemini error:', geminiRes.status, errBody);
         }
       } catch (e) {
+        debug.gemini_exception = String(e).substring(0, 300);
         console.error('[reel-script] Gemini fetch failed:', e);
       }
     }
@@ -356,15 +365,18 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
             response_format: { type: 'json_object' },
           }),
         });
+        debug.openai_status = openaiRes.status;
         if (openaiRes.ok) {
           const data = await openaiRes.json();
           rawText = data?.choices?.[0]?.message?.content ?? null;
           providerUsed = 'openai';
         } else {
           const errBody = await openaiRes.text().catch(() => '');
+          debug.openai_error = errBody.substring(0, 400);
           console.error('[reel-script] OpenAI error:', openaiRes.status, errBody);
         }
       } catch (e) {
+        debug.openai_exception = String(e).substring(0, 300);
         console.error('[reel-script] OpenAI fetch failed:', e);
       }
     }
@@ -372,6 +384,7 @@ RESPONDE ÚNICAMENTE con JSON válido (sin markdown):
     if (!rawText) {
       return json({
         error: 'El servicio de IA está temporalmente saturado. Por favor intenta de nuevo en 1 minuto.',
+        _debug: debug,
       }, 503);
     }
 

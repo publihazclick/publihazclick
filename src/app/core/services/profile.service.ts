@@ -271,7 +271,8 @@ export class ProfileService {
         .from('referrals')
         .select('*')
         .eq('referrer_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
 
@@ -523,7 +524,8 @@ export class ProfileService {
         .from('user_levels')
         .select('*')
         .eq('is_active', true)
-        .order('level', { ascending: true });
+        .order('level', { ascending: true })
+        .limit(20);
 
       if (error) throw error;
 
@@ -618,7 +620,8 @@ export class ProfileService {
         .from('donations')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) throw error;
 

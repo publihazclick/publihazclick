@@ -121,6 +121,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/components/trading-config/trading-config.component').then(m => m.TradingConfigComponent)
       },
       {
+        path: 'trading-packages',
+        loadComponent: () => import('./features/admin/components/trading-packages/trading-packages.component').then(m => m.AdminTradingPackagesComponent)
+      },
+      {
+        path: 'trading-withdrawals',
+        loadComponent: () => import('./features/admin/components/trading-withdrawals/trading-withdrawals.component').then(m => m.AdminTradingWithdrawalsComponent)
+      },
+      {
         path: 'commissions',
         loadComponent: () => import('./features/admin/components/commissions/commissions.component').then(m => m.AdminCommissionsComponent)
       },

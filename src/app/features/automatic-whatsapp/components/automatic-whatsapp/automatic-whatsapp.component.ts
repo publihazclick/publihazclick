@@ -14,10 +14,13 @@ import {
   WaCampaign,
   WaDashboardStats,
   WaAntiBlockConfig,
+  WaAntiBlockPreset,
   WaMessageType,
   WaTemplateCategory,
   WaMediaItem,
   DEFAULT_ANTI_BLOCK_CONFIG,
+  ANTI_BLOCK_PRESETS,
+  findShortenerInText,
 } from '../../../../core/models/whatsapp.model';
 
 type Tab = 'dashboard' | 'contacts' | 'campaigns' | 'templates' | 'settings';
@@ -96,6 +99,8 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   newCampaignTargetType = signal<'excel' | 'all' | 'group' | 'custom'>('excel');
   newCampaignGroupId = signal('');
   antiBlockConfig = signal<WaAntiBlockConfig>({ ...DEFAULT_ANTI_BLOCK_CONFIG });
+  selectedPreset = signal<WaAntiBlockPreset>('new_account');
+  templateUrlWarning = signal<string | null>(null);
   activeCampaignDetail = signal<WaCampaign | null>(null);
   campaignEditing = signal(false);
   campaignEditSaving = signal(false);
@@ -123,11 +128,11 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   // División en bloques
   newCampaignBlockCount = signal(1);
 
-  // Ventana horaria
+  // Ventana horaria (default 8am-8pm todos los dias — horario natural humano)
   newCampaignScheduleEnabled = signal(false);
-  newCampaignScheduleStart = signal('09:00');
-  newCampaignScheduleEnd = signal('18:00');
-  newCampaignScheduleDays = signal<number[]>([1, 2, 3, 4, 5]); // Lun-Vie
+  newCampaignScheduleStart = signal('08:00');
+  newCampaignScheduleEnd = signal('20:00');
+  newCampaignScheduleDays = signal<number[]>([1, 2, 3, 4, 5, 6]); // Lun-Sab (domingo fuera: mucha gente no atiende negocios)
 
   weekDays: { dow: number; label: string }[] = [
     { dow: 1, label: 'L' },
@@ -698,6 +703,18 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     if (!this.newTemplateName() || !this.newTemplateContent()) return;
     if (this.templateMediaUploading()) return;
 
+    // Bloqueo duro: acortadores de URL disparan filtros de spam de WhatsApp.
+    const shortener = this.detectShortenerInTemplate();
+    if (shortener) {
+      this.templateUrlWarning.set(shortener);
+      alert(
+        `No se puede guardar: el mensaje contiene el acortador "${shortener}". ` +
+        `WhatsApp detecta acortadores como spam y bloquea la cuenta. ` +
+        `Usa el link completo del sitio original.`,
+      );
+      return;
+    }
+
     this.templateSaving.set(true);
     try {
       const items = this.newTemplateMediaItems();
@@ -778,7 +795,11 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.newCampaignTemplateId.set('');
     this.newCampaignTargetType.set('excel');
     this.newCampaignGroupId.set('');
-    this.antiBlockConfig.set({ ...DEFAULT_ANTI_BLOCK_CONFIG });
+    // Si hay sesión con menos de 30 días, forzar preset "new_account".
+    // Si no, default a "normal".
+    const preset: WaAntiBlockPreset = this.hasNewSession() ? 'new_account' : 'normal';
+    this.selectedPreset.set(preset);
+    this.antiBlockConfig.set({ ...ANTI_BLOCK_PRESETS[preset] });
     this.activeCampaignDetail.set(null);
     this.campaignExcelFileName.set('');
     this.campaignExcelResult.set('');
@@ -789,9 +810,9 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.campaignSaveError.set(null);
     this.newCampaignBlockCount.set(1);
     this.newCampaignScheduleEnabled.set(false);
-    this.newCampaignScheduleStart.set('09:00');
-    this.newCampaignScheduleEnd.set('18:00');
-    this.newCampaignScheduleDays.set([1, 2, 3, 4, 5]);
+    this.newCampaignScheduleStart.set('08:00');
+    this.newCampaignScheduleEnd.set('20:00');
+    this.newCampaignScheduleDays.set([1, 2, 3, 4, 5, 6]);
     this.campaignModal.set('create');
   }
 
@@ -984,6 +1005,45 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
           schedule_timezone: 'America/Bogota',
         };
 
+    // Forzar variación de mensajes en listas grandes: WhatsApp detecta
+    // mensajes idénticos enviados en ráfaga como spam.
+    if (totalContacts > 20 && !config.variation_enabled) {
+      config.variation_enabled = true;
+    }
+
+    // Warning de lista fría: si es Excel/custom con >30 destinatarios y el
+    // usuario no confirma entender el riesgo, no crear la campaña.
+    const isColdList = (storedTargetType === 'custom' || targetType === 'excel') && totalContacts > 30;
+    if (isColdList) {
+      const confirmed = confirm(
+        `Vas a enviar a ${totalContacts} números importados. La mayoría de bloqueos de WhatsApp ` +
+        `vienen de enviar a números que no te tienen guardado. Un solo "Reportar spam" puede ` +
+        `bloquear tu cuenta.\n\n` +
+        `¿Confirmas que estos números son clientes que ya te conocen, te han comprado antes, ` +
+        `o te han dado su número voluntariamente?`,
+      );
+      if (!confirmed) {
+        this.campaignSaveError.set('Cancelado. Recomendación: pide a tus clientes que guarden tu número antes de enviar campañas masivas.');
+        return;
+      }
+    }
+
+    // Warning de cuenta nueva: si la sesión tiene <7 días, avisar que
+    // el daily_limit propuesto excede lo prudente.
+    const sessionAge = this.youngestSessionAgeDays();
+    if (sessionAge !== null && sessionAge < 7 && config.daily_limit > 15) {
+      const confirmed = confirm(
+        `Tu cuenta de WhatsApp tiene solo ${sessionAge} día(s) conectada. Enviar más de 15 mensajes ` +
+        `al día con una cuenta tan nueva casi siempre termina en bloqueo.\n\n` +
+        `Recomendación: baja el límite diario a 15 y activa calentamiento.\n\n` +
+        `¿Seguir de todas formas?`,
+      );
+      if (!confirmed) {
+        this.campaignSaveError.set('Cancelado. Aplica el preset "Cuenta Nueva" y vuelve a intentar.');
+        return;
+      }
+    }
+
     this.campaignSaving.set(true);
     try {
       const { data, error } = await this.wa.createCampaign({
@@ -1022,7 +1082,20 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   }
 
   async pauseCampaign(id: string) {
-    await this.wa.pauseCampaign(id);
+    const result = await this.wa.pauseCampaign(id);
+    if (!result.ok && result.error) {
+      alert(result.error);
+    }
+    await this.loadCampaigns();
+  }
+
+  async resumeCampaign(id: string) {
+    if (!this.requireSubscription()) return;
+    const result = await this.wa.resumeCampaign(id);
+    if (!result.ok) {
+      alert(result.error || 'No se pudo continuar la campaña.');
+      return;
+    }
     await this.loadCampaigns();
   }
 
@@ -1169,16 +1242,24 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
 
     try {
       const { instance } = await this.wa.createSession(this.newSessionName());
-      if (instance) {
-        this.activeInstance.set(instance);
-        await new Promise(r => setTimeout(r, 1500));
-        await this.refreshQR(instance);
-        this.startQrPolling(instance);
+      if (!instance) {
+        throw new Error('Evolution no devolvio el nombre de la instancia.');
       }
+
+      this.activeInstance.set(instance);
       this.newSessionName.set('');
+
+      // Evolution a veces tarda en generar el QR. Intentamos hasta 4 veces
+      // con pausas crecientes antes de rendirnos.
+      const got = await this.fetchQrWithRetries(instance);
+      if (!got) {
+        throw new Error('No se pudo generar el codigo QR despues de varios intentos. Intenta de nuevo.');
+      }
+
+      this.startQrPolling(instance);
       await this.loadSettings();
     } catch (e: unknown) {
-      this.sessionError.set(e instanceof Error ? e.message : 'Error al crear sesión');
+      this.sessionError.set(e instanceof Error ? e.message : 'Error al crear sesion');
     } finally {
       this.sessionLoading.set(false);
     }
@@ -1193,20 +1274,66 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
     this.qrImage.set(null);
     this.pairingCode.set(null);
     try {
-      await this.refreshQR(session.phone_number);
+      const got = await this.fetchQrWithRetries(session.phone_number);
+      if (!got) {
+        throw new Error('No se pudo obtener el QR. Elimina la sesion e intenta crear una nueva.');
+      }
       this.startQrPolling(session.phone_number);
-    } catch {
-      this.sessionError.set('Error al obtener QR');
+    } catch (e: unknown) {
+      this.sessionError.set(e instanceof Error ? e.message : 'Error al obtener QR');
     } finally {
       this.sessionLoading.set(false);
     }
   }
 
+  /**
+   * Llama a getQRCode con reintentos. Evolution genera el QR de forma
+   * asincrona, asi que puede volver vacio la primera vez. Reintentamos
+   * hasta 4 veces con pausas de 2s, 3s, 4s.
+   *
+   * Excepcion: si el wa-engine devuelve error_code `evolution_no_qr`
+   * (servidor Evolution caido o IP baneada por WhatsApp), abortamos
+   * inmediatamente — los reintentos no van a ayudar y solo demoran
+   * el mensaje accionable al usuario.
+   */
+  private async fetchQrWithRetries(instance: string): Promise<boolean> {
+    const waits = [0, 2000, 3000, 4000];
+    for (let i = 0; i < waits.length; i++) {
+      if (waits[i] > 0) {
+        await new Promise(r => setTimeout(r, waits[i]));
+      }
+      // Si el usuario cerro o cambio de instancia, abortar.
+      if (this.activeInstance() !== instance) return false;
+      try {
+        const { qrCode, qrImage, pairingCode } = await this.wa.getQRCode(instance);
+        if (qrImage || qrCode || pairingCode) {
+          this.qrCode.set(qrCode);
+          this.qrImage.set(qrImage);
+          this.pairingCode.set(pairingCode);
+          return true;
+        }
+      } catch (e) {
+        const code = (e as { code?: string })?.code;
+        if (code === 'evolution_no_qr') throw e;
+        console.warn(`[createSession] intento ${i + 1} fallo`, e);
+        if (i === waits.length - 1) throw e;
+      }
+    }
+    return false;
+  }
+
   async refreshQR(instance: string) {
-    const { qrCode, qrImage, pairingCode } = await this.wa.getQRCode(instance);
-    this.qrCode.set(qrCode);
-    this.qrImage.set(qrImage);
-    this.pairingCode.set(pairingCode);
+    // Usado por el boton "Generar nuevo codigo" y el polling. Intenta una
+    // vez y setea lo que haya (si no hay nada, limpia para forzar reintento
+    // en el proximo tick del polling).
+    try {
+      const { qrCode, qrImage, pairingCode } = await this.wa.getQRCode(instance);
+      this.qrCode.set(qrCode);
+      this.qrImage.set(qrImage);
+      this.pairingCode.set(pairingCode);
+    } catch (e) {
+      console.warn('[refreshQR]', e);
+    }
   }
 
   /**
@@ -1279,7 +1406,33 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   }
 
   async deleteSession(id: string) {
-    await this.wa.deleteSession(id);
+    const session = this.sessions().find(s => s.id === id);
+    const name = session?.session_name || 'esta sesion';
+    if (!confirm(
+      `¿Eliminar ${name}?\n\n` +
+      `Se desconectara de WhatsApp y quedara el numero libre para reconectar luego.`,
+    )) {
+      return;
+    }
+
+    // Si estabamos viendo el QR de esta sesion, limpiar estado UI.
+    if (session?.phone_number && this.activeInstance() === session.phone_number) {
+      this.activeInstance.set(null);
+      this.qrCode.set(null);
+      this.qrImage.set(null);
+      this.pairingCode.set(null);
+      if (this.qrPollHandle) {
+        clearInterval(this.qrPollHandle);
+        this.qrPollHandle = null;
+      }
+    }
+
+    const result = await this.wa.deleteSession(id);
+    if (!result.ok) {
+      alert(result.error || 'No se pudo eliminar la sesion.');
+      return;
+    }
+
     await this.loadSettings();
   }
 
@@ -1318,5 +1471,61 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
 
   updateAntiBlockField(field: keyof WaAntiBlockConfig, value: number | boolean) {
     this.antiBlockConfig.update(c => ({ ...c, [field]: value }));
+  }
+
+  /** Aplica un preset de anti-bloqueo completo sobre la config actual. */
+  applyPreset(preset: WaAntiBlockPreset) {
+    this.selectedPreset.set(preset);
+    this.antiBlockConfig.set({ ...ANTI_BLOCK_PRESETS[preset] });
+  }
+
+  /**
+   * Retorna true si alguna sesión del usuario tiene menos de 30 días desde
+   * su creación. Se usa para sugerir el preset "new_account" y mostrar
+   * warnings por UI.
+   */
+  hasNewSession = computed(() => {
+    const now = Date.now();
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    return this.sessions().some(s => {
+      if (!s.created_at) return false;
+      const age = now - new Date(s.created_at).getTime();
+      return age < THIRTY_DAYS;
+    });
+  });
+
+  /** Edad en días de la sesión más joven (o null si no hay). */
+  youngestSessionAgeDays = computed(() => {
+    const ages = this.sessions()
+      .map(s => s.created_at ? Math.floor((Date.now() - new Date(s.created_at).getTime()) / 86400000) : null)
+      .filter((n): n is number => n !== null);
+    if (ages.length === 0) return null;
+    return Math.min(...ages);
+  });
+
+  /**
+   * Detecta acortadores de URL en el contenido y variantes de la plantilla
+   * en edición. Retorna el dominio encontrado o null.
+   */
+  private detectShortenerInTemplate(): string | null {
+    const content = this.newTemplateContent() || '';
+    const fromContent = findShortenerInText(content);
+    if (fromContent) return fromContent;
+    for (const v of this.newTemplateVariants()) {
+      const hit = findShortenerInText(v || '');
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  /** Se llama al escribir en contenido o variantes para alertar en vivo. */
+  onTemplateContentChange(value: string) {
+    this.newTemplateContent.set(value);
+    this.recomputeTemplateUrlWarning();
+  }
+
+  recomputeTemplateUrlWarning() {
+    const hit = this.detectShortenerInTemplate();
+    this.templateUrlWarning.set(hit ? hit : null);
   }
 }

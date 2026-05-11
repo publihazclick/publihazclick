@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     const data  = { url, tag, urgent: body?.urgent ? '1' : '0' };
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const { data: subs } = await supabase.from('ag_push_subs').select('*').in('user_id', userIds);
+    const { data: subs } = await supabase.from('ag_push_subs').select('id, user_id, provider, endpoint, p256dh, auth, fcm_token').in('user_id', userIds);
     if (!subs?.length) return json({ ok: true, sent: 0 });
 
     let sent = 0;

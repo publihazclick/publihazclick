@@ -43,7 +43,8 @@ export class AdminPackageService {
         .from('packages')
         .select('*')
         .eq('is_active', true)
-        .order('display_order', { ascending: true });
+        .order('display_order', { ascending: true })
+        .limit(50);
 
       if (error) throw error;
 

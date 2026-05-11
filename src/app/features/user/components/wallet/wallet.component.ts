@@ -390,7 +390,8 @@ export class UserWalletComponent implements OnInit {
       .from('user_payment_methods')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(20);
 
     if (data) {
       this.savedMethods.set(data.map(m => ({

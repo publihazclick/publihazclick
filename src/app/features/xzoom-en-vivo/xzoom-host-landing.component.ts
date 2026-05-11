@@ -3,13 +3,14 @@ import {
   Component,
   OnInit,
   OnDestroy,
+  PLATFORM_ID,
   computed,
   inject,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, Meta, SafeResourceUrl, Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CurrencyService } from '../../core/services/currency.service';
@@ -119,6 +120,11 @@ import type { XzoomHost } from '../../core/models/xzoom.model';
                 </iframe>
               } @else if (pitchVideoDirect()) {
                 <video [src]="pitchVideoDirect()!" controls playsinline></video>
+              } @else if (pitchVideoError()) {
+                <div class="no-video">
+                  <span class="material-symbols-outlined">error_outline</span>
+                  <p>{{ pitchVideoError() }}</p>
+                </div>
               } @else {
                 <div class="no-video">
                   <span class="material-symbols-outlined">movie</span>
@@ -816,6 +822,9 @@ export class XzoomHostLandingComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly fb = inject(FormBuilder);
+  private readonly metaService = inject(Meta);
+  private readonly titleService = inject(Title);
+  private readonly platformId = inject(PLATFORM_ID);
 
   readonly host = signal<XzoomHost | null>(null);
   readonly loading = signal(true);
@@ -837,10 +846,18 @@ export class XzoomHostLandingComponent implements OnInit, OnDestroy {
     return embed ? this.sanitizer.bypassSecurityTrustResourceUrl(embed) : null;
   });
 
+  readonly pitchVideoError = computed<string | null>(() => {
+    const url = this.host()?.pitch_video_url;
+    if (!url) return null;
+    if (this.pitchVideoEmbedUrl() || this.pitchVideoDirect()) return null;
+    try { new URL(url); } catch { return 'El enlace del video no es una URL válida.'; }
+    return 'No se puede mostrar este video. El anfitrión puede cambiarlo por un enlace de YouTube, TikTok, Vimeo u otro servicio compatible.';
+  });
+
   readonly pitchVideoDirect = computed<string | null>(() => {
     const url = this.host()?.pitch_video_url;
     if (!url) return null;
-    return /\.(mp4|webm|ogg)(\?|$)/i.test(url) ? url : null;
+    return /\.(mp4|webm|ogg|mov|avi|mkv|m4v|3gp|flv)(\?|$)/i.test(url) ? url : null;
   });
 
   async ngOnInit(): Promise<void> {
@@ -853,14 +870,15 @@ export class XzoomHostLandingComponent implements OnInit, OnDestroy {
     try {
       const h = await this.xzoom.getHostBySlug(slug);
       this.host.set(h);
+      if (h) this.applyHostMeta(h);
     } catch (err: any) {
       this.errorMsg.set(err?.message ?? 'No pudimos cargar al anfitrión.');
     } finally {
       this.loading.set(false);
     }
 
-    // Polling cada 15 segundos para detectar si el anfitrión inicia transmisión
-    if (slug) {
+    // Polling solo en el navegador (no en SSR)
+    if (slug && isPlatformBrowser(this.platformId)) {
       this.pollInterval = setInterval(async () => {
         try {
           const updated = await this.xzoom.getHostBySlug(slug);
@@ -872,6 +890,39 @@ export class XzoomHostLandingComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.pollInterval) { clearInterval(this.pollInterval); this.pollInterval = null; }
+    this.restoreDefaultMeta();
+  }
+
+  private applyHostMeta(h: XzoomHost): void {
+    const pageTitle = `${h.display_name} — XZOOM EN VIVO`;
+    const description = h.bio?.slice(0, 160)
+      || `Únete al canal de ${h.display_name} en XZOOM EN VIVO. Transmisiones en vivo, grabaciones y comunidad exclusiva.`;
+    const image = h.cover_url || h.avatar_url || 'https://www.publihazclick.com/og-image.svg';
+    const url = `https://www.publihazclick.com/xzoom/h/${h.slug}`;
+
+    this.titleService.setTitle(pageTitle);
+    this.metaService.updateTag({ name: 'description', content: description });
+    this.metaService.updateTag({ property: 'og:title', content: pageTitle });
+    this.metaService.updateTag({ property: 'og:description', content: description });
+    this.metaService.updateTag({ property: 'og:image', content: image });
+    this.metaService.updateTag({ property: 'og:url', content: url });
+    this.metaService.updateTag({ property: 'og:type', content: 'website' });
+    this.metaService.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
+    this.metaService.updateTag({ name: 'twitter:title', content: pageTitle });
+    this.metaService.updateTag({ name: 'twitter:description', content: description });
+    this.metaService.updateTag({ name: 'twitter:image', content: image });
+  }
+
+  private restoreDefaultMeta(): void {
+    this.titleService.setTitle('Publihazclick — Gana Dinero Viendo Anuncios | Plataforma PTC Colombia');
+    this.metaService.updateTag({ name: 'description', content: 'Publihazclick es la plataforma PTC líder en Colombia. Gana dinero real viendo anuncios, crea campañas publicitarias y construye tu red de referidos. Regístrate gratis.' });
+    this.metaService.updateTag({ property: 'og:title', content: 'Publihazclick — Gana Dinero Viendo Anuncios' });
+    this.metaService.updateTag({ property: 'og:description', content: 'Plataforma PTC líder en Colombia. Gana dinero real viendo anuncios, crea campañas publicitarias y construye tu red de referidos.' });
+    this.metaService.updateTag({ property: 'og:image', content: 'https://www.publihazclick.com/og-image.svg' });
+    this.metaService.updateTag({ property: 'og:url', content: 'https://www.publihazclick.com/' });
+    this.metaService.updateTag({ name: 'twitter:title', content: 'Publihazclick — Gana Dinero Viendo Anuncios' });
+    this.metaService.updateTag({ name: 'twitter:description', content: 'Plataforma PTC líder en Colombia. Gana dinero real viendo anuncios, crea campañas publicitarias y construye tu red de referidos.' });
+    this.metaService.updateTag({ name: 'twitter:image', content: 'https://www.publihazclick.com/og-image.svg' });
   }
 
   async onSubscribe(): Promise<void> {
@@ -959,44 +1010,103 @@ export class XzoomHostLandingComponent implements OnInit, OnDestroy {
 
   private toEmbedUrl(url: string): string | null {
     try {
-      const u = new URL(url);
+      const u = new URL(url.trim());
+      const host = u.hostname.replace(/^www\./, '');
 
-      // Ya es embed
-      if (u.pathname.startsWith('/embed/')) return url;
+      // Ya es URL de embed conocida
+      if (
+        u.pathname.startsWith('/embed/') ||
+        u.pathname.startsWith('/video/embed') ||
+        host === 'player.vimeo.com' ||
+        host === 'www.youtube-nocookie.com'
+      ) return url;
 
-      // YouTube: youtube.com/watch?v=ID | m.youtube.com/watch?v=ID
-      if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) {
-        return `https://www.youtube.com/embed/${u.searchParams.get('v')}`;
+      // ── YouTube ──────────────────────────────────────────────
+      if (host.includes('youtube.com') || host === 'm.youtube.com') {
+        const v = u.searchParams.get('v');
+        if (v) return `https://www.youtube.com/embed/${v}`;
+        const shorts = u.pathname.match(/\/shorts\/([a-zA-Z0-9_-]+)/);
+        if (shorts) return `https://www.youtube.com/embed/${shorts[1]}`;
+        const live = u.pathname.match(/\/live\/([a-zA-Z0-9_-]+)/);
+        if (live) return `https://www.youtube.com/embed/${live[1]}`;
       }
-
-      // YouTube Shorts: youtube.com/shorts/ID | m.youtube.com/shorts/ID
-      const shortsMatch = u.pathname.match(/\/shorts\/([a-zA-Z0-9_-]+)/);
-      if (u.hostname.includes('youtube.com') && shortsMatch) {
-        return `https://www.youtube.com/embed/${shortsMatch[1]}`;
-      }
-
-      // YouTube Live: youtube.com/live/ID
-      const liveMatch = u.pathname.match(/\/live\/([a-zA-Z0-9_-]+)/);
-      if (u.hostname.includes('youtube.com') && liveMatch) {
-        return `https://www.youtube.com/embed/${liveMatch[1]}`;
-      }
-
-      // youtu.be/ID (short links)
-      if (u.hostname === 'youtu.be') {
-        const id = u.pathname.replace('/', '');
+      if (host === 'youtu.be') {
+        const id = u.pathname.replace(/^\//, '').split('?')[0];
         if (id) return `https://www.youtube.com/embed/${id}`;
       }
 
-      // Vimeo
-      if (u.hostname.includes('vimeo.com')) {
-        const id = u.pathname.replace(/\//g, '');
-        if (/^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
+      // ── Vimeo ─────────────────────────────────────────────────
+      if (host === 'vimeo.com' || host.includes('vimeo.com')) {
+        const parts = u.pathname.split('/').filter(Boolean);
+        const id = parts.find((p) => /^\d+$/.test(p));
+        if (id) return `https://player.vimeo.com/video/${id}`;
       }
 
-      // Direct video files (MP4, WebM, etc) — handled by pitchVideoDirect
-      if (/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return null;
+      // ── TikTok ────────────────────────────────────────────────
+      if (host.includes('tiktok.com')) {
+        const m = u.pathname.match(/\/video\/(\d+)/);
+        if (m) return `https://www.tiktok.com/embed/v2/${m[1]}`;
+      }
 
-      // Unknown URL — don't try to embed it
+      // ── Facebook ──────────────────────────────────────────────
+      if (host.includes('facebook.com') || host.includes('fb.watch')) {
+        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=560`;
+      }
+
+      // ── Instagram ─────────────────────────────────────────────
+      if (host.includes('instagram.com')) {
+        const m = u.pathname.match(/\/(p|reel|tv)\/([a-zA-Z0-9_-]+)/);
+        if (m) return `https://www.instagram.com/${m[1]}/${m[2]}/embed/`;
+      }
+
+      // ── Dailymotion ───────────────────────────────────────────
+      if (host.includes('dailymotion.com') || host === 'dai.ly') {
+        const m = u.pathname.match(/\/video\/([a-zA-Z0-9]+)/);
+        if (m) return `https://www.dailymotion.com/embed/video/${m[1]}`;
+        if (host === 'dai.ly') {
+          const id = u.pathname.replace(/^\//, '');
+          if (id) return `https://www.dailymotion.com/embed/video/${id}`;
+        }
+      }
+
+      // ── Twitch ────────────────────────────────────────────────
+      if (host.includes('twitch.tv')) {
+        const m = u.pathname.match(/\/videos\/(\d+)/);
+        if (m) return `https://player.twitch.tv/?video=${m[1]}&parent=${window?.location?.hostname ?? 'www.publihazclick.com'}`;
+        const channel = u.pathname.replace(/^\//, '').split('/')[0];
+        if (channel) return `https://player.twitch.tv/?channel=${channel}&parent=${window?.location?.hostname ?? 'www.publihazclick.com'}`;
+      }
+
+      // ── Google Drive ──────────────────────────────────────────
+      if (host.includes('drive.google.com')) {
+        const m = u.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
+        const id = u.searchParams.get('id');
+        if (id) return `https://drive.google.com/file/d/${id}/preview`;
+      }
+
+      // ── Loom ──────────────────────────────────────────────────
+      if (host.includes('loom.com')) {
+        const m = u.pathname.match(/\/share\/([a-zA-Z0-9]+)/);
+        if (m) return `https://www.loom.com/embed/${m[1]}`;
+      }
+
+      // ── Streamable ────────────────────────────────────────────
+      if (host === 'streamable.com') {
+        const id = u.pathname.replace(/^\//, '');
+        if (id && !id.includes('/')) return `https://streamable.com/e/${id}`;
+      }
+
+      // ── Wistia ────────────────────────────────────────────────
+      if (host.includes('wistia.com')) {
+        const m = u.pathname.match(/\/medias\/([a-zA-Z0-9]+)/);
+        if (m) return `https://fast.wistia.net/embed/iframe/${m[1]}`;
+      }
+
+      // ── Archivo de video directo — manejado por pitchVideoDirect ──
+      if (/\.(mp4|webm|ogg|mov|avi|mkv|m4v|3gp|flv)(\?|$)/i.test(url)) return null;
+
+      // ── URL desconocida — no intentar embed ───────────────────
       return null;
     } catch {
       return null;

@@ -2,8 +2,9 @@ import {
   Component, inject, signal, computed, OnInit, ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { SocialService } from '../../../../core/services/social.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { StorageService } from '../../../../core/services/storage.service';
@@ -12,7 +13,7 @@ import type { AdvertiserCard, SocialBusinessProfile } from '../../../../core/mod
 @Component({
   selector: 'app-social-profile',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, FormsModule],
   templateUrl: './profile.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -20,6 +21,7 @@ export class SocialProfileComponent implements OnInit {
   private readonly socialService = inject(SocialService);
   private readonly profileService = inject(ProfileService);
   private readonly storageService = inject(StorageService);
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
@@ -43,6 +45,37 @@ export class SocialProfileComponent implements OnInit {
 
   // ── Galería lightbox ─────────────────────────────────────────
   readonly lightboxImage = signal<string | null>(null);
+
+  // ── Video ─────────────────────────────────────────────────────
+  readonly uploadingVideo = signal(false);
+  readonly currentVideoUrl = signal<string | null>(null);
+  videoLinkInput = '';
+
+  readonly videoPreviewEmbed = computed<SafeResourceUrl | null>(() => {
+    const url = this.currentVideoUrl();
+    if (!url) return null;
+    const embed = this.toVideoEmbedUrl(url);
+    return embed ? this.sanitizer.bypassSecurityTrustResourceUrl(embed) : null;
+  });
+
+  readonly videoPreviewDirect = computed<string | null>(() => {
+    const url = this.currentVideoUrl();
+    if (!url) return null;
+    return this.isDirectVideoUrl(url) ? url : null;
+  });
+
+  readonly publicVideoEmbed = computed<SafeResourceUrl | null>(() => {
+    const url = this.business()?.video_url;
+    if (!url) return null;
+    const embed = this.toVideoEmbedUrl(url);
+    return embed ? this.sanitizer.bypassSecurityTrustResourceUrl(embed) : null;
+  });
+
+  readonly publicVideoDirect = computed<string | null>(() => {
+    const url = this.business()?.video_url;
+    if (!url) return null;
+    return this.isDirectVideoUrl(url) ? url : null;
+  });
 
   readonly isOwnProfile = computed(() => {
     const current = this.profileService.profile();
@@ -112,12 +145,17 @@ export class SocialProfileComponent implements OnInit {
     });
     this.bannerPreview.set(biz?.banner_url ?? null);
     this.galleryImages.set(biz?.gallery_images ?? []);
+    const savedVideo = biz?.video_url ?? null;
+    this.currentVideoUrl.set(savedVideo);
+    this.videoLinkInput = savedVideo && !this.isDirectVideoUrl(savedVideo) ? savedVideo : (savedVideo ?? '');
     this.showEditPanel.set(true);
   }
 
   closeEditPanel(): void {
     this.showEditPanel.set(false);
     this.bannerPreview.set(null);
+    this.currentVideoUrl.set(null);
+    this.videoLinkInput = '';
   }
 
   async onBannerSelected(event: Event): Promise<void> {
@@ -197,6 +235,7 @@ export class SocialProfileComponent implements OnInit {
         twitter:       values.twitter?.trim()        || null,
         banner_url:    this.bannerPreview()          ?? this.business()?.banner_url ?? null,
         gallery_images: this.galleryImages(),
+        video_url:     this.currentVideoUrl(),
       };
       await this.socialService.upsertBusinessProfile(payload);
 
@@ -359,6 +398,68 @@ export class SocialProfileComponent implements OnInit {
     return this.editForm.get(field)?.value?.length ?? 0;
   }
 
+  // ── Video helpers ─────────────────────────────────────────────
+  private toVideoEmbedUrl(url: string): string | null {
+    if (!url) return null;
+    try {
+      const ytWatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+      if (ytWatch) return `https://www.youtube.com/embed/${ytWatch[1]}`;
+      const ytShort = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+      if (ytShort) return `https://www.youtube.com/embed/${ytShort[1]}`;
+      const ytEmbed = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+      if (ytEmbed) return `https://www.youtube.com/embed/${ytEmbed[1]}`;
+      const vimeo = url.match(/vimeo\.com\/(\d+)/);
+      if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+    } catch {}
+    return null;
+  }
+
+  private isDirectVideoUrl(url: string): boolean {
+    return /\.(mp4|webm|ogg|mov|m4v|3gp)(\?|$)/i.test(url);
+  }
+
+  onVideoLinkChange(): void {
+    const trimmed = this.videoLinkInput.trim();
+    this.currentVideoUrl.set(trimmed || null);
+    this.cdr.markForCheck();
+  }
+
+  async onVideoFileSelected(event: Event): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const validTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo'];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(mp4|webm|ogg|mov|avi|m4v)$/i)) {
+      this.showToast('Formato no soportado. Usa MP4, WebM, MOV u OGG.', 'error');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      this.showToast('El video no puede superar 50 MB', 'error');
+      return;
+    }
+    this.uploadingVideo.set(true);
+    this.cdr.markForCheck();
+    try {
+      const result = await this.storageService.uploadImage(this.storageService.BANNERS_BUCKET, file, 'social-videos');
+      if (result.success && result.url) {
+        this.currentVideoUrl.set(result.url);
+        this.videoLinkInput = '';
+        this.showToast('Video subido correctamente', 'success');
+      } else {
+        this.showToast(result.error ?? 'Error al subir el video', 'error');
+      }
+    } finally {
+      this.uploadingVideo.set(false);
+      (event.target as HTMLInputElement).value = '';
+      this.cdr.markForCheck();
+    }
+  }
+
+  clearVideo(): void {
+    this.currentVideoUrl.set(null);
+    this.videoLinkInput = '';
+    this.cdr.markForCheck();
+  }
+
   hasContactInfo(): boolean {
     const biz = this.business();
     const c = this.card();
@@ -373,6 +474,6 @@ export class SocialProfileComponent implements OnInit {
   hasAnyContent(): boolean {
     const c = this.card();
     const biz = this.business();
-    return !!(c?.description || this.hasContactInfo() || this.hasSocialLinks() || (biz?.gallery_images?.length ?? 0) > 0);
+    return !!(c?.description || this.hasContactInfo() || this.hasSocialLinks() || (biz?.gallery_images?.length ?? 0) > 0 || biz?.video_url);
   }
 }

@@ -182,15 +182,71 @@ export interface WaAntiBlockConfig {
   variation_enabled: boolean;
 }
 
-export const DEFAULT_ANTI_BLOCK_CONFIG: WaAntiBlockConfig = {
-  min_delay_seconds: 15,
-  max_delay_seconds: 45,
-  daily_limit: 80,
-  hourly_limit: 20,
-  batch_size: 8,
-  batch_pause_seconds: 180,
-  warmup_enabled: true,
-  warmup_start_count: 15,
-  warmup_increment: 5,
-  variation_enabled: true,
+export type WaAntiBlockPreset = 'new_account' | 'normal' | 'veteran';
+
+export const ANTI_BLOCK_PRESETS: Record<WaAntiBlockPreset, WaAntiBlockConfig> = {
+  // Cuenta nueva (<30 días) o sesión recién conectada. Máxima seguridad.
+  new_account: {
+    min_delay_seconds: 90,
+    max_delay_seconds: 240,
+    daily_limit: 15,
+    hourly_limit: 5,
+    batch_size: 3,
+    batch_pause_seconds: 900,
+    warmup_enabled: true,
+    warmup_start_count: 8,
+    warmup_increment: 3,
+    variation_enabled: true,
+  },
+  // Cuenta normal (1-3 meses enviando regularmente).
+  normal: {
+    min_delay_seconds: 60,
+    max_delay_seconds: 180,
+    daily_limit: 40,
+    hourly_limit: 8,
+    batch_size: 5,
+    batch_pause_seconds: 600,
+    warmup_enabled: false,
+    warmup_start_count: 20,
+    warmup_increment: 5,
+    variation_enabled: true,
+  },
+  // Cuenta veterana (3+ meses, número comercial con historial).
+  veteran: {
+    min_delay_seconds: 45,
+    max_delay_seconds: 120,
+    daily_limit: 80,
+    hourly_limit: 12,
+    batch_size: 6,
+    batch_pause_seconds: 420,
+    warmup_enabled: false,
+    warmup_start_count: 30,
+    warmup_increment: 10,
+    variation_enabled: true,
+  },
 };
+
+// Default = new_account. Siempre empezar en el preset más seguro.
+export const DEFAULT_ANTI_BLOCK_CONFIG: WaAntiBlockConfig = { ...ANTI_BLOCK_PRESETS.new_account };
+
+// Acortadores de URL que WhatsApp marca como spam. Si aparecen en una
+// plantilla, se bloquea el guardado y se pide al usuario usar el link
+// completo.
+const URL_SHORTENER_DOMAINS = [
+  'bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly', 'is.gd',
+  'buff.ly', 'rebrand.ly', 'cutt.ly', 'shorturl.at', 'tiny.cc',
+  'lnkd.in', 'fb.me', 'amzn.to', 'adf.ly', 'soo.gd', 't.me',
+  'v.gd', 'tr.im', 'snipurl.com', 'bc.vc', 'shorte.st',
+  'ity.im', 'q.gs', 'po.st', 'bl.ink', 's.id', 'yourls.org',
+];
+
+const SHORTENER_REGEX = new RegExp(
+  '\\b(' + URL_SHORTENER_DOMAINS.map(d => d.replace(/\./g, '\\.')).join('|') + ')\\b',
+  'i',
+);
+
+export function findShortenerInText(text: string): string | null {
+  if (!text) return null;
+  const match = SHORTENER_REGEX.exec(text);
+  return match ? match[1] : null;
+}

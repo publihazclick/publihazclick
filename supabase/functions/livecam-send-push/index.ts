@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const { data: subs } = await supabase.from('livecam_push_subs').select('*').in('user_id', userIds);
+    const { data: subs } = await supabase.from('livecam_push_subs').select('id, user_id, endpoint, p256dh, auth').in('user_id', userIds);
     if (!subs || subs.length === 0) return json({ ok: true, sent: 0 });
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);

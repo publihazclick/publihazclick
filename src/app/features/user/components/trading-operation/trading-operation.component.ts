@@ -12,6 +12,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TradingDemoComponent } from '../trading-bot/trading-demo.component';
 import { TradingPackageService, UserTradingPackage } from '../../../../core/services/trading-package.service';
+import type { WithdrawalPayload } from '../../../../core/services/trading-package.service';
 import { PlatformSettingsService } from '../../../../core/services/platform-settings.service';
 import { getSupabaseClient } from '../../../../core/supabase.client';
 
@@ -62,13 +63,16 @@ interface TradingPackage {
               </p>
               <p class="text-emerald-400 font-black text-sm">2.5% - 30% <span class="text-[10px] text-slate-500">/ mes</span></p>
             </button>
-            <!-- Rentabilidad: botón clickeable que abre formulario -->
+            <!-- Balance: clickeable — si <30d muestra mensaje, si ≥30d abre formulario -->
             <button (click)="onEarningsClick()" class="text-right border-l border-white/10 pl-4 cursor-pointer hover:opacity-80 transition-opacity group">
-              <p class="text-[10px] text-slate-500">Ganancia est. / mes</p>
+              <p class="text-[10px] text-slate-500">Balance disponible</p>
               <p class="text-cyan-400 font-black text-base group-hover:text-cyan-300 transition-colors">
-                \${{ earningsMin() | number:'1.2-2' }} - \${{ earningsMax() | number:'1.2-2' }}
+                \${{ profitBalance() | number:'1.2-2' }}
                 <span class="text-[10px] text-slate-500">USD</span>
               </p>
+              @if (totalPaidReturns() > 0) {
+                <p class="text-[9px] text-slate-600">Total acreditado \${{ totalPaidReturns() | number:'1.2-2' }} · Retirado \${{ totalWithdrawnProfit() | number:'1.2-2' }}</p>
+              }
             </button>
           </div>
 
@@ -99,8 +103,8 @@ interface TradingPackage {
                 </button>
               </div>
               <p class="text-[10px] text-slate-500 mb-4">
-                Rentabilidad estimada: <strong class="text-cyan-400">\${{ earningsMin() | number:'1.2-2' }} — \${{ earningsMax() | number:'1.2-2' }} USD</strong>
-                (entre 2.5% y 30% sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD)
+                Monto a retirar: <strong class="text-cyan-400">\${{ profitBalance() | number:'1.2-2' }} USD</strong>
+                (rentabilidad acumulada sobre \${{ currentPkg()!.package?.price_usd | number:'1.0-0' }} USD)
               </p>
               <div class="space-y-3">
                 <div>
@@ -110,6 +114,36 @@ interface TradingPackage {
                     (input)="withdrawFullName.set($any($event.target).value)"
                     placeholder="Tu nombre completo"
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:bg-white/8 transition-all" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Banco o Billetera</label>
+                  <select
+                    [value]="withdrawBank()"
+                    (change)="withdrawBank.set($any($event.target).value)"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500/50 focus:bg-white/8 transition-all">
+                    <option value="" class="bg-[#0a0a0a]">Selecciona…</option>
+                    <optgroup label="Billeteras digitales" class="bg-[#0a0a0a]">
+                      @for (b of bankOptions; track b.id) {
+                        @if (b.kind === 'wallet') {
+                          <option [value]="b.id" class="bg-[#0a0a0a]">{{ b.name }}</option>
+                        }
+                      }
+                    </optgroup>
+                    <optgroup label="Bancos" class="bg-[#0a0a0a]">
+                      @for (b of bankOptions; track b.id) {
+                        @if (b.kind === 'bank') {
+                          <option [value]="b.id" class="bg-[#0a0a0a]">{{ b.name }}</option>
+                        }
+                      }
+                    </optgroup>
+                  </select>
+                  @if (withdrawBank() === 'otro') {
+                    <input type="text"
+                      [value]="withdrawBankOther()"
+                      (input)="withdrawBankOther.set($any($event.target).value)"
+                      placeholder="Escribe el nombre de tu banco"
+                      class="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50" />
+                  }
                 </div>
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-bold">Número de Cuenta</label>
@@ -141,7 +175,7 @@ interface TradingPackage {
               @if (!withdrawDone()) {
                 <button
                   (click)="requestWithdrawal()"
-                  [disabled]="withdrawing() || !withdrawFullName().trim() || !withdrawAccountNumber().trim()"
+                  [disabled]="withdrawing() || !withdrawFullName().trim() || !withdrawAccountNumber().trim() || !withdrawBank() || (withdrawBank() === 'otro' && !withdrawBankOther().trim())"
                   class="mt-4 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg
                     bg-gradient-to-r from-cyan-500 to-emerald-500 text-black hover:from-cyan-400 hover:to-emerald-400 disabled:opacity-40 shadow-cyan-500/20">
                   @if (withdrawing()) {
@@ -222,7 +256,7 @@ interface TradingPackage {
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          @for (pkg of packages; track pkg.price) {
+          @for (pkg of packagesSignal(); track pkg.name) {
             <div class="relative rounded-xl p-3 border transition-all duration-300 hover:scale-105 hover:-translate-y-1 flex flex-col gap-2
               {{ pkg.bg }} {{ pkg.border }} {{ pkg.shadow }}">
               <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full self-start {{ pkg.badge }}">{{ pkg.level }}</span>
@@ -384,6 +418,7 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
 
   readonly currentPkg      = signal<UserTradingPackage | null>(null);
   readonly selectedPackage = signal<TradingPackage | null>(null);
+  readonly packagesSignal  = signal<TradingPackage[]>([]);
   readonly showCapitalModal = signal(false);
   readonly showWithdrawForm = signal(false);
   readonly eligibilityMsg   = signal('');
@@ -394,6 +429,35 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
   readonly withdrawFullName      = signal('');
   readonly withdrawAccountNumber = signal('');
   readonly withdrawAccountType   = signal<'ahorros' | 'corriente'>('ahorros');
+  readonly withdrawBank          = signal<string>('');
+  readonly withdrawBankOther     = signal<string>('');
+
+  readonly bankOptions: ReadonlyArray<{ id: string; name: string; kind: 'bank' | 'wallet' }> = [
+    // Billeteras digitales
+    { id: 'nequi',        name: 'Nequi',                  kind: 'wallet' },
+    { id: 'daviplata',    name: 'Daviplata',              kind: 'wallet' },
+    { id: 'movii',        name: 'Movii',                  kind: 'wallet' },
+    { id: 'rappipay',     name: 'RappiPay',               kind: 'wallet' },
+    { id: 'dale',         name: 'Dale',                   kind: 'wallet' },
+    // Bancos tradicionales
+    { id: 'bancolombia',  name: 'Bancolombia',            kind: 'bank' },
+    { id: 'davivienda',   name: 'Davivienda',             kind: 'bank' },
+    { id: 'bbva',         name: 'BBVA',                   kind: 'bank' },
+    { id: 'bogota',       name: 'Banco de Bogotá',        kind: 'bank' },
+    { id: 'occidente',    name: 'Banco de Occidente',     kind: 'bank' },
+    { id: 'popular',      name: 'Banco Popular',          kind: 'bank' },
+    { id: 'av_villas',    name: 'AV Villas',              kind: 'bank' },
+    { id: 'colpatria',    name: 'Scotiabank Colpatria',   kind: 'bank' },
+    { id: 'agrario',      name: 'Banco Agrario',          kind: 'bank' },
+    { id: 'caja_social',  name: 'Banco Caja Social',      kind: 'bank' },
+    { id: 'falabella',    name: 'Banco Falabella',        kind: 'bank' },
+    { id: 'gnb',          name: 'Banco GNB Sudameris',    kind: 'bank' },
+    { id: 'pichincha',    name: 'Banco Pichincha',        kind: 'bank' },
+    { id: 'itau',         name: 'Itaú',                   kind: 'bank' },
+    { id: 'serfinanza',   name: 'Banco Serfinanza',       kind: 'bank' },
+    { id: 'coopcentral',  name: 'Coopcentral',            kind: 'bank' },
+    { id: 'otro',         name: 'Otro',                   kind: 'bank' },
+  ];
 
   // Fecha del último retiro aprobado para este paquete
   private lastWithdrawalDate = signal<Date | null>(null);
@@ -418,9 +482,22 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     return Math.floor(ms / (1000 * 60 * 60 * 24));
   });
 
-  readonly canWithdraw = computed(() =>
-    this.daysActive() >= 30 && this.daysSinceLastWithdrawal() >= 30
-  );
+  readonly profitBalance       = computed(() => Number(this.currentPkg()?.profit_balance_usd ?? 0));
+  readonly totalPaidReturns    = computed(() => Number(this.currentPkg()?.total_paid_returns_usd ?? 0));
+  readonly totalWithdrawnProfit = computed(() => Number(this.currentPkg()?.total_withdrawn_profit ?? 0));
+
+  readonly canWithdraw = computed(() => {
+    const pkg = this.currentPkg();
+    if (!pkg) return false;
+    if (this.profitBalance() <= 0) return false;
+    if (this.daysActive() < 30) return false;
+    if (pkg.last_withdrawal_at) {
+      const ms = Date.now() - new Date(pkg.last_withdrawal_at).getTime();
+      const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+      if (days < 30) return false;
+    }
+    return true;
+  });
 
   readonly progressPct = computed(() => Math.min(100, (this.daysActive() / 30) * 100));
 
@@ -444,6 +521,14 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     return d;
   });
 
+  readonly nextWithdrawalDate = computed(() => {
+    const pkg = this.currentPkg();
+    if (!pkg?.last_withdrawal_at) return null;
+    const d = new Date(pkg.last_withdrawal_at);
+    d.setDate(d.getDate() + 30);
+    return d;
+  });
+
   ngOnInit(): void {
     // Cargar rentabilidad global fijada por el admin
     this.settingsSvc.getSetting('trading_monthly_return_pct').then(v => {
@@ -452,6 +537,15 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
         this.globalReturnPct.set(parsed);
       }
     }).catch(() => {});
+
+    // Cargar catálogo dinámico (desde DB, reflejando lo que el admin crea/edita)
+    this.svc.getTradingPackages().then(dbPkgs => {
+      if (dbPkgs.length > 0) {
+        this.packagesSignal.set(dbPkgs.map(p => this.toVisualPackage(p.name, Number(p.price_usd), Number(p.monthly_return_pct))));
+      } else {
+        this.packagesSignal.set(this.packages);
+      }
+    }).catch(() => this.packagesSignal.set(this.packages));
 
     this.paramSub = this.route.paramMap.subscribe(params => {
       const packageId = params.get('packageId');
@@ -470,31 +564,38 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
   }
 
   private async loadPackage(packageId: string | null): Promise<void> {
+    let pkg: UserTradingPackage | null = null;
     if (packageId) {
-      const pkg = await this.svc.getMyPackageById(packageId);
-      if (pkg?.package) {
-        this.currentPkg.set(pkg);
-        this.demoPackage.set({
-          name: pkg.package.name, price: pkg.package.price_usd,
-          monthlyReturn: pkg.package.monthly_return_pct,
-          bg: 'bg-emerald-500/5', border: 'border-emerald-500/30',
-          text: 'text-emerald-400', shadow: '', badge: 'bg-emerald-500/20 text-emerald-400', level: 'Activo'
-        });
-        await this.loadLastWithdrawal(pkg.id);
-      }
+      pkg = await this.svc.getMyPackageById(packageId);
     } else {
       const pkgs = await this.svc.getMyActivePackages();
-      if (pkgs.length > 0 && pkgs[0].package) {
-        this.currentPkg.set(pkgs[0]);
-        const p = pkgs[0].package;
-        this.demoPackage.set({
-          name: p.name, price: p.price_usd, monthlyReturn: p.monthly_return_pct,
-          bg: 'bg-emerald-500/5', border: 'border-emerald-500/30',
-          text: 'text-emerald-400', shadow: '', badge: 'bg-emerald-500/20 text-emerald-400', level: 'Activo'
-        });
-        await this.loadLastWithdrawal(pkgs[0].id);
-      }
+      pkg = pkgs[0] ?? null;
     }
+    if (!pkg?.package) return;
+
+    // Disparar accrual defensivo (idempotente). Si hay rentabilidad pendiente
+    // por acreditar, se abona antes de mostrar el balance.
+    try { await this.svc.ensureAccrual(pkg.id); } catch {}
+
+    // Re-leer el paquete con el balance actualizado
+    const fresh = await this.svc.getMyPackageById(pkg.id);
+    const finalPkg = fresh ?? pkg;
+    this.currentPkg.set(finalPkg);
+
+    const p = finalPkg.package!;
+    this.demoPackage.set({
+      name: p.name, price: p.price_usd, monthlyReturn: p.monthly_return_pct,
+      bg: 'bg-emerald-500/5', border: 'border-emerald-500/30',
+      text: 'text-emerald-400', shadow: '', badge: 'bg-emerald-500/20 text-emerald-400', level: 'Activo'
+    });
+    await this.loadLastWithdrawal(finalPkg.id);
+  }
+
+  private async refreshPackage(): Promise<void> {
+    const current = this.currentPkg();
+    if (!current) return;
+    const fresh = await this.svc.getMyPackageById(current.id);
+    if (fresh) this.currentPkg.set(fresh);
   }
 
   private async loadLastWithdrawal(userPkgId: string): Promise<void> {
@@ -518,24 +619,33 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Regla 1: menos de 30 días desde activación
     if (this.daysActive() < 30) {
-      const available = this.withdrawAvailableDate();
-      const dateStr = available
-        ? available.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
-        : '';
       this.eligibilityMsg.set(
-        `Debes esperar 30 días calendario desde la activación de tu paquete para solicitar el retiro de rentabilidad. ` +
-        `Tu paquete lleva ${this.daysActive()} día(s) activo. Fecha disponible: ${dateStr}.`
+        'Cada 30 días podrás retirar el dinero de tu rentabilidad. Aún no has cumplido el primer ciclo.'
       );
       return;
     }
 
-    if (this.daysSinceLastWithdrawal() < 30) {
-      const daysLeft = 30 - this.daysSinceLastWithdrawal();
-      this.eligibilityMsg.set(
-        `Ya realizaste una solicitud de retiro recientemente. Debes esperar 30 días calendario entre cada solicitud. ` +
-        `Podrás hacer una nueva solicitud en ${daysLeft} día(s).`
-      );
+    // Regla 2: menos de 30 días desde el último retiro
+    const pkg = this.currentPkg();
+    if (pkg?.last_withdrawal_at) {
+      const ms = Date.now() - new Date(pkg.last_withdrawal_at).getTime();
+      const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+      if (days < 30) {
+        const left = 30 - days;
+        const next = this.nextWithdrawalDate();
+        const dateStr = next ? next.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+        this.eligibilityMsg.set(
+          `Cada 30 días podrás retirar el dinero de tu rentabilidad. Faltan ${left} día(s). Próximo retiro disponible el ${dateStr}.`
+        );
+        return;
+      }
+    }
+
+    // Regla 3: balance disponible
+    if (this.profitBalance() <= 0) {
+      this.eligibilityMsg.set('Aún no hay rentabilidad acreditada para retirar.');
       return;
     }
 
@@ -549,6 +659,8 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     this.withdrawFullName.set('');
     this.withdrawAccountNumber.set('');
     this.withdrawAccountType.set('ahorros');
+    this.withdrawBank.set('');
+    this.withdrawBankOther.set('');
   }
 
   async requestWithdrawal(): Promise<void> {
@@ -556,45 +668,56 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     if (!pkg || this.withdrawing()) return;
     if (!this.withdrawFullName().trim() || !this.withdrawAccountNumber().trim()) return;
 
+    // Validar banco seleccionado
+    const bankId = this.withdrawBank();
+    if (!bankId) {
+      this.withdrawFeedback.set('Selecciona un banco o billetera.');
+      this.withdrawFeedbackType.set('err');
+      return;
+    }
+    const bankName = bankId === 'otro'
+      ? this.withdrawBankOther().trim()
+      : (this.bankOptions.find(b => b.id === bankId)?.name ?? bankId);
+    if (!bankName) {
+      this.withdrawFeedback.set('Escribe el nombre de tu banco.');
+      this.withdrawFeedbackType.set('err');
+      return;
+    }
+
+    const amount = this.profitBalance();
+    if (amount <= 0) return;
+
     this.withdrawing.set(true);
     this.withdrawFeedback.set(null);
 
-    const { data: { user } } = await this.supabase.auth.getUser();
-    if (!user) { this.withdrawing.set(false); return; }
+    const payload: WithdrawalPayload = {
+      fullName:      this.withdrawFullName().trim(),
+      accountNumber: this.withdrawAccountNumber().trim(),
+      accountType:   this.withdrawAccountType(),
+      bank:          bankName,
+    };
+    const result = await this.svc.requestProfitWithdrawal(pkg.id, amount, payload);
 
-    const minAmount = this.earningsMin();
-    const maxAmount = this.earningsMax();
-    const { error } = await this.supabase.from('withdrawal_requests').insert({
-      user_id: user.id,
-      amount: minAmount,
-      method: 'trading_profit',
-      details: {
-        type: 'trading_profit',
-        package_name: pkg.package?.name,
-        package_id: pkg.package_id,
-        user_trading_package_id: pkg.id,
-        price_usd: pkg.package?.price_usd,
-        earnings_min_usd: minAmount,
-        earnings_max_usd: maxAmount,
-        return_range: '2.5% - 30%',
-        activated_at: pkg.activated_at,
-        days_active: this.daysActive(),
-        full_name: this.withdrawFullName().trim(),
-        account_number: this.withdrawAccountNumber().trim(),
-        account_type: this.withdrawAccountType(),
-      },
-    });
-
-    if (error) {
-      this.withdrawFeedback.set('Error al enviar la solicitud. Intenta de nuevo.');
+    if (!result.ok) {
+      const reasons: Record<string, string> = {
+        not_authenticated:      'Sesión no válida. Vuelve a iniciar sesión.',
+        package_not_found:      'Paquete no encontrado.',
+        package_inactive:       'Este paquete ya no está activo.',
+        not_yet_eligible:       'Aún no cumples 30 días desde la activación.',
+        withdrawal_cooldown:    'Debes esperar 30 días desde tu último retiro.',
+        invalid_amount:         'Monto inválido.',
+        amount_exceeds_balance: 'El monto excede tu balance disponible.',
+      };
+      this.withdrawFeedback.set(reasons[result.reason || ''] || result.reason || 'Error al enviar la solicitud.');
       this.withdrawFeedbackType.set('err');
     } else {
       this.withdrawDone.set(true);
       this.lastWithdrawalDate.set(new Date());
       this.withdrawFeedback.set(
-        `✓ Solicitud enviada. El administrador procesará tu retiro (entre $${minAmount.toFixed(2)} y $${maxAmount.toFixed(2)} USD).`
+        `✓ Solicitud enviada por $${amount.toFixed(2)} USD. El administrador la procesará pronto.`
       );
       this.withdrawFeedbackType.set('ok');
+      await this.refreshPackage();
     }
     this.withdrawing.set(false);
   }
@@ -643,4 +766,27 @@ export class TradingOperationComponent implements OnInit, OnDestroy {
     { name: 'Black II',      price: 19500, monthlyReturn: 6.0, level: 'Black',     bg: 'bg-white/[0.03]',   border: 'border-white/25',       text: 'text-white',       shadow: 'hover:shadow-lg hover:shadow-white/15',      badge: 'bg-white/15 text-white'           },
     { name: 'Ápex',          price: 20000, monthlyReturn: 6.0, level: 'Black',     bg: 'bg-gradient-to-br from-yellow-500/10 to-white/5', border: 'border-yellow-400/50', text: 'text-yellow-300', shadow: 'hover:shadow-xl hover:shadow-yellow-400/30', badge: 'bg-yellow-400/20 text-yellow-300' },
   ];
+
+  private toVisualPackage(name: string, price: number, monthlyReturn: number): TradingPackage {
+    const style = this.styleForPrice(price);
+    return { name, price, monthlyReturn, ...style };
+  }
+
+  private styleForPrice(price: number): Omit<TradingPackage, 'name' | 'price' | 'monthlyReturn'> {
+    if (price < 500)    return { level: 'Entrada',   bg: 'bg-emerald-500/5', border: 'border-emerald-500/30', text: 'text-emerald-400', shadow: 'hover:shadow-lg hover:shadow-emerald-500/10', badge: 'bg-emerald-500/20 text-emerald-400' };
+    if (price < 2500)   return { level: 'Bronce',    bg: 'bg-amber-700/10',  border: 'border-amber-700/40',   text: 'text-amber-600',   shadow: 'hover:shadow-lg hover:shadow-amber-700/15',   badge: 'bg-amber-700/20 text-amber-600' };
+    if (price < 4000)   return { level: 'Plata',     bg: 'bg-slate-400/5',   border: 'border-slate-400/30',   text: 'text-slate-300',   shadow: 'hover:shadow-lg hover:shadow-slate-400/10',   badge: 'bg-slate-400/20 text-slate-300' };
+    if (price < 5500)   return { level: 'Oro',       bg: 'bg-yellow-500/5',  border: 'border-yellow-500/30',  text: 'text-yellow-400',  shadow: 'hover:shadow-lg hover:shadow-yellow-500/15',  badge: 'bg-yellow-500/20 text-yellow-400' };
+    if (price < 7000)   return { level: 'Zafiro',    bg: 'bg-blue-500/5',    border: 'border-blue-500/30',    text: 'text-blue-400',    shadow: 'hover:shadow-lg hover:shadow-blue-500/15',    badge: 'bg-blue-500/20 text-blue-400' };
+    if (price < 8500)   return { level: 'Esmeralda', bg: 'bg-teal-500/5',    border: 'border-teal-500/30',    text: 'text-teal-400',    shadow: 'hover:shadow-lg hover:shadow-teal-500/15',    badge: 'bg-teal-500/20 text-teal-400' };
+    if (price < 10000)  return { level: 'Rubí',      bg: 'bg-red-500/5',     border: 'border-red-500/30',     text: 'text-red-400',     shadow: 'hover:shadow-lg hover:shadow-red-500/15',     badge: 'bg-red-500/20 text-red-400' };
+    if (price < 11500)  return { level: 'Diamante',  bg: 'bg-cyan-500/5',    border: 'border-cyan-500/30',    text: 'text-cyan-400',    shadow: 'hover:shadow-lg hover:shadow-cyan-500/20',    badge: 'bg-cyan-500/20 text-cyan-400' };
+    if (price < 13000)  return { level: 'Platino',   bg: 'bg-violet-500/5',  border: 'border-violet-500/30',  text: 'text-violet-400',  shadow: 'hover:shadow-lg hover:shadow-violet-500/20',  badge: 'bg-violet-500/20 text-violet-400' };
+    if (price < 14500)  return { level: 'Élite',     bg: 'bg-fuchsia-500/5', border: 'border-fuchsia-500/30', text: 'text-fuchsia-400', shadow: 'hover:shadow-lg hover:shadow-fuchsia-500/20', badge: 'bg-fuchsia-500/20 text-fuchsia-400' };
+    if (price < 16000)  return { level: 'Máster',    bg: 'bg-indigo-500/5',  border: 'border-indigo-500/30',  text: 'text-indigo-400',  shadow: 'hover:shadow-lg hover:shadow-indigo-500/20',  badge: 'bg-indigo-500/20 text-indigo-400' };
+    if (price < 17500)  return { level: 'Leyenda',   bg: 'bg-orange-500/5',  border: 'border-orange-500/30',  text: 'text-orange-400',  shadow: 'hover:shadow-lg hover:shadow-orange-500/20',  badge: 'bg-orange-500/20 text-orange-400' };
+    if (price < 19000)  return { level: 'VIP',       bg: 'bg-rose-500/5',    border: 'border-rose-500/30',    text: 'text-rose-400',    shadow: 'hover:shadow-lg hover:shadow-rose-500/20',    badge: 'bg-rose-500/20 text-rose-400' };
+    if (price < 20000)  return { level: 'Black',     bg: 'bg-white/[0.03]',  border: 'border-white/20',       text: 'text-white',       shadow: 'hover:shadow-lg hover:shadow-white/10',       badge: 'bg-white/10 text-white' };
+    return                      { level: 'Ápex',     bg: 'bg-gradient-to-br from-yellow-500/10 to-white/5', border: 'border-yellow-400/50', text: 'text-yellow-300', shadow: 'hover:shadow-xl hover:shadow-yellow-400/30', badge: 'bg-yellow-400/20 text-yellow-300' };
+  }
 }

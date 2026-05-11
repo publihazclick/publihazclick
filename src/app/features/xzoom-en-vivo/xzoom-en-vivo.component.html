@@ -282,98 +282,239 @@
         }
       </section>
 
-      <!-- EDITAR MI CANAL -->
-      <section class="xzoom-card edit-channel">
-        <h3>Editar mi canal</h3>
-        <p class="muted">Personaliza cómo se ve tu landing privada para tus invitados.</p>
+      <!-- EDITAR MI CANAL (con previsualización en tiempo real) -->
+      <div class="edit-outer">
 
-        @if (editError()) {
-          <div class="xzoom-alert error" style="margin-top:12px">
-            {{ editError() }}
-            <button (click)="editError.set(null)">×</button>
+        <!-- Formulario de edición -->
+        <section class="xzoom-card edit-channel">
+          <h3>Editar mi canal</h3>
+          <p class="muted">Personaliza cómo se ve tu landing privada para tus invitados.</p>
+
+          @if (editError()) {
+            <div class="xzoom-alert error" style="margin-top:12px">
+              {{ editError() }}
+              <button (click)="editError.set(null)">×</button>
+            </div>
+          }
+
+          <label>Nombre público del canal</label>
+          <input type="text" [value]="editDisplayName()" (input)="editDisplayName.set($any($event.target).value)" placeholder="Mi canal" />
+
+          <label>Descripción / biografía</label>
+          <textarea [value]="editBio()" (input)="editBio.set($any($event.target).value)" placeholder="Cuéntales a tus invitados de qué trata tu canal…"></textarea>
+
+          <label>Categoría</label>
+          <select [value]="editCategory()" (change)="editCategory.set($any($event.target).value)">
+            <option value="">Sin categoría</option>
+            <option value="educacion">Educación</option>
+            <option value="entretenimiento">Entretenimiento</option>
+            <option value="negocios">Negocios</option>
+            <option value="deportes">Deportes</option>
+            <option value="salud">Salud y bienestar</option>
+            <option value="tecnologia">Tecnología</option>
+            <option value="espiritualidad">Espiritualidad</option>
+            <option value="arte">Arte y cultura</option>
+          </select>
+
+          <label>Precio mensual de suscripción (USD)</label>
+          <input type="number" min="1" step="0.5" [value]="editPriceUsd()" (input)="editPriceUsd.set(+$any($event.target).value)" placeholder="5" />
+
+          <!-- FOTO DE PERFIL -->
+          <label>Foto de perfil</label>
+          <small class="hint">Tamaño recomendado: 400 × 400 px (cuadrada). Máximo 5MB.</small>
+          <div class="upload-row">
+            <input type="file" accept="image/*" (change)="onFileUpload($event, 'avatar')" class="file-input" #avatarFile />
+            <button type="button" class="btn-upload" (click)="avatarFile.click()" [disabled]="uploadingAvatar()">
+              @if (uploadingAvatar()) {
+                <span class="upload-spinner"></span> Subiendo…
+              } @else { Subir foto de perfil }
+            </button>
           </div>
-        }
+          @if (avatarUploadError()) {
+            <p class="field-upload-error">
+              <span class="material-symbols-outlined">error</span>
+              {{ avatarUploadError() }}
+            </p>
+          }
+          @if (editAvatarUrl()) {
+            <div class="preview-thumb">
+              <img [src]="editAvatarUrl()" alt="Preview perfil" />
+              <button type="button" class="btn-remove-img" (click)="editAvatarUrl.set(''); avatarUploadError.set(null)">Quitar</button>
+            </div>
+          }
 
-        <label>Nombre público del canal</label>
-        <input type="text" [value]="editDisplayName()" (input)="editDisplayName.set($any($event.target).value)" placeholder="Mi canal" />
-
-        <label>Descripción / biografía</label>
-        <textarea [value]="editBio()" (input)="editBio.set($any($event.target).value)" placeholder="Cuéntales a tus invitados de qué trata tu canal…"></textarea>
-
-        <label>Categoría</label>
-        <select [value]="editCategory()" (change)="editCategory.set($any($event.target).value)">
-          <option value="">Sin categoría</option>
-          <option value="educacion">Educación</option>
-          <option value="entretenimiento">Entretenimiento</option>
-          <option value="negocios">Negocios</option>
-          <option value="deportes">Deportes</option>
-          <option value="salud">Salud y bienestar</option>
-          <option value="tecnologia">Tecnología</option>
-          <option value="espiritualidad">Espiritualidad</option>
-          <option value="arte">Arte y cultura</option>
-        </select>
-
-        <label>Precio mensual de suscripción (USD)</label>
-        <input type="number" min="1" step="0.5" [value]="editPriceUsd()" (input)="editPriceUsd.set(+$any($event.target).value)" placeholder="5" />
-
-        <!-- FOTO DE PERFIL -->
-        <label>Foto de perfil</label>
-        <small class="hint">Tamaño recomendado: 400 × 400 px (cuadrada). Máximo 5MB.</small>
-        <div class="upload-row">
-          <input type="file" accept="image/*" (change)="onFileUpload($event, 'avatar')" class="file-input" #avatarFile />
-          <button type="button" class="btn-upload" (click)="avatarFile.click()" [disabled]="uploadingAvatar()">
-            @if (uploadingAvatar()) { Subiendo… } @else { Subir foto de perfil }
-          </button>
-        </div>
-        @if (editAvatarUrl()) {
-          <div class="preview-thumb">
-            <img [src]="editAvatarUrl()" alt="Preview perfil" />
-            <button type="button" class="btn-remove-img" (click)="editAvatarUrl.set('')">Quitar</button>
+          <!-- IMAGEN DE PORTADA -->
+          <label>Imagen de portada</label>
+          <small class="hint">Tamaño recomendado: 1280 × 400 px (horizontal). Se verá como banner en tu landing. Máximo 5MB.</small>
+          <div class="upload-row">
+            <input type="file" accept="image/*" (change)="onFileUpload($event, 'cover')" class="file-input" #coverFile />
+            <button type="button" class="btn-upload" (click)="coverFile.click()" [disabled]="uploadingCover()">
+              @if (uploadingCover()) {
+                <span class="upload-spinner"></span> Subiendo…
+              } @else { Subir imagen de portada }
+            </button>
           </div>
-        }
+          @if (coverUploadError()) {
+            <p class="field-upload-error">
+              <span class="material-symbols-outlined">error</span>
+              {{ coverUploadError() }}
+            </p>
+          }
+          @if (editCoverUrl()) {
+            <div class="preview-cover">
+              <img [src]="editCoverUrl()" alt="Preview portada" />
+              <button type="button" class="btn-remove-img" (click)="editCoverUrl.set(''); coverUploadError.set(null)">Quitar</button>
+            </div>
+          }
 
-        <!-- IMAGEN DE PORTADA -->
-        <label>Imagen de portada</label>
-        <small class="hint">Tamaño recomendado: 1280 × 400 px (horizontal). Se verá como banner en tu landing. Máximo 5MB.</small>
-        <div class="upload-row">
-          <input type="file" accept="image/*" (change)="onFileUpload($event, 'cover')" class="file-input" #coverFile />
-          <button type="button" class="btn-upload" (click)="coverFile.click()" [disabled]="uploadingCover()">
-            @if (uploadingCover()) { Subiendo… } @else { Subir imagen de portada }
-          </button>
-        </div>
-        @if (editCoverUrl()) {
-          <div class="preview-cover">
-            <img [src]="editCoverUrl()" alt="Preview portada" />
-            <button type="button" class="btn-remove-img" (click)="editCoverUrl.set('')">Quitar</button>
+          <!-- VIDEO DE PRESENTACIÓN -->
+          <label>Video de presentación</label>
+          <small class="hint">Sube un video (MP4, MOV, WebM — máx 500MB) o pega un enlace de YouTube, Vimeo, TikTok, etc.</small>
+          <div class="upload-row">
+            <input type="file" accept="video/*" (change)="onFileUpload($event, 'video')" class="file-input" #videoFile />
+            <button type="button" class="btn-upload" (click)="videoFile.click()" [disabled]="uploadingVideo()">
+              @if (uploadingVideo()) {
+                <span class="upload-spinner"></span> Subiendo…
+              } @else { Subir video }
+            </button>
+            <span class="upload-or">ó</span>
+            <input type="text" [value]="editPitchVideoUrl()" (input)="editPitchVideoUrl.set($any($event.target).value)" placeholder="https://youtube.com/watch?v=..." />
           </div>
-        }
+          @if (videoUploadError()) {
+            <p class="field-upload-error">
+              <span class="material-symbols-outlined">error</span>
+              {{ videoUploadError() }}
+            </p>
+          }
 
-        <!-- VIDEO DE PRESENTACIÓN -->
-        <label>Video de presentación</label>
-        <small class="hint">Pega un link de YouTube, Vimeo o sube un video MP4 (máximo 50MB). Este video lo verán tus invitados antes de suscribirse.</small>
-        <div class="upload-row">
-          <input type="file" accept="video/mp4,video/webm,video/quicktime" (change)="onFileUpload($event, 'video')" class="file-input" #videoFile />
-          <button type="button" class="btn-upload" (click)="videoFile.click()" [disabled]="uploadingVideo()">
-            @if (uploadingVideo()) { Subiendo… } @else { Subir video }
+          <button class="btn-primary" (click)="saveHostProfile()" [disabled]="savingProfile()">
+            @if (savingProfile()) { Guardando… } @else { Guardar cambios }
           </button>
-          <span class="upload-or">ó</span>
-          <input type="url" [value]="editPitchVideoUrl()" (input)="editPitchVideoUrl.set($any($event.target).value)" placeholder="https://www.youtube.com/watch?v=..." />
+
+          @if (profileSaveMsg()) {
+            <p class="save-msg success">{{ profileSaveMsg() }}</p>
+          }
+        </section>
+
+        <!-- PANEL DE PREVISUALIZACIÓN EN TIEMPO REAL -->
+        <div class="channel-preview">
+          <div class="prev-header">
+            <span class="material-symbols-outlined">visibility</span>
+            Vista previa en tiempo real
+          </div>
+
+          <!-- Mini landing -->
+          <div class="prev-card">
+
+            <!-- Cover + Avatar -->
+            <div class="prev-cover-wrap"
+              [style.background-image]="editCoverUrl() ? 'url(' + editCoverUrl() + ')' : 'none'"
+              [class.no-cover]="!editCoverUrl()">
+              <div class="prev-cover-grad"></div>
+              <div class="prev-avatar-wrap">
+                @if (editAvatarUrl()) {
+                  <img [src]="editAvatarUrl()" alt="avatar" />
+                } @else {
+                  <span class="material-symbols-outlined">person</span>
+                }
+              </div>
+            </div>
+
+            <div class="prev-body">
+              <!-- Nombre y categoría -->
+              <p class="prev-name">{{ editDisplayName() || 'Nombre del canal' }}</p>
+              @if (editCategory()) {
+                <span class="prev-cat">{{ editCategory() }}</span>
+              }
+
+              <!-- Video -->
+              <div class="prev-video-wrap">
+                @if (previewVideoEmbed()) {
+                  <iframe [src]="previewVideoEmbed()!" frameborder="0" allowfullscreen></iframe>
+                } @else if (previewVideoDirect()) {
+                  <video [src]="previewVideoDirect()!" controls playsinline></video>
+                } @else if (editPitchVideoUrl()) {
+                  <div class="prev-video-warn">
+                    <span class="material-symbols-outlined">error_outline</span>
+                    <span>No se puede previsualizar, pero el enlace se guardará.</span>
+                  </div>
+                } @else {
+                  <div class="prev-video-ph">
+                    <span class="material-symbols-outlined">movie</span>
+                    <span>Sin video de presentación</span>
+                  </div>
+                }
+              </div>
+
+              <!-- Bio -->
+              <p class="prev-bio" [class.prev-bio-empty]="!editBio()">
+                {{ editBio() || 'Sin descripción aún…' }}
+              </p>
+
+              <!-- Precio -->
+              <div class="prev-price-card">
+                <span class="prev-price-label">Suscripción mensual</span>
+                <strong class="prev-price-value">${{ editPriceUsd() }} USD / mes</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Checklist de estado del canal -->
+          <div class="prev-checklist">
+            <p class="prev-checklist-title">Estado de tu canal</p>
+
+            <div class="prev-check-item" [class.done]="!!editDisplayName()" [class.pending]="!editDisplayName()">
+              <span class="material-symbols-outlined">{{ editDisplayName() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              <span class="check-label">Nombre del canal</span>
+            </div>
+
+            <div class="prev-check-item"
+              [class.done]="!!editAvatarUrl() && !avatarUploadError()"
+              [class.has-error]="!!avatarUploadError()"
+              [class.pending]="!editAvatarUrl() && !avatarUploadError()">
+              <span class="material-symbols-outlined">{{ avatarUploadError() ? 'error' : editAvatarUrl() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              <div class="check-detail">
+                <span class="check-label">Foto de perfil</span>
+                @if (avatarUploadError()) {
+                  <span class="check-error-msg">{{ avatarUploadError() }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="prev-check-item"
+              [class.done]="!!editCoverUrl() && !coverUploadError()"
+              [class.has-error]="!!coverUploadError()"
+              [class.pending]="!editCoverUrl() && !coverUploadError()">
+              <span class="material-symbols-outlined">{{ coverUploadError() ? 'error' : editCoverUrl() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              <div class="check-detail">
+                <span class="check-label">Imagen de portada</span>
+                @if (coverUploadError()) {
+                  <span class="check-error-msg">{{ coverUploadError() }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="prev-check-item"
+              [class.done]="!!editPitchVideoUrl() && !videoUploadError()"
+              [class.has-error]="!!videoUploadError()"
+              [class.pending]="!editPitchVideoUrl() && !videoUploadError()">
+              <span class="material-symbols-outlined">{{ videoUploadError() ? 'error' : editPitchVideoUrl() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              <div class="check-detail">
+                <span class="check-label">Video de presentación</span>
+                @if (videoUploadError()) {
+                  <span class="check-error-msg">{{ videoUploadError() }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="prev-check-item" [class.done]="!!editBio()" [class.pending]="!editBio()">
+              <span class="material-symbols-outlined">{{ editBio() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              <span class="check-label">Descripción del canal</span>
+            </div>
+          </div>
         </div>
-        @if (editPitchVideoUrl()) {
-          <p class="preview-video-url">
-            <span class="material-symbols-outlined" style="font-size:14px">play_circle</span>
-            {{ editPitchVideoUrl() }}
-          </p>
-        }
 
-        <button class="btn-primary" (click)="saveHostProfile()" [disabled]="savingProfile()">
-          @if (savingProfile()) { Guardando… } @else { Guardar cambios }
-        </button>
-
-        @if (profileSaveMsg()) {
-          <p class="save-msg success">{{ profileSaveMsg() }}</p>
-        }
-      </section>
+      </div><!-- /edit-outer -->
 
       <section class="xzoom-card recordings">
         <h3>

@@ -19,6 +19,7 @@ export interface SocialBusinessProfile {
   tiktok: string | null;
   twitter: string | null;
   gallery_images: string[];
+  video_url: string | null;
   created_at: string;
   updated_at: string;
 }

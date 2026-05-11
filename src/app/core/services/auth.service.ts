@@ -265,6 +265,9 @@ export class AuthService implements OnDestroy {
       ['network', 'Error de conexión. Verifica tu internet'],
       ['fetch', 'Error de conexión. Verifica tu internet'],
       ['Edge Function returned a non-2xx status code', 'Error en el servidor. Intenta de nuevo'],
+      ['exceed_cached_egress_quota', 'El servicio está temporalmente no disponible. Por favor intenta más tarde'],
+      ['restricted due to', 'El servicio está temporalmente no disponible. Por favor intenta más tarde'],
+      ['service is restricted', 'El servicio está temporalmente no disponible. Por favor intenta más tarde'],
     ];
 
     const lower = msg.toLowerCase();
@@ -272,7 +275,7 @@ export class AuthService implements OnDestroy {
       if (lower.includes(key.toLowerCase())) return val;
     }
 
-    return msg;
+    return 'Ocurrió un error inesperado. Por favor intenta de nuevo más tarde.';
   }
 
   /**

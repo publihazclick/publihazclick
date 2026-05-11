@@ -55,7 +55,8 @@ import { PlatformSettingsService } from '../../../../core/services/platform-sett
             <div class="flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2">
               <input
                 type="number"
-                [(ngModel)]="returnInputValue"
+                [ngModel]="returnInputValue()"
+                (ngModelChange)="returnInputValue.set(+$event)"
                 min="2.5" max="30" step="0.5"
                 class="w-20 bg-transparent text-white font-black text-lg text-center focus:outline-none"
               />
@@ -87,7 +88,8 @@ import { PlatformSettingsService } from '../../../../core/services/platform-sett
         <div class="mt-3 flex items-center gap-3">
           <input
             type="range"
-            [(ngModel)]="returnInputValue"
+            [ngModel]="returnInputValue()"
+                (ngModelChange)="returnInputValue.set(+$event)"
             min="2.5" max="30" step="0.5"
             class="flex-1 accent-emerald-400 h-2 rounded-full cursor-pointer"
           />
@@ -412,7 +414,7 @@ export class TradingConfigComponent implements OnInit {
 
   // ── Rentabilidad global ───────────────────────────────────────────────────
   readonly globalReturnPct = signal(30);
-  returnInputValue = 30;
+  readonly returnInputValue = signal<number>(30);
   readonly savingReturn = signal(false);
   readonly returnFeedback = signal<string | null>(null);
   readonly returnFeedbackType = signal<'ok' | 'err'>('ok');
@@ -446,7 +448,7 @@ export class TradingConfigComponent implements OnInit {
       const parsed = parseFloat(v);
       if (!isNaN(parsed)) {
         this.globalReturnPct.set(parsed);
-        this.returnInputValue = parsed;
+        this.returnInputValue.set(parsed);
       }
     }).catch(() => {});
 
@@ -460,7 +462,7 @@ export class TradingConfigComponent implements OnInit {
   }
 
   async saveGlobalReturn(): Promise<void> {
-    const val = Number(this.returnInputValue);
+    const val = Number(this.returnInputValue());
     if (isNaN(val) || val < 2.5 || val > 30) {
       this.returnFeedback.set('El valor debe estar entre 2.5% y 30%');
       this.returnFeedbackType.set('err');
@@ -474,12 +476,14 @@ export class TradingConfigComponent implements OnInit {
       this.globalReturnPct.set(val);
       this.returnFeedback.set(`✓ Rentabilidad global actualizada a ${val}% mensual`);
       this.returnFeedbackType.set('ok');
-    } catch {
-      this.returnFeedback.set('Error al guardar. Intenta de nuevo.');
+    } catch (err) {
+      console.error('[trading-config] saveGlobalReturn failed:', err);
+      const msg = err instanceof Error ? err.message : 'Error al guardar. Intenta de nuevo.';
+      this.returnFeedback.set(msg);
       this.returnFeedbackType.set('err');
     }
     this.savingReturn.set(false);
-    setTimeout(() => this.returnFeedback.set(null), 5000);
+    setTimeout(() => this.returnFeedback.set(null), 6000);
   }
 
   private async loadPage(page: number): Promise<void> {

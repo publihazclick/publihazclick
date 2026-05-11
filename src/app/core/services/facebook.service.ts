@@ -31,7 +31,7 @@ export class FacebookService {
     const uid = await this.userId();
     if (!uid) return [];
     const { data } = await this.supabase.from('fb_sessions')
-      .select('*').eq('user_id', uid).order('created_at', { ascending: false });
+      .select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(20);
     return data ?? [];
   }
 
@@ -53,7 +53,7 @@ export class FacebookService {
     if (!uid) return [];
     let q = this.supabase.from('fb_groups').select('*').eq('user_id', uid);
     if (status) q = q.eq('status', status);
-    const { data } = await q.order('name');
+    const { data } = await q.order('name').limit(500);
     return data ?? [];
   }
 
@@ -78,7 +78,7 @@ export class FacebookService {
     const uid = await this.userId();
     if (!uid) return [];
     const { data } = await this.supabase.from('fb_pages')
-      .select('*').eq('user_id', uid).order('name');
+      .select('*').eq('user_id', uid).order('name').limit(200);
     return data ?? [];
   }
 
@@ -100,7 +100,7 @@ export class FacebookService {
     if (!uid) return [];
     const { data } = await this.supabase.from('fb_post_templates')
       .select('*').eq('user_id', uid)
-      .order('is_favorite', { ascending: false }).order('created_at', { ascending: false });
+      .order('is_favorite', { ascending: false }).order('created_at', { ascending: false }).limit(200);
     return data ?? [];
   }
 
@@ -128,7 +128,7 @@ export class FacebookService {
     if (!uid) return [];
     const { data } = await this.supabase.from('fb_message_templates')
       .select('*').eq('user_id', uid)
-      .order('is_favorite', { ascending: false }).order('created_at', { ascending: false });
+      .order('is_favorite', { ascending: false }).order('created_at', { ascending: false }).limit(200);
     return data ?? [];
   }
 
@@ -156,7 +156,7 @@ export class FacebookService {
     if (!uid) return [];
     const { data } = await this.supabase.from('fb_campaigns')
       .select('*, post_template:fb_post_templates(*), message_template:fb_message_templates(*)')
-      .eq('user_id', uid).order('created_at', { ascending: false });
+      .eq('user_id', uid).order('created_at', { ascending: false }).limit(100);
     return data ?? [];
   }
 
@@ -184,7 +184,7 @@ export class FacebookService {
     const uid = await this.userId();
     if (!uid) return [];
     const { data } = await this.supabase.from('fb_scheduled_posts')
-      .select('*').eq('user_id', uid).order('scheduled_at', { ascending: true });
+      .select('*').eq('user_id', uid).order('scheduled_at', { ascending: true }).limit(100);
     return data ?? [];
   }
 

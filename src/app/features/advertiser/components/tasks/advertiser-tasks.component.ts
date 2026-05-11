@@ -328,7 +328,8 @@ export class AdvertiserTasksComponent implements OnInit, OnDestroy {
         .from('ptc_tasks')
         .select('*')
         .in('ad_type', megaTypes)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .limit(100);
 
       const tasksByType: Record<string, any> = {};
       for (const t of megaTasks ?? []) {

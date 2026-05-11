@@ -62,7 +62,8 @@ export class SocialService {
     const { data: connections } = await this.supabase
       .from('social_connections')
       .select('id, requester_id, receiver_id, status')
-      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`);
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+      .limit(2000);
 
     const connMap = new Map<string, { status: ConnectionStatus; id: string; is_requester: boolean }>();
     (connections ?? []).forEach((c: any) => {
@@ -357,7 +358,8 @@ export class SocialService {
       .from('social_messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(200);
 
     if (error) throw error;
     return data ?? [];

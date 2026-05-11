@@ -1,4 +1,5 @@
-import { Component, ChangeDetectionStrategy, signal, inject, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, PLATFORM_ID, OnInit } from '@angular/core';
+import { TradingPackageService } from '../../../../core/services/trading-package.service';
 import { DecimalPipe, isPlatformBrowser } from '@angular/common';
 import { TradingDemoComponent } from './trading-demo.component';
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -152,7 +153,7 @@ interface TradingPackage {
         </h3>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          @for (pkg of packages; track pkg.price) {
+          @for (pkg of packagesSignal(); track pkg.name) {
             <div class="relative rounded-xl p-3 border transition-all duration-300 hover:scale-105 hover:-translate-y-1 flex flex-col gap-2
               {{ pkg.bg }} {{ pkg.border }} {{ pkg.shadow }}">
 
@@ -464,9 +465,46 @@ interface TradingPackage {
     }
   `,
 })
-export class TradingBotComponent {
+export class TradingBotComponent implements OnInit {
   readonly profileService = inject(ProfileService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly tradingSvc = inject(TradingPackageService);
+
+  readonly packagesSignal = signal<TradingPackage[]>([]);
+
+  async ngOnInit(): Promise<void> {
+    const dbPkgs = await this.tradingSvc.getTradingPackages();
+    if (dbPkgs.length > 0) {
+      // Mapear los paquetes de DB al shape visual (con clases CSS por nivel)
+      this.packagesSignal.set(dbPkgs.map(p => this.toVisualPackage(p.name, Number(p.price_usd), Number(p.monthly_return_pct))));
+    } else {
+      // Fallback: usar el hardcoded
+      this.packagesSignal.set(this.packages);
+    }
+  }
+
+  private toVisualPackage(name: string, price: number, monthlyReturn: number): TradingPackage {
+    const style = this.styleForPrice(price);
+    return { name, price, monthlyReturn, ...style };
+  }
+
+  private styleForPrice(price: number): Omit<TradingPackage, 'name' | 'price' | 'monthlyReturn'> {
+    if (price < 500)    return { level: 'Entrada',   bg: 'bg-emerald-500/5', border: 'border-emerald-500/30', text: 'text-emerald-400', shadow: 'hover:shadow-lg hover:shadow-emerald-500/10', badge: 'bg-emerald-500/20 text-emerald-400' };
+    if (price < 2500)   return { level: 'Bronce',    bg: 'bg-amber-700/10',  border: 'border-amber-700/40',   text: 'text-amber-600',   shadow: 'hover:shadow-lg hover:shadow-amber-700/15',   badge: 'bg-amber-700/20 text-amber-600' };
+    if (price < 4000)   return { level: 'Plata',     bg: 'bg-slate-400/5',   border: 'border-slate-400/30',   text: 'text-slate-300',   shadow: 'hover:shadow-lg hover:shadow-slate-400/10',   badge: 'bg-slate-400/20 text-slate-300' };
+    if (price < 5500)   return { level: 'Oro',       bg: 'bg-yellow-500/5',  border: 'border-yellow-500/30',  text: 'text-yellow-400',  shadow: 'hover:shadow-lg hover:shadow-yellow-500/15',  badge: 'bg-yellow-500/20 text-yellow-400' };
+    if (price < 7000)   return { level: 'Zafiro',    bg: 'bg-blue-500/5',    border: 'border-blue-500/30',    text: 'text-blue-400',    shadow: 'hover:shadow-lg hover:shadow-blue-500/15',    badge: 'bg-blue-500/20 text-blue-400' };
+    if (price < 8500)   return { level: 'Esmeralda', bg: 'bg-teal-500/5',    border: 'border-teal-500/30',    text: 'text-teal-400',    shadow: 'hover:shadow-lg hover:shadow-teal-500/15',    badge: 'bg-teal-500/20 text-teal-400' };
+    if (price < 10000)  return { level: 'Rubí',      bg: 'bg-red-500/5',     border: 'border-red-500/30',     text: 'text-red-400',     shadow: 'hover:shadow-lg hover:shadow-red-500/15',     badge: 'bg-red-500/20 text-red-400' };
+    if (price < 11500)  return { level: 'Diamante',  bg: 'bg-cyan-500/5',    border: 'border-cyan-500/30',    text: 'text-cyan-400',    shadow: 'hover:shadow-lg hover:shadow-cyan-500/20',    badge: 'bg-cyan-500/20 text-cyan-400' };
+    if (price < 13000)  return { level: 'Platino',   bg: 'bg-violet-500/5',  border: 'border-violet-500/30',  text: 'text-violet-400',  shadow: 'hover:shadow-lg hover:shadow-violet-500/20',  badge: 'bg-violet-500/20 text-violet-400' };
+    if (price < 14500)  return { level: 'Élite',     bg: 'bg-fuchsia-500/5', border: 'border-fuchsia-500/30', text: 'text-fuchsia-400', shadow: 'hover:shadow-lg hover:shadow-fuchsia-500/20', badge: 'bg-fuchsia-500/20 text-fuchsia-400' };
+    if (price < 16000)  return { level: 'Máster',    bg: 'bg-indigo-500/5',  border: 'border-indigo-500/30',  text: 'text-indigo-400',  shadow: 'hover:shadow-lg hover:shadow-indigo-500/20',  badge: 'bg-indigo-500/20 text-indigo-400' };
+    if (price < 17500)  return { level: 'Leyenda',   bg: 'bg-orange-500/5',  border: 'border-orange-500/30',  text: 'text-orange-400',  shadow: 'hover:shadow-lg hover:shadow-orange-500/20',  badge: 'bg-orange-500/20 text-orange-400' };
+    if (price < 19000)  return { level: 'VIP',       bg: 'bg-rose-500/5',    border: 'border-rose-500/30',    text: 'text-rose-400',    shadow: 'hover:shadow-lg hover:shadow-rose-500/20',    badge: 'bg-rose-500/20 text-rose-400' };
+    if (price < 20000)  return { level: 'Black',     bg: 'bg-white/[0.03]',  border: 'border-white/20',       text: 'text-white',       shadow: 'hover:shadow-lg hover:shadow-white/10',       badge: 'bg-white/10 text-white' };
+    return                      { level: 'Ápex',     bg: 'bg-gradient-to-br from-yellow-500/10 to-white/5', border: 'border-yellow-400/50', text: 'text-yellow-300', shadow: 'hover:shadow-xl hover:shadow-yellow-400/30', badge: 'bg-yellow-400/20 text-yellow-300' };
+  }
 
   showDemo = false;
   demoPackage: TradingPackage | null = null;

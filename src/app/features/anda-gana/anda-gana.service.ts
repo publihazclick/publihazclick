@@ -361,7 +361,8 @@ export class AndaGanaService {
       .from('ag_users')
       .select('*')
       .eq('role', 'passenger')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     return data ?? [];
   }
 
@@ -369,7 +370,8 @@ export class AndaGanaService {
     let query = this.supabase
       .from('ag_drivers')
       .select('*, ag_users(*)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     if (statusFilter) query = query.eq('status', statusFilter);
     const { data } = await query;
     return data ?? [];
@@ -750,7 +752,7 @@ export class AndaGanaService {
   }
 
   async listEmergencyContacts(userId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_emergency_contacts').select('*').eq('user_id', userId).order('created_at');
+    const { data } = await this.supabase.from('ag_emergency_contacts').select('*').eq('user_id', userId).order('created_at').limit(10);
     return data ?? [];
   }
 
@@ -777,7 +779,7 @@ export class AndaGanaService {
   // Favoritos
   // ═══════════════════════════════════════════════════
   async listFavorites(userId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_favorite_addresses').select('*').eq('user_id', userId).order('sort_order');
+    const { data } = await this.supabase.from('ag_favorite_addresses').select('*').eq('user_id', userId).order('sort_order').limit(20);
     return data ?? [];
   }
 
@@ -795,7 +797,7 @@ export class AndaGanaService {
   // Viajes programados
   // ═══════════════════════════════════════════════════
   async listScheduledTrips(userId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_scheduled_trips').select('*').eq('user_id', userId).in('status', ['pending', 'notified']).order('scheduled_for', { ascending: true });
+    const { data } = await this.supabase.from('ag_scheduled_trips').select('*').eq('user_id', userId).in('status', ['pending', 'notified']).order('scheduled_for', { ascending: true }).limit(20);
     return data ?? [];
   }
 
@@ -881,12 +883,12 @@ export class AndaGanaService {
   }
 
   async listZones(): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_zones').select('*').order('name');
+    const { data } = await this.supabase.from('ag_zones').select('*').order('name').limit(100);
     return data ?? [];
   }
 
   async listSurgeRules(): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_surge_rules').select('*').order('created_at', { ascending: false });
+    const { data } = await this.supabase.from('ag_surge_rules').select('*').order('created_at', { ascending: false }).limit(100);
     return data ?? [];
   }
 
@@ -912,7 +914,7 @@ export class AndaGanaService {
 
   // Admin: gestión cupones
   async listCoupons(): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_coupons').select('*').order('created_at', { ascending: false });
+    const { data } = await this.supabase.from('ag_coupons').select('*').order('created_at', { ascending: false }).limit(200);
     return data ?? [];
   }
 
@@ -973,7 +975,7 @@ export class AndaGanaService {
   }
 
   async listDriverWithdrawals(driverId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_withdrawals').select('*').eq('driver_id', driverId).order('created_at', { ascending: false });
+    const { data } = await this.supabase.from('ag_withdrawals').select('*').eq('driver_id', driverId).order('created_at', { ascending: false }).limit(100);
     return data ?? [];
   }
 
@@ -996,12 +998,12 @@ export class AndaGanaService {
   }
 
   async listQuests(): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_quests').select('*').eq('is_active', true).order('created_at', { ascending: false });
+    const { data } = await this.supabase.from('ag_quests').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(50);
     return data ?? [];
   }
 
   async getQuestProgress(driverId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_quest_progress').select('*, ag_quests(*)').eq('driver_id', driverId);
+    const { data } = await this.supabase.from('ag_quest_progress').select('*, ag_quests(*)').eq('driver_id', driverId).limit(50);
     return data ?? [];
   }
 
@@ -1009,7 +1011,7 @@ export class AndaGanaService {
   // DRIVER: blacklist pasajeros
   // ═══════════════════════════════════════════════════
   async listBlacklist(driverId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_passenger_blacklist').select('*').eq('driver_id', driverId).order('created_at', { ascending: false });
+    const { data } = await this.supabase.from('ag_passenger_blacklist').select('*').eq('driver_id', driverId).order('created_at', { ascending: false }).limit(100);
     return data ?? [];
   }
 
@@ -1025,7 +1027,7 @@ export class AndaGanaService {
   // DRIVER: multi-vehículo
   // ═══════════════════════════════════════════════════
   async listVehicles(driverId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_driver_vehicles').select('*').eq('driver_id', driverId).order('is_current', { ascending: false });
+    const { data } = await this.supabase.from('ag_driver_vehicles').select('*').eq('driver_id', driverId).order('is_current', { ascending: false }).limit(10);
     return data ?? [];
   }
 
@@ -1164,7 +1166,8 @@ export class AndaGanaService {
       .from('ag_driver_documents')
       .select('*')
       .eq('driver_id', driverId)
-      .order('doc_type');
+      .order('doc_type')
+      .limit(20);
     return data ?? [];
   }
 
@@ -1384,7 +1387,8 @@ export class AndaGanaService {
       .from('ag_payment_methods').select('*')
       .eq('user_id', agUserId)
       .order('is_default', { ascending: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(10);
     return data ?? [];
   }
 
@@ -1441,7 +1445,8 @@ export class AndaGanaService {
     const { data } = await this.supabase
       .from('ag_favorite_addresses').select('*')
       .eq('user_id', authUserId)
-      .order('sort_order', { ascending: true });
+      .order('sort_order', { ascending: true })
+      .limit(20);
     return data ?? [];
   }
 
@@ -1468,7 +1473,8 @@ export class AndaGanaService {
       .eq('user_id', authUserId)
       .gte('scheduled_for', new Date().toISOString())
       .in('status', ['pending', 'notified'])
-      .order('scheduled_for', { ascending: true });
+      .order('scheduled_for', { ascending: true })
+      .limit(20);
     return data ?? [];
   }
 
@@ -1514,7 +1520,8 @@ export class AndaGanaService {
   async listPassengerReports(agUserId: string): Promise<any[]> {
     const { data } = await this.supabase.from('ag_reports')
       .select('*').eq('reporter_user_id', agUserId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
     return data ?? [];
   }
 
@@ -1733,7 +1740,8 @@ export class AndaGanaService {
   async listDriverReports(agUserId: string): Promise<any[]> {
     const { data } = await this.supabase.from('ag_reports')
       .select('*').eq('reporter_user_id', agUserId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
     return data ?? [];
   }
 

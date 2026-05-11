@@ -23,7 +23,31 @@ export interface UserTradingPackage {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  profit_balance_usd?: number;
+  total_paid_returns_usd?: number;
+  total_withdrawn_profit?: number;
+  last_return_at?: string | null;
+  last_withdrawal_at?: string | null;
   package?: TradingBotPackage;
+}
+
+export interface WithdrawalPayload {
+  fullName: string;
+  accountNumber: string;
+  accountType?: 'ahorros' | 'corriente';
+  bank?: string;
+}
+
+export interface TradingWithdrawalResult {
+  ok: boolean;
+  reason?: string;
+  withdrawalId?: string;
+  amountUsd?: number;
+  profitBalanceAfter?: number;
+  daysActive?: number;
+  daysSinceLast?: number;
+  availableAt?: string;
+  profitBalanceUsd?: number;
 }
 
 export interface TradingUserResult {
@@ -95,11 +119,22 @@ export class TradingPackageService {
         .from('trading_bot_packages')
         .select('*')
         .eq('is_active', true)
-        .order('display_order', { ascending: true });
+        .order('display_order', { ascending: true })
+        .limit(50);
       // Si la tabla existe y tiene datos, usarlos; si no, devolver el catálogo hardcoded
       if (!error && data && data.length > 0) return data;
     } catch { /* tabla no existe aún */ }
     return this.defaultPackages;
+  }
+
+  async getAllTradingPackagesForAdmin(): Promise<TradingBotPackage[]> {
+    const { data, error } = await this.supabase
+      .from('trading_bot_packages')
+      .select('*')
+      .order('display_order', { ascending: true })
+      .limit(50);
+    if (error || !data) return [];
+    return data;
   }
 
   async getAllUsers(page = 1, pageSize = 30): Promise<{ data: TradingUserResult[]; total: number }> {
@@ -200,5 +235,100 @@ export class TradingPackageService {
       .order('created_at', { ascending: true });
     if (error) return [];
     return data || [];
+  }
+
+  // ── Ensure accrual + retiro ────────────────────────────────────────────
+  async ensureAccrual(userTradingPackageId: string): Promise<void> {
+    // Dispara accrual defensivo para este paquete (idempotente en backend)
+    await this.supabase.rpc('ensure_trading_bot_accrual', {
+      p_user_trading_package_id: userTradingPackageId,
+    });
+  }
+
+  // ── Admin: CRUD de catálogo ────────────────────────────────────────────
+  async adminCreatePackage(input: {
+    name: string;
+    priceUsd: number;
+    monthlyReturnPct?: number;
+    description?: string | null;
+    displayOrder?: number;
+    isActive?: boolean;
+  }): Promise<{ ok: boolean; reason?: string; id?: string }> {
+    const { data, error } = await this.supabase.rpc('admin_create_trading_package', {
+      p_name:               input.name,
+      p_price_usd:          input.priceUsd,
+      p_monthly_return_pct: input.monthlyReturnPct ?? 2.0,
+      p_description:        input.description ?? null,
+      p_display_order:      input.displayOrder ?? 999,
+      p_is_active:          input.isActive ?? true,
+    });
+    if (error) return { ok: false, reason: error.message };
+    const r = data as { ok: boolean; reason?: string; id?: string };
+    return r;
+  }
+
+  async adminUpdatePackage(id: string, input: {
+    name?: string;
+    priceUsd?: number;
+    monthlyReturnPct?: number;
+    description?: string | null;
+    displayOrder?: number;
+    isActive?: boolean;
+  }): Promise<{ ok: boolean; reason?: string }> {
+    const { data, error } = await this.supabase.rpc('admin_update_trading_package', {
+      p_id:                 id,
+      p_name:               input.name ?? null,
+      p_price_usd:          input.priceUsd ?? null,
+      p_monthly_return_pct: input.monthlyReturnPct ?? null,
+      p_description:        input.description ?? null,
+      p_display_order:      input.displayOrder ?? null,
+      p_is_active:          input.isActive ?? null,
+    });
+    if (error) return { ok: false, reason: error.message };
+    return data as { ok: boolean; reason?: string };
+  }
+
+  async adminDeletePackage(id: string): Promise<{ ok: boolean; reason?: string; count?: number }> {
+    const { data, error } = await this.supabase.rpc('admin_delete_trading_package', { p_id: id });
+    if (error) return { ok: false, reason: error.message };
+    return data as { ok: boolean; reason?: string; count?: number };
+  }
+
+  async requestProfitWithdrawal(
+    userTradingPackageId: string,
+    amountUsd: number,
+    payload: WithdrawalPayload,
+  ): Promise<TradingWithdrawalResult> {
+    const { data, error } = await this.supabase.rpc('request_trading_profit_withdrawal', {
+      p_user_trading_package_id: userTradingPackageId,
+      p_amount_usd:              amountUsd,
+      p_full_name:               payload.fullName,
+      p_account_number:          payload.accountNumber,
+      p_account_type:            payload.accountType || 'ahorros',
+      p_bank:                    payload.bank || null,
+    });
+    if (error) return { ok: false, reason: error.message };
+    const r = data as {
+      ok: boolean;
+      reason?: string;
+      withdrawal_request_id?: string;
+      amount_usd?: number;
+      profit_balance_after?: number;
+      days_active?: number;
+      days_since_last?: number;
+      available_at?: string;
+      profit_balance_usd?: number;
+    };
+    return {
+      ok: r.ok,
+      reason: r.reason,
+      withdrawalId: r.withdrawal_request_id,
+      amountUsd: r.amount_usd,
+      profitBalanceAfter: r.profit_balance_after,
+      daysActive: r.days_active,
+      daysSinceLast: r.days_since_last,
+      availableAt: r.available_at,
+      profitBalanceUsd: r.profit_balance_usd,
+    };
   }
 }

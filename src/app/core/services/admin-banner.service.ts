@@ -311,7 +311,7 @@ export class AdminBannerService {
         query = query.eq('position', position);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(50);
 
       if (error) throw error;
 
@@ -365,7 +365,7 @@ export class AdminBannerService {
         query = query.eq('location', location);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(50);
 
       if (error) throw error;
 

@@ -115,7 +115,8 @@ Deno.serve(async (req: Request) => {
       .from("ptc_clicks")
       .select("id, user_id, task_id, reward_earned, ip_address, user_agent, session_fingerprint, click_duration_ms, completed_at")
       .gte("completed_at", since)
-      .order("completed_at", { ascending: true });
+      .order("completed_at", { ascending: true })
+      .limit(20000);
 
     if (targetUserId) {
       clicksQuery = clicksQuery.eq("user_id", targetUserId);

@@ -104,10 +104,13 @@ export class WhatsappService {
     try { parsed = raw ? JSON.parse(raw) : null; } catch { parsed = null; }
 
     if (!response.ok) {
-      const body = parsed as { error?: string; message?: string } | null;
+      const body = parsed as { error?: string; error_code?: string; message?: string } | null;
       const msg = body?.error || body?.message || raw || `HTTP ${response.status}`;
       console.error('[wa-engine]', { action, status: response.status, body: parsed, raw });
-      throw new Error(msg);
+      const err = new Error(msg) as Error & { code?: string; status?: number };
+      if (body?.error_code) err.code = body.error_code;
+      err.status = response.status;
+      throw err;
     }
     return parsed;
   }
@@ -121,7 +124,8 @@ export class WhatsappService {
       .from('wa_sessions')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(20);
     return data ?? [];
   }
 
@@ -220,14 +224,53 @@ export class WhatsappService {
     await this.supabase.from('wa_sessions').update({ status }).eq('id', id);
   }
 
-  async deleteSession(id: string): Promise<void> {
-    // Obtener el nombre de instancia antes de borrar
-    const { data: session } = await this.supabase
-      .from('wa_sessions').select('phone_number').eq('id', id).single();
-    if (session?.phone_number) {
-      try { await this.callEngine('delete_instance', { instance: session.phone_number }); } catch {}
+  async deleteSession(id: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      // 1) Leer la sesion (puede fallar por RLS / sesion expirada / no existe).
+      const { data: session, error: readErr } = await this.supabase
+        .from('wa_sessions')
+        .select('phone_number')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (readErr) {
+        return { ok: false, error: `No se pudo leer la sesion: ${readErr.message}` };
+      }
+
+      // 2) Borrar en Evolution. Si falla (instancia ya no existe, red, etc),
+      //    seguimos de todas formas con el delete en DB para que el usuario
+      //    no quede atascado con una sesion fantasma.
+      if (session?.phone_number) {
+        try {
+          await this.callEngine('delete_instance', { instance: session.phone_number });
+        } catch (e) {
+          console.warn('[deleteSession] Evolution delete failed, continuing:', e);
+        }
+      }
+
+      // 3) Borrar en DB — usar .select() para confirmar que si borro filas.
+      //    Si no borra nada (RLS, auth caducada, id inexistente), avisamos.
+      const { data: deleted, error: delErr } = await this.supabase
+        .from('wa_sessions')
+        .delete()
+        .eq('id', id)
+        .select();
+
+      if (delErr) {
+        return { ok: false, error: `Error al eliminar: ${delErr.message}` };
+      }
+
+      if (!deleted || deleted.length === 0) {
+        return {
+          ok: false,
+          error: 'No se elimino la sesion. Puede que tu sesion de login haya expirado — recarga la pagina e intenta de nuevo.',
+        };
+      }
+
+      return { ok: true };
+    } catch (e: unknown) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Error desconocido al eliminar la sesion' };
     }
-    await this.supabase.from('wa_sessions').delete().eq('id', id);
   }
 
   // ─── Contacts ───────────────────────────────
@@ -347,7 +390,8 @@ export class WhatsappService {
       .from('wa_contact_groups')
       .select('*')
       .eq('user_id', user.id)
-      .order('name');
+      .order('name')
+      .limit(200);
     return data ?? [];
   }
 
@@ -389,7 +433,8 @@ export class WhatsappService {
       .select('*')
       .eq('user_id', user.id)
       .order('is_favorite', { ascending: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     return data ?? [];
   }
 
@@ -433,9 +478,10 @@ export class WhatsappService {
     if (!user) return [];
     const { data } = await this.supabase
       .from('wa_campaigns')
-      .select('*, template:wa_templates(*), target_group:wa_contact_groups(*)')
+      .select(`*, template:wa_templates(id, name, category, message_type, content, content_variants, media_url, media_filename, media_items, variables, is_favorite), target_group:wa_contact_groups(id, name, color, description, contacts_count)`)
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     return data ?? [];
   }
 
@@ -491,8 +537,25 @@ export class WhatsappService {
     }
   }
 
-  async pauseCampaign(id: string): Promise<void> {
-    await this.supabase.from('wa_campaigns').update({ status: 'paused' }).eq('id', id);
+  async pauseCampaign(id: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      await this.callEngine('pause_campaign', { campaign_id: id });
+      return { ok: true };
+    } catch (e: unknown) {
+      // Fallback: escribir directo en DB. El worker leera el nuevo status
+      // en su proxima iteracion (hasta 60s).
+      await this.supabase.from('wa_campaigns').update({ status: 'paused' }).eq('id', id);
+      return { ok: false, error: e instanceof Error ? e.message : 'Error al pausar' };
+    }
+  }
+
+  async resumeCampaign(id: string): Promise<{ ok: boolean; message?: string; error?: string }> {
+    try {
+      const result = await this.callEngine('resume_campaign', { campaign_id: id });
+      return { ok: true, message: result?.message };
+    } catch (e: unknown) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Error al continuar' };
+    }
   }
 
   async cancelCampaign(id: string): Promise<void> {
@@ -516,13 +579,13 @@ export class WhatsappService {
     if (!user) return this.emptyStats();
 
     const [contacts, groups, campaigns, templates] = await Promise.all([
-      this.supabase.from('wa_contacts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-      this.supabase.from('wa_contact_groups').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-      this.supabase.from('wa_campaigns').select('*').eq('user_id', user.id),
-      this.supabase.from('wa_templates').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      this.supabase.from('wa_contacts').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      this.supabase.from('wa_contact_groups').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      this.supabase.from('wa_campaigns').select('id, status, sent_count, failed_count').eq('user_id', user.id).limit(500),
+      this.supabase.from('wa_templates').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
-    const allCampaigns: WaCampaign[] = campaigns.data ?? [];
+    const allCampaigns = campaigns.data ?? [];
     const campaignIds = allCampaigns.map(c => c.id);
 
     const totalSent   = allCampaigns.reduce((s, c) => s + (c.sent_count   || 0), 0);

@@ -285,6 +285,29 @@
       </div>
     }
 
+    <!-- VIDEO DE PRESENTACIÓN -->
+    @if (business()?.video_url) {
+      <div class="bg-card-dark rounded-2xl border border-white/5 p-5 mb-4">
+        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary" style="font-size:16px">play_circle</span>
+          Video de presentación
+        </h2>
+        <div class="rounded-xl overflow-hidden aspect-video bg-black">
+          @if (publicVideoEmbed()) {
+            <iframe
+              [src]="publicVideoEmbed()!"
+              class="w-full h-full"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          } @else if (publicVideoDirect()) {
+            <video [src]="publicVideoDirect()!" controls playsinline class="w-full h-full object-contain"></video>
+          }
+        </div>
+      </div>
+    }
+
     <!-- Sin contenido -->
     @if (!hasAnyContent()) {
       <div class="bg-card-dark rounded-2xl border border-white/5 p-8 text-center mb-4">
@@ -470,6 +493,75 @@
           <input formControlName="tiktok" type="text" maxlength="100" placeholder="tu_usuario"
             class="w-full bg-white/5 border border-white/8 rounded-xl pl-7 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-white/50 focus:ring-1 focus:ring-white/20 transition-colors">
         </div>
+      </div>
+
+      <!-- Separador video -->
+      <div class="flex items-center gap-3 pt-2">
+        <div class="flex-1 h-px bg-white/5"></div>
+        <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Video</span>
+        <div class="flex-1 h-px bg-white/5"></div>
+      </div>
+
+      <!-- Video de presentación -->
+      <div>
+        <label class="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary" style="font-size:14px">play_circle</span>
+          Video de presentación
+        </label>
+
+        <!-- Preview del video -->
+        @if (currentVideoUrl()) {
+          <div class="rounded-xl overflow-hidden aspect-video bg-black mb-3 relative">
+            @if (videoPreviewEmbed()) {
+              <iframe
+                [src]="videoPreviewEmbed()!"
+                class="w-full h-full"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+              </iframe>
+            } @else if (videoPreviewDirect()) {
+              <video [src]="videoPreviewDirect()!" controls playsinline class="w-full h-full object-contain"></video>
+            } @else {
+              <div class="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500">
+                <span class="material-symbols-outlined" style="font-size:32px">link</span>
+                <span class="text-xs text-center px-4 break-all">{{ currentVideoUrl() }}</span>
+              </div>
+            }
+            <button type="button" (click)="clearVideo()"
+              class="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-rose-500/80 flex items-center justify-center text-white transition-colors">
+              <span class="material-symbols-outlined" style="font-size:14px">close</span>
+            </button>
+          </div>
+        }
+
+        <!-- Link de YouTube / Vimeo / URL directa -->
+        <div class="mb-2">
+          <p class="text-[10px] text-slate-500 mb-1.5">Pegar enlace (YouTube, Vimeo, MP4...)</p>
+          <div class="flex gap-2">
+            <input
+              type="url"
+              [(ngModel)]="videoLinkInput"
+              (ngModelChange)="onVideoLinkChange()"
+              placeholder="https://youtube.com/watch?v=..."
+              class="flex-1 bg-white/5 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors">
+          </div>
+        </div>
+
+        <!-- Subir desde dispositivo -->
+        <label class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-white/15 text-slate-400 hover:border-primary/40 hover:text-primary text-xs font-bold cursor-pointer transition-colors"
+          [class.opacity-50]="uploadingVideo()"
+          [class.pointer-events-none]="uploadingVideo()">
+          @if (uploadingVideo()) {
+            <div class="w-4 h-4 rounded-full border-2 border-primary/40 border-t-primary animate-spin"></div>
+            Subiendo video...
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:15px">upload_file</span>
+            Subir video desde dispositivo (máx. 50 MB)
+          }
+          <input type="file" accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v" class="hidden" (change)="onVideoFileSelected($event)" [disabled]="uploadingVideo()">
+        </label>
+        <p class="text-[10px] text-slate-600 mt-1 ml-1">Formatos: MP4, WebM, MOV, OGG</p>
       </div>
 
       <!-- Separador galería -->

@@ -33,7 +33,8 @@ export class XzoomService {
       .from('xzoom_hosts')
       .select('*')
       .eq('is_active', true)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
     if (error) throw error;
     return (data ?? []) as XzoomHost[];
   }
@@ -201,7 +202,8 @@ export class XzoomService {
       .from('xzoom_viewer_subscriptions')
       .select('*')
       .eq('viewer_user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (error) throw error;
     return (data ?? []) as XzoomViewerSubscription[];
   }
@@ -211,7 +213,8 @@ export class XzoomService {
       .from('xzoom_viewer_subscriptions')
       .select('*')
       .eq('host_id', hostId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     if (error) throw error;
     return (data ?? []) as XzoomViewerSubscription[];
   }
@@ -225,7 +228,8 @@ export class XzoomService {
       .from('xzoom_scheduled_sessions')
       .select('*')
       .eq('host_id', hostId)
-      .order('scheduled_at', { ascending: true });
+      .order('scheduled_at', { ascending: true })
+      .limit(50);
     if (error) throw error;
     return (data ?? []) as XzoomScheduledSession[];
   }
@@ -283,7 +287,8 @@ export class XzoomService {
       .select('*')
       .eq('host_id', hostId)
       .eq('recording_status', 'ready')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
     if (error) throw error;
     return (data ?? []) as XzoomLiveSession[];
   }

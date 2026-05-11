@@ -94,6 +94,85 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Delay entre mensajes con distribución que simula comportamiento humano.
+ * En vez de uniforme (que produce un patrón detectable), usa 3 tramos:
+ *
+ *   - 70%: entre min y max (flujo normal de quien está enviando)
+ *   - 20%: entre max y max*1.6 (pausa larga: "pensó qué escribir")
+ *   - 10%: entre min*0.75 y min (respuesta rápida)
+ *
+ * Además, si el usuario puso min=max o valores muy cercanos, aplica
+ * jitter de ±15% para que nunca sea exacto.
+ */
+function humanDelay(minSec: number, maxSec: number): number {
+  const safeMin = Math.max(1, minSec);
+  const safeMax = Math.max(safeMin, maxSec);
+
+  // Si min >= max (config degenerada) o el rango es muy chico, solo jitter
+  if (safeMax - safeMin < 2) {
+    const base = safeMin * 1000;
+    const jitter = (Math.random() * 0.3) - 0.15; // -15% a +15%
+    return Math.floor(base * (1 + jitter));
+  }
+
+  const r = Math.random();
+  let minMs: number;
+  let maxMs: number;
+
+  if (r < 0.70) {
+    minMs = safeMin * 1000;
+    maxMs = safeMax * 1000;
+  } else if (r < 0.90) {
+    // Pausa para pensar: el máximo configurado hasta 1.6x el máximo
+    minMs = safeMax * 1000;
+    maxMs = Math.floor(safeMax * 1.6 * 1000);
+  } else {
+    // Respuesta rápida: 75% del mínimo hasta el mínimo
+    minMs = Math.floor(safeMin * 0.75 * 1000);
+    maxMs = safeMin * 1000;
+  }
+
+  return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+}
+
+/**
+ * Variación ±30% sobre la pausa base del lote. Una pausa fija crea
+ * patrón detectable; esta la rompe sin cambiar el promedio.
+ */
+function humanBatchPause(baseSec: number): number {
+  if (baseSec <= 0) return 0;
+  const jitter = (Math.random() * 0.6) - 0.3; // -30% a +30%
+  return Math.floor(baseSec * 1000 * (1 + jitter));
+}
+
+/**
+ * Delay del indicador "escribiendo..." que Evolution muestra al
+ * destinatario antes de entregar el texto. Aleatorio 2-5s. Hace que
+ * el mensaje se vea escrito por un humano en tiempo real.
+ */
+function typingDelayMs(): number {
+  return Math.floor(Math.random() * 3000) + 2000;
+}
+
+/**
+ * Probabilidad de tomar un "descanso humano" después de enviar un
+ * mensaje. 10% por mensaje = en promedio 1 descanso cada 10 mensajes.
+ * Simula que la persona se distrajo, atendió una llamada, etc.
+ */
+function shouldTakeHumanBreak(): boolean {
+  return Math.random() < 0.10;
+}
+
+/**
+ * Duración del descanso humano: 60-180 segundos adicionales sobre el
+ * delay normal. Este tiempo NO se suma a diario/horario porque
+ * simplemente desplaza el envío del siguiente mensaje.
+ */
+function humanBreakMs(): number {
+  return Math.floor(Math.random() * 120_000) + 60_000;
+}
+
+/**
  * Verifica si la campaña está dentro de su ventana horaria. Si no tiene
  * schedule definido, siempre devuelve true. Respeta schedule_timezone,
  * schedule_days (0=dom..6=sab; vacío = todos) y soporta ventanas que
@@ -214,7 +293,7 @@ Deno.serve(async (req) => {
   // Obtener campañas en estado 'running'
   const { data: campaigns } = await supabase
     .from('wa_campaigns')
-    .select('*')
+    .select('id, user_id, template_id, status, started_at, block_count, current_block, batch_size, batch_pause_seconds, block_completed_at, schedule_start_time, schedule_end_time, schedule_timezone, schedule_days, min_delay_seconds, max_delay_seconds, sent_count, failed_count')
     .eq('status', 'running')
     .order('started_at', { ascending: true });
 
@@ -236,7 +315,7 @@ Deno.serve(async (req) => {
     // Obtener sesion conectada del usuario
     const { data: sessions } = await supabase
       .from('wa_sessions')
-      .select('*')
+      .select('id, user_id, phone_number, status')
       .eq('user_id', campaign.user_id)
       .eq('status', 'connected')
       .limit(1);
@@ -258,7 +337,7 @@ Deno.serve(async (req) => {
     // Obtener plantilla
     const { data: template } = await supabase
       .from('wa_templates')
-      .select('*')
+      .select('id, name, message_type, content, content_variants, media_url, media_filename, media_items')
       .eq('id', campaign.template_id)
       .single();
 
@@ -401,7 +480,7 @@ Deno.serve(async (req) => {
           // Si había texto y ningún media lo llevó como caption, enviar al final
           if (captionableIdx === -1 && messageContent.trim()) {
             await sleep(randomDelay(1500, 3000));
-            const rText = await evoSendText(instanceName, contact.phone, messageContent, 0);
+            const rText = await evoSendText(instanceName, contact.phone, messageContent, typingDelayMs());
             results.push(rText);
           }
 
@@ -422,7 +501,10 @@ Deno.serve(async (req) => {
         } else if (template?.message_type === 'audio' && template.media_url) {
           result = await evoSendAudio(instanceName, contact.phone, template.media_url);
         } else {
-          result = await evoSendText(instanceName, contact.phone, messageContent, 0);
+          // Texto puro: agregar typing indicator aleatorio (2-5s) para
+          // que al destinatario le aparezca "escribiendo..." antes de
+          // recibir el mensaje. Humaniza el envío.
+          result = await evoSendText(instanceName, contact.phone, messageContent, typingDelayMs());
         }
       } catch (e) {
         result = { ok: false, messageId: null, error: String(e).slice(0, 500) };
@@ -438,17 +520,24 @@ Deno.serve(async (req) => {
 
       totalProcessed++;
 
-      // Esperar delay aleatorio entre mensajes
-      const delay = randomDelay(
-        (campaign.min_delay_seconds || 8) * 1000,
-        (campaign.max_delay_seconds || 25) * 1000
+      // Delay entre mensajes con distribución humana (no uniforme).
+      const delay = humanDelay(
+        campaign.min_delay_seconds || 60,
+        campaign.max_delay_seconds || 180,
       );
       await sleep(delay);
+
+      // 10% de probabilidad de tomar un "descanso humano" extra de 60-180s.
+      // Simula que la persona se distrajo y rompe cualquier patrón
+      // reconocible en el intervalo entre mensajes.
+      if (shouldTakeHumanBreak()) {
+        await sleep(humanBreakMs());
+      }
     }
 
-    // Pausa entre lotes
+    // Pausa entre lotes con variación ±30% (antes era exacta).
     if (campaign.batch_pause_seconds) {
-      await sleep(campaign.batch_pause_seconds * 1000);
+      await sleep(humanBatchPause(campaign.batch_pause_seconds));
     }
   }
 

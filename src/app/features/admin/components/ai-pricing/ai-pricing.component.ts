@@ -75,7 +75,8 @@ export class AdminAiPricingComponent implements OnInit {
       .from('ai_action_pricing')
       .select('*')
       .order('category')
-      .order('price_cop');
+      .order('price_cop')
+      .limit(200);
     if (data) this.actions.set(data);
   }
 

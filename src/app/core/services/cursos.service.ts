@@ -175,7 +175,8 @@ export class CursosService {
       .from('courses')
       .select('*')
       .eq('creator_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     return data ?? [];
   }
 

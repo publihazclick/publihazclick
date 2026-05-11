@@ -1,6 +1,6 @@
 import {
   Component, ChangeDetectionStrategy, EventEmitter, Output, Input,
-  OnInit, OnDestroy, ChangeDetectorRef, inject,
+  OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorRef, inject,
 } from '@angular/core';
 import { DecimalPipe, NgClass } from '@angular/common';
 
@@ -481,7 +481,7 @@ interface OrderRow { price: number; qty: number; total: number; pct: number; }
 </div>
   `,
 })
-export class TradingDemoComponent implements OnInit, OnDestroy {
+export class TradingDemoComponent implements OnInit, OnDestroy, OnChanges {
   private readonly cdr = inject(ChangeDetectorRef);
   @Output() closed = new EventEmitter<void>();
   @Input() packageName   = '';
@@ -503,7 +503,8 @@ export class TradingDemoComponent implements OnInit, OnDestroy {
   private sigId = 0;
 
   /* ── Financials ───────────────────────────────────────── */
-  balance = 10000; totalPnl = 0; wins = 0; losses = 0; winRate = 0;
+  // Se inicializa al valor del paquete del usuario en ngOnInit/ngOnChanges
+  balance = 0; totalPnl = 0; wins = 0; losses = 0; winRate = 0;
   trades: Trade[] = [];
   openPositions: { id: number; symbol: string; side: 'BUY'|'SELL'; price: number; upnl: number }[] = [];
   private tId = 0;
@@ -541,6 +542,7 @@ export class TradingDemoComponent implements OnInit, OnDestroy {
   private t3: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
+    this.syncBalanceWithPackage();
     this.buildCandles();
     this.refreshGrid();
     this.refreshPairStats();
@@ -548,6 +550,23 @@ export class TradingDemoComponent implements OnInit, OnDestroy {
     this.t1 = setInterval(() => this.tick(),          4000);
     this.t2 = setInterval(() => this.flickerAll(),     800);
     this.t3 = setInterval(() => this.rotateCrypto(),  18000);
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['packagePrice']) {
+      this.syncBalanceWithPackage();
+    }
+  }
+
+  private syncBalanceWithPackage(): void {
+    // Balance = capital del paquete comprado. Si no hay paquete (vista demo
+    // pública en la landing), usar un valor mínimo razonable.
+    const base = this.packagePrice > 0 ? this.packagePrice : 100;
+    this.balance  = base;
+    this.totalPnl = 0;
+    this.wins     = 0;
+    this.losses   = 0;
+    this.winRate  = 0;
   }
 
   ngOnDestroy(): void {
@@ -681,9 +700,13 @@ export class TradingDemoComponent implements OnInit, OnDestroy {
 
   private executeTrade(side: 'BUY'|'SELL', price: number): void {
     const win = side === 'BUY' ? Math.random() > 0.28 : Math.random() > 0.44;
+    // P&L proporcional al capital: ganancias 0.05%–0.5%, pérdidas 0.02%–0.25%.
+    // Así el balance del demo se mantiene cerca del valor del paquete comprado
+    // en lugar de crecer a valores irreales.
+    const base = this.packagePrice > 0 ? this.packagePrice : 100;
     const pnl = win
-      ? parseFloat((Math.random() * 24 + 2).toFixed(2))
-      : -(parseFloat((Math.random() * 10 + 1).toFixed(2)));
+      ? parseFloat((base * (0.0005 + Math.random() * 0.0045)).toFixed(2))
+      : -parseFloat((base * (0.0002 + Math.random() * 0.0023)).toFixed(2));
 
     const now = new Date();
     const h = now.getHours().toString().padStart(2, '0');

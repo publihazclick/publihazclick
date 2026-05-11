@@ -227,6 +227,26 @@
             </a>
           </li>
           <li>
+            <a routerLink="/admin/trading-withdrawals" routerLinkActive="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-emerald-500/5 text-slate-400 hover:text-emerald-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-emerald-400">account_balance_wallet</span>
+              @if (!sidebarCollapsed()) {
+                <span>Retiros Trdng</span>
+              }
+            </a>
+          </li>
+          <li>
+            <a routerLink="/admin/trading-packages" routerLinkActive="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-cyan-500/5 text-slate-400 hover:text-cyan-300 transition-all border border-transparent"
+               [class.justify-center]="sidebarCollapsed()">
+              <span class="material-symbols-outlined text-cyan-400">inventory_2</span>
+              @if (!sidebarCollapsed()) {
+                <span>Paquetes Trdng</span>
+              }
+            </a>
+          </li>
+          <li>
             <a routerLink="/admin/anda-gana" routerLinkActive="bg-orange-500/10 text-orange-400 border border-orange-500/20"
                class="flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-orange-500/5 text-slate-400 hover:text-orange-300 transition-all border border-transparent"
                [class.justify-center]="sidebarCollapsed()">

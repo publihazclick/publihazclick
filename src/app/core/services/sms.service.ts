@@ -20,7 +20,8 @@ export class SmsService {
       .from('sms_contacts')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(1000);
     if (error) throw error;
     return data as SmsContact[];
   }
@@ -66,7 +67,7 @@ export class SmsService {
   async getContactCount(userId: string) {
     const { count, error } = await this.supabase
       .from('sms_contacts')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('user_id', userId);
     if (error) throw error;
     return count ?? 0;
@@ -79,7 +80,8 @@ export class SmsService {
       .from('sms_contact_groups')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     if (error) throw error;
     return data as SmsContactGroup[];
   }
@@ -109,7 +111,8 @@ export class SmsService {
       .from('sms_templates')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     if (error) throw error;
     return data as SmsTemplate[];
   }
@@ -150,7 +153,8 @@ export class SmsService {
       .from('sms_campaigns')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (error) throw error;
     return data as SmsCampaign[];
   }
@@ -192,7 +196,8 @@ export class SmsService {
       .from('sms_campaign_recipients')
       .select('*')
       .eq('campaign_id', campaignId)
-      .order('sent_at', { ascending: false });
+      .order('sent_at', { ascending: false })
+      .limit(500);
     if (error) throw error;
     return data as SmsCampaignRecipient[];
   }
@@ -225,7 +230,8 @@ export class SmsService {
       .from('sms_wallet_payments')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (error) throw error;
     return data ?? [];
   }
@@ -267,7 +273,8 @@ export class SmsService {
       this.supabase
         .from('sms_campaigns')
         .select('sent_count, delivered_count, failed_count, total_cost')
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .limit(500),
     ]);
 
     if (contactsRes.error) throw contactsRes.error;

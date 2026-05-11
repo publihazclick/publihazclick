@@ -51,9 +51,7 @@ export class AdminCampaignService {
           end_date,
           created_at,
           updated_at,
-          profiles:advertiser_id (username),
-          ptc_tasks (total_clicks, daily_limit),
-          ptc_clicks:ptc_tasks (id)
+          profiles:advertiser_id (username)
         `, { count: 'exact' });
 
       if (filters.status) {

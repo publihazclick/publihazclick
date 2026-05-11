@@ -41,6 +41,14 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Prerender,
   },
 
+  // ── Landing privada de anfitrión XZOOM: SSR para que WhatsApp/Facebook
+  //    lean las meta OG correctas y el usuario vea la landing del anfitrión
+  //    de inmediato sin pasar por el shell de Publihazclick.
+  {
+    path: 'xzoom/h/:slug',
+    renderMode: RenderMode.Server,
+  },
+
   // ── Rutas dinámicas: Client-side ────────────────────────────────────────
   {
     path: 'ref/:code',

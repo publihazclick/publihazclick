@@ -44,35 +44,24 @@ export class AdminDashboardService {
         { count: approvedWithdrawals },
         { count: rejectedWithdrawals },
         { count: completedWithdrawals },
-        { data: pendingWdAmounts },
-        { data: approvedWdAmounts },
-        { data: completedWdAmounts },
-        { data: revenueData },
-        { data: todayRevenueData },
-        { data: paidOutData },
-        { data: donatedData },
+        { data: sums },
       ] = await Promise.all([
-        this.supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        this.supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
-        this.supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', today).lt('created_at', tomorrow),
-        this.supabase.from('ptc_tasks').select('*', { count: 'exact', head: true }),
-        this.supabase.from('ptc_tasks').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        this.supabase.from('campaigns').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
-        this.supabase.from('ptc_clicks').select('*', { count: 'exact', head: true }),
-        this.supabase.from('ptc_clicks').select('*', { count: 'exact', head: true }).gte('completed_at', today).lt('completed_at', tomorrow),
-        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
-        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
-        this.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
-        this.supabase.from('withdrawal_requests').select('amount').eq('status', 'pending'),
-        this.supabase.from('withdrawal_requests').select('amount').eq('status', 'approved'),
-        this.supabase.from('withdrawal_requests').select('amount').eq('status', 'completed'),
-        this.supabase.from('profiles').select('total_earned'),
-        this.supabase.from('ptc_clicks').select('reward_earned').gte('completed_at', today).lt('completed_at', tomorrow),
-        this.supabase.from('ptc_clicks').select('reward_earned'),
-        this.supabase.from('profiles').select('total_donated'),
+        this.supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        this.supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', today).lt('created_at', tomorrow),
+        this.supabase.from('ptc_tasks').select('id', { count: 'exact', head: true }),
+        this.supabase.from('ptc_tasks').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+        this.supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+        this.supabase.from('ptc_clicks').select('id', { count: 'exact', head: true }),
+        this.supabase.from('ptc_clicks').select('id', { count: 'exact', head: true }).gte('completed_at', today).lt('completed_at', tomorrow),
+        this.supabase.from('withdrawal_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        this.supabase.from('withdrawal_requests').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+        this.supabase.from('withdrawal_requests').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+        this.supabase.from('withdrawal_requests').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
+        this.supabase.rpc('get_dashboard_sums'),
       ]);
 
+      const s = (sums as any) ?? {};
       const totalWdCount = (pendingWithdrawals || 0) + (approvedWithdrawals || 0) + (rejectedWithdrawals || 0) + (completedWithdrawals || 0);
 
       return {
@@ -82,9 +71,9 @@ export class AdminDashboardService {
         totalAds: totalAds || 0,
         activeAds: activeAds || 0,
         pendingAds: pendingAds || 0,
-        totalRevenue: revenueData?.reduce((s, p) => s + (p.total_earned || 0), 0) || 0,
-        todayRevenue: todayRevenueData?.reduce((s, c) => s + (c.reward_earned || 0), 0) || 0,
-        totalPaidOut: paidOutData?.reduce((s, c) => s + (c.reward_earned || 0), 0) || 0,
+        totalRevenue: s.total_earned || 0,
+        todayRevenue: s.today_revenue || 0,
+        totalPaidOut: s.total_paid_out || 0,
         totalClicks: totalClicks || 0,
         todayClicks: todayClicks || 0,
         pendingWithdrawals: pendingWithdrawals || 0,
@@ -92,10 +81,10 @@ export class AdminDashboardService {
         rejectedWithdrawals: rejectedWithdrawals || 0,
         completedWithdrawals: completedWithdrawals || 0,
         totalWithdrawals: totalWdCount,
-        pendingWithdrawalsAmount: pendingWdAmounts?.reduce((s, w) => s + (w.amount || 0), 0) || 0,
-        approvedWithdrawalsAmount: approvedWdAmounts?.reduce((s, w) => s + (w.amount || 0), 0) || 0,
-        completedWithdrawalsAmount: completedWdAmounts?.reduce((s, w) => s + (w.amount || 0), 0) || 0,
-        totalDonated: donatedData?.reduce((s, p) => s + (p.total_donated || 0), 0) || 0,
+        pendingWithdrawalsAmount: s.pending_amount || 0,
+        approvedWithdrawalsAmount: s.approved_amount || 0,
+        completedWithdrawalsAmount: s.completed_amount || 0,
+        totalDonated: s.total_donated || 0,
       };
     } catch (error: any) {
       // Failed to get dashboard stats
@@ -117,47 +106,21 @@ export class AdminDashboardService {
    */
   async getActivityChartData(): Promise<ChartData> {
     try {
-      const days = 7;
+      const { data: rows, error } = await this.supabase.rpc('get_activity_chart_data', { days_back: 7 });
+      if (error || !rows) throw error;
+
+      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       const labels: string[] = [];
       const userData: number[] = [];
       const clickData: number[] = [];
       const revenueData: number[] = [];
 
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-
-      for (let i = days - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        labels.push(dayNames[date.getDay()]);
-
-        // Usuarios registrados ese día
-        const nextDateStr = new Date(date.getTime() + 86400000).toISOString().split('T')[0];
-        const { count: users } = await this.supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', dateStr)
-          .lt('created_at', nextDateStr);
-
-        userData.push(users || 0);
-
-        // Clicks ese día
-        const { count: clicks } = await this.supabase
-          .from('ptc_clicks')
-          .select('*', { count: 'exact', head: true })
-          .gte('completed_at', dateStr)
-          .lt('completed_at', nextDateStr);
-
-        clickData.push(clicks || 0);
-
-        // Ingresos ese día (suma de rewards pagados)
-        const { data: dayRevenue } = await this.supabase
-          .from('ptc_clicks')
-          .select('reward_earned')
-          .gte('completed_at', dateStr)
-          .lt('completed_at', nextDateStr);
-
-        revenueData.push(dayRevenue?.reduce((sum, c) => sum + (c.reward_earned || 0), 0) || 0);
+      for (const row of (rows as any[])) {
+        const d = new Date(row.date + 'T12:00:00Z');
+        labels.push(dayNames[d.getUTCDay()]);
+        userData.push(row.users || 0);
+        clickData.push(row.clicks || 0);
+        revenueData.push(Number(row.revenue) || 0);
       }
 
       return {
@@ -169,11 +132,7 @@ export class AdminDashboardService {
         ]
       };
     } catch (error: any) {
-      // Failed to get chart data
-      return {
-        labels: [],
-        datasets: []
-      };
+      return { labels: [], datasets: [] };
     }
   }
 

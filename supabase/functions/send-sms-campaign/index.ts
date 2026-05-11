@@ -86,9 +86,10 @@ serve(async (req) => {
     // Obtener destinatarios pendientes
     const { data: recipients, error: rErr } = await supabase
       .from('sms_campaign_recipients')
-      .select('*')
+      .select('id, phone_number')
       .eq('campaign_id', campaign_id)
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .limit(5000);
 
     if (rErr || !recipients || recipients.length === 0) {
       return json({ error: 'No hay destinatarios pendientes' }, 400);

@@ -208,7 +208,8 @@ export class TestimonialsService {
   async loadHashCache(): Promise<void> {
     const { data } = await this.client
       .from('payment_testimonials')
-      .select('id, phash, image_url, username');
+      .select('id, phash, image_url, username')
+      .limit(500);
     this.cachedHashes = (data ?? []).filter(r => r.phash && r.phash.length === 64);
     this.cacheLoaded = true;
   }
@@ -247,7 +248,8 @@ export class TestimonialsService {
       .from('payment_testimonials')
       .select('*')
       .eq('active', true)
-      .order('image_date', { ascending: false });
+      .order('image_date', { ascending: false })
+      .limit(100);
     if (error) throw new Error(error.message);
     return data ?? [];
   }
@@ -256,7 +258,8 @@ export class TestimonialsService {
     const { data, error } = await this.client
       .from('payment_testimonials')
       .select('*')
-      .order('image_date', { ascending: false });
+      .order('image_date', { ascending: false })
+      .limit(200);
     if (error) throw new Error(error.message);
     return data ?? [];
   }

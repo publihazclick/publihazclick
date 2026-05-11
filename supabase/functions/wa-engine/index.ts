@@ -34,6 +34,13 @@ async function verifyUser(
   return data.user.id;
 }
 
+class EvolutionUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EvolutionUnavailableError';
+  }
+}
+
 async function evoFetch(path: string, method = 'GET', body?: unknown): Promise<unknown> {
   const url = `${EVOLUTION_API_URL}${path}`;
   const opts: RequestInit = {
@@ -44,8 +51,35 @@ async function evoFetch(path: string, method = 'GET', body?: unknown): Promise<u
     },
   };
   if (body && method !== 'GET') opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  return res.json();
+
+  // Timeout de 15s por llamada. Evolution sano responde en <2s; si tarda mas
+  // casi seguro esta caido o congelado.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  opts.signal = controller.signal;
+
+  let res: Response;
+  try {
+    res = await fetch(url, opts);
+  } catch (e) {
+    clearTimeout(timer);
+    const msg = e instanceof Error && e.name === 'AbortError'
+      ? 'Evolution API no respondio en 15s (puede estar caido en Railway).'
+      : 'No se pudo contactar Evolution API.';
+    throw new EvolutionUnavailableError(msg);
+  }
+  clearTimeout(timer);
+
+  // Railway devuelve 502/503 cuando la app esta crashed o reiniciando.
+  if (res.status === 502 || res.status === 503 || res.status === 504) {
+    throw new EvolutionUnavailableError(`Evolution API caido (HTTP ${res.status}). Reinicialo en Railway.`);
+  }
+
+  try {
+    return await res.json();
+  } catch {
+    throw new EvolutionUnavailableError(`Evolution API devolvio respuesta no-JSON (HTTP ${res.status}).`);
+  }
 }
 
 // Evolution API v2.x usa `byEvents`/`base64` en /instance/create y
@@ -304,6 +338,17 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Evolution corre pero Baileys no logra generar el QR (count siempre 0).
+      // Sintoma tipico: IP de Railway baneada por WhatsApp o servicio congelado.
+      // No reintentar desde el cliente — devolver error claro y accionable.
+      if (!code && !base64 && !pairingCode) {
+        return json({
+          error: 'El servidor de WhatsApp (Evolution) no esta generando el codigo QR. Reinicia el servicio Evolution en Railway (proyecto stellar-elegance) y vuelve a intentar en 1-2 min. Si persiste, la IP de Railway puede estar bloqueada por WhatsApp.',
+          error_code: 'evolution_no_qr',
+          _debug: debug,
+        }, 503);
+      }
+
       return json({ ok: true, data: { code, base64, pairingCode, count: 1, _debug: debug } });
     }
 
@@ -400,6 +445,19 @@ Deno.serve(async (req) => {
 
       if (!campaign) return json({ error: 'Campaña no encontrada' }, 404);
       if (!campaign.template) return json({ error: 'Plantilla no asignada' }, 400);
+
+      // Proteccion: start_campaign solo puede usarse desde draft. Si la
+      // campaña ya esta pausada/corriendo, usar resume_campaign para no
+      // regenerar mensajes ni perder progreso.
+      if (campaign.status === 'paused') {
+        return json({ error: 'La campaña está pausada. Usa "Continuar" en vez de "Iniciar" para no perder el progreso.' }, 400);
+      }
+      if (campaign.status === 'running') {
+        return json({ error: 'La campaña ya está enviando.' }, 400);
+      }
+      if (campaign.status === 'completed') {
+        return json({ error: 'La campaña ya terminó. Crea una nueva si quieres reenviar.' }, 400);
+      }
 
       // Obtener contactos segun target
       let contacts: { id: string; phone: string; name: string | null }[] = [];
@@ -509,10 +567,85 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === 'resume_campaign') {
+      const campaignId = body.campaign_id as string;
+      if (!campaignId) return json({ error: 'campaign_id requerido' }, 400);
+
+      const { data: campaign } = await supabase
+        .from('wa_campaigns')
+        .select('id, status, user_id')
+        .eq('id', campaignId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!campaign) return json({ error: 'Campaña no encontrada' }, 404);
+      if (campaign.status !== 'paused') {
+        return json({ error: `Solo se pueden continuar campañas pausadas (estado actual: ${campaign.status})` }, 400);
+      }
+
+      // Verificar que haya sesion conectada antes de reanudar.
+      const { data: sessions } = await supabase
+        .from('wa_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'connected')
+        .limit(1);
+
+      if (!sessions?.length) {
+        return json({ error: 'No tienes una sesion de WhatsApp conectada. Conecta antes de continuar.' }, 400);
+      }
+
+      // Cambiar solo el status. No tocamos mensajes, total_contacts ni
+      // started_at — el worker retoma los mensajes pendientes del bloque
+      // actual exactamente donde los dejo.
+      await supabase.from('wa_campaigns')
+        .update({ status: 'running' })
+        .eq('id', campaignId);
+
+      // Disparar worker asincrono para envio inmediato sin esperar cron.
+      fetch(`${SUPABASE_URL}/functions/v1/wa-campaign-worker`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+        body: JSON.stringify({ trigger: 'resume_campaign', campaign_id: campaignId }),
+      }).catch((e) => console.error('worker trigger failed:', e));
+
+      return json({ ok: true, message: 'Campaña retomada. Los mensajes pendientes se reanudaran en segundos.' });
+    }
+
+    if (action === 'pause_campaign') {
+      const campaignId = body.campaign_id as string;
+      if (!campaignId) return json({ error: 'campaign_id requerido' }, 400);
+
+      const { data: campaign } = await supabase
+        .from('wa_campaigns')
+        .select('id, status')
+        .eq('id', campaignId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!campaign) return json({ error: 'Campaña no encontrada' }, 404);
+      if (campaign.status !== 'running') {
+        return json({ error: `Solo se pueden pausar campañas en envio (estado actual: ${campaign.status})` }, 400);
+      }
+
+      await supabase.from('wa_campaigns')
+        .update({ status: 'paused' })
+        .eq('id', campaignId);
+
+      return json({ ok: true, message: 'Campaña pausada. Los mensajes en curso terminaran pero no se enviaran los siguientes.' });
+    }
+
     return json({ error: `Accion '${action}' no reconocida` }, 400);
 
   } catch (err) {
     console.error('wa-engine error:', err);
-    return json({ error: 'Error interno del servidor' }, 500);
+    // Propagar mensaje util de Evolution caido en vez de "error interno"
+    if (err instanceof EvolutionUnavailableError) {
+      return json({ error: err.message }, 503);
+    }
+    return json({ error: err instanceof Error ? err.message : 'Error interno del servidor' }, 500);
   }
 });
