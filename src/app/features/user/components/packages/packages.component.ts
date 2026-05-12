@@ -350,7 +350,7 @@ export class UserPackagesComponent implements OnInit {
     const expires = this.profile()?.package_expires_at;
     if (!expires) return 0;
     const diff = new Date(expires).getTime() - Date.now();
-    return Math.max(0, Math.ceil(diff / 86400000));
+    return Math.max(0, Math.floor(diff / 86400000));
   }
 
   formatPrice(price: number, sourceCurrency: string): string {

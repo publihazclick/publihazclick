@@ -801,15 +801,15 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   getDaysRemaining(expiresAt: string | null): number {
     if (!expiresAt) return 0;
-    const diff = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     return Math.max(0, diff);
   }
 
   getPackageProgress(startedAt: string | null, expiresAt: string | null): number {
     if (!startedAt || !expiresAt) return 0;
-    const total = Math.max(1, Math.ceil((new Date(expiresAt).getTime() - new Date(startedAt).getTime()) / 86400000));
-    const elapsed = total - this.getDaysRemaining(expiresAt);
-    return Math.min(100, Math.round((elapsed / total) * 100));
+    const total = Math.max(1, new Date(expiresAt).getTime() - new Date(startedAt).getTime());
+    const elapsed = Date.now() - new Date(startedAt).getTime();
+    return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
   }
 
   getClickLabel(adType: string): string {
