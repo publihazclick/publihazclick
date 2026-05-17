@@ -4239,7 +4239,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <p class="text-slate-600 text-[10px] text-center mt-2">Usa buena iluminación. El texto debe verse con claridad.</p>
             </div>
-            <input id="doc-file-p-selfie" type="file" accept="image/*" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
+            <input id="doc-file-p-selfie" type="file" accept="image/*" capture="environment" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
           </div>
 
           <!-- Contacto de emergencia -->
@@ -4494,7 +4494,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                     <p class="text-slate-600 text-[10px] text-center mt-1.5">Buena iluminación · texto legible · sin recortes</p>
                   </div>
-                  <input [id]="'doc-file-d-' + f.key" type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                  <input [id]="'doc-file-d-' + f.key" type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                 </div>
               }
             </div>
