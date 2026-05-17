@@ -21,55 +21,53 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
-    <div class="fixed inset-0 z-[9999] bg-black" style="touch-action:none;overflow:hidden">
+    <div class="fixed inset-0 z-[9999]" style="touch-action:none;background:#000">
 
-      <!-- 1. Video en vivo — ocupa toda la pantalla -->
-      <video id="doc-cam-video" autoplay playsinline muted
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1"></video>
+      <!--
+        Video en el DOM → el browser decodifica los frames (no funciona offscreen en Chrome móvil).
+        Canvas encima → dibuja el video + overlay oscuro + recuadro en cada requestAnimationFrame.
+        Texto y botones encima del canvas (orden DOM).
+      -->
+      <video id="doc-cam-video" autoplay muted playsinline
+        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0"></video>
 
-      <!-- 2. Canvas overlay — oscurece todo y deja un hueco transparente donde va la cédula.
-               Se dibuja por JS con destination-out (único método que funciona en Android WebView) -->
-      <canvas id="doc-cam-overlay"
-        style="position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none"></canvas>
+      <canvas id="doc-cam-main"
+        style="position:absolute;inset:0;display:block;width:100%;height:100%"></canvas>
 
-      <!-- 3. Texto instrucción (encima del canvas, z-index:3) -->
-      <div style="position:absolute;top:12%;left:0;right:0;z-index:3;pointer-events:none;text-align:center;padding:0 16px">
-        <p style="color:#fff;font-size:15px;font-weight:800;
-          text-shadow:0 1px 6px rgba(0,0,0,0.95),0 0 12px rgba(0,0,0,0.8)">
+      <!-- Texto instrucción -->
+      <div style="position:absolute;top:11%;left:0;right:0;text-align:center;pointer-events:none;padding:0 20px">
+        <p style="color:#fff;font-size:15px;font-weight:900;letter-spacing:0.01em;
+          text-shadow:0 2px 8px rgba(0,0,0,1),0 0 20px rgba(0,0,0,0.9)">
           Encaja tu cédula dentro del recuadro
         </p>
       </div>
 
-      <!-- 4. Aviso iluminación (debajo del recuadro, z-index:3) -->
-      <div style="position:absolute;bottom:28%;left:0;right:0;z-index:3;pointer-events:none;display:flex;justify-content:center">
+      <!-- Aviso iluminación -->
+      <div style="position:absolute;bottom:27%;left:0;right:0;display:flex;justify-content:center;pointer-events:none">
         <div style="display:inline-flex;align-items:center;gap:6px;
-          background:rgba(251,146,60,0.18);border:1px solid rgba(251,146,60,0.5);
+          background:rgba(0,0,0,0.55);border:1px solid rgba(251,146,60,0.6);
           padding:6px 14px;border-radius:999px">
-          <span class="material-symbols-outlined" style="font-size:14px;color:#fbbf24">light_mode</span>
+          <span class="material-symbols-outlined" style="font-size:13px;color:#fbbf24">light_mode</span>
           <span style="color:#fbbf24;font-size:12px;font-weight:700">Ubícate en un lugar bien iluminado</span>
         </div>
       </div>
 
-      <!-- 5. Botones (z-index:4) -->
-      <div style="position:absolute;bottom:0;left:0;right:0;z-index:4;
-        display:flex;align-items:center;justify-content:space-between;padding:0 32px 48px">
-        <!-- Cerrar -->
+      <!-- Botones -->
+      <div style="position:absolute;bottom:0;left:0;right:0;
+        display:flex;align-items:center;justify-content:space-between;padding:0 32px 52px">
         <button (click)="closeDocCamera()"
           style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-            background:rgba(0,0,0,0.55);border:2px solid rgba(255,255,255,0.4)">
+            background:rgba(0,0,0,0.6);border:2px solid rgba(255,255,255,0.45)">
           <span class="material-symbols-outlined" style="font-size:22px;color:#fff">close</span>
         </button>
-        <!-- Disparador -->
-        <button (click)="captureDocPhoto()"
-          style="width:78px;height:78px;border-radius:50%;border:5px solid #fff;
-            background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center"
-          class="active:scale-90 transition-transform">
-          <div style="width:56px;height:56px;border-radius:50%;background:#fff"></div>
+        <button (click)="captureDocPhoto()" class="active:scale-90 transition-transform"
+          style="width:80px;height:80px;border-radius:50%;border:5px solid #fff;
+            background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center">
+          <div style="width:58px;height:58px;border-radius:50%;background:#fff"></div>
         </button>
         <div style="width:48px"></div>
       </div>
 
-      <!-- Canvas oculto para captura de foto -->
       <canvas id="doc-cam-canvas" style="display:none"></canvas>
     </div>
   }
@@ -4225,27 +4223,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 Solo Movi tiene acceso a tu documento. <span class="text-white">Únicamente si una autoridad competente lo solicita mediante proceso legal,</span> en el marco de una investigación por un delito cometido en contra de un conductor, estaríamos obligados a entregarlo.
               </p>
             </div>
-            <!-- Marco guía del documento -->
-            <div (click)="openDocCamera('selfie', false)" class="cursor-pointer select-none block">
-              <div class="relative flex flex-col items-center justify-center rounded-2xl overflow-hidden"
-                   style="background:rgba(0,0,0,0.5);border:2px dashed rgba(251,146,60,0.4);aspect-ratio:1.586/1;min-height:190px">
-                <!-- Esquinas tipo visor -->
-                <div class="absolute top-3 left-3 w-7 h-7" style="border-top:3px solid #fb923c;border-left:3px solid #fb923c;border-radius:4px 0 0 0"></div>
-                <div class="absolute top-3 right-3 w-7 h-7" style="border-top:3px solid #fb923c;border-right:3px solid #fb923c;border-radius:0 4px 0 0"></div>
-                <div class="absolute bottom-3 left-3 w-7 h-7" style="border-bottom:3px solid #fb923c;border-left:3px solid #fb923c;border-radius:0 0 0 4px"></div>
-                <div class="absolute bottom-3 right-3 w-7 h-7" style="border-bottom:3px solid #fb923c;border-right:3px solid #fb923c;border-radius:0 0 4px 0"></div>
-                @if (pf.selfie) {
-                  <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">check_circle</span>
-                  <p class="text-emerald-400 text-sm font-black mt-1">Foto cargada</p>
-                  <p class="text-slate-500 text-[10px] mt-1 px-6 text-center" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pf.selfie }}</p>
-                } @else {
-                  <span class="material-symbols-outlined text-slate-400" style="font-size:44px">id_card</span>
-                  <p class="text-white font-bold text-sm mt-2">Encaja tu cédula en el marco</p>
-                  <p class="text-slate-500 text-xs mt-1">Toca para abrir la cámara</p>
-                }
-              </div>
-              <p class="text-slate-600 text-[10px] text-center mt-2">Usa buena iluminación. El texto debe verse con claridad.</p>
-            </div>
+            <!-- Botón para tomar foto del documento -->
+            <button type="button" (click)="openDocCamera('selfie', false)"
+              class="w-full flex items-center gap-3 rounded-2xl px-4 py-3 active:scale-95 transition-transform"
+              style="background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.3)">
+              @if (pf.selfie) {
+                <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                <div class="text-left min-w-0">
+                  <p class="text-emerald-400 text-sm font-black">Foto cargada</p>
+                  <p class="text-slate-500 text-[10px] truncate">{{ pf.selfie }}</p>
+                </div>
+              } @else {
+                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:28px">photo_camera</span>
+                <div class="text-left">
+                  <p class="text-white text-sm font-bold">Tomar foto del documento</p>
+                  <p class="text-slate-500 text-[10px]">Buena iluminación · texto legible</p>
+                </div>
+              }
+            </button>
             <input id="doc-file-p-selfie" type="file" accept="image/*" capture="environment" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
           </div>
 
@@ -4483,24 +4478,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               @for (f of idPhotoFields; track f.key) {
                 <div class="flex flex-col gap-1">
                   <label class="text-slate-400 text-xs font-bold">{{ f.label }} *</label>
-                  <div (click)="openDocCamera(f.key, true)" class="cursor-pointer select-none block">
-                    <div class="relative flex flex-col items-center justify-center rounded-xl overflow-hidden"
-                         style="background:rgba(0,0,0,0.5);border:2px dashed rgba(6,182,212,0.4);aspect-ratio:1.586/1;min-height:150px">
-                      <div class="absolute top-2.5 left-2.5 w-6 h-6" style="border-top:2.5px solid #06b6d4;border-left:2.5px solid #06b6d4;border-radius:3px 0 0 0"></div>
-                      <div class="absolute top-2.5 right-2.5 w-6 h-6" style="border-top:2.5px solid #06b6d4;border-right:2.5px solid #06b6d4;border-radius:0 3px 0 0"></div>
-                      <div class="absolute bottom-2.5 left-2.5 w-6 h-6" style="border-bottom:2.5px solid #06b6d4;border-left:2.5px solid #06b6d4;border-radius:0 0 0 3px"></div>
-                      <div class="absolute bottom-2.5 right-2.5 w-6 h-6" style="border-bottom:2.5px solid #06b6d4;border-right:2.5px solid #06b6d4;border-radius:0 0 3px 0"></div>
-                      @if (dfr[f.key]) {
-                        <span class="material-symbols-outlined text-emerald-400" style="font-size:38px">check_circle</span>
-                        <p class="text-emerald-400 text-xs font-black mt-1">Foto cargada</p>
-                      } @else {
-                        <span class="material-symbols-outlined text-slate-400" style="font-size:38px">id_card</span>
-                        <p class="text-slate-300 text-xs font-bold mt-1">Encaja el documento en el marco</p>
-                        <p class="text-slate-600 text-[10px] mt-0.5">Toca para abrir la cámara</p>
-                      }
-                    </div>
-                    <p class="text-slate-600 text-[10px] text-center mt-1.5">Buena iluminación · texto legible · sin recortes</p>
-                  </div>
+                  <button type="button" (click)="openDocCamera(f.key, true)"
+                    class="w-full flex items-center gap-3 rounded-xl px-4 py-3 active:scale-95 transition-transform"
+                    style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25)">
+                    @if (dfr[f.key]) {
+                      <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">check_circle</span>
+                      <div class="text-left min-w-0">
+                        <p class="text-emerald-400 text-xs font-black">Foto cargada</p>
+                        <p class="text-slate-500 text-[10px] truncate">{{ dfr[f.key] }}</p>
+                      </div>
+                    } @else {
+                      <span class="material-symbols-outlined text-cyan-400 flex-shrink-0" style="font-size:26px">photo_camera</span>
+                      <div class="text-left">
+                        <p class="text-white text-xs font-bold">Tomar foto</p>
+                        <p class="text-slate-500 text-[10px]">Buena iluminación · texto legible</p>
+                      </div>
+                    }
+                  </button>
                   <input [id]="'doc-file-d-' + f.key" type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                 </div>
               }
@@ -7843,148 +7837,144 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   docCameraOpen   = signal(false);
   docCameraField  = '';
   docCameraDriver = false;
-  private _docStream: MediaStream | null = null;
+  private _docStream:  MediaStream      | null = null;
+  private _docVideo:   HTMLVideoElement | null = null;
+  private _overlayRaf: number           | null = null;
 
   async openDocCamera(field: string, isDriver: boolean): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
+    if (!navigator?.mediaDevices?.getUserMedia) { this._triggerFallback(field, isDriver); return; }
 
-    // Fallback directo si el browser no soporta getUserMedia
-    if (!navigator?.mediaDevices?.getUserMedia) {
-      this._triggerFallback(field, isDriver);
-      return;
-    }
-
-    // 1. Pedir el stream PRIMERO (antes de abrir el modal)
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false,
-      });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     } catch {
-      // Permiso denegado o cámara no disponible → fallback
       this._triggerFallback(field, isDriver);
       return;
     }
 
-    // 2. Guardar stream y abrir el modal
-    this._docStream     = stream;
+    this._docStream      = stream;
     this.docCameraField  = field;
     this.docCameraDriver = isDriver;
     this.docCameraOpen.set(true);
-    this.cdr.detectChanges(); // fuerza render inmediato (OnPush)
+    this.cdr.detectChanges();
 
-    // 3. Esperar dos frames de pintura para que el <video> y el <canvas> estén en el DOM
+    // 2 frames para que Angular renderice el @if y el video llegue al DOM
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-    // 4. Conectar el stream al elemento de video
     const video = document.getElementById('doc-cam-video') as HTMLVideoElement | null;
     if (!video) { this.closeDocCamera(); return; }
+
     video.srcObject = stream;
+    this._docVideo  = video;
     video.play().catch(() => {});
 
-    // 5. Dibujar el overlay con canvas (destination-out) — funciona en todos los browsers
-    await new Promise<void>(r => requestAnimationFrame(() => r()));
-    this._drawDocOverlay();
+    this._startCamLoop();
   }
 
-  /** Dibuja fondo oscuro + hueco transparente con esquinas naranja sobre el canvas de overlay */
-  private _drawDocOverlay(): void {
-    const cv = document.getElementById('doc-cam-overlay') as HTMLCanvasElement | null;
-    if (!cv) return;
-    const W = cv.width  = window.innerWidth;
-    const H = cv.height = window.innerHeight;
-    const ctx = cv.getContext('2d');
+  private _startCamLoop(): void {
+    const video = this._docVideo;
+    if (!video) return;
+
+    const canvas = document.getElementById('doc-cam-main') as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    // Dimensiones fijas para toda la sesión (evita reset de contexto cada frame)
+    const W = canvas.width  = window.innerWidth;
+    const H = canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const cw = W * 0.85;           // ancho del recuadro (85% pantalla)
-    const ch = cw / 1.586;         // alto según proporción cédula colombiana
-    const cx = (W - cw) / 2;       // centrado horizontal
-    const cy = H * 0.22;           // empieza al 22% desde arriba
-    const r  = 12;                  // esquinas redondeadas
+    const cw = W * 0.85, ch = cw / 1.586;
+    const cx = (W - cw) / 2, cy = H * 0.22;
+    const r = 12, cs = 30, ct = 5;
 
-    // ── Paso 1: fondo oscuro completo ──────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(0, 0, W, H);
+    const draw = () => {
+      if (!this.docCameraOpen()) return;
 
-    // ── Paso 2: borrar el hueco de la cédula (destination-out = pixels transparentes) ──
-    ctx.globalCompositeOperation = 'destination-out';
-    this._roundRect(ctx, cx, cy, cw, ch, r);
-    ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
+      // 1 · video (cover fit)
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        const s  = Math.max(W / video.videoWidth, H / video.videoHeight);
+        const dw = video.videoWidth * s, dh = video.videoHeight * s;
+        ctx.drawImage(video, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      } else {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+      }
 
-    // ── Paso 3: borde blanco fino alrededor del hueco ──────────────────────
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    ctx.lineWidth   = 2;
-    this._roundRect(ctx, cx, cy, cw, ch, r);
-    ctx.stroke();
+      // 2 · overlay oscuro fuera del recuadro (evenodd = solo entre los 2 paths)
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      ctx.moveTo(cx + r, cy);
+      ctx.lineTo(cx + cw - r, cy);
+      ctx.arcTo(cx + cw, cy,      cx + cw, cy + r,      r);
+      ctx.lineTo(cx + cw, cy + ch - r);
+      ctx.arcTo(cx + cw, cy + ch, cx + cw - r, cy + ch, r);
+      ctx.lineTo(cx + r, cy + ch);
+      ctx.arcTo(cx,      cy + ch, cx,      cy + ch - r, r);
+      ctx.lineTo(cx, cy + r);
+      ctx.arcTo(cx,      cy,      cx + r,  cy,          r);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fill('evenodd');
 
-    // ── Paso 4: esquinas naranja (estilo visor de cámara) ──────────────────
-    const cs = 30;   // longitud de cada esquina
-    const ct = 5;    // grosor
-    ctx.strokeStyle = '#fb923c';
-    ctx.lineWidth   = ct;
-    ctx.lineCap     = 'square';
+      // 3 · borde blanco
+      ctx.beginPath();
+      ctx.moveTo(cx + r, cy);
+      ctx.lineTo(cx + cw - r, cy);
+      ctx.arcTo(cx + cw, cy,      cx + cw, cy + r,      r);
+      ctx.lineTo(cx + cw, cy + ch - r);
+      ctx.arcTo(cx + cw, cy + ch, cx + cw - r, cy + ch, r);
+      ctx.lineTo(cx + r, cy + ch);
+      ctx.arcTo(cx,      cy + ch, cx,      cy + ch - r, r);
+      ctx.lineTo(cx, cy + r);
+      ctx.arcTo(cx,      cy,      cx + r,  cy,          r);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth   = 2;
+      ctx.stroke();
 
-    // Superior izquierda
-    ctx.beginPath(); ctx.moveTo(cx, cy + cs); ctx.lineTo(cx, cy); ctx.lineTo(cx + cs, cy); ctx.stroke();
-    // Superior derecha
-    ctx.beginPath(); ctx.moveTo(cx + cw - cs, cy); ctx.lineTo(cx + cw, cy); ctx.lineTo(cx + cw, cy + cs); ctx.stroke();
-    // Inferior izquierda
-    ctx.beginPath(); ctx.moveTo(cx, cy + ch - cs); ctx.lineTo(cx, cy + ch); ctx.lineTo(cx + cs, cy + ch); ctx.stroke();
-    // Inferior derecha
-    ctx.beginPath(); ctx.moveTo(cx + cw - cs, cy + ch); ctx.lineTo(cx + cw, cy + ch); ctx.lineTo(cx + cw, cy + ch - cs); ctx.stroke();
-  }
+      // 4 · esquinas naranja
+      ctx.strokeStyle = '#fb923c';
+      ctx.lineWidth   = ct;
+      ctx.lineCap     = 'square';
+      ctx.beginPath(); ctx.moveTo(cx,cy+cs);      ctx.lineTo(cx,cy);      ctx.lineTo(cx+cs,cy);      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+cw-cs,cy);   ctx.lineTo(cx+cw,cy);   ctx.lineTo(cx+cw,cy+cs);   ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy+ch-cs);   ctx.lineTo(cx,cy+ch);   ctx.lineTo(cx+cs,cy+ch);   ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+cw-cs,cy+ch);ctx.lineTo(cx+cw,cy+ch);ctx.lineTo(cx+cw,cy+ch-cs);ctx.stroke();
 
-  /** Traza un rectángulo redondeado compatible con todos los browsers */
-  private _roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y,     x + w, y + r,     r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x,     y + h, x,     y + h - r, r);
-    ctx.lineTo(x,     y + r);
-    ctx.arcTo(x,     y,     x + r, y,          r);
-    ctx.closePath();
+      this._overlayRaf = requestAnimationFrame(draw);
+    };
+
+    this._overlayRaf = requestAnimationFrame(draw);
   }
 
   captureDocPhoto(): void {
-    const video  = document.getElementById('doc-cam-video')  as HTMLVideoElement | null;
+    const video  = this._docVideo;
     const canvas = document.getElementById('doc-cam-canvas') as HTMLCanvasElement | null;
-    if (!video || !canvas) return;
+    if (!video || !canvas || !video.videoWidth) return;
 
-    const w = video.videoWidth;
-    const h = video.videoHeight;
-    if (!w || !h) return; // stream aún no listo
-
-    canvas.width  = w;
-    canvas.height = h;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
 
-    const field    = this.docCameraField;
-    const isDriver = this.docCameraDriver;
+    const field = this.docCameraField, isDriver = this.docCameraDriver;
     this.closeDocCamera();
 
     canvas.toBlob(blob => {
       if (!blob) return;
       const file = new File([blob], 'documento-identidad.jpg', { type: 'image/jpeg' });
-      if (isDriver) {
-        (this.df as Record<string, unknown>)[field] = file.name;
-        this._dfFiles[field] = file;
-      } else {
-        (this.pf as Record<string, unknown>)[field] = file.name;
-        this._pfFiles[field] = file;
-      }
+      if (isDriver) { (this.df as Record<string,unknown>)[field] = file.name; this._dfFiles[field] = file; }
+      else          { (this.pf as Record<string,unknown>)[field] = file.name; this._pfFiles[field] = file; }
       this.cdr.detectChanges();
     }, 'image/jpeg', 0.92);
   }
 
   closeDocCamera(): void {
+    if (this._overlayRaf !== null) { cancelAnimationFrame(this._overlayRaf); this._overlayRaf = null; }
+    if (this._docVideo) { this._docVideo.srcObject = null; this._docVideo = null; }
     this._docStream?.getTracks().forEach(t => t.stop());
     this._docStream = null;
     this.docCameraOpen.set(false);
@@ -7992,8 +7982,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _triggerFallback(field: string, isDriver: boolean): void {
-    const id = `doc-file-${isDriver ? 'd' : 'p'}-${field}`;
-    const el = document.getElementById(id) as HTMLInputElement | null;
+    const el = document.getElementById(`doc-file-${isDriver ? 'd' : 'p'}-${field}`) as HTMLInputElement | null;
     el?.click();
   }
 
