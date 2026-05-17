@@ -1,10 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240">
-  <!-- Pin icon centrado -->
-  <g transform="translate(100, 90)">
-    <path d="M 0 -58 C -32 -58 -52 -36 -52 -10 C -52 24 0 68 0 68 C 0 68 52 24 52 -10 C 52 -36 32 -58 0 -58 Z" fill="#FFFFFF"/>
-    <circle cx="0" cy="-12" r="20" fill="#6C3AED"/>
-    <circle cx="0" cy="-12" r="9" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 640" width="360" height="640">
+  <!-- Fondo gradiente morado a azul -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="640" fill="url(#bg)"/>
+
+  <!-- Líneas de camino sutiles -->
+  <path d="M 40 520 Q 120 420 180 360 Q 240 300 320 260" stroke="rgba(255,255,255,0.10)" stroke-width="50" fill="none" stroke-linecap="round"/>
+  <path d="M 40 520 Q 120 420 180 360 Q 240 300 320 260" stroke="rgba(255,255,255,0.06)" stroke-width="80" fill="none" stroke-linecap="round"/>
+
+  <!-- Pin blanco centrado -->
+  <g transform="translate(180, 290)">
+    <path d="M 0 -72 C -40 -72 -65 -45 -65 -12 C -65 30 0 78 0 78 C 0 78 65 30 65 -12 C 65 -45 40 -72 0 -72 Z" fill="#FFFFFF"/>
+    <circle cx="0" cy="-16" r="24" fill="url(#bg)"/>
+    <circle cx="0" cy="-16" r="10" fill="#FFFFFF"/>
   </g>
-  <!-- MOVI text -->
-  <text x="100" y="200" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="56" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="6">MOVI</text>
+
+  <!-- MOVI -->
+  <text x="180" y="420" font-family="'Segoe UI', Arial, sans-serif" font-size="88" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="6">MOVI</text>
+
+  <!-- Tagline -->
+  <text x="180" y="460" font-family="'Segoe UI', Arial, sans-serif" font-size="15" font-weight="400" fill="rgba(255,255,255,0.85)" text-anchor="middle" letter-spacing="1">La aplicación de transporte</text>
+  <text x="180" y="482" font-family="'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">Más segura a nivel mundial</text>
 </svg>

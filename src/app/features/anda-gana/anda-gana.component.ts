@@ -75,9 +75,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ SPLASH ═══════════ -->
   @if (screen() === 'splash') {
-    <div class="fixed inset-0 z-[999] flex items-center justify-center"
-      style="background:#6C3AED">
-      <img src="movi-splash.svg" alt="Movi" style="width:220px;height:264px" />
+    <div class="fixed inset-0 z-[999]">
+      <img src="movi-splash.svg" alt="Movi" style="width:100%;height:100%;object-fit:cover" />
     </div>
   }
 
