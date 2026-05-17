@@ -4157,20 +4157,41 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
-          <!-- Foto de perfil -->
+          <!-- Foto de Documento de Identidad -->
           <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
             <h3 class="text-orange-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-              <span class="material-symbols-outlined" style="font-size:14px">photo_camera</span>Foto de Perfil
+              <span class="material-symbols-outlined" style="font-size:14px">badge</span>Foto de tu Documento de Identidad
             </h3>
-            <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Selfie / Foto de perfil *</label>
-              <label class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-white/10 rounded-xl py-5 cursor-pointer hover:border-orange-500/40 active:border-orange-500/40 transition-colors">
-                <span class="material-symbols-outlined text-slate-500" style="font-size:28px">add_a_photo</span>
-                <span class="text-slate-500 text-xs">Toca para subir tu foto</span>
-                <input type="file" accept="image/*" capture="user" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
-              </label>
-              @if (pf.selfie) { <p class="text-emerald-400 text-xs mt-1">✓ {{ pf.selfie }}</p> }
+            <!-- Aviso de privacidad y uso legal -->
+            <div class="rounded-xl p-3 flex gap-2.5" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2)">
+              <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:18px">lock</span>
+              <p class="text-slate-300 text-[11px] leading-relaxed">
+                <span class="text-emerald-400 font-black">Tus datos están seguros y son privados.</span>
+                Solo Movi tiene acceso a tu documento. <span class="text-white">Únicamente si una autoridad competente lo solicita mediante proceso legal,</span> en el marco de una investigación por un delito cometido en contra de un conductor, estaríamos obligados a entregarlo.
+              </p>
             </div>
+            <!-- Marco guía del documento -->
+            <label class="cursor-pointer select-none block">
+              <div class="relative flex flex-col items-center justify-center rounded-2xl overflow-hidden"
+                   style="background:rgba(0,0,0,0.5);border:2px dashed rgba(251,146,60,0.4);aspect-ratio:1.586/1;min-height:190px">
+                <!-- Esquinas tipo visor -->
+                <div class="absolute top-3 left-3 w-7 h-7" style="border-top:3px solid #fb923c;border-left:3px solid #fb923c;border-radius:4px 0 0 0"></div>
+                <div class="absolute top-3 right-3 w-7 h-7" style="border-top:3px solid #fb923c;border-right:3px solid #fb923c;border-radius:0 4px 0 0"></div>
+                <div class="absolute bottom-3 left-3 w-7 h-7" style="border-bottom:3px solid #fb923c;border-left:3px solid #fb923c;border-radius:0 0 0 4px"></div>
+                <div class="absolute bottom-3 right-3 w-7 h-7" style="border-bottom:3px solid #fb923c;border-right:3px solid #fb923c;border-radius:0 0 4px 0"></div>
+                @if (pf.selfie) {
+                  <span class="material-symbols-outlined text-emerald-400" style="font-size:44px">check_circle</span>
+                  <p class="text-emerald-400 text-sm font-black mt-1">Foto cargada</p>
+                  <p class="text-slate-500 text-[10px] mt-1 px-6 text-center" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pf.selfie }}</p>
+                } @else {
+                  <span class="material-symbols-outlined text-slate-400" style="font-size:44px">id_card</span>
+                  <p class="text-white font-bold text-sm mt-2">Encaja tu cédula en el marco</p>
+                  <p class="text-slate-500 text-xs mt-1">Toca para tomar la foto</p>
+                }
+                <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
+              </div>
+              <p class="text-slate-600 text-[10px] text-center mt-2">Usa buena iluminación. El texto debe verse con claridad.</p>
+            </label>
           </div>
 
           <!-- Contacto de emergencia -->
@@ -4396,14 +4417,35 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                 <span class="material-symbols-outlined" style="font-size:14px">badge</span>Documentos de Identidad
               </h3>
+              <!-- Aviso de privacidad y uso legal -->
+              <div class="rounded-xl p-3 flex gap-2.5" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2)">
+                <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:18px">lock</span>
+                <p class="text-slate-300 text-[11px] leading-relaxed">
+                  <span class="text-emerald-400 font-black">Tus datos son privados y están cifrados.</span>
+                  Solo Movi tiene acceso a tus documentos. <span class="text-white">Solo si una autoridad competente lo requiere mediante proceso legal,</span> en el marco de una investigación por un delito cometido en contra de un pasajero, estaríamos obligados a compartirlos.
+                </p>
+              </div>
               @for (f of idPhotoFields; track f.key) {
                 <div class="flex flex-col gap-1">
                   <label class="text-slate-400 text-xs font-bold">{{ f.label }} *</label>
-                  <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
-                    <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                    <span class="text-slate-500 text-xs flex-1 truncate">{{ dfr[f.key] || 'Toca para subir foto' }}</span>
-                    @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
-                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                  <label class="cursor-pointer select-none block">
+                    <div class="relative flex flex-col items-center justify-center rounded-xl overflow-hidden"
+                         style="background:rgba(0,0,0,0.5);border:2px dashed rgba(6,182,212,0.4);aspect-ratio:1.586/1;min-height:150px">
+                      <div class="absolute top-2.5 left-2.5 w-6 h-6" style="border-top:2.5px solid #06b6d4;border-left:2.5px solid #06b6d4;border-radius:3px 0 0 0"></div>
+                      <div class="absolute top-2.5 right-2.5 w-6 h-6" style="border-top:2.5px solid #06b6d4;border-right:2.5px solid #06b6d4;border-radius:0 3px 0 0"></div>
+                      <div class="absolute bottom-2.5 left-2.5 w-6 h-6" style="border-bottom:2.5px solid #06b6d4;border-left:2.5px solid #06b6d4;border-radius:0 0 0 3px"></div>
+                      <div class="absolute bottom-2.5 right-2.5 w-6 h-6" style="border-bottom:2.5px solid #06b6d4;border-right:2.5px solid #06b6d4;border-radius:0 0 3px 0"></div>
+                      @if (dfr[f.key]) {
+                        <span class="material-symbols-outlined text-emerald-400" style="font-size:38px">check_circle</span>
+                        <p class="text-emerald-400 text-xs font-black mt-1">Foto cargada</p>
+                      } @else {
+                        <span class="material-symbols-outlined text-slate-400" style="font-size:38px">id_card</span>
+                        <p class="text-slate-300 text-xs font-bold mt-1">Encaja el documento en el marco</p>
+                        <p class="text-slate-600 text-[10px] mt-0.5">Toca para tomar foto o subir imagen</p>
+                      }
+                      <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                    </div>
+                    <p class="text-slate-600 text-[10px] text-center mt-1.5">Buena iluminación · texto legible · sin recortes</p>
                   </label>
                 </div>
               }
