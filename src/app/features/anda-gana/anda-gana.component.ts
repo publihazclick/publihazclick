@@ -75,8 +75,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ SPLASH ═══════════ -->
   @if (screen() === 'splash') {
-    <div class="fixed inset-0 z-[999]">
-      <img src="movi-splash.svg" alt="Movi" style="width:100%;height:100%;object-fit:cover" />
+    <div class="fixed inset-0 z-[999] flex flex-col items-center justify-center"
+      style="background:linear-gradient(180deg,#7C3AED 0%,#2563EB 100%)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" style="width:220px;height:286px">
+        <!-- Líneas camino sutiles -->
+        <path d="M 20 240 Q 70 190 100 160 Q 135 128 180 110" stroke="rgba(255,255,255,0.10)" stroke-width="28" fill="none" stroke-linecap="round"/>
+        <path d="M 20 240 Q 70 190 100 160 Q 135 128 180 110" stroke="rgba(255,255,255,0.06)" stroke-width="44" fill="none" stroke-linecap="round"/>
+        <!-- Pin blanco -->
+        <g transform="translate(100,95)">
+          <path d="M0-55C-30-55-50-34-50-8C-50 22 0 60 0 60C0 60 50 22 50-8C50-34 30-55 0-55Z" fill="#FFFFFF"/>
+          <circle cx="0" cy="-12" r="18" fill="#5B21B6"/>
+          <circle cx="0" cy="-12" r="8" fill="#FFFFFF"/>
+        </g>
+        <!-- MOVI -->
+        <text x="100" y="182" font-family="'Segoe UI',Arial,sans-serif" font-size="58" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">MOVI</text>
+        <!-- Taglines -->
+        <text x="100" y="212" font-family="'Segoe UI',Arial,sans-serif" font-size="10" font-weight="400" fill="rgba(255,255,255,0.85)" text-anchor="middle">La aplicación de transporte</text>
+        <text x="100" y="228" font-family="'Segoe UI',Arial,sans-serif" font-size="10" font-weight="700" fill="#FFFFFF" text-anchor="middle">Más segura a nivel mundial</text>
+      </svg>
     </div>
   }
 
