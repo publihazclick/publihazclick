@@ -79,14 +79,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <img src="movi-splash.svg" alt="Movi"
         [style.width.px]="splashSize()"
         [style.height.px]="splashSize()"
-        style="transition:width 3.5s cubic-bezier(0.05,0.6,0.3,1),height 3.5s cubic-bezier(0.05,0.6,0.3,1)" />
-    </div>
-  }
-
-  <!-- ═══════════ LOADING ═══════════ -->
-  @if (screen() === 'loading') {
-    <div class="flex-1 flex items-center justify-center">
-      <span class="material-symbols-outlined text-orange-400 animate-spin" style="font-size:40px">autorenew</span>
+        style="transition:width 1.5s cubic-bezier(0.05,0.6,0.3,1),height 1.5s cubic-bezier(0.05,0.6,0.3,1)" />
     </div>
   }
 
@@ -5461,8 +5454,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
     }
 
-    // Esperar a que la animación del splash termine (3.8s)
-    await new Promise(r => setTimeout(r, 3800));
+    // Esperar a que la animación del splash termine (1.8s)
+    await new Promise(r => setTimeout(r, 1800));
 
     if (!profile) { this.screen.set('home'); return; }
 
