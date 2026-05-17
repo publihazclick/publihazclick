@@ -4059,45 +4059,43 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
-              <input [ngModel]="pf.fullName" (ngModelChange)="pf.fullName = $event; cdr.markForCheck()"
-                name="fullName" required placeholder="Ej: Juan Carlos Pérez"
+              <input [value]="pf.fullName" (input)="pf.fullName = $any($event.target).value"
+                placeholder="Ej: Juan Carlos Pérez"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Fecha de nacimiento *</label>
-              <input [ngModel]="pf.birthDate" (ngModelChange)="pf.birthDate = $event; cdr.markForCheck()"
-                name="birthDate" type="date" required
+              <input [value]="pf.birthDate" (change)="pf.birthDate = $any($event.target).value"
+                type="date"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <!-- País → Departamento → Ciudad -->
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">País *</label>
-              <select [ngModel]="pf.country" (ngModelChange)="pf.country = $event; pf.department = ''; pf.city = ''; cdr.markForCheck()"
-                name="pf_country" required
+              <select (change)="pf.country = $any($event.target).value; pf.department = ''; pf.city = ''; cdr.markForCheck()"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
                 style="background:rgba(30,30,40,0.95);color-scheme:dark">
                 <option value="" style="background:#1e1e28">— Selecciona tu país —</option>
                 @for (c of agCountries; track c) {
-                  <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                  <option [value]="c" [selected]="pf.country === c" style="background:#1e1e28">{{ c }}</option>
                 }
               </select>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Departamento / Estado *</label>
               @if (getDepts(pf.country).length > 0) {
-                <select [ngModel]="pf.department" (ngModelChange)="pf.department = $event; pf.city = ''; cdr.markForCheck()"
-                  name="pf_department" required
+                <select (change)="pf.department = $any($event.target).value; pf.city = ''; cdr.markForCheck()"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
                   style="background:rgba(30,30,40,0.95);color-scheme:dark">
                   <option value="" style="background:#1e1e28">— Selecciona tu departamento —</option>
                   @for (d of getDepts(pf.country); track d) {
-                    <option [value]="d" style="background:#1e1e28">{{ d }}</option>
+                    <option [value]="d" [selected]="pf.department === d" style="background:#1e1e28">{{ d }}</option>
                   }
                 </select>
               } @else {
-                <input [ngModel]="pf.department" (ngModelChange)="pf.department = $event; cdr.markForCheck()"
-                  name="pf_department" required placeholder="Tu departamento o estado"
+                <input [value]="pf.department" (input)="pf.department = $any($event.target).value"
+                  placeholder="Tu departamento o estado"
                   autocomplete="off" spellcheck="false"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
               }
@@ -4105,26 +4103,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Ciudad *</label>
               @if (getCities(pf.country, pf.department).length > 0) {
-                <select [ngModel]="pf.city" (ngModelChange)="pf.city = $event; cdr.markForCheck()"
-                  name="pf_city" required
+                <select (change)="pf.city = $any($event.target).value"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
                   style="background:rgba(30,30,40,0.95);color-scheme:dark">
                   <option value="" style="background:#1e1e28">— Selecciona tu ciudad —</option>
                   @for (c of getCities(pf.country, pf.department); track c) {
-                    <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                    <option [value]="c" [selected]="pf.city === c" style="background:#1e1e28">{{ c }}</option>
                   }
                 </select>
               } @else {
-                <input [ngModel]="pf.city" (ngModelChange)="pf.city = $event; cdr.markForCheck()"
-                  name="pf_city" required placeholder="Tu ciudad"
+                <input [value]="pf.city" (input)="pf.city = $any($event.target).value"
+                  placeholder="Tu ciudad"
                   autocomplete="off" spellcheck="false"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
               }
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Número de cédula / documento *</label>
-              <input [ngModel]="pf.idNumber" (ngModelChange)="pf.idNumber = $event; cdr.markForCheck()"
-                name="idNumber" required placeholder="Número de identificación"
+              <input [value]="pf.idNumber" (input)="pf.idNumber = $any($event.target).value"
+                placeholder="Número de identificación"
                 autocomplete="off" spellcheck="false" inputmode="numeric"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
@@ -4138,7 +4135,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Número de teléfono *</label>
               <div class="flex gap-2">
-                <input [(ngModel)]="pf.phone" name="phone" type="tel" required placeholder="+57 300 000 0000"
+                <input [value]="pf.phone" (input)="pf.phone = $any($event.target).value"
+                  type="tel" placeholder="+57 300 000 0000"
+                  autocomplete="off" inputmode="tel"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors flex-1"
                   [disabled]="smsVerified()"/>
                 @if (!smsVerified()) {
@@ -4178,15 +4177,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
-              <input [ngModel]="pf.email" (ngModelChange)="pf.email = $event; cdr.markForCheck()"
-                name="email" type="email" required placeholder="correo@ejemplo.com"
+              <input [value]="pf.email" (input)="pf.email = $any($event.target).value"
+                type="email" placeholder="correo@ejemplo.com"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
-              <input [ngModel]="pf.password" (ngModelChange)="pf.password = $event; cdr.markForCheck()"
-                name="password" type="password" required placeholder="Mínimo 8 caracteres"
+              <input [value]="pf.password" (input)="pf.password = $any($event.target).value"
+                type="password" placeholder="Mínimo 8 caracteres"
                 autocomplete="new-password"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
@@ -4215,15 +4214,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
-              <input [ngModel]="pf.emergencyName" (ngModelChange)="pf.emergencyName = $event; cdr.markForCheck()"
-                name="emergencyName" required placeholder="Nombre completo"
+              <input [value]="pf.emergencyName" (input)="pf.emergencyName = $any($event.target).value"
+                placeholder="Nombre completo"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
-              <input [ngModel]="pf.emergencyPhone" (ngModelChange)="pf.emergencyPhone = $event; cdr.markForCheck()"
-                name="emergencyPhone" type="tel" required placeholder="+57 300 000 0000"
+              <input [value]="pf.emergencyPhone" (input)="pf.emergencyPhone = $any($event.target).value"
+                type="tel" placeholder="+57 300 000 0000"
                 autocomplete="off" inputmode="tel"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
@@ -4303,45 +4302,43 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </h3>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
-                <input [ngModel]="df.fullName" (ngModelChange)="df.fullName = $event; cdr.markForCheck()"
-                  name="d_fullName" placeholder="Nombre y apellidos"
+                <input [value]="df.fullName" (input)="df.fullName = $any($event.target).value"
+                  placeholder="Nombre y apellidos"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Fecha de nacimiento *</label>
-                <input [ngModel]="df.birthDate" (ngModelChange)="df.birthDate = $event; cdr.markForCheck()"
-                  name="d_birthDate" type="date"
+                <input [value]="df.birthDate" (change)="df.birthDate = $any($event.target).value"
+                  type="date"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <!-- País → Departamento → Ciudad -->
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">País *</label>
-                <select [ngModel]="df.country" (ngModelChange)="df.country = $event; df.department = ''; df.city = ''; cdr.markForCheck()"
-                  name="df_country"
+                <select (change)="df.country = $any($event.target).value; df.department = ''; df.city = ''; cdr.markForCheck()"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
                   style="background:rgba(30,30,40,0.95);color-scheme:dark">
                   <option value="" style="background:#1e1e28">— Selecciona tu país —</option>
                   @for (c of agCountries; track c) {
-                    <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                    <option [value]="c" [selected]="df.country === c" style="background:#1e1e28">{{ c }}</option>
                   }
                 </select>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Departamento / Estado *</label>
                 @if (getDepts(df.country).length > 0) {
-                  <select [ngModel]="df.department" (ngModelChange)="df.department = $event; df.city = ''; cdr.markForCheck()"
-                    name="df_department"
+                  <select (change)="df.department = $any($event.target).value; df.city = ''; cdr.markForCheck()"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
                     style="background:rgba(30,30,40,0.95);color-scheme:dark">
                     <option value="" style="background:#1e1e28">— Selecciona tu departamento —</option>
                     @for (d of getDepts(df.country); track d) {
-                      <option [value]="d" style="background:#1e1e28">{{ d }}</option>
+                      <option [value]="d" [selected]="df.department === d" style="background:#1e1e28">{{ d }}</option>
                     }
                   </select>
                 } @else {
-                  <input [ngModel]="df.department" (ngModelChange)="df.department = $event; cdr.markForCheck()"
-                    name="df_department" placeholder="Tu departamento o estado"
+                  <input [value]="df.department" (input)="df.department = $any($event.target).value"
+                    placeholder="Tu departamento o estado"
                     autocomplete="off" spellcheck="false"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
                 }
@@ -4349,34 +4346,33 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Ciudad *</label>
                 @if (getCities(df.country, df.department).length > 0) {
-                  <select [ngModel]="df.city" (ngModelChange)="df.city = $event; cdr.markForCheck()"
-                    name="df_city"
+                  <select (change)="df.city = $any($event.target).value"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
                     style="background:rgba(30,30,40,0.95);color-scheme:dark">
                     <option value="" style="background:#1e1e28">— Selecciona tu ciudad —</option>
                     @for (c of getCities(df.country, df.department); track c) {
-                      <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                      <option [value]="c" [selected]="df.city === c" style="background:#1e1e28">{{ c }}</option>
                     }
                   </select>
                 } @else {
-                  <input [ngModel]="df.city" (ngModelChange)="df.city = $event; cdr.markForCheck()"
-                    name="df_city" placeholder="Tu ciudad"
+                  <input [value]="df.city" (input)="df.city = $any($event.target).value"
+                    placeholder="Tu ciudad"
                     autocomplete="off" spellcheck="false"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
                 }
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Número de cédula *</label>
-                <input [ngModel]="df.idNumber" (ngModelChange)="df.idNumber = $event; cdr.markForCheck()"
-                  name="d_idNumber" placeholder="Número de identificación"
+                <input [value]="df.idNumber" (input)="df.idNumber = $any($event.target).value"
+                  placeholder="Número de identificación"
                   autocomplete="off" spellcheck="false" inputmode="numeric"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Teléfono *</label>
                 <div class="flex gap-2">
-                  <input [ngModel]="df.phone" (ngModelChange)="df.phone = $event; cdr.markForCheck()"
-                    name="d_phone" type="tel" placeholder="+57 300 000 0000"
+                  <input [value]="df.phone" (input)="df.phone = $any($event.target).value"
+                    type="tel" placeholder="+57 300 000 0000"
                     autocomplete="off" inputmode="tel"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors flex-1"
                     [disabled]="smsVerified()"/>
@@ -4417,15 +4413,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
-                <input [ngModel]="df.email" (ngModelChange)="df.email = $event; cdr.markForCheck()"
-                  name="d_email" type="email" placeholder="correo@ejemplo.com"
+                <input [value]="df.email" (input)="df.email = $any($event.target).value"
+                  type="email" placeholder="correo@ejemplo.com"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
-                <input [ngModel]="df.password" (ngModelChange)="df.password = $event; cdr.markForCheck()"
-                  name="d_password" type="password" placeholder="Mínimo 8 caracteres"
+                <input [value]="df.password" (input)="df.password = $any($event.target).value"
+                  type="password" placeholder="Mínimo 8 caracteres"
                   autocomplete="new-password"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
@@ -4437,15 +4433,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </h3>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
-                <input [ngModel]="df.emergencyName" (ngModelChange)="df.emergencyName = $event; cdr.markForCheck()"
-                  name="d_emergencyName" placeholder="Nombre completo"
+                <input [value]="df.emergencyName" (input)="df.emergencyName = $any($event.target).value"
+                  placeholder="Nombre completo"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
-                <input [ngModel]="df.emergencyPhone" (ngModelChange)="df.emergencyPhone = $event; cdr.markForCheck()"
-                  name="d_emergencyPhone" type="tel" placeholder="+57 300 000 0000"
+                <input [value]="df.emergencyPhone" (input)="df.emergencyPhone = $any($event.target).value"
+                  type="tel" placeholder="+57 300 000 0000"
                   autocomplete="off" inputmode="tel"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
