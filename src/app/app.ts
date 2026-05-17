@@ -45,7 +45,7 @@ export class App {
   readonly isXzoomRoute = signal(this.initialUrl === '/xzoom' || this.initialUrl.startsWith('/xzoom/'));
 
   constructor() {
-    this.updateAuthRoute(this.router.url);
+    this.updateAuthRoute(this.initialUrl);
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.updateAuthRoute((event as NavigationEnd).url);
