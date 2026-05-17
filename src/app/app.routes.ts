@@ -321,7 +321,8 @@ export const routes: Routes = [
       },
       {
         path: 'anda-gana',
-        loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
+        redirectTo: '/anda-gana',
+        pathMatch: 'full'
       },
       {
         path: 'cursos',
@@ -453,7 +454,8 @@ export const routes: Routes = [
       },
       {
         path: 'anda-gana',
-        loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent)
+        redirectTo: '/anda-gana',
+        pathMatch: 'full'
       },
       {
         path: 'cursos',
