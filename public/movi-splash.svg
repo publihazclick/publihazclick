@@ -1,11 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-  <!-- Pin icon -->
-  <g transform="translate(200, 148)">
-    <path d="M 0 -58 C -32 -58 -52 -36 -52 -10 C -52 24 0 62 0 62 C 0 62 52 24 52 -10 C 52 -36 32 -58 0 -58 Z" fill="#FFFFFF"/>
-    <circle cx="0" cy="-12" r="18" fill="#6C3AED"/>
-    <circle cx="0" cy="-12" r="8" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240">
+  <!-- Pin icon centrado -->
+  <g transform="translate(100, 90)">
+    <path d="M 0 -58 C -32 -58 -52 -36 -52 -10 C -52 24 0 68 0 68 C 0 68 52 24 52 -10 C 52 -36 32 -58 0 -58 Z" fill="#FFFFFF"/>
+    <circle cx="0" cy="-12" r="20" fill="#6C3AED"/>
+    <circle cx="0" cy="-12" r="9" fill="#FFFFFF"/>
   </g>
-
   <!-- MOVI text -->
-  <text x="200" y="275" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="72" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="8">MOVI</text>
+  <text x="100" y="200" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="56" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="6">MOVI</text>
 </svg>
