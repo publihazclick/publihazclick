@@ -4822,7 +4822,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly agService  = inject(AndaGanaService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route      = inject(ActivatedRoute);
-  private readonly cdr        = inject(ChangeDetectorRef);
+  protected readonly cdr      = inject(ChangeDetectorRef);
   private readonly supabase   = getSupabaseClient();
   private referredBy: string | null = null;
 
