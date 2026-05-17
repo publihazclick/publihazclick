@@ -7870,42 +7870,62 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   async openDocCamera(field: string, isDriver: boolean): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
+
+    // Fallback directo si el browser no soporta getUserMedia
     if (!navigator?.mediaDevices?.getUserMedia) {
-      const el = document.getElementById(`doc-file-${isDriver ? 'd' : 'p'}-${field}`) as HTMLInputElement | null;
-      el?.click();
+      this._triggerFallback(field, isDriver);
       return;
     }
+
+    // 1. Pedir el stream PRIMERO (antes de abrir el modal)
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
+    } catch {
+      // Permiso denegado o cámara no disponible → fallback
+      this._triggerFallback(field, isDriver);
+      return;
+    }
+
+    // 2. Guardar stream y abrir el modal
+    this._docStream     = stream;
     this.docCameraField  = field;
     this.docCameraDriver = isDriver;
     this.docCameraOpen.set(true);
-    this.cdr.markForCheck();
-    await new Promise(r => setTimeout(r, 150));
-    try {
-      this._docStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
-      const video = document.getElementById('doc-cam-video') as HTMLVideoElement | null;
-      if (video) { video.srcObject = this._docStream; await video.play(); }
-    } catch {
-      this.closeDocCamera();
-      const el = document.getElementById(`doc-file-${isDriver ? 'd' : 'p'}-${field}`) as HTMLInputElement | null;
-      el?.click();
-    }
+    this.cdr.detectChanges(); // fuerza render inmediato (OnPush)
+
+    // 3. Esperar dos frames de pintura para que el <video> esté en el DOM
+    await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+
+    // 4. Conectar el stream al elemento de video
+    const video = document.getElementById('doc-cam-video') as HTMLVideoElement | null;
+    if (!video) { this.closeDocCamera(); return; }
+    video.srcObject = stream;
+    video.play().catch(() => {}); // ignorar error de autoplay
   }
 
   captureDocPhoto(): void {
     const video  = document.getElementById('doc-cam-video')  as HTMLVideoElement | null;
     const canvas = document.getElementById('doc-cam-canvas') as HTMLCanvasElement | null;
-    if (!video || !canvas || !video.videoWidth) return;
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
+    if (!video || !canvas) return;
+
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) return; // stream aún no listo
+
+    canvas.width  = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
+
     const field    = this.docCameraField;
     const isDriver = this.docCameraDriver;
     this.closeDocCamera();
+
     canvas.toBlob(blob => {
       if (!blob) return;
       const file = new File([blob], 'documento-identidad.jpg', { type: 'image/jpeg' });
@@ -7916,7 +7936,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         (this.pf as Record<string, unknown>)[field] = file.name;
         this._pfFiles[field] = file;
       }
-      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     }, 'image/jpeg', 0.92);
   }
 
@@ -7924,7 +7944,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._docStream?.getTracks().forEach(t => t.stop());
     this._docStream = null;
     this.docCameraOpen.set(false);
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+  }
+
+  private _triggerFallback(field: string, isDriver: boolean): void {
+    const id = `doc-file-${isDriver ? 'd' : 'p'}-${field}`;
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    el?.click();
   }
 
   resetSmsState(): void {
