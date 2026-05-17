@@ -7406,23 +7406,32 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   smsCountdown = signal(0);
   private _smsTimer: ReturnType<typeof setInterval> | null = null;
 
+  private _normalizePhone(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    if (phone.trim().startsWith('+')) return `+${digits}`;
+    if (digits.length === 10) return `+57${digits}`;
+    if (digits.length === 12 && digits.startsWith('57')) return `+${digits}`;
+    return `+${digits}`;
+  }
+
   async sendSmsCode(phone: string): Promise<void> {
-    if (!phone || phone.length < 10) {
+    if (!phone || phone.replace(/\D/g, '').length < 10) {
       this.smsError.set('Ingresa un número de teléfono válido');
       return;
     }
     this.smsSending.set(true);
     this.smsError.set('');
 
-    // Generar código de 6 dígitos
+    const normalized = this._normalizePhone(phone);
     this.smsGeneratedCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     try {
       const { data, error } = await this.supabase.functions.invoke('ag-sms', {
-        body: { phone, code: this.smsGeneratedCode },
+        body: { phone: normalized, code: this.smsGeneratedCode },
       });
 
       if (error) throw error;
+      if (!data?.sent) throw new Error('SMS no enviado');
 
       this.smsCodeSent.set(true);
       // Timer de 60 segundos para reenviar
@@ -7437,7 +7446,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         });
       }, 1000);
     } catch (e: any) {
-      this.smsError.set('Error al enviar SMS. Verifica tu número.');
+      this.smsError.set('No se pudo enviar el SMS. Verifica que el número incluya el indicativo (+57) o intenta de nuevo.');
     } finally {
       this.smsSending.set(false);
     }
