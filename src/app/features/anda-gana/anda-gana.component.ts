@@ -4078,6 +4078,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <button (click)="screen.set('driver-form'); driverStep.set(1)"
           class="w-full rounded-2xl font-black text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
           style="padding:17px 0;background:#111827;box-shadow:0 4px 16px rgba(0,0,0,0.16);font-size:15px;letter-spacing:-0.01em">
+          <span class="material-symbols-outlined" style="font-size:20px">directions_car</span>
           <span class="material-symbols-outlined" style="font-size:20px">two_wheeler</span>
           <span class="material-symbols-outlined" style="font-size:20px">local_shipping</span>
           Conducir con Movi
