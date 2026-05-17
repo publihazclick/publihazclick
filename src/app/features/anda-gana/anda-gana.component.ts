@@ -6,6 +6,7 @@ import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { getSupabaseClient } from '../../core/supabase.client';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 type AgScreen = 'splash' | 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
 type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
@@ -5433,6 +5434,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ────────────────────────────────���─────────────────
   async ngOnInit() {
+    // Ocultar splash nativo de Android inmediatamente para mostrar nuestro splash Angular
+    if (isPlatformBrowser(this.platformId)) {
+      SplashScreen.hide({ fadeOutDuration: 0 }).catch(() => {});
+    }
+
     // Capturar referido desde query param ?ref=
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');
 
