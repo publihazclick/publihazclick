@@ -7,6 +7,7 @@ export interface PassengerFormData {
   fullName: string; birthDate: string; city: string; idNumber: string;
   phone: string; email: string; password: string;
   emergencyName: string; emergencyPhone: string;
+  country?: string; department?: string;
   selfieFile?: File;
   referredBy?: string;
 }
@@ -15,6 +16,7 @@ export interface DriverFormData {
   fullName: string; birthDate: string; city: string; idNumber: string;
   phone: string; email: string; password: string;
   emergencyName: string; emergencyPhone: string;
+  country?: string; department?: string;
   licenseNumber: string; licenseCategory: string; licenseExpiry: string;
   plate: string; vehicleType: string; vehicleBrand: string;
   vehicleModel: string; vehicleYear: string; vehicleColor: string;
@@ -163,6 +165,8 @@ export class AndaGanaService {
         role: 'passenger',
         full_name: form.fullName,
         birth_date: form.birthDate,
+        country: form.country ?? 'Colombia',
+        department: form.department ?? '',
         city: form.city,
         id_number: form.idNumber,
         phone: form.phone,
@@ -203,6 +207,8 @@ export class AndaGanaService {
         role: 'driver',
         full_name: form.fullName,
         birth_date: form.birthDate,
+        country: form.country ?? 'Colombia',
+        department: form.department ?? '',
         city: form.city,
         id_number: form.idNumber,
         phone: form.phone,

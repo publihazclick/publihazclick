@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -4050,7 +4050,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <button (click)="screen.set('home'); passengerSuccess.set(false)" class="mt-2 px-8 py-3 rounded-xl bg-orange-500 text-black font-black text-sm">Volver al inicio</button>
         </div>
       } @else {
-        <form (ngSubmit)="submitPassenger()" class="flex flex-col gap-4">
+        <form (ngSubmit)="submitPassenger()" novalidate autocomplete="off" class="flex flex-col gap-4">
 
           <!-- Datos personales -->
           <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
@@ -4059,22 +4059,73 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
-              <input [(ngModel)]="pf.fullName" name="fullName" required placeholder="Ej: Juan Carlos Pérez"
+              <input [ngModel]="pf.fullName" (ngModelChange)="pf.fullName = $event; cdr.markForCheck()"
+                name="fullName" required placeholder="Ej: Juan Carlos Pérez"
+                autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Fecha de nacimiento *</label>
-              <input [(ngModel)]="pf.birthDate" name="birthDate" type="date" required
+              <input [ngModel]="pf.birthDate" (ngModelChange)="pf.birthDate = $event; cdr.markForCheck()"
+                name="birthDate" type="date" required
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
+            </div>
+            <!-- País → Departamento → Ciudad -->
+            <div class="flex flex-col gap-1">
+              <label class="text-slate-400 text-xs font-bold">País *</label>
+              <select [ngModel]="pf.country" (ngModelChange)="pf.country = $event; pf.department = ''; pf.city = ''; cdr.markForCheck()"
+                name="pf_country" required
+                class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
+                style="background:rgba(30,30,40,0.95);color-scheme:dark">
+                <option value="" style="background:#1e1e28">— Selecciona tu país —</option>
+                @for (c of agCountries; track c) {
+                  <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                }
+              </select>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-slate-400 text-xs font-bold">Departamento / Estado *</label>
+              @if (getDepts(pf.country).length > 0) {
+                <select [ngModel]="pf.department" (ngModelChange)="pf.department = $event; pf.city = ''; cdr.markForCheck()"
+                  name="pf_department" required
+                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
+                  style="background:rgba(30,30,40,0.95);color-scheme:dark">
+                  <option value="" style="background:#1e1e28">— Selecciona tu departamento —</option>
+                  @for (d of getDepts(pf.country); track d) {
+                    <option [value]="d" style="background:#1e1e28">{{ d }}</option>
+                  }
+                </select>
+              } @else {
+                <input [ngModel]="pf.department" (ngModelChange)="pf.department = $event; cdr.markForCheck()"
+                  name="pf_department" required placeholder="Tu departamento o estado"
+                  autocomplete="off" spellcheck="false"
+                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
+              }
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Ciudad *</label>
-              <input [(ngModel)]="pf.city" name="city" required placeholder="Tu ciudad"
-                class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
+              @if (getCities(pf.country, pf.department).length > 0) {
+                <select [ngModel]="pf.city" (ngModelChange)="pf.city = $event; cdr.markForCheck()"
+                  name="pf_city" required
+                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
+                  style="background:rgba(30,30,40,0.95);color-scheme:dark">
+                  <option value="" style="background:#1e1e28">— Selecciona tu ciudad —</option>
+                  @for (c of getCities(pf.country, pf.department); track c) {
+                    <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                  }
+                </select>
+              } @else {
+                <input [ngModel]="pf.city" (ngModelChange)="pf.city = $event; cdr.markForCheck()"
+                  name="pf_city" required placeholder="Tu ciudad"
+                  autocomplete="off" spellcheck="false"
+                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
+              }
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Número de cédula / documento *</label>
-              <input [(ngModel)]="pf.idNumber" name="idNumber" required placeholder="Número de identificación"
+              <input [ngModel]="pf.idNumber" (ngModelChange)="pf.idNumber = $event; cdr.markForCheck()"
+                name="idNumber" required placeholder="Número de identificación"
+                autocomplete="off" spellcheck="false" inputmode="numeric"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
           </div>
@@ -4127,12 +4178,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
-              <input [(ngModel)]="pf.email" name="email" type="email" required placeholder="correo@ejemplo.com"
+              <input [ngModel]="pf.email" (ngModelChange)="pf.email = $event; cdr.markForCheck()"
+                name="email" type="email" required placeholder="correo@ejemplo.com"
+                autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
-              <input [(ngModel)]="pf.password" name="password" type="password" required placeholder="Mínimo 8 caracteres"
+              <input [ngModel]="pf.password" (ngModelChange)="pf.password = $event; cdr.markForCheck()"
+                name="password" type="password" required placeholder="Mínimo 8 caracteres"
+                autocomplete="new-password"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
           </div>
@@ -4160,12 +4215,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
-              <input [(ngModel)]="pf.emergencyName" name="emergencyName" required placeholder="Nombre completo"
+              <input [ngModel]="pf.emergencyName" (ngModelChange)="pf.emergencyName = $event; cdr.markForCheck()"
+                name="emergencyName" required placeholder="Nombre completo"
+                autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
-              <input [(ngModel)]="pf.emergencyPhone" name="emergencyPhone" type="tel" required placeholder="+57 300 000 0000"
+              <input [ngModel]="pf.emergencyPhone" (ngModelChange)="pf.emergencyPhone = $event; cdr.markForCheck()"
+                name="emergencyPhone" type="tel" required placeholder="+57 300 000 0000"
+                autocomplete="off" inputmode="tel"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
           </div>
@@ -4244,28 +4303,81 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </h3>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
-                <input [(ngModel)]="df.fullName" name="d_fullName" placeholder="Nombre y apellidos"
+                <input [ngModel]="df.fullName" (ngModelChange)="df.fullName = $event; cdr.markForCheck()"
+                  name="d_fullName" placeholder="Nombre y apellidos"
+                  autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Fecha de nacimiento *</label>
-                <input [(ngModel)]="df.birthDate" name="d_birthDate" type="date"
+                <input [ngModel]="df.birthDate" (ngModelChange)="df.birthDate = $event; cdr.markForCheck()"
+                  name="d_birthDate" type="date"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+              </div>
+              <!-- País → Departamento → Ciudad -->
+              <div class="flex flex-col gap-1">
+                <label class="text-slate-400 text-xs font-bold">País *</label>
+                <select [ngModel]="df.country" (ngModelChange)="df.country = $event; df.department = ''; df.city = ''; cdr.markForCheck()"
+                  name="df_country"
+                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
+                  style="background:rgba(30,30,40,0.95);color-scheme:dark">
+                  <option value="" style="background:#1e1e28">— Selecciona tu país —</option>
+                  @for (c of agCountries; track c) {
+                    <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                  }
+                </select>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-slate-400 text-xs font-bold">Departamento / Estado *</label>
+                @if (getDepts(df.country).length > 0) {
+                  <select [ngModel]="df.department" (ngModelChange)="df.department = $event; df.city = ''; cdr.markForCheck()"
+                    name="df_department"
+                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
+                    style="background:rgba(30,30,40,0.95);color-scheme:dark">
+                    <option value="" style="background:#1e1e28">— Selecciona tu departamento —</option>
+                    @for (d of getDepts(df.country); track d) {
+                      <option [value]="d" style="background:#1e1e28">{{ d }}</option>
+                    }
+                  </select>
+                } @else {
+                  <input [ngModel]="df.department" (ngModelChange)="df.department = $event; cdr.markForCheck()"
+                    name="df_department" placeholder="Tu departamento o estado"
+                    autocomplete="off" spellcheck="false"
+                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                }
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Ciudad *</label>
-                <input [(ngModel)]="df.city" name="d_city" placeholder="Tu ciudad"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                @if (getCities(df.country, df.department).length > 0) {
+                  <select [ngModel]="df.city" (ngModelChange)="df.city = $event; cdr.markForCheck()"
+                    name="df_city"
+                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
+                    style="background:rgba(30,30,40,0.95);color-scheme:dark">
+                    <option value="" style="background:#1e1e28">— Selecciona tu ciudad —</option>
+                    @for (c of getCities(df.country, df.department); track c) {
+                      <option [value]="c" style="background:#1e1e28">{{ c }}</option>
+                    }
+                  </select>
+                } @else {
+                  <input [ngModel]="df.city" (ngModelChange)="df.city = $event; cdr.markForCheck()"
+                    name="df_city" placeholder="Tu ciudad"
+                    autocomplete="off" spellcheck="false"
+                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                }
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Número de cédula *</label>
-                <input [(ngModel)]="df.idNumber" name="d_idNumber" placeholder="Número de identificación"
+                <input [ngModel]="df.idNumber" (ngModelChange)="df.idNumber = $event; cdr.markForCheck()"
+                  name="d_idNumber" placeholder="Número de identificación"
+                  autocomplete="off" spellcheck="false" inputmode="numeric"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Teléfono *</label>
                 <div class="flex gap-2">
-                  <input [(ngModel)]="df.phone" name="d_phone" type="tel" placeholder="+57 300 000 0000"
+                  <input [ngModel]="df.phone" (ngModelChange)="df.phone = $event; cdr.markForCheck()"
+                    name="d_phone" type="tel" placeholder="+57 300 000 0000"
+                    autocomplete="off" inputmode="tel"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors flex-1"
                     [disabled]="smsVerified()"/>
                   @if (!smsVerified()) {
@@ -4305,12 +4417,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
-                <input [(ngModel)]="df.email" name="d_email" type="email" placeholder="correo@ejemplo.com"
+                <input [ngModel]="df.email" (ngModelChange)="df.email = $event; cdr.markForCheck()"
+                  name="d_email" type="email" placeholder="correo@ejemplo.com"
+                  autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
-                <input [(ngModel)]="df.password" name="d_password" type="password" placeholder="Mínimo 8 caracteres"
+                <input [ngModel]="df.password" (ngModelChange)="df.password = $event; cdr.markForCheck()"
+                  name="d_password" type="password" placeholder="Mínimo 8 caracteres"
+                  autocomplete="new-password"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
             </div>
@@ -4321,12 +4437,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </h3>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
-                <input [(ngModel)]="df.emergencyName" name="d_emergencyName" placeholder="Nombre completo"
+                <input [ngModel]="df.emergencyName" (ngModelChange)="df.emergencyName = $event; cdr.markForCheck()"
+                  name="d_emergencyName" placeholder="Nombre completo"
+                  autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
-                <input [(ngModel)]="df.emergencyPhone" name="d_emergencyPhone" type="tel" placeholder="+57 300 000 0000"
+                <input [ngModel]="df.emergencyPhone" (ngModelChange)="df.emergencyPhone = $event; cdr.markForCheck()"
+                  name="d_emergencyPhone" type="tel" placeholder="+57 300 000 0000"
+                  autocomplete="off" inputmode="tel"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
             </div>
@@ -4706,6 +4826,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly agService  = inject(AndaGanaService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route      = inject(ActivatedRoute);
+  private readonly cdr        = inject(ChangeDetectorRef);
   private readonly supabase   = getSupabaseClient();
   private referredBy: string | null = null;
 
@@ -7384,13 +7505,152 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (this._destMarker) { try { this._destMarker.remove(); } catch { /**/ } this._destMarker = null; }
   }
 
+  // ── Datos de ubicación para registro ──
+  readonly agLocationData: Record<string, { depts: string[]; cities: Record<string, string[]> }> = {
+    'Colombia': {
+      depts: ['Amazonas','Antioquia','Arauca','Atlántico','Bogotá D.C.','Bolívar','Boyacá','Caldas','Caquetá','Casanare','Cauca','Cesar','Chocó','Córdoba','Cundinamarca','Guainía','Guaviare','Huila','La Guajira','Magdalena','Meta','Nariño','Norte de Santander','Putumayo','Quindío','Risaralda','San Andrés','Santander','Sucre','Tolima','Valle del Cauca','Vaupés','Vichada'],
+      cities: {
+        'Antioquia':['Medellín','Bello','Itagüí','Envigado','Rionegro','Sabaneta','La Estrella','Copacabana','Barbosa','Caldas','Girardota','Apartadó','Turbo'],
+        'Atlántico':['Barranquilla','Soledad','Malambo','Galapa','Puerto Colombia','Sabanagrande'],
+        'Bogotá D.C.':['Bogotá'],
+        'Bolívar':['Cartagena','Magangué','Turbaco','Arjona','El Carmen de Bolívar'],
+        'Boyacá':['Tunja','Duitama','Sogamoso','Chiquinquirá','Moniquirá','Paipa'],
+        'Caldas':['Manizales','La Dorada','Chinchiná','Riosucio','Anserma'],
+        'Caquetá':['Florencia','El Doncello','Puerto Rico'],
+        'Casanare':['Yopal','Aguazul','Villanueva','Tauramena'],
+        'Cauca':['Popayán','Santander de Quilichao','Puerto Tejada','Patía'],
+        'Cesar':['Valledupar','Aguachica','Bosconia','La Paz'],
+        'Chocó':['Quibdó','Istmina','Tadó'],
+        'Córdoba':['Montería','Cereté','Sahagún','Lorica','Montelíbano'],
+        'Cundinamarca':['Soacha','Fusagasugá','Facatativá','Zipaquirá','Chía','Mosquera','Madrid','Cajicá','Tabio','Funza','Tocancipá','La Calera'],
+        'Guainía':['Inírida'],
+        'Guaviare':['San José del Guaviare','El Retorno'],
+        'Huila':['Neiva','Pitalito','Garzón','La Plata','Campoalegre'],
+        'La Guajira':['Riohacha','Maicao','Uribia','Manaure'],
+        'Magdalena':['Santa Marta','Ciénaga','Fundación','El Banco'],
+        'Meta':['Villavicencio','Acacías','Granada','Puerto López'],
+        'Nariño':['Pasto','Tumaco','Ipiales','Túquerres','La Unión'],
+        'Norte de Santander':['Cúcuta','Ocaña','Pamplona','Los Patios','Villa del Rosario','El Zulia'],
+        'Putumayo':['Mocoa','Puerto Asís','Sibundoy'],
+        'Quindío':['Armenia','Calarcá','Montenegro','La Tebaida','Quimbaya'],
+        'Risaralda':['Pereira','Dosquebradas','Santa Rosa de Cabal','La Virginia','Belén de Umbría'],
+        'San Andrés':['San Andrés','Providencia'],
+        'Santander':['Bucaramanga','Floridablanca','Girón','Piedecuesta','Barrancabermeja','San Gil','Socorro'],
+        'Sucre':['Sincelejo','Corozal','Sampués','San Marcos'],
+        'Tolima':['Ibagué','Espinal','Melgar','Honda','Chaparral','Líbano'],
+        'Valle del Cauca':['Cali','Buenaventura','Palmira','Tuluá','Buga','Cartago','Jamundí','Florida','Yumbo','Candelaria'],
+        'Vaupés':['Mitú'],
+        'Vichada':['Puerto Carreño'],
+        'Amazonas':['Leticia','Puerto Nariño'],
+        'Arauca':['Arauca','Saravena','Tame'],
+      },
+    },
+    'Venezuela': {
+      depts: ['Amazonas','Anzoátegui','Apure','Aragua','Barinas','Bolívar','Carabobo','Cojedes','Delta Amacuro','Distrito Capital','Falcón','Guárico','Lara','Mérida','Miranda','Monagas','Nueva Esparta','Portuguesa','Sucre','Táchira','Trujillo','Vargas','Yaracuy','Zulia'],
+      cities: {
+        'Distrito Capital':['Caracas'],'Carabobo':['Valencia','Maracay'],'Zulia':['Maracaibo','Cabimas'],
+        'Lara':['Barquisimeto','Cabudare'],'Miranda':['Los Teques','Guarenas','Guatire'],
+        'Táchira':['San Cristóbal','San Antonio del Táchira'],'Bolívar':['Ciudad Bolívar','Puerto Ordaz'],
+        'Anzoátegui':['Barcelona','Puerto La Cruz'],'Mérida':['Mérida','El Vigía'],
+      },
+    },
+    'Ecuador': {
+      depts: ['Azuay','Bolívar','Cañar','Carchi','Chimborazo','Cotopaxi','El Oro','Esmeraldas','Galápagos','Guayas','Imbabura','Loja','Los Ríos','Manabí','Morona Santiago','Napo','Orellana','Pastaza','Pichincha','Santa Elena','Santo Domingo de los Tsáchilas','Sucumbíos','Tungurahua','Zamora Chinchipe'],
+      cities: {
+        'Pichincha':['Quito','Cayambe','Rumiñahui'],'Guayas':['Guayaquil','Durán','Milagro','Samborondón'],
+        'Azuay':['Cuenca','Gualaceo'],'Manabí':['Portoviejo','Manta','Chone'],
+        'Tungurahua':['Ambato','Baños'],'El Oro':['Machala','Santa Rosa'],'Imbabura':['Ibarra','Otavalo'],
+      },
+    },
+    'Perú': {
+      depts: ['Amazonas','Áncash','Apurímac','Arequipa','Ayacucho','Cajamarca','Callao','Cusco','Huancavelica','Huánuco','Ica','Junín','La Libertad','Lambayeque','Lima','Loreto','Madre de Dios','Moquegua','Pasco','Piura','Puno','San Martín','Tacna','Tumbes','Ucayali'],
+      cities: {
+        'Lima':['Lima','Callao','San Juan de Miraflores','Villa El Salvador','Ate'],'Arequipa':['Arequipa'],
+        'La Libertad':['Trujillo','La Esperanza'],'Cusco':['Cusco'],'Piura':['Piura','Sullana'],
+        'Junín':['Huancayo'],'Lambayeque':['Chiclayo'],
+      },
+    },
+    'México': {
+      depts: ['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'],
+      cities: {
+        'Ciudad de México':['Ciudad de México'],'Estado de México':['Ecatepec','Naucalpan','Toluca'],
+        'Jalisco':['Guadalajara','Zapopan'],'Nuevo León':['Monterrey','Guadalupe'],
+        'Puebla':['Puebla'],'Guanajuato':['León','Irapuato','Celaya'],'Veracruz':['Xalapa','Veracruz'],
+      },
+    },
+    'Chile': {
+      depts: ['Arica y Parinacota','Tarapacá','Antofagasta','Atacama','Coquimbo','Valparaíso','Metropolitana de Santiago',"O'Higgins",'Maule','Ñuble','Biobío','La Araucanía','Los Ríos','Los Lagos','Aysén','Magallanes y Antártica'],
+      cities: {
+        'Metropolitana de Santiago':['Santiago','Puente Alto','Maipú','La Florida'],
+        'Valparaíso':['Valparaíso','Viña del Mar'],'Biobío':['Concepción'],'La Araucanía':['Temuco'],
+      },
+    },
+    'Argentina': {
+      depts: ['Buenos Aires','Buenos Aires (Ciudad)','Catamarca','Chaco','Chubut','Córdoba','Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán'],
+      cities: {
+        'Buenos Aires (Ciudad)':['Buenos Aires'],'Buenos Aires':['La Plata','Mar del Plata','Quilmes'],
+        'Córdoba':['Córdoba','Río Cuarto'],'Santa Fe':['Rosario','Santa Fe'],'Mendoza':['Mendoza'],
+        'Tucumán':['San Miguel de Tucumán'],
+      },
+    },
+    'Bolivia': {
+      depts: ['Beni','Chuquisaca','Cochabamba','La Paz','Oruro','Pando','Potosí','Santa Cruz','Tarija'],
+      cities: {
+        'La Paz':['La Paz','El Alto'],'Santa Cruz':['Santa Cruz de la Sierra','Warnes'],
+        'Cochabamba':['Cochabamba','Quillacollo'],'Chuquisaca':['Sucre'],'Tarija':['Tarija'],
+      },
+    },
+    'Paraguay': {
+      depts: ['Alto Paraguay','Alto Paraná','Amambay','Asunción','Boquerón','Caaguazú','Caazapá','Canindeyú','Central','Concepción','Cordillera','Guairá','Itapúa','Misiones','Ñeembucú','Paraguarí','Presidente Hayes','San Pedro'],
+      cities: {
+        'Asunción':['Asunción'],'Central':['Luque','San Lorenzo','Lambaré'],'Alto Paraná':['Ciudad del Este'],
+      },
+    },
+    'Uruguay': {
+      depts: ['Artigas','Canelones','Cerro Largo','Colonia','Durazno','Flores','Florida','Lavalleja','Maldonado','Montevideo','Paysandú','Río Negro','Rivera','Rocha','Salto','San José','Soriano','Tacuarembó','Treinta y Tres'],
+      cities: {
+        'Montevideo':['Montevideo'],'Canelones':['Las Piedras','Ciudad de la Costa'],'Maldonado':['Punta del Este'],
+      },
+    },
+    'Costa Rica': {
+      depts: ['Alajuela','Cartago','Guanacaste','Heredia','Limón','Puntarenas','San José'],
+      cities: { 'San José':['San José','Desamparados'],'Alajuela':['Alajuela'],'Heredia':['Heredia'] },
+    },
+    'Panamá': {
+      depts: ['Bocas del Toro','Chiriquí','Coclé','Colón','Darién','Herrera','Los Santos','Ngäbe-Buglé','Panamá','Panamá Oeste','Veraguas'],
+      cities: { 'Panamá':['Panamá','San Miguelito'],'Panamá Oeste':['La Chorrera','Arraiján'],'Chiriquí':['David'] },
+    },
+    'República Dominicana': {
+      depts: ['Azua','Bahoruco','Barahona','Dajabón','Distrito Nacional','Duarte','El Seibo','Elías Piña','Espaillat','Hato Mayor','Hermanas Mirabal','Independencia','La Altagracia','La Romana','La Vega','María Trinidad Sánchez','Monseñor Nouel','Monte Cristi','Monte Plata','Pedernales','Peravia','Puerto Plata','Samaná','San Cristóbal','San José de Ocoa','San Juan','San Pedro de Macorís','Santiago','Santiago Rodríguez','Santo Domingo','Valverde'],
+      cities: {
+        'Distrito Nacional':['Santo Domingo de Guzmán'],'Santo Domingo':['Santo Domingo Este','Santo Domingo Norte'],
+        'Santiago':['Santiago de los Caballeros'],'La Altagracia':['Higüey'],'Puerto Plata':['Puerto Plata','Sosúa'],
+      },
+    },
+  };
+
+  readonly agCountries: string[] = [
+    'Argentina','Bolivia','Brasil','Canadá','Chile','Colombia','Costa Rica','Cuba','Ecuador',
+    'El Salvador','España','Estados Unidos','Francia','Guatemala','Honduras','Italia','México',
+    'Nicaragua','Panamá','Paraguay','Perú','Portugal','Puerto Rico','Reino Unido','República Dominicana',
+    'Uruguay','Venezuela','Otro',
+  ];
+
+  getDepts(country: string): string[] {
+    return this.agLocationData[country]?.depts ?? [];
+  }
+
+  getCities(country: string, dept: string): string[] {
+    return this.agLocationData[country]?.cities[dept] ?? [];
+  }
+
   // ── Passenger form state ──
   passengerLoading = signal(false);
   passengerSuccess = signal(false);
   passengerError   = signal('');
 
   pf = {
-    fullName: '', birthDate: '', city: '', idNumber: '',
+    fullName: '', birthDate: '', country: 'Colombia', department: '', city: '', idNumber: '',
     phone: '', email: '', password: '', selfie: '',
     emergencyName: '', emergencyPhone: '', terms: false,
   };
@@ -7570,7 +7830,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   driverError   = signal('');
 
   df = {
-    fullName: '', birthDate: '', city: '', idNumber: '',
+    fullName: '', birthDate: '', country: 'Colombia', department: '', city: '', idNumber: '',
     phone: '', email: '', password: '',
     emergencyName: '', emergencyPhone: '',
     idFront: '', idBack: '', selfieWithId: '', criminalRecord: '',
@@ -7626,9 +7886,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   nextDriverStep(current: number) {
     this.driverError.set('');
     if (current === 1) {
-      if (!this.df.fullName || !this.df.birthDate || !this.df.city || !this.df.idNumber ||
-          !this.df.phone || !this.df.email || !this.df.password || !this.df.emergencyName || !this.df.emergencyPhone) {
-        this.driverError.set('Por favor completa todos los campos obligatorios antes de continuar.');
+      if (!this.df.fullName || !this.df.birthDate || !this.df.country || !this.df.department || !this.df.city ||
+          !this.df.idNumber || !this.df.phone || !this.df.email || !this.df.password ||
+          !this.df.emergencyName || !this.df.emergencyPhone) {
+        this.driverError.set('Por favor completa todos los campos obligatorios, incluyendo país, departamento y ciudad.');
         return;
       }
     }
@@ -7651,9 +7912,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   async submitPassenger() {
     this.passengerError.set('');
     const p = this.pf;
-    if (!p.fullName || !p.birthDate || !p.city || !p.idNumber ||
+    if (!p.fullName || !p.birthDate || !p.country || !p.department || !p.city || !p.idNumber ||
         !p.phone || !p.email || !p.password || !p.emergencyName || !p.emergencyPhone) {
-      this.passengerError.set('Por favor completa todos los campos obligatorios.');
+      this.passengerError.set('Por favor completa todos los campos obligatorios, incluyendo país, departamento y ciudad.');
       return;
     }
     if (!this.smsVerified()) {
@@ -7668,6 +7929,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const result = await this.agService.registerPassenger({
       fullName: p.fullName,
       birthDate: p.birthDate,
+      country: p.country,
+      department: p.department,
       city: p.city,
       idNumber: p.idNumber,
       phone: p.phone,
@@ -7708,6 +7971,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const result = await this.agService.registerDriver({
       fullName: this.df.fullName,
       birthDate: this.df.birthDate,
+      country: this.df.country,
+      department: this.df.department,
       city: this.df.city,
       idNumber: this.df.idNumber,
       phone: this.df.phone,
