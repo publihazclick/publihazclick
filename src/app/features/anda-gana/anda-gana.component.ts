@@ -74,16 +74,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   }
 
   <!-- ═══════════ SPLASH ═══════════ -->
-  @if (screen() === 'splash') {
-    <div class="fixed inset-0 z-[999] flex items-center justify-center"
-      style="background:linear-gradient(135deg,#6C3AED 0%,#2563EB 100%)">
-      <img src="movi-splash.svg" alt="Movi"
-        [style.width.px]="splashSize()"
-        [style.height.px]="splashSize()"
-        style="transition:width 1.5s cubic-bezier(0.05,0.6,0.3,1),height 1.5s cubic-bezier(0.05,0.6,0.3,1)" />
-    </div>
-  }
-
   <!-- ═══════════ PASAJERO DASHBOARD ═══════════ -->
   @if (screen() === 'passenger-home') {
     <div class="w-full max-w-lg flex flex-col gap-3">
@@ -4871,7 +4861,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly supabase   = getSupabaseClient();
   private referredBy: string | null = null;
 
-  screen     = signal<AgScreen>('splash');
+  screen     = signal<AgScreen>('home');
   splashSize = signal(10);
   driverStep = signal<number>(1);
 
@@ -5448,22 +5438,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Cargar surge actual
     this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
 
-    // Splash: logo empieza en 10px y crece lentamente hasta llenar la pantalla
-    if (isPlatformBrowser(this.platformId)) {
-      const maxDim = Math.max(window.innerWidth, window.innerHeight) * 1.6;
-      setTimeout(() => this.splashSize.set(maxDim), 50);
-    }
-
     const profile = await this.agService.getMyAgProfile();
     this.agProfile.set(profile);
     if (profile && isPlatformBrowser(this.platformId)) {
       this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
     }
 
-    // Esperar a que la animación del splash termine (1.8s)
-    await new Promise(r => setTimeout(r, 1800));
-
-    if (!profile) { this.screen.set('home'); return; }
+    if (!profile) { return; }
 
     // Cargar datos de billetera de retiro
     this.loadReferralData();
