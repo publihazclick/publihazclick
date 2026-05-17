@@ -21,48 +21,78 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
-    <div class="fixed inset-0 z-[9999] bg-black flex flex-col" style="touch-action:none">
-      <!-- Video en vivo -->
+    <div class="fixed inset-0 z-[9999] bg-black" style="touch-action:none">
+
+      <!-- Video en vivo (fondo completo) -->
       <video id="doc-cam-video" autoplay playsinline muted
         class="absolute inset-0 w-full h-full object-cover"></video>
 
-      <!-- Vignette oscura con recorte rectangular para el documento -->
-      <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div style="position:absolute;left:5%;top:50%;transform:translateY(-60%);width:90%;aspect-ratio:1.586/1;
-          box-shadow:0 0 0 100vmax rgba(0,0,0,0.62);border-radius:10px;
-          border:2px solid rgba(251,146,60,0.7)">
-          <!-- Esquinas naranja -->
-          <div style="position:absolute;top:-2px;left:-2px;width:28px;height:28px;border-top:4px solid #fb923c;border-left:4px solid #fb923c;border-radius:10px 0 0 0"></div>
-          <div style="position:absolute;top:-2px;right:-2px;width:28px;height:28px;border-top:4px solid #fb923c;border-right:4px solid #fb923c;border-radius:0 10px 0 0"></div>
-          <div style="position:absolute;bottom:-2px;left:-2px;width:28px;height:28px;border-bottom:4px solid #fb923c;border-left:4px solid #fb923c;border-radius:0 0 0 10px"></div>
-          <div style="position:absolute;bottom:-2px;right:-2px;width:28px;height:28px;border-bottom:4px solid #fb923c;border-right:4px solid #fb923c;border-radius:0 0 10px 0"></div>
+      <!-- Overlay en 3 filas: [oscuro] [izq-oscuro | MARCO TRANSPARENTE | der-oscuro] [oscuro] -->
+      <div class="absolute inset-0 flex flex-col pointer-events-none">
+
+        <!-- Franja superior oscura + instrucción -->
+        <div class="flex flex-col items-center justify-end pb-3"
+             style="flex:0 0 22%;background:rgba(0,0,0,0.72)">
+          <p class="text-white text-sm font-black text-center px-4">
+            Encaja tu cédula dentro del marco
+          </p>
+        </div>
+
+        <!-- Fila central: lado oscuro | VENTANA TRANSPARENTE | lado oscuro -->
+        <div class="flex flex-row" style="flex:0 0 calc(88vw / 1.586)">
+          <!-- Lado izquierdo -->
+          <div style="flex:0 0 6vw;background:rgba(0,0,0,0.72)"></div>
+
+          <!-- ══ MARCO (fondo transparente = video visible) ══ -->
+          <div class="relative" style="flex:1">
+            <!-- Borde del marco -->
+            <div class="absolute inset-0" style="border:3px solid #fb923c"></div>
+            <!-- Esquina sup-izq -->
+            <div style="position:absolute;top:-1px;left:-1px;width:36px;height:36px;
+              border-top:6px solid #fb923c;border-left:6px solid #fb923c"></div>
+            <!-- Esquina sup-der -->
+            <div style="position:absolute;top:-1px;right:-1px;width:36px;height:36px;
+              border-top:6px solid #fb923c;border-right:6px solid #fb923c"></div>
+            <!-- Esquina inf-izq -->
+            <div style="position:absolute;bottom:-1px;left:-1px;width:36px;height:36px;
+              border-bottom:6px solid #fb923c;border-left:6px solid #fb923c"></div>
+            <!-- Esquina inf-der -->
+            <div style="position:absolute;bottom:-1px;right:-1px;width:36px;height:36px;
+              border-bottom:6px solid #fb923c;border-right:6px solid #fb923c"></div>
+          </div>
+
+          <!-- Lado derecho -->
+          <div style="flex:0 0 6vw;background:rgba(0,0,0,0.72)"></div>
+        </div>
+
+        <!-- Franja inferior oscura + aviso iluminación -->
+        <div class="flex flex-col items-center justify-start pt-3"
+             style="flex:1;background:rgba(0,0,0,0.72)">
+          <div class="flex items-center gap-1.5 px-4 py-1.5 rounded-full"
+               style="background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.4)">
+            <span class="material-symbols-outlined text-amber-400" style="font-size:14px">light_mode</span>
+            <p class="text-amber-400 text-xs font-bold">Ubícate en un lugar bien iluminado</p>
+          </div>
         </div>
       </div>
 
-      <!-- Instrucción superior -->
-      <div class="absolute left-0 right-0 flex justify-center pointer-events-none" style="top:12%">
-        <div class="px-5 py-2 rounded-full" style="background:rgba(0,0,0,0.55)">
-          <p class="text-white text-xs font-bold text-center">Encaja tu documento dentro del marco</p>
-        </div>
-      </div>
-
-      <!-- Controles inferiores -->
-      <div class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-8 py-10"
-           style="background:linear-gradient(transparent,rgba(0,0,0,0.85))">
+      <!-- Botones de control (encima de todo) -->
+      <div class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-8 pb-12 pt-4">
+        <!-- Cerrar -->
         <button (click)="closeDocCamera()"
           class="w-12 h-12 rounded-full flex items-center justify-center"
-          style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25)">
+          style="background:rgba(0,0,0,0.5);border:2px solid rgba(255,255,255,0.4)">
           <span class="material-symbols-outlined text-white" style="font-size:22px">close</span>
         </button>
+        <!-- Capturar -->
         <button (click)="captureDocPhoto()"
           class="w-20 h-20 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-          style="background:rgba(255,255,255,0.18);border:4px solid white">
-          <div class="w-14 h-14 rounded-full bg-white"></div>
+          style="background:rgba(0,0,0,0.4);border:5px solid white">
+          <div class="w-12 h-12 rounded-full bg-white"></div>
         </button>
         <div class="w-12"></div>
       </div>
 
-      <!-- Canvas oculto para captura -->
       <canvas id="doc-cam-canvas" class="hidden"></canvas>
     </div>
   }
