@@ -17,7 +17,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
-  [style.background]="screen() === 'home' ? 'linear-gradient(135deg,#6C3AED 0%,#2563EB 100%)' : ''">
+  [style.background]="screen() === 'home' ? '#FFFFFF' : ''">
 
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
@@ -4034,40 +4034,66 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ HOME ═══════════ -->
   @if (screen() === 'home') {
-    <div class="flex flex-col items-center gap-4 text-center w-full px-5 sm:px-8"
-      style="max-width:420px;padding-top:clamp(0.5rem,2vh,1rem)">
-      <img src="movi-splash.svg" alt="Movi"
-        style="width:clamp(200px,55vw,280px);height:clamp(200px,55vw,280px)" />
-      <p class="text-white/70 text-sm sm:text-base leading-relaxed font-medium">Selecciona cómo quieres participar</p>
+    <div class="flex flex-col items-center w-full" style="max-width:390px;font-family:'Inter',sans-serif">
 
-      <!-- Info referidos -->
-      <div class="w-full rounded-2xl p-4 text-left"
-        style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px)">
-        <p class="text-white/90 text-xs sm:text-sm leading-relaxed">
-          En <span class="text-white font-black">Movi</span> tu ganas dinero tanto si te registras como
-          <span class="text-amber-300 font-bold">pasajero</span> o como
-          <span class="text-amber-300 font-bold">conductor</span>. En ambos encontrarás en el menú un botón llamado
-          <span class="text-yellow-300 font-black">"Recomienda y gana"</span>: cada vez que alguien se cree una cuenta en Movi
-          con tu link y use nuestro servicio, tú ganas el <span class="text-yellow-300 font-black">2% vitalicio</span>
-          del valor de cada servicio, sin importar si tus invitados son pasajeros o conductores.
+      <!-- Logo -->
+      <div class="flex flex-col items-center pt-10 pb-6">
+        <img src="movi-splash.svg" alt="Movi"
+          style="width:72px;height:72px;filter:drop-shadow(0 4px 16px rgba(124,58,237,0.28))" />
+      </div>
+
+      <!-- Headline -->
+      <div class="text-center px-4 pb-8">
+        <h1 class="text-gray-900 font-black leading-none tracking-tight"
+          style="font-size:clamp(30px,8.5vw,38px)">Pide tu precio.<br>Tú mandas.</h1>
+        <p class="text-gray-500 text-sm font-medium mt-3">
+          Viajes hasta <span class="font-bold" style="color:#7C3AED">30% más baratos</span> que otras apps
         </p>
       </div>
 
-      <div class="flex flex-col gap-3 w-full mt-1">
+      <!-- Value props -->
+      <div class="grid grid-cols-3 gap-2 w-full px-4 pb-8">
+        <div class="rounded-2xl py-3.5 px-2 flex flex-col items-center gap-2" style="background:#F5F3FF">
+          <span class="material-symbols-outlined" style="font-size:26px;color:#7C3AED">sell</span>
+          <span class="font-bold text-center leading-tight" style="font-size:11px;color:#5B21B6">Tú propones<br>el precio</span>
+        </div>
+        <div class="rounded-2xl py-3.5 px-2 flex flex-col items-center gap-2" style="background:#F0FDF4">
+          <span class="material-symbols-outlined" style="font-size:26px;color:#16A34A">verified_user</span>
+          <span class="font-bold text-center leading-tight" style="font-size:11px;color:#15803D">Conductores<br>verificados</span>
+        </div>
+        <div class="rounded-2xl py-3.5 px-2 flex flex-col items-center gap-2" style="background:#FFF7ED">
+          <span class="material-symbols-outlined" style="font-size:26px;color:#D97706">bolt</span>
+          <span class="font-bold text-center leading-tight" style="font-size:11px;color:#B45309">Disponible<br>24/7</span>
+        </div>
+      </div>
+
+      <!-- CTAs -->
+      <div class="flex flex-col gap-3 w-full px-4">
         <button (click)="screen.set('passenger-form')"
-          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-white text-black shadow-lg shadow-black/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
-          <span class="material-symbols-outlined" style="font-size:20px">person</span>
-          Crear cuenta pasajero
+          class="w-full rounded-2xl font-black text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
+          style="padding:17px 0;background:#7C3AED;box-shadow:0 6px 24px rgba(124,58,237,0.38);font-size:15px;letter-spacing:-0.01em">
+          <span class="material-symbols-outlined" style="font-size:20px">hail</span>
+          Solicitar viaje
         </button>
         <button (click)="screen.set('driver-form'); driverStep.set(1)"
-          class="w-full py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider text-white shadow-lg shadow-black/20 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
-          style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(4px)">
-          <span class="material-symbols-outlined" style="font-size:20px">directions_car</span>
-          <span class="material-symbols-outlined" style="font-size:20px">local_shipping</span>
-          <span class="material-symbols-outlined" style="font-size:20px">two_wheeler</span>
-          Conductor
+          class="w-full rounded-2xl font-black text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
+          style="padding:17px 0;background:#111827;box-shadow:0 4px 16px rgba(0,0,0,0.16);font-size:15px;letter-spacing:-0.01em">
+          <span class="material-symbols-outlined" style="font-size:20px">drive_eta</span>
+          Conducir con Movi
         </button>
       </div>
+
+      <!-- Referral banner -->
+      <div class="w-full px-4 mt-4 pb-6">
+        <div class="rounded-2xl px-4 py-3.5 flex items-center gap-3"
+          style="background:#FFFBEB;border:1px solid #FDE68A">
+          <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:#D97706">redeem</span>
+          <p class="text-xs leading-snug" style="color:#92400E">
+            <span class="font-black">Invita amigos y gana $5.000</span> en créditos para tu próximo viaje
+          </p>
+        </div>
+      </div>
+
     </div>
   }
 
