@@ -21,79 +21,56 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
-    <div class="fixed inset-0 z-[9999] bg-black" style="touch-action:none">
+    <div class="fixed inset-0 z-[9999] bg-black" style="touch-action:none;overflow:hidden">
 
-      <!-- Video en vivo (fondo completo) -->
+      <!-- 1. Video en vivo — ocupa toda la pantalla -->
       <video id="doc-cam-video" autoplay playsinline muted
-        class="absolute inset-0 w-full h-full object-cover"></video>
+        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1"></video>
 
-      <!-- Overlay en 3 filas: [oscuro] [izq-oscuro | MARCO TRANSPARENTE | der-oscuro] [oscuro] -->
-      <div class="absolute inset-0 flex flex-col pointer-events-none">
+      <!-- 2. Canvas overlay — oscurece todo y deja un hueco transparente donde va la cédula.
+               Se dibuja por JS con destination-out (único método que funciona en Android WebView) -->
+      <canvas id="doc-cam-overlay"
+        style="position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none"></canvas>
 
-        <!-- Franja superior oscura + instrucción -->
-        <div class="flex flex-col items-center justify-end pb-3"
-             style="flex:0 0 22%;background:rgba(0,0,0,0.72)">
-          <p class="text-white text-sm font-black text-center px-4">
-            Encaja tu cédula dentro del marco
-          </p>
-        </div>
+      <!-- 3. Texto instrucción (encima del canvas, z-index:3) -->
+      <div style="position:absolute;top:12%;left:0;right:0;z-index:3;pointer-events:none;text-align:center;padding:0 16px">
+        <p style="color:#fff;font-size:15px;font-weight:800;
+          text-shadow:0 1px 6px rgba(0,0,0,0.95),0 0 12px rgba(0,0,0,0.8)">
+          Encaja tu cédula dentro del recuadro
+        </p>
+      </div>
 
-        <!-- Fila central: lado oscuro | VENTANA TRANSPARENTE | lado oscuro -->
-        <div class="flex flex-row" style="flex:0 0 calc(88vw / 1.586)">
-          <!-- Lado izquierdo -->
-          <div style="flex:0 0 6vw;background:rgba(0,0,0,0.72)"></div>
-
-          <!-- ══ MARCO (fondo transparente = video visible) ══ -->
-          <div class="relative" style="flex:1">
-            <!-- Borde del marco -->
-            <div class="absolute inset-0" style="border:3px solid #fb923c"></div>
-            <!-- Esquina sup-izq -->
-            <div style="position:absolute;top:-1px;left:-1px;width:36px;height:36px;
-              border-top:6px solid #fb923c;border-left:6px solid #fb923c"></div>
-            <!-- Esquina sup-der -->
-            <div style="position:absolute;top:-1px;right:-1px;width:36px;height:36px;
-              border-top:6px solid #fb923c;border-right:6px solid #fb923c"></div>
-            <!-- Esquina inf-izq -->
-            <div style="position:absolute;bottom:-1px;left:-1px;width:36px;height:36px;
-              border-bottom:6px solid #fb923c;border-left:6px solid #fb923c"></div>
-            <!-- Esquina inf-der -->
-            <div style="position:absolute;bottom:-1px;right:-1px;width:36px;height:36px;
-              border-bottom:6px solid #fb923c;border-right:6px solid #fb923c"></div>
-          </div>
-
-          <!-- Lado derecho -->
-          <div style="flex:0 0 6vw;background:rgba(0,0,0,0.72)"></div>
-        </div>
-
-        <!-- Franja inferior oscura + aviso iluminación -->
-        <div class="flex flex-col items-center justify-start pt-3"
-             style="flex:1;background:rgba(0,0,0,0.72)">
-          <div class="flex items-center gap-1.5 px-4 py-1.5 rounded-full"
-               style="background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.4)">
-            <span class="material-symbols-outlined text-amber-400" style="font-size:14px">light_mode</span>
-            <p class="text-amber-400 text-xs font-bold">Ubícate en un lugar bien iluminado</p>
-          </div>
+      <!-- 4. Aviso iluminación (debajo del recuadro, z-index:3) -->
+      <div style="position:absolute;bottom:28%;left:0;right:0;z-index:3;pointer-events:none;display:flex;justify-content:center">
+        <div style="display:inline-flex;align-items:center;gap:6px;
+          background:rgba(251,146,60,0.18);border:1px solid rgba(251,146,60,0.5);
+          padding:6px 14px;border-radius:999px">
+          <span class="material-symbols-outlined" style="font-size:14px;color:#fbbf24">light_mode</span>
+          <span style="color:#fbbf24;font-size:12px;font-weight:700">Ubícate en un lugar bien iluminado</span>
         </div>
       </div>
 
-      <!-- Botones de control (encima de todo) -->
-      <div class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-8 pb-12 pt-4">
+      <!-- 5. Botones (z-index:4) -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:4;
+        display:flex;align-items:center;justify-content:space-between;padding:0 32px 48px">
         <!-- Cerrar -->
         <button (click)="closeDocCamera()"
-          class="w-12 h-12 rounded-full flex items-center justify-center"
-          style="background:rgba(0,0,0,0.5);border:2px solid rgba(255,255,255,0.4)">
-          <span class="material-symbols-outlined text-white" style="font-size:22px">close</span>
+          style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+            background:rgba(0,0,0,0.55);border:2px solid rgba(255,255,255,0.4)">
+          <span class="material-symbols-outlined" style="font-size:22px;color:#fff">close</span>
         </button>
-        <!-- Capturar -->
+        <!-- Disparador -->
         <button (click)="captureDocPhoto()"
-          class="w-20 h-20 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-          style="background:rgba(0,0,0,0.4);border:5px solid white">
-          <div class="w-12 h-12 rounded-full bg-white"></div>
+          style="width:78px;height:78px;border-radius:50%;border:5px solid #fff;
+            background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center"
+          class="active:scale-90 transition-transform">
+          <div style="width:56px;height:56px;border-radius:50%;background:#fff"></div>
         </button>
-        <div class="w-12"></div>
+        <div style="width:48px"></div>
       </div>
 
-      <canvas id="doc-cam-canvas" class="hidden"></canvas>
+      <!-- Canvas oculto para captura de foto -->
+      <canvas id="doc-cam-canvas" style="display:none"></canvas>
     </div>
   }
 
@@ -7897,14 +7874,81 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.docCameraOpen.set(true);
     this.cdr.detectChanges(); // fuerza render inmediato (OnPush)
 
-    // 3. Esperar dos frames de pintura para que el <video> esté en el DOM
+    // 3. Esperar dos frames de pintura para que el <video> y el <canvas> estén en el DOM
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
     // 4. Conectar el stream al elemento de video
     const video = document.getElementById('doc-cam-video') as HTMLVideoElement | null;
     if (!video) { this.closeDocCamera(); return; }
     video.srcObject = stream;
-    video.play().catch(() => {}); // ignorar error de autoplay
+    video.play().catch(() => {});
+
+    // 5. Dibujar el overlay con canvas (destination-out) — funciona en todos los browsers
+    await new Promise<void>(r => requestAnimationFrame(() => r()));
+    this._drawDocOverlay();
+  }
+
+  /** Dibuja fondo oscuro + hueco transparente con esquinas naranja sobre el canvas de overlay */
+  private _drawDocOverlay(): void {
+    const cv = document.getElementById('doc-cam-overlay') as HTMLCanvasElement | null;
+    if (!cv) return;
+    const W = cv.width  = window.innerWidth;
+    const H = cv.height = window.innerHeight;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return;
+
+    const cw = W * 0.85;           // ancho del recuadro (85% pantalla)
+    const ch = cw / 1.586;         // alto según proporción cédula colombiana
+    const cx = (W - cw) / 2;       // centrado horizontal
+    const cy = H * 0.22;           // empieza al 22% desde arriba
+    const r  = 12;                  // esquinas redondeadas
+
+    // ── Paso 1: fondo oscuro completo ──────────────────────────────────────
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Paso 2: borrar el hueco de la cédula (destination-out = pixels transparentes) ──
+    ctx.globalCompositeOperation = 'destination-out';
+    this._roundRect(ctx, cx, cy, cw, ch, r);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+
+    // ── Paso 3: borde blanco fino alrededor del hueco ──────────────────────
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth   = 2;
+    this._roundRect(ctx, cx, cy, cw, ch, r);
+    ctx.stroke();
+
+    // ── Paso 4: esquinas naranja (estilo visor de cámara) ──────────────────
+    const cs = 30;   // longitud de cada esquina
+    const ct = 5;    // grosor
+    ctx.strokeStyle = '#fb923c';
+    ctx.lineWidth   = ct;
+    ctx.lineCap     = 'square';
+
+    // Superior izquierda
+    ctx.beginPath(); ctx.moveTo(cx, cy + cs); ctx.lineTo(cx, cy); ctx.lineTo(cx + cs, cy); ctx.stroke();
+    // Superior derecha
+    ctx.beginPath(); ctx.moveTo(cx + cw - cs, cy); ctx.lineTo(cx + cw, cy); ctx.lineTo(cx + cw, cy + cs); ctx.stroke();
+    // Inferior izquierda
+    ctx.beginPath(); ctx.moveTo(cx, cy + ch - cs); ctx.lineTo(cx, cy + ch); ctx.lineTo(cx + cs, cy + ch); ctx.stroke();
+    // Inferior derecha
+    ctx.beginPath(); ctx.moveTo(cx + cw - cs, cy + ch); ctx.lineTo(cx + cw, cy + ch); ctx.lineTo(cx + cw, cy + ch - cs); ctx.stroke();
+  }
+
+  /** Traza un rectángulo redondeado compatible con todos los browsers */
+  private _roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y,     x + w, y + r,     r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x,     y + h, x,     y + h - r, r);
+    ctx.lineTo(x,     y + r);
+    ctx.arcTo(x,     y,     x + r, y,          r);
+    ctx.closePath();
   }
 
   captureDocPhoto(): void {
