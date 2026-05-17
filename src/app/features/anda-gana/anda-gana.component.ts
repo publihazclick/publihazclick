@@ -18,7 +18,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
-  [style.background]="screen() === 'home' ? '#FFFFFF' : ''">
+  [style.background]="screen() === 'home' ? '#FFFFFF' : screen() === 'splash' ? '#6C3AED' : ''">
 
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
