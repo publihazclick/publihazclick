@@ -4138,42 +4138,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <input [value]="pf.phone" (input)="pf.phone = $any($event.target).value"
                   type="tel" placeholder="+57 300 000 0000"
                   autocomplete="off" inputmode="tel"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors flex-1"
-                  [disabled]="smsVerified()"/>
-                @if (!smsVerified()) {
-                  <button type="button" (click)="sendSmsCode(pf.phone)"
-                    [disabled]="smsSending() || smsCountdown() > 0 || !pf.phone"
-                    class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex-shrink-0 disabled:opacity-40"
-                    [class]="smsCodeSent() ? 'bg-white/5 text-slate-400 border border-white/10' : 'bg-orange-500 text-black'">
-                    @if (smsSending()) {
-                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">sync</span>
-                    } @else if (smsCountdown() > 0) {
-                      {{ smsCountdown() }}s
-                    } @else {
-                      {{ smsCodeSent() ? 'Reenviar' : 'Verificar' }}
-                    }
-                  </button>
-                } @else {
-                  <span class="flex items-center gap-1 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-bold">
-                    <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Verificado
-                  </span>
-                }
+                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
               </div>
-              @if (smsCodeSent() && !smsVerified()) {
-                <div class="mt-2 flex gap-2">
-                  <input [(ngModel)]="smsCodeInput" name="smsCode" type="text" maxlength="6" placeholder="Código de 6 dígitos"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm text-center tracking-[0.3em] font-bold placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors flex-1"/>
-                  <button type="button" (click)="verifySmsCode()"
-                    [disabled]="smsCodeInput.length < 6"
-                    class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold disabled:opacity-40 transition-all">
-                    Confirmar
-                  </button>
-                </div>
-                <p class="text-slate-500 text-[10px] mt-1">Ingresa el código que recibiste por SMS</p>
-              }
-              @if (smsError()) {
-                <p class="text-rose-400 text-xs mt-1">{{ smsError() }}</p>
-              }
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
@@ -4374,42 +4340,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input [value]="df.phone" (input)="df.phone = $any($event.target).value"
                     type="tel" placeholder="+57 300 000 0000"
                     autocomplete="off" inputmode="tel"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors flex-1"
-                    [disabled]="smsVerified()"/>
-                  @if (!smsVerified()) {
-                    <button type="button" (click)="sendSmsCode(df.phone)"
-                      [disabled]="smsSending() || smsCountdown() > 0 || !df.phone"
-                      class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex-shrink-0 disabled:opacity-40"
-                      [class]="smsCodeSent() ? 'bg-white/5 text-slate-400 border border-white/10' : 'bg-cyan-500 text-black'">
-                      @if (smsSending()) {
-                        <span class="material-symbols-outlined animate-spin" style="font-size:14px">sync</span>
-                      } @else if (smsCountdown() > 0) {
-                        {{ smsCountdown() }}s
-                      } @else {
-                        {{ smsCodeSent() ? 'Reenviar' : 'Verificar' }}
-                      }
-                    </button>
-                  } @else {
-                    <span class="flex items-center gap-1 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-bold">
-                      <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Verificado
-                    </span>
-                  }
+                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
                 </div>
-                @if (smsCodeSent() && !smsVerified()) {
-                  <div class="mt-2 flex gap-2">
-                    <input [(ngModel)]="smsCodeInput" name="dSmsCode" type="text" maxlength="6" placeholder="Código de 6 dígitos"
-                      class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm text-center tracking-[0.3em] font-bold placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors flex-1"/>
-                    <button type="button" (click)="verifySmsCode()"
-                      [disabled]="smsCodeInput.length < 6"
-                      class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold disabled:opacity-40 transition-all">
-                      Confirmar
-                    </button>
-                  </div>
-                  <p class="text-slate-500 text-[10px] mt-1">Ingresa el código que recibiste por SMS</p>
-                }
-                @if (smsError()) {
-                  <p class="text-rose-400 text-xs mt-1">{{ smsError() }}</p>
-                }
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
@@ -7913,10 +7845,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.passengerError.set('Por favor completa todos los campos obligatorios, incluyendo país, departamento y ciudad.');
       return;
     }
-    if (!this.smsVerified()) {
-      this.passengerError.set('Debes verificar tu número de teléfono con el código SMS.');
-      return;
-    }
     if (!p.terms) {
       this.passengerError.set('Debes aceptar los términos y condiciones.');
       return;
@@ -7953,10 +7881,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!this.df.plate || !this.df.vehicleType || !this.df.vehicleBrand ||
         !this.df.vehicleModel || !this.df.vehicleYear || !this.df.vehicleColor) {
       this.driverError.set('Completa todos los datos del vehículo.');
-      return;
-    }
-    if (!this.smsVerified()) {
-      this.driverError.set('Debes verificar tu número de teléfono con el código SMS.');
       return;
     }
     if (!this.df.terms) {
