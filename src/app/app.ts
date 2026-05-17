@@ -34,7 +34,9 @@ export class App {
   protected readonly title = signal('publihazclick');
 
   private readonly router = inject(Router);
-  private readonly initialUrl = this.router.url.split('?')[0].split('#')[0];
+  private readonly initialUrl = (typeof window !== 'undefined')
+    ? window.location.pathname
+    : this.router.url.split('?')[0].split('#')[0];
 
   readonly isAuthRoute = signal(false);
   readonly isAdminOrDashboardRoute = signal(false);
