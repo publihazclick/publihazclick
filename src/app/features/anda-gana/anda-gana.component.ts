@@ -19,6 +19,54 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
   [style.background]="screen() === 'home' ? 'linear-gradient(135deg,#6C3AED 0%,#2563EB 100%)' : ''">
 
+  <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
+  @if (docCameraOpen()) {
+    <div class="fixed inset-0 z-[9999] bg-black flex flex-col" style="touch-action:none">
+      <!-- Video en vivo -->
+      <video id="doc-cam-video" autoplay playsinline muted
+        class="absolute inset-0 w-full h-full object-cover"></video>
+
+      <!-- Vignette oscura con recorte rectangular para el documento -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div style="position:absolute;left:5%;top:50%;transform:translateY(-60%);width:90%;aspect-ratio:1.586/1;
+          box-shadow:0 0 0 100vmax rgba(0,0,0,0.62);border-radius:10px;
+          border:2px solid rgba(251,146,60,0.7)">
+          <!-- Esquinas naranja -->
+          <div style="position:absolute;top:-2px;left:-2px;width:28px;height:28px;border-top:4px solid #fb923c;border-left:4px solid #fb923c;border-radius:10px 0 0 0"></div>
+          <div style="position:absolute;top:-2px;right:-2px;width:28px;height:28px;border-top:4px solid #fb923c;border-right:4px solid #fb923c;border-radius:0 10px 0 0"></div>
+          <div style="position:absolute;bottom:-2px;left:-2px;width:28px;height:28px;border-bottom:4px solid #fb923c;border-left:4px solid #fb923c;border-radius:0 0 0 10px"></div>
+          <div style="position:absolute;bottom:-2px;right:-2px;width:28px;height:28px;border-bottom:4px solid #fb923c;border-right:4px solid #fb923c;border-radius:0 0 10px 0"></div>
+        </div>
+      </div>
+
+      <!-- Instrucción superior -->
+      <div class="absolute left-0 right-0 flex justify-center pointer-events-none" style="top:12%">
+        <div class="px-5 py-2 rounded-full" style="background:rgba(0,0,0,0.55)">
+          <p class="text-white text-xs font-bold text-center">Encaja tu documento dentro del marco</p>
+        </div>
+      </div>
+
+      <!-- Controles inferiores -->
+      <div class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-8 py-10"
+           style="background:linear-gradient(transparent,rgba(0,0,0,0.85))">
+        <button (click)="closeDocCamera()"
+          class="w-12 h-12 rounded-full flex items-center justify-center"
+          style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25)">
+          <span class="material-symbols-outlined text-white" style="font-size:22px">close</span>
+        </button>
+        <button (click)="captureDocPhoto()"
+          class="w-20 h-20 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+          style="background:rgba(255,255,255,0.18);border:4px solid white">
+          <div class="w-14 h-14 rounded-full bg-white"></div>
+        </button>
+        <div class="w-12"></div>
+      </div>
+
+      <!-- Canvas oculto para captura -->
+      <canvas id="doc-cam-canvas" class="hidden"></canvas>
+    </div>
+  }
+
   <!-- ═══════════ SPLASH ═══════════ -->
   @if (screen() === 'splash') {
     <div class="fixed inset-0 z-[999] flex items-center justify-center"
@@ -4171,7 +4219,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </p>
             </div>
             <!-- Marco guía del documento -->
-            <label class="cursor-pointer select-none block">
+            <div (click)="openDocCamera('selfie', false)" class="cursor-pointer select-none block">
               <div class="relative flex flex-col items-center justify-center rounded-2xl overflow-hidden"
                    style="background:rgba(0,0,0,0.5);border:2px dashed rgba(251,146,60,0.4);aspect-ratio:1.586/1;min-height:190px">
                 <!-- Esquinas tipo visor -->
@@ -4186,12 +4234,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 } @else {
                   <span class="material-symbols-outlined text-slate-400" style="font-size:44px">id_card</span>
                   <p class="text-white font-bold text-sm mt-2">Encaja tu cédula en el marco</p>
-                  <p class="text-slate-500 text-xs mt-1">Toca para tomar la foto</p>
+                  <p class="text-slate-500 text-xs mt-1">Toca para abrir la cámara</p>
                 }
-                <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
               </div>
               <p class="text-slate-600 text-[10px] text-center mt-2">Usa buena iluminación. El texto debe verse con claridad.</p>
-            </label>
+            </div>
+            <input id="doc-file-p-selfie" type="file" accept="image/*" class="hidden" (change)="onPassengerFileChange($event, 'selfie')"/>
           </div>
 
           <!-- Contacto de emergencia -->
@@ -4428,7 +4476,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               @for (f of idPhotoFields; track f.key) {
                 <div class="flex flex-col gap-1">
                   <label class="text-slate-400 text-xs font-bold">{{ f.label }} *</label>
-                  <label class="cursor-pointer select-none block">
+                  <div (click)="openDocCamera(f.key, true)" class="cursor-pointer select-none block">
                     <div class="relative flex flex-col items-center justify-center rounded-xl overflow-hidden"
                          style="background:rgba(0,0,0,0.5);border:2px dashed rgba(6,182,212,0.4);aspect-ratio:1.586/1;min-height:150px">
                       <div class="absolute top-2.5 left-2.5 w-6 h-6" style="border-top:2.5px solid #06b6d4;border-left:2.5px solid #06b6d4;border-radius:3px 0 0 0"></div>
@@ -4441,12 +4489,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       } @else {
                         <span class="material-symbols-outlined text-slate-400" style="font-size:38px">id_card</span>
                         <p class="text-slate-300 text-xs font-bold mt-1">Encaja el documento en el marco</p>
-                        <p class="text-slate-600 text-[10px] mt-0.5">Toca para tomar foto o subir imagen</p>
+                        <p class="text-slate-600 text-[10px] mt-0.5">Toca para abrir la cámara</p>
                       }
-                      <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                     </div>
                     <p class="text-slate-600 text-[10px] text-center mt-1.5">Buena iluminación · texto legible · sin recortes</p>
-                  </label>
+                  </div>
+                  <input [id]="'doc-file-d-' + f.key" type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                 </div>
               }
             </div>
@@ -7782,6 +7830,71 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._chatChannel.unsubscribe();
       this._chatChannel = null;
     }
+  }
+
+  // ── Cámara de documento ──
+  docCameraOpen   = signal(false);
+  docCameraField  = '';
+  docCameraDriver = false;
+  private _docStream: MediaStream | null = null;
+
+  async openDocCamera(field: string, isDriver: boolean): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      const el = document.getElementById(`doc-file-${isDriver ? 'd' : 'p'}-${field}`) as HTMLInputElement | null;
+      el?.click();
+      return;
+    }
+    this.docCameraField  = field;
+    this.docCameraDriver = isDriver;
+    this.docCameraOpen.set(true);
+    this.cdr.markForCheck();
+    await new Promise(r => setTimeout(r, 150));
+    try {
+      this._docStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      const video = document.getElementById('doc-cam-video') as HTMLVideoElement | null;
+      if (video) { video.srcObject = this._docStream; await video.play(); }
+    } catch {
+      this.closeDocCamera();
+      const el = document.getElementById(`doc-file-${isDriver ? 'd' : 'p'}-${field}`) as HTMLInputElement | null;
+      el?.click();
+    }
+  }
+
+  captureDocPhoto(): void {
+    const video  = document.getElementById('doc-cam-video')  as HTMLVideoElement | null;
+    const canvas = document.getElementById('doc-cam-canvas') as HTMLCanvasElement | null;
+    if (!video || !canvas || !video.videoWidth) return;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    const field    = this.docCameraField;
+    const isDriver = this.docCameraDriver;
+    this.closeDocCamera();
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const file = new File([blob], 'documento-identidad.jpg', { type: 'image/jpeg' });
+      if (isDriver) {
+        (this.df as Record<string, unknown>)[field] = file.name;
+        this._dfFiles[field] = file;
+      } else {
+        (this.pf as Record<string, unknown>)[field] = file.name;
+        this._pfFiles[field] = file;
+      }
+      this.cdr.markForCheck();
+    }, 'image/jpeg', 0.92);
+  }
+
+  closeDocCamera(): void {
+    this._docStream?.getTracks().forEach(t => t.stop());
+    this._docStream = null;
+    this.docCameraOpen.set(false);
+    this.cdr.markForCheck();
   }
 
   resetSmsState(): void {
