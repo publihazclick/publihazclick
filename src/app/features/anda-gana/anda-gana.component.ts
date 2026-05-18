@@ -4235,7 +4235,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </button>
             <div>
               <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0;line-height:1.1">Solicitar viaje</h2>
-              <p style="color:#64748b;font-size:12px;margin:0">Paso 1 de 3 · Tu información</p>
+              <p style="color:#64748b;font-size:12px;margin:0">Paso 1 de 3 · Verifica tu número</p>
             </div>
           </div>
 
@@ -4246,33 +4246,33 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,0.1)"></div>
           </div>
 
-          <!-- Ilustración / icono central -->
+          <!-- Icono central -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
-            <div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#7C3AED,#2563EB);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(124,58,237,0.4)">
+            <div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center">
               <span class="material-symbols-outlined" style="font-size:36px;color:#fff">hail</span>
             </div>
-            <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0">Ingresa tu número para verificar<br>y pedir tu viaje rápidamente</p>
+            <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0">Ingresa tu número. Te enviamos un código<br>en 10 segundos.</p>
           </div>
 
           <!-- Formulario -->
           <div style="display:flex;flex-direction:column;gap:14px">
             <!-- Nombre -->
             <div style="display:flex;flex-direction:column;gap:5px">
-              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">TU NOMBRE</label>
+              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">Nombre</label>
               <input
                 [value]="qrName()"
                 (input)="qrName.set($any($event.target).value)"
-                type="text" autocomplete="given-name" placeholder="¿Cómo te llamas?"
+                type="text" autocomplete="given-name" placeholder="Tu nombre"
                 style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px 16px;color:#fff;font-size:16px;font-weight:600;width:100%;outline:none;box-sizing:border-box"
               />
             </div>
 
             <!-- Teléfono -->
             <div style="display:flex;flex-direction:column;gap:5px">
-              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">NÚMERO DE CELULAR</label>
+              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">Teléfono</label>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="flex-shrink:0;padding:14px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:#94a3b8;font-size:15px;font-weight:700;white-space:nowrap">
-                  🇨🇴 +57
+                  +57
                 </div>
                 <input
                   [value]="qrPhone()"
@@ -4292,18 +4292,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- CTA -->
           <button (click)="qrSendOtp()" [disabled]="qrOtpSending() || qrPhone().length !== 10"
-            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 24px rgba(124,58,237,0.4)"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
             [style.opacity]="qrOtpSending() || qrPhone().length !== 10 ? '0.5' : '1'">
             @if (qrOtpSending()) {
-              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Enviando SMS...
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px;margin-right:8px">autorenew</span> Enviando SMS...
             } @else {
-              <span class="material-symbols-outlined" style="font-size:18px">send</span> Continuar
+              Continuar
             }
           </button>
 
-          <!-- Link al formulario completo -->
+          <!-- Link conductor -->
           <p style="text-align:center;color:#475569;font-size:12px;margin-top:4px">
-            ¿Conductor?
+            ¿Eres conductor?
             <button (click)="screen.set('driver-form'); driverStep.set(1)"
               style="background:none;border:none;color:#7C3AED;font-weight:700;font-size:12px;cursor:pointer;padding:0;margin-left:2px">
               Regístrate aquí
