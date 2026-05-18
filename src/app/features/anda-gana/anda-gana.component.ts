@@ -40,7 +40,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .dot3 { animation: dotPulse 1.4s ease-in-out 0.4s infinite; }
   `],
   host: {
-    '[style.background]': "screen() === 'home' ? '#FFFFFF' : screen() === 'splash' ? '#7C3AED' : '#0a0a0a'",
+    '[style.background]': "screen() === 'home' || screen() === 'quick-register' ? '#FFFFFF' : screen() === 'splash' ? '#7C3AED' : '#0a0a0a'",
     '[style.min-height]': "'100dvh'",
     '[style.display]': "'block'",
     '[style.transition]': "'background 0.2s'",
@@ -4230,20 +4230,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Header -->
           <div class="flex items-center gap-3">
             <button (click)="screen.set('home')"
-              style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <span class="material-symbols-outlined" style="font-size:18px;color:#fff">arrow_back</span>
+              style="width:40px;height:40px;border-radius:50%;background:#F3F4F6;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#374151">arrow_back</span>
             </button>
             <div>
-              <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0;line-height:1.1">Solicitar viaje</h2>
-              <p style="color:#64748b;font-size:12px;margin:0">Paso 1 de 3 · Verifica tu número</p>
+              <h2 style="color:#111827;font-weight:900;font-size:20px;margin:0;line-height:1.1">Solicitar viaje</h2>
+              <p style="color:#6B7280;font-size:12px;margin:0">Paso 1 de 3 · Verifica tu número</p>
             </div>
           </div>
 
           <!-- Progreso -->
           <div style="display:flex;gap:4px">
             <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,0.1)"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,0.1)"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#E5E7EB"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#E5E7EB"></div>
           </div>
 
           <!-- Icono central -->
@@ -4251,40 +4251,40 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center">
               <span class="material-symbols-outlined" style="font-size:36px;color:#fff">hail</span>
             </div>
-            <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0">Ingresa tu número. Te enviamos un código<br>en 10 segundos.</p>
+            <p style="color:#6B7280;font-size:13px;text-align:center;margin:0">Ingresa tu número. Te enviamos un código<br>en 10 segundos.</p>
           </div>
 
           <!-- Formulario -->
           <div style="display:flex;flex-direction:column;gap:14px">
             <!-- Nombre -->
             <div style="display:flex;flex-direction:column;gap:5px">
-              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">Nombre</label>
+              <label style="color:#374151;font-size:11px;font-weight:700;letter-spacing:0.08em">Nombre</label>
               <input
                 [value]="qrName()"
                 (input)="qrName.set($any($event.target).value)"
                 type="text" autocomplete="given-name" placeholder="Tu nombre"
-                style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px 16px;color:#fff;font-size:16px;font-weight:600;width:100%;outline:none;box-sizing:border-box"
+                style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:14px;padding:14px 16px;color:#111827;font-size:16px;font-weight:600;width:100%;outline:none;box-sizing:border-box"
               />
             </div>
 
             <!-- Teléfono -->
             <div style="display:flex;flex-direction:column;gap:5px">
-              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">Teléfono</label>
+              <label style="color:#374151;font-size:11px;font-weight:700;letter-spacing:0.08em">Teléfono</label>
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="flex-shrink:0;padding:11px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:#94a3b8;font-size:14px;font-weight:700;white-space:nowrap">
+                <div style="flex-shrink:0;padding:11px 12px;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:12px;color:#374151;font-size:14px;font-weight:700;white-space:nowrap">
                   +57
                 </div>
                 <input
                   [value]="qrPhone()"
                   (input)="qrPhone.set($any($event.target).value.replace(/\D/g,'').slice(0,10))"
                   type="tel" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
-                  style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700;letter-spacing:0.03em;outline:none;box-sizing:border-box"
+                  style="flex:1;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;outline:none;box-sizing:border-box"
                 />
               </div>
             </div>
 
             @if (qrError()) {
-              <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 14px;color:#fca5a5;font-size:12px;text-align:center">
+              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 14px;color:#DC2626;font-size:12px;text-align:center">
                 {{ qrError() }}
               </div>
             }
@@ -4302,7 +4302,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </button>
 
           <!-- Link conductor -->
-          <p style="text-align:center;color:#475569;font-size:12px;margin-top:4px">
+          <p style="text-align:center;color:#6B7280;font-size:12px;margin-top:4px">
             ¿Eres conductor?
             <button (click)="screen.set('driver-form'); driverStep.set(1)"
               style="background:none;border:none;color:#7C3AED;font-weight:700;font-size:12px;cursor:pointer;padding:0;margin-left:2px">
