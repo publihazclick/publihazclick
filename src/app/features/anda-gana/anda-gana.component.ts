@@ -4161,64 +4161,58 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ HOME ═══════════ -->
   @if (screen() === 'home') {
-    <div class="flex flex-col items-center w-full" style="max-width:390px;font-family:'Inter',sans-serif">
+    <div class="flex flex-col items-center w-full" style="max-width:390px;font-family:'Inter',sans-serif;background:#fff">
 
       <!-- Logo -->
-      <div class="flex flex-col items-center pt-10 pb-6">
-        <img src="movi-splash.svg" alt="Movi"
-          style="width:72px;height:72px;filter:drop-shadow(0 4px 16px rgba(124,58,237,0.28))" />
+      <div class="flex flex-col items-center justify-center" style="margin-top:60px;margin-bottom:8px;gap:6px">
+        <span class="material-symbols-outlined" style="font-size:32px;color:#7C3AED;font-variation-settings:'FILL' 1">location_on</span>
+        <span style="font-size:28px;font-weight:700;color:#000;letter-spacing:-0.5px;font-family:'Inter',sans-serif">MOVI</span>
       </div>
 
       <!-- Headline -->
-      <div class="text-center px-4 pb-8">
-        <h1 class="text-gray-900 font-black leading-none tracking-tight"
-          style="font-size:clamp(30px,8.5vw,38px)">Pide tu precio.<br>Tú mandas.</h1>
-        <p class="text-gray-500 text-sm font-medium mt-3">
-          Viajes hasta <span class="font-bold" style="color:#7C3AED">30% más baratos</span> que otras apps
+      <div class="text-center pb-8" style="padding-left:24px;padding-right:24px;margin-top:40px">
+        <h1 style="font-size:32px;font-weight:700;color:#000;line-height:38px;text-align:center;letter-spacing:-0.3px;margin:0">Pide tu precio.<br>Tú mandas.</h1>
+        <p style="font-size:16px;font-weight:400;color:#6B7280;margin-top:8px;text-align:center;line-height:24px">
+          Viajes hasta <span style="font-weight:600;color:#000">30% más baratos</span> que otras apps
         </p>
       </div>
 
       <!-- Value props -->
-      <div class="grid grid-cols-3 gap-2 w-full px-4 pb-8">
-        <div class="rounded-2xl py-3.5 px-2 flex flex-col items-center gap-2" style="background:#F5F3FF">
-          <span class="material-symbols-outlined" style="font-size:26px;color:#7C3AED">sell</span>
-          <span class="font-bold text-center leading-tight" style="font-size:11px;color:#5B21B6">Tú propones<br>el precio</span>
+      <div class="grid grid-cols-3 w-full" style="gap:12px;padding-left:24px;padding-right:24px;padding-bottom:32px">
+        <div class="flex flex-col items-center" style="background:#F5F3FF;border-radius:16px;padding:16px 8px;gap:10px">
+          <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED">sell</span>
+          <span style="font-size:14px;font-weight:500;color:#7C3AED;text-align:center;line-height:20px">Tú propones<br>el precio</span>
         </div>
-        <div class="rounded-2xl py-3.5 px-2 flex flex-col items-center gap-2" style="background:#F0FDF4">
-          <span class="material-symbols-outlined" style="font-size:26px;color:#16A34A">verified_user</span>
-          <span class="font-bold text-center leading-tight" style="font-size:11px;color:#15803D">Conductores<br>verificados</span>
+        <div class="flex flex-col items-center" style="background:#ECFDF5;border-radius:16px;padding:16px 8px;gap:10px">
+          <span class="material-symbols-outlined" style="font-size:20px;color:#059669">star</span>
+          <span style="font-size:14px;font-weight:500;color:#059669;text-align:center;line-height:20px">Rating 4.8★</span>
         </div>
-        <div class="rounded-2xl py-3.5 px-2 flex flex-col items-center gap-2" style="background:#FFF7ED">
-          <span class="material-symbols-outlined" style="font-size:26px;color:#D97706">bolt</span>
-          <span class="font-bold text-center leading-tight" style="font-size:11px;color:#B45309">Disponible<br>24/7</span>
+        <div class="flex flex-col items-center" style="background:#FEF3C7;border-radius:16px;padding:16px 8px;gap:10px">
+          <span class="material-symbols-outlined" style="font-size:20px;color:#D97706">bolt</span>
+          <span style="font-size:14px;font-weight:500;color:#D97706;text-align:center;line-height:20px">Disponible<br>24/7</span>
         </div>
       </div>
 
       <!-- CTAs -->
-      <div class="flex flex-col gap-3 w-full px-4">
+      <div class="flex flex-col w-full" style="gap:12px;padding-left:24px;padding-right:24px">
         <button (click)="startQuickRegister()"
-          class="w-full rounded-2xl font-black text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
-          style="padding:17px 0;background:#7C3AED;box-shadow:0 6px 24px rgba(124,58,237,0.38);font-size:15px;letter-spacing:-0.01em">
-          <span class="material-symbols-outlined" style="font-size:20px">hail</span>
+          class="w-full text-white flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+          style="height:56px;background:#7C3AED;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
           Solicitar viaje
         </button>
         <button (click)="screen.set('driver-form'); driverStep.set(1)"
-          class="w-full rounded-2xl font-black text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
-          style="padding:17px 0;background:#111827;box-shadow:0 4px 16px rgba(0,0,0,0.16);font-size:15px;letter-spacing:-0.01em">
-          <span class="material-symbols-outlined" style="font-size:20px">directions_car</span>
-          <span class="material-symbols-outlined" style="font-size:20px">two_wheeler</span>
-          <span class="material-symbols-outlined" style="font-size:20px">local_shipping</span>
+          class="w-full text-white flex items-center justify-center active:scale-[0.97] transition-transform"
+          style="height:56px;background:#000;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
           Conducir con Movi
         </button>
       </div>
 
       <!-- Referral banner -->
-      <div class="w-full px-4 mt-4 pb-6">
-        <div class="rounded-2xl px-4 py-3.5 flex items-center gap-3"
-          style="background:#FFFBEB;border:1px solid #FDE68A">
-          <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:#D97706">redeem</span>
-          <p class="text-xs leading-snug" style="color:#92400E">
-            <span class="font-black">Invita amigos y gana $5.000</span> en créditos para tu próximo viaje
+      <div class="w-full" style="padding:20px 24px 40px">
+        <div class="flex items-center" style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:16px;gap:10px">
+          <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px;color:#D97706">redeem</span>
+          <p style="font-size:13px;font-weight:500;color:#92400E;line-height:18px;margin:0">
+            Invita amigos y gana <span style="font-weight:700">$5.000 en créditos</span> para tu próximo viaje
           </p>
         </div>
       </div>
