@@ -359,7 +359,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
         <!-- Sin conductores disponibles -->
-        @if (noDriversNearby() && gpsStatus() === 'ok') {
+        @if (noDriversNearby() && gpsStatus() === 'granted') {
           <div class="absolute inset-0 z-20 flex items-center justify-center"
             style="backdrop-filter:blur(4px);background:rgba(255,255,255,0.85)">
             <div class="flex flex-col items-center text-center"
@@ -6182,8 +6182,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (permission === 'granted') {
         const lat = this._currentLat;
         const lng = this._currentLng;
-        const sb = this.agService['sb'] ?? (this.agService as any).supabase;
-        if (sb && lat && lng) {
+        const sb = getSupabaseClient();
+        if (lat && lng) {
           sb.from('ag_driver_notifications').upsert({
             user_phone: this.agProfile()?.phone ?? '',
             lat, lng, radius_km: 2, active: true,
