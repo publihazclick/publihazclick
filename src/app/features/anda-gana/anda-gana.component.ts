@@ -4303,7 +4303,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <span class="material-symbols-outlined" style="font-size:18px;color:#374151">arrow_back</span>
             </button>
             <div>
-              <h2 style="color:#111827;font-weight:900;font-size:20px;margin:0;line-height:1.1">Solicitar viaje</h2>
+              <h2 style="color:#111827;font-weight:900;font-size:20px;margin:0;line-height:1.1">Crear Cuenta Pasajero</h2>
               <p style="color:#6B7280;font-size:12px;margin:0">Paso 1 de 3 · Verifica tu número</p>
             </div>
           </div>
