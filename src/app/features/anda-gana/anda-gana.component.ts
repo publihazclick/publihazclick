@@ -4165,7 +4165,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- Logo -->
       <div class="flex items-center justify-center" style="margin-top:60px;margin-bottom:8px">
-        <span style="font-size:28px;font-weight:700;color:#7C3AED;letter-spacing:-0.5px;font-family:'Inter',sans-serif">MOVI</span>
+        <span style="font-size:28px;font-weight:700;color:#000;letter-spacing:-0.5px;font-family:'Inter',sans-serif">MOVI</span>
       </div>
 
       <!-- Headline -->
