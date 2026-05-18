@@ -308,23 +308,39 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
-      <!-- ══ Gana por invitar (siempre visible) ══ -->
-      <button (click)="openPassengerSection('referrals')"
-        class="w-full rounded-2xl p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
-        style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.15)">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style="background:rgba(255,255,255,0.15)">
-          <span class="material-symbols-outlined text-white" style="font-size:22px">account_balance_wallet</span>
-        </div>
-        <div class="flex-1 min-w-0 text-left">
-          <p class="text-white font-bold text-base leading-tight">Gana por invitar</p>
-          <p class="text-white/60 text-xs leading-tight">$0 ganados este mes</p>
-        </div>
-        <div class="flex items-center gap-1 flex-shrink-0">
-          <span class="text-white text-xs font-semibold">Invitar amigos</span>
-          <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
-        </div>
-      </button>
+      <!-- ══ Card superior: referidos o métodos de pago ══ -->
+      @if (agProfile()) {
+        <button (click)="openPassengerSection('referrals')"
+          class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
+          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
+          <div class="flex items-center justify-center flex-shrink-0"
+            style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
+            <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
+          </div>
+          <div class="flex-1 min-w-0 text-left">
+            <p style="color:#fff;font-weight:600;font-size:14px;margin:0;line-height:1.3">Gana por invitar</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:0;line-height:1.3">$0 ganados este mes</p>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <span style="color:#fff;font-size:12px;font-weight:500">Invitar amigos</span>
+            <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
+          </div>
+        </button>
+      } @else {
+        <button (click)="openPassengerSection('paymentmethods')"
+          class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
+          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
+          <div class="flex items-center justify-center flex-shrink-0"
+            style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
+            <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">credit_card</span>
+          </div>
+          <div class="flex-1 min-w-0 text-left">
+            <p style="color:#fff;font-weight:600;font-size:14px;margin:0;line-height:1.3">Métodos de pago</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:0;line-height:1.3">Gestiona tus formas de pago</p>
+          </div>
+          <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
+        </button>
+      }
 
       @if (passengerSection() === null) {
       <!-- Mapa con overlays flotantes -->
