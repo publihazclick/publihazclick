@@ -1,4 +1,3 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -53,14 +52,15 @@ async function sendViaWhatsApp(phone: string, code: string, instance: string): P
 
 async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
   const apiKey    = Deno.env.get('TELNYX_API_KEY');
-  const fromPhone = Deno.env.get('TELNYX_PHONE_NUMBER');
+  const fromSender = Deno.env.get('TELNYX_SENDER_ID') ?? Deno.env.get('TELNYX_PHONE_NUMBER');
   const profileId = Deno.env.get('TELNYX_MESSAGING_PROFILE_ID');
-  if (!apiKey || !fromPhone) return false;
+  if (!apiKey || !fromSender) return false;
 
   const payload: Record<string, string> = {
-    from: fromPhone,
+    from: fromSender,
     to: phone,
     text: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
+    type: 'SMS',
   };
   if (profileId) payload.messaging_profile_id = profileId;
 
@@ -69,7 +69,7 @@ async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) { console.error('Telnyx error:', await res.text()); return false; }
+  if (!res.ok) { const err = await res.text(); console.error('Telnyx error:', err); throw new Error('Telnyx:' + err.substring(0,200)); }
   return true;
 }
 
@@ -94,7 +94,7 @@ async function sendViaTwilio(phone: string, code: string): Promise<boolean> {
   return true;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -156,7 +156,7 @@ serve(async (req) => {
       (await sendViaTwilio(normalized, code));
 
     if (!sent) {
-      return json({ error: 'No hay WhatsApp conectado. Conéctalo en el panel de ZapFlow.' }, 500);
+      return json({ error: 'No se pudo enviar el código. Intenta de nuevo.' }, 500);
     }
 
     return json({ ok: true });

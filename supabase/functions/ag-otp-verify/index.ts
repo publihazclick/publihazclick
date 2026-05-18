@@ -1,4 +1,3 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -25,7 +24,7 @@ async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
