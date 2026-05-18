@@ -4323,12 +4323,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Header -->
           <div class="flex items-center gap-3">
             <button (click)="qrStep.set(1)"
-              style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <span class="material-symbols-outlined" style="font-size:18px;color:#fff">arrow_back</span>
+              style="width:40px;height:40px;border-radius:50%;background:#F3F4F6;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#374151">arrow_back</span>
             </button>
             <div>
-              <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0;line-height:1.1">Verificar número</h2>
-              <p style="color:#64748b;font-size:12px;margin:0">Paso 2 de 3 · Código SMS</p>
+              <h2 style="color:#111827;font-weight:900;font-size:20px;margin:0;line-height:1.1">Verificar número</h2>
+              <p style="color:#6B7280;font-size:12px;margin:0">Paso 2 de 3 · Código SMS</p>
             </div>
           </div>
 
@@ -4336,55 +4336,56 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;gap:4px">
             <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
             <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,0.1)"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#E5E7EB"></div>
           </div>
 
           <!-- Info -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
-            <div style="width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,0.15);border:2px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center">
-              <span class="material-symbols-outlined" style="font-size:30px;color:#a78bfa">sms</span>
+            <div style="width:72px;height:72px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center">
+              <span class="material-symbols-outlined" style="font-size:36px;color:#fff;font-variation-settings:'FILL' 1">sms</span>
             </div>
-            <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0;line-height:1.6">
+            <p style="color:#6B7280;font-size:13px;text-align:center;margin:0;line-height:1.6">
               Enviamos un código de 6 dígitos a<br>
-              <span style="color:#fff;font-weight:900;font-size:15px">+57 {{ qrPhone() }}</span>
+              <span style="color:#111827;font-weight:700;font-size:15px">+57 {{ qrPhone() }}</span>
             </p>
           </div>
 
           <!-- Input código -->
           <div style="display:flex;flex-direction:column;gap:5px">
-            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em;text-align:center">CÓDIGO DE VERIFICACIÓN</label>
+            <label style="color:#6B7280;font-size:13px;font-weight:500;text-align:center">Código de verificación</label>
             <input
               [value]="qrOtpCode()"
               (input)="qrOtpCode.set($any($event.target).value.replace(/\D/g,'').slice(0,6))"
               type="tel" inputmode="numeric" maxlength="6"
               placeholder="_ _ _ _ _ _"
               [disabled]="qrOtpVerifying()"
-              style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(124,58,237,0.4);border-radius:16px;padding:16px;color:#fff;font-size:28px;font-weight:900;letter-spacing:0.4em;text-align:center;width:100%;outline:none;box-sizing:border-box"
+              class="qr-input"
+              style="background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:16px;padding:16px;color:#111827;font-size:28px;font-weight:900;letter-spacing:0.4em;text-align:center;width:100%;box-sizing:border-box"
             />
           </div>
 
           @if (qrOtpError()) {
-            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 14px;color:#fca5a5;font-size:12px;text-align:center">
+            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 14px;color:#DC2626;font-size:12px;text-align:center">
               {{ qrOtpError() }}
             </div>
           }
 
           <!-- Confirmar -->
           <button (click)="qrVerifyOtp()" [disabled]="qrOtpVerifying() || qrOtpCode().length < 6"
-            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
-            [style.opacity]="qrOtpVerifying() || qrOtpCode().length < 6 ? '0.5' : '1'">
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-weight:600;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
+            [style.opacity]="qrOtpVerifying() || qrOtpCode().length < 6 ? '0.9' : '1'">
             @if (qrOtpVerifying()) {
-              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Verificando...
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px;margin-right:8px">autorenew</span> Verificando...
             } @else {
-              <span class="material-symbols-outlined" style="font-size:18px">check_circle</span> Confirmar código
+              Confirmar código
             }
           </button>
 
           <!-- Reenviar con countdown -->
           <div style="text-align:center">
             @if (qrResendCountdown() > 0) {
-              <p style="color:#64748b;font-size:13px;margin:0">
-                Reenviar en <span style="color:#a78bfa;font-weight:700">{{ qrResendCountdown() }}s</span>
+              <p style="color:#6B7280;font-size:13px;margin:0">
+                Reenviar en <span style="color:#7C3AED;font-weight:700">{{ qrResendCountdown() }}s</span>
               </p>
             } @else {
               <button (click)="qrResendOtp()"
