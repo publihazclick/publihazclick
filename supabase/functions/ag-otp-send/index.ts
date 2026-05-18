@@ -139,22 +139,24 @@ serve(async (req) => {
       return json({ error: 'Error interno' }, 500);
     }
 
-    // Obtener instancia de WhatsApp configurada para OTP
-    const { data: setting } = await sb
-      .from('platform_settings')
-      .select('value')
-      .eq('key', 'wa_otp_instance')
+    // Buscar automáticamente el primer WhatsApp conectado
+    const { data: session } = await sb
+      .from('wa_sessions')
+      .select('phone_number')
+      .eq('status', 'open')
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .single();
-    const waInstance = setting?.value ?? '';
+    const waInstance = session?.phone_number ?? '';
 
-    // Intentar WhatsApp primero (gratis), luego SMS de pago como fallback
+    // WhatsApp primero (gratis), SMS de pago como fallback
     const sent =
       (await sendViaWhatsApp(normalized, code, waInstance)) ||
       (await sendViaTelnyx(normalized, code)) ||
       (await sendViaTwilio(normalized, code));
 
     if (!sent) {
-      return json({ error: 'No se pudo enviar el código. Verifica que tu WhatsApp esté activo.' }, 500);
+      return json({ error: 'No hay WhatsApp conectado. Conéctalo en el panel de ZapFlow.' }, 500);
     }
 
     return json({ ok: true });
