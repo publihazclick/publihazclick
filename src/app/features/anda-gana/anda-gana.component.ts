@@ -4360,7 +4360,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               placeholder="_ _ _ _ _ _"
               [disabled]="qrOtpVerifying()"
               class="qr-input"
-              style="background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:16px;padding:16px;color:#111827;font-size:28px;font-weight:900;letter-spacing:0.4em;text-align:center;width:100%;box-sizing:border-box"
+              style="background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:12px;height:52px;padding:0 16px;color:#111827;font-size:28px;font-weight:900;letter-spacing:0.4em;text-align:center;width:100%;box-sizing:border-box"
             />
           </div>
 
