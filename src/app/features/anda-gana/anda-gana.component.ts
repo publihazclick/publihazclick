@@ -4271,14 +4271,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="display:flex;flex-direction:column;gap:5px">
               <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">Teléfono</label>
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="flex-shrink:0;padding:14px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:#94a3b8;font-size:15px;font-weight:700;white-space:nowrap">
+                <div style="flex-shrink:0;padding:11px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:#94a3b8;font-size:14px;font-weight:700;white-space:nowrap">
                   +57
                 </div>
                 <input
                   [value]="qrPhone()"
                   (input)="qrPhone.set($any($event.target).value.replace(/\D/g,'').slice(0,10))"
                   type="tel" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
-                  style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px 16px;color:#fff;font-size:18px;font-weight:900;letter-spacing:0.05em;outline:none;box-sizing:border-box"
+                  style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:11px 14px;color:#fff;font-size:16px;font-weight:700;letter-spacing:0.03em;outline:none;box-sizing:border-box"
                 />
               </div>
             </div>
