@@ -342,6 +342,32 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </button>
       }
 
+      <!-- ══ Banner lanzamiento ══ -->
+      @if (!launchBannerDismissed()) {
+        @if (!agProfile()) {
+          <button (click)="screen.set('quick-register'); qrStep.set(1)"
+            class="w-full text-left active:scale-[0.98] transition-transform"
+            style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:16px;position:relative;border:none;cursor:pointer">
+            <button (click)="$event.stopPropagation(); launchBannerDismissed.set(true)"
+              style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#fff">close</span>
+            </button>
+            <p style="color:#fff;font-weight:700;font-size:14px;margin:0 0 4px 0;line-height:1.3">🚀 Lanzamiento nacional por fases</p>
+            <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;line-height:1.5">Regístrate hoy y obtén <span style="font-weight:700">40% OFF</span> en tu primer viaje cuando lleguemos a tu ciudad</p>
+          </button>
+        } @else {
+          <div class="w-full"
+            style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:16px;position:relative">
+            <button (click)="launchBannerDismissed.set(true)"
+              style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#fff">close</span>
+            </button>
+            <p style="color:#fff;font-weight:700;font-size:14px;margin:0 0 4px 0;line-height:1.3">Lanzamiento pronto en tu ciudad ✅</p>
+            <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;line-height:1.5">Te avisaremos cuando haya conductores disponibles</p>
+          </div>
+        }
+      }
+
       @if (passengerSection() === null) {
       <!-- Mapa con overlays flotantes -->
       <div class="relative rounded-2xl overflow-hidden" style="height:520px;border:1px solid rgba(255,255,255,0.08)">
@@ -5410,6 +5436,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   referralTotalEarned = signal(0);
   referralCount      = signal(0);
   referralTransactions = signal<any[]>([]);
+
+  launchBannerDismissed = signal(false);
 
   // Mapa / GPS
   noDriversNearby = signal(false);
