@@ -9796,7 +9796,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const result = await this.phoneAuth.verifyOTP(code);
     this.qrOtpVerifying.set(false);
     if (result.ok) {
-      this.qrStep.set(3);
+      this.screen.set('passenger-home');
     } else {
       this.qrOtpError.set(result.message ?? 'Código incorrecto. Verifica e intenta de nuevo.');
     }
