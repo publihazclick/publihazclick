@@ -20,58 +20,78 @@ function toE164(phone: string): string {
   return `+${digits}`;
 }
 
+/** Evolution API usa número sin '+', ej: 573134453649 */
+function toWaNumber(e164: string): string {
+  return e164.replace('+', '');
+}
+
 async function sha256(text: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function sendSms(phone: string, code: string): Promise<boolean> {
+async function sendViaWhatsApp(phone: string, code: string, instance: string): Promise<boolean> {
+  const apiUrl = Deno.env.get('EVOLUTION_API_URL');
+  const apiKey = Deno.env.get('EVOLUTION_API_KEY');
+  if (!apiUrl || !apiKey || !instance) return false;
+
+  const resp = await fetch(`${apiUrl}/message/sendText/${instance}`, {
+    method: 'POST',
+    headers: { apikey: apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      number: toWaNumber(phone),
+      text: `🔐 *Movi - Código de verificación*\n\nTu código es: *${code}*\n\nVálido por 10 minutos. No lo compartas con nadie.`,
+    }),
+  });
+
+  if (!resp.ok) {
+    console.error('WhatsApp OTP error:', resp.status, await resp.text());
+    return false;
+  }
+  return true;
+}
+
+async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
   const apiKey    = Deno.env.get('TELNYX_API_KEY');
   const fromPhone = Deno.env.get('TELNYX_PHONE_NUMBER');
   const profileId = Deno.env.get('TELNYX_MESSAGING_PROFILE_ID');
+  if (!apiKey || !fromPhone) return false;
 
-  if (apiKey && fromPhone) {
-    const payload: Record<string, string> = {
-      from: fromPhone,
-      to: phone,
-      text: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
-    };
-    if (profileId) payload.messaging_profile_id = profileId;
+  const payload: Record<string, string> = {
+    from: fromPhone,
+    to: phone,
+    text: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
+  };
+  if (profileId) payload.messaging_profile_id = profileId;
 
-    const res = await fetch('https://api.telnyx.com/v2/messages', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) return true;
-    console.error('Telnyx error:', await res.text());
-  }
+  const res = await fetch('https://api.telnyx.com/v2/messages', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) { console.error('Telnyx error:', await res.text()); return false; }
+  return true;
+}
 
+async function sendViaTwilio(phone: string, code: string): Promise<boolean> {
   const sid   = Deno.env.get('TWILIO_ACCOUNT_SID');
   const token = Deno.env.get('TWILIO_AUTH_TOKEN');
   const from  = Deno.env.get('TWILIO_PHONE_NUMBER');
+  if (!sid || !token || !from) return false;
 
-  if (sid && token && from) {
-    const res = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          From: from,
-          To: phone,
-          Body: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
-        }).toString(),
-      }
-    );
-    if (res.ok) return true;
-    console.error('Twilio error:', await res.text());
-  }
-
-  return false;
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      From: from, To: phone,
+      Body: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
+    }).toString(),
+  });
+  if (!res.ok) { console.error('Twilio error:', await res.text()); return false; }
+  return true;
 }
 
 serve(async (req) => {
@@ -114,14 +134,28 @@ serve(async (req) => {
       code_hash: hash,
       expires_at: expiresAt,
     });
-
     if (insertError) {
       console.error('Insert error:', insertError);
       return json({ error: 'Error interno' }, 500);
     }
 
-    const sent = await sendSms(normalized, code);
-    if (!sent) return json({ error: 'No se pudo enviar el SMS. Intenta de nuevo.' }, 500);
+    // Obtener instancia de WhatsApp configurada para OTP
+    const { data: setting } = await sb
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'wa_otp_instance')
+      .single();
+    const waInstance = setting?.value ?? '';
+
+    // Intentar WhatsApp primero (gratis), luego SMS de pago como fallback
+    const sent =
+      (await sendViaWhatsApp(normalized, code, waInstance)) ||
+      (await sendViaTelnyx(normalized, code)) ||
+      (await sendViaTwilio(normalized, code));
+
+    if (!sent) {
+      return json({ error: 'No se pudo enviar el código. Verifica que tu WhatsApp esté activo.' }, 500);
+    }
 
     return json({ ok: true });
   } catch (e) {
