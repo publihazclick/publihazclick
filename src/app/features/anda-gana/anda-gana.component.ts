@@ -4171,7 +4171,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- Headline -->
       <div class="text-center pb-8" style="padding-left:24px;padding-right:24px;margin-top:40px">
-        <h1 style="font-size:32px;font-weight:700;color:#000;line-height:38px;text-align:center;letter-spacing:-0.3px;margin:0">Pide tu precio.<br>Tú mandas.</h1>
+        <h1 style="font-size:32px;font-weight:700;color:#000;line-height:38px;text-align:center;letter-spacing:-0.3px;margin:0;font-family:'Inter-Bold',sans-serif">Pide tu precio.<br>Tú mandas.</h1>
         <p style="font-size:16px;font-weight:400;color:#6B7280;margin-top:8px;text-align:center;line-height:24px">
           Viajes hasta <span style="font-weight:600;color:#000">30% más baratos</span> que otras apps
         </p>
@@ -4181,15 +4181,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <div class="grid grid-cols-3 w-full" style="gap:12px;padding-left:24px;padding-right:24px;padding-bottom:32px">
         <div class="flex flex-col items-center" style="background:#F5F3FF;border-radius:16px;padding:16px 8px;gap:10px">
           <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED">sell</span>
-          <span style="font-size:14px;font-weight:500;color:#7C3AED;text-align:center;line-height:20px">Tú propones<br>el precio</span>
+          <span style="font-size:14px;font-weight:500;color:#7C3AED;text-align:center;line-height:20px;font-family:'Inter-Medium',sans-serif">Tú propones<br>el precio</span>
         </div>
         <div class="flex flex-col items-center" style="background:#ECFDF5;border-radius:16px;padding:16px 8px;gap:10px">
           <span class="material-symbols-outlined" style="font-size:20px;color:#059669">star</span>
-          <span style="font-size:14px;font-weight:500;color:#059669;text-align:center;line-height:20px">Rating 4.8★</span>
+          <span style="font-size:14px;font-weight:500;color:#059669;text-align:center;line-height:20px;font-family:'Inter-Medium',sans-serif">Rating 4.8★</span>
         </div>
         <div class="flex flex-col items-center" style="background:#FEF3C7;border-radius:16px;padding:16px 8px;gap:10px">
           <span class="material-symbols-outlined" style="font-size:20px;color:#D97706">bolt</span>
-          <span style="font-size:14px;font-weight:500;color:#D97706;text-align:center;line-height:20px">Disponible<br>24/7</span>
+          <span style="font-size:14px;font-weight:500;color:#D97706;text-align:center;line-height:20px;font-family:'Inter-Medium',sans-serif">Disponible<br>24/7</span>
         </div>
       </div>
 
