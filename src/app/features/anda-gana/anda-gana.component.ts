@@ -358,6 +358,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
+        <!-- Sin conductores disponibles -->
+        @if (noDriversNearby() && gpsStatus() === 'ok') {
+          <div class="absolute inset-0 z-20 flex items-center justify-center"
+            style="backdrop-filter:blur(4px);background:rgba(255,255,255,0.85)">
+            <div class="flex flex-col items-center text-center"
+              style="gap:16px;padding:24px;border-radius:20px;max-width:300px">
+              <span class="material-symbols-outlined" style="font-size:64px;color:#7C3AED;font-variation-settings:'FILL' 0">directions_car</span>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <p style="font-weight:600;font-size:16px;color:#111827;margin:0;text-align:center">No hay conductores cerca</p>
+                <p style="font-weight:400;font-size:14px;color:#6B7280;margin:0;text-align:center;max-width:240px;line-height:1.5">Te avisamos cuando haya uno disponible en tu zona</p>
+              </div>
+              <button (click)="subscribeDriverNotification()"
+                style="background:#7C3AED;border-radius:12px;padding:12px 24px;color:#fff;font-weight:600;font-size:14px;border:none;cursor:pointer;white-space:nowrap">
+                Notificarme cuando haya conductores
+              </button>
+            </div>
+          </div>
+        }
+
         <!-- Barra de dirección (flotante arriba) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute top-3 left-3 right-3 z-20">
@@ -5393,6 +5412,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   referralTransactions = signal<any[]>([]);
 
   // Mapa / GPS
+  noDriversNearby = signal(false);
   gpsStatus      = signal<GpsStatus>('idle');
   currentAddress = signal('');
   addressLoading = signal(false);
@@ -6048,6 +6068,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             this._vehicleMarkers.splice(idx, 1);
           }
         }
+
+        this.noDriversNearby.set(this._vehicleMarkers.length === 0);
+        this.cdr.markForCheck();
       })
       .subscribe();
   }
@@ -6151,6 +6174,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._destroyMap();
     this.currentAddress.set('');
     this.initGpsAndMap(containerId);
+  }
+
+  subscribeDriverNotification() {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        const lat = this._currentLat;
+        const lng = this._currentLng;
+        const sb = this.agService['sb'] ?? (this.agService as any).supabase;
+        if (sb && lat && lng) {
+          sb.from('ag_driver_notifications').upsert({
+            user_phone: this.agProfile()?.phone ?? '',
+            lat, lng, radius_km: 2, active: true,
+          }, { onConflict: 'user_phone' }).then(() => {});
+        }
+        new Notification('Movi', { body: 'Te notificaremos cuando haya un conductor cerca.', icon: '/favicon.ico' });
+      }
+    });
   }
 
   // ── Dirección ──────────────────────────────────────────────────
@@ -6359,6 +6400,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     this._map.addControl(new mapboxgl.AttributionControl({ compact: true }));
     this._map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+    this.noDriversNearby.set(true);
 
     this._map.once('load', () => {
       // Cargar vehículos cuando el mapa esté completamente renderizado (tiles listos)
