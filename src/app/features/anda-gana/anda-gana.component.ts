@@ -4264,9 +4264,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           Pasajero
         </button>
         <button (click)="screen.set('driver-form'); driverStep.set(1)"
-          class="w-full text-white flex items-center justify-center active:scale-[0.97] transition-transform"
+          class="w-full text-white flex items-center justify-center gap-3 active:scale-[0.97] transition-transform"
           style="height:56px;background:#000;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
-          Conducir con Movi
+          <div class="flex items-center gap-1">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#fff;font-variation-settings:'FILL' 1">directions_car</span>
+            <span class="material-symbols-outlined" style="font-size:18px;color:#fff;font-variation-settings:'FILL' 1">two_wheeler</span>
+            <span class="material-symbols-outlined" style="font-size:18px;color:#fff;font-variation-settings:'FILL' 1">local_shipping</span>
+          </div>
+          Conductor
         </button>
       </div>
 
