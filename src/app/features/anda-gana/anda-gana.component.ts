@@ -3,12 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
+import { AgPhoneAuthService } from './ag-phone-auth.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { getSupabaseClient } from '../../core/supabase.client';
 import { SplashScreen } from '@capacitor/splash-screen';
 
-type AgScreen = 'splash' | 'loading' | 'home' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
+type AgScreen = 'splash' | 'loading' | 'home' | 'quick-register' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
 type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
 @Component({
@@ -16,9 +17,39 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   standalone: true,
   imports: [FormsModule, SlicePipe, DatePipe, DecimalPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: [`
+    @keyframes moviEntrance {
+      0%   { opacity:0; transform: scale(0.75) translateY(50px); }
+      65%  { opacity:1; transform: scale(1.06) translateY(-8px); }
+      100% { opacity:1; transform: scale(1)    translateY(0px);  }
+    }
+    @keyframes moviFloat {
+      0%,100% { transform: translateY(0px);   }
+      50%     { transform: translateY(-18px);  }
+    }
+    @keyframes dotPulse {
+      0%,80%,100% { transform:scale(0.5); opacity:0.3; }
+      40%         { transform:scale(1);   opacity:1;   }
+    }
+    .movi-logo-wrap {
+      animation: moviEntrance 0.85s cubic-bezier(0.34,1.56,0.64,1) forwards,
+                 moviFloat    2.8s  ease-in-out 0.85s infinite;
+    }
+    .dot1 { animation: dotPulse 1.4s ease-in-out 0.0s infinite; }
+    .dot2 { animation: dotPulse 1.4s ease-in-out 0.2s infinite; }
+    .dot3 { animation: dotPulse 1.4s ease-in-out 0.4s infinite; }
+  `],
+  host: {
+    '[style.background]': "screen() === 'home' ? '#FFFFFF' : screen() === 'splash' ? '#7C3AED' : '#0a0a0a'",
+    '[style.min-height]': "'100dvh'",
+    '[style.display]': "'block'",
+    '[style.transition]': "'background 0.2s'",
+  },
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
-  [style.background]="screen() === 'home' ? '#FFFFFF' : screen() === 'splash' ? '#6C3AED' : ''">
+  [style.background]="screen() === 'home' ? '#FFFFFF' : screen() === 'splash' ? '#7C3AED' : '#0a0a0a'"
+  [style.padding]="screen() === 'quick-register' ? '0' : ''"
+  style="min-height:100dvh">
 
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
@@ -73,26 +104,116 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- reCAPTCHA invisible (Firebase Phone Auth) — registro completo -->
+  <div id="ag-recaptcha-container"></div>
+  <!-- reCAPTCHA invisible — registro rápido -->
+  <div id="qr-recaptcha-container"></div>
+
+  <!-- ═══════════ OTP OVERLAY ═══════════ -->
+  @if (otpStep() !== 'idle') {
+    <div style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px)">
+      <div style="width:100%;max-width:360px;background:#0f1421;border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:28px 24px;display:flex;flex-direction:column;gap:20px">
+
+        <!-- Ícono -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div style="width:60px;height:60px;border-radius:50%;background:rgba(124,58,237,0.15);border:2px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center">
+            <span class="material-symbols-outlined" style="font-size:28px;color:#a78bfa">sms</span>
+          </div>
+          <h3 style="color:#fff;font-weight:900;font-size:18px;margin:0">Verifica tu número</h3>
+          <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0;line-height:1.5">
+            Enviamos un código de 6 dígitos al número<br>
+            <span style="color:#fff;font-weight:700">{{ otpPhone() }}</span>
+          </p>
+        </div>
+
+        @if (otpStep() === 'sending') {
+          <!-- Enviando -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:16px">
+            <span class="material-symbols-outlined animate-spin" style="font-size:22px;color:#7C3AED">autorenew</span>
+            <span style="color:#94a3b8;font-size:14px">Enviando SMS...</span>
+          </div>
+        } @else {
+          <!-- Input código -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">CÓDIGO DE VERIFICACIÓN</label>
+            <input
+              [value]="otpCode()"
+              (input)="otpCode.set($any($event.target).value)"
+              type="tel" inputmode="numeric" maxlength="6"
+              placeholder="_ _ _ _ _ _"
+              [disabled]="otpStep() === 'verifying'"
+              style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:14px 16px;color:#fff;font-size:24px;font-weight:900;letter-spacing:0.3em;text-align:center;width:100%;outline:none;box-sizing:border-box"/>
+          </div>
+
+          @if (otpError()) {
+            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 14px;color:#fca5a5;font-size:12px;text-align:center">
+              {{ otpError() }}
+            </div>
+          }
+
+          <!-- Botones -->
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button (click)="confirmOtp()" [disabled]="otpStep() === 'verifying' || otpCode().length < 6"
+              style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:15px;border:none;cursor:pointer;opacity:1;display:flex;align-items:center;justify-content:center;gap:8px"
+              [style.opacity]="otpStep() === 'verifying' || otpCode().length < 6 ? '0.5' : '1'">
+              @if (otpStep() === 'verifying') {
+                <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Verificando...
+              } @else {
+                <span class="material-symbols-outlined" style="font-size:18px">check_circle</span> Confirmar código
+              }
+            </button>
+            <div style="display:flex;gap:8px">
+              <button (click)="resendOtp()" [disabled]="otpStep() === 'verifying'"
+                style="flex:1;padding:10px;border-radius:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;font-size:12px;font-weight:700;cursor:pointer">
+                Reenviar SMS
+              </button>
+              <button (click)="cancelOtp()"
+                style="flex:1;padding:10px;border-radius:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;font-size:12px;font-weight:700;cursor:pointer">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ SPLASH ═══════════ -->
   @if (screen() === 'splash') {
-    <div class="fixed inset-0 z-[999] flex flex-col items-center justify-center"
-      style="background:linear-gradient(180deg,#7C3AED 0%,#2563EB 100%)">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" style="width:220px;height:286px">
-        <!-- Líneas camino sutiles -->
-        <path d="M 20 240 Q 70 190 100 160 Q 135 128 180 110" stroke="rgba(255,255,255,0.10)" stroke-width="28" fill="none" stroke-linecap="round"/>
-        <path d="M 20 240 Q 70 190 100 160 Q 135 128 180 110" stroke="rgba(255,255,255,0.06)" stroke-width="44" fill="none" stroke-linecap="round"/>
-        <!-- Pin blanco -->
-        <g transform="translate(100,95)">
-          <path d="M0-55C-30-55-50-34-50-8C-50 22 0 60 0 60C0 60 50 22 50-8C50-34 30-55 0-55Z" fill="#FFFFFF"/>
-          <circle cx="0" cy="-12" r="18" fill="#5B21B6"/>
-          <circle cx="0" cy="-12" r="8" fill="#FFFFFF"/>
-        </g>
-        <!-- MOVI -->
-        <text x="100" y="182" font-family="'Segoe UI',Arial,sans-serif" font-size="58" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">MOVI</text>
-        <!-- Taglines -->
-        <text x="100" y="212" font-family="'Segoe UI',Arial,sans-serif" font-size="10" font-weight="400" fill="rgba(255,255,255,0.85)" text-anchor="middle">La aplicación de transporte</text>
-        <text x="100" y="228" font-family="'Segoe UI',Arial,sans-serif" font-size="10" font-weight="700" fill="#FFFFFF" text-anchor="middle">Más segura a nivel mundial</text>
-      </svg>
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#7C3AED 0%,#4F46E5 50%,#2563EB 100%)">
+
+      <!-- Círculos decorativos de fondo -->
+      <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,0.05)"></div>
+      <div style="position:absolute;bottom:-100px;left:-60px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,0.04)"></div>
+
+      <!-- Logo animado -->
+      <div class="movi-logo-wrap" style="display:flex;flex-direction:column;align-items:center">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" style="width:210px;height:273px;filter:drop-shadow(0 8px 32px rgba(0,0,0,0.35))">
+          <!-- Camino sutil -->
+          <path d="M 20 240 Q 70 190 100 160 Q 135 128 180 110" stroke="rgba(255,255,255,0.12)" stroke-width="26" fill="none" stroke-linecap="round"/>
+          <path d="M 20 240 Q 70 190 100 160 Q 135 128 180 110" stroke="rgba(255,255,255,0.06)" stroke-width="42" fill="none" stroke-linecap="round"/>
+          <!-- Sombra pin -->
+          <ellipse cx="100" cy="162" rx="22" ry="6" fill="rgba(0,0,0,0.18)"/>
+          <!-- Pin blanco -->
+          <g transform="translate(100,95)">
+            <path d="M0-58C-32-58-54-36-54-8C-54 24 0 66 0 66C0 66 54 24 54-8C54-36 32-58 0-58Z" fill="#FFFFFF"/>
+            <circle cx="0" cy="-14" r="20" fill="#6D28D9"/>
+            <circle cx="0" cy="-14" r="9"  fill="#FFFFFF"/>
+          </g>
+          <!-- MOVI -->
+          <text x="100" y="186" font-family="'Segoe UI',Arial,sans-serif" font-size="60" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="5">MOVI</text>
+          <!-- Taglines -->
+          <text x="100" y="214" font-family="'Segoe UI',Arial,sans-serif" font-size="10.5" font-weight="400" fill="rgba(255,255,255,0.8)" text-anchor="middle">La aplicación de transporte</text>
+          <text x="100" y="231" font-family="'Segoe UI',Arial,sans-serif" font-size="10.5" font-weight="700" fill="rgba(255,255,255,0.95)" text-anchor="middle">Más segura a nivel mundial</text>
+        </svg>
+      </div>
+
+      <!-- Dots de carga -->
+      <div style="display:flex;gap:10px;margin-top:48px">
+        <div class="dot1" style="width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.8)"></div>
+        <div class="dot2" style="width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.8)"></div>
+        <div class="dot3" style="width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.8)"></div>
+      </div>
     </div>
   }
 
@@ -4075,7 +4196,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- CTAs -->
       <div class="flex flex-col gap-3 w-full px-4">
-        <button (click)="screen.set('passenger-form')"
+        <button (click)="startQuickRegister()"
           class="w-full rounded-2xl font-black text-white flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
           style="padding:17px 0;background:#7C3AED;box-shadow:0 6px 24px rgba(124,58,237,0.38);font-size:15px;letter-spacing:-0.01em">
           <span class="material-symbols-outlined" style="font-size:20px">hail</span>
@@ -4101,6 +4222,360 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </p>
         </div>
       </div>
+
+    </div>
+  }
+
+  <!-- ═══════════ REGISTRO RÁPIDO (3 PASOS) ═══════════ -->
+  @if (screen() === 'quick-register') {
+    <div class="w-full flex flex-col items-center" style="min-height:100dvh;max-width:420px">
+
+      <!-- ── PASO 1: Nombre + Teléfono ── -->
+      @if (qrStep() === 1) {
+        <div class="w-full flex flex-col gap-5 px-5 pt-6 pb-8">
+
+          <!-- Header -->
+          <div class="flex items-center gap-3">
+            <button (click)="screen.set('home')"
+              style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#fff">arrow_back</span>
+            </button>
+            <div>
+              <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0;line-height:1.1">Solicitar viaje</h2>
+              <p style="color:#64748b;font-size:12px;margin:0">Paso 1 de 3 · Tu información</p>
+            </div>
+          </div>
+
+          <!-- Progreso -->
+          <div style="display:flex;gap:4px">
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,0.1)"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,0.1)"></div>
+          </div>
+
+          <!-- Ilustración / icono central -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
+            <div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#7C3AED,#2563EB);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(124,58,237,0.4)">
+              <span class="material-symbols-outlined" style="font-size:36px;color:#fff">hail</span>
+            </div>
+            <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0">Ingresa tu número para verificar<br>y pedir tu viaje rápidamente</p>
+          </div>
+
+          <!-- Formulario -->
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <!-- Nombre -->
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">TU NOMBRE</label>
+              <input
+                [value]="qrName()"
+                (input)="qrName.set($any($event.target).value)"
+                type="text" autocomplete="given-name" placeholder="¿Cómo te llamas?"
+                style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px 16px;color:#fff;font-size:16px;font-weight:600;width:100%;outline:none;box-sizing:border-box"
+              />
+            </div>
+
+            <!-- Teléfono -->
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">NÚMERO DE CELULAR</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="flex-shrink:0;padding:14px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:#94a3b8;font-size:15px;font-weight:700;white-space:nowrap">
+                  🇨🇴 +57
+                </div>
+                <input
+                  [value]="qrPhone()"
+                  (input)="qrPhone.set($any($event.target).value.replace(/\D/g,'').slice(0,10))"
+                  type="tel" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
+                  style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px 16px;color:#fff;font-size:18px;font-weight:900;letter-spacing:0.05em;outline:none;box-sizing:border-box"
+                />
+              </div>
+            </div>
+
+            @if (qrError()) {
+              <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 14px;color:#fca5a5;font-size:12px;text-align:center">
+                {{ qrError() }}
+              </div>
+            }
+          </div>
+
+          <!-- CTA -->
+          <button (click)="qrSendOtp()" [disabled]="qrOtpSending() || qrPhone().length !== 10"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 24px rgba(124,58,237,0.4)"
+            [style.opacity]="qrOtpSending() || qrPhone().length !== 10 ? '0.5' : '1'">
+            @if (qrOtpSending()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Enviando SMS...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:18px">send</span> Continuar
+            }
+          </button>
+
+          <!-- Link al formulario completo -->
+          <p style="text-align:center;color:#475569;font-size:12px;margin-top:4px">
+            ¿Conductor?
+            <button (click)="screen.set('driver-form'); driverStep.set(1)"
+              style="background:none;border:none;color:#7C3AED;font-weight:700;font-size:12px;cursor:pointer;padding:0;margin-left:2px">
+              Regístrate aquí
+            </button>
+          </p>
+        </div>
+      }
+
+      <!-- ── PASO 2: Verificar OTP ── -->
+      @if (qrStep() === 2) {
+        <div class="w-full flex flex-col gap-5 px-5 pt-6 pb-8">
+
+          <!-- Header -->
+          <div class="flex items-center gap-3">
+            <button (click)="qrStep.set(1)"
+              style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#fff">arrow_back</span>
+            </button>
+            <div>
+              <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0;line-height:1.1">Verificar número</h2>
+              <p style="color:#64748b;font-size:12px;margin:0">Paso 2 de 3 · Código SMS</p>
+            </div>
+          </div>
+
+          <!-- Progreso -->
+          <div style="display:flex;gap:4px">
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,0.1)"></div>
+          </div>
+
+          <!-- Info -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(124,58,237,0.15);border:2px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center">
+              <span class="material-symbols-outlined" style="font-size:30px;color:#a78bfa">sms</span>
+            </div>
+            <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0;line-height:1.6">
+              Enviamos un código de 6 dígitos a<br>
+              <span style="color:#fff;font-weight:900;font-size:15px">+57 {{ qrPhone() }}</span>
+            </p>
+          </div>
+
+          <!-- Input código -->
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em;text-align:center">CÓDIGO DE VERIFICACIÓN</label>
+            <input
+              [value]="qrOtpCode()"
+              (input)="qrOtpCode.set($any($event.target).value.replace(/\D/g,'').slice(0,6))"
+              type="tel" inputmode="numeric" maxlength="6"
+              placeholder="_ _ _ _ _ _"
+              [disabled]="qrOtpVerifying()"
+              style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(124,58,237,0.4);border-radius:16px;padding:16px;color:#fff;font-size:28px;font-weight:900;letter-spacing:0.4em;text-align:center;width:100%;outline:none;box-sizing:border-box"
+            />
+          </div>
+
+          @if (qrOtpError()) {
+            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 14px;color:#fca5a5;font-size:12px;text-align:center">
+              {{ qrOtpError() }}
+            </div>
+          }
+
+          <!-- Confirmar -->
+          <button (click)="qrVerifyOtp()" [disabled]="qrOtpVerifying() || qrOtpCode().length < 6"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
+            [style.opacity]="qrOtpVerifying() || qrOtpCode().length < 6 ? '0.5' : '1'">
+            @if (qrOtpVerifying()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Verificando...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:18px">check_circle</span> Confirmar código
+            }
+          </button>
+
+          <!-- Reenviar con countdown -->
+          <div style="text-align:center">
+            @if (qrResendCountdown() > 0) {
+              <p style="color:#64748b;font-size:13px;margin:0">
+                Reenviar en <span style="color:#a78bfa;font-weight:700">{{ qrResendCountdown() }}s</span>
+              </p>
+            } @else {
+              <button (click)="qrResendOtp()"
+                style="background:none;border:none;color:#7C3AED;font-weight:700;font-size:13px;cursor:pointer;padding:0">
+                ¿No llegó? Reenviar SMS
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ── PASO 3: Origen, Destino y Precio ── -->
+      @if (qrStep() === 3) {
+        <div class="w-full flex flex-col gap-4 px-5 pt-6 pb-8">
+
+          <!-- Header -->
+          <div class="flex items-center gap-3">
+            <button (click)="qrStep.set(2)"
+              style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#fff">arrow_back</span>
+            </button>
+            <div>
+              <h2 style="color:#fff;font-weight:900;font-size:20px;margin:0;line-height:1.1">
+                ¡Hola{{ qrName() ? ', ' + qrName().split(' ')[0] : '' }}! ¿A dónde vas?
+              </h2>
+              <p style="color:#64748b;font-size:12px;margin:0">Paso 3 de 3 · Tu viaje</p>
+            </div>
+          </div>
+
+          <!-- Progreso -->
+          <div style="display:flex;gap:4px">
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+          </div>
+
+          <!-- Origen -->
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">PUNTO DE ORIGEN</label>
+            @if (qrOriginSelected()) {
+              <div style="display:flex;align-items:center;gap:10px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:14px;padding:12px 14px">
+                <span class="material-symbols-outlined" style="font-size:20px;color:#22c55e;flex-shrink:0">my_location</span>
+                <p style="color:#fff;font-size:14px;font-weight:600;flex:1;margin:0;word-break:break-word">{{ qrOriginSelected()!.name }}</p>
+                <button (click)="qrOriginSelected.set(null); qrOriginQuery.set('')"
+                  style="background:none;border:none;color:#64748b;cursor:pointer;padding:0;flex-shrink:0">
+                  <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                </button>
+              </div>
+            } @else {
+              <div style="position:relative">
+                <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 14px">
+                  <span class="material-symbols-outlined" style="font-size:20px;color:#22c55e;flex-shrink:0">my_location</span>
+                  <input
+                    [value]="qrOriginQuery()"
+                    (input)="onQrOriginInput($any($event.target).value)"
+                    type="text" placeholder="¿Desde dónde saldrás?"
+                    style="flex:1;background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;outline:none;min-width:0"
+                  />
+                </div>
+                @if (qrOriginSuggestions().length > 0) {
+                  <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0f1421;border:1px solid rgba(255,255,255,0.1);border-radius:14px;overflow:hidden;z-index:50;max-height:200px;overflow-y:auto">
+                    @for (s of qrOriginSuggestions(); track s.id) {
+                      <button (mousedown)="$event.preventDefault(); qrSelectOrigin(s)"
+                        style="width:100%;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:none;background:transparent;cursor:pointer;text-align:left;border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <span class="material-symbols-outlined" style="font-size:16px;color:#22c55e;margin-top:2px;flex-shrink:0">location_on</span>
+                        <div style="min-width:0">
+                          <p style="color:#fff;font-size:13px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.text }}</p>
+                          <p style="color:#64748b;font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.place_name }}</p>
+                        </div>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Destino -->
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">DESTINO</label>
+            @if (qrDestSelected()) {
+              <div style="display:flex;align-items:center;gap:10px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.3);border-radius:14px;padding:12px 14px">
+                <span class="material-symbols-outlined" style="font-size:20px;color:#a78bfa;flex-shrink:0">location_on</span>
+                <p style="color:#fff;font-size:14px;font-weight:600;flex:1;margin:0;word-break:break-word">{{ qrDestSelected()!.name }}</p>
+                <button (click)="qrDestSelected.set(null); qrDestQuery.set('')"
+                  style="background:none;border:none;color:#64748b;cursor:pointer;padding:0;flex-shrink:0">
+                  <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                </button>
+              </div>
+            } @else {
+              <div style="position:relative">
+                <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 14px">
+                  <span class="material-symbols-outlined" style="font-size:20px;color:#a78bfa;flex-shrink:0">location_on</span>
+                  <input
+                    [value]="qrDestQuery()"
+                    (input)="onQrDestInput($any($event.target).value)"
+                    type="text" placeholder="¿A dónde vas?"
+                    style="flex:1;background:transparent;border:none;color:#fff;font-size:14px;font-weight:500;outline:none;min-width:0"
+                  />
+                </div>
+                @if (qrDestSuggestions().length > 0) {
+                  <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0f1421;border:1px solid rgba(255,255,255,0.1);border-radius:14px;overflow:hidden;z-index:50;max-height:200px;overflow-y:auto">
+                    @for (s of qrDestSuggestions(); track s.id) {
+                      <button (mousedown)="$event.preventDefault(); qrSelectDest(s)"
+                        style="width:100%;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:none;background:transparent;cursor:pointer;text-align:left;border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <span class="material-symbols-outlined" style="font-size:16px;color:#a78bfa;margin-top:2px;flex-shrink:0">location_on</span>
+                        <div style="min-width:0">
+                          <p style="color:#fff;font-size:13px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.text }}</p>
+                          <p style="color:#64748b;font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.place_name }}</p>
+                        </div>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Tipo de vehículo -->
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">TIPO DE VEHÍCULO</label>
+            <div style="display:flex;gap:8px">
+              <button (click)="qrVehicle.set('carro')"
+                style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
+                [style.background]="qrVehicle() === 'carro' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
+                [style.border]="qrVehicle() === 'carro' ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'carro' ? '#a78bfa' : '#64748b'" style="font-size:24px">directions_car</span>
+                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'carro' ? '#a78bfa' : '#64748b'">Carro</span>
+              </button>
+              <button (click)="qrVehicle.set('moto')"
+                style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
+                [style.background]="qrVehicle() === 'moto' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
+                [style.border]="qrVehicle() === 'moto' ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'moto' ? '#a78bfa' : '#64748b'" style="font-size:24px">two_wheeler</span>
+                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'moto' ? '#a78bfa' : '#64748b'">Moto</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Precio propuesto -->
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">TU PRECIO PROPUESTO</label>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px">
+              <button (click)="qrPrice.set(qrPrice() > 2500 ? qrPrice() - 500 : 2000)"
+                style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;flex-shrink:0">−</button>
+              <div style="flex:1;text-align:center">
+                <span style="color:#fff;font-weight:900;font-size:22px">{{ '$' + qrPrice() }}</span>
+              </div>
+              <button (click)="qrPrice.set(qrPrice() + 500)"
+                style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;flex-shrink:0">+</button>
+            </div>
+            <p style="color:#475569;font-size:11px;text-align:center;margin:2px 0 0">El conductor puede aceptar o contraofertar</p>
+          </div>
+
+          <!-- Método de pago -->
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">MÉTODO DE PAGO</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              @for (pm of [{k:'efectivo',l:'Efectivo',i:'payments'},{k:'nequi',l:'Nequi',i:'smartphone'},{k:'daviplata',l:'Daviplata',i:'smartphone'}]; track pm.k) {
+                <button (click)="qrPayment.set($any(pm.k))"
+                  style="flex:1;min-width:80px;padding:10px 8px;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;cursor:pointer;transition:all 0.15s"
+                  [style.background]="qrPayment() === pm.k ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
+                  [style.border]="qrPayment() === pm.k ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                  <span class="material-symbols-outlined" [style.color]="qrPayment() === pm.k ? '#a78bfa' : '#64748b'" style="font-size:18px">{{ pm.i }}</span>
+                  <span style="font-size:11px;font-weight:700" [style.color]="qrPayment() === pm.k ? '#a78bfa' : '#64748b'">{{ pm.l }}</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (qrError()) {
+            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 14px;color:#fca5a5;font-size:12px;text-align:center">
+              {{ qrError() }}
+            </div>
+          }
+
+          <!-- Buscar conductor -->
+          <button (click)="qrSubmitTrip()" [disabled]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < 2000"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 24px rgba(124,58,237,0.4);margin-top:4px"
+            [style.opacity]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < 2000 ? '0.5' : '1'">
+            @if (qrSubmitting()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Buscando conductor...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:18px">search</span> Buscar conductor
+            }
+          </button>
+        </div>
+      }
 
     </div>
   }
@@ -4876,11 +5351,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 })
 export class AndaGanaComponent implements OnInit, OnDestroy {
 
-  private readonly agService  = inject(AndaGanaService);
-  private readonly platformId = inject(PLATFORM_ID);
-  private readonly route      = inject(ActivatedRoute);
-  protected readonly cdr      = inject(ChangeDetectorRef);
-  private readonly supabase   = getSupabaseClient();
+  private readonly agService   = inject(AndaGanaService);
+  private readonly phoneAuth   = inject(AgPhoneAuthService);
+  private readonly platformId  = inject(PLATFORM_ID);
+  private readonly route       = inject(ActivatedRoute);
+  protected readonly cdr       = inject(ChangeDetectorRef);
+  private readonly supabase    = getSupabaseClient();
   private referredBy: string | null = null;
 
   screen     = signal<AgScreen>('splash');
@@ -5446,7 +5922,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ────────────────────────────────���─────────────────
   async ngOnInit() {
-    // Ocultar splash nativo de Android inmediatamente para mostrar nuestro splash Angular
     if (isPlatformBrowser(this.platformId)) {
       SplashScreen.hide({ fadeOutDuration: 0 }).catch(() => {});
     }
@@ -7693,6 +8168,36 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return this.agLocationData[country]?.cities[dept] ?? [];
   }
 
+  // ── OTP state (shared pasajero + conductor) ──
+  otpStep    = signal<'idle' | 'sending' | 'sent' | 'verifying'>('idle');
+  otpCode    = signal('');
+  otpError   = signal('');
+  otpPhone   = signal('');
+  otpContext = signal<'passenger' | 'driver'>('passenger');
+
+  // ── Quick-register state (3 pasos) ──
+  qrStep              = signal<1 | 2 | 3>(1);
+  qrName              = signal('');
+  qrPhone             = signal('');
+  qrOtpCode           = signal('');
+  qrOtpError          = signal('');
+  qrOtpSending        = signal(false);
+  qrOtpVerifying      = signal(false);
+  qrResendCountdown   = signal(0);
+  qrOriginQuery       = signal('');
+  qrOriginSuggestions = signal<any[]>([]);
+  qrOriginSelected    = signal<{ name: string; lat: number; lng: number } | null>(null);
+  qrDestQuery         = signal('');
+  qrDestSuggestions   = signal<any[]>([]);
+  qrDestSelected      = signal<{ name: string; lat: number; lng: number } | null>(null);
+  qrVehicle           = signal<'carro' | 'moto'>('carro');
+  qrPrice             = signal(8000);
+  qrPayment           = signal<AgPaymentMethod>('efectivo');
+  qrSubmitting        = signal(false);
+  qrError             = signal('');
+  private _qrCountdownInterval: ReturnType<typeof setInterval> | null = null;
+  private _qrSearchDebounce: ReturnType<typeof setTimeout> | null = null;
+
   // ── Passenger form state ──
   passengerLoading = signal(false);
   passengerSuccess = signal(false);
@@ -8111,6 +8616,66 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // ── OTP helpers ────────────────────────────────────────────────
+  async _triggerOtp(context: 'passenger' | 'driver', phone: string) {
+    this.otpContext.set(context);
+    this.otpPhone.set(phone);
+    this.otpCode.set('');
+    this.otpError.set('');
+    this.otpStep.set('sending');
+    this.cdr.markForCheck();
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.phoneAuth.setupRecaptcha('ag-recaptcha-container');
+    }
+    const res = await this.phoneAuth.sendOTP(phone);
+    if (res.ok) {
+      this.otpStep.set('sent');
+    } else {
+      this.otpStep.set('idle');
+      if (context === 'passenger') this.passengerError.set(res.message ?? 'Error enviando SMS');
+      else this.driverError.set(res.message ?? 'Error enviando SMS');
+    }
+    this.cdr.markForCheck();
+  }
+
+  async resendOtp() {
+    this.phoneAuth.reset();
+    await this._triggerOtp(this.otpContext(), this.otpPhone());
+  }
+
+  cancelOtp() {
+    this.phoneAuth.reset();
+    this.otpStep.set('idle');
+    this.otpCode.set('');
+    this.otpError.set('');
+    this.cdr.markForCheck();
+  }
+
+  async confirmOtp() {
+    const code = this.otpCode().trim();
+    if (code.length !== 6) { this.otpError.set('El código debe tener 6 dígitos.'); return; }
+    this.otpStep.set('verifying');
+    this.cdr.markForCheck();
+    const res = await this.phoneAuth.verifyOTP(code);
+    if (!res.ok) {
+      this.otpStep.set('sent');
+      this.otpError.set(res.message ?? 'Código incorrecto');
+      this.cdr.markForCheck();
+      return;
+    }
+    // OTP verificado — proceder con el registro
+    this.otpStep.set('idle');
+    this.cdr.markForCheck();
+    if (this.otpContext() === 'passenger') {
+      await this._doRegisterPassenger();
+    } else {
+      await this._doRegisterDriver();
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────
+
   async submitPassenger() {
     this.passengerError.set('');
     const p = this.pf;
@@ -8123,7 +8688,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.passengerError.set('Debes aceptar los términos y condiciones.');
       return;
     }
+    // Disparar verificación OTP antes de registrar
+    await this._triggerOtp('passenger', p.phone);
+  }
+
+  async _doRegisterPassenger() {
+    const p = this.pf;
     this.passengerLoading.set(true);
+    this.cdr.markForCheck();
     const result = await this.agService.registerPassenger({
       fullName: p.fullName,
       birthDate: p.birthDate,
@@ -8142,12 +8714,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.passengerLoading.set(false);
     if (result.success) {
       this.passengerSuccess.set(true);
-      setTimeout(async () => {
-        await this.ngOnInit();
-      }, 2000);
+      setTimeout(async () => { await this.ngOnInit(); }, 2000);
     } else {
       this.passengerError.set(result.error ?? 'Error al registrarse.');
     }
+    this.cdr.markForCheck();
   }
 
   async submitDriver() {
@@ -8161,7 +8732,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.driverError.set('Debes aceptar los términos y condiciones.');
       return;
     }
+    // Disparar verificación OTP antes de registrar
+    await this._triggerOtp('driver', this.df.phone);
+  }
+
+  async _doRegisterDriver() {
     this.driverLoading.set(true);
+    this.cdr.markForCheck();
     const result = await this.agService.registerDriver({
       fullName: this.df.fullName,
       birthDate: this.df.birthDate,
@@ -8189,12 +8766,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.driverLoading.set(false);
     if (result.success) {
       this.driverSuccess.set(true);
-      setTimeout(async () => {
-        await this.ngOnInit();
-      }, 2000);
+      setTimeout(async () => { await this.ngOnInit(); }, 2000);
     } else {
       this.driverError.set(result.error ?? 'Error al registrarse.');
     }
+    this.cdr.markForCheck();
   }
 
   // ── Recarga de billetera vía ePayco ────────────────────────────────────────
@@ -9144,5 +9720,208 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       extra2:        params['extra2'],
       extra3:        params['extra3'],
     });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // QUICK-REGISTER: registro rápido en 3 pasos
+  // ══════════════════════════════════════════════════════════
+
+  startQuickRegister() {
+    this.qrStep.set(1);
+    this.qrName.set('');
+    this.qrPhone.set('');
+    this.qrOtpCode.set('');
+    this.qrOtpError.set('');
+    this.qrError.set('');
+    this.qrOriginQuery.set('');
+    this.qrOriginSuggestions.set([]);
+    this.qrOriginSelected.set(null);
+    this.qrDestQuery.set('');
+    this.qrDestSuggestions.set([]);
+    this.qrDestSelected.set(null);
+    this.qrPrice.set(8000);
+    this.qrVehicle.set('carro');
+    this.qrPayment.set('efectivo');
+    this.screen.set('quick-register');
+    if (this._qrCountdownInterval) { clearInterval(this._qrCountdownInterval); this._qrCountdownInterval = null; }
+    setTimeout(() => this.phoneAuth.setupRecaptcha('qr-recaptcha-container'), 300);
+  }
+
+  async qrSendOtp() {
+    const digits = this.qrPhone().replace(/\D/g, '');
+    if (digits.length !== 10) { this.qrError.set('Ingresa un número de celular de 10 dígitos.'); return; }
+    this.qrOtpSending.set(true);
+    this.qrError.set('');
+    this.cdr.markForCheck();
+    const result = await this.phoneAuth.sendOTP('+57' + digits);
+    this.qrOtpSending.set(false);
+    if (result.ok) {
+      this.qrOtpCode.set('');
+      this.qrOtpError.set('');
+      this.qrStep.set(2);
+      this._startQrCountdown();
+    } else {
+      this.qrError.set(result.message ?? 'Error al enviar el SMS. Intenta de nuevo.');
+    }
+    this.cdr.markForCheck();
+  }
+
+  private _startQrCountdown() {
+    if (this._qrCountdownInterval) clearInterval(this._qrCountdownInterval);
+    this.qrResendCountdown.set(30);
+    this._qrCountdownInterval = setInterval(() => {
+      const c = this.qrResendCountdown() - 1;
+      this.qrResendCountdown.set(c);
+      this.cdr.markForCheck();
+      if (c <= 0 && this._qrCountdownInterval) {
+        clearInterval(this._qrCountdownInterval);
+        this._qrCountdownInterval = null;
+      }
+    }, 1000);
+  }
+
+  async qrResendOtp() {
+    this.phoneAuth.reset();
+    this.qrOtpCode.set('');
+    this.qrOtpError.set('');
+    setTimeout(() => this.phoneAuth.setupRecaptcha('qr-recaptcha-container'), 100);
+    await this.qrSendOtp();
+  }
+
+  async qrVerifyOtp() {
+    const code = this.qrOtpCode().trim();
+    if (code.length !== 6) { this.qrOtpError.set('El código debe tener 6 dígitos.'); return; }
+    this.qrOtpVerifying.set(true);
+    this.qrOtpError.set('');
+    this.cdr.markForCheck();
+    const result = await this.phoneAuth.verifyOTP(code);
+    this.qrOtpVerifying.set(false);
+    if (result.ok) {
+      this.qrStep.set(3);
+    } else {
+      this.qrOtpError.set(result.message ?? 'Código incorrecto. Verifica e intenta de nuevo.');
+    }
+    this.cdr.markForCheck();
+  }
+
+  private async _qrSearchPlaces(query: string): Promise<any[]> {
+    if (!isPlatformBrowser(this.platformId)) return [];
+    if (query.trim().length < 2) return [];
+    try {
+      const encoded = encodeURIComponent(query + ' Colombia');
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=5&countrycodes=co`, {
+        headers: { 'Accept-Language': 'es' },
+      });
+      const data = await res.json();
+      return (data as any[]).map((r: any, i: number) => ({
+        id: `nom-${i}`,
+        text: r.display_name?.split(',')[0] ?? '',
+        place_name: r.display_name ?? '',
+        center: [parseFloat(r.lon), parseFloat(r.lat)] as [number, number],
+      }));
+    } catch { return []; }
+  }
+
+  onQrOriginInput(val: string) {
+    this.qrOriginQuery.set(val);
+    if (this._qrSearchDebounce) clearTimeout(this._qrSearchDebounce);
+    this._qrSearchDebounce = setTimeout(async () => {
+      const results = await this._qrSearchPlaces(val);
+      this.qrOriginSuggestions.set(results);
+      this.cdr.markForCheck();
+    }, 350);
+  }
+
+  qrSelectOrigin(s: any) {
+    const [lng, lat] = s.center ?? [this._currentLng, this._currentLat];
+    this.qrOriginSelected.set({ name: s.text || s.place_name, lat, lng });
+    this.qrOriginQuery.set('');
+    this.qrOriginSuggestions.set([]);
+    this.cdr.markForCheck();
+  }
+
+  onQrDestInput(val: string) {
+    this.qrDestQuery.set(val);
+    if (this._qrSearchDebounce) clearTimeout(this._qrSearchDebounce);
+    this._qrSearchDebounce = setTimeout(async () => {
+      const results = await this._qrSearchPlaces(val);
+      this.qrDestSuggestions.set(results);
+      this.cdr.markForCheck();
+    }, 350);
+  }
+
+  qrSelectDest(s: any) {
+    const [lng, lat] = s.center ?? [this._currentLng, this._currentLat];
+    this.qrDestSelected.set({ name: s.text || s.place_name, lat, lng });
+    this.qrDestQuery.set('');
+    this.qrDestSuggestions.set([]);
+    this.cdr.markForCheck();
+  }
+
+  async qrSubmitTrip() {
+    const orig = this.qrOriginSelected();
+    const dest = this.qrDestSelected();
+    if (!orig || !dest) { this.qrError.set('Selecciona el punto de origen y el destino.'); return; }
+    if (this.qrPrice() < 2000) { this.qrError.set('El precio mínimo es $2.000.'); return; }
+    this.qrSubmitting.set(true);
+    this.qrError.set('');
+    this.cdr.markForCheck();
+
+    const phone = '+57' + this.qrPhone().replace(/\D/g, '');
+    const registerResult = await this.agService.registerQuickPassenger(
+      this.qrName().trim() || 'Pasajero', phone, this.referredBy ?? undefined
+    );
+
+    if (!registerResult.success || !registerResult.profile) {
+      this.qrSubmitting.set(false);
+      this.qrError.set(registerResult.error ?? 'No se pudo crear tu perfil. Intenta de nuevo.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const profile = registerResult.profile;
+    this.agProfile.set(profile);
+
+    const dist = this._distKm(orig.lat, orig.lng, dest.lat, dest.lng);
+    const tripResult = await this.agService.requestTrip({
+      passengerUserId: profile.id,
+      originLat: orig.lat, originLng: orig.lng,
+      destName: dest.name, destLat: dest.lat, destLng: dest.lng,
+      distanceKm: dist,
+      vehicleType: this.qrVehicle(),
+      offeredPrice: this.qrPrice(),
+      paymentMethod: this.qrPayment(),
+    });
+
+    this.qrSubmitting.set(false);
+
+    if (!tripResult.success) {
+      this.qrError.set(tripResult.error ?? 'Error al enviar la solicitud. Intenta de nuevo.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Actualizar estado de viaje y entrar a passenger-home en modo espera
+    if (tripResult.tripId) {
+      this.currentTripRequestId.set(tripResult.tripId);
+      this.receivedOffers.set([]);
+      this.tripAccepted.set(null);
+      this._subscribeToOffers(tripResult.tripId);
+      this._autoAssignNearestDrivers(tripResult.tripId, orig.lat, orig.lng, this.qrVehicle(), this.qrPrice());
+    }
+    this.tripDest.set(dest);
+    this.tripPrice.set(this.qrPrice());
+    this.tripVehicle.set(this.qrVehicle());
+    this.tripPayment.set(this.qrPayment());
+    this.tripSent.set(true);
+    this._startWaiting();
+    this.loadReferralData();
+    this.screen.set('passenger-home');
+    this._subscribeToDriverLocations();
+    setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
+    if (isPlatformBrowser(this.platformId)) {
+      this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
+    }
+    this.cdr.markForCheck();
   }
 }

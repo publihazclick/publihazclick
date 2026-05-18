@@ -147,6 +147,35 @@ export class AndaGanaService {
     return data.publicUrl;
   }
 
+  async registerQuickPassenger(name: string, phone: string, referredBy?: string): Promise<AgRegistrationResult & { profile?: AgUser }> {
+    try {
+      let { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        const { data, error } = await this.supabase.auth.signInAnonymously();
+        if (error || !data.user) return { success: false, error: 'No se pudo crear sesión. Intenta de nuevo.' };
+        user = data.user;
+      }
+      const existing = await this.getMyAgProfile();
+      if (existing) return { success: true, profile: existing };
+      const insertData: any = {
+        auth_user_id: user.id,
+        role: 'passenger',
+        full_name: name || 'Usuario',
+        phone,
+        country: 'Colombia',
+        department: '',
+        city: '',
+      };
+      if (referredBy) insertData.referred_by = referredBy;
+      const { data: profile, error } = await this.supabase
+        .from('ag_users').insert(insertData).select('*').single();
+      if (error) return { success: false, error: error.message };
+      return { success: true, profile: profile as AgUser };
+    } catch (e: any) {
+      return { success: false, error: e?.message ?? 'Error inesperado.' };
+    }
+  }
+
   async registerPassenger(form: PassengerFormData): Promise<AgRegistrationResult> {
     try {
       const uid = await this.currentUserId();
