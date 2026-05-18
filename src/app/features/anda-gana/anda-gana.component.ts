@@ -4465,7 +4465,106 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       }
 
       <!-- ── PASO 3: Origen, Destino y Precio ── -->
-      @if (qrStep() === 3) {
+      @if (qrStep() === 3 && qrRole() === 'conductor') {
+        <div class="w-full flex flex-col gap-5 px-5 pt-6 pb-8">
+
+          <!-- Header -->
+          <div class="flex items-center gap-3">
+            <button (click)="qrStep.set(2)"
+              style="width:40px;height:40px;border-radius:50%;background:#F3F4F6;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#374151">arrow_back</span>
+            </button>
+            <div>
+              <h2 style="color:#111827;font-weight:900;font-size:20px;margin:0;line-height:1.1">Crear Cuenta Conductor</h2>
+              <p style="color:#6B7280;font-size:12px;margin:0">Paso 3 de 3 · Tipo de vehículo</p>
+            </div>
+          </div>
+
+          <!-- Progreso -->
+          <div style="display:flex;gap:4px">
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+          </div>
+
+          <!-- Icono central -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
+            <div style="width:72px;height:72px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center">
+              <span class="material-symbols-outlined" style="font-size:36px;color:#fff;font-variation-settings:'FILL' 1">commute</span>
+            </div>
+            <p style="color:#6B7280;font-size:13px;text-align:center;margin:0;line-height:1.5">Elige el tipo de vehículo con el que<br>vas a prestar el servicio</p>
+          </div>
+
+          <!-- Selector de vehículo -->
+          <div style="display:flex;flex-direction:column;gap:12px">
+
+            <button (click)="qrVehicleType.set('carro')"
+              style="width:100%;display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;border:1.5px solid;cursor:pointer;transition:all 0.15s;text-align:left"
+              [style.borderColor]="qrVehicleType() === 'carro' ? '#7C3AED' : '#E5E7EB'"
+              [style.background]="qrVehicleType() === 'carro' ? '#F5F3FF' : '#F9FAFB'">
+              <div style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                [style.background]="qrVehicleType() === 'carro' ? '#7C3AED' : '#E5E7EB'">
+                <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                  [style.color]="qrVehicleType() === 'carro' ? '#fff' : '#6B7280'">directions_car</span>
+              </div>
+              <div>
+                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'carro' ? '#7C3AED' : '#111827'">Carro / Camioneta</p>
+                <p style="margin:0;font-size:12px;color:#6B7280">Servicio de transporte urbano</p>
+              </div>
+              @if (qrVehicleType() === 'carro') {
+                <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
+              }
+            </button>
+
+            <button (click)="qrVehicleType.set('moto')"
+              style="width:100%;display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;border:1.5px solid;cursor:pointer;transition:all 0.15s;text-align:left"
+              [style.borderColor]="qrVehicleType() === 'moto' ? '#7C3AED' : '#E5E7EB'"
+              [style.background]="qrVehicleType() === 'moto' ? '#F5F3FF' : '#F9FAFB'">
+              <div style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                [style.background]="qrVehicleType() === 'moto' ? '#7C3AED' : '#E5E7EB'">
+                <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                  [style.color]="qrVehicleType() === 'moto' ? '#fff' : '#6B7280'">two_wheeler</span>
+              </div>
+              <div>
+                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'moto' ? '#7C3AED' : '#111827'">Moto</p>
+                <p style="margin:0;font-size:12px;color:#6B7280">Mensajería y domicilios rápidos</p>
+              </div>
+              @if (qrVehicleType() === 'moto') {
+                <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
+              }
+            </button>
+
+            <button (click)="qrVehicleType.set('camion')"
+              style="width:100%;display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;border:1.5px solid;cursor:pointer;transition:all 0.15s;text-align:left"
+              [style.borderColor]="qrVehicleType() === 'camion' ? '#7C3AED' : '#E5E7EB'"
+              [style.background]="qrVehicleType() === 'camion' ? '#F5F3FF' : '#F9FAFB'">
+              <div style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                [style.background]="qrVehicleType() === 'camion' ? '#7C3AED' : '#E5E7EB'">
+                <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                  [style.color]="qrVehicleType() === 'camion' ? '#fff' : '#6B7280'">local_shipping</span>
+              </div>
+              <div>
+                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'camion' ? '#7C3AED' : '#111827'">Camión de Acarreos</p>
+                <p style="margin:0;font-size:12px;color:#6B7280">Mudanzas y carga pesada</p>
+              </div>
+              @if (qrVehicleType() === 'camion') {
+                <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
+              }
+            </button>
+          </div>
+
+          <!-- CTA -->
+          <button (click)="qrSaveVehicleAndEnter()"
+            [disabled]="!qrVehicleType()"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
+            [style.opacity]="!qrVehicleType() ? '0.9' : '1'">
+            Empezar a conducir
+          </button>
+
+        </div>
+      }
+
+      @if (qrStep() === 3 && qrRole() === 'pasajero') {
         <div class="w-full flex flex-col gap-4 px-5 pt-6 pb-8">
 
           <!-- Header -->
@@ -8268,6 +8367,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // ── Quick-register state (3 pasos) ──
   qrRole              = signal<'pasajero' | 'conductor'>('pasajero');
+  qrVehicleType       = signal<'carro' | 'moto' | 'camion' | ''>('');
   qrStep              = signal<1 | 2 | 3>(1);
   qrName              = signal('');
   qrPhone             = signal('');
@@ -9818,6 +9918,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   // QUICK-REGISTER: registro rápido en 3 pasos
   // ══════════════════════════════════════════════════════════
 
+  async qrSaveVehicleAndEnter() {
+    const vehicle = this.qrVehicleType();
+    if (!vehicle) return;
+    try {
+      const sb = getSupabaseClient();
+      const phone = this.agProfile()?.phone ?? '';
+      if (phone) {
+        await sb.from('ag_users').update({ vehicle_type: vehicle }).eq('phone', phone);
+      }
+    } catch {}
+    this.screen.set('driver-home');
+  }
+
   startQuickRegister() {
     this.qrRole.set('pasajero');
     this.qrStep.set(1);
@@ -9890,7 +10003,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const result = await this.phoneAuth.verifyOTP(code);
     this.qrOtpVerifying.set(false);
     if (result.ok) {
-      this.screen.set('passenger-home');
+      if (this.qrRole() === 'conductor') {
+        this.qrStep.set(3);
+      } else {
+        this.screen.set('passenger-home');
+      }
     } else {
       this.qrOtpError.set(result.message ?? 'Código incorrecto. Verifica e intenta de nuevo.');
     }
