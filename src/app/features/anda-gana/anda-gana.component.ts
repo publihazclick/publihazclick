@@ -47,7 +47,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   },
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
-  [style.background]="screen() === 'home' ? '#FFFFFF' : screen() === 'splash' ? '#7C3AED' : '#0a0a0a'"
+  [style.background]="screen() === 'splash' ? '#7C3AED' : '#FFFFFF'"
   [style.padding]="screen() === 'quick-register' ? '0' : ''"
   style="min-height:100dvh">
 
