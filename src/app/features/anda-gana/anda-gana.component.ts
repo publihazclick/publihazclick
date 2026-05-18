@@ -4263,7 +4263,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           style="height:56px;background:#7C3AED;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
           Pasajero
         </button>
-        <button (click)="screen.set('driver-form'); driverStep.set(1)"
+        <button (click)="qrRole.set('conductor'); screen.set('quick-register'); qrStep.set(1)"
           class="w-full text-white flex items-center justify-center gap-3 active:scale-[0.97] transition-transform"
           style="height:56px;background:#000;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
           <div class="flex items-center gap-1">
@@ -4303,7 +4303,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <span class="material-symbols-outlined" style="font-size:18px;color:#374151">arrow_back</span>
             </button>
             <div>
-              <h2 style="color:#111827;font-weight:900;font-size:20px;margin:0;line-height:1.1">Crear Cuenta Pasajero</h2>
+              <h2 style="color:#111827;font-weight:900;font-size:20px;margin:0;line-height:1.1">{{ qrRole() === 'conductor' ? 'Crear Cuenta Conductor' : 'Crear Cuenta Pasajero' }}</h2>
               <p style="color:#6B7280;font-size:12px;margin:0">Paso 1 de 3 · Verifica tu número</p>
             </div>
           </div>
@@ -8267,6 +8267,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   otpContext = signal<'passenger' | 'driver'>('passenger');
 
   // ── Quick-register state (3 pasos) ──
+  qrRole              = signal<'pasajero' | 'conductor'>('pasajero');
   qrStep              = signal<1 | 2 | 3>(1);
   qrName              = signal('');
   qrPhone             = signal('');
@@ -9818,6 +9819,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   // ══════════════════════════════════════════════════════════
 
   startQuickRegister() {
+    this.qrRole.set('pasajero');
     this.qrStep.set(1);
     this.qrName.set('');
     this.qrPhone.set('');
