@@ -39,7 +39,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .dot2 { animation: dotPulse 1.4s ease-in-out 0.2s infinite; }
     .dot3 { animation: dotPulse 1.4s ease-in-out 0.4s infinite; }
     .qr-input::placeholder { color: #6B7280; }
-    .qr-input:focus { border-color: #7C3AED !important; outline: none; }
+    .qr-input { border-width: 1px !important; border-color: #D1D5DB !important; outline: none; }
+    .qr-input:focus { border-width: 1.5px !important; border-color: #7C3AED !important; outline: none; }
   `],
   host: {
     '[style.background]': "screen() === 'splash' ? '#7C3AED' : '#FFFFFF'",
@@ -4266,7 +4267,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 (input)="qrName.set($any($event.target).value)"
                 type="text" autocomplete="given-name" placeholder="Tu nombre"
                 class="qr-input"
-                style="background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:14px;padding:14px 16px;color:#111827;font-size:16px;font-weight:600;width:100%;box-sizing:border-box"
+                style="background:#F9FAFB;border-style:solid;border-radius:14px;padding:14px 16px;color:#111827;font-size:16px;font-weight:600;width:100%;box-sizing:border-box"
               />
             </div>
 
@@ -4282,7 +4283,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   (input)="qrPhone.set($any($event.target).value.replace(/\D/g,'').slice(0,10))"
                   type="tel" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
                   class="qr-input"
-                  style="flex:1;background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;box-sizing:border-box"
+                  style="flex:1;background:#F9FAFB;border-style:solid;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;box-sizing:border-box"
                 />
               </div>
             </div>
@@ -4360,7 +4361,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               placeholder="_ _ _ _ _ _"
               [disabled]="qrOtpVerifying()"
               class="qr-input"
-              style="background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:12px;height:52px;padding:0 16px;color:#111827;font-size:28px;font-weight:900;letter-spacing:0.4em;text-align:center;width:100%;box-sizing:border-box"
+              style="background:#F9FAFB;border-style:solid;border-radius:12px;height:52px;padding:0 16px;color:#111827;font-size:28px;font-weight:900;letter-spacing:0.4em;text-align:center;width:100%;box-sizing:border-box"
             />
           </div>
 
