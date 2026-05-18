@@ -38,6 +38,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .dot1 { animation: dotPulse 1.4s ease-in-out 0.0s infinite; }
     .dot2 { animation: dotPulse 1.4s ease-in-out 0.2s infinite; }
     .dot3 { animation: dotPulse 1.4s ease-in-out 0.4s infinite; }
+    .qr-input::placeholder { color: #6B7280; }
+    .qr-input:focus { border-color: #7C3AED !important; outline: none; }
   `],
   host: {
     '[style.background]': "screen() === 'splash' ? '#7C3AED' : '#FFFFFF'",
@@ -4263,7 +4265,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 [value]="qrName()"
                 (input)="qrName.set($any($event.target).value)"
                 type="text" autocomplete="given-name" placeholder="Tu nombre"
-                style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:14px;padding:14px 16px;color:#111827;font-size:16px;font-weight:600;width:100%;outline:none;box-sizing:border-box"
+                class="qr-input"
+                style="background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:14px;padding:14px 16px;color:#111827;font-size:16px;font-weight:600;width:100%;box-sizing:border-box"
               />
             </div>
 
@@ -4278,7 +4281,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   [value]="qrPhone()"
                   (input)="qrPhone.set($any($event.target).value.replace(/\D/g,'').slice(0,10))"
                   type="tel" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
-                  style="flex:1;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;outline:none;box-sizing:border-box"
+                  class="qr-input"
+                  style="flex:1;background:#F9FAFB;border:1.5px solid #D1D5DB;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;box-sizing:border-box"
                 />
               </div>
             </div>
