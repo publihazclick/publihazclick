@@ -4261,7 +4261,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <button (click)="startQuickRegister()"
           class="w-full text-white flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
           style="height:56px;background:#7C3AED;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
-          Solicitar viaje
+          Pasajero
         </button>
         <button (click)="screen.set('driver-form'); driverStep.set(1)"
           class="w-full text-white flex items-center justify-center active:scale-[0.97] transition-transform"
