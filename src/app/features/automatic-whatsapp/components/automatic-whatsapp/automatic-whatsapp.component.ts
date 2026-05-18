@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, O
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { getSupabaseClient } from '../../../../core/supabase.client';
 import * as XLSX from 'xlsx';
 import { WhatsappService } from '../../../../core/services/whatsapp.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
@@ -47,6 +48,7 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
   activeTab = signal<Tab>('dashboard');
   subscription = signal<WaSubscription | null>(null);
   hasSubscription = computed(() => !!this.subscription());
+  isAdminUser = signal(false);
 
   // Dashboard
   stats = signal<WaDashboardStats>({
@@ -251,15 +253,21 @@ export class AutomaticWhatsappComponent implements OnInit, OnDestroy {
 
   async loadSubscription() {
     this.loading.set(true);
+    const sb = getSupabaseClient();
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      const { data: profile } = await sb.from('profiles').select('role').eq('id', user.id).single();
+      this.isAdminUser.set(profile?.role === 'admin' || profile?.role === 'dev');
+    }
     const sub = await this.wa.getSubscription();
     this.subscription.set(sub);
     await this.loadDashboard();
     this.loading.set(false);
   }
 
-  /** Returns true if subscribed; opens payment modal if not */
+  /** Returns true if subscribed or admin/dev; opens payment modal if not */
   requireSubscription(): boolean {
-    if (this.hasSubscription()) return true;
+    if (this.isAdminUser() || this.hasSubscription()) return true;
     this.showPaymentModal.set(true);
     this.subscriptionStep.set('pricing');
     return false;
