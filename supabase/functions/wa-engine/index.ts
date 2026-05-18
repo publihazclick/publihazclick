@@ -114,8 +114,15 @@ async function ensureWebhookRegistered(instance: string, webhookUrl: string): Pr
   }
 }
 
-// ── Verificar suscripcion activa ─────────────────────────────────────────────
+// ── Verificar suscripcion activa (admin/dev tienen acceso libre) ─────────────
 async function checkSubscription(supabase: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+  if (profile?.role === 'admin' || profile?.role === 'dev') return true;
+
   const { data } = await supabase
     .from('wa_subscriptions')
     .select('id')
