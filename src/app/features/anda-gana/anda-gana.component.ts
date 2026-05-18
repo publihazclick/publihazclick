@@ -320,9 +320,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <p class="text-white font-bold text-base leading-tight">Gana por invitar</p>
           <p class="text-white/60 text-xs leading-tight">$0 ganados este mes</p>
         </div>
-        <div class="flex flex-col items-end gap-0.5 flex-shrink-0">
-          <span class="text-emerald-300 text-[10px] font-bold">{{ referralCount() }} invitados</span>
-          <span class="material-symbols-outlined text-white/40" style="font-size:18px">chevron_right</span>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <span class="text-white text-xs font-semibold">Invitar amigos</span>
+          <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
         </div>
       </button>
 
