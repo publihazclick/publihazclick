@@ -40,7 +40,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .dot3 { animation: dotPulse 1.4s ease-in-out 0.4s infinite; }
   `],
   host: {
-    '[style.background]': "screen() === 'home' || screen() === 'quick-register' ? '#FFFFFF' : screen() === 'splash' ? '#7C3AED' : '#0a0a0a'",
+    '[style.background]': "screen() === 'splash' ? '#7C3AED' : '#FFFFFF'",
     '[style.min-height]': "'100dvh'",
     '[style.display]': "'block'",
     '[style.transition]': "'background 0.2s'",
