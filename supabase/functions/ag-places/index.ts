@@ -3,6 +3,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const GOOGLE_KEY   = 'AIzaSyDL7HAa3QYU8TvYwTnwNZgreNt3TxrUhs0';
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w';
 
 const CO_CITIES = [
@@ -35,52 +36,82 @@ function cityFromCoords(lat: number, lng: number): string {
   return minDist < 0.7 ? nearest : '';
 }
 
-function isStreetAddress(q: string): boolean {
-  return /#/.test(q) || /\bNo\.?\s*\d/i.test(q);
-}
-
 function normalizeQuery(q: string): string {
   return q.replace(/(\d+[A-Za-z]?)\/(\d+)/g, '$1-$2').replace(/\s{2,}/g, ' ').trim();
 }
 
-function stripHouseNumber(q: string): string {
-  return normalizeQuery(q)
-    .replace(/#\s*[\dA-Za-z]+\s*[-–]?\s*\d*/g, '')
-    .replace(/\bNo\.?\s*[\dA-Za-z]+\s*[-–]?\s*\d*/gi, '')
-    .replace(/\s{2,}/g, ' ').trim();
-}
-
 function withCity(q: string, city: string): string {
   if (!city || q.toLowerCase().includes(city.toLowerCase())) return q;
-  return `${q} ${city}`;
+  return `${q}, ${city}`;
 }
 
-// ── Mapbox Search Box v1 (API nueva con ML — mucho mejor cobertura) ──
+// ── Google Places Autocomplete (motor principal) ──────────────────
+async function searchGoogle(query: string, lat?: number, lng?: number): Promise<any[]> {
+  const params = new URLSearchParams({
+    input:      query,
+    key:        GOOGLE_KEY,
+    components: 'country:co',
+    language:   'es',
+    types:      'geocode',
+  });
+  if (lat != null && lng != null) {
+    params.set('location', `${lat},${lng}`);
+    params.set('radius',   '30000');
+  }
+
+  const res  = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
+  const json = await res.json();
+
+  if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
+    console.error('Google Places error:', json.status, json.error_message);
+    return [];
+  }
+
+  return (json.predictions ?? []).slice(0, 5).map((p: any) => ({
+    place_id:   p.place_id,
+    text:       p.structured_formatting?.main_text ?? p.description.split(',')[0],
+    place_name: p.description,
+    lat:        null,
+    lng:        null,
+  }));
+}
+
+// ── Google Place Details (coordenadas al seleccionar) ─────────────
+async function getGoogleDetails(placeId: string): Promise<{ lat: number; lng: number } | null> {
+  const params = new URLSearchParams({
+    place_id: placeId,
+    key:      GOOGLE_KEY,
+    fields:   'geometry',
+    language: 'es',
+  });
+  const res  = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?${params}`);
+  const json = await res.json();
+  const loc  = json.result?.geometry?.location;
+  if (!loc) return null;
+  return { lat: loc.lat, lng: loc.lng };
+}
+
+// ── Mapbox Search Box v1 (fallback) ──────────────────────────────
 async function searchMapboxBox(query: string, lat?: number, lng?: number): Promise<any[]> {
   const sessionToken = crypto.randomUUID();
   const params = new URLSearchParams({
-    q: query,
-    access_token: MAPBOX_TOKEN,
-    country: 'CO',
-    language: 'es',
-    limit: '6',
+    q: query, access_token: MAPBOX_TOKEN, country: 'CO', language: 'es', limit: '5',
     session_token: sessionToken,
   });
-  if (lat && lng) params.set('proximity', `${lng},${lat}`);
+  if (lat != null && lng != null) params.set('proximity', `${lng},${lat}`);
 
-  const suggestRes = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
+  const suggestRes  = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
   const suggestJson = await suggestRes.json();
   const suggestions: any[] = (suggestJson.suggestions ?? []).slice(0, 4);
   if (!suggestions.length) return [];
 
-  // Recuperar coordenadas para los primeros 4 resultados en paralelo
   const results = await Promise.all(
     suggestions.map(async (s: any) => {
       try {
-        const rp = new URLSearchParams({ access_token: MAPBOX_TOKEN, session_token: sessionToken });
-        const rRes = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${s.mapbox_id}?${rp}`);
+        const rp   = new URLSearchParams({ access_token: MAPBOX_TOKEN, session_token: sessionToken });
+        const rRes  = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${s.mapbox_id}?${rp}`);
         const rJson = await rRes.json();
-        const feat = rJson.features?.[0];
+        const feat  = rJson.features?.[0];
         if (!feat) return null;
         return {
           place_id:   s.mapbox_id,
@@ -92,39 +123,16 @@ async function searchMapboxBox(query: string, lat?: number, lng?: number): Promi
       } catch { return null; }
     }),
   );
-
   return results.filter(Boolean) as any[];
-}
-
-// ── Mapbox Geocoding v5 (respaldo) ────────────────────────────────
-async function searchMapboxV5(query: string, lat?: number, lng?: number): Promise<any[]> {
-  const cleaned = normalizeQuery(query).replace(/#\s*/g, ' ').replace(/\bBARRIO\b/gi, '').trim();
-  const params = new URLSearchParams({
-    access_token: MAPBOX_TOKEN, country: 'CO', language: 'es', limit: '5',
-    types: 'address,neighborhood,place,poi',
-  });
-  if (lat && lng) params.set('proximity', `${lng},${lat}`);
-
-  const res = await fetch(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cleaned)}.json?${params}`
-  );
-  const json = await res.json();
-  return (json.features ?? []).map((f: any) => ({
-    place_id: f.id, text: f.text ?? f.place_name.split(',')[0],
-    place_name: f.place_name, lat: f.center[1], lng: f.center[0],
-  }));
 }
 
 // ── Geocodificación inversa ────────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  // Usamos Mapbox reverse geocoding v5 (más confiable que Photon para esto)
   const params = new URLSearchParams({
     access_token: MAPBOX_TOKEN, language: 'es', limit: '1',
     types: 'address,neighborhood,place',
   });
-  const res = await fetch(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?${params}`
-  );
+  const res  = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?${params}`);
   const json = await res.json();
   const feat = json.features?.[0];
   if (feat) return feat.place_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -136,8 +144,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
-    const { action, query, lat, lng } = await req.json();
+    const { action, query, lat, lng, place_id } = await req.json();
 
+    // Geocodificación inversa
     if (action === 'reverse') {
       const name = await reverseGeocode(lat, lng);
       return new Response(JSON.stringify({ name }), {
@@ -145,24 +154,37 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Obtener coordenadas de un place_id de Google (se llama al seleccionar)
+    if (action === 'details') {
+      if (!place_id) return new Response(JSON.stringify({ error: 'place_id required' }), { status: 400, headers: CORS });
+      const coords = await getGoogleDetails(place_id);
+      if (!coords) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: CORS });
+      return new Response(JSON.stringify(coords), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'search' || action === 'autocomplete') {
-      const city = (lat && lng) ? cityFromCoords(lat, lng) : '';
+      const city  = (lat != null && lng != null) ? cityFromCoords(lat, lng) : '';
       const qNorm = normalizeQuery(query);
       const qCity = withCity(qNorm, city);
-      let suggestions: any[];
 
-      if (isStreetAddress(query)) {
-        // Dirección con número
+      // 1. Google Places (mejor cobertura colombiana)
+      let suggestions = await searchGoogle(qCity, lat, lng);
+
+      // 2. Fallback: Mapbox Search Box v1
+      if (!suggestions.length) {
         suggestions = await searchMapboxBox(qCity, lat, lng);
-        if (!suggestions.length) suggestions = await searchMapboxV5(qCity, lat, lng);
-        if (!suggestions.length) suggestions = await searchMapboxBox(withCity(stripHouseNumber(qNorm), city), lat, lng);
-        if (!suggestions.length) suggestions = await searchMapboxV5(withCity(stripHouseNumber(qNorm), city), lat, lng);
-      } else {
-        // POI / barrio / nombre
-        suggestions = await searchMapboxBox(qCity, lat, lng);
-        if (!suggestions.length) suggestions = await searchMapboxV5(qCity, lat, lng);
-        if (!suggestions.length && city) suggestions = await searchMapboxBox(qNorm, lat, lng);
-        if (!suggestions.length && city) suggestions = await searchMapboxV5(qNorm, lat, lng);
+      }
+
+      // 3. Fallback sin ciudad
+      if (!suggestions.length && city) {
+        suggestions = await searchGoogle(qNorm, lat, lng);
+      }
+
+      // 4. Mapbox sin ciudad
+      if (!suggestions.length && city) {
+        suggestions = await searchMapboxBox(qNorm, lat, lng);
       }
 
       return new Response(JSON.stringify({ suggestions }), {

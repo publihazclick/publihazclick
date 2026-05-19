@@ -6522,7 +6522,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       place_id:   s.place_id,
       text:       s.text,
       place_name: s.place_name,
-      center:     [s.lng, s.lat] as [number, number],
+      // Google Places devuelve lat/lng null — se resuelven al seleccionar (action: 'details')
+      center:     (s.lat != null && s.lng != null) ? [s.lng, s.lat] as [number, number] : null,
       distanceKm: null,
       _dist:      0,
     }));
@@ -6774,37 +6775,39 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   async selectAddress(feature: any) {
-    // Legado Mapbox v6: no trae coordenadas, hay que llamar /retrieve
-    if (feature.mapbox_id && !feature.center) {
-      this.addressLoading.set(true);
-      try {
-        const params = new URLSearchParams({
-          access_token:  this.MAPBOX_TOKEN,
-          session_token: this._mbxSessionToken ?? '',
+    this.addressLoading.set(true);
+    try {
+      // Google Places: place_id sin coordenadas → pedir details
+      if (!feature.center && feature.place_id && !feature.mapbox_id) {
+        const res = await fetch(this.AG_PLACES_FN, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': this.SUPABASE_ANON, 'Authorization': `Bearer ${this.SUPABASE_ANON}` },
+          body: JSON.stringify({ action: 'details', place_id: feature.place_id }),
         });
-        const res = await fetch(
-          `https://api.mapbox.com/search/searchbox/v1/retrieve/${feature.mapbox_id}?${params}`
-        );
+        const coords = await res.json();
+        if (coords.lat != null && coords.lng != null) {
+          feature = { ...feature, center: [coords.lng, coords.lat] as [number, number] };
+        }
+      }
+      // Mapbox legacy: mapbox_id sin coordenadas
+      if (feature.mapbox_id && !feature.center) {
+        const params = new URLSearchParams({ access_token: this.MAPBOX_TOKEN, session_token: this._mbxSessionToken ?? '' });
+        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${feature.mapbox_id}?${params}`);
         if (res.ok) {
           const json = await res.json();
           const f = json.features?.[0];
           if (f?.geometry?.coordinates) {
-            feature = {
-              ...feature,
-              center: f.geometry.coordinates as [number, number],
-              place_name: f.properties?.full_address ?? feature.place_name,
-            };
+            feature = { ...feature, center: f.geometry.coordinates as [number, number], place_name: f.properties?.full_address ?? feature.place_name };
           }
         }
-      } catch { /* usa coordenadas que tenga */ } finally {
-        this.addressLoading.set(false);
-        // Invalidar session token — una sesión = suggest + retrieve
         this._mbxSessionToken = null;
       }
+    } catch { /* usa coordenadas que tenga */ } finally {
+      this.addressLoading.set(false);
     }
 
     const coords: [number, number] = feature.center ?? feature.geometry?.coordinates;
-    if (!coords) return;
+    if (!coords || coords[0] == null) return;
     const [lng, lat] = coords;
     this.currentAddress.set(feature.place_name ?? feature.text ?? '');
     this._currentLat = lat;
@@ -8452,12 +8455,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripSuggestions.set([]);
     this._tripSessionToken = null;
     const name = s.text || s.place_name || 'Destino';
-    let dLng: number, dLat: number;
-    if (s.center) {
+    let dLng: number = this._currentLng;
+    let dLat: number = this._currentLat;
+
+    if (s.center && s.center[0] != null) {
       [dLng, dLat] = s.center as [number, number];
-    } else {
-      dLng = this._currentLng; dLat = this._currentLat;
+    } else if (s.place_id) {
+      // Google Places: pedir coordenadas exactas al seleccionar
+      try {
+        const res = await fetch(this.AG_PLACES_FN, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': this.SUPABASE_ANON, 'Authorization': `Bearer ${this.SUPABASE_ANON}` },
+          body: JSON.stringify({ action: 'details', place_id: s.place_id }),
+        });
+        const coords = await res.json();
+        if (coords.lat != null && coords.lng != null) { dLat = coords.lat; dLng = coords.lng; }
+      } catch { /* usa ubicación actual */ }
     }
+
     this.tripDest.set({ name, lat: dLat, lng: dLng });
     this.cdr.markForCheck();
     this._drawRoute(dLng, dLat);
