@@ -6497,7 +6497,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     mapboxgl.accessToken = this.MAPBOX_TOKEN;
     this._map = new mapboxgl.Map({
       container,
-      style:   'mapbox://styles/mapbox/standard-dark-v1',
+      style:   'mapbox://styles/mapbox/dark-v11',
       center:  [lng, lat],
       zoom:    15,
       attributionControl: false,
