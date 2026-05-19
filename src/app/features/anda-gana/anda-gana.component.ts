@@ -6066,8 +6066,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _waitingInterval: ReturnType<typeof setInterval> | null = null;
   private _offerChannel: RealtimeChannel | null = null;
   private _mapboxPromise:   Promise<void> | null = null;
+  private _googleMapsPromise: Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _mbxSessionToken: string | null = null;
+  private _addressReqId = 0;
+  private _tripReqId    = 0;
 
   // ── Geolocalización en tiempo real (pasajero) ──────────────────
   private _passengerWatchId:    number | null = null;   // ID del watchPosition pasajero
@@ -6325,6 +6328,74 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this._mapboxPromise;
   }
 
+  // ── Google Maps / Places (búsqueda de lugares) ─────────────────
+  private loadGoogleMaps(): Promise<void> {
+    const w = window as any;
+    if (w.google?.maps?.places) return Promise.resolve();
+    if (this._googleMapsPromise) return this._googleMapsPromise;
+    this._googleMapsPromise = new Promise<void>((resolve, reject) => {
+      const cbName = '__gmInit' + Date.now();
+      w[cbName] = () => { this._googleMapsPromise = null; resolve(); };
+      const s = document.createElement('script');
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${this.GOOGLE_PLACES_KEY}&libraries=places&language=es&callback=${cbName}`;
+      s.async = true;
+      s.onerror = () => { this._googleMapsPromise = null; reject(new Error('Google Maps no cargó')); };
+      document.head.appendChild(s);
+    });
+    return this._googleMapsPromise;
+  }
+
+  private async _getGooglePlaceCoords(placeId: string): Promise<[number, number] | null> {
+    await this.loadGoogleMaps();
+    const google = (window as any).google;
+    const dummy = document.createElement('div');
+    const svc = new google.maps.places.PlacesService(dummy);
+    return new Promise((resolve) => {
+      svc.getDetails({ placeId, fields: ['geometry'] }, (place: any, status: string) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
+          resolve(null); return;
+        }
+        resolve([place.geometry.location.lng(), place.geometry.location.lat()]);
+      });
+    });
+  }
+
+  private async _googleAutocomplete(query: string): Promise<any[]> {
+    await this.loadGoogleMaps();
+    const google = (window as any).google;
+    const lat = this._currentLat;
+    const lng = this._currentLng;
+    const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
+    const req: any = {
+      input: query,
+      componentRestrictions: { country: 'co' },
+      language: 'es',
+    };
+    if (hasGps) {
+      req.location = new google.maps.LatLng(lat, lng);
+      req.radius = 50000;
+      req.strictBounds = false;
+    }
+    return new Promise((resolve) => {
+      new google.maps.places.AutocompleteService().getPlacePredictions(
+        req,
+        (predictions: any[], status: string) => {
+          const OK = google.maps.places.PlacesServiceStatus.OK;
+          if (status !== OK || !predictions?.length) { resolve([]); return; }
+          resolve(predictions.slice(0, 6).map((p: any) => ({
+            id:         p.place_id,
+            place_id:   p.place_id,
+            text:       p.structured_formatting?.main_text ?? p.description,
+            place_name: p.description,
+            center:     null,
+            distanceKm: null,
+            _dist:      0,
+          })));
+        }
+      );
+    });
+  }
+
   // ── GPS + mapa ─────────────────────────────────────────────────
   async initGpsAndMap(containerId: string) {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -6451,75 +6522,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._searchDebounce = setTimeout(() => this._searchPlacesV6(query), 300);
   }
 
-  /**
-   * Mapbox Geocoding API v6 — /suggest para autocompletado en tiempo real.
-   * Usa Mapbox Geocoding v5 con proximity + bbox para resultados locales.
-   * Devuelve coordenadas directamente — no requiere paso /retrieve.
-   */
   private async _searchPlacesV6(query: string) {
-    if (this._addressAbort) this._addressAbort.abort();
-    this._addressAbort = new AbortController();
-    const sig = this._addressAbort.signal;
-
+    const reqId = ++this._addressReqId;
     this.addressLoading.set(true);
     this.addressSuggestions.set([]);
-
-    const lat = this._currentLat;
-    const lng = this._currentLng;
-    const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
-
-    const params = new URLSearchParams({
-      access_token: this.MAPBOX_TOKEN,
-      autocomplete: 'true',
-      language:     'es',
-      country:      'co',
-      types:        'poi,address,neighborhood,locality',
-      limit:        '6',
-    });
-
-    if (hasGps) {
-      params.set('proximity', `${lng},${lat}`);
-      // bbox: caja de ~65 km alrededor del usuario — Mapbox solo devuelve resultados dentro de ella
-      const D = 0.6;
-      params.set('bbox', `${(lng-D).toFixed(5)},${(lat-D).toFixed(5)},${(lng+D).toFixed(5)},${(lat+D).toFixed(5)}`);
-    }
-    params.set('limit', '10');
-
+    this.addressNoResults.set(false);
     try {
-      const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params}`,
-        { signal: sig }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-
-      const raw = (json.features ?? []).map((f: any) => {
-        const [fLng, fLat] = f.center ?? [lng, lat];
-        const dist = hasGps ? this._distKm(lat, lng, fLat, fLng) : 0;
-        return {
-          id:         f.id,
-          mapbox_id:  null,
-          text:       f.text ?? '',
-          place_name: f.place_name ?? '',
-          center:     [fLng, fLat] as [number, number],
-          _dist:      dist,
-        };
-      });
-
-      // Ordenar de más cercano a más lejano (Mapbox ya filtra por país con country:co)
-      const results = raw
-        .sort((a: any, b: any) => a._dist - b._dist)
-        .slice(0, 6);
-
+      const results = await this._googleAutocomplete(query);
+      if (reqId !== this._addressReqId) return;
       this.addressSuggestions.set(results);
       this.addressNoResults.set(results.length === 0);
-    } catch (e: any) {
-      if (e?.name === 'AbortError') return;
+    } catch {
+      if (reqId !== this._addressReqId) return;
       this.addressSuggestions.set([]);
       this.addressNoResults.set(true);
     } finally {
-      this.addressLoading.set(false);
-      this.cdr.markForCheck();
+      if (reqId === this._addressReqId) {
+        this.addressLoading.set(false);
+        this.cdr.markForCheck();
+      }
     }
   }
 
@@ -6543,7 +6564,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   async selectAddress(feature: any) {
-    // Sugerencia v6: no trae coordenadas, hay que llamar /retrieve
+    // Google Places: obtener coordenadas por place_id
+    if (feature.place_id && !feature.center) {
+      this.addressLoading.set(true);
+      this.cdr.markForCheck();
+      const coords = await this._getGooglePlaceCoords(feature.place_id);
+      this.addressLoading.set(false);
+      if (!coords) { this.cdr.markForCheck(); return; }
+      feature = { ...feature, center: coords };
+    }
+    // Legado Mapbox v6: no trae coordenadas, hay que llamar /retrieve
     if (feature.mapbox_id && !feature.center) {
       this.addressLoading.set(true);
       try {
@@ -8019,7 +8049,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripNoResults.set(false);
     if (this._tripDebounce) clearTimeout(this._tripDebounce);
     if (!val.trim()) {
-      this._tripAbort?.abort();
+      ++this._tripReqId; // descarta cualquier búsqueda en vuelo
       this.tripSuggestions.set([]);
       this.tripLoading.set(false);
       return;
@@ -8028,86 +8058,50 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._tripDebounce = setTimeout(() => this._searchTripPlaces(val), 120);
   }
 
-  private _tripAbort:        AbortController | null = null;
-  private _tripSessionToken: string | null          = null;
+  private _tripSessionToken: string | null = null;
 
   private async _searchTripPlaces(query: string) {
-    if (this._tripAbort) this._tripAbort.abort();
-    this._tripAbort = new AbortController();
-    const sig = this._tripAbort.signal;
-
+    const reqId = ++this._tripReqId;
     this.tripLoading.set(true);
     this.tripNoResults.set(false);
     this.tripSuggestions.set([]);
-
-    const lat = this._currentLat;
-    const lng = this._currentLng;
-    const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
-
-    const params = new URLSearchParams({
-      access_token: this.MAPBOX_TOKEN,
-      autocomplete: 'true',
-      language:     'es',
-      country:      'co',
-      types:        'poi,address,neighborhood,locality',
-      limit:        '6',
-    });
-
-    if (hasGps) {
-      params.set('proximity', `${lng},${lat}`);
-      // bbox: caja de ~65 km alrededor del usuario — Mapbox solo devuelve resultados dentro de ella
-      const D = 0.6;
-      params.set('bbox', `${(lng-D).toFixed(5)},${(lat-D).toFixed(5)},${(lng+D).toFixed(5)},${(lat+D).toFixed(5)}`);
-    }
-    params.set('limit', '10');
-
     try {
-      const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params}`,
-        { signal: sig }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-
-      const raw = (json.features ?? []).map((f: any) => {
-        const [fLng, fLat] = f.center ?? [lng, lat];
-        const dist = hasGps ? this._distKm(lat, lng, fLat, fLng) : 0;
-        return {
-          id:          f.id,
-          mapbox_id:   null,
-          text:        f.text ?? '',
-          place_name:  f.place_name ?? '',
-          center:      [fLng, fLat] as [number, number],
-          distanceKm:  hasGps ? +dist.toFixed(1) : null,
-          _dist:       dist,
-        };
-      });
-
-      // Ordenar de más cercano a más lejano (Mapbox ya filtra por ciudad con bbox)
-      const results = raw
-        .sort((a: any, b: any) => a._dist - b._dist)
-        .slice(0, 6);
-
+      const results = await this._googleAutocomplete(query);
+      if (reqId !== this._tripReqId) return;
       this.tripSuggestions.set(results);
       this.tripNoResults.set(results.length === 0);
-    } catch (e: any) {
-      if (e?.name === 'AbortError') return;
+    } catch {
+      if (reqId !== this._tripReqId) return;
       this.tripSuggestions.set([]);
       this.tripNoResults.set(true);
     } finally {
-      this.tripLoading.set(false);
-      this.cdr.markForCheck();
+      if (reqId === this._tripReqId) {
+        this.tripLoading.set(false);
+        this.cdr.markForCheck();
+      }
     }
   }
 
-  selectTripDest(s: any) {
-    const [dLng, dLat] = (s.center as [number, number]) ?? [this._currentLng, this._currentLat];
-    const name = s.text || s.place_name || 'Destino';
-    this.tripDest.set({ name, lat: dLat, lng: dLng });
+  async selectTripDest(s: any) {
     this.tripOpen.set(false);
     this.tripQuery.set('');
     this.tripSuggestions.set([]);
     this._tripSessionToken = null;
+    const name = s.text || s.place_name || 'Destino';
+    let dLng: number, dLat: number;
+    if (s.center) {
+      [dLng, dLat] = s.center as [number, number];
+    } else if (s.place_id) {
+      this.tripLoading.set(true);
+      this.cdr.markForCheck();
+      const coords = await this._getGooglePlaceCoords(s.place_id);
+      this.tripLoading.set(false);
+      if (!coords) { this.cdr.markForCheck(); return; }
+      [dLng, dLat] = coords;
+    } else {
+      dLng = this._currentLng; dLat = this._currentLat;
+    }
+    this.tripDest.set({ name, lat: dLat, lng: dLng });
     this.cdr.markForCheck();
     this._drawRoute(dLng, dLat);
   }
