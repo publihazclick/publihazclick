@@ -1158,7 +1158,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       </div><!-- /map container -->
       } @else {
       <!-- ══ Sección pasajero ══ -->
-      <div class="flex flex-col gap-4">
+      <div class="fixed inset-0 z-40 overflow-y-auto" style="background:#0d111a">
+      <div class="flex flex-col gap-4 px-4 py-6 max-w-lg mx-auto">
 
         <!-- Botón volver -->
         <button (click)="passengerSection.set(null)"
@@ -2025,7 +2026,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
-      </div>
+      </div><!-- /inner flex -->
+      </div><!-- /fullscreen overlay -->
       }
 
     </div>
