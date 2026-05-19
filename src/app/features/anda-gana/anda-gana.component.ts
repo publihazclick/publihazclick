@@ -458,7 +458,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
 
             <!-- Fila de servicios -->
-            <div class="flex items-center gap-1 pt-3 pb-1">
+            <div class="flex items-center gap-1 pt-3 pb-1"
+              [style.pointerEvents]="tripIsActive() ? 'none' : 'auto'"
+              [style.opacity]="tripIsActive() ? '0.4' : '1'">
               <button (click)="scrollIcons(-120)"
                 class="flex-shrink-0 w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center ml-2 active:scale-90 transition-all">
                 <span class="material-symbols-outlined text-slate-500" style="font-size:16px">chevron_left</span>
