@@ -342,31 +342,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </button>
       }
 
-      <!-- ══ Banner lanzamiento ══ -->
-      @if (!launchBannerDismissed()) {
-        @if (!agProfile()) {
-          <button (click)="screen.set('quick-register'); qrStep.set(1)"
-            class="w-full text-left active:scale-[0.98] transition-transform"
-            style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:16px;position:relative;border:none;cursor:pointer">
-            <button (click)="$event.stopPropagation(); launchBannerDismissed.set(true)"
-              style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#fff">close</span>
-            </button>
-            <p style="color:#fff;font-weight:700;font-size:14px;margin:0 0 4px 0;line-height:1.3">🚀 Lanzamiento nacional por fases</p>
-            <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;line-height:1.5">Regístrate hoy y obtén <span style="font-weight:700">40% OFF</span> en tu primer viaje cuando lleguemos a tu ciudad</p>
-          </button>
-        } @else {
-          <div class="w-full"
-            style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:16px;position:relative">
-            <button (click)="launchBannerDismissed.set(true)"
-              style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#fff">close</span>
-            </button>
-            <p style="color:#fff;font-weight:700;font-size:14px;margin:0 0 4px 0;line-height:1.3">Lanzamiento pronto en tu ciudad ✅</p>
-            <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;line-height:1.5">Te avisaremos cuando haya conductores disponibles</p>
-          </div>
-        }
-      }
 
       @if (passengerSection() === null) {
       <!-- Mapa con overlays flotantes -->
@@ -384,24 +359,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
-        <!-- Sin conductores disponibles -->
-        @if (noDriversNearby() && gpsStatus() === 'granted') {
-          <div class="absolute inset-0 z-20 flex items-center justify-center"
-            style="backdrop-filter:blur(4px);background:rgba(255,255,255,0.85)">
-            <div class="flex flex-col items-center text-center"
-              style="gap:16px;padding:24px;border-radius:20px;max-width:300px">
-              <span class="material-symbols-outlined" style="font-size:64px;color:#7C3AED;font-variation-settings:'FILL' 0">directions_car</span>
-              <div style="display:flex;flex-direction:column;gap:6px">
-                <p style="font-weight:600;font-size:16px;color:#111827;margin:0;text-align:center">No hay conductores cerca</p>
-                <p style="font-weight:400;font-size:14px;color:#6B7280;margin:0;text-align:center;max-width:240px;line-height:1.5">Te avisamos cuando haya uno disponible en tu zona</p>
-              </div>
-              <button (click)="subscribeDriverNotification()"
-                style="background:#7C3AED;border-radius:12px;padding:12px 24px;color:#fff;font-weight:600;font-size:14px;border:none;cursor:pointer;white-space:nowrap">
-                Notificarme cuando haya conductores
-              </button>
-            </div>
-          </div>
-        }
 
         <!-- Barra de dirección (flotante arriba) -->
         @if (gpsStatus() !== 'requesting') {
