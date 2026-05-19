@@ -863,6 +863,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     @if (surgeMultiplier() > 1) {
                       <p class="text-orange-600 text-[10px] font-black mt-1">⚡ Alta demanda ×{{ surgeMultiplier() }}</p>
                     }
+                    <button (click)="setTripPricePreset(0)"
+                      class="mt-1.5 px-3 py-0.5 rounded-full text-[10px] font-black active:scale-95 transition-all"
+                      style="background:#fff7ed;border:1px solid #fed7aa;color:#ea580c">Sugerido</button>
                   </div>
                   <button (click)="adjustTripPrice(500)"
                     class="w-12 h-12 rounded-2xl text-white font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
