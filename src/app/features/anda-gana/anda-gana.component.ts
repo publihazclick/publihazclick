@@ -356,6 +356,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
+        <!-- Overlay ruta pasajero — aparece cuando el conductor acepta el viaje -->
+        @if (tripAccepted()) {
+          <div class="absolute top-3 left-3 right-3 z-30 pointer-events-none">
+            <div class="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl shadow-black/60"
+              style="background:rgba(16,185,129,0.93);backdrop-filter:blur(8px)">
+              <span class="material-symbols-outlined text-white animate-pulse" style="font-size:22px">directions_car</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-white font-black text-sm truncate">
+                  {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }} en camino
+                </p>
+                <p class="text-emerald-100 text-xs">Sigue la ruta naranja en el mapa</p>
+              </div>
+              <div class="flex flex-col items-end flex-shrink-0">
+                <p class="text-white font-black text-base leading-none">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
+                <p class="text-emerald-100 text-[10px]">confirmado</p>
+              </div>
+            </div>
+          </div>
+        }
 
         <!-- Barra de dirección (flotante arriba) -->
         @if (gpsStatus() !== 'requesting') {
@@ -2301,15 +2320,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     style="background:linear-gradient(135deg,#16a34a,#22c55e)">
                     <span class="material-symbols-outlined" style="font-size:15px">call</span>Llamar
                   </button>
-                  <button (click)="navigateTo(trip.ag_trip_requests?.origin_lat, trip.ag_trip_requests?.origin_lng, 'pickup')"
-                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1"
+                  <button (click)="startInAppNav(trip, true)"
+                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
                     style="background:linear-gradient(135deg,#8b5cf6,#6366f1)">
-                    <span class="material-symbols-outlined" style="font-size:15px">navigation</span>Origen
+                    <span class="material-symbols-outlined" style="font-size:15px">navigation</span>Ir a recoger
                   </button>
-                  <button (click)="navigateTo(trip.ag_trip_requests?.dest_lat, trip.ag_trip_requests?.dest_lng, 'dest')"
-                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1"
+                  <button (click)="startInAppNav(trip, false)"
+                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
                     style="background:linear-gradient(135deg,#f59e0b,#f97316)">
-                    <span class="material-symbols-outlined" style="font-size:15px">place</span>Destino
+                    <span class="material-symbols-outlined" style="font-size:15px">place</span>Ir al destino
                   </button>
                   @if (trip.ag_trip_requests?.driver_stage !== 'picked_up' && trip.ag_trip_requests?.driver_stage !== 'on_route') {
                     <button (click)="advanceStage(trip, 'picked_up')"
@@ -2564,8 +2583,66 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
 
         <div class="relative">
-          <div id="ag-map-user" style="height:300px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"
+          <div id="ag-map-user" [style.height]="navActive() ? '420px' : '300px'"
+            style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);transition:height 0.35s ease"
             [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
+
+          <!-- ── Overlay de navegación conductor ── -->
+          @if (navActive()) {
+            <!-- Banner instrucción actual (arriba del mapa) -->
+            <div class="absolute top-0 left-0 right-0 z-30 pointer-events-none"
+              style="background:linear-gradient(180deg,rgba(30,27,75,0.97) 0%,rgba(30,27,75,0.92) 85%,transparent 100%);border-radius:16px 16px 0 0;padding:14px 16px 24px">
+              <div class="flex items-center gap-3">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style="background:rgba(99,102,241,0.25);border:2px solid rgba(99,102,241,0.5)">
+                  <span class="material-symbols-outlined text-indigo-300" style="font-size:28px">{{ navManeuverIcon() }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-white font-black text-sm leading-tight" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                    {{ navInstruction() }}
+                  </p>
+                  @if (navDistToNext()) {
+                    <p class="text-indigo-300 font-black text-xl mt-0.5">{{ navDistToNext() }}</p>
+                  }
+                </div>
+              </div>
+            </div>
+            <!-- Barra inferior: ETA + km + fase + stop -->
+            <div class="absolute bottom-0 left-0 right-0 z-30"
+              style="background:linear-gradient(0deg,rgba(10,10,20,0.97) 0%,rgba(10,10,20,0.85) 80%,transparent 100%);border-radius:0 0 16px 16px;padding:18px 16px 14px">
+              <div class="flex items-center gap-3">
+                <!-- ETA -->
+                <div class="flex flex-col items-center px-3 py-2 rounded-xl" style="background:rgba(255,255,255,0.06)">
+                  <p class="text-white font-black text-xl leading-none">{{ navEtaMin() }}</p>
+                  <p class="text-slate-400 text-[10px] font-bold">min</p>
+                </div>
+                <!-- km -->
+                <div class="flex flex-col items-center px-3 py-2 rounded-xl" style="background:rgba(255,255,255,0.06)">
+                  <p class="text-white font-black text-xl leading-none">{{ navTotalKm() }}</p>
+                  <p class="text-slate-400 text-[10px] font-bold">km</p>
+                </div>
+                <!-- Fase -->
+                <div class="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-xl"
+                  [style.background]="navPhase() === 'to_pickup' ? 'rgba(139,92,246,0.15)' : 'rgba(249,115,22,0.15)'">
+                  <span class="material-symbols-outlined" style="font-size:16px"
+                    [style.color]="navPhase() === 'to_pickup' ? '#a78bfa' : '#fb923c'">
+                    {{ navPhase() === 'to_pickup' ? 'person_pin' : 'flag' }}
+                  </span>
+                  <p class="text-xs font-black"
+                    [style.color]="navPhase() === 'to_pickup' ? '#a78bfa' : '#fb923c'">
+                    {{ navPhase() === 'to_pickup' ? 'Al pasajero' : 'Al destino' }}
+                  </p>
+                </div>
+                <!-- Parar -->
+                <button (click)="stopInAppNav()"
+                  class="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition"
+                  style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35)">
+                  <span class="material-symbols-outlined text-red-400" style="font-size:20px">close</span>
+                </button>
+              </div>
+            </div>
+          }
+
           @if (driverData() && driverOnline()) {
             <button (click)="toggleHeatmap()" title="Zonas con demanda"
               class="absolute top-2 right-2 w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition"
@@ -5660,6 +5737,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   surgeMultiplier    = signal(1);
   surgeZoneId        = signal<string | null>(null);
 
+  // ── Navegación en app (conductor + pasajero) ─────────────────
+  navActive          = signal(false);
+  navInstruction     = signal('Calculando ruta...');
+  navDistToNext      = signal('');
+  navEtaMin          = signal(0);
+  navTotalKm         = signal(0);
+  navPhase           = signal<'to_pickup' | 'to_dest'>('to_pickup');
+  navManeuverIcon    = signal('straight');
+  private _navSteps:      any[]    = [];
+  private _navStepIdx:    number   = 0;
+  private _navSpokenKeys: Set<string> = new Set();
+
   // Llamadas enmascaradas
   callingDriver      = signal(false);
 
@@ -7704,9 +7793,151 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   navigateTo(lat: number, lng: number, label: 'pickup' | 'dest' = 'dest'): void {
     if (!lat || !lng) return;
-    // Google Maps funciona en Android/iOS; Waze alt
     const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
     if (typeof window !== 'undefined') window.open(url, '_blank');
+  }
+
+  // ── Navegación en app ────────────────────────────────────────
+
+  private _speak(text: string): void {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang  = 'es-CO';
+    utt.rate  = 1.05;
+    utt.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const es = voices.find(v => v.lang.startsWith('es')) ?? null;
+    if (es) utt.voice = es;
+    window.speechSynthesis.speak(utt);
+  }
+
+  private _maneuverIconFromStep(step: any): string {
+    const t = step.maneuver?.type ?? '';
+    const m = step.maneuver?.modifier ?? '';
+    if (t === 'turn' && m.includes('right')) return 'turn_right';
+    if (t === 'turn' && m.includes('left'))  return 'turn_left';
+    if (t === 'fork' && m.includes('right')) return 'fork_right';
+    if (t === 'fork' && m.includes('left'))  return 'fork_left';
+    if (t === 'merge')    return 'merge';
+    if (t === 'roundabout' || t === 'rotary') return 'roundabout_right';
+    if (t === 'arrive')   return 'location_on';
+    if (t === 'depart')   return 'near_me';
+    return 'straight';
+  }
+
+  private _fmtDist(meters: number): string {
+    if (meters < 1000) return `${Math.round(meters / 10) * 10} m`;
+    return `${(meters / 1000).toFixed(1)} km`;
+  }
+
+  async startInAppNav(trip: any, toPickup: boolean): Promise<void> {
+    const req = trip.ag_trip_requests ?? trip;
+    const destLat = toPickup ? req.origin_lat : req.dest_lat;
+    const destLng = toPickup ? req.origin_lng : req.dest_lng;
+    if (!destLat || !destLng) return;
+
+    this.navActive.set(true);
+    this.navPhase.set(toPickup ? 'to_pickup' : 'to_dest');
+    this.navInstruction.set('Calculando ruta...');
+    this._navSteps     = [];
+    this._navStepIdx   = 0;
+    this._navSpokenKeys = new Set();
+
+    try {
+      const url = [
+        `https://api.mapbox.com/directions/v5/mapbox/driving/`,
+        `${this._currentLng},${this._currentLat};${destLng},${destLat}`,
+        `?geometries=geojson&steps=true&voice_instructions=true`,
+        `&language=es&overview=full&access_token=${this.MAPBOX_TOKEN}`,
+      ].join('');
+      const json  = await (await fetch(url)).json();
+      const route = json.routes?.[0];
+      if (!route) { this.navInstruction.set('No se encontró ruta'); return; }
+
+      this._navSteps   = route.legs?.[0]?.steps ?? [];
+      this.navTotalKm.set(Math.round(route.distance / 100) / 10);
+      this.navEtaMin.set(Math.round(route.duration / 60));
+
+      // Draw route on map
+      this._clearNavRoute();
+      if (this._map) {
+        this._map.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+        this._map.addLayer({ id: 'nav-route-bg',   type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 10, 'line-opacity': 0.15 } });
+        this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#4f46e5', 'line-width': 6,  'line-opacity': 0.95 } });
+        this._map.addLayer({ id: 'nav-route-arr',  type: 'line', source: 'nav-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 2,  'line-opacity': 0.4, 'line-dasharray': [0, 5] } });
+        const mapboxgl = (window as any).mapboxgl;
+        const coords = route.geometry.coordinates as [number, number][];
+        const bounds = coords.reduce((b: any, c: [number,number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+        this._map.fitBounds(bounds, { padding: { top: 160, bottom: 80, left: 40, right: 40 }, duration: 900 });
+      }
+
+      this._applyNavStep(0);
+      const dest = toPickup ? 'el punto de recogida' : 'tu destino';
+      this._speak(`Ruta calculada. En ${this.navEtaMin()} minutos llegas a ${dest}.`);
+    } catch (e) {
+      this.navInstruction.set('Error al calcular ruta');
+      console.warn('nav error', e);
+    }
+  }
+
+  stopInAppNav(): void {
+    this.navActive.set(false);
+    this._navSteps   = [];
+    this._navStepIdx = 0;
+    this._navSpokenKeys = new Set();
+    window.speechSynthesis?.cancel();
+    this._clearNavRoute();
+  }
+
+  private _clearNavRoute(): void {
+    if (!this._map) return;
+    ['nav-route-arr','nav-route-line','nav-route-bg'].forEach(id => {
+      try { if (this._map.getLayer(id)) this._map.removeLayer(id); } catch {}
+    });
+    try { if (this._map.getSource('nav-route')) this._map.removeSource('nav-route'); } catch {}
+  }
+
+  private _applyNavStep(idx: number): void {
+    const step = this._navSteps[idx];
+    if (!step) return;
+    this._navStepIdx = idx;
+
+    const voiceInstr = step.voiceInstructions?.[0]?.announcement ?? step.maneuver?.instruction ?? '';
+    const dist = step.distance ?? 0;
+
+    this.navInstruction.set(voiceInstr || step.maneuver?.instruction || 'Continúa recto');
+    this.navDistToNext.set(this._fmtDist(dist));
+    this.navManeuverIcon.set(this._maneuverIconFromStep(step));
+
+    const key = `${idx}-${Math.round(dist)}`;
+    if (!this._navSpokenKeys.has(key)) {
+      this._navSpokenKeys.add(key);
+      if (voiceInstr) this._speak(voiceInstr);
+    }
+  }
+
+  _updateNavFromGps(lat: number, lng: number): void {
+    if (!this.navActive() || this._navSteps.length === 0) return;
+    const step = this._navSteps[this._navStepIdx];
+    if (!step) return;
+
+    // Distance to end of current step (maneuver location)
+    const [sLng, sLat] = step.maneuver?.location ?? [lng, lat];
+    const distToStep = this._distKm(lat, lng, sLat, sLng) * 1000;
+
+    // Advance step when within 25m of its maneuver point
+    if (distToStep < 25 && this._navStepIdx < this._navSteps.length - 1) {
+      this._applyNavStep(this._navStepIdx + 1);
+    } else {
+      this.navDistToNext.set(this._fmtDist(distToStep));
+    }
+
+    // Update ETA roughly (subtract driven distance)
+    if (step.duration) {
+      const remaining = this._navSteps.slice(this._navStepIdx).reduce((s: number, st: any) => s + (st.duration ?? 0), 0);
+      this.navEtaMin.set(Math.max(1, Math.round(remaining / 60)));
+    }
   }
 
   // ═══════════ Heatmap demanda ═══════════
@@ -7857,6 +8088,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
+        this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude);
       },
       (err) => {
         console.error('GPS tracking error:', err.message);
@@ -8216,6 +8448,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.tripAccepted.set(offer);
       this.tripSent.set(false);
       this._startTrackingAssignedDriver(offer.driver_id);
+      // Dibujar ruta al destino en el mapa del pasajero
+      const dest = this.tripDest();
+      if (dest) setTimeout(() => this._drawRoute(dest.lng, dest.lat), 500);
       // Suscripción realtime a ubicación + estados del viaje
       const tripId = (offer as any).trip_request_id ?? this.currentTripRequestId();
       if (tripId && offer.driver_id) {
