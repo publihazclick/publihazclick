@@ -5,7 +5,7 @@ const CORS = {
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w';
 
-// ── Ciudades colombianas para detección por GPS ────────────────────
+// ── Ciudades colombianas para detección por GPS ───────────────────
 const CO_CITIES = [
   { name: 'Bogotá',        lat:  4.711, lng: -74.072 },
   { name: 'Medellín',      lat:  6.244, lng: -75.574 },
@@ -24,6 +24,7 @@ const CO_CITIES = [
   { name: 'Armenia',       lat:  4.534, lng: -75.681 },
   { name: 'Valledupar',    lat: 10.477, lng: -73.250 },
   { name: 'Santa Marta',   lat: 11.240, lng: -74.199 },
+  { name: 'Soacha',        lat:  4.579, lng: -74.216 },
 ];
 
 function cityFromCoords(lat: number, lng: number): string {
@@ -33,53 +34,71 @@ function cityFromCoords(lat: number, lng: number): string {
     const d = Math.abs(lat - c.lat) + Math.abs(lng - c.lng);
     if (d < minDist) { minDist = d; nearest = c.name; }
   }
-  return minDist < 0.6 ? nearest : ''; // ~65 km de radio
+  return minDist < 0.7 ? nearest : '';
 }
 
 function isStreetAddress(q: string): boolean {
   return /#/.test(q) || /\bNo\.?\s*\d/i.test(q);
 }
 
-function normalizeColombianSeparator(q: string): string {
-  // 84/83 → 84-83   (separador alternativo de número de puerta)
-  return q.replace(/(\d+[A-Za-z]?)\/(\d+)/g, '$1-$2');
-}
-
-function cleanForMapbox(q: string): string {
-  return normalizeColombianSeparator(q)
-    .replace(/#\s*/g, ' ')
-    .replace(/\bBARRIO\b/gi, '')
+function normalizeQuery(q: string): string {
+  return q
+    .replace(/(\d+[A-Za-z]?)\/(\d+)/g, '$1-$2')   // 84/83 → 84-83
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
-function cleanForNominatim(q: string): string {
-  return normalizeColombianSeparator(q)
-    .replace(/#\s*[\dA-Za-z]+\s*[-–]\s*\d+/g, '')
-    .replace(/\bNo\.?\s*[\dA-Za-z]+\s*[-–]\s*\d+/gi, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-  // Nota: NO eliminamos "BARRIO" — ayuda a Nominatim a entender el tipo de lugar
-}
-
-function streetOnly(q: string): string {
-  return normalizeColombianSeparator(q)
-    .replace(/#\s*[\dA-Za-z]*\s*[-–]?\s*\d*/g, '')
-    .replace(/\bNo\.?\s*[\dA-Za-z]*\s*[-–]?\s*\d*/gi, '')
-    .replace(/\bBARRIO\b/gi, '')
+function stripHouseNumber(q: string): string {
+  return normalizeQuery(q)
+    .replace(/#\s*[\dA-Za-z]+\s*[-–]?\s*\d*/g, '')
+    .replace(/\bNo\.?\s*[\dA-Za-z]+\s*[-–]?\s*\d*/gi, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
-// Agrega ciudad al final si no está ya en la query
 function withCity(q: string, city: string): string {
-  if (!city) return q;
-  if (q.toLowerCase().includes(city.toLowerCase())) return q;
+  if (!city || q.toLowerCase().includes(city.toLowerCase())) return q;
   return `${q} ${city}`;
 }
 
+// ── Photon (motor principal) ──────────────────────────────────────
+// Photon usa OSM con un motor de búsqueda mucho mejor que Nominatim.
+async function searchPhoton(query: string, lat?: number, lng?: number): Promise<any[]> {
+  const params = new URLSearchParams({ q: query, limit: '6', lang: 'es' });
+  if (lat && lng) { params.set('lat', String(lat)); params.set('lon', String(lng)); }
+
+  const res = await fetch(
+    'https://photon.komoot.io/api/?' + params,
+    { headers: { 'User-Agent': 'movi-app/1.0' } },
+  );
+  const json = await res.json();
+
+  return (json.features ?? [])
+    .filter((f: any) => {
+      // Filtrar solo resultados de Colombia
+      const country = (f.properties?.country ?? '').toLowerCase();
+      return country.includes('colombia') || country.includes('col');
+    })
+    .map((f: any) => {
+      const p = f.properties;
+      const name = p.name ?? p.street ?? p.city ?? '';
+      const city2 = p.city ?? p.county ?? '';
+      const state = p.state ?? '';
+      const placeName = [name, city2, state].filter(Boolean).join(', ').slice(0, 90);
+      return {
+        place_id:   `ph-${f.properties.osm_id ?? Math.random()}`,
+        text:       name,
+        place_name: placeName,
+        lat:        f.geometry.coordinates[1],
+        lng:        f.geometry.coordinates[0],
+      };
+    })
+    .filter((r: any) => r.text);
+}
+
+// ── Mapbox (respaldo para direcciones con número) ─────────────────
 async function searchMapbox(query: string, lat?: number, lng?: number): Promise<any[]> {
-  const cleaned = cleanForMapbox(query);
+  const cleaned = normalizeQuery(query).replace(/#\s*/g, ' ').replace(/\bBARRIO\b/gi, '').trim();
   const params = new URLSearchParams({
     access_token: MAPBOX_TOKEN,
     country: 'CO',
@@ -102,66 +121,26 @@ async function searchMapbox(query: string, lat?: number, lng?: number): Promise<
   }));
 }
 
-async function searchNominatim(query: string, lat?: number, lng?: number): Promise<any[]> {
-  const cleaned = cleanForNominatim(query);
-  const params = new URLSearchParams({
-    q:               cleaned,
-    countrycodes:    'co',
-    format:          'json',
-    limit:           '6',
-    'accept-language': 'es',
-    addressdetails:  '0',
-    dedupe:          '1',
-  });
-  if (lat && lng) {
-    const d = 0.45;
-    params.set('viewbox', `${lng - d},${lat - d},${lng + d},${lat + d}`);
-    params.set('bounded', '0');
-  }
-
-  const res = await fetch(
-    'https://nominatim.openstreetmap.org/search?' + params,
-    { headers: { 'User-Agent': 'movi-app/1.0 (publihazclick.com)' } },
-  );
-  const raw: any[] = await res.json();
-
-  return raw.map((r: any) => {
-    const parts = r.display_name.split(',');
-    const text = parts[0].trim();
-    const city = parts.find((_: string, i: number) => i > 0 && i < parts.length - 2)?.trim() ?? '';
-    return {
-      place_id:   String(r.place_id),
-      text,
-      place_name: city ? `${text}, ${city}` : r.display_name.slice(0, 80),
-      lat:        parseFloat(r.lat),
-      lng:        parseFloat(r.lon),
-    };
-  });
-}
-
+// ── Geocodificación inversa ───────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  const params = new URLSearchParams({
-    lat: String(lat), lon: String(lng),
-    format: 'json', 'accept-language': 'es', zoom: '16',
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lng), lang: 'es' });
+  const res = await fetch('https://photon.komoot.io/reverse?' + params, {
+    headers: { 'User-Agent': 'movi-app/1.0' },
   });
-  const res = await fetch(
-    'https://nominatim.openstreetmap.org/reverse?' + params,
-    { headers: { 'User-Agent': 'movi-app/1.0 (publihazclick.com)' } },
-  );
   const json = await res.json();
-  if (json.error) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  const parts = (json.display_name as string).split(',');
-  return parts.slice(0, 3).map((p: string) => p.trim()).join(', ');
+  const f = json.features?.[0];
+  if (!f) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  const p = f.properties;
+  return [p.name ?? p.street, p.housenumber, p.city].filter(Boolean).join(', ').slice(0, 90);
 }
 
+// ── Handler principal ─────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
-    const body = await req.json();
-    const { action, query, lat, lng } = body;
+    const { action, query, lat, lng } = await req.json();
 
-    // ── Geocodificación inversa ────────────────────────────────────
     if (action === 'reverse') {
       const name = await reverseGeocode(lat, lng);
       return new Response(JSON.stringify({ name }), {
@@ -169,55 +148,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Búsqueda ──────────────────────────────────────────────────
     if (action === 'search' || action === 'autocomplete') {
       const city = (lat && lng) ? cityFromCoords(lat, lng) : '';
+      const qNorm = normalizeQuery(query);
+      const qCity = withCity(qNorm, city);
       let suggestions: any[];
 
       if (isStreetAddress(query)) {
-        // ── Dirección con número ───────────────────────────────────
-        // 1. Mapbox con dirección completa normalizada + ciudad
-        suggestions = await searchMapbox(withCity(query, city), lat, lng);
-
-        // 2. Nominatim sin número de casa + ciudad
-        if (suggestions.length === 0) {
-          suggestions = await searchNominatim(withCity(query, city), lat, lng);
-        }
-
-        // 3. Mapbox solo con la calle + ciudad
-        if (suggestions.length === 0) {
-          const street = streetOnly(query);
-          if (street.length > 3) {
-            suggestions = await searchMapbox(withCity(street, city), lat, lng);
-          }
-        }
-
-        // 4. Nominatim solo con la calle + ciudad
-        if (suggestions.length === 0) {
-          const street = streetOnly(query);
-          if (street.length > 3) {
-            suggestions = await searchNominatim(withCity(street, city), lat, lng);
-          }
-        }
+        // ── Dirección con # ──────────────────────────────────────
+        // 1. Photon con dirección completa + ciudad
+        suggestions = await searchPhoton(qCity, lat, lng);
+        // 2. Mapbox con dirección completa + ciudad
+        if (!suggestions.length) suggestions = await searchMapbox(qCity, lat, lng);
+        // 3. Photon con solo la calle + ciudad
+        if (!suggestions.length) suggestions = await searchPhoton(withCity(stripHouseNumber(qNorm), city), lat, lng);
+        // 4. Mapbox con solo la calle + ciudad
+        if (!suggestions.length) suggestions = await searchMapbox(withCity(stripHouseNumber(qNorm), city), lat, lng);
       } else {
-        // ── POI / barrio / nombre de lugar ─────────────────────────
-        // 1. Nominatim con ciudad auto-detectada
-        suggestions = await searchNominatim(withCity(query, city), lat, lng);
-
+        // ── POI / barrio / nombre ────────────────────────────────
+        // 1. Photon con ciudad
+        suggestions = await searchPhoton(qCity, lat, lng);
         // 2. Mapbox con ciudad
-        if (suggestions.length === 0) {
-          suggestions = await searchMapbox(withCity(query, city), lat, lng);
-        }
-
-        // 3. Nominatim sin ciudad (por si la ciudad añadida confunde)
-        if (suggestions.length === 0 && city) {
-          suggestions = await searchNominatim(query, lat, lng);
-        }
-
+        if (!suggestions.length) suggestions = await searchMapbox(qCity, lat, lng);
+        // 3. Photon sin ciudad (por si confunde)
+        if (!suggestions.length && city) suggestions = await searchPhoton(qNorm, lat, lng);
         // 4. Mapbox sin ciudad
-        if (suggestions.length === 0 && city) {
-          suggestions = await searchMapbox(query, lat, lng);
-        }
+        if (!suggestions.length && city) suggestions = await searchMapbox(qNorm, lat, lng);
       }
 
       return new Response(JSON.stringify({ suggestions }), {
@@ -225,14 +181,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(
-      JSON.stringify({ error: 'invalid action' }),
-      { status: 400, headers: CORS },
-    );
+    return new Response(JSON.stringify({ error: 'invalid action' }), { status: 400, headers: CORS });
   } catch (e) {
-    return new Response(
-      JSON.stringify({ error: String(e) }),
-      { status: 500, headers: CORS },
-    );
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: CORS });
   }
 });
