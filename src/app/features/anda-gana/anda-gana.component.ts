@@ -400,16 +400,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         class="flex items-start gap-3 px-4 py-3 hover:bg-orange-50 active:bg-orange-100 transition-colors text-left border-b border-slate-50 last:border-0">
                         <span class="material-symbols-outlined text-orange-400 mt-0.5 flex-shrink-0" style="font-size:16px">location_on</span>
                         <div class="min-w-0">
-                          <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                          <p class="text-slate-800 text-sm font-semibold truncate" [innerHTML]="highlightMatch(s.text, addressQuery())"></p>
                           <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
                         </div>
                       </button>
                     }
                   </div>
                 } @else if (addressQuery().length > 1) {
-                  @if (addressNoResults()) {
+                  @if (addressLoading()) {
+                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-1.5">
+                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
+                    </div>
+                  } @else if (addressNoResults()) {
                     <div class="px-4 py-4 text-center">
-                      <p class="text-slate-500 text-sm mb-2">No encontramos ese lugar</p>
+                      <p class="text-slate-500 text-sm mb-2">No encontramos resultados</p>
                       <button (mousedown)="$event.preventDefault(); useMapPin()"
                         class="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-100 transition-colors">
                         <span class="material-symbols-outlined" style="font-size:14px">pin_drop</span>
@@ -536,7 +540,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               class="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
                               <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">location_on</span>
                               <div class="flex-1 min-w-0">
-                                <p class="text-slate-800 text-xs font-semibold truncate">{{ s.text }}</p>
+                                <p class="text-slate-800 text-xs font-semibold truncate" [innerHTML]="highlightMatch(s.text, addressQuery())"></p>
                                 <p class="text-slate-400 text-[10px] truncate">{{ s.place_name }}</p>
                               </div>
                             </button>
@@ -593,7 +597,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           class="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
                           <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
                           <div class="flex-1 min-w-0">
-                            <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                            <p class="text-slate-800 text-sm font-semibold truncate" [innerHTML]="highlightMatch(s.text, addressQuery())"></p>
                             <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
                           </div>
                           <span class="text-orange-500 text-xs font-black flex-shrink-0">{{ s.distKm }} km</span>
@@ -6050,6 +6054,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _offerChannel: RealtimeChannel | null = null;
   private _mapboxPromise:   Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
+  private _mbxSessionToken: string | null = null;
   private _tripDebounce:    ReturnType<typeof setTimeout> | null = null;
   private _destMarker:      any = null;
   private _currentLat = 4.6097;
@@ -6332,84 +6337,102 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.addressQuery.set(query);
     this.addressNoResults.set(false);
     if (this._searchDebounce) clearTimeout(this._searchDebounce);
-    if (!query.trim() || query.length < 2) { this.addressSuggestions.set([]); return; }
-    this._searchDebounce = setTimeout(() => this._searchPlaces(query), 150);
+    if (!query.trim() || query.length < 2) {
+      this.addressSuggestions.set([]);
+      this.addressLoading.set(false);
+      return;
+    }
+    // 300ms debounce — no gastar requests mientras el usuario escribe
+    this._searchDebounce = setTimeout(() => this._searchPlacesV6(query), 300);
   }
 
-  private async _searchPlaces(query: string) {
+  /**
+   * Mapbox Geocoding API v6 — /suggest para autocompletado en tiempo real.
+   * Usa proximity + bbox del GPS actual para priorizar resultados cercanos.
+   * Si no hay GPS, usa el bbox de Colombia como fallback.
+   */
+  private async _searchPlacesV6(query: string) {
+    // Cancelar request anterior para no recibir respuestas fuera de orden
     if (this._addressAbort) this._addressAbort.abort();
     this._addressAbort = new AbortController();
     const sig = this._addressAbort.signal;
 
+    // Renovar session token si no existe (cada sesión de búsqueda = 1 token)
+    if (!this._mbxSessionToken) {
+      this._mbxSessionToken = typeof crypto?.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+
+    this.addressLoading.set(true);
+    this.addressSuggestions.set([]);
+
     const lat = this._currentLat;
     const lng = this._currentLng;
+    const hasGps = this.gpsStatus() === 'granted';
 
-    // ── Google Places (New) — fuente principal, encuentra conjuntos, edificios, POIs
-    const googleUrl = 'https://places.googleapis.com/v1/places:searchText';
-    const googleBody = {
-      textQuery: query,
-      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 30000 } },
-      languageCode: 'es',
-      maxResultCount: 8,
-    };
+    // Parámetros base del endpoint /suggest de la v6
+    const params = new URLSearchParams({
+      q:             query,
+      access_token:  this.MAPBOX_TOKEN,
+      session_token: this._mbxSessionToken,
+      language:      'es',
+      country:       'co',
+      types:         'address,poi,neighborhood,place,locality',
+      limit:         '5',
+    });
 
-    // ── Mapbox — complementa con direcciones y calles
-    const d = 0.25;
-    const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
-    const mbxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-      + `?access_token=${this.MAPBOX_TOKEN}&autocomplete=true&language=es`
-      + `&country=co&limit=5&types=poi,place,address,neighborhood,locality`
-      + `&proximity=${lng},${lat}&bbox=${bbox}`;
+    if (hasGps) {
+      // Proximidad exacta del usuario: prioriza resultados más cercanos
+      params.set('proximity', `${lng},${lat}`);
+      // BBox ajustado ±0.4° alrededor del usuario (≈45 km de radio)
+      const d = 0.4;
+      params.set('bbox', `${lng - d},${lat - d},${lng + d},${lat + d}`);
+    } else {
+      // Fallback: Colombia completa
+      params.set('bbox', '-79.0,-4.0,-66.5,12.5');
+      params.set('proximity', 'ip');
+    }
 
     try {
-      const [googleRes, mbxRes] = await Promise.all([
-        fetch(googleUrl, {
-          method: 'POST', signal: sig,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': this.GOOGLE_PLACES_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location',
-          },
-          body: JSON.stringify(googleBody),
-        }),
-        fetch(mbxUrl, { signal: sig }),
-      ]);
+      const res = await fetch(
+        `https://api.mapbox.com/search/searchbox/v1/suggest?${params}`,
+        { signal: sig }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
 
-      const googleJson = await googleRes.json();
-      const mbxJson = await mbxRes.json();
+      // Normalizar al formato interno { id, text, place_name, mapbox_id }
+      const results = (json.suggestions ?? []).map((s: any) => ({
+        id:         s.mapbox_id,
+        mapbox_id:  s.mapbox_id,
+        text:       s.name ?? s.matching_text ?? '',
+        place_name: s.full_address ?? s.place_formatted ?? '',
+        center:     null as [number, number] | null, // se resuelve en /retrieve al seleccionar
+      }));
 
-      // Convertir Google Places al formato interno
-      const googleFeatures = (googleJson.places ?? []).map((p: any, i: number) => {
-        const fLat = p.location?.latitude ?? lat;
-        const fLng = p.location?.longitude ?? lng;
-        return {
-          id: `gpl-${i}`,
-          text: p.displayName?.text ?? '',
-          place_name: p.formattedAddress ?? '',
-          center: [fLng, fLat] as [number, number],
-          distKm: this._distKm(lat, lng, fLat, fLng),
-        };
-      });
-
-      // Convertir Mapbox al formato interno
-      const mbxFeatures = (mbxJson.features ?? []).map((f: any) => {
-        const [fLng, fLat] = f.center ?? [lng, lat];
-        return { ...f, id: `mbx-${f.id}`, distKm: this._distKm(lat, lng, fLat, fLng) };
-      });
-
-      // Google primero (mejor para POIs/conjuntos), Mapbox complementa
-      const seen = new Set<string>();
-      const merged: any[] = [];
-      for (const f of [...googleFeatures, ...mbxFeatures]) {
-        const key = `${(+f.center[0]).toFixed(3)},${(+f.center[1]).toFixed(3)}`;
-        if (!seen.has(key)) { seen.add(key); merged.push(f); }
-      }
-      merged.sort((a, b) => (a.distKm ?? 999) - (b.distKm ?? 999));
-
-      const results = merged.slice(0, 8);
       this.addressSuggestions.set(results);
-      this.addressNoResults.set(results.length === 0 && this.addressQuery().trim().length >= 2);
-    } catch { /* abortado o sin red */ }
+      this.addressNoResults.set(results.length === 0);
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return; // request cancelado intencionalmente
+      this.addressSuggestions.set([]);
+      this.addressNoResults.set(true);
+    } finally {
+      this.addressLoading.set(false);
+    }
+  }
+
+  /**
+   * Resalta en negrita la parte del texto que coincide con la búsqueda.
+   * Escapa HTML para evitar XSS, luego envuelve el match en <b>.
+   */
+  highlightMatch(text: string, query: string): string {
+    const esc = (s: string) => s.replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
+    if (!query || !text) return esc(text);
+    const escaped = esc(text);
+    const pattern = esc(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(new RegExp(`(${pattern})`, 'gi'), '<b>$1</b>');
   }
 
   /** Cierra la búsqueda y deja que el usuario mueva el pin en el mapa */
@@ -6418,7 +6441,36 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.originEditOpen.set(false);
   }
 
-  selectAddress(feature: any) {
+  async selectAddress(feature: any) {
+    // Sugerencia v6: no trae coordenadas, hay que llamar /retrieve
+    if (feature.mapbox_id && !feature.center) {
+      this.addressLoading.set(true);
+      try {
+        const params = new URLSearchParams({
+          access_token:  this.MAPBOX_TOKEN,
+          session_token: this._mbxSessionToken ?? '',
+        });
+        const res = await fetch(
+          `https://api.mapbox.com/search/searchbox/v1/retrieve/${feature.mapbox_id}?${params}`
+        );
+        if (res.ok) {
+          const json = await res.json();
+          const f = json.features?.[0];
+          if (f?.geometry?.coordinates) {
+            feature = {
+              ...feature,
+              center: f.geometry.coordinates as [number, number],
+              place_name: f.properties?.full_address ?? feature.place_name,
+            };
+          }
+        }
+      } catch { /* usa coordenadas que tenga */ } finally {
+        this.addressLoading.set(false);
+        // Invalidar session token — una sesión = suggest + retrieve
+        this._mbxSessionToken = null;
+      }
+    }
+
     const coords: [number, number] = feature.center ?? feature.geometry?.coordinates;
     if (!coords) return;
     const [lng, lat] = coords;
@@ -6430,24 +6482,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     if (!this._map) return;
 
-    // Volar al lugar seleccionado
-    this._map.flyTo({ center: [lng, lat], zoom: 16, speed: 1.5, essential: true });
+    this._map.easeTo({ center: [lng, lat], zoom: 16, duration: 600, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
 
-    // Mover marcador existente o crear uno nuevo
     if (this._userMarker) {
       this._userMarker.setLngLat([lng, lat]);
     } else {
       const mapboxgl = (window as any).mapboxgl;
       if (mapboxgl) {
         const el = document.createElement('div');
-        el.style.cssText = 'width:20px;height:20px;border-radius:50%;background:#FF6600;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+        el.style.cssText = 'width:20px;height:20px;border-radius:50%;background:#7B2FFF;border:3px solid #fff;box-shadow:0 2px 8px rgba(123,47,255,0.4);';
         this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
           .setLngLat([lng, lat])
           .addTo(this._map);
       }
     }
 
-    // Si ya hay destino seleccionado, redibujar la ruta desde el nuevo origen
     const dest = this.tripDest();
     if (dest) this._drawRoute(dest.lng, dest.lat);
   }
