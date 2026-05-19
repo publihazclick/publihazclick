@@ -5,13 +5,10 @@ const CORS = {
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w';
 
-// Only route to Mapbox when the query has an explicit house-number indicator (#, No., or "numero")
-// e.g. "Carrera 68H # 74B-32" → Mapbox, "Calle 72 bogota" → Nominatim
 function isStreetAddress(q: string): boolean {
   return /#/.test(q) || /\bNo\.?\s*\d/i.test(q);
 }
 
-// Clean query for Mapbox: remove "#" and "BARRIO" keyword
 function cleanForMapbox(q: string): string {
   return q
     .replace(/#\s*/g, ' ')
@@ -20,7 +17,6 @@ function cleanForMapbox(q: string): string {
     .trim();
 }
 
-// Clean query for Nominatim: remove house number (# 74B-32) and "BARRIO" keyword
 function cleanForNominatim(q: string): string {
   return q
     .replace(/#\s*[\dA-Za-z]+\s*[-–]\s*\d+/g, '')
@@ -91,17 +87,54 @@ async function searchNominatim(query: string, lat?: number, lng?: number): Promi
   });
 }
 
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  const params = new URLSearchParams({
+    lat: String(lat), lon: String(lng),
+    format: 'json', 'accept-language': 'es', zoom: '16',
+  });
+  const res = await fetch(
+    'https://nominatim.openstreetmap.org/reverse?' + params,
+    { headers: { 'User-Agent': 'movi-app/1.0 (publihazclick.com)' } },
+  );
+  const json = await res.json();
+  if (json.error) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  const parts = (json.display_name as string).split(',');
+  // Toma los primeros 2-3 fragmentos para un nombre legible
+  return parts.slice(0, 3).map((p: string) => p.trim()).join(', ');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
-    const { action, query, lat, lng } = await req.json();
+    const body = await req.json();
+    const { action, query, lat, lng } = body;
 
+    // ── Geocodificación inversa ────────────────────────────────────
+    if (action === 'reverse') {
+      const name = await reverseGeocode(lat, lng);
+      return new Response(JSON.stringify({ name }), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Búsqueda con fallback doble ────────────────────────────────
     if (action === 'search' || action === 'autocomplete') {
-      // Route to the right engine based on query type
-      const suggestions = isStreetAddress(query)
-        ? await searchMapbox(query, lat, lng)
-        : await searchNominatim(query, lat, lng);
+      let suggestions: any[];
+
+      if (isStreetAddress(query)) {
+        // Dirección con número → Mapbox primero, Nominatim como fallback
+        suggestions = await searchMapbox(query, lat, lng);
+        if (suggestions.length === 0) {
+          suggestions = await searchNominatim(query, lat, lng);
+        }
+      } else {
+        // POI / nombre de lugar → Nominatim primero, Mapbox como fallback
+        suggestions = await searchNominatim(query, lat, lng);
+        if (suggestions.length === 0) {
+          suggestions = await searchMapbox(query, lat, lng);
+        }
+      }
 
       return new Response(JSON.stringify({ suggestions }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },

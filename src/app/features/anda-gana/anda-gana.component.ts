@@ -356,6 +356,30 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
+        <!-- Overlay pin-drop — aparece cuando el usuario toca "Marcar en el mapa" -->
+        @if (tripPinDrop()) {
+          <div class="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none">
+            <!-- Mira central -->
+            <div style="position:relative;width:40px;height:40px">
+              <div style="position:absolute;inset:0;border:3px solid #f97316;border-radius:50%;animation:ping 1.2s cubic-bezier(0,0,0.2,1) infinite;opacity:0.5"></div>
+              <div style="position:absolute;inset:6px;background:#f97316;border-radius:50%;border:2px solid #fff"></div>
+            </div>
+          </div>
+          <!-- Instrucción + botón cancelar -->
+          <div class="absolute bottom-4 left-4 right-4 z-40 flex flex-col items-center gap-2">
+            <div class="px-4 py-2.5 rounded-2xl flex items-center gap-2 shadow-xl shadow-black/40"
+              style="background:rgba(249,115,22,0.95);backdrop-filter:blur(6px)">
+              <span class="material-symbols-outlined text-white" style="font-size:18px">touch_app</span>
+              <p class="text-white text-sm font-black">Toca en el mapa para marcar el destino</p>
+            </div>
+            <button (click)="cancelPinDrop()"
+              class="px-4 py-2 rounded-xl text-slate-700 text-xs font-bold active:scale-95 transition"
+              style="background:rgba(255,255,255,0.9)">
+              Cancelar
+            </button>
+          </div>
+        }
+
         <!-- Overlay ruta pasajero — aparece cuando el conductor acepta el viaje -->
         @if (tripAccepted()) {
           <div class="absolute top-3 left-3 right-3 z-30 pointer-events-none">
@@ -651,9 +675,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         Buscando lugares...
                       </div>
                     } @else if (tripNoResults()) {
-                      <div class="px-4 py-4 text-center">
-                        <p class="text-slate-500 text-sm mb-2">No encontramos ese destino</p>
-                        <p class="text-slate-400 text-xs">Intenta con el nombre del barrio o una dirección cercana</p>
+                      <div class="px-4 py-5 text-center flex flex-col items-center gap-3">
+                        <span class="material-symbols-outlined text-slate-300" style="font-size:36px">location_off</span>
+                        <div>
+                          <p class="text-slate-600 text-sm font-bold">No encontramos ese destino</p>
+                          <p class="text-slate-400 text-xs mt-0.5">Intenta agregar la ciudad, o marca el punto directamente en el mapa</p>
+                        </div>
+                        <button (mousedown)="$event.preventDefault(); useMapPin(true)"
+                          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-black active:scale-95 transition-all"
+                          style="background:linear-gradient(135deg,#f97316,#fb923c)">
+                          <span class="material-symbols-outlined" style="font-size:18px">pin_drop</span>
+                          Marcar en el mapa
+                        </button>
                       </div>
                     }
                   }
@@ -5677,6 +5710,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripDistKm      = signal(0);
   tripSending     = signal(false);
   tripSent        = signal(false);
+  tripPinDrop     = signal(false);
   // true mientras haya solicitud activa O viaje aceptado en curso
   readonly tripIsActive = computed(() =>
     this.tripSent() || !!this.currentTripRequestId() || !!this.tripAccepted(),
@@ -6674,10 +6708,69 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return escaped.replace(new RegExp(`(${pattern})`, 'gi'), '<b>$1</b>');
   }
 
-  /** Cierra la búsqueda y deja que el usuario mueva el pin en el mapa */
-  useMapPin() {
+  /** Activa el modo pin-drop en el mapa para seleccionar destino */
+  useMapPin(forTrip = false) {
     this.closeAddressEdit();
     this.originEditOpen.set(false);
+    if (forTrip) {
+      this.tripOpen.set(false);
+      this.tripQuery.set('');
+      this.tripSuggestions.set([]);
+      this.tripPinDrop.set(true);
+      this._enableMapPinDrop();
+    }
+  }
+
+  private _mapPinHandler: ((e: any) => void) | null = null;
+  private _pinDropMarker: any = null;
+
+  private _enableMapPinDrop() {
+    if (!this._map) return;
+    this._map.getCanvas().style.cursor = 'crosshair';
+    this._mapPinHandler = (e: any) => this._onMapPinClick(e.lngLat.lat, e.lngLat.lng);
+    this._map.once('click', this._mapPinHandler);
+  }
+
+  private async _onMapPinClick(lat: number, lng: number) {
+    if (!this._map) return;
+    this._map.getCanvas().style.cursor = '';
+    this.tripPinDrop.set(false);
+
+    // Marcador provisional mientras se hace reverse geocode
+    const mapboxgl = (window as any).mapboxgl;
+    if (this._pinDropMarker) { try { this._pinDropMarker.remove(); } catch {} }
+    if (mapboxgl) {
+      const el = document.createElement('div');
+      el.innerHTML = `<div style="width:32px;height:32px;background:#4f46e5;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 12px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center"><span class='material-symbols-outlined' style='color:#fff;font-size:16px'>place</span></div>`;
+      this._pinDropMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng, lat]).addTo(this._map);
+    }
+
+    // Reverse geocode via Edge Function
+    let name = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    try {
+      const res = await fetch(this.AG_PLACES_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': this.SUPABASE_ANON, 'Authorization': `Bearer ${this.SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'reverse', lat, lng }),
+      });
+      const json = await res.json();
+      if (json.name) name = json.name;
+    } catch {}
+
+    if (this._pinDropMarker) { try { this._pinDropMarker.remove(); } catch {} this._pinDropMarker = null; }
+
+    this.tripDest.set({ name, lat, lng });
+    this.cdr.markForCheck();
+    this._drawRoute(lng, lat);
+  }
+
+  cancelPinDrop() {
+    this.tripPinDrop.set(false);
+    if (this._map) {
+      this._map.getCanvas().style.cursor = '';
+      if (this._mapPinHandler) { this._map.off('click', this._mapPinHandler); this._mapPinHandler = null; }
+    }
   }
 
   async selectAddress(feature: any) {
@@ -8311,14 +8404,34 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _tripSessionToken: string | null = null;
 
+  private _detectedCity(): string {
+    const addr = this.currentAddress() ?? '';
+    const cities = ['Bogotá','Medellín','Cali','Barranquilla','Cartagena','Bucaramanga',
+      'Pereira','Manizales','Cúcuta','Ibagué','Neiva','Villavicencio','Armenia','Pasto','Montería'];
+    for (const c of cities) {
+      if (addr.toLowerCase().includes(c.toLowerCase())) return c;
+    }
+    return '';
+  }
+
   private async _searchTripPlaces(query: string) {
     const reqId = ++this._tripReqId;
     this.tripLoading.set(true);
     this.tripNoResults.set(false);
     this.tripSuggestions.set([]);
     try {
-      const results = await this._searchNominatim(query);
+      let results = await this._searchNominatim(query);
       if (reqId !== this._tripReqId) return;
+
+      // Si 0 resultados y tenemos ciudad detectada por GPS, reintentamos con ciudad
+      if (results.length === 0) {
+        const city = this._detectedCity();
+        if (city && !query.toLowerCase().includes(city.toLowerCase())) {
+          results = await this._searchNominatim(`${query} ${city}`);
+          if (reqId !== this._tripReqId) return;
+        }
+      }
+
       this.tripSuggestions.set(results);
       this.tripNoResults.set(results.length === 0);
     } catch {
