@@ -6065,8 +6065,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _lastTs:    number | null = null;
   private _waitingInterval: ReturnType<typeof setInterval> | null = null;
   private _offerChannel: RealtimeChannel | null = null;
-  private _mapboxPromise:   Promise<void> | null = null;
-  private _googleMapsPromise: Promise<void> | null = null;
+  private _mapboxPromise: Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _mbxSessionToken: string | null = null;
   private _addressReqId = 0;
@@ -6328,72 +6327,44 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this._mapboxPromise;
   }
 
-  // ── Google Maps / Places (búsqueda de lugares) ─────────────────
-  private loadGoogleMaps(): Promise<void> {
-    const w = window as any;
-    if (w.google?.maps?.places) return Promise.resolve();
-    if (this._googleMapsPromise) return this._googleMapsPromise;
-    this._googleMapsPromise = new Promise<void>((resolve, reject) => {
-      const cbName = '__gmInit' + Date.now();
-      w[cbName] = () => { this._googleMapsPromise = null; resolve(); };
-      const s = document.createElement('script');
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${this.GOOGLE_PLACES_KEY}&libraries=places&language=es&callback=${cbName}`;
-      s.async = true;
-      s.onerror = () => { this._googleMapsPromise = null; reject(new Error('Google Maps no cargó')); };
-      document.head.appendChild(s);
-    });
-    return this._googleMapsPromise;
-  }
-
+  // ── Google Places REST (sin SDK, fetch directo) ────────────────
   private async _getGooglePlaceCoords(placeId: string): Promise<[number, number] | null> {
-    await this.loadGoogleMaps();
-    const google = (window as any).google;
-    const dummy = document.createElement('div');
-    const svc = new google.maps.places.PlacesService(dummy);
-    return new Promise((resolve) => {
-      svc.getDetails({ placeId, fields: ['geometry'] }, (place: any, status: string) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
-          resolve(null); return;
-        }
-        resolve([place.geometry.location.lng(), place.geometry.location.lat()]);
-      });
-    });
+    const url = `https://maps.googleapis.com/maps/api/place/details/json`
+      + `?place_id=${placeId}&fields=geometry&key=${this.GOOGLE_PLACES_KEY}&language=es`;
+    try {
+      const json = await (await fetch(url)).json();
+      const loc = json.result?.geometry?.location;
+      if (!loc) return null;
+      return [loc.lng, loc.lat];
+    } catch { return null; }
   }
 
   private async _googleAutocomplete(query: string): Promise<any[]> {
-    await this.loadGoogleMaps();
-    const google = (window as any).google;
     const lat = this._currentLat;
     const lng = this._currentLng;
     const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
-    const req: any = {
-      input: query,
-      componentRestrictions: { country: 'co' },
-      language: 'es',
-    };
-    if (hasGps) {
-      req.location = new google.maps.LatLng(lat, lng);
-      req.radius = 50000;
-      req.strictBounds = false;
-    }
-    return new Promise((resolve) => {
-      new google.maps.places.AutocompleteService().getPlacePredictions(
-        req,
-        (predictions: any[], status: string) => {
-          const OK = google.maps.places.PlacesServiceStatus.OK;
-          if (status !== OK || !predictions?.length) { resolve([]); return; }
-          resolve(predictions.slice(0, 6).map((p: any) => ({
-            id:         p.place_id,
-            place_id:   p.place_id,
-            text:       p.structured_formatting?.main_text ?? p.description,
-            place_name: p.description,
-            center:     null,
-            distanceKm: null,
-            _dist:      0,
-          })));
-        }
-      );
+    const params = new URLSearchParams({
+      input:      query,
+      components: 'country:co',
+      language:   'es',
+      key:        this.GOOGLE_PLACES_KEY,
     });
+    if (hasGps) {
+      params.set('location', `${lat},${lng}`);
+      params.set('radius',   '50000');
+    }
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`;
+    const json = await (await fetch(url)).json();
+    if (!json.predictions?.length) return [];
+    return json.predictions.slice(0, 6).map((p: any) => ({
+      id:         p.place_id,
+      place_id:   p.place_id,
+      text:       p.structured_formatting?.main_text ?? p.description,
+      place_name: p.description,
+      center:     null,
+      distanceKm: null,
+      _dist:      0,
+    }));
   }
 
   // ── GPS + mapa ─────────────────────────────────────────────────
