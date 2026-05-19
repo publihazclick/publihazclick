@@ -928,8 +928,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- Categoría de viaje -->
               <div class="px-4 pt-2 pb-1">
-                <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2">Categoría</p>
-                <div class="flex gap-1.5 overflow-x-auto pb-1">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Categoría</p>
+                  @if (tripIsActive()) {
+                    <span class="flex items-center gap-1 text-slate-400 text-[10px] font-semibold">
+                      <span class="material-symbols-outlined" style="font-size:13px">lock</span>Bloqueado
+                    </span>
+                  }
+                </div>
+                <div class="flex gap-1.5 overflow-x-auto pb-1"
+                  [style.pointerEvents]="tripIsActive() ? 'none' : 'auto'"
+                  [style.opacity]="tripIsActive() ? '0.45' : '1'">
                   @for (cat of tripCategories; track cat.key) {
                     <button (click)="selectTripCategory(cat.key)"
                       class="flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all active:scale-95"
@@ -950,7 +959,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- Accesibilidad -->
               <div class="px-4 pt-1 pb-1">
-                <div class="flex gap-1.5 flex-wrap">
+                <div class="flex gap-1.5 flex-wrap"
+                  [style.pointerEvents]="tripIsActive() ? 'none' : 'auto'"
+                  [style.opacity]="tripIsActive() ? '0.45' : '1'">
                   <button (click)="toggleAccessibility('pets')"
                     class="px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all"
                     [style.background]="tripAccessibility().pets ? '#dcfce7' : '#f8fafc'"
@@ -1007,7 +1018,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <!-- Método de pago -->
               <div class="px-4 pt-2 pb-1">
                 <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2">Método de pago</p>
-                <div class="grid grid-cols-3 gap-1.5">
+                <div class="grid grid-cols-3 gap-1.5"
+                  [style.pointerEvents]="tripIsActive() ? 'none' : 'auto'"
+                  [style.opacity]="tripIsActive() ? '0.45' : '1'">
                   @for (pm of paymentMethods; track pm.value) {
                     <button (click)="tripPayment.set(pm.value)"
                       class="flex flex-col items-center gap-1 py-2 rounded-xl border transition-all active:scale-95"
@@ -5603,6 +5616,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripDistKm      = signal(0);
   tripSending     = signal(false);
   tripSent        = signal(false);
+  // true mientras haya solicitud activa O viaje aceptado en curso
+  readonly tripIsActive = computed(() =>
+    this.tripSent() || !!this.currentTripRequestId() || !!this.tripAccepted(),
+  );
   // Pantalla de espera estilo inDrive
   waitingDriverCount  = signal(0);
   waitingDriverColors = signal<string[]>([]);
