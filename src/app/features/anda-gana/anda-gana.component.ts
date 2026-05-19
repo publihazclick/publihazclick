@@ -6479,6 +6479,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     if (hasGps) {
       params.set('proximity', `${lng},${lat}`);
+      // bbox: caja de ~65 km alrededor del usuario — Mapbox solo devuelve resultados dentro de ella
+      const D = 0.6;
+      params.set('bbox', `${(lng-D).toFixed(5)},${(lat-D).toFixed(5)},${(lng+D).toFixed(5)},${(lat+D).toFixed(5)}`);
     }
     params.set('limit', '10');
 
@@ -8052,8 +8055,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     if (hasGps) {
       params.set('proximity', `${lng},${lat}`);
+      // bbox: caja de ~65 km alrededor del usuario — Mapbox solo devuelve resultados dentro de ella
+      const D = 0.6;
+      params.set('bbox', `${(lng-D).toFixed(5)},${(lat-D).toFixed(5)},${(lng+D).toFixed(5)},${(lat+D).toFixed(5)}`);
     }
-    params.set('limit', '10'); // pedir más para tener margen al filtrar
+    params.set('limit', '10');
 
     try {
       const res = await fetch(
@@ -8077,7 +8083,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         };
       });
 
-      // Ordenar de más cercano a más lejano (Mapbox ya filtra por país con country:co)
+      // Ordenar de más cercano a más lejano (Mapbox ya filtra por ciudad con bbox)
       const results = raw
         .sort((a: any, b: any) => a._dist - b._dist)
         .slice(0, 6);
