@@ -6497,54 +6497,138 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     mapboxgl.accessToken = this.MAPBOX_TOKEN;
     this._map = new mapboxgl.Map({
       container,
-      style:   'mapbox://styles/mapbox/navigation-day-v1',
+      style:   'mapbox://styles/mapbox/dark-v11',
       center:  [lng, lat],
       zoom:    15,
       attributionControl: false,
+      logoPosition:       'bottom-left',
       failIfMajorPerformanceCaveat: false,
+      dragRotate:  false,
+      pitchWithRotate: false,
     });
 
-    this._map.addControl(new mapboxgl.AttributionControl({ compact: true }));
-    this._map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+    // Deshabilitar rotación táctil
+    this._map.touchZoomRotate?.disableRotation?.();
+
+    // Saturación reducida al 40% (−60%) para no competir con UI
+    container.style.filter = 'saturate(0.4)';
+
+    // Ocultar logo de Mapbox
+    const logoEl = container.querySelector?.('.mapboxgl-ctrl-logo') as HTMLElement | null;
+    if (logoEl) logoEl.style.display = 'none';
+
+    // Controles custom minimalistas (zoom) — esquina inferior derecha del contenedor
+    if (!container.querySelector('.ag-zoom-ctrl')) {
+      const zoomBox = document.createElement('div');
+      zoomBox.className = 'ag-zoom-ctrl';
+      zoomBox.style.cssText = `
+        position:absolute;bottom:80px;right:12px;z-index:10;
+        display:flex;flex-direction:column;gap:4px;
+      `;
+      const btnStyle = `
+        width:36px;height:36px;border-radius:10px;border:none;cursor:pointer;
+        background:rgba(18,18,18,0.85);backdrop-filter:blur(8px);
+        color:#E0E0E0;font-size:20px;font-weight:300;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 2px 8px rgba(0,0,0,0.45);
+        font-family:'Inter','SF Pro Display',sans-serif;letter-spacing:-0.02em;
+        transition:background 0.15s;
+      `;
+      const btnIn  = document.createElement('button');
+      const btnOut = document.createElement('button');
+      btnIn.style.cssText  = btnStyle;
+      btnOut.style.cssText = btnStyle;
+      btnIn.textContent  = '+';
+      btnOut.textContent = '−';
+      btnIn.addEventListener('click',  () => this._map?.zoomIn({ duration: 350 }));
+      btnOut.addEventListener('click', () => this._map?.zoomOut({ duration: 350 }));
+      btnIn.addEventListener('mouseover',  () => { btnIn.style.background  = 'rgba(123,47,255,0.8)'; });
+      btnIn.addEventListener('mouseout',   () => { btnIn.style.background  = 'rgba(18,18,18,0.85)'; });
+      btnOut.addEventListener('mouseover', () => { btnOut.style.background = 'rgba(123,47,255,0.8)'; });
+      btnOut.addEventListener('mouseout',  () => { btnOut.style.background = 'rgba(18,18,18,0.85)'; });
+      zoomBox.appendChild(btnIn);
+      zoomBox.appendChild(btnOut);
+      container.style.position = 'relative';
+      container.appendChild(zoomBox);
+    }
 
     this.noDriversNearby.set(true);
 
     this._map.once('load', () => {
-      // Cargar vehículos cuando el mapa esté completamente renderizado (tiles listos)
-      this._map!.once('idle', () => this._loadVehicleMarkers(lat, lng));
+      const m = this._map!;
 
-      // Marcador de posición del usuario
+      // ── Paleta premium ──────────────────────────────────────────
+      const safeSet = (id: string, prop: string, val: any) => {
+        try { if (m.getLayer(id)) m.setPaintProperty(id, prop, val); } catch {}
+      };
+
+      // Fondo
+      safeSet('background', 'background-color', '#121212');
+
+      // Agua
+      ['water', 'waterway-river-canal', 'waterway'].forEach(id =>
+        safeSet(id, 'fill-color', '#0D1B2A'));
+
+      // Vías principales
+      ['road-motorway-trunk', 'road-primary', 'road-primary-case',
+       'road-motorway-trunk-case', 'bridge-motorway-trunk', 'bridge-primary'].forEach(id =>
+        safeSet(id, 'line-color', '#333333'));
+
+      // Vías secundarias / locales
+      ['road-secondary-tertiary', 'road-street', 'road-service-link-track',
+       'road-secondary-tertiary-case', 'road-street-case',
+       'bridge-secondary-tertiary', 'bridge-street',
+       'tunnel-motorway-trunk', 'tunnel-primary',
+       'tunnel-secondary-tertiary', 'tunnel-street'].forEach(id =>
+        safeSet(id, 'line-color', '#2A2A2A'));
+
+      // Labels / textos
+      m.getStyle().layers.forEach((layer: any) => {
+        if (layer.type === 'symbol') {
+          try { m.setPaintProperty(layer.id, 'text-color', '#E0E0E0'); } catch {}
+          try { m.setPaintProperty(layer.id, 'text-halo-color', '#121212'); } catch {}
+        }
+      });
+
+      // Cargar vehículos cuando el mapa esté completamente renderizado
+      m.once('idle', () => this._loadVehicleMarkers(lat, lng));
+
+      // ── Marcador de posición del usuario ────────────────────────
       const el = document.createElement('div');
       el.style.cssText = `
-        width:32px; height:32px; border-radius:50%;
-        background: radial-gradient(circle, #FF6600 0%, rgba(255,102,0,0.3) 60%, transparent 70%);
-        border: 2px solid #FF6600;
-        box-shadow: 0 0 0 4px rgba(255,102,0,0.2);
-        display:flex; align-items:center; justify-content:center;
-        animation: pulse-ring 1.5s ease-out infinite;
+        width:36px;height:36px;border-radius:50%;
+        background:radial-gradient(circle,#7B2FFF 0%,rgba(123,47,255,0.3) 60%,transparent 70%);
+        border:2.5px solid #7B2FFF;
+        box-shadow:0 0 0 4px rgba(123,47,255,0.2),0 4px 12px rgba(123,47,255,0.4);
+        display:flex;align-items:center;justify-content:center;
+        animation:ag-pulse 1.8s ease-out infinite;
       `;
       const dot = document.createElement('div');
-      dot.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#FF6600;border:2px solid #fff;';
+      dot.style.cssText = `
+        width:12px;height:12px;border-radius:50%;
+        background:#7B2FFF;border:2.5px solid #fff;
+        box-shadow:0 2px 6px rgba(0,0,0,0.4);
+      `;
       el.appendChild(dot);
 
-      // Inyectar keyframes una sola vez
       if (!document.getElementById('ag-map-styles')) {
-        const style = document.createElement('style');
-        style.id = 'ag-map-styles';
-        style.textContent = `
-          @keyframes pulse-ring {
-            0%   { box-shadow: 0 0 0 0px rgba(255,102,0,0.4); }
-            100% { box-shadow: 0 0 0 20px rgba(255,102,0,0); }
+        const s = document.createElement('style');
+        s.id = 'ag-map-styles';
+        s.textContent = `
+          @keyframes ag-pulse {
+            0%   { box-shadow:0 0 0 0px rgba(123,47,255,0.45),0 4px 12px rgba(123,47,255,0.4); }
+            100% { box-shadow:0 0 0 22px rgba(123,47,255,0),0 4px 12px rgba(123,47,255,0.1); }
           }
+          .mapboxgl-ctrl-logo { display:none !important; }
+          .mapboxgl-ctrl-attrib { display:none !important; }
         `;
-        document.head.appendChild(style);
+        document.head.appendChild(s);
       }
 
       this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center', draggable: true })
         .setLngLat([lng, lat])
-        .addTo(this._map);
+        .addTo(m);
 
-      // Al arrastrar el pin, actualizar ubicación y dirección
       this._userMarker.on('dragend', () => {
         const lngLat = this._userMarker!.getLngLat();
         this._currentLat = lngLat.lat;
@@ -6552,11 +6636,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this._reverseGeocode(lngLat.lat, lngLat.lng);
       });
 
-      this._map.resize();
-      // Centrar el mapa en la ubicación del usuario después de renderizar todo
+      m.resize();
       setTimeout(() => {
         if (this._map) {
-          this._map.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
+          this._map.easeTo({ center: [lng, lat], zoom: 15, duration: 900, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
         }
       }, 500);
     });
@@ -6788,89 +6871,93 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Íconos estilo inDrive — vista superior (top-down) ────────────────────
 
-  private _carElement(heading: number, color: string): HTMLElement {
+  private _carElement(heading: number, color: string, offline = false): HTMLElement {
+    const c = offline ? '#666666' : color;
     const outer = document.createElement('div');
-    outer.style.cssText = 'width:18px;height:30px;';
+    outer.style.cssText = `width:28px;height:46px;filter:drop-shadow(0 8px 24px rgba(0,0,0,0.55));opacity:${offline ? '0.65' : '1'};`;
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:18px;height:30px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45));will-change:transform;`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 46" width="18" height="30">
-      <!-- Sombra exterior -->
-      <ellipse cx="14" cy="44.5" rx="10" ry="2" fill="rgba(0,0,0,0.22)"/>
-      <!-- Borde blanco (contraste sobre mapa claro) -->
+    wrap.style.cssText = `width:28px;height:46px;transform:rotate(${heading}deg);will-change:transform;`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 46" width="28" height="46">
+      <!-- Sombra base -->
+      <ellipse cx="14" cy="44.5" rx="10" ry="2" fill="rgba(0,0,0,0.35)"/>
+      <!-- Borde contraste oscuro -->
       <path d="M5,9 C5,4 8,2 14,2 C20,2 23,4 23,9 L23,37 C23,42 20,44 14,44 C8,44 5,42 5,37 Z"
-            fill="white" stroke="white" stroke-width="1"/>
+            fill="rgba(0,0,0,0.6)" stroke="rgba(0,0,0,0.4)" stroke-width="0.5"/>
       <!-- Carrocería principal -->
       <path d="M6,10 C6,5 9,3 14,3 C19,3 22,5 22,10 L22,36 C22,41 19,43 14,43 C9,43 6,41 6,36 Z"
-            fill="${color}"/>
-      <!-- Techo (panel central más claro) -->
+            fill="${c}"/>
+      <!-- Highlight lateral izquierdo -->
+      <path d="M6,12 C6,8 8,6 10,5.5 L10,40 C8,39.5 6,38 6,34 Z"
+            fill="rgba(255,255,255,0.07)"/>
+      <!-- Techo / capó oscuro -->
       <path d="M9,18 C9,16 11,15 14,15 C17,15 19,16 19,18 L19,31 C19,33 17,34 14,34 C11,34 9,33 9,31 Z"
-            fill="rgba(255,255,255,0.18)"/>
-      <!-- Parabrisas delantero -->
+            fill="rgba(0,0,0,0.2)"/>
+      <!-- Parabrisas -->
       <path d="M8,10 C8,7 10,6 14,6 C18,6 20,7 20,10 L19,16 C17,18 11,18 9,16 Z"
-            fill="rgba(196,232,252,0.88)"/>
+            fill="rgba(130,200,255,0.55)"/>
       <!-- Reflejo parabrisas -->
-      <path d="M9,10 C10,8 11,7 14,7 L13.5,14 C12,13.5 10.5,12.5 9,11 Z"
-            fill="rgba(255,255,255,0.35)"/>
+      <path d="M9.5,10.5 C10.5,8.5 12,7.5 14,7 L13.5,14 C12,13.5 10.5,12.5 9.5,11.5 Z"
+            fill="rgba(255,255,255,0.3)"/>
       <!-- Luneta trasera -->
       <path d="M9,32 C11,34 17,34 19,32 L19,37 C17,39 11,39 9,37 Z"
-            fill="rgba(185,220,245,0.70)"/>
-      <!-- Espejos retrovisores -->
-      <rect x="2.5" y="20" width="3.5" height="5.5" rx="1.8" fill="${color}" stroke="rgba(255,255,255,0.75)" stroke-width="0.9"/>
-      <rect x="22" y="20" width="3.5" height="5.5" rx="1.8" fill="${color}" stroke="rgba(255,255,255,0.75)" stroke-width="0.9"/>
-      <!-- Faros delanteros (amarillo-blanco) -->
-      <path d="M6.5,7 L9,6 L9,11 L7,10 Z" fill="#FFFDE7"/>
-      <path d="M21.5,7 L19,6 L19,11 L21,10 Z" fill="#FFFDE7"/>
-      <ellipse cx="7.5" cy="8.5" rx="1.5" ry="1.2" fill="#FDD835"/>
-      <ellipse cx="20.5" cy="8.5" rx="1.5" ry="1.2" fill="#FDD835"/>
-      <!-- Luces traseras (rojo) -->
-      <path d="M6.5,40 L9,41 L9,36 L7,37 Z" fill="#E53935"/>
-      <path d="M21.5,40 L19,41 L19,36 L21,37 Z" fill="#E53935"/>
-      <ellipse cx="7.5" cy="39" rx="1.5" ry="1.1" fill="#FF5252"/>
-      <ellipse cx="20.5" cy="39" rx="1.5" ry="1.1" fill="#FF5252"/>
-      <!-- Flecha de dirección (frente del vehículo) -->
-      <path d="M14,1 L11,4.5 L14,3.5 L17,4.5 Z" fill="rgba(255,255,255,0.95)"/>
+            fill="rgba(100,180,240,0.45)"/>
+      <!-- Espejos -->
+      <rect x="2" y="20" width="4" height="6" rx="2" fill="${c}" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+      <rect x="22" y="20" width="4" height="6" rx="2" fill="${c}" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+      <!-- Faros LED delanteros -->
+      <rect x="7" y="5.5" width="4" height="1.8" rx="0.9" fill="#FFFDE7" opacity="0.9"/>
+      <rect x="17" y="5.5" width="4" height="1.8" rx="0.9" fill="#FFFDE7" opacity="0.9"/>
+      <rect x="7.5" y="5.7" width="3" height="1.2" rx="0.6" fill="#FDD835"/>
+      <rect x="17.5" y="5.7" width="3" height="1.2" rx="0.6" fill="#FDD835"/>
+      <!-- Luces traseras LED -->
+      <rect x="7" y="38" width="4" height="2.5" rx="1.2" fill="#FF1744" opacity="0.85"/>
+      <rect x="17" y="38" width="4" height="2.5" rx="1.2" fill="#FF1744" opacity="0.85"/>
+      <!-- Indicador de frente -->
+      <path d="M14,1.5 L11.5,4.5 L14,3.5 L16.5,4.5 Z" fill="rgba(255,255,255,0.9)"/>
     </svg>`;
     outer.appendChild(wrap);
     return outer;
   }
 
-  private _motoElement(heading: number, color: string): HTMLElement {
+  private _motoElement(heading: number, color: string, offline = false): HTMLElement {
+    const c = offline ? '#666666' : color;
     const outer = document.createElement('div');
-    outer.style.cssText = 'width:10px;height:24px;';
+    outer.style.cssText = `width:14px;height:32px;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));opacity:${offline ? '0.65' : '1'};`;
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:10px;height:24px;transform:rotate(${heading}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45));will-change:transform;`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 36" width="10" height="24">
-      <!-- Sombra exterior -->
-      <ellipse cx="7" cy="35" rx="5" ry="1.5" fill="rgba(0,0,0,0.22)"/>
-      <!-- Rueda trasera (oscura, pequeña) -->
-      <ellipse cx="7" cy="30.5" rx="3.5" ry="3.5" fill="#1e293b"/>
-      <ellipse cx="7" cy="30.5" rx="2" ry="2" fill="#334155"/>
-      <ellipse cx="7" cy="30.5" rx="0.8" ry="0.8" fill="#64748b"/>
-      <!-- Borde blanco carrocería -->
+    wrap.style.cssText = `width:14px;height:32px;transform:rotate(${heading}deg);will-change:transform;`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 36" width="14" height="32">
+      <!-- Sombra base -->
+      <ellipse cx="7" cy="35" rx="5" ry="1.5" fill="rgba(0,0,0,0.35)"/>
+      <!-- Rueda trasera -->
+      <ellipse cx="7" cy="30.5" rx="3.5" ry="3.5" fill="#0f172a"/>
+      <ellipse cx="7" cy="30.5" rx="2.2" ry="2.2" fill="#1e293b"/>
+      <ellipse cx="7" cy="30.5" rx="0.9" ry="0.9" fill="#475569"/>
+      <!-- Borde carrocería -->
       <path d="M4,8 C4,5 5,3.5 7,3.5 C9,3.5 10,5 10,8 L10,26 C10,28.5 9,30 7,30 C5,30 4,28.5 4,26 Z"
-            fill="white"/>
+            fill="rgba(0,0,0,0.5)"/>
       <!-- Carrocería principal -->
-      <path d="M5,9 C5,6 6,4.5 7,4.5 C8,4.5 9,6 9,9 L9,25 C9,27.5 8,29 7,29 C6,29 5,27.5 5,25 Z"
-            fill="${color}"/>
-      <!-- Piloto (vista desde arriba — casco ovalado) -->
-      <ellipse cx="7" cy="18" rx="2.2" ry="2.8" fill="rgba(15,23,42,0.80)"/>
-      <ellipse cx="7" cy="17.2" rx="1.2" ry="0.9" fill="rgba(255,255,255,0.22)"/>
+      <path d="M4.8,9 C4.8,6 5.8,4.5 7,4.5 C8.2,4.5 9.2,6 9.2,9 L9.2,25 C9.2,27.5 8.2,29 7,29 C5.8,29 4.8,27.5 4.8,25 Z"
+            fill="${c}"/>
+      <!-- Highlight lateral -->
+      <path d="M4.8,10 L5.5,4.8 L5.5,28 L4.8,27 Z" fill="rgba(255,255,255,0.1)"/>
+      <!-- Casco piloto -->
+      <ellipse cx="7" cy="18.5" rx="2.4" ry="3" fill="#0f172a"/>
+      <ellipse cx="7" cy="17.5" rx="1.3" ry="1" fill="rgba(255,255,255,0.18)"/>
       <!-- Manillar -->
-      <rect x="1.5" y="11.5" width="11" height="1.8" rx="0.9" fill="#94a3b8"/>
-      <rect x="1.5" y="11.5" width="2.5" height="1.8" rx="0.9" fill="#64748b"/>
-      <rect x="10" y="11.5" width="2.5" height="1.8" rx="0.9" fill="#64748b"/>
-      <!-- Rueda delantera (oscura) -->
-      <ellipse cx="7" cy="5.5" rx="3.5" ry="3.5" fill="#1e293b"/>
-      <ellipse cx="7" cy="5.5" rx="2" ry="2" fill="#334155"/>
-      <ellipse cx="7" cy="5.5" rx="0.8" ry="0.8" fill="#64748b"/>
-      <!-- Faro delantero -->
-      <ellipse cx="7" cy="2.8" rx="2" ry="1.3" fill="#FFFDE7"/>
-      <ellipse cx="7" cy="2.8" rx="1.1" ry="0.7" fill="#FDD835"/>
-      <!-- Flecha de dirección -->
-      <path d="M7,1 L5.2,3.5 L7,2.8 L8.8,3.5 Z" fill="rgba(255,255,255,0.95)"/>
+      <rect x="1" y="12" width="12" height="1.6" rx="0.8" fill="#334155"/>
+      <rect x="1" y="12" width="2.5" height="1.6" rx="0.8" fill="#1e293b"/>
+      <rect x="10.5" y="12" width="2.5" height="1.6" rx="0.8" fill="#1e293b"/>
+      <!-- Rueda delantera -->
+      <ellipse cx="7" cy="5.5" rx="3.5" ry="3.5" fill="#0f172a"/>
+      <ellipse cx="7" cy="5.5" rx="2.2" ry="2.2" fill="#1e293b"/>
+      <ellipse cx="7" cy="5.5" rx="0.9" ry="0.9" fill="#475569"/>
+      <!-- Faro LED -->
+      <ellipse cx="7" cy="2.5" rx="2.2" ry="1.4" fill="#FFFDE7" opacity="0.9"/>
+      <ellipse cx="7" cy="2.5" rx="1.2" ry="0.8" fill="#FDD835"/>
+      <!-- Indicador frente -->
+      <path d="M7,0.8 L5.2,3.5 L7,2.7 L8.8,3.5 Z" fill="rgba(255,255,255,0.9)"/>
       <!-- Luz trasera -->
-      <ellipse cx="7" cy="33" rx="1.8" ry="1.3" fill="#E53935"/>
-      <ellipse cx="7" cy="33" rx="1" ry="0.7" fill="#FF5252"/>
+      <rect x="5" y="31.5" width="4" height="2" rx="1" fill="#FF1744" opacity="0.85"/>
     </svg>`;
     outer.appendChild(wrap);
     return outer;
