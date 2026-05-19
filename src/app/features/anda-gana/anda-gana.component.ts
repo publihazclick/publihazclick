@@ -410,9 +410,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input #addressInput
                     [value]="addressQuery()"
                     (input)="onAddressInput($any($event.target).value)"
+                    (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
                     (keydown.enter)="confirmTypedAddress()"
-                    placeholder="Busca tu dirección o lugar..."
+                    placeholder="Busca o pega tu dirección..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   <button (mousedown)="$event.preventDefault(); confirmTypedAddress()" class="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
@@ -555,9 +556,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <input id="origin-edit-input"
                           [value]="addressQuery()"
                           (input)="onAddressInput($any($event.target).value)"
+                          (paste)="handlePaste($any($event), 'address')"
                           (keydown.escape)="originEditOpen.set(false)"
                           (keydown.enter)="confirmTypedAddress()"
-                          placeholder="Escribe tu punto de salida..."
+                          placeholder="Escribe o pega tu punto de salida..."
                           class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                         <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
                           <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
@@ -613,9 +615,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <input #tripInput
                       [value]="tripQuery()"
                       (input)="onTripQueryInput($any($event.target).value)"
+                      (paste)="handlePaste($any($event), 'trip')"
                       (keydown.escape)="closeTripSearch()"
-                      placeholder="Busca tu destino..."
+                      placeholder="Busca o pega tu destino..."
                       class="flex-1 bg-transparent text-slate-800 text-sm outline-none placeholder-slate-400"/>
+                    <button (click)="pasteClipboard('trip')" title="Pegar dirección"
+                      class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition"
+                      style="background:#fff7ed;border:1px solid #fed7aa">
+                      <span class="material-symbols-outlined text-orange-500" style="font-size:17px">content_paste</span>
+                    </button>
                     <button (click)="closeTripSearch()">
                       <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                     </button>
@@ -2529,9 +2537,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <span class="material-symbols-outlined text-cyan-500" style="font-size:20px">search</span>
                   <input [value]="addressQuery()"
                     (input)="onAddressInput($any($event.target).value)"
+                    (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
                     (keydown.enter)="confirmTypedAddress()"
-                    placeholder="Busca tu dirección o lugar..."
+                    placeholder="Busca o pega tu dirección..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   <button (mousedown)="$event.preventDefault(); confirmTypedAddress()" class="flex-shrink-0 w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center">
                     <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
@@ -6596,6 +6605,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private _addressAbort: AbortController | null = null;
+
+  handlePaste(event: ClipboardEvent, type: 'address' | 'trip') {
+    // El evento paste llega ANTES de que el browser inserte el texto en el input,
+    // así que esperamos un tick para leer el valor final.
+    setTimeout(() => {
+      const val = (event.target as HTMLInputElement).value;
+      if (type === 'address') this.onAddressInput(val);
+      else this.onTripQueryInput(val);
+    }, 0);
+  }
+
+  async pasteClipboard(type: 'address' | 'trip') {
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (!text) return;
+      if (type === 'address') this.onAddressInput(text);
+      else this.onTripQueryInput(text);
+    } catch { /* permiso denegado o API no disponible */ }
+  }
 
   onAddressInput(query: string) {
     this.addressQuery.set(query);
