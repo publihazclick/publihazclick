@@ -6497,7 +6497,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     mapboxgl.accessToken = this.MAPBOX_TOKEN;
     this._map = new mapboxgl.Map({
       container,
-      style:   'mapbox://styles/mapbox/dark-v11',
+      style:   'mapbox://styles/mapbox/standard-dark-v1',
       center:  [lng, lat],
       zoom:    15,
       attributionControl: false,
@@ -6582,10 +6582,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
        'tunnel-secondary-tertiary', 'tunnel-street'].forEach(id =>
         safeSet(id, 'line-color', '#2A2A2A'));
 
-      // Labels / textos
+      // Labels road — propiedades exactas
+      try { m.setPaintProperty('road-label', 'text-size',       12);        } catch {}
+      try { m.setPaintProperty('road-label', 'text-color',      '#A0A0A0'); } catch {}
+      try { m.setPaintProperty('road-label', 'text-halo-color', '#121212'); } catch {}
+      try { m.setPaintProperty('road-label', 'text-halo-width', 1.5);       } catch {}
+
+      // Labels resto de capas símbolo
       m.getStyle().layers.forEach((layer: any) => {
-        if (layer.type === 'symbol') {
-          try { m.setPaintProperty(layer.id, 'text-color', '#E0E0E0'); } catch {}
+        if (layer.type === 'symbol' && layer.id !== 'road-label') {
+          try { m.setPaintProperty(layer.id, 'text-color',      '#E0E0E0'); } catch {}
           try { m.setPaintProperty(layer.id, 'text-halo-color', '#121212'); } catch {}
         }
       });
