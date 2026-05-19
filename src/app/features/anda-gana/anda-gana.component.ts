@@ -8179,8 +8179,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._clearRoute();
   }
 
-  private _calcPrice(km: number, vehicle: 'carro' | 'moto'): number {
-    const raw = vehicle === 'carro'
+  private _calcPrice(km: number, vehicle: 'carro' | 'moto' | 'camion'): number {
+    const raw = vehicle === 'camion'
+      ? Math.max(8000, 8000 + km * 1800)
+      : vehicle === 'carro'
       ? Math.max(4500, 4500 + km * 1200)
       : Math.max(3000, 3000 + km * 800);
     const surge = this.surgeMultiplier() ?? 1;
