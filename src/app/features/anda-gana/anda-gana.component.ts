@@ -6330,29 +6330,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   // ── Google Places REST (sin SDK, fetch directo) ────────────────
-  private async _getGooglePlaceCoords(placeId: string): Promise<[number, number] | null> {
-    try {
-      const res = await fetch(this.AG_PLACES_FN, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': this.SUPABASE_ANON,
-          'Authorization': `Bearer ${this.SUPABASE_ANON}`,
-        },
-        body: JSON.stringify({ action: 'details', place_id: placeId }),
-      });
-      const json = await res.json();
-      const loc = json.result?.geometry?.location;
-      if (!loc) return null;
-      return [loc.lng, loc.lat];
-    } catch { return null; }
-  }
-
-  private async _googleAutocomplete(query: string): Promise<any[]> {
+  private async _searchNominatim(query: string): Promise<any[]> {
     const lat = this._currentLat;
     const lng = this._currentLng;
     const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
-    const body: any = { action: 'autocomplete', query };
+    const body: any = { action: 'search', query };
     if (hasGps) { body.lat = lat; body.lng = lng; }
     const res = await fetch(this.AG_PLACES_FN, {
       method: 'POST',
@@ -6364,13 +6346,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       body: JSON.stringify(body),
     });
     const json = await res.json();
-    if (!json.predictions?.length) return [];
-    return json.predictions.slice(0, 6).map((p: any) => ({
-      id:         p.place_id,
-      place_id:   p.place_id,
-      text:       p.structured_formatting?.main_text ?? p.description,
-      place_name: p.description,
-      center:     null,
+    if (!json.suggestions?.length) return [];
+    return json.suggestions.map((s: any) => ({
+      id:         s.place_id,
+      place_id:   s.place_id,
+      text:       s.text,
+      place_name: s.place_name,
+      center:     [s.lng, s.lat] as [number, number],
       distanceKm: null,
       _dist:      0,
     }));
@@ -6508,7 +6490,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.addressSuggestions.set([]);
     this.addressNoResults.set(false);
     try {
-      const results = await this._googleAutocomplete(query);
+      const results = await this._searchNominatim(query);
       if (reqId !== this._addressReqId) return;
       this.addressSuggestions.set(results);
       this.addressNoResults.set(results.length === 0);
@@ -6544,15 +6526,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   async selectAddress(feature: any) {
-    // Google Places: obtener coordenadas por place_id
-    if (feature.place_id && !feature.center) {
-      this.addressLoading.set(true);
-      this.cdr.markForCheck();
-      const coords = await this._getGooglePlaceCoords(feature.place_id);
-      this.addressLoading.set(false);
-      if (!coords) { this.cdr.markForCheck(); return; }
-      feature = { ...feature, center: coords };
-    }
     // Legado Mapbox v6: no trae coordenadas, hay que llamar /retrieve
     if (feature.mapbox_id && !feature.center) {
       this.addressLoading.set(true);
@@ -8046,7 +8019,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripNoResults.set(false);
     this.tripSuggestions.set([]);
     try {
-      const results = await this._googleAutocomplete(query);
+      const results = await this._searchNominatim(query);
       if (reqId !== this._tripReqId) return;
       this.tripSuggestions.set(results);
       this.tripNoResults.set(results.length === 0);
@@ -8071,13 +8044,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     let dLng: number, dLat: number;
     if (s.center) {
       [dLng, dLat] = s.center as [number, number];
-    } else if (s.place_id) {
-      this.tripLoading.set(true);
-      this.cdr.markForCheck();
-      const coords = await this._getGooglePlaceCoords(s.place_id);
-      this.tripLoading.set(false);
-      if (!coords) { this.cdr.markForCheck(); return; }
-      [dLng, dLat] = coords;
     } else {
       dLng = this._currentLng; dLat = this._currentLat;
     }
