@@ -4562,10 +4562,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- CTA -->
           <button (click)="qrSaveVehicleAndEnter()"
-            [disabled]="!qrVehicleType()"
-            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
-            [style.opacity]="!qrVehicleType() ? '0.9' : '1'">
-            Empezar a conducir
+            [disabled]="!qrVehicleType() || qrOtpVerifying()"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
+            [style.opacity]="!qrVehicleType() || qrOtpVerifying() ? '0.9' : '1'">
+            @if (qrOtpVerifying()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Creando perfil...
+            } @else {
+              Empezar a conducir
+            }
           </button>
 
         </div>
@@ -9940,14 +9944,34 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   async qrSaveVehicleAndEnter() {
     const vehicle = this.qrVehicleType();
     if (!vehicle) return;
-    try {
-      const sb = getSupabaseClient();
-      const phone = this.agProfile()?.phone ?? '';
-      if (phone) {
-        await sb.from('ag_users').update({ vehicle_type: vehicle }).eq('phone', phone);
+    this.qrOtpVerifying.set(true);
+    this.cdr.markForCheck();
+    const phone = '+57' + this.qrPhone();
+    const name  = this.qrName().trim() || 'Conductor';
+    const reg = await this.agService.registerQuickDriver(name, phone, vehicle, this.referredBy ?? undefined);
+    this.qrOtpVerifying.set(false);
+    if (reg.success && reg.profile) {
+      this.agProfile.set(reg.profile);
+      this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
+      // Cargar datos del conductor
+      const drivers = await this.agService.getDrivers();
+      const mine = drivers.find(d => d.ag_user_id === reg.profile!.id) ?? null;
+      this.driverData.set(mine);
+      this.driverStatus.set(mine?.status ?? 'pending');
+      this.screen.set('driver-home');
+      if (mine?.status === 'approved') {
+        this._loadDriverRequests(mine.vehicle_type);
+        const [pct, balance] = await Promise.all([
+          this.agService.getCommissionPct(),
+          this.agService.getDriverWalletBalance(mine.id),
+        ]);
+        this.driverCommissionPct.set(pct);
+        this.driverWalletBalance.set(balance);
       }
-    } catch {}
-    this.screen.set('driver-home');
+    } else {
+      this.qrOtpError.set(reg.error ?? 'Error al guardar perfil. Intenta de nuevo.');
+    }
+    this.cdr.markForCheck();
   }
 
   startQuickRegister() {
@@ -10020,15 +10044,33 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpError.set('');
     this.cdr.markForCheck();
     const result = await this.phoneAuth.verifyOTP(code);
-    this.qrOtpVerifying.set(false);
-    if (result.ok) {
-      if (this.qrRole() === 'conductor') {
-        this.qrStep.set(3);
-      } else {
-        this.screen.set('passenger-home');
-      }
-    } else {
+    if (!result.ok) {
+      this.qrOtpVerifying.set(false);
       this.qrOtpError.set(result.message ?? 'Código incorrecto. Verifica e intenta de nuevo.');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Crear sesión persistente + perfil en ag_users
+    const phone = '+57' + this.qrPhone();
+    const name  = this.qrName().trim() || 'Usuario';
+    if (this.qrRole() === 'conductor') {
+      // Para conductor, guardamos el perfil al elegir vehículo (paso 3)
+      this.qrOtpVerifying.set(false);
+      this.qrStep.set(3);
+    } else {
+      const reg = await this.agService.registerQuickPassenger(name, phone, this.referredBy ?? undefined);
+      this.qrOtpVerifying.set(false);
+      if (reg.success && reg.profile) {
+        this.agProfile.set(reg.profile);
+        this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
+        this.loadReferralData();
+        this.screen.set('passenger-home');
+        this._subscribeToDriverLocations();
+        setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
+      } else {
+        this.qrOtpError.set(reg.error ?? 'Error al crear perfil. Intenta de nuevo.');
+      }
     }
     this.cdr.markForCheck();
   }
