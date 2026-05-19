@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "492581194770",
-    "project_id": "movi-5ae91",
-    "storage_bucket": "movi-5ae91.firebasestorage.app"
+    "project_number": "1083918544029",
+    "project_id": "movi-1284e",
+    "storage_bucket": "movi-1284e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:492581194770:android:ae910ae351fbb893e9dccb",
+        "mobilesdk_app_id": "1:1083918544029:android:c870b3867760649b113874",
         "android_client_info": {
           "package_name": "com.publihazclick.movi"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAQALDEZly-vfv4uojDVIzp1WONLHyxBA0"
+          "current_key": "AIzaSyCASh_bSePE5LRR3oVjns25h344rFNZUeU"
         }
       ],
       "services": {

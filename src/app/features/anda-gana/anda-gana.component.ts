@@ -6093,6 +6093,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _currentLng = -74.0817;
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
   private readonly GOOGLE_PLACES_KEY = (environment.andaGana as any).googlePlacesKey ?? '';
+  private readonly AG_PLACES_FN = `${environment.supabase.url}/functions/v1/ag-places`;
+  private readonly SUPABASE_ANON = environment.supabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
   private readonly DEFAULT_LNG  = -74.0817;
 
@@ -6329,10 +6331,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Google Places REST (sin SDK, fetch directo) ────────────────
   private async _getGooglePlaceCoords(placeId: string): Promise<[number, number] | null> {
-    const url = `https://maps.googleapis.com/maps/api/place/details/json`
-      + `?place_id=${placeId}&fields=geometry&key=${this.GOOGLE_PLACES_KEY}&language=es`;
     try {
-      const json = await (await fetch(url)).json();
+      const res = await fetch(this.AG_PLACES_FN, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.SUPABASE_ANON,
+          'Authorization': `Bearer ${this.SUPABASE_ANON}`,
+        },
+        body: JSON.stringify({ action: 'details', place_id: placeId }),
+      });
+      const json = await res.json();
       const loc = json.result?.geometry?.location;
       if (!loc) return null;
       return [loc.lng, loc.lat];
@@ -6343,18 +6352,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const lat = this._currentLat;
     const lng = this._currentLng;
     const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
-    const params = new URLSearchParams({
-      input:      query,
-      components: 'country:co',
-      language:   'es',
-      key:        this.GOOGLE_PLACES_KEY,
+    const body: any = { action: 'autocomplete', query };
+    if (hasGps) { body.lat = lat; body.lng = lng; }
+    const res = await fetch(this.AG_PLACES_FN, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': this.SUPABASE_ANON,
+        'Authorization': `Bearer ${this.SUPABASE_ANON}`,
+      },
+      body: JSON.stringify(body),
     });
-    if (hasGps) {
-      params.set('location', `${lat},${lng}`);
-      params.set('radius',   '50000');
-    }
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`;
-    const json = await (await fetch(url)).json();
+    const json = await res.json();
     if (!json.predictions?.length) return [];
     return json.predictions.slice(0, 6).map((p: any) => ({
       id:         p.place_id,
