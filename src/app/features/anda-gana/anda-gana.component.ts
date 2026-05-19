@@ -2404,7 +2404,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                 } @else {
                   <div class="px-4 pb-3">
-                    @if (driverWalletBalance() <= 0) {
+                    @if ((driverData()?.trips_completed ?? 0) === 0) {
+                      <button (click)="makingOfferFor.set(req)"
+                        class="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                        style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border:none;cursor:pointer">
+                        <span class="material-symbols-outlined text-white" style="font-size:16px">rocket_launch</span>
+                        <span class="text-white text-xs font-black">1ª carrera gratis · Tomar viaje</span>
+                      </button>
+                    } @else if (driverWalletBalance() <= 0) {
                       <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
                         style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
                         <div class="flex items-center gap-1.5">
@@ -4688,6 +4695,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'moto' ? '#a78bfa' : '#64748b'" style="font-size:24px">two_wheeler</span>
                 <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'moto' ? '#a78bfa' : '#64748b'">Moto</span>
               </button>
+              <button (click)="qrVehicle.set('camion')"
+                style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
+                [style.background]="qrVehicle() === 'camion' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
+                [style.border]="qrVehicle() === 'camion' ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'camion' ? '#a78bfa' : '#64748b'" style="font-size:24px">local_shipping</span>
+                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'camion' ? '#a78bfa' : '#64748b'">Camión</span>
+              </button>
             </div>
           </div>
 
@@ -5560,7 +5574,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripSuggestions = signal<any[]>([]);
   tripNoResults   = signal(false);
   tripDest        = signal<{ name: string; lat: number; lng: number } | null>(null);
-  tripVehicle     = signal<'carro' | 'moto'>('carro');
+  tripVehicle     = signal<'carro' | 'moto' | 'camion'>('carro');
   tripPrice       = signal(0);
   tripPayment     = signal<AgPaymentMethod>('efectivo');
   tripDistKm      = signal(0);
@@ -7892,7 +7906,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._drawRoute(dLng, dLat);
   }
 
-  setTripVehicle(type: 'carro' | 'moto') {
+  setTripVehicle(type: 'carro' | 'moto' | 'camion') {
     this.tripVehicle.set(type);
     this.tripPrice.set(this._calcPrice(this.tripDistKm(), type));
   }
@@ -8114,15 +8128,18 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const driver = this.driverData();
     if (!req || !driver) return;
 
-    // Validar saldo de wallet antes de enviar
-    if (this.driverWalletBalance() <= 0) {
-      alert('Necesitas recargar tu billetera antes de aceptar viajes.');
-      return;
-    }
-    const commission = this.requiredCommission(this.driverOfferPrice());
-    if (this.driverCommissionPct() > 0 && this.driverWalletBalance() < commission) {
-      alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} en tu billetera para cubrir la comisión.`);
-      return;
+    // Primera carrera gratis: conductores con 0 viajes completados no necesitan saldo
+    const tripsCompleted = this.driverData()?.trips_completed ?? 0;
+    if (tripsCompleted > 0) {
+      if (this.driverWalletBalance() <= 0) {
+        alert('Necesitas recargar tu billetera para tomar más viajes.');
+        return;
+      }
+      const commission = this.requiredCommission(this.driverOfferPrice());
+      if (this.driverCommissionPct() > 0 && this.driverWalletBalance() < commission) {
+        alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} en tu billetera para cubrir la comisión.`);
+        return;
+      }
     }
 
     this.sendingOffer.set(true);
@@ -8382,7 +8399,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrDestQuery         = signal('');
   qrDestSuggestions   = signal<any[]>([]);
   qrDestSelected      = signal<{ name: string; lat: number; lng: number } | null>(null);
-  qrVehicle           = signal<'carro' | 'moto'>('carro');
+  qrVehicle           = signal<'carro' | 'moto' | 'camion'>('carro');
   qrPrice             = signal(8000);
   qrPayment           = signal<AgPaymentMethod>('efectivo');
   qrSubmitting        = signal(false);
