@@ -228,11 +228,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <div class="flex items-center justify-between px-1 pt-2">
         <div>
           <h1 class="text-white font-black text-lg leading-tight">¡Hola, {{ firstName() }}!</h1>
-          <p class="text-slate-500 text-xs">Pasajero activo</p>
         </div>
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-            <span class="material-symbols-outlined" style="font-size:13px">check_circle</span> Activo
+            <span class="material-symbols-outlined" style="font-size:13px">check_circle</span> Modo Pasajero
           </span>
           <!-- Botón hamburguesa -->
           <button (click)="agMenuOpen.set(true)"
