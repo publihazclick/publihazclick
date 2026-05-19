@@ -224,17 +224,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   @if (screen() === 'passenger-home') {
     <div class="w-full max-w-lg flex flex-col gap-3">
 
-      <!-- Compact header -->
-      <div class="flex items-center justify-between px-1 pt-2">
-        <div>
-          <h1 class="text-white font-black text-lg leading-tight">¡Hola, {{ firstName() }}!</h1>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-            <span class="material-symbols-outlined" style="font-size:13px">check_circle</span> Modo Pasajero
-          </span>
-          <!-- Botón hamburguesa -->
-          <button (click)="agMenuOpen.set(true)"
+      <!-- Badge flotante top-right -->
+      <div class="fixed top-3 right-4 z-30 flex items-center gap-2">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold" style="font-size:11px">
+          <span class="material-symbols-outlined" style="font-size:12px">check_circle</span> Modo Pasajero
+        </span>
+        <!-- Botón hamburguesa -->
+        <button (click)="agMenuOpen.set(true)"
             class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 px-2 py-1.5 rounded-xl"
             style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">
             <div class="flex flex-col items-center gap-1">
@@ -244,7 +240,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <span class="text-white font-bold" style="font-size:9px;letter-spacing:0.08em">MENÚ</span>
           </button>
-        </div>
+      </div>
+
+      <!-- Saludo compacto -->
+      <div class="px-1 pt-8 pb-0">
+        <h1 class="text-white font-black text-base leading-tight">¡Hola, {{ firstName() }}!</h1>
       </div>
 
       <!-- ══ Drawer menú Anda y Gana ══ -->
