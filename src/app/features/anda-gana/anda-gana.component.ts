@@ -360,6 +360,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Barra de dirección (flotante arriba) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute top-3 left-3 right-3 z-20">
+            @if (locationUpdating()) {
+              <div class="flex items-center justify-center gap-1.5 mb-1.5">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+                  style="background:rgba(13,17,26,0.75);backdrop-filter:blur(6px);border:1px solid rgba(124,58,237,0.35)">
+                  <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:12px">autorenew</span>
+                  <span class="text-xs font-medium" style="color:rgba(255,255,255,0.75)">Actualizando zona...</span>
+                </div>
+              </div>
+            }
             @if (!addressEditMode()) {
               <button (click)="openAddressEdit()"
                 class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-2.5 shadow-xl shadow-black/40 text-left transition-all active:scale-[0.98]">
@@ -469,13 +478,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">two_wheeler</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">Moto</span>
               </button>
-              <button (click)="tripService.set('ciudad')"
-                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
-                [class]="tripService()==='ciudad' ? 'bg-purple-50 border border-purple-200' : 'hover:bg-slate-200'">
-                <span class="material-symbols-outlined" style="font-size:26px"
-                  [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">commute</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">Ciudad a ciudad</span>
-              </button>
               <button (click)="tripService.set('domicilio')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='domicilio' ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-200'">
@@ -488,7 +490,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 [class]="tripService()==='fletes' ? 'bg-amber-50 border border-amber-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">local_shipping</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">Fletes</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">Flete</span>
+              </button>
+              <button (click)="tripService.set('ciudad')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
+                [class]="tripService()==='ciudad' ? 'bg-purple-50 border border-purple-200' : 'hover:bg-slate-200'">
+                <span class="material-symbols-outlined" style="font-size:26px"
+                  [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">commute</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">Ciudad a ciudad</span>
               </button>
             </div>
               <button (click)="scrollIcons(120)"
@@ -547,7 +556,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           }
                         </div>
                       } @else if (addressQuery().length > 1) {
-                        @if (addressNoResults()) {
+                        @if (addressLoading()) {
+                          <div class="px-3 py-3 text-slate-400 text-xs flex items-center justify-center gap-1.5">
+                            <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
+                          </div>
+                        } @else if (addressNoResults()) {
                           <div class="px-3 py-3 text-center">
                             <p class="text-slate-500 text-xs mb-1.5">No encontramos ese lugar</p>
                             <button (mousedown)="$event.preventDefault(); useMapPin()"
@@ -555,10 +568,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               <span class="material-symbols-outlined" style="font-size:12px">pin_drop</span>
                               Mover pin en el mapa
                             </button>
-                          </div>
-                        } @else {
-                          <div class="px-3 py-3 text-slate-400 text-xs flex items-center justify-center gap-1.5">
-                            <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
                           </div>
                         }
                       }
@@ -597,23 +606,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           class="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
                           <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
                           <div class="flex-1 min-w-0">
-                            <p class="text-slate-800 text-sm font-semibold truncate" [innerHTML]="highlightMatch(s.text, addressQuery())"></p>
+                            <p class="text-slate-800 text-sm font-semibold truncate" [innerHTML]="highlightMatch(s.text, tripQuery())"></p>
                             <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
                           </div>
-                          <span class="text-orange-500 text-xs font-black flex-shrink-0">{{ s.distKm }} km</span>
+                          @if (s.distanceKm != null) {
+                            <span class="text-orange-500 text-xs font-bold flex-shrink-0">{{ s.distanceKm }} km</span>
+                          }
                         </button>
                       }
                     </div>
                   } @else if (tripQuery().length > 1) {
-                    @if (tripNoResults()) {
-                      <div class="px-4 py-4 text-center">
-                        <p class="text-slate-500 text-sm mb-2">No encontramos ese destino</p>
-                        <p class="text-slate-400 text-xs">Intenta con el nombre del barrio o una dirección cercana</p>
-                      </div>
-                    } @else {
+                    @if (tripLoading()) {
                       <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-2">
                         <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
                         Buscando lugares...
+                      </div>
+                    } @else if (tripNoResults()) {
+                      <div class="px-4 py-4 text-center">
+                        <p class="text-slate-500 text-sm mb-2">No encontramos ese destino</p>
+                        <p class="text-slate-400 text-xs">Intenta con el nombre del barrio o una dirección cercana</p>
                       </div>
                     }
                   }
@@ -5519,7 +5530,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   referralCount      = signal(0);
   referralTransactions = signal<any[]>([]);
 
-  launchBannerDismissed = signal(false);
+  launchBannerDismissed   = signal(false);
+  locationUpdating        = signal(false);  // micro-indicador "Actualizando zona..."
 
   // Mapa / GPS
   noDriversNearby = signal(false);
@@ -5536,6 +5548,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripOpen        = signal(false);
   tripQuery       = signal('');
   tripSuggestions = signal<any[]>([]);
+  tripLoading     = signal(false);
   tripNoResults   = signal(false);
   tripDest        = signal<{ name: string; lat: number; lng: number } | null>(null);
   tripVehicle     = signal<'carro' | 'moto' | 'camion'>('carro');
@@ -6055,6 +6068,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _mapboxPromise:   Promise<void> | null = null;
   private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _mbxSessionToken: string | null = null;
+
+  // ── Geolocalización en tiempo real (pasajero) ──────────────────
+  private _passengerWatchId:    number | null = null;   // ID del watchPosition pasajero
+  private _locationThrottleTs:  number        = 0;      // timestamp último update (throttle 5s)
+  private _lastNotifiedLat:     number        = 0;      // última lat que causó update de búsqueda
+  private _lastNotifiedLng:     number        = 0;      // última lng que causó update de búsqueda
+
+  /** Distancia Haversine simplificada en metros */
+  private _distMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+            * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
   private _tripDebounce:    ReturnType<typeof setTimeout> | null = null;
   private _destMarker:      any = null;
   private _currentLat = 4.6097;
@@ -6094,6 +6124,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     if (profile.role === 'passenger') {
       this.screen.set('passenger-home');
+      this._startPassengerWatch();
       // Suscribirse a ubicaciones de conductores en tiempo real
       this._subscribeToDriverLocations();
     } else {
@@ -6133,9 +6164,82 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._unsubscribeOffers();
     this._unsubscribeChat();
     this.stopGpsTracking();
+    this._stopPassengerWatch();   // libera batería al salir
     this._unsubscribeLocations();
     this._stopTrackingAssignedDriver();
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+  }
+
+  /**
+   * Inicia watchPosition continuo para pasajeros.
+   * Solo actualiza la proximidad de búsqueda si el usuario se movió > 500 m.
+   * Throttle de 5 s para no spamear el GPS.
+   */
+  private _startPassengerWatch(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (!navigator.geolocation) return;
+    if (this._passengerWatchId !== null) return; // ya activo
+
+    this._passengerWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const now = Date.now();
+        // Throttle: ignorar actualizaciones más rápidas de 5 s
+        if (now - this._locationThrottleTs < 5000) return;
+        this._locationThrottleTs = now;
+
+        const { latitude: lat, longitude: lng } = pos.coords;
+
+        // Solo actuar si el usuario se movió más de 500 m
+        const moved = this._distMeters(
+          this._lastNotifiedLat || this._currentLat,
+          this._lastNotifiedLng || this._currentLng,
+          lat, lng
+        );
+        if (moved < 500 && this._lastNotifiedLat !== 0) return;
+
+        // Actualizar posición global
+        this._currentLat      = lat;
+        this._currentLng      = lng;
+        this._lastNotifiedLat = lat;
+        this._lastNotifiedLng = lng;
+        this.gpsStatus.set('granted');
+
+        // Centrar mapa en nueva posición si está visible
+        if (this._map && this.passengerSection() === null) {
+          this._map.easeTo({ center: [lng, lat], duration: 800 });
+          this._userMarker?.setLngLat([lng, lat]);
+        }
+
+        // Mostrar micro-indicador "Actualizando zona..." por 1 s
+        this.locationUpdating.set(true);
+        this.cdr.markForCheck();
+        setTimeout(() => { this.locationUpdating.set(false); this.cdr.markForCheck(); }, 1000);
+
+        // Si hay una búsqueda activa, rehacerla con la nueva proximidad
+        const q = this.addressQuery().trim();
+        if (q.length >= 2) {
+          if (this._searchDebounce) clearTimeout(this._searchDebounce);
+          this._searchDebounce = setTimeout(() => this._searchPlacesV6(q), 300);
+        }
+      },
+      (err) => {
+        // GPS desactivado/denegado — mantener última ubicación, no interrumpir
+        if (err.code === 1 /* PERMISSION_DENIED */) {
+          this.gpsStatus.set('denied');
+          this.cdr.markForCheck();
+        }
+        // En cualquier error se mantiene _currentLat/_currentLng anteriores
+      },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }
+    );
+  }
+
+  /** Detiene el watchPosition del pasajero y libera recursos */
+  private _stopPassengerWatch(): void {
+    if (this._passengerWatchId !== null) {
+      navigator.geolocation.clearWatch(this._passengerWatchId);
+      this._passengerWatchId = null;
+    }
   }
 
   /** Suscribirse a cambios en ubicación de conductores (para el mapa del pasajero) */
@@ -6338,87 +6442,81 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.addressNoResults.set(false);
     if (this._searchDebounce) clearTimeout(this._searchDebounce);
     if (!query.trim() || query.length < 2) {
+      this._addressAbort?.abort();
       this.addressSuggestions.set([]);
       this.addressLoading.set(false);
       return;
     }
-    // 300ms debounce — no gastar requests mientras el usuario escribe
+    this.addressLoading.set(true); // spinner inmediato, no esperar el debounce
     this._searchDebounce = setTimeout(() => this._searchPlacesV6(query), 300);
   }
 
   /**
    * Mapbox Geocoding API v6 — /suggest para autocompletado en tiempo real.
-   * Usa proximity + bbox del GPS actual para priorizar resultados cercanos.
-   * Si no hay GPS, usa el bbox de Colombia como fallback.
+   * Usa Mapbox Geocoding v5 con proximity + bbox para resultados locales.
+   * Devuelve coordenadas directamente — no requiere paso /retrieve.
    */
   private async _searchPlacesV6(query: string) {
-    // Cancelar request anterior para no recibir respuestas fuera de orden
     if (this._addressAbort) this._addressAbort.abort();
     this._addressAbort = new AbortController();
     const sig = this._addressAbort.signal;
-
-    // Renovar session token si no existe (cada sesión de búsqueda = 1 token)
-    if (!this._mbxSessionToken) {
-      this._mbxSessionToken = typeof crypto?.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2) + Date.now().toString(36);
-    }
 
     this.addressLoading.set(true);
     this.addressSuggestions.set([]);
 
     const lat = this._currentLat;
     const lng = this._currentLng;
-    const hasGps = this.gpsStatus() === 'granted';
+    const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
 
-    // Parámetros base del endpoint /suggest de la v6
     const params = new URLSearchParams({
-      q:             query,
-      access_token:  this.MAPBOX_TOKEN,
-      session_token: this._mbxSessionToken,
-      language:      'es',
-      country:       'co',
-      types:         'address,poi,neighborhood,place,locality',
-      limit:         '5',
+      access_token: this.MAPBOX_TOKEN,
+      autocomplete: 'true',
+      language:     'es',
+      country:      'co',
+      types:        'address,poi,neighborhood,place,locality',
+      limit:        '6',
     });
 
     if (hasGps) {
-      // Proximidad exacta del usuario: prioriza resultados más cercanos
       params.set('proximity', `${lng},${lat}`);
-      // BBox ajustado ±0.4° alrededor del usuario (≈45 km de radio)
-      const d = 0.4;
-      params.set('bbox', `${lng - d},${lat - d},${lng + d},${lat + d}`);
-    } else {
-      // Fallback: Colombia completa
-      params.set('bbox', '-79.0,-4.0,-66.5,12.5');
-      params.set('proximity', 'ip');
     }
+    params.set('limit', '10');
 
     try {
       const res = await fetch(
-        `https://api.mapbox.com/search/searchbox/v1/suggest?${params}`,
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params}`,
         { signal: sig }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
-      // Normalizar al formato interno { id, text, place_name, mapbox_id }
-      const results = (json.suggestions ?? []).map((s: any) => ({
-        id:         s.mapbox_id,
-        mapbox_id:  s.mapbox_id,
-        text:       s.name ?? s.matching_text ?? '',
-        place_name: s.full_address ?? s.place_formatted ?? '',
-        center:     null as [number, number] | null, // se resuelve en /retrieve al seleccionar
-      }));
+      const raw = (json.features ?? []).map((f: any) => {
+        const [fLng, fLat] = f.center ?? [lng, lat];
+        const dist = hasGps ? this._distKm(lat, lng, fLat, fLng) : 0;
+        return {
+          id:         f.id,
+          mapbox_id:  null,
+          text:       f.text ?? '',
+          place_name: f.place_name ?? '',
+          center:     [fLng, fLat] as [number, number],
+          _dist:      dist,
+        };
+      });
+
+      // Ordenar de más cercano a más lejano (Mapbox ya filtra por país con country:co)
+      const results = raw
+        .sort((a: any, b: any) => a._dist - b._dist)
+        .slice(0, 6);
 
       this.addressSuggestions.set(results);
       this.addressNoResults.set(results.length === 0);
     } catch (e: any) {
-      if (e?.name === 'AbortError') return; // request cancelado intencionalmente
+      if (e?.name === 'AbortError') return;
       this.addressSuggestions.set([]);
       this.addressNoResults.set(true);
     } finally {
       this.addressLoading.set(false);
+      this.cdr.markForCheck();
     }
   }
 
@@ -7917,94 +8015,94 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripQuery.set(val);
     this.tripNoResults.set(false);
     if (this._tripDebounce) clearTimeout(this._tripDebounce);
-    if (!val.trim()) { this.tripSuggestions.set([]); return; }
+    if (!val.trim()) {
+      this._tripAbort?.abort();
+      this.tripSuggestions.set([]);
+      this.tripLoading.set(false);
+      return;
+    }
+    this.tripLoading.set(true); // spinner inmediato, no esperar el debounce
     this._tripDebounce = setTimeout(() => this._searchTripPlaces(val), 120);
   }
 
-  private _tripAbort: AbortController | null = null;
+  private _tripAbort:        AbortController | null = null;
+  private _tripSessionToken: string | null          = null;
 
   private async _searchTripPlaces(query: string) {
     if (this._tripAbort) this._tripAbort.abort();
     this._tripAbort = new AbortController();
     const sig = this._tripAbort.signal;
 
-    const lat = this._currentLat, lng = this._currentLng;
+    this.tripLoading.set(true);
+    this.tripNoResults.set(false);
+    this.tripSuggestions.set([]);
 
-    // ── Google Places (New) — fuente principal para destinos
-    const googleUrl = 'https://places.googleapis.com/v1/places:searchText';
-    const googleBody = {
-      textQuery: query,
-      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 50000 } },
-      languageCode: 'es',
-      maxResultCount: 8,
-    };
+    const lat = this._currentLat;
+    const lng = this._currentLng;
+    const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
 
-    // ── Mapbox — complementa con direcciones y calles
-    const d = 0.5;
-    const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
-    const mbxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-      + `?access_token=${this.MAPBOX_TOKEN}&autocomplete=true&language=es`
-      + `&country=co&limit=5&types=poi,place,address,neighborhood,locality,district`
-      + `&proximity=${lng},${lat}&bbox=${bbox}`;
+    const params = new URLSearchParams({
+      access_token: this.MAPBOX_TOKEN,
+      autocomplete: 'true',
+      language:     'es',
+      country:      'co',
+      types:        'address,poi,neighborhood,place,locality,district',
+      limit:        '6',
+    });
+
+    if (hasGps) {
+      params.set('proximity', `${lng},${lat}`);
+    }
+    params.set('limit', '10'); // pedir más para tener margen al filtrar
 
     try {
-      const [googleRes, mbxRes] = await Promise.all([
-        fetch(googleUrl, {
-          method: 'POST', signal: sig,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': this.GOOGLE_PLACES_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location',
-          },
-          body: JSON.stringify(googleBody),
-        }),
-        fetch(mbxUrl, { signal: sig }),
-      ]);
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params}`,
+        { signal: sig }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
 
-      const googleJson = await googleRes.json();
-      const mbxJson = await mbxRes.json();
-
-      // Convertir Google Places al formato interno
-      const googleFeatures = (googleJson.places ?? []).map((p: any, i: number) => {
-        const fLat = p.location?.latitude ?? lat;
-        const fLng = p.location?.longitude ?? lng;
+      const raw = (json.features ?? []).map((f: any) => {
+        const [fLng, fLat] = f.center ?? [lng, lat];
+        const dist = hasGps ? this._distKm(lat, lng, fLat, fLng) : 0;
         return {
-          id: `gpl-${i}`,
-          text: p.displayName?.text ?? '',
-          place_name: p.formattedAddress ?? '',
-          center: [fLng, fLat] as [number, number],
-          distKm: this._distKm(lat, lng, fLat, fLng),
+          id:          f.id,
+          mapbox_id:   null,
+          text:        f.text ?? '',
+          place_name:  f.place_name ?? '',
+          center:      [fLng, fLat] as [number, number],
+          distanceKm:  hasGps ? +dist.toFixed(1) : null,
+          _dist:       dist,
         };
       });
 
-      // Convertir Mapbox al formato interno
-      const mbxFeatures = (mbxJson.features ?? []).map((f: any) => {
-        const [fLng, fLat] = f.center ?? [lng, lat];
-        return { ...f, id: `mbx-${f.id}`, distKm: this._distKm(lat, lng, fLat, fLng) };
-      });
+      // Ordenar de más cercano a más lejano (Mapbox ya filtra por país con country:co)
+      const results = raw
+        .sort((a: any, b: any) => a._dist - b._dist)
+        .slice(0, 6);
 
-      // Unir, deduplicar y ordenar por distancia (más cercanos primero)
-      const seen  = new Set<string>();
-      const merged: any[] = [];
-      for (const f of [...googleFeatures, ...mbxFeatures]) {
-        const key = `${(+f.center[0]).toFixed(3)},${(+f.center[1]).toFixed(3)}`;
-        if (!seen.has(key)) { seen.add(key); merged.push(f); }
-      }
-      merged.sort((a, b) => (a.distKm ?? 999) - (b.distKm ?? 999));
-
-      const results = merged.slice(0, 8);
       this.tripSuggestions.set(results);
-      this.tripNoResults.set(results.length === 0 && this.tripQuery().trim().length >= 2);
-    } catch { /* abortado o sin red */ }
+      this.tripNoResults.set(results.length === 0);
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      this.tripSuggestions.set([]);
+      this.tripNoResults.set(true);
+    } finally {
+      this.tripLoading.set(false);
+      this.cdr.markForCheck();
+    }
   }
 
   selectTripDest(s: any) {
-    const [dLng, dLat] = s.center ?? s.geometry?.coordinates ?? [this._currentLng, this._currentLat];
-    const name = s.text ?? s.place_name ?? 'Destino';
+    const [dLng, dLat] = (s.center as [number, number]) ?? [this._currentLng, this._currentLat];
+    const name = s.text || s.place_name || 'Destino';
     this.tripDest.set({ name, lat: dLat, lng: dLng });
     this.tripOpen.set(false);
     this.tripQuery.set('');
     this.tripSuggestions.set([]);
+    this._tripSessionToken = null;
+    this.cdr.markForCheck();
     this._drawRoute(dLng, dLat);
   }
 
@@ -10164,6 +10262,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
         this.loadReferralData();
         this.screen.set('passenger-home');
+        this._startPassengerWatch();
         this._subscribeToDriverLocations();
         setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
       } else {
