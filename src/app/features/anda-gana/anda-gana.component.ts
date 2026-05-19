@@ -6473,7 +6473,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       autocomplete: 'true',
       language:     'es',
       country:      'co',
-      types:        'address,poi,neighborhood,place,locality',
+      types:        'poi,address,neighborhood,locality',
       limit:        '6',
     });
 
@@ -8049,7 +8049,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       autocomplete: 'true',
       language:     'es',
       country:      'co',
-      types:        'address,poi,neighborhood,place,locality,district',
+      types:        'poi,address,neighborhood,locality',
       limit:        '6',
     });
 
