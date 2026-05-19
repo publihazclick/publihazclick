@@ -6508,7 +6508,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this.addressSuggestions().length > 0) {
       this.selectAddress(this.addressSuggestions()[0]);
     } else {
-      await this._searchPlaces(q);
+      await this._searchPlacesV6(q);
       const first = this.addressSuggestions()[0];
       if (first) this.selectAddress(first);
     }
