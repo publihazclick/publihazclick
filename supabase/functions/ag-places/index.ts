@@ -9,18 +9,35 @@ function isStreetAddress(q: string): boolean {
   return /#/.test(q) || /\bNo\.?\s*\d/i.test(q);
 }
 
+// Normaliza separadores colombianos: 84/83 → 84-83, 84a/83 → 84a-83
+function normalizeColombianSeparator(q: string): string {
+  return q.replace(/(\d+[A-Za-z]?)\/(\d+)/g, '$1-$2');
+}
+
+// Para Mapbox: quita # y BARRIO, normaliza separadores
 function cleanForMapbox(q: string): string {
-  return q
+  return normalizeColombianSeparator(q)
     .replace(/#\s*/g, ' ')
     .replace(/\bBARRIO\b/gi, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
+// Para Nominatim: quita número de casa (#84-83) y BARRIO
 function cleanForNominatim(q: string): string {
-  return q
+  return normalizeColombianSeparator(q)
     .replace(/#\s*[\dA-Za-z]+\s*[-–]\s*\d+/g, '')
     .replace(/\bNo\.?\s*[\dA-Za-z]+\s*[-–]\s*\d+/gi, '')
+    .replace(/\bBARRIO\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Solo la parte de calle sin número de casa — para fallback de calle
+function streetOnly(q: string): string {
+  return normalizeColombianSeparator(q)
+    .replace(/#\s*[\dA-Za-z]*\s*[-–]?\s*\d*/g, '')   // quita # y todo lo que sigue
+    .replace(/\bNo\.?\s*[\dA-Za-z]*\s*[-–]?\s*\d*/gi, '')
     .replace(/\bBARRIO\b/gi, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
@@ -99,7 +116,6 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   const json = await res.json();
   if (json.error) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   const parts = (json.display_name as string).split(',');
-  // Toma los primeros 2-3 fragmentos para un nombre legible
   return parts.slice(0, 3).map((p: string) => p.trim()).join(', ');
 }
 
@@ -118,15 +134,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Búsqueda con fallback doble ────────────────────────────────
+    // ── Búsqueda ──────────────────────────────────────────────────
     if (action === 'search' || action === 'autocomplete') {
       let suggestions: any[];
 
       if (isStreetAddress(query)) {
-        // Dirección con número → Mapbox primero, Nominatim como fallback
+        // 1. Mapbox con dirección normalizada (# 84/83 → 84-83)
         suggestions = await searchMapbox(query, lat, lng);
+
+        // 2. Nominatim sin número de casa
         if (suggestions.length === 0) {
           suggestions = await searchNominatim(query, lat, lng);
+        }
+
+        // 3. Mapbox solo con la calle (sin número) — clave para Colombia
+        if (suggestions.length === 0) {
+          const street = streetOnly(query);
+          if (street.length > 3) {
+            suggestions = await searchMapbox(street, lat, lng);
+          }
+        }
+
+        // 4. Nominatim solo con la calle
+        if (suggestions.length === 0) {
+          const street = streetOnly(query);
+          if (street.length > 3) {
+            suggestions = await searchNominatim(street, lat, lng);
+          }
         }
       } else {
         // POI / nombre de lugar → Nominatim primero, Mapbox como fallback
