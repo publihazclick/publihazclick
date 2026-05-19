@@ -847,18 +847,54 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
 
-              <div class="flex items-center justify-between px-4 py-2 border-b border-slate-200">
-                <button (click)="adjustTripPrice(-500)"
-                  class="w-11 h-11 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0">−</button>
-                <div class="text-center">
-                  <p class="text-slate-400 text-[10px] uppercase tracking-wider">Valor sugerido</p>
-                  <p class="text-slate-800 font-black text-2xl">{{ formatCOP(tripPrice()) }}</p>
-                  @if (surgeMultiplier() > 1) {
-                    <p class="text-orange-600 text-[10px] font-black mt-0.5">⚡ Alta demanda ×{{ surgeMultiplier() }}</p>
-                  }
+              <!-- ── Precio propuesto ─────────────────────────────── -->
+              <div class="px-4 py-3 border-b border-slate-200">
+                <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2.5">Tu precio propuesto</p>
+
+                <!-- Monto + botones inteligentes -->
+                <div class="flex items-center gap-3 mb-3">
+                  <button (click)="adjustTripPriceSmart(-1)"
+                    class="w-12 h-12 rounded-2xl border text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
+                    style="background:#f1f5f9;border-color:#e2e8f0">−</button>
+                  <div class="text-center flex-1">
+                    <p class="text-slate-800 font-black leading-none" style="font-size:30px">{{ formatCOP(tripPrice()) }}</p>
+                    @if (surgeMultiplier() > 1) {
+                      <p class="text-orange-600 text-[10px] font-black mt-1">⚡ Alta demanda ×{{ surgeMultiplier() }}</p>
+                    }
+                  </div>
+                  <button (click)="adjustTripPriceSmart(1)"
+                    class="w-12 h-12 rounded-2xl text-white font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
+                    style="background:#f97316">+</button>
                 </div>
-                <button (click)="adjustTripPrice(500)"
-                  class="w-11 h-11 rounded-xl bg-slate-200 border border-slate-300 text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0">+</button>
+
+                <!-- Slider -->
+                <input type="range"
+                  [min]="2000"
+                  [max]="tripSliderMax()"
+                  step="500"
+                  [value]="tripPrice()"
+                  (input)="tripPrice.set(+$any($event.target).value)"
+                  class="w-full mb-3 cursor-pointer"
+                  style="accent-color:#f97316" />
+
+                <!-- Presets rápidos -->
+                <div class="grid grid-cols-4 gap-1.5 mb-2">
+                  <button (click)="setTripPricePreset(-0.20)"
+                    class="py-1.5 rounded-xl text-[11px] font-black border active:scale-95 transition-all"
+                    style="background:#f8fafc;border-color:#e2e8f0;color:#64748b">−20%</button>
+                  <button (click)="setTripPricePreset(0)"
+                    class="py-1.5 rounded-xl text-[11px] font-black border active:scale-95 transition-all"
+                    style="background:#fff7ed;border-color:#fed7aa;color:#ea580c">Sugerido</button>
+                  <button (click)="setTripPricePreset(0.20)"
+                    class="py-1.5 rounded-xl text-[11px] font-black border active:scale-95 transition-all"
+                    style="background:#f0fdf4;border-color:#bbf7d0;color:#16a34a">+20%</button>
+                  <button (click)="setTripPricePreset(0.40)"
+                    class="py-1.5 rounded-xl text-[11px] font-black border active:scale-95 transition-all"
+                    style="background:#dcfce7;border-color:#86efac;color:#15803d">+40%</button>
+                </div>
+
+                <!-- Hint -->
+                <p class="text-slate-400 text-[10px] text-center">💡 Precio más alto = conductores más rápido</p>
               </div>
 
               <!-- Cupón -->
@@ -1123,22 +1159,32 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   [style.width]="waitingProgress() + '%'"></div>
               </div>
 
-              <!-- Ajuste de precio -->
-              <div class="flex items-center justify-between px-4 py-2.5" style="border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0">
-                <button (click)="adjustTripPrice(-500)"
-                  class="px-4 py-2 rounded-xl text-slate-600 text-sm font-bold active:scale-95 transition-all"
-                  style="background:#f1f5f9;border:1px solid #e2e8f0">-500</button>
-                <p class="font-black text-xl text-slate-800">{{ formatCOP(tripPrice()) }}</p>
-                <button (click)="adjustTripPrice(500)"
-                  class="px-4 py-2 rounded-xl text-slate-600 text-sm font-bold active:scale-95 transition-all"
-                  style="background:#f1f5f9;border:1px solid #e2e8f0">+500</button>
-              </div>
-
-              <!-- Aumentar tarifa -->
-              <div class="px-4 py-2" style="border-bottom:1px solid #e2e8f0">
-                <button class="w-full py-1.5 text-slate-400 text-sm font-semibold text-center">
-                  Aumentar tarifa
-                </button>
+              <!-- Ajuste de precio en espera -->
+              <div class="px-4 py-2.5" style="border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0">
+                <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider text-center mb-2">Ajustar precio</p>
+                <div class="flex items-center gap-3 mb-2">
+                  <button (click)="adjustTripPriceSmart(-1)"
+                    class="w-10 h-10 rounded-xl border text-slate-700 font-black text-xl flex items-center justify-center active:scale-95 flex-shrink-0"
+                    style="background:#f1f5f9;border-color:#e2e8f0">−</button>
+                  <p class="font-black text-xl text-slate-800 flex-1 text-center">{{ formatCOP(tripPrice()) }}</p>
+                  <button (click)="adjustTripPriceSmart(1)"
+                    class="w-10 h-10 rounded-xl text-white font-black text-xl flex items-center justify-center active:scale-95 flex-shrink-0"
+                    style="background:#f97316">+</button>
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                  <button (click)="setTripPricePreset(-0.20)"
+                    class="py-1 rounded-lg text-[10px] font-black border active:scale-95"
+                    style="background:#f8fafc;border-color:#e2e8f0;color:#64748b">−20%</button>
+                  <button (click)="setTripPricePreset(0)"
+                    class="py-1 rounded-lg text-[10px] font-black border active:scale-95"
+                    style="background:#fff7ed;border-color:#fed7aa;color:#ea580c">Sugerido</button>
+                  <button (click)="setTripPricePreset(0.20)"
+                    class="py-1 rounded-lg text-[10px] font-black border active:scale-95"
+                    style="background:#f0fdf4;border-color:#bbf7d0;color:#16a34a">+20%</button>
+                  <button (click)="setTripPricePreset(0.40)"
+                    class="py-1 rounded-lg text-[10px] font-black border active:scale-95"
+                    style="background:#dcfce7;border-color:#86efac;color:#15803d">+40%</button>
+                </div>
               </div>
 
               <!-- Toggle auto-aceptar -->
@@ -8060,6 +8106,21 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   adjustTripPrice(delta: number) {
     this.tripPrice.set(Math.max(2000, this.tripPrice() + delta));
   }
+
+  adjustTripPriceSmart(dir: 1 | -1) {
+    const p = this.tripPrice();
+    const step = p < 8000 ? 500 : p < 20000 ? 1000 : 2000;
+    this.tripPrice.set(Math.max(2000, p + dir * step));
+  }
+
+  setTripPricePreset(pct: number) {
+    const base = this._calcPrice(this.tripDistKm(), this.tripVehicle());
+    this.tripPrice.set(Math.max(2000, Math.round(base * (1 + pct) / 500) * 500));
+  }
+
+  readonly tripSliderMax = computed(() =>
+    Math.max(this._calcPrice(this.tripDistKm(), this.tripVehicle()) * 2, 30000),
+  );
 
   async findOffers() {
     const dest = this.tripDest();
