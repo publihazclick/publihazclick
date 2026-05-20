@@ -188,10 +188,13 @@ export class AndaGanaService {
       if (existing) {
         // Asegurar que el registro en ag_drivers existe y tiene el vehículo correcto
         const { data: existingDriver } = await this.supabase
-          .from('ag_drivers').select('id').eq('ag_user_id', existing.id).maybeSingle();
+          .from('ag_drivers').select('id, status, metric_trips_completed').eq('ag_user_id', existing.id).maybeSingle();
         if (existingDriver) {
-          if (vehicleType) {
-            await this.supabase.from('ag_drivers').update({ vehicle_type: vehicleType }).eq('id', existingDriver.id);
+          const updateData: any = {};
+          if (vehicleType) updateData.vehicle_type = vehicleType;
+          if ((existingDriver.metric_trips_completed ?? 0) === 0) updateData.status = 'quick';
+          if (Object.keys(updateData).length > 0) {
+            await this.supabase.from('ag_drivers').update(updateData).eq('id', existingDriver.id);
           }
         } else {
           await this.supabase.from('ag_drivers').insert({
