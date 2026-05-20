@@ -6499,76 +6499,50 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this._mapboxPromise;
   }
 
-  // ── Google Maps JS SDK (carga bajo demanda) ───────────────────
-  private _googleMapsPromise: Promise<void> | null = null;
-
-  private _loadGoogleMaps(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
-    if ((window as any).google?.maps?.places) return Promise.resolve();
-    if (this._googleMapsPromise) return this._googleMapsPromise;
-    this._googleMapsPromise = new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.GOOGLE_PLACES_KEY}&libraries=places&language=es`;
-      script.async = true;
-      script.onload  = () => resolve();
-      script.onerror = () => reject(new Error('Google Maps no cargó'));
-      document.head.appendChild(script);
-    });
-    return this._googleMapsPromise;
-  }
-
-  // Motor principal de búsqueda — Google Places AutocompleteService (JS SDK)
+  // ── Búsqueda de lugares via Edge Function (Google Places → Mapbox fallback) ──
   private async _searchNominatim(query: string): Promise<any[]> {
     if (!isPlatformBrowser(this.platformId)) return [];
     try {
-      await this._loadGoogleMaps();
-      const google = (window as any).google;
-      const svc = new google.maps.places.AutocompleteService();
-      const lat = this._currentLat;
-      const lng = this._currentLng;
+      const lat    = this._currentLat;
+      const lng    = this._currentLng;
       const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
 
-      const request: any = {
-        input:                  query,
-        componentRestrictions:  { country: 'co' },
-        language:               'es',
-        types:                  ['geocode'],
-      };
-      if (hasGps) {
-        request.location = new google.maps.LatLng(lat, lng);
-        request.radius   = 30000;
-      }
+      const body: any = { action: 'search', query };
+      if (hasGps) { body.lat = lat; body.lng = lng; }
 
-      return new Promise<any[]>((resolve) => {
-        svc.getPlacePredictions(request, (preds: any[] | null, status: string) => {
-          if (status !== 'OK' || !preds) { resolve([]); return; }
-          resolve(preds.slice(0, 5).map((p: any) => ({
-            id:         p.place_id,
-            place_id:   p.place_id,
-            text:       p.structured_formatting?.main_text ?? p.description.split(',')[0],
-            place_name: p.description,
-            center:     null,   // coordenadas se piden al seleccionar (_getGooglePlaceDetails)
-            distanceKm: null,
-            _dist:      0,
-          })));
-        });
+      const res  = await fetch(this.AG_PLACES_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
+      const json = await res.json();
+      const suggestions: any[] = json.suggestions ?? [];
+
+      return suggestions.map((s: any) => ({
+        id:         s.place_id,
+        place_id:   s.place_id,
+        text:       s.text,
+        place_name: s.place_name,
+        center:     (s.lat != null && s.lng != null) ? [s.lng, s.lat] : null,
+        lat:        s.lat,
+        lng:        s.lng,
+        distanceKm: null,
+        _dist:      0,
+      }));
     } catch { return []; }
   }
 
-  // Obtener coordenadas exactas al seleccionar un resultado de Google Places
+  // Obtener coordenadas de un place_id via Edge Function (Google Place Details)
   private async _getGooglePlaceDetails(placeId: string): Promise<{ lat: number; lng: number } | null> {
     if (!isPlatformBrowser(this.platformId)) return null;
     try {
-      await this._loadGoogleMaps();
-      const google = (window as any).google;
-      const svc = new google.maps.places.PlacesService(document.createElement('div'));
-      return new Promise<{ lat: number; lng: number } | null>((resolve) => {
-        svc.getDetails({ placeId, fields: ['geometry'] }, (result: any, status: string) => {
-          if (status !== 'OK' || !result?.geometry?.location) { resolve(null); return; }
-          resolve({ lat: result.geometry.location.lat(), lng: result.geometry.location.lng() });
-        });
+      const res  = await fetch(this.AG_PLACES_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'details', place_id: placeId }),
       });
+      if (!res.ok) return null;
+      return await res.json();
     } catch { return null; }
   }
 
@@ -6824,31 +6798,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async selectAddress(feature: any) {
     this.addressLoading.set(true);
     try {
-      // Google Places: place_id sin coordenadas → pedir details vía JS SDK
-      if (!feature.center && feature.place_id && !feature.mapbox_id) {
+      if (feature.lat == null && feature.place_id) {
         const coords = await this._getGooglePlaceDetails(feature.place_id);
-        if (coords) feature = { ...feature, center: [coords.lng, coords.lat] as [number, number] };
-      }
-      // Mapbox legacy: mapbox_id sin coordenadas
-      if (feature.mapbox_id && !feature.center) {
-        const params = new URLSearchParams({ access_token: this.MAPBOX_TOKEN, session_token: this._mbxSessionToken ?? '' });
-        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${feature.mapbox_id}?${params}`);
-        if (res.ok) {
-          const json = await res.json();
-          const f = json.features?.[0];
-          if (f?.geometry?.coordinates) {
-            feature = { ...feature, center: f.geometry.coordinates as [number, number], place_name: f.properties?.full_address ?? feature.place_name };
-          }
-        }
-        this._mbxSessionToken = null;
+        if (coords) feature = { ...feature, lat: coords.lat, lng: coords.lng };
       }
     } catch { /* usa coordenadas que tenga */ } finally {
       this.addressLoading.set(false);
     }
 
-    const coords: [number, number] = feature.center ?? feature.geometry?.coordinates;
-    if (!coords || coords[0] == null) return;
-    const [lng, lat] = coords;
+    let lat: number, lng: number;
+    if (feature.lat != null && feature.lng != null) {
+      lat = feature.lat; lng = feature.lng;
+    } else {
+      const coords: [number, number] = feature.center ?? feature.geometry?.coordinates;
+      if (!coords || coords[0] == null) return;
+      [lng, lat] = coords;
+    }
     this.currentAddress.set(feature.place_name ?? feature.text ?? '');
     this._currentLat = lat;
     this._currentLng = lng;
@@ -8498,7 +8463,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     let dLng: number = this._currentLng;
     let dLat: number = this._currentLat;
 
-    if (s.center && s.center[0] != null) {
+    if (s.lat != null && s.lng != null) {
+      dLat = s.lat; dLng = s.lng;
+    } else if (s.center && s.center[0] != null) {
       [dLng, dLat] = s.center as [number, number];
     } else if (s.place_id) {
       const coords = await this._getGooglePlaceDetails(s.place_id);
@@ -10723,7 +10690,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   qrSelectOrigin(s: any) {
-    const [lng, lat] = s.center ?? [this._currentLng, this._currentLat];
+    const lat = s.lat ?? (s.center ? s.center[1] : this._currentLat);
+    const lng = s.lng ?? (s.center ? s.center[0] : this._currentLng);
     this.qrOriginSelected.set({ name: s.text || s.place_name, lat, lng });
     this.qrOriginQuery.set('');
     this.qrOriginSuggestions.set([]);
@@ -10741,7 +10709,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   qrSelectDest(s: any) {
-    const [lng, lat] = s.center ?? [this._currentLng, this._currentLat];
+    const lat = s.lat ?? (s.center ? s.center[1] : this._currentLat);
+    const lng = s.lng ?? (s.center ? s.center[0] : this._currentLng);
     this.qrDestSelected.set({ name: s.text || s.place_name, lat, lng });
     this.qrDestQuery.set('');
     this.qrDestSuggestions.set([]);
