@@ -8159,14 +8159,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const request: any = {
       input: query,
       componentRestrictions: { country: 'co' },
-      types: ['geocode'],
       sessionToken: this._placesSessionToken,
     };
     if (hasGps) {
       const gmaps = (window as any).google.maps;
-      request.location = new gmaps.LatLng(this._currentLat, this._currentLng);
-      request.radius = 50000;
-      request.strictBounds = true;
+      // bounds = sesgo hacia la zona del usuario (~50 km), no filtro duro
+      const d = 0.45; // ~50 km en grados
+      request.bounds = new gmaps.LatLngBounds(
+        new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
+        new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
+      );
     }
 
     this._autocompleteService.getPlacePredictions(request, (predictions: any[], status: string) => {
