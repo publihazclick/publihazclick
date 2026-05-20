@@ -2235,30 +2235,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <p class="text-slate-600 text-xs leading-relaxed">Nuestro equipo verificará tus documentos en las próximas 24–48 horas.</p>
         </div>
       }
-      @if (driverStatus() === 'approved') {
-        <!-- Billetera del conductor -->
-        <div class="flex items-center gap-3 rounded-2xl px-4 py-3"
-          style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.25)">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.2)">
-            <span class="material-symbols-outlined text-emerald-600" style="font-size:18px">account_balance_wallet</span>
-          </div>
-          <div class="flex-1">
-            <p class="text-slate-600 text-[10px] uppercase font-bold tracking-widest">Saldo billetera</p>
-            <p class="font-black text-base" [class]="driverWalletBalance() >= 0 ? 'text-emerald-600' : 'text-rose-500'">
-              {{ formatCOP(driverWalletBalance()) }}
-            </p>
-          </div>
-          @if (driverCommissionPct() > 0) {
-            <div class="text-right">
-              <p class="text-slate-600 text-[10px]">Comisión</p>
-              <p class="text-purple-400 font-black text-sm">{{ driverCommissionPct() }}%</p>
-            </div>
-          } @else {
-            <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">Sin comisión</span>
-          }
+      <!-- Gana por invitar -->
+      <button (click)="openDriverSection('referrals')"
+        class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
+        style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
+        <div class="flex items-center justify-center flex-shrink-0"
+          style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
+          <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
         </div>
+        <div class="flex-1 min-w-0 text-left">
+          <p style="color:#fff;font-weight:600;font-size:14px;margin:0;line-height:1.3">Gana por invitar</p>
+          <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:0;line-height:1.3">Invita conductores y pasajeros</p>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <span style="color:#fff;font-size:12px;font-weight:500">Invitar</span>
+          <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
+        </div>
+      </button>
 
+      @if (driverStatus() === 'approved') {
         <!-- Viajes activos del conductor -->
         @if (driverActiveTrips().length > 0) {
           <div class="flex flex-col gap-2">
@@ -2483,24 +2478,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <p class="text-slate-500 text-xs">Puedes contactar al soporte para más información.</p>
         </div>
       }
-
-      <!-- Gana por invitar -->
-      <button (click)="openDriverSection('referrals')"
-        class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
-        style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
-        <div class="flex items-center justify-center flex-shrink-0"
-          style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
-          <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
-        </div>
-        <div class="flex-1 min-w-0 text-left">
-          <p style="color:#fff;font-weight:600;font-size:14px;margin:0;line-height:1.3">Gana por invitar</p>
-          <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:0;line-height:1.3">Invita conductores y pasajeros</p>
-        </div>
-        <div class="flex items-center gap-1 flex-shrink-0">
-          <span style="color:#fff;font-size:12px;font-weight:500">Invitar</span>
-          <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
-        </div>
-      </button>
 
       <!-- Info card -->
       <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
