@@ -585,6 +585,32 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                     </button>
                   </div>
+                  <!-- Sugerencias Google Places -->
+                  @if (tripSuggestions().length > 0) {
+                    <div class="flex flex-col">
+                      @for (s of tripSuggestions(); track s.id) {
+                        <button (mousedown)="$event.preventDefault(); selectTripDest(s)"
+                          class="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 active:bg-slate-100 text-left transition-colors">
+                          <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:20px">location_on</span>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold truncate" style="color:#1976D2">{{ s.text }}</p>
+                            <p class="text-xs text-slate-500 truncate">{{ s.place_name }}</p>
+                          </div>
+                          @if (s.distanceKm != null) {
+                            <span class="text-slate-500 text-sm flex-shrink-0">{{ s.distanceKm }} km</span>
+                          }
+                        </button>
+                      }
+                    </div>
+                  } @else if (tripQuery().length > 1) {
+                    @if (tripLoading()) {
+                      <div class="flex justify-center py-4">
+                        <div class="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    } @else if (tripNoResults()) {
+                      <p class="text-center text-slate-400 text-sm py-4">Sin resultados para "{{ tripQuery() }}"</p>
+                    }
+                  }
                 </div>
               }
 
@@ -6484,6 +6510,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _mapPinHandler: ((e: any) => void) | null = null;
   private _pinDropMarker: any = null;
 
+  // ── Google Maps / Places ──────────────────────────────────────────────────
+  private _gmapsPromise: Promise<void> | null = null;
+  private _autocompleteService: any = null;
+  private _placesService: any = null;
+  private _placesSessionToken: any = null;
+  private _tripDebounceTimer: any = null;
+
   private _enableMapPinDrop() {
     if (!this._map) return;
     this._map.getCanvas().style.cursor = 'crosshair';
@@ -8068,11 +8101,137 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     document.getElementById('ag-icons-scroll')?.scrollBy({ left: px, behavior: 'smooth' });
   }
 
-  openTripSearch() { this.tripOpen.set(true); }
+  openTripSearch() {
+    this.tripOpen.set(true);
+    if (isPlatformBrowser(this.platformId)) this._loadGoogleMapsSDK();
+  }
   closeTripSearch() { this.tripOpen.set(false); this.tripQuery.set(''); this.tripSuggestions.set([]); }
 
   onTripQueryInput(val: string) {
     this.tripQuery.set(val);
+    if (this._tripDebounceTimer) clearTimeout(this._tripDebounceTimer);
+    if (!val.trim() || val.length < 2) {
+      this.tripSuggestions.set([]);
+      this.tripNoResults.set(false);
+      return;
+    }
+    this.tripLoading.set(true);
+    this._tripDebounceTimer = setTimeout(() => this._searchGooglePlaces(val), 300);
+  }
+
+  /** Carga el SDK de Google Maps una sola vez de forma lazy */
+  private _loadGoogleMapsSDK(): Promise<void> {
+    if (this._gmapsPromise) return this._gmapsPromise;
+    this._gmapsPromise = new Promise<void>((resolve) => {
+      if ((window as any).google?.maps?.places) { resolve(); return; }
+      const script = document.createElement('script');
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCASh_bSePE5LRR3oVjns25h344rFNZUeU&libraries=places,geometry&language=es';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        const check = () => {
+          if ((window as any).google?.maps?.places) resolve();
+          else setTimeout(check, 50);
+        };
+        check();
+      };
+      document.head.appendChild(script);
+    });
+    return this._gmapsPromise;
+  }
+
+  /** Inicializa los servicios de Google Places */
+  private _initGooglePlaces() {
+    const gmaps = (window as any).google.maps;
+    this._autocompleteService = new gmaps.places.AutocompleteService();
+    const div = document.createElement('div');
+    this._placesService = new gmaps.places.PlacesService(div);
+    this._placesSessionToken = new gmaps.places.AutocompleteSessionToken();
+  }
+
+  /** Busca sugerencias vía Google Places AutocompleteService */
+  private async _searchGooglePlaces(query: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    await this._loadGoogleMapsSDK();
+    if (!this._autocompleteService) this._initGooglePlaces();
+
+    const hasGps = this._currentLat !== 0 && this._currentLng !== 0;
+    const request: any = {
+      input: query,
+      componentRestrictions: { country: 'co' },
+      types: ['geocode'],
+      sessionToken: this._placesSessionToken,
+    };
+    if (hasGps) {
+      const gmaps = (window as any).google.maps;
+      request.location = new gmaps.LatLng(this._currentLat, this._currentLng);
+      request.radius = 50000;
+      request.strictBounds = true;
+    }
+
+    this._autocompleteService.getPlacePredictions(request, (predictions: any[], status: string) => {
+      this.tripLoading.set(false);
+      if (status !== 'OK' || !predictions?.length) {
+        this._searchNominatimFallback(query);
+        return;
+      }
+
+      const filtered = predictions
+        .filter((p: any) => {
+          const t: string[] = p.types ?? [];
+          return !t.includes('establishment') && !t.includes('point_of_interest');
+        })
+        .slice(0, 5);
+
+      const results = filtered.map((p: any) => ({
+        id:         p.place_id,
+        place_id:   p.place_id,
+        text:       p.structured_formatting?.main_text ?? p.description,
+        place_name: p.structured_formatting?.secondary_text ?? '',
+        lat:        null as number | null,
+        lng:        null as number | null,
+        distanceKm: null as number | null,
+        _rawTypes:  p.types,
+      }));
+
+      this.tripSuggestions.set(results);
+      this.tripNoResults.set(results.length === 0);
+      this.cdr.markForCheck();
+    });
+  }
+
+  /** Fallback Nominatim OSM cuando Google Places no retorna resultados */
+  private async _searchNominatimFallback(query: string) {
+    try {
+      const params = new URLSearchParams({
+        q: query, format: 'json', countrycodes: 'co', limit: '5', addressdetails: '1',
+      });
+      if (this._currentLat !== 0) {
+        params.set('viewbox', `${this._currentLng - 0.5},${this._currentLat + 0.5},${this._currentLng + 0.5},${this._currentLat - 0.5}`);
+        params.set('bounded', '1');
+      }
+      const res  = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { 'Accept-Language': 'es' },
+      });
+      const data = await res.json();
+      const results = (data ?? []).slice(0, 5).map((r: any) => ({
+        id:         r.place_id,
+        place_id:   `nominatim_${r.place_id}`,
+        text:       r.display_name.split(',')[0],
+        place_name: r.display_name.split(',').slice(1, 3).join(',').trim(),
+        lat:        parseFloat(r.lat),
+        lng:        parseFloat(r.lon),
+        distanceKm: null as number | null,
+        _rawTypes:  [] as string[],
+      }));
+      this.tripSuggestions.set(results);
+      this.tripNoResults.set(results.length === 0);
+      this.cdr.markForCheck();
+    } catch {
+      this.tripSuggestions.set([]);
+      this.tripNoResults.set(true);
+      this.cdr.markForCheck();
+    }
   }
 
   private _detectedCity(): string {
@@ -8086,9 +8245,55 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
 
-  selectTripDest(s: any) {
+  async selectTripDest(s: any) {
     this.tripOpen.set(false);
     this.tripQuery.set('');
+    this.tripSuggestions.set([]);
+
+    // Renovar session token después de seleccionar
+    if ((window as any).google?.maps?.places) {
+      this._placesSessionToken = new (window as any).google.maps.places.AutocompleteSessionToken();
+    }
+
+    const name = s.text || s.place_name || 'Destino';
+
+    // Si ya tiene coordenadas (Nominatim fallback), úsalas directo
+    if (s.lat != null && s.lng != null) {
+      this.tripDest.set({ name, lat: s.lat, lng: s.lng });
+      this.cdr.markForCheck();
+      this._drawRoute(s.lng, s.lat);
+      return;
+    }
+
+    // Google Place: obtener coordenadas con PlacesService.getDetails
+    try {
+      await this._loadGoogleMapsSDK();
+      if (!this._placesService) this._initGooglePlaces();
+      const details = await new Promise<any>((resolve, reject) => {
+        this._placesService.getDetails(
+          { placeId: s.place_id, fields: ['geometry'], sessionToken: this._placesSessionToken },
+          (result: any, status: string) => status === 'OK' ? resolve(result) : reject(status),
+        );
+      });
+      const loc = details.geometry?.location;
+      if (loc) {
+        this.tripDest.set({ name, lat: loc.lat(), lng: loc.lng() });
+        this.cdr.markForCheck();
+        this._drawRoute(loc.lng(), loc.lat());
+      }
+    } catch {
+      // Si falla getDetails, intenta Nominatim geocoding como fallback
+      try {
+        const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&countrycodes=co&limit=1`);
+        const data = await res.json();
+        if (data?.[0]) {
+          const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+          this.tripDest.set({ name, lat, lng });
+          this.cdr.markForCheck();
+          this._drawRoute(lng, lat);
+        }
+      } catch { /* nada */ }
+    }
   }
 
   setTripVehicle(type: 'carro' | 'moto' | 'camion') {
