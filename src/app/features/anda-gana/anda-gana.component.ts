@@ -2150,7 +2150,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div>
           <p class="text-slate-400 text-sm">Tu cuenta de conductor</p>
         </div>
-        @if (driverStatus() === 'pending') {
+        @if (driverStatus() === 'quick') {
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold">
+            <span class="material-symbols-outlined" style="font-size:14px">rocket_launch</span> Primera carrera gratis
+          </span>
+        } @else if (driverStatus() === 'pending_docs') {
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold">
+            <span class="material-symbols-outlined" style="font-size:14px">assignment</span> Completa tu registro
+          </span>
+        } @else if (driverStatus() === 'pending') {
           <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
             <span class="material-symbols-outlined" style="font-size:14px">schedule</span> En revisión
           </span>
@@ -2165,6 +2173,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
       </div>
 
+      @if (driverStatus() === 'quick') {
+        <div class="rounded-2xl p-4 flex items-start gap-3"
+          style="background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(59,130,246,0.08));border:1px solid rgba(124,58,237,0.25)">
+          <span class="material-symbols-outlined text-purple-400 flex-shrink-0" style="font-size:28px">rocket_launch</span>
+          <div>
+            <p class="text-white font-black text-sm">¡Tu primera carrera es gratis!</p>
+            <p class="text-slate-400 text-xs leading-relaxed mt-0.5">Acepta un viaje ahora mismo sin necesidad de saldo ni aprobación. Después de tu primer viaje deberás completar tu registro.</p>
+          </div>
+        </div>
+      }
+      @if (driverStatus() === 'pending_docs') {
+        <div class="rounded-2xl p-4 flex flex-col gap-3"
+          style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.2)">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:28px">assignment</span>
+            <div>
+              <p class="text-white font-black text-sm">Completa tu registro</p>
+              <p class="text-slate-400 text-xs leading-relaxed mt-0.5">¡Felicitaciones por tu primer viaje! Para seguir aceptando servicios necesitas enviar tu documentación completa.</p>
+            </div>
+          </div>
+          <button (click)="screen.set('driver-form')"
+            class="w-full py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            style="background:linear-gradient(135deg,#f97316,#ea580c)">
+            <span class="material-symbols-outlined" style="font-size:16px">edit_document</span>
+            Enviar documentación
+          </button>
+        </div>
+      }
       @if (driverStatus() === 'pending') {
         <div class="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-5 text-center flex flex-col items-center gap-2">
           <span class="material-symbols-outlined text-amber-400" style="font-size:36px">hourglass_top</span>
@@ -2280,6 +2316,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
+      }
+      @if (driverStatus() !== 'rejected') {
         <!-- Panel de solicitudes de viaje -->
         <div class="flex flex-col gap-3">
           <!-- Header toggle -->
@@ -2360,21 +2398,36 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                 } @else {
                   <div class="px-4 pb-3">
-                    @if ((driverData()?.trips_completed ?? 0) === 0) {
+                    @if (driverStatus() === 'quick') {
                       <button (click)="makingOfferFor.set(req)"
                         class="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                         style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border:none;cursor:pointer">
                         <span class="material-symbols-outlined text-white" style="font-size:16px">rocket_launch</span>
                         <span class="text-white text-xs font-black">1ª carrera gratis · Tomar viaje</span>
                       </button>
-                    } @else if (driverWalletBalance() <= 0) {
+                    } @else if (driverStatus() === 'pending_docs') {
+                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
+                        style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-orange-400" style="font-size:15px">assignment</span>
+                          <span class="text-orange-400 text-xs font-black">Completa tu registro</span>
+                        </div>
+                        <p class="text-slate-500 text-[10px]">Envía tus documentos para seguir aceptando viajes</p>
+                      </div>
+                    } @else if (driverStatus() === 'pending') {
+                      <div class="w-full py-2.5 rounded-xl flex items-center justify-center gap-1.5"
+                        style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+                        <span class="material-symbols-outlined text-amber-400" style="font-size:15px">hourglass_top</span>
+                        <span class="text-amber-400 text-xs font-black">En revisión (24–48h)</span>
+                      </div>
+                    } @else if (driverStatus() === 'approved' && driverWalletBalance() < 20000) {
                       <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
                         style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
                         <div class="flex items-center gap-1.5">
                           <span class="material-symbols-outlined text-rose-400" style="font-size:15px">account_balance_wallet</span>
-                          <span class="text-rose-400 text-xs font-black">Recarga requerida</span>
+                          <span class="text-rose-400 text-xs font-black">Mínimo $20.000 para aceptar</span>
                         </div>
-                        <p class="text-slate-500 text-[10px]">Necesitas saldo en tu billetera para aceptar viajes</p>
+                        <p class="text-slate-500 text-[10px]">Recarga tu billetera para poder tomar viajes</p>
                         <button (click)="openDriverSection('earnings')"
                           class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
                           style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
@@ -2382,14 +2435,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           Recargar billetera
                         </button>
                       </div>
-                    } @else if (driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
+                    } @else if (driverStatus() === 'approved' && driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
                       <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
                         style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2)">
                         <div class="flex items-center gap-1.5">
                           <span class="material-symbols-outlined text-amber-400" style="font-size:15px">account_balance_wallet</span>
-                          <span class="text-amber-400 text-xs font-black">Saldo insuficiente</span>
+                          <span class="text-amber-400 text-xs font-black">Saldo insuficiente para comisión</span>
                         </div>
-                        <p class="text-slate-500 text-[10px]">Necesitas {{ formatCOP(requiredCommission(req.offered_price)) }} de comisión</p>
+                        <p class="text-slate-500 text-[10px]">Necesitas {{ formatCOP(requiredCommission(req.offered_price)) }}</p>
                         <button (click)="openDriverSection('earnings')"
                           class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
                           style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
@@ -2397,7 +2450,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           Recargar billetera
                         </button>
                       </div>
-                    } @else {
+                    } @else if (driverStatus() === 'approved') {
                       <button (click)="openMakeOffer(req)"
                         class="w-full py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                         style="background:linear-gradient(135deg,#0891b2,#0e7490)">
@@ -4542,6 +4595,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </button>
           </div>
 
+          <!-- Error -->
+          @if (qrOtpError()) {
+            <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 14px;text-align:center">
+              <p style="color:#f87171;font-size:13px;margin:0">{{ qrOtpError() }}</p>
+            </div>
+          }
+
           <!-- CTA -->
           <button (click)="qrSaveVehicleAndEnter()"
             [disabled]="!qrVehicleType() || qrOtpVerifying()"
@@ -6154,32 +6214,36 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       // Suscribirse a ubicaciones de conductores en tiempo real
       this._subscribeToDriverLocations();
     } else {
-      const drivers = await this.agService.getDrivers();
-      const mine = drivers.find(d => d.ag_user_id === profile.id) ?? null;
+      const mine = await this.agService.getMyDriverProfile();
       this.driverData.set(mine);
       this.driverStatus.set(mine?.status ?? 'pending');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
-      if (mine?.status === 'approved') {
-        this._loadDriverRequests(mine.vehicle_type);
-        const [pct, balance, activeTrips] = await Promise.all([
-          this.agService.getCommissionPct(),
-          this.agService.getDriverWalletBalance(mine.id),
-          this.agService.getMyAcceptedDriverOffers(),
-        ]);
-        this.driverCommissionPct.set(pct);
-        this.driverWalletBalance.set(balance);
-        this.driverActiveTrips.set(activeTrips);
-        this.driverOnline.set(mine.is_online ?? false);
-        // Si ya estaba online, iniciar tracking GPS
-        if (mine.is_online) {
-          this.startGpsTracking(mine.id);
-        }
-      }
+      await this._initDriverHome(mine);
     }
 
     // Iniciar mapa después de que Angular renderice el DOM
     setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
+  }
+
+  private async _initDriverHome(mine: any) {
+    if (!mine) return;
+    const status: string = mine.status ?? 'pending';
+    // Todos los estados activos ven solicitudes de viaje
+    if (status !== 'rejected') {
+      this._loadDriverRequests(mine.vehicle_type);
+    }
+    // Cargar comisión y saldo para todos los conductores activos
+    const [pct, balance] = await Promise.all([
+      this.agService.getCommissionPct(),
+      this.agService.getDriverWalletBalance(mine.id),
+    ]);
+    this.driverCommissionPct.set(pct);
+    this.driverWalletBalance.set(balance);
+    // Para aprobados: sincronizar estado online
+    if (status === 'approved' && mine.is_online) {
+      this.driverOnline.set(true);
+    }
   }
 
   private _locationChannel: RealtimeChannel | null = null;
@@ -8580,16 +8644,23 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const driver = this.driverData();
     if (!req || !driver) return;
 
-    // Primera carrera gratis: conductores con 0 viajes completados no necesitan saldo
-    const tripsCompleted = this.driverData()?.trips_completed ?? 0;
-    if (tripsCompleted > 0) {
-      if (this.driverWalletBalance() <= 0) {
-        alert('Necesitas recargar tu billetera para tomar más viajes.');
+    const status = this.driverStatus();
+    if (status === 'pending_docs') {
+      alert('Debes completar tu registro antes de aceptar más viajes.');
+      return;
+    }
+    if (status === 'pending') {
+      alert('Tu solicitud está siendo revisada. En 24–48 horas recibirás respuesta.');
+      return;
+    }
+    if (status === 'approved') {
+      if (this.driverWalletBalance() < 20000) {
+        alert('Necesitas mínimo $20.000 en tu billetera para aceptar viajes.');
         return;
       }
       const commission = this.requiredCommission(this.driverOfferPrice());
       if (this.driverCommissionPct() > 0 && this.driverWalletBalance() < commission) {
-        alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} en tu billetera para cubrir la comisión.`);
+        alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} para cubrir la comisión.`);
         return;
       }
     }
@@ -10393,6 +10464,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const vehicle = this.qrVehicleType();
     if (!vehicle) return;
     this.qrOtpVerifying.set(true);
+    this.qrOtpError.set('');
     this.cdr.markForCheck();
     const phone = '+57' + this.qrPhone();
     const name  = this.qrName().trim() || 'Conductor';
@@ -10401,23 +10473,13 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (reg.success && reg.profile) {
       this.agProfile.set(reg.profile);
       this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
-      // Cargar datos del conductor
-      const drivers = await this.agService.getDrivers();
-      const mine = drivers.find(d => d.ag_user_id === reg.profile!.id) ?? null;
+      const mine = await this.agService.getMyDriverProfile();
       this.driverData.set(mine);
       this.driverStatus.set(mine?.status ?? 'pending');
       this.screen.set('driver-home');
-      if (mine?.status === 'approved') {
-        this._loadDriverRequests(mine.vehicle_type);
-        const [pct, balance] = await Promise.all([
-          this.agService.getCommissionPct(),
-          this.agService.getDriverWalletBalance(mine.id),
-        ]);
-        this.driverCommissionPct.set(pct);
-        this.driverWalletBalance.set(balance);
-      }
+      await this._initDriverHome(mine);
     } else {
-      this.qrOtpError.set(reg.error ?? 'Error al guardar perfil. Intenta de nuevo.');
+      this.qrOtpError.set(reg.error ?? 'Error al crear tu perfil. Intenta de nuevo.');
     }
     this.cdr.markForCheck();
   }

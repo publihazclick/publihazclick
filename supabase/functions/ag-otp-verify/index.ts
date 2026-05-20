@@ -60,7 +60,37 @@ Deno.serve(async (req) => {
     // Marcar como usado
     await sb.from('ag_otp_codes').update({ used: true }).eq('id', data.id);
 
-    return json({ ok: true });
+    // Crear sesión Supabase para este número de teléfono
+    // Email/password sintéticos derivados del número (determinístico: mismo teléfono = mismo usuario)
+    const salt = Deno.env.get('AG_SESSION_SALT') ?? 'movi-ag-2026';
+    const pwHash = await sha256(normalized + salt);
+    const syntheticEmail = `ag_${normalized.replace(/\+/g, '')}@movi-driver.app`;
+    const syntheticPassword = `Ag${pwHash.slice(0, 30)}`;
+
+    // Intentar crear usuario (si ya existe, ignorar error)
+    await sb.auth.admin.createUser({
+      email: syntheticEmail,
+      password: syntheticPassword,
+      email_confirm: true,
+      user_metadata: { phone: normalized, source: 'movi_otp' },
+    });
+
+    // Iniciar sesión con las credenciales
+    const { data: signIn, error: signInErr } = await sb.auth.signInWithPassword({
+      email: syntheticEmail,
+      password: syntheticPassword,
+    });
+
+    if (signInErr || !signIn?.session) {
+      // Devolver ok:true sin sesión — el cliente intentará anonymous auth como fallback
+      return json({ ok: true });
+    }
+
+    return json({
+      ok: true,
+      access_token: signIn.session.access_token,
+      refresh_token: signIn.session.refresh_token,
+    });
   } catch (e) {
     console.error(e);
     return json({ error: 'Error interno' }, 500);

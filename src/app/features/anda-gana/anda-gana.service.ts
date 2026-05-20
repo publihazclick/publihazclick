@@ -186,9 +186,18 @@ export class AndaGanaService {
       }
       const existing = await this.getMyAgProfile();
       if (existing) {
-        // Si ya existe pero cambió el vehículo, actualizarlo
-        if (vehicleType) {
-          await this.supabase.from('ag_users').update({ vehicle_type: vehicleType }).eq('id', existing.id);
+        // Asegurar que el registro en ag_drivers existe y tiene el vehículo correcto
+        const { data: existingDriver } = await this.supabase
+          .from('ag_drivers').select('id').eq('ag_user_id', existing.id).maybeSingle();
+        if (existingDriver) {
+          if (vehicleType) {
+            await this.supabase.from('ag_drivers').update({ vehicle_type: vehicleType }).eq('id', existingDriver.id);
+          }
+        } else {
+          await this.supabase.from('ag_drivers').insert({
+            ag_user_id: existing.id, vehicle_type: vehicleType,
+            status: 'quick', is_online: false, wallet_balance: 0,
+          });
         }
         return { success: true, profile: existing };
       }
@@ -197,7 +206,6 @@ export class AndaGanaService {
         role: 'driver',
         full_name: name || 'Conductor',
         phone,
-        vehicle_type: vehicleType,
         country: 'Colombia',
         department: '',
         city: '',
@@ -207,14 +215,14 @@ export class AndaGanaService {
         .from('ag_users').insert(insertData).select('*').single();
       if (error) return { success: false, error: error.message };
       // Crear también el registro en ag_drivers
-      await this.supabase.from('ag_drivers').insert({
+      const { error: driverError } = await this.supabase.from('ag_drivers').insert({
         ag_user_id: profile.id,
         vehicle_type: vehicleType,
-        status: 'pending',
+        status: 'quick',
         is_online: false,
         wallet_balance: 0,
-        trips_completed: 0,
-      }).select().single();
+      });
+      if (driverError) return { success: false, error: 'No se pudo guardar el perfil. Intenta de nuevo.' };
       return { success: true, profile: profile as AgUser };
     } catch (e: any) {
       return { success: false, error: e?.message ?? 'Error inesperado.' };

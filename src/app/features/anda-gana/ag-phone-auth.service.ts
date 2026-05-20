@@ -56,6 +56,14 @@ export class AgPhoneAuthService {
         return { ok: false, error: this._mapMessage(msg), message: msg };
       }
 
+      // Si la función devolvió tokens, establecer sesión Supabase
+      if (data.access_token && data.refresh_token) {
+        await sb.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+      }
+
       return { ok: true };
     } catch (e: any) {
       return { ok: false, error: 'unknown', message: e?.message ?? 'Error desconocido' };
