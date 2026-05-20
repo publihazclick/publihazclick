@@ -55,8 +55,9 @@ async function searchGoogle(query: string, lat?: number, lng?: number): Promise<
     types:      'geocode',
   });
   if (lat != null && lng != null) {
-    params.set('location', `${lat},${lng}`);
-    params.set('radius',   '50000');
+    params.set('location',    `${lat},${lng}`);
+    params.set('radius',      '50000');
+    params.set('strictbounds', 'true');
   }
 
   const res  = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
