@@ -436,49 +436,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     (input)="onAddressInput($any($event.target).value)"
                     (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
-                    (keydown.enter)="confirmTypedAddress()"
                     placeholder="Busca o pega tu dirección..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  <button (mousedown)="$event.preventDefault(); confirmTypedAddress()" class="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
-                  </button>
                   <button (click)="closeAddressEdit()" class="flex-shrink-0">
                     <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                   </button>
                 </div>
-                @if (addressSuggestions().length > 0) {
-                  <div class="flex flex-col max-h-56 overflow-y-auto">
-                    @for (s of addressSuggestions(); track s.id) {
-                      <button (mousedown)="$event.preventDefault(); selectAddress(s)"
-                        class="flex items-start gap-3 px-4 py-3 hover:bg-orange-50 active:bg-orange-100 transition-colors text-left border-b border-slate-50 last:border-0">
-                        <span class="material-symbols-outlined text-orange-400 mt-0.5 flex-shrink-0" style="font-size:16px">location_on</span>
-                        <div class="min-w-0">
-                          <p class="text-slate-800 text-sm font-semibold truncate" [innerHTML]="highlightMatch(s.text, addressQuery())"></p>
-                          <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
-                        </div>
-                      </button>
-                    }
-                  </div>
-                } @else if (addressQuery().length > 1) {
-                  @if (addressLoading()) {
-                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-1.5">
-                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
-                    </div>
-                  } @else if (addressNoResults()) {
-                    <div class="px-4 py-4 text-center">
-                      <p class="text-slate-500 text-sm mb-2">No encontramos resultados</p>
-                      <button (mousedown)="$event.preventDefault(); useMapPin()"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold hover:bg-orange-100 transition-colors">
-                        <span class="material-symbols-outlined" style="font-size:14px">pin_drop</span>
-                        Ubicar moviendo el pin en el mapa
-                      </button>
-                    </div>
-                  } @else {
-                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-1.5">
-                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
-                    </div>
-                  }
-                }
               </div>
             }
 
@@ -582,42 +545,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           (input)="onAddressInput($any($event.target).value)"
                           (paste)="handlePaste($any($event), 'address')"
                           (keydown.escape)="originEditOpen.set(false)"
-                          (keydown.enter)="confirmTypedAddress()"
                           placeholder="Escribe o pega tu punto de salida..."
                           class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                         <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
                           <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                         </button>
                       </div>
-                      @if (addressSuggestions().length > 0) {
-                        <div class="flex flex-col max-h-44 overflow-y-auto">
-                          @for (s of addressSuggestions(); track s.id) {
-                            <button (mousedown)="$event.preventDefault(); selectAddress(s)"
-                              class="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
-                              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">location_on</span>
-                              <div class="flex-1 min-w-0">
-                                <p class="text-slate-800 text-xs font-semibold truncate" [innerHTML]="highlightMatch(s.text, addressQuery())"></p>
-                                <p class="text-slate-400 text-[10px] truncate">{{ s.place_name }}</p>
-                              </div>
-                            </button>
-                          }
-                        </div>
-                      } @else if (addressQuery().length > 1) {
-                        @if (addressLoading()) {
-                          <div class="px-3 py-3 text-slate-400 text-xs flex items-center justify-center gap-1.5">
-                            <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
-                          </div>
-                        } @else if (addressNoResults()) {
-                          <div class="px-3 py-3 text-center">
-                            <p class="text-slate-500 text-xs mb-1.5">No encontramos ese lugar</p>
-                            <button (mousedown)="$event.preventDefault(); useMapPin()"
-                              class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-bold hover:bg-orange-100 transition-colors">
-                              <span class="material-symbols-outlined" style="font-size:12px">pin_drop</span>
-                              Mover pin en el mapa
-                            </button>
-                          </div>
-                        }
-                      }
                     </div>
                   }
                 }
@@ -652,44 +585,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                     </button>
                   </div>
-                  @if (tripSuggestions().length > 0) {
-                    <div class="flex flex-col max-h-48 overflow-y-auto">
-                      @for (s of tripSuggestions(); track s.id) {
-                        <button (mousedown)="$event.preventDefault(); selectTripDest(s)"
-                          class="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
-                          <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
-                          <div class="flex-1 min-w-0">
-                            <p class="text-slate-800 text-sm font-semibold truncate" [innerHTML]="highlightMatch(s.text, tripQuery())"></p>
-                            <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
-                          </div>
-                          @if (s.distanceKm != null) {
-                            <span class="text-orange-500 text-xs font-bold flex-shrink-0">{{ s.distanceKm }} km</span>
-                          }
-                        </button>
-                      }
-                    </div>
-                  } @else if (tripQuery().length > 1) {
-                    @if (tripLoading()) {
-                      <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
-                        Buscando lugares...
-                      </div>
-                    } @else if (tripNoResults()) {
-                      <div class="px-4 py-5 text-center flex flex-col items-center gap-3">
-                        <span class="material-symbols-outlined text-slate-300" style="font-size:36px">location_off</span>
-                        <div>
-                          <p class="text-slate-600 text-sm font-bold">No encontramos ese destino</p>
-                          <p class="text-slate-400 text-xs mt-0.5">Intenta agregar la ciudad, o marca el punto directamente en el mapa</p>
-                        </div>
-                        <button (mousedown)="$event.preventDefault(); useMapPin(true)"
-                          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-black active:scale-95 transition-all"
-                          style="background:linear-gradient(135deg,#f97316,#fb923c)">
-                          <span class="material-symbols-outlined" style="font-size:18px">pin_drop</span>
-                          Marcar en el mapa
-                        </button>
-                      </div>
-                    }
-                  }
                 </div>
               }
 
@@ -853,42 +748,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         [value]="addressQuery()"
                         (input)="onAddressInput($any($event.target).value)"
                         (keydown.escape)="originEditOpen.set(false)"
-                        (keydown.enter)="confirmTypedAddress()"
                         placeholder="Escribe tu punto de salida..."
                         class="flex-1 text-slate-800 text-xs outline-none placeholder-slate-500 bg-transparent"/>
                       <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
                         <span class="material-symbols-outlined text-slate-400" style="font-size:17px">close</span>
                       </button>
                     </div>
-                    @if (addressSuggestions().length > 0) {
-                      <div class="flex flex-col max-h-40 overflow-y-auto" style="background:#fff">
-                        @for (s of addressSuggestions(); track s.id) {
-                          <button (mousedown)="$event.preventDefault(); selectAddress(s)"
-                            class="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-orange-50 active:bg-orange-100 text-left transition-colors">
-                            <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:15px">location_on</span>
-                            <div class="flex-1 min-w-0">
-                              <p class="text-slate-800 text-xs font-semibold truncate">{{ s.text }}</p>
-                              <p class="text-slate-400 text-[10px] truncate">{{ s.place_name }}</p>
-                            </div>
-                          </button>
-                        }
-                      </div>
-                    } @else if (addressQuery().length > 1) {
-                      @if (addressNoResults()) {
-                        <div class="px-3 py-2.5 text-center" style="background:#fff">
-                          <p class="text-slate-500 text-xs mb-1.5">No encontramos ese lugar</p>
-                          <button (mousedown)="$event.preventDefault(); useMapPin()"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-bold hover:bg-orange-100 transition-colors">
-                            <span class="material-symbols-outlined" style="font-size:12px">pin_drop</span>
-                            Mover pin en el mapa
-                          </button>
-                        </div>
-                      } @else {
-                        <div class="px-3 py-2.5 text-slate-400 text-xs flex items-center justify-center gap-1.5" style="background:#fff">
-                          <span class="material-symbols-outlined animate-spin" style="font-size:13px">autorenew</span> Buscando...
-                        </div>
-                      }
-                    }
                   </div>
                 }
 
@@ -2572,45 +2437,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     (input)="onAddressInput($any($event.target).value)"
                     (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
-                    (keydown.enter)="confirmTypedAddress()"
                     placeholder="Busca o pega tu dirección..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  <button (mousedown)="$event.preventDefault(); confirmTypedAddress()" class="flex-shrink-0 w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white" style="font-size:16px">arrow_forward</span>
-                  </button>
                   <button (click)="closeAddressEdit()">
                     <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                   </button>
                 </div>
-                @if (addressSuggestions().length > 0) {
-                  <div class="flex flex-col max-h-60 overflow-y-auto">
-                    @for (s of addressSuggestions(); track s.id) {
-                      <button (mousedown)="$event.preventDefault(); selectAddress(s)"
-                        class="flex items-start gap-3 px-4 py-3 hover:bg-cyan-50 active:bg-cyan-100 transition-colors text-left border-b border-slate-50 last:border-0">
-                        <span class="material-symbols-outlined text-cyan-400 mt-0.5 flex-shrink-0" style="font-size:16px">location_on</span>
-                        <div class="min-w-0">
-                          <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
-                          <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
-                        </div>
-                      </button>
-                    }
-                  </div>
-                } @else if (addressQuery().length > 1) {
-                  @if (addressNoResults()) {
-                    <div class="px-4 py-4 text-center">
-                      <p class="text-slate-500 text-sm mb-2">No encontramos ese lugar</p>
-                      <button (mousedown)="$event.preventDefault(); useMapPin()"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-cyan-50 text-cyan-600 rounded-lg text-xs font-bold hover:bg-cyan-100 transition-colors">
-                        <span class="material-symbols-outlined" style="font-size:14px">pin_drop</span>
-                        Ubicar moviendo el pin en el mapa
-                      </button>
-                    </div>
-                  } @else {
-                    <div class="px-4 py-4 text-slate-400 text-sm text-center flex items-center justify-center gap-1.5">
-                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Buscando...
-                    </div>
-                  }
-                }
               </div>
             }
           </div>
@@ -6236,10 +6068,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _waitingInterval: ReturnType<typeof setInterval> | null = null;
   private _offerChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
-  private _searchDebounce:  ReturnType<typeof setTimeout> | null = null;
   private _mbxSessionToken: string | null = null;
-  private _addressReqId = 0;
-  private _tripReqId    = 0;
 
   // ── Geolocalización en tiempo real (pasajero) ──────────────────
   private _passengerWatchId:    number | null = null;   // ID del watchPosition pasajero
@@ -6257,13 +6086,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             * Math.sin(dLng / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
-  private _tripDebounce:    ReturnType<typeof setTimeout> | null = null;
   private _destMarker:      any = null;
   private _currentLat = 4.6097;
   private _currentLng = -74.0817;
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
-  private readonly GOOGLE_PLACES_KEY = (environment.andaGana as any).googlePlacesKey ?? '';
-  private readonly AG_PLACES_FN = `${environment.supabase.url}/functions/v1/ag-places`;
   private readonly SUPABASE_ANON = environment.supabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
   private readonly DEFAULT_LNG  = -74.0817;
@@ -6389,12 +6215,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
         setTimeout(() => { this.locationUpdating.set(false); this.cdr.markForCheck(); }, 1000);
 
-        // Si hay una búsqueda activa, rehacerla con la nueva proximidad
-        const q = this.addressQuery().trim();
-        if (q.length >= 2) {
-          if (this._searchDebounce) clearTimeout(this._searchDebounce);
-          this._searchDebounce = setTimeout(() => this._searchPlacesV6(q), 300);
-        }
       },
       (err) => {
         // GPS desactivado/denegado — mantener última ubicación, no interrumpir
@@ -6499,60 +6319,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this._mapboxPromise;
   }
 
-  // ── Búsqueda directa con Mapbox Geocoding (mismo motor del mapa) ──
-  private async _searchNominatim(query: string): Promise<any[]> {
-    if (!isPlatformBrowser(this.platformId)) return [];
-    try {
-      const q      = encodeURIComponent(query.trim());
-      const params = new URLSearchParams({
-        access_token: this.MAPBOX_TOKEN,
-        country:      'CO',
-        language:     'es',
-        limit:        '6',
-        types:        'poi,address,place,locality,neighborhood,district',
-      });
-
-      // Usar los bounds exactos del mapa visible como filtro estricto
-      if (this._map) {
-        const b = this._map.getBounds();
-        params.set('bbox', `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`);
-      }
-
-      // Biasear hacia la posición del usuario
-      if (this._currentLat !== 0 && this._currentLng !== 0) {
-        params.set('proximity', `${this._currentLng},${this._currentLat}`);
-      }
-
-      const res  = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?${params}`);
-      const json = await res.json();
-
-      return (json.features ?? []).map((f: any) => ({
-        id:         f.id,
-        place_id:   f.id,
-        text:       f.text,
-        place_name: f.place_name,
-        lat:        f.geometry.coordinates[1],
-        lng:        f.geometry.coordinates[0],
-        center:     f.geometry.coordinates,
-        distanceKm: null,
-        _dist:      0,
-      }));
-    } catch { return []; }
-  }
-
-  // Obtener coordenadas de un place_id via Edge Function (Google Place Details)
-  private async _getGooglePlaceDetails(placeId: string): Promise<{ lat: number; lng: number } | null> {
-    if (!isPlatformBrowser(this.platformId)) return null;
-    try {
-      const res  = await fetch(this.AG_PLACES_FN, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'details', place_id: placeId }),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch { return null; }
-  }
 
   // Reverse geocoding directo vía Mapbox (sin Edge Function)
   private async _reverseGeocodeDirect(lat: number, lng: number): Promise<string> {
@@ -6675,10 +6441,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.addressEditMode.set(false);
     this.addressQuery.set('');
     this.addressSuggestions.set([]);
-    if (this._searchDebounce) clearTimeout(this._searchDebounce);
   }
-
-  private _addressAbort: AbortController | null = null;
 
   handlePaste(event: ClipboardEvent, type: 'address' | 'trip') {
     // El evento paste llega ANTES de que el browser inserte el texto en el input,
@@ -6701,52 +6464,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   onAddressInput(query: string) {
     this.addressQuery.set(query);
-    this.addressNoResults.set(false);
-    if (this._searchDebounce) clearTimeout(this._searchDebounce);
-    if (!query.trim() || query.length < 2) {
-      this._addressAbort?.abort();
-      this.addressSuggestions.set([]);
-      this.addressLoading.set(false);
-      return;
-    }
-    this.addressLoading.set(true); // spinner inmediato, no esperar el debounce
-    this._searchDebounce = setTimeout(() => this._searchPlacesV6(query), 300);
   }
 
-  private async _searchPlacesV6(query: string) {
-    const reqId = ++this._addressReqId;
-    this.addressLoading.set(true);
-    this.addressSuggestions.set([]);
-    this.addressNoResults.set(false);
-    try {
-      const results = await this._searchNominatim(query);
-      if (reqId !== this._addressReqId) return;
-      this.addressSuggestions.set(results);
-      this.addressNoResults.set(results.length === 0);
-    } catch {
-      if (reqId !== this._addressReqId) return;
-      this.addressSuggestions.set([]);
-      this.addressNoResults.set(true);
-    } finally {
-      if (reqId === this._addressReqId) {
-        this.addressLoading.set(false);
-        this.cdr.markForCheck();
-      }
-    }
-  }
 
-  /**
-   * Resalta en negrita la parte del texto que coincide con la búsqueda.
-   * Escapa HTML para evitar XSS, luego envuelve el match en <b>.
-   */
-  highlightMatch(text: string, query: string): string {
-    const esc = (s: string) => s.replace(/[&<>"']/g, c =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
-    if (!query || !text) return esc(text);
-    const escaped = esc(text);
-    const pattern = esc(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return escaped.replace(new RegExp(`(${pattern})`, 'gi'), '<b>$1</b>');
-  }
 
   /** Activa el modo pin-drop en el mapa para seleccionar destino */
   useMapPin(forTrip = false) {
@@ -6803,64 +6523,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
   }
 
-  async selectAddress(feature: any) {
-    this.addressLoading.set(true);
-    try {
-      if (feature.lat == null && feature.place_id) {
-        const coords = await this._getGooglePlaceDetails(feature.place_id);
-        if (coords) feature = { ...feature, lat: coords.lat, lng: coords.lng };
-      }
-    } catch { /* usa coordenadas que tenga */ } finally {
-      this.addressLoading.set(false);
-    }
-
-    let lat: number, lng: number;
-    if (feature.lat != null && feature.lng != null) {
-      lat = feature.lat; lng = feature.lng;
-    } else {
-      const coords: [number, number] = feature.center ?? feature.geometry?.coordinates;
-      if (!coords || coords[0] == null) return;
-      [lng, lat] = coords;
-    }
-    this.currentAddress.set(feature.place_name ?? feature.text ?? '');
-    this._currentLat = lat;
-    this._currentLng = lng;
+  selectAddress(feature: any) {
     this.closeAddressEdit();
     this.originEditOpen.set(false);
-
-    if (!this._map) return;
-
-    this._map.easeTo({ center: [lng, lat], zoom: 16, duration: 600, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
-
-    if (this._userMarker) {
-      this._userMarker.setLngLat([lng, lat]);
-    } else {
-      const mapboxgl = (window as any).mapboxgl;
-      if (mapboxgl) {
-        const el = document.createElement('div');
-        el.style.cssText = 'width:20px;height:20px;border-radius:50%;background:#7B2FFF;border:3px solid #fff;box-shadow:0 2px 8px rgba(123,47,255,0.4);';
-        this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-          .setLngLat([lng, lat])
-          .addTo(this._map);
-      }
-    }
-
-    const dest = this.tripDest();
-    if (dest) this._drawRoute(dest.lng, dest.lat);
   }
 
-  async confirmTypedAddress() {
-    const q = this.addressQuery().trim();
-    if (!q) return;
-    // Buscar y seleccionar el primer resultado
-    if (this.addressSuggestions().length > 0) {
-      this.selectAddress(this.addressSuggestions()[0]);
-    } else {
-      await this._searchPlacesV6(q);
-      const first = this.addressSuggestions()[0];
-      if (first) this.selectAddress(first);
-    }
-  }
 
   private async _reverseGeocode(lat: number, lng: number) {
     this.addressLoading.set(true);
@@ -8406,19 +8073,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   onTripQueryInput(val: string) {
     this.tripQuery.set(val);
-    this.tripNoResults.set(false);
-    if (this._tripDebounce) clearTimeout(this._tripDebounce);
-    if (!val.trim()) {
-      ++this._tripReqId; // descarta cualquier búsqueda en vuelo
-      this.tripSuggestions.set([]);
-      this.tripLoading.set(false);
-      return;
-    }
-    this.tripLoading.set(true); // spinner inmediato, no esperar el debounce
-    this._tripDebounce = setTimeout(() => this._searchTripPlaces(val), 120);
   }
-
-  private _tripSessionToken: string | null = null;
 
   private _detectedCity(): string {
     const addr = this.currentAddress() ?? '';
@@ -8430,59 +8085,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return '';
   }
 
-  private async _searchTripPlaces(query: string) {
-    const reqId = ++this._tripReqId;
-    this.tripLoading.set(true);
-    this.tripNoResults.set(false);
-    this.tripSuggestions.set([]);
-    try {
-      let results = await this._searchNominatim(query);
-      if (reqId !== this._tripReqId) return;
 
-      // Si 0 resultados y tenemos ciudad detectada por GPS, reintentamos con ciudad
-      if (results.length === 0) {
-        const city = this._detectedCity();
-        if (city && !query.toLowerCase().includes(city.toLowerCase())) {
-          results = await this._searchNominatim(`${query} ${city}`);
-          if (reqId !== this._tripReqId) return;
-        }
-      }
-
-      this.tripSuggestions.set(results);
-      this.tripNoResults.set(results.length === 0);
-    } catch {
-      if (reqId !== this._tripReqId) return;
-      this.tripSuggestions.set([]);
-      this.tripNoResults.set(true);
-    } finally {
-      if (reqId === this._tripReqId) {
-        this.tripLoading.set(false);
-        this.cdr.markForCheck();
-      }
-    }
-  }
-
-  async selectTripDest(s: any) {
+  selectTripDest(s: any) {
     this.tripOpen.set(false);
     this.tripQuery.set('');
-    this.tripSuggestions.set([]);
-    this._tripSessionToken = null;
-    const name = s.text || s.place_name || 'Destino';
-    let dLng: number = this._currentLng;
-    let dLat: number = this._currentLat;
-
-    if (s.lat != null && s.lng != null) {
-      dLat = s.lat; dLng = s.lng;
-    } else if (s.center && s.center[0] != null) {
-      [dLng, dLat] = s.center as [number, number];
-    } else if (s.place_id) {
-      const coords = await this._getGooglePlaceDetails(s.place_id);
-      if (coords) { dLat = coords.lat; dLng = coords.lng; }
-    }
-
-    this.tripDest.set({ name, lat: dLat, lng: dLng });
-    this.cdr.markForCheck();
-    this._drawRoute(dLng, dLat);
   }
 
   setTripVehicle(type: 'carro' | 'moto' | 'camion') {
