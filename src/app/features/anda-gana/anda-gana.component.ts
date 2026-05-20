@@ -6499,36 +6499,41 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this._mapboxPromise;
   }
 
-  // ── Búsqueda restringida a los bounds actuales del mapa ──────────
+  // ── Búsqueda directa con Mapbox Geocoding (mismo motor del mapa) ──
   private async _searchNominatim(query: string): Promise<any[]> {
     if (!isPlatformBrowser(this.platformId)) return [];
     try {
-      const lat = this._currentLat;
-      const lng = this._currentLng;
+      const q      = encodeURIComponent(query.trim());
+      const params = new URLSearchParams({
+        access_token: this.MAPBOX_TOKEN,
+        country:      'CO',
+        language:     'es',
+        limit:        '6',
+        types:        'poi,address,place,locality,neighborhood,district',
+      });
 
-      // Obtener bounds del mapa visible (siempre disponibles si el mapa está cargado)
-      const body: any = { action: 'search', query, lat, lng };
+      // Usar los bounds exactos del mapa visible como filtro estricto
       if (this._map) {
         const b = this._map.getBounds();
-        body.bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+        params.set('bbox', `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`);
       }
 
-      const res  = await fetch(this.AG_PLACES_FN, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      const suggestions: any[] = json.suggestions ?? [];
+      // Biasear hacia la posición del usuario
+      if (this._currentLat !== 0 && this._currentLng !== 0) {
+        params.set('proximity', `${this._currentLng},${this._currentLat}`);
+      }
 
-      return suggestions.map((s: any) => ({
-        id:         s.place_id,
-        place_id:   s.place_id,
-        text:       s.text,
-        place_name: s.place_name,
-        center:     (s.lat != null && s.lng != null) ? [s.lng, s.lat] : null,
-        lat:        s.lat,
-        lng:        s.lng,
+      const res  = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?${params}`);
+      const json = await res.json();
+
+      return (json.features ?? []).map((f: any) => ({
+        id:         f.id,
+        place_id:   f.id,
+        text:       f.text,
+        place_name: f.place_name,
+        lat:        f.geometry.coordinates[1],
+        lng:        f.geometry.coordinates[0],
+        center:     f.geometry.coordinates,
         distanceKm: null,
         _dist:      0,
       }));
