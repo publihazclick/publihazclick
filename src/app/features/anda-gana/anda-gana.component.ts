@@ -2399,7 +2399,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 } @else {
                   <div class="px-4 pb-3">
                     @if (driverStatus() === 'quick') {
-                      <button (click)="makingOfferFor.set(req)"
+                      <button (click)="openMakeOffer(req)"
                         class="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                         style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border:none;cursor:pointer">
                         <span class="material-symbols-outlined text-white" style="font-size:16px">rocket_launch</span>
@@ -4250,12 +4250,22 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             class="w-14 h-14 rounded-2xl font-black text-2xl flex items-center justify-center active:scale-90 transition-all text-slate-200"
             style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">+</button>
         </div>
+        @if (driverStatus() === 'quick') {
+          <div class="flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
+            style="background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.25)">
+            <span class="material-symbols-outlined text-purple-400" style="font-size:14px">rocket_launch</span>
+            <span class="text-purple-400 text-xs font-black">¡Primera carrera sin comisión!</span>
+          </div>
+        }
         <!-- Enviar oferta -->
         <button (click)="submitDriverOffer()" [disabled]="sendingOffer()"
           class="w-full py-4 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
-          style="background:linear-gradient(135deg,#0891b2,#0e7490);box-shadow:0 4px 16px rgba(8,145,178,0.3)">
+          [style]="driverStatus() === 'quick' ? 'background:linear-gradient(135deg,#7C3AED,#3B82F6);box-shadow:0 4px 16px rgba(124,58,237,0.3)' : 'background:linear-gradient(135deg,#0891b2,#0e7490);box-shadow:0 4px 16px rgba(8,145,178,0.3)'">
           @if (sendingOffer()) {
             <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span> Enviando...
+          } @else if (driverStatus() === 'quick') {
+            <span class="material-symbols-outlined" style="font-size:20px">rocket_launch</span>
+            ¡Tomar viaje gratis! · {{ formatCOP(driverOfferPrice()) }}
           } @else {
             <span class="material-symbols-outlined" style="font-size:20px">local_offer</span>
             Enviar oferta · {{ formatCOP(driverOfferPrice()) }}
