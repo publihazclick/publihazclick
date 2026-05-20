@@ -5,6 +5,7 @@ const CORS = {
 
 const GOOGLE_KEY   = 'AIzaSyCASh_bSePE5LRR3oVjns25h344rFNZUeU';
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w';
+const MAX_KM       = 80; // radio máximo de resultados (80km cubre aeropuertos alejados del centro)
 
 const CO_CITIES = [
   { name: 'Bogotá',        lat:  4.711, lng: -74.072 },
@@ -45,19 +46,59 @@ function withCity(q: string, city: string): string {
   return `${q}, ${city}`;
 }
 
-// ── Google Places Autocomplete (motor principal) ──────────────────
+// Distancia haversine en km
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── Mapbox Geocoding v5 (motor principal — 1 sola llamada, coordenadas incluidas) ──
+async function searchMapbox(query: string, lat?: number, lng?: number): Promise<any[]> {
+  const q = encodeURIComponent(query);
+  const params = new URLSearchParams({
+    access_token: MAPBOX_TOKEN,
+    country:      'CO',
+    language:     'es',
+    limit:        '6',
+    types:        'poi,address,place,locality,neighborhood,district',
+  });
+  if (lat != null && lng != null) params.set('proximity', `${lng},${lat}`);
+
+  const res  = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?${params}`);
+  const json = await res.json();
+  const features: any[] = json.features ?? [];
+
+  return features
+    .map((f: any) => ({
+      place_id:   f.id,
+      text:       f.text,
+      place_name: f.place_name,
+      lat:        f.geometry.coordinates[1],
+      lng:        f.geometry.coordinates[0],
+    }))
+    .filter((r: any) => {
+      // Filtro por distancia real solo si tenemos GPS
+      if (lat == null || lng == null) return true;
+      return haversineKm(lat, lng, r.lat, r.lng) <= MAX_KM;
+    });
+}
+
+// ── Google Places Autocomplete (fallback) ─────────────────────────
 async function searchGoogle(query: string, lat?: number, lng?: number): Promise<any[]> {
   const params = new URLSearchParams({
     input:      query,
     key:        GOOGLE_KEY,
     components: 'country:co',
     language:   'es',
-    types:      'geocode',
+    types:      'geocode|establishment',
   });
   if (lat != null && lng != null) {
-    params.set('location',    `${lat},${lng}`);
-    params.set('radius',      '50000');
-    params.set('strictbounds', 'true');
+    params.set('location', `${lat},${lng}`);
+    params.set('radius',   '80000'); // sesgo suave, no hard filter
   }
 
   const res  = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
@@ -92,46 +133,6 @@ async function getGoogleDetails(placeId: string): Promise<{ lat: number; lng: nu
   return { lat: loc.lat, lng: loc.lng };
 }
 
-// ── Mapbox Search Box v1 (fallback) ──────────────────────────────
-async function searchMapboxBox(query: string, lat?: number, lng?: number): Promise<any[]> {
-  const sessionToken = crypto.randomUUID();
-  const params = new URLSearchParams({
-    q: query, access_token: MAPBOX_TOKEN, country: 'CO', language: 'es', limit: '5',
-    session_token: sessionToken,
-  });
-  if (lat != null && lng != null) {
-    params.set('proximity', `${lng},${lat}`);
-    // bbox de ~50 km alrededor del usuario (0.45° ≈ 50 km)
-    const d = 0.45;
-    params.set('bbox', `${lng - d},${lat - d},${lng + d},${lat + d}`);
-  }
-
-  const suggestRes  = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
-  const suggestJson = await suggestRes.json();
-  const suggestions: any[] = (suggestJson.suggestions ?? []).slice(0, 4);
-  if (!suggestions.length) return [];
-
-  const results = await Promise.all(
-    suggestions.map(async (s: any) => {
-      try {
-        const rp   = new URLSearchParams({ access_token: MAPBOX_TOKEN, session_token: sessionToken });
-        const rRes  = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${s.mapbox_id}?${rp}`);
-        const rJson = await rRes.json();
-        const feat  = rJson.features?.[0];
-        if (!feat) return null;
-        return {
-          place_id:   s.mapbox_id,
-          text:       s.name,
-          place_name: s.full_address ?? s.place_formatted ?? s.name,
-          lat:        feat.geometry.coordinates[1],
-          lng:        feat.geometry.coordinates[0],
-        };
-      } catch { return null; }
-    }),
-  );
-  return results.filter(Boolean) as any[];
-}
-
 // ── Geocodificación inversa ────────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
   const params = new URLSearchParams({
@@ -152,7 +153,6 @@ Deno.serve(async (req) => {
   try {
     const { action, query, lat, lng, place_id } = await req.json();
 
-    // Geocodificación inversa
     if (action === 'reverse') {
       const name = await reverseGeocode(lat, lng);
       return new Response(JSON.stringify({ name }), {
@@ -160,7 +160,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Obtener coordenadas de un place_id de Google (se llama al seleccionar)
     if (action === 'details') {
       if (!place_id) return new Response(JSON.stringify({ error: 'place_id required' }), { status: 400, headers: CORS });
       const coords = await getGoogleDetails(place_id);
@@ -175,20 +174,19 @@ Deno.serve(async (req) => {
       const qNorm = normalizeQuery(query);
       const qCity = withCity(qNorm, city);
 
-      // 1. Mapbox Search Box (mismo motor del mapa → consistencia garantizada)
-      let suggestions = await searchMapboxBox(qCity, lat, lng);
+      // 1. Mapbox Geocoding v5 — coordenadas directas + filtro haversine real
+      let suggestions = await searchMapbox(qCity, lat, lng);
 
-      // 2. Fallback sin ciudad
+      // 2. Mismo motor sin ciudad si no hay resultados
       if (!suggestions.length && city) {
-        suggestions = await searchMapboxBox(qNorm, lat, lng);
+        suggestions = await searchMapbox(qNorm, lat, lng);
       }
 
-      // 3. Fallback: Google Places
+      // 3. Fallback Google Places (sin coordenadas, sin filtro de distancia)
       if (!suggestions.length) {
         suggestions = await searchGoogle(qCity, lat, lng);
       }
 
-      // 4. Google sin ciudad
       if (!suggestions.length && city) {
         suggestions = await searchGoogle(qNorm, lat, lng);
       }
