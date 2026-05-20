@@ -6174,6 +6174,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _lastTs:    number | null = null;
   private _waitingInterval: ReturnType<typeof setInterval> | null = null;
   private _offerChannel: RealtimeChannel | null = null;
+  private _requestsChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
 
@@ -6284,6 +6285,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._unsubscribeLocations();
     this._stopTrackingAssignedDriver();
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+    if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
   }
 
   /**
@@ -8623,27 +8625,38 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   private _driverRefreshInterval: ReturnType<typeof setInterval> | null = null;
 
   _loadDriverRequests(vehicleType?: string) {
+    // Carga inicial
     this.agService.getSearchingRequests(vehicleType).then(reqs => {
       this.driverRequests.set(reqs);
       if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
     });
-    // Limpiar intervalo previo antes de crear uno nuevo (evita duplicados)
+    // Cancelar suscripción previa
+    if (this._requestsChannel) {
+      this._requestsChannel.unsubscribe();
+      this._requestsChannel = null;
+    }
     if (this._driverRefreshInterval) {
       clearInterval(this._driverRefreshInterval);
       this._driverRefreshInterval = null;
     }
-    // Refresh every 15s solo si el panel está abierto
-    this._driverRefreshInterval = setInterval(() => {
-      if (this.driverRequestsOpen()) {
-        this.agService.getSearchingRequests(vehicleType).then(reqs => this.driverRequests.set(reqs));
-      } else {
-        // Si se cerró el panel, detener polling
-        if (this._driverRefreshInterval) {
-          clearInterval(this._driverRefreshInterval);
-          this._driverRefreshInterval = null;
+    // Suscripción realtime: nuevas solicitudes llegan al instante
+    this._requestsChannel = this.agService.subscribeToTripRequests(
+      vehicleType,
+      (req) => {
+        // Nueva solicitud: agregar al inicio si no existe ya
+        this.driverRequests.update(list => {
+          if (list.some(r => r.id === req.id)) return list;
+          this.agService.logMetricEvent('offer_seen').catch(() => {});
+          return [req, ...list];
+        });
+      },
+      (req) => {
+        // Solicitud actualizada: quitar si ya no está en searching
+        if (req.status !== 'searching') {
+          this.driverRequests.update(list => list.filter(r => r.id !== req.id));
         }
-      }
-    }, 15000);
+      },
+    );
   }
 
   toggleDriverRequests() {

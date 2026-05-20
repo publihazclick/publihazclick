@@ -587,6 +587,37 @@ export class AndaGanaService {
     return (data ?? []) as AgTripRequest[];
   }
 
+  /** Suscripción realtime a nuevas solicitudes de viaje para el conductor */
+  subscribeToTripRequests(
+    vehicleType: string | undefined,
+    onNew: (req: AgTripRequest) => void,
+    onUpdate: (req: AgTripRequest) => void,
+  ): RealtimeChannel {
+    const channel = this.supabase
+      .channel(`trip-requests-driver-${vehicleType ?? 'all'}-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ag_trip_requests' },
+        async (payload) => {
+          const row = payload.new as any;
+          if (row.status !== 'searching') return;
+          if (vehicleType && row.vehicle_type !== vehicleType) return;
+          const { data } = await this.supabase
+            .from('ag_trip_requests').select('*, ag_users(*)').eq('id', row.id).single();
+          if (data) onNew(data as AgTripRequest);
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ag_trip_requests' },
+        (payload) => {
+          onUpdate(payload.new as AgTripRequest);
+        },
+      )
+      .subscribe();
+    return channel;
+  }
+
   async makeOffer(
     tripRequestId: string,
     driverId: string,
