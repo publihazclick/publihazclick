@@ -6259,6 +6259,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       await sb.from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
       mine = { ...mine, status: 'quick' };
       this.driverData.set(mine);
+      this.driverStatus.set('quick');
     }
     const status: string = mine.status ?? 'pending';
     // Todos los estados activos ven solicitudes de viaje
