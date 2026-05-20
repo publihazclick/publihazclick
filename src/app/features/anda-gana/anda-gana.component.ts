@@ -6239,9 +6239,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       // Suscribirse a ubicaciones de conductores en tiempo real
       this._subscribeToDriverLocations();
     } else {
-      const mine = await this.agService.getMyDriverProfile();
+      let mine = await this.agService.getMyDriverProfile();
+      // Auto-upgrade: cualquier conductor pending pasa directo a quick (habilitado para primera carrera)
+      if (mine && mine.status === 'pending') {
+        getSupabaseClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
+        mine = { ...mine, status: 'quick' };
+      }
       this.driverData.set(mine);
-      this.driverStatus.set(mine?.status ?? 'pending');
+      this.driverStatus.set(mine?.status ?? 'quick');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
       await this._initDriverHome(mine);
@@ -6253,15 +6258,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private async _initDriverHome(mine: any) {
     if (!mine) return;
-    // Auto-upgrade: conductores pending con 0 viajes pasan directo a quick
-    if ((mine.status ?? 'pending') === 'pending' && (mine.metric_trips_completed ?? 0) === 0) {
-      const sb = getSupabaseClient();
-      await sb.from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
-      mine = { ...mine, status: 'quick' };
-      this.driverData.set(mine);
-      this.driverStatus.set('quick');
-    }
-    const status: string = mine.status ?? 'pending';
+    const status: string = mine.status ?? 'quick';
     // Todos los estados activos ven solicitudes de viaje
     if (status !== 'rejected') {
       this._loadDriverRequests(mine.vehicle_type);
@@ -10506,9 +10503,13 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (reg.success && reg.profile) {
       this.agProfile.set(reg.profile);
       this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
-      const mine = await this.agService.getMyDriverProfile();
+      let mine = await this.agService.getMyDriverProfile();
+      if (mine && mine.status === 'pending') {
+        getSupabaseClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
+        mine = { ...mine, status: 'quick' };
+      }
       this.driverData.set(mine);
-      this.driverStatus.set(mine?.status ?? 'pending');
+      this.driverStatus.set(mine?.status ?? 'quick');
       this.screen.set('driver-home');
       await this._initDriverHome(mine);
     } else {
