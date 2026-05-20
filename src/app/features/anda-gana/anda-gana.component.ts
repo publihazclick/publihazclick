@@ -43,14 +43,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .qr-input:focus { border-width: 1.5px !important; border-color: #7C3AED !important; outline: none; }
   `],
   host: {
-    '[style.background]': "screen() === 'splash' ? '#7C3AED' : '#FFFFFF'",
+    '[style.background]': "screen() === 'splash' ? '#7C3AED' : screen() === 'driver-home' ? '#0d111a' : '#FFFFFF'",
     '[style.min-height]': "'100dvh'",
     '[style.display]': "'block'",
-    '[style.transition]': "'background 0.2s'",
+    '[style.transition]': "'background 0.3s'",
   },
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
-  [style.background]="screen() === 'splash' ? '#7C3AED' : '#FFFFFF'"
+  [style.background]="screen() === 'splash' ? '#7C3AED' : screen() === 'driver-home' ? '#0d111a' : '#FFFFFF'"
   [style.padding]="screen() === 'quick-register' ? '0' : ''"
   style="min-height:100dvh">
 
@@ -2041,17 +2041,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <div class="flex items-center justify-between px-1 pt-2">
         <div>
           <h1 class="text-white font-black text-lg leading-tight">¡Hola, {{ firstName() }}!</h1>
-          <p class="text-slate-500 text-xs">Modo conductor</p>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+            style="background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.25);color:#22d3ee;font-size:11px">
+            <span class="material-symbols-outlined" style="font-size:11px">directions_car</span> Modo Conductor
+          </span>
         </div>
         <button (click)="driverMenuOpen.set(true)"
           class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 px-2 py-1.5 rounded-xl"
-          style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.2)">
+          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12)">
           <div class="flex flex-col items-center gap-1">
-            <span class="block rounded-full bg-cyan-400" style="width:18px;height:2px"></span>
-            <span class="block rounded-full bg-cyan-400" style="width:18px;height:2px"></span>
-            <span class="block rounded-full bg-cyan-400" style="width:14px;height:2px"></span>
+            <span class="block rounded-full bg-slate-300" style="width:18px;height:2px"></span>
+            <span class="block rounded-full bg-slate-300" style="width:18px;height:2px"></span>
+            <span class="block rounded-full bg-slate-300" style="width:14px;height:2px"></span>
           </div>
-          <span class="text-cyan-400 font-bold" style="font-size:9px;letter-spacing:0.08em">MENÚ</span>
+          <span class="text-slate-400 font-bold" style="font-size:9px;letter-spacing:0.08em">MENÚ</span>
         </button>
       </div>
 
@@ -2151,23 +2154,28 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <p class="text-slate-400 text-sm">Tu cuenta de conductor</p>
         </div>
         @if (driverStatus() === 'quick') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold">
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
+            style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.35);color:#c4b5fd">
             <span class="material-symbols-outlined" style="font-size:14px">rocket_launch</span> Primera carrera gratis
           </span>
         } @else if (driverStatus() === 'pending_docs') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold">
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
+            style="background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.35);color:#fb923c">
             <span class="material-symbols-outlined" style="font-size:14px">assignment</span> Completa tu registro
           </span>
         } @else if (driverStatus() === 'pending') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
+            style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#fbbf24">
             <span class="material-symbols-outlined" style="font-size:14px">schedule</span> En revisión
           </span>
         } @else if (driverStatus() === 'approved') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
+            style="background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);color:#34d399">
             <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Aprobado
           </span>
         } @else if (driverStatus() === 'rejected') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
+            style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#f87171">
             <span class="material-symbols-outlined" style="font-size:14px">cancel</span> Rechazado
           </span>
         }
@@ -2175,22 +2183,22 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       @if (driverStatus() === 'quick') {
         <div class="rounded-2xl p-4 flex items-start gap-3"
-          style="background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(59,130,246,0.08));border:1px solid rgba(124,58,237,0.25)">
-          <span class="material-symbols-outlined text-purple-400 flex-shrink-0" style="font-size:28px">rocket_launch</span>
+          style="background:linear-gradient(135deg,rgba(124,58,237,0.18),rgba(59,130,246,0.12));border:1px solid rgba(167,139,250,0.3)">
+          <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#c4b5fd">rocket_launch</span>
           <div>
             <p class="text-white font-black text-sm">¡Tu primera carrera es gratis!</p>
-            <p class="text-slate-400 text-xs leading-relaxed mt-0.5">Acepta un viaje ahora mismo sin necesidad de saldo ni aprobación. Después de tu primer viaje deberás completar tu registro.</p>
+            <p class="text-slate-400 text-xs leading-relaxed mt-0.5">Acepta un viaje ahora mismo sin saldo ni aprobación. Después de tu primer viaje completa tu registro.</p>
           </div>
         </div>
       }
       @if (driverStatus() === 'pending_docs') {
         <div class="rounded-2xl p-4 flex flex-col gap-3"
-          style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.2)">
+          style="background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.25)">
           <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:28px">assignment</span>
             <div>
               <p class="text-white font-black text-sm">Completa tu registro</p>
-              <p class="text-slate-400 text-xs leading-relaxed mt-0.5">¡Felicitaciones por tu primer viaje! Para seguir aceptando servicios necesitas enviar tu documentación completa.</p>
+              <p class="text-slate-400 text-xs leading-relaxed mt-0.5">¡Felicitaciones por tu primer viaje! Para seguir aceptando servicios envía tu documentación completa.</p>
             </div>
           </div>
           <button (click)="screen.set('driver-form')"
@@ -2202,10 +2210,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
       @if (driverStatus() === 'pending') {
-        <div class="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-5 text-center flex flex-col items-center gap-2">
+        <div class="rounded-2xl p-5 text-center flex flex-col items-center gap-2"
+          style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2)">
           <span class="material-symbols-outlined text-amber-400" style="font-size:36px">hourglass_top</span>
           <p class="text-white font-bold text-sm">Tu solicitud está siendo revisada</p>
-          <p class="text-slate-400 text-xs leading-relaxed">Nuestro equipo verificará tus documentos en las próximas 24–48 horas. Te notificaremos por correo cuando sea aprobada.</p>
+          <p class="text-slate-400 text-xs leading-relaxed">Nuestro equipo verificará tus documentos en las próximas 24–48 horas.</p>
         </div>
       }
       @if (driverStatus() === 'approved') {
