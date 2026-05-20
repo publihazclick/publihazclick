@@ -3,7 +3,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GOOGLE_KEY   = 'AIzaSyDL7HAa3QYU8TvYwTnwNZgreNt3TxrUhs0';
+const GOOGLE_KEY   = 'AIzaSyCASh_bSePE5LRR3oVjns25h344rFNZUeU';
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w';
 
 const CO_CITIES = [
