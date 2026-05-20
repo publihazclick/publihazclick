@@ -2327,43 +2327,26 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       }
       @if (driverStatus() !== 'rejected') {
-        <!-- Panel de solicitudes de viaje -->
+        <!-- Solicitudes en vivo -->
         <div class="flex flex-col gap-3">
-          <!-- Header toggle -->
-          <button (click)="toggleDriverRequests()"
-            class="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all active:scale-[0.98]"
-            style="background:linear-gradient(135deg,#0f766e,#0891b2);box-shadow:0 4px 14px rgba(8,145,178,0.25)">
-            <div class="flex items-center gap-2.5">
-              <span class="material-symbols-outlined text-white" style="font-size:22px">directions_car</span>
-              <div class="text-left">
-                <p class="text-white font-black text-sm">Solicitudes de viaje</p>
-                <p class="text-cyan-200 text-xs">{{ driverRequests().length }} disponibles cerca</p>
-              </div>
+          <div class="flex items-center justify-between px-1">
+            <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Solicitudes en vivo</p>
+            <button (click)="refreshDriverRequests()"
+              class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
+              <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
+            </button>
+          </div>
+
+          @if (driverRequests().length === 0) {
+            <div class="rounded-2xl flex flex-col items-center gap-2 py-8"
+              style="background:#F9FAFB;border:1px solid #E2E8F0">
+              <span class="material-symbols-outlined text-slate-400" style="font-size:36px">search_off</span>
+              <p class="text-slate-600 text-sm">Sin solicitudes activas ahora</p>
+              <p class="text-slate-500 text-xs">Los pasajeros aparecerán aquí en tiempo real</p>
             </div>
-            <span class="material-symbols-outlined text-white" style="font-size:20px">
-              {{ driverRequestsOpen() ? 'expand_less' : 'expand_more' }}
-            </span>
-          </button>
+          }
 
-          @if (driverRequestsOpen()) {
-            <!-- Actualizar -->
-            <div class="flex justify-end">
-              <button (click)="refreshDriverRequests()"
-                class="flex items-center gap-1 text-xs text-cyan-400 font-bold active:scale-95 transition-all">
-                <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
-              </button>
-            </div>
-
-            @if (driverRequests().length === 0) {
-              <div class="rounded-2xl flex flex-col items-center gap-2 py-8"
-                style="background:#F9FAFB;border:1px solid #E2E8F0">
-                <span class="material-symbols-outlined text-slate-400" style="font-size:36px">search_off</span>
-                <p class="text-slate-600 text-sm">Sin solicitudes activas ahora</p>
-                <p class="text-slate-500 text-xs">Los pasajeros aparecerán aquí</p>
-              </div>
-            }
-
-            @for (req of driverRequests(); track req.id) {
+          @for (req of driverRequests(); track req.id) {
               <div class="rounded-2xl overflow-hidden"
                 style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                 <div class="flex items-start gap-3 px-4 pt-3 pb-2">
@@ -2483,6 +2466,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <p class="text-slate-500 text-xs">Puedes contactar al soporte para más información.</p>
         </div>
       }
+
+      <!-- Gana por invitar -->
+      <button (click)="openDriverSection('referrals')"
+        class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
+        style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
+        <div class="flex items-center justify-center flex-shrink-0"
+          style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
+          <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
+        </div>
+        <div class="flex-1 min-w-0 text-left">
+          <p style="color:#fff;font-weight:600;font-size:14px;margin:0;line-height:1.3">Gana por invitar</p>
+          <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:0;line-height:1.3">Invita conductores y pasajeros</p>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <span style="color:#fff;font-size:12px;font-weight:500">Invitar</span>
+          <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
+        </div>
+      </button>
 
       <!-- Info card -->
       <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
@@ -4620,6 +4621,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </button>
           </div>
 
+          <!-- Datos del vehículo -->
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <p style="color:#374151;font-size:13px;font-weight:700;margin:0">Datos del vehículo</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <input [(ngModel)]="qrVehicleBrandVal" (ngModelChange)="qrVehicleBrand.set($event)"
+                placeholder="Marca (ej: Yamaha, Toyota)"
+                style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
+                [style.borderColor]="qrVehicleBrand() ? '#7C3AED' : '#D1D5DB'" />
+              <input [(ngModel)]="qrVehicleColorVal" (ngModelChange)="qrVehicleColor.set($event)"
+                placeholder="Color (ej: Rojo, Negro)"
+                style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
+                [style.borderColor]="qrVehicleColor() ? '#7C3AED' : '#D1D5DB'" />
+              <input [(ngModel)]="qrVehiclePlateVal" (ngModelChange)="qrVehiclePlate.set($event.toUpperCase())"
+                placeholder="Placa (ej: ABC123)"
+                style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box;text-transform:uppercase"
+                [style.borderColor]="qrVehiclePlate() ? '#7C3AED' : '#D1D5DB'" />
+            </div>
+          </div>
+
           <!-- Error -->
           @if (qrOtpError()) {
             <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 14px;text-align:center">
@@ -4629,7 +4649,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- CTA -->
           <button (click)="qrSaveVehicleAndEnter()"
-            [disabled]="!qrVehicleType() || qrOtpVerifying()"
+            [disabled]="!qrVehicleType() || !qrVehicleBrand() || !qrVehicleColor() || !qrVehiclePlate() || qrOtpVerifying()"
             style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
             [style.opacity]="!qrVehicleType() || qrOtpVerifying() ? '0.9' : '1'">
             @if (qrOtpVerifying()) {
@@ -8940,6 +8960,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ── Quick-register state (3 pasos) ──
   qrRole              = signal<'pasajero' | 'conductor'>('pasajero');
   qrVehicleType       = signal<'carro' | 'moto' | 'camion' | ''>('');
+  qrVehicleBrand      = signal('');
+  qrVehicleColor      = signal('');
+  qrVehiclePlate      = signal('');
+  qrVehicleBrandVal   = '';
+  qrVehicleColorVal   = '';
+  qrVehiclePlateVal   = '';
   qrStep              = signal<1 | 2 | 3>(1);
   qrName              = signal('');
   qrPhone             = signal('');
@@ -10498,7 +10524,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.cdr.markForCheck();
     const phone = '+57' + this.qrPhone();
     const name  = this.qrName().trim() || 'Conductor';
-    const reg = await this.agService.registerQuickDriver(name, phone, vehicle, this.referredBy ?? undefined);
+    const reg = await this.agService.registerQuickDriver(name, phone, vehicle, this.referredBy ?? undefined, {
+      brand: this.qrVehicleBrand(),
+      color: this.qrVehicleColor(),
+      plate: this.qrVehiclePlate(),
+    });
     this.qrOtpVerifying.set(false);
     if (reg.success && reg.profile) {
       this.agProfile.set(reg.profile);

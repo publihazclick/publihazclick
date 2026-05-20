@@ -176,7 +176,10 @@ export class AndaGanaService {
     }
   }
 
-  async registerQuickDriver(name: string, phone: string, vehicleType: string, referredBy?: string): Promise<AgRegistrationResult & { profile?: AgUser }> {
+  async registerQuickDriver(
+    name: string, phone: string, vehicleType: string, referredBy?: string,
+    vehicleDetails?: { brand?: string; color?: string; plate?: string }
+  ): Promise<AgRegistrationResult & { profile?: AgUser }> {
     try {
       let { data: { user } } = await this.supabase.auth.getUser();
       if (!user) {
@@ -186,12 +189,14 @@ export class AndaGanaService {
       }
       const existing = await this.getMyAgProfile();
       if (existing) {
-        // Asegurar que el registro en ag_drivers existe y tiene el vehículo correcto
         const { data: existingDriver } = await this.supabase
           .from('ag_drivers').select('id, status, metric_trips_completed').eq('ag_user_id', existing.id).maybeSingle();
         if (existingDriver) {
           const updateData: any = {};
           if (vehicleType) updateData.vehicle_type = vehicleType;
+          if (vehicleDetails?.brand) { updateData.vehicle_brand = vehicleDetails.brand; }
+          if (vehicleDetails?.color) { updateData.vehicle_color = vehicleDetails.color; }
+          if (vehicleDetails?.plate) { updateData.plate = vehicleDetails.plate; updateData.vehicle_plate = vehicleDetails.plate; }
           if ((existingDriver.metric_trips_completed ?? 0) === 0) updateData.status = 'quick';
           if (Object.keys(updateData).length > 0) {
             await this.supabase.from('ag_drivers').update(updateData).eq('id', existingDriver.id);
@@ -199,31 +204,31 @@ export class AndaGanaService {
         } else {
           await this.supabase.from('ag_drivers').insert({
             ag_user_id: existing.id, vehicle_type: vehicleType,
+            vehicle_brand: vehicleDetails?.brand ?? '',
+            vehicle_color: vehicleDetails?.color ?? '',
+            plate: vehicleDetails?.plate ?? 'PENDIENTE',
+            vehicle_plate: vehicleDetails?.plate ?? 'PENDIENTE',
             status: 'quick', is_online: false, wallet_balance: 0,
           });
         }
         return { success: true, profile: existing };
       }
       const insertData: any = {
-        auth_user_id: user.id,
-        role: 'driver',
-        full_name: name || 'Conductor',
-        phone,
-        country: 'Colombia',
-        department: '',
-        city: '',
+        auth_user_id: user.id, role: 'driver',
+        full_name: name || 'Conductor', phone,
+        country: 'Colombia', department: '', city: '',
       };
       if (referredBy) insertData.referred_by = referredBy;
       const { data: profile, error } = await this.supabase
         .from('ag_users').insert(insertData).select('*').single();
       if (error) return { success: false, error: error.message };
-      // Crear también el registro en ag_drivers
       const { error: driverError } = await this.supabase.from('ag_drivers').insert({
-        ag_user_id: profile.id,
-        vehicle_type: vehicleType,
-        status: 'quick',
-        is_online: false,
-        wallet_balance: 0,
+        ag_user_id: profile.id, vehicle_type: vehicleType,
+        vehicle_brand: vehicleDetails?.brand ?? '',
+        vehicle_color: vehicleDetails?.color ?? '',
+        plate: vehicleDetails?.plate ?? 'PENDIENTE',
+        vehicle_plate: vehicleDetails?.plate ?? 'PENDIENTE',
+        status: 'quick', is_online: false, wallet_balance: 0,
       });
       if (driverError) return { success: false, error: 'No se pudo guardar el perfil. Intenta de nuevo.' };
       return { success: true, profile: profile as AgUser };
