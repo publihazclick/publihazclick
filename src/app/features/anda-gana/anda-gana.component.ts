@@ -6499,16 +6499,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this._mapboxPromise;
   }
 
-  // ── Búsqueda de lugares via Edge Function (Google Places → Mapbox fallback) ──
+  // ── Búsqueda restringida a los bounds actuales del mapa ──────────
   private async _searchNominatim(query: string): Promise<any[]> {
     if (!isPlatformBrowser(this.platformId)) return [];
     try {
-      const lat    = this._currentLat;
-      const lng    = this._currentLng;
-      const hasGps = this.gpsStatus() === 'granted' && lat !== 0 && lng !== 0;
+      const lat = this._currentLat;
+      const lng = this._currentLng;
 
-      const body: any = { action: 'search', query };
-      if (hasGps) { body.lat = lat; body.lng = lng; }
+      // Obtener bounds del mapa visible (siempre disponibles si el mapa está cargado)
+      const body: any = { action: 'search', query, lat, lng };
+      if (this._map) {
+        const b = this._map.getBounds();
+        body.bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      }
 
       const res  = await fetch(this.AG_PLACES_FN, {
         method: 'POST',
