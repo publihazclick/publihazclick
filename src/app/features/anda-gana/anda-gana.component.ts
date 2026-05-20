@@ -8183,6 +8183,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         })
         .slice(0, 5);
 
+      // Mostrar resultados de inmediato sin distancia
       const results = filtered.map((p: any) => ({
         id:         p.place_id,
         place_id:   p.place_id,
@@ -8193,10 +8194,44 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         distanceKm: null as number | null,
         _rawTypes:  p.types,
       }));
-
       this.tripSuggestions.set(results);
       this.tripNoResults.set(results.length === 0);
       this.cdr.markForCheck();
+
+      // Enriquecer con distancia via getDetails + computeDistanceBetween
+      if (hasGps) {
+        const gmaps   = (window as any).google.maps;
+        const userPos = new gmaps.LatLng(this._currentLat, this._currentLng);
+        const detailsService = this._placesService;
+
+        Promise.allSettled(
+          filtered.map((p: any) =>
+            new Promise<{ place_id: string; distanceKm: number }>((resolve, reject) => {
+              detailsService.getDetails(
+                { placeId: p.place_id, fields: ['geometry'] },
+                (res: any, st: string) => {
+                  if (st !== 'OK' || !res?.geometry?.location) { reject(st); return; }
+                  const dist = gmaps.geometry.spherical.computeDistanceBetween(userPos, res.geometry.location);
+                  resolve({ place_id: p.place_id, distanceKm: Math.round(dist / 100) / 10 });
+                }
+              );
+            })
+          )
+        ).then((settled) => {
+          const distances: Record<string, number> = {};
+          for (const r of settled) {
+            if (r.status === 'fulfilled') distances[r.value.place_id] = r.value.distanceKm;
+          }
+          const current = this.tripSuggestions();
+          if (current.length) {
+            this.tripSuggestions.set(current.map(s => ({
+              ...s,
+              distanceKm: distances[s.place_id] ?? null,
+            })));
+            this.cdr.markForCheck();
+          }
+        });
+      }
     });
   }
 
@@ -8214,16 +8249,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         headers: { 'Accept-Language': 'es' },
       });
       const data = await res.json();
-      const results = (data ?? []).slice(0, 5).map((r: any) => ({
-        id:         r.place_id,
-        place_id:   `nominatim_${r.place_id}`,
-        text:       r.display_name.split(',')[0],
-        place_name: r.display_name.split(',').slice(1, 3).join(',').trim(),
-        lat:        parseFloat(r.lat),
-        lng:        parseFloat(r.lon),
-        distanceKm: null as number | null,
-        _rawTypes:  [] as string[],
-      }));
+      const hasGps = this._currentLat !== 0 && this._currentLng !== 0;
+      const results = (data ?? []).slice(0, 5).map((r: any) => {
+        const rLat = parseFloat(r.lat), rLng = parseFloat(r.lon);
+        let distanceKm: number | null = null;
+        if (hasGps) {
+          // haversine (Google Maps puede no estar cargado en el fallback)
+          const R = 6371, dLat = (rLat - this._currentLat) * Math.PI / 180;
+          const dLng = (rLng - this._currentLng) * Math.PI / 180;
+          const a = Math.sin(dLat/2)**2 + Math.cos(this._currentLat*Math.PI/180)*Math.cos(rLat*Math.PI/180)*Math.sin(dLng/2)**2;
+          distanceKm = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 10) / 10;
+        }
+        return {
+          id: r.place_id, place_id: `nominatim_${r.place_id}`,
+          text: r.display_name.split(',')[0],
+          place_name: r.display_name.split(',').slice(1, 3).join(',').trim(),
+          lat: rLat, lng: rLng, distanceKm, _rawTypes: [] as string[],
+        };
+      });
       this.tripSuggestions.set(results);
       this.tripNoResults.set(results.length === 0);
       this.cdr.markForCheck();
