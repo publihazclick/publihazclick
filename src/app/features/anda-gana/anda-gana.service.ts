@@ -40,7 +40,7 @@ export interface AgUser {
 export interface AgDriver {
   id: string; ag_user_id: string;
   license_number: string; license_category: string; license_expiry: string;
-  plate: string; vehicle_type: string; vehicle_brand: string;
+  plate: string; vehicle_plate?: string; vehicle_type: string; vehicle_brand: string;
   vehicle_model: string; vehicle_year: string; vehicle_color: string;
   documents: Record<string, string>; status: string;
   rejection_reason: string | null; approved_at: string | null;

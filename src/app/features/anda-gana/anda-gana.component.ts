@@ -627,23 +627,41 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <p class="text-emerald-700 text-xs">Tu viaje ha sido confirmado</p>
                 </div>
                 <!-- Datos del conductor -->
-                <div class="rounded-2xl flex items-center gap-3 px-4 py-3"
+                <div class="rounded-2xl flex flex-col gap-3 px-4 py-4"
                   style="background:#fff;border:1px solid #e2e8f0">
-                  <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style="background:linear-gradient(135deg,#f97316,#fb923c)">
-                    <span class="material-symbols-outlined text-white" style="font-size:24px">person</span>
+                  <!-- Nombre + precio -->
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                      style="background:linear-gradient(135deg,#f97316,#fb923c)">
+                      <span class="material-symbols-outlined text-white" style="font-size:24px">person</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-slate-800 font-black text-sm truncate">
+                        {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}
+                      </p>
+                      <p class="text-slate-500 text-xs">Tu conductor</p>
+                    </div>
+                    <p class="font-black text-lg text-emerald-600 flex-shrink-0">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
                   </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-slate-800 font-black text-sm truncate">
-                      {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}
-                    </p>
-                    <p class="text-slate-500 text-xs truncate">
-                      {{ tripAccepted()!.ag_drivers?.vehicle_brand }} {{ tripAccepted()!.ag_drivers?.vehicle_model }}
-                      · {{ tripAccepted()!.ag_drivers?.plate }}
-                      · {{ tripAccepted()!.ag_drivers?.vehicle_color }}
-                    </p>
+                  <!-- Datos del vehículo -->
+                  <div class="grid grid-cols-2 gap-2 pt-2" style="border-top:1px solid #f1f5f9">
+                    <div class="flex flex-col gap-0.5 rounded-xl px-3 py-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+                      <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Placa</p>
+                      <p class="text-slate-800 font-black text-sm">{{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate ?? '—' }}</p>
+                    </div>
+                    <div class="flex flex-col gap-0.5 rounded-xl px-3 py-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+                      <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Color</p>
+                      <p class="text-slate-800 font-black text-sm">{{ tripAccepted()!.ag_drivers?.vehicle_color ?? '—' }}</p>
+                    </div>
+                    <div class="flex flex-col gap-0.5 rounded-xl px-3 py-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+                      <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Marca</p>
+                      <p class="text-slate-800 font-bold text-sm truncate">{{ tripAccepted()!.ag_drivers?.vehicle_brand ?? '—' }}</p>
+                    </div>
+                    <div class="flex flex-col gap-0.5 rounded-xl px-3 py-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+                      <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Tipo</p>
+                      <p class="text-slate-800 font-bold text-sm">{{ tripAccepted()!.ag_drivers?.vehicle_type === 'moto' ? 'Moto' : tripAccepted()!.ag_drivers?.vehicle_type === 'camion' ? 'Camión' : 'Carro' }}</p>
+                    </div>
                   </div>
-                  <p class="font-black text-lg text-emerald-600 flex-shrink-0">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
                 </div>
                 <!-- Destino + pago -->
                 <div class="flex gap-2">
