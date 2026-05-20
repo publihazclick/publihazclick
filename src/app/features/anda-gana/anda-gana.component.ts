@@ -6511,7 +6511,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _pinDropMarker: any = null;
 
   // ── Google Maps / Places ──────────────────────────────────────────────────
-  private _gmapsPromise: Promise<void> | null = null;
+  private _gmapsPromise: Promise<boolean> | null = null;
   private _autocompleteService: any = null;
   private _placesService: any = null;
   private _placesSessionToken: any = null;
@@ -8120,21 +8120,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   /** Carga el SDK de Google Maps una sola vez de forma lazy */
-  private _loadGoogleMapsSDK(): Promise<void> {
+  private _loadGoogleMapsSDK(): Promise<boolean> {
     if (this._gmapsPromise) return this._gmapsPromise;
-    this._gmapsPromise = new Promise<void>((resolve) => {
-      if ((window as any).google?.maps?.places) { resolve(); return; }
+    this._gmapsPromise = new Promise<boolean>((resolve) => {
+      if ((window as any).google?.maps?.places) { resolve(true); return; }
       const script = document.createElement('script');
       script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCASh_bSePE5LRR3oVjns25h344rFNZUeU&libraries=places,geometry&language=es';
       script.async = true;
-      script.defer = true;
+      const timeout = setTimeout(() => { this._gmapsPromise = null; resolve(false); }, 4000);
       script.onload = () => {
-        const check = () => {
-          if ((window as any).google?.maps?.places) resolve();
-          else setTimeout(check, 50);
+        clearTimeout(timeout);
+        const check = (n = 0) => {
+          if ((window as any).google?.maps?.places) { resolve(true); return; }
+          if (n > 20) { resolve(false); return; }
+          setTimeout(() => check(n + 1), 100);
         };
         check();
       };
+      script.onerror = () => { clearTimeout(timeout); this._gmapsPromise = null; resolve(false); };
       document.head.appendChild(script);
     });
     return this._gmapsPromise;
@@ -8152,7 +8155,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   /** Busca sugerencias vía Google Places AutocompleteService */
   private async _searchGooglePlaces(query: string) {
     if (!isPlatformBrowser(this.platformId)) return;
-    await this._loadGoogleMapsSDK();
+    const sdkOk = await this._loadGoogleMapsSDK();
+    if (!sdkOk) { this._searchNominatimFallback(query); return; }
     if (!this._autocompleteService) this._initGooglePlaces();
 
     const hasGps = this._currentLat !== 0 && this._currentLng !== 0;
