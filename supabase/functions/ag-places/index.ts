@@ -56,7 +56,7 @@ async function searchGoogle(query: string, lat?: number, lng?: number): Promise<
   });
   if (lat != null && lng != null) {
     params.set('location', `${lat},${lng}`);
-    params.set('radius',   '30000');
+    params.set('radius',   '50000');
   }
 
   const res  = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
@@ -98,7 +98,12 @@ async function searchMapboxBox(query: string, lat?: number, lng?: number): Promi
     q: query, access_token: MAPBOX_TOKEN, country: 'CO', language: 'es', limit: '5',
     session_token: sessionToken,
   });
-  if (lat != null && lng != null) params.set('proximity', `${lng},${lat}`);
+  if (lat != null && lng != null) {
+    params.set('proximity', `${lng},${lat}`);
+    // bbox de ~50 km alrededor del usuario (0.45° ≈ 50 km)
+    const d = 0.45;
+    params.set('bbox', `${lng - d},${lat - d},${lng + d},${lat + d}`);
+  }
 
   const suggestRes  = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
   const suggestJson = await suggestRes.json();
@@ -169,22 +174,22 @@ Deno.serve(async (req) => {
       const qNorm = normalizeQuery(query);
       const qCity = withCity(qNorm, city);
 
-      // 1. Google Places (mejor cobertura colombiana)
-      let suggestions = await searchGoogle(qCity, lat, lng);
+      // 1. Mapbox Search Box (mismo motor del mapa → consistencia garantizada)
+      let suggestions = await searchMapboxBox(qCity, lat, lng);
 
-      // 2. Fallback: Mapbox Search Box v1
-      if (!suggestions.length) {
-        suggestions = await searchMapboxBox(qCity, lat, lng);
-      }
-
-      // 3. Fallback sin ciudad
-      if (!suggestions.length && city) {
-        suggestions = await searchGoogle(qNorm, lat, lng);
-      }
-
-      // 4. Mapbox sin ciudad
+      // 2. Fallback sin ciudad
       if (!suggestions.length && city) {
         suggestions = await searchMapboxBox(qNorm, lat, lng);
+      }
+
+      // 3. Fallback: Google Places
+      if (!suggestions.length) {
+        suggestions = await searchGoogle(qCity, lat, lng);
+      }
+
+      // 4. Google sin ciudad
+      if (!suggestions.length && city) {
+        suggestions = await searchGoogle(qNorm, lat, lng);
       }
 
       return new Response(JSON.stringify({ suggestions }), {
