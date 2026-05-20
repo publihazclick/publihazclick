@@ -8178,12 +8178,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         return;
       }
 
-      const filtered = predictions
-        .filter((p: any) => {
-          const t: string[] = p.types ?? [];
-          return !t.includes('establishment') && !t.includes('point_of_interest');
-        })
-        .slice(0, 5);
+      const filtered = predictions.slice(0, 5);
 
       // Mostrar resultados de inmediato sin distancia
       const results = filtered.map((p: any) => ({
