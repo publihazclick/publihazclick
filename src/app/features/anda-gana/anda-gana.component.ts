@@ -6253,6 +6253,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private async _initDriverHome(mine: any) {
     if (!mine) return;
+    // Auto-upgrade: conductores pending con 0 viajes pasan directo a quick
+    if ((mine.status ?? 'pending') === 'pending' && (mine.metric_trips_completed ?? 0) === 0) {
+      const sb = getSupabaseClient();
+      await sb.from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
+      mine = { ...mine, status: 'quick' };
+      this.driverData.set(mine);
+    }
     const status: string = mine.status ?? 'pending';
     // Todos los estados activos ven solicitudes de viaje
     if (status !== 'rejected') {
