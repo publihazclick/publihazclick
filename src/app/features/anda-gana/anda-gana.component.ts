@@ -2454,7 +2454,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
               </div>
             }
-          }
         </div>
       }
       @if (driverStatus() === 'rejected') {
