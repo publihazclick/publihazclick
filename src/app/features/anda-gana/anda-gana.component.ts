@@ -2378,7 +2378,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <span class="text-slate-500 text-xs">COP</span>
           </div>
           @if (rechargeError()) {
-            <p class="text-rose-500 text-xs">{{ rechargeError() }}</p>
+            <div class="w-full rounded-2xl p-4 flex flex-col gap-2"
+              style="background:linear-gradient(135deg,#450a0a,#7f1d1d);border:2px solid #ef4444">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined" style="font-size:20px;color:#fca5a5;font-variation-settings:'FILL' 1">error</span>
+                <p style="color:#fca5a5;font-size:13px;font-weight:900;margin:0">Error al iniciar el pago</p>
+              </div>
+              <p style="color:#fca5a5;font-size:12px;margin:0;word-break:break-all">{{ rechargeError() }}</p>
+              <button (click)="rechargeError.set(null)"
+                class="mt-1 self-start px-3 py-1 rounded-lg text-xs font-bold"
+                style="background:rgba(239,68,68,0.25);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">
+                Cerrar
+              </button>
+            </div>
           }
           <button (click)="startWalletRecharge()"
             [disabled]="rechargeAmount() < 5000 || rechargeLoading()"

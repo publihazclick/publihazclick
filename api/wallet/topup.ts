@@ -130,6 +130,7 @@ export default async function handler(req: any, res: any) {
     // No se usa checkout.js — funciona en cualquier WebView/Capacitor.
     const formFields = {
       p_cust_id_cliente:  P_CUST_ID,
+      p_key:              P_KEY,   // requerido por secure.epayco.co/payment/process
       p_id_invoice:       invoice,
       p_description:      `Recarga Movi - ${agUser.full_name ?? 'Conductor'}`,
       p_amount:           String(amt),
