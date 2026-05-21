@@ -54,6 +54,80 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   [style.padding]="screen() === 'quick-register' ? '0' : ''"
   style="min-height:100dvh">
 
+  <!-- ═══════════ ALERTA VIAJE ACEPTADO (inDrive style) ═══════════ -->
+  @if (driverTripAlert()) {
+    <div class="fixed inset-0 z-[9990] flex flex-col items-center justify-center px-4"
+      style="background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)">
+      <div class="w-full max-w-sm rounded-3xl overflow-hidden"
+        style="background:#fff;box-shadow:0 24px 60px rgba(0,0,0,0.45)">
+        <!-- Header verde -->
+        <div class="flex flex-col items-center gap-2 py-6 px-4"
+          style="background:linear-gradient(135deg,#059669,#10b981)">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center"
+            style="background:rgba(255,255,255,0.2)">
+            <span class="material-symbols-outlined" style="font-size:38px;color:#fff;font-variation-settings:'FILL' 1">check_circle</span>
+          </div>
+          <p style="color:#fff;font-size:20px;font-weight:900;margin:0">¡Te aceptaron!</p>
+          <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0">El pasajero aceptó tu oferta</p>
+        </div>
+        <!-- Detalles -->
+        <div class="px-5 py-4 flex flex-col gap-3">
+          <!-- Pasajero -->
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style="background:#f0fdf4;border:1px solid #bbf7d0">
+              <span class="material-symbols-outlined text-emerald-600" style="font-size:20px;font-variation-settings:'FILL' 1">person</span>
+            </div>
+            <div>
+              <p class="font-black text-slate-800" style="font-size:15px;margin:0">
+                {{ driverTripAlert()!.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}
+              </p>
+              @if (driverTripAlert()!.ag_trip_requests?.ag_users?.phone) {
+                <a [href]="'tel:' + driverTripAlert()!.ag_trip_requests.ag_users.phone"
+                  class="text-emerald-600 font-bold" style="font-size:12px">
+                  {{ driverTripAlert()!.ag_trip_requests.ag_users.phone }}
+                </a>
+              }
+            </div>
+          </div>
+          <!-- Ruta -->
+          <div class="rounded-2xl p-3 flex flex-col gap-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-blue-500 flex-shrink-0" style="font-size:16px;margin-top:1px">my_location</span>
+              <p class="text-slate-700 text-xs font-semibold" style="margin:0;line-height:1.4">
+                {{ driverTripAlert()!.ag_trip_requests?.origin_name ?? 'Punto de recogida' }}
+              </p>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-red-500 flex-shrink-0" style="font-size:16px;margin-top:1px">location_on</span>
+              <p class="text-slate-700 text-xs font-semibold" style="margin:0;line-height:1.4">
+                {{ driverTripAlert()!.ag_trip_requests?.dest_name ?? 'Destino' }}
+              </p>
+            </div>
+          </div>
+          <!-- Precio -->
+          <div class="flex items-center justify-between px-1">
+            <span class="text-slate-500 text-sm">Tu oferta</span>
+            <span class="font-black text-emerald-600" style="font-size:20px">
+              {{ formatCOP(driverTripAlert()!.offered_price) }}
+            </span>
+          </div>
+          <!-- Botones -->
+          <button (click)="acceptTripAndGo(driverTripAlert()!)"
+            class="w-full py-4 rounded-2xl text-white font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            style="background:linear-gradient(135deg,#059669,#10b981);font-size:16px">
+            <span class="material-symbols-outlined" style="font-size:22px">navigation</span>
+            Ir a recoger al pasajero
+          </button>
+          <button (click)="dismissTripAlert()"
+            class="w-full py-3 rounded-2xl text-slate-500 font-bold text-sm active:opacity-70">
+            Ver detalles después
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
     <div class="fixed inset-0 z-[9999]" style="touch-action:none;background:#000">
@@ -140,8 +214,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:6px">
             <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">CÓDIGO DE VERIFICACIÓN</label>
             <input
-              [value]="otpCode()"
-              (input)="otpCode.set($any($event.target).value)"
+              [(ngModel)]="otpCodeDisplay"
+              (ngModelChange)="otpCode.set($event)"
+              name="otpCode"
               type="tel" inputmode="numeric" maxlength="6"
               placeholder="_ _ _ _ _ _"
               [disabled]="otpStep() === 'verifying'"
@@ -377,6 +452,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               style="background:rgba(255,255,255,0.9)">
               Cancelar
             </button>
+          </div>
+        }
+
+        <!-- Alerta "conductor cerca" -->
+        @if (driverNearbyAlert()) {
+          <div class="absolute top-20 left-3 right-3 z-40 pointer-events-none">
+            <div class="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl"
+              style="background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 8px 32px rgba(245,158,11,0.5)">
+              <span class="material-symbols-outlined text-white animate-bounce" style="font-size:24px;font-variation-settings:'FILL' 1">directions_car</span>
+              <div>
+                <p class="text-white font-black text-sm">¡Tu conductor está llegando!</p>
+                <p class="text-amber-100 text-xs">Está a menos de 500 metros</p>
+              </div>
+            </div>
           </div>
         }
 
@@ -993,6 +1082,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
 
+              @if (tripGpsError()) {
+                <div class="mx-4 mb-2 flex items-center gap-2 rounded-xl px-3 py-2"
+                  style="background:#fff7ed;border:1px solid #fed7aa">
+                  <span class="material-symbols-outlined text-orange-500" style="font-size:16px">location_off</span>
+                  <p class="text-orange-700 text-xs font-semibold">Activa el GPS para solicitar un viaje.</p>
+                </div>
+              }
               <div class="px-4 py-3">
                 <button (click)="findOffers()" [disabled]="tripSending()"
                   class="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-60 active:scale-[0.98] bg-orange-500 text-white">
@@ -1103,6 +1199,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           Aceptar
                         </button>
                       </div>
+                      @if (offerAcceptError()) {
+                        <div class="mx-3 mb-3 px-3 py-2 rounded-xl flex items-start gap-2"
+                          style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25)">
+                          <span class="material-symbols-outlined text-red-500 flex-shrink-0" style="font-size:15px">error</span>
+                          <p class="text-red-600 text-xs leading-snug">{{ offerAcceptError() }}</p>
+                        </div>
+                      }
                     </div>
                   }
                 </div>
@@ -1448,7 +1551,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <!-- Contacto rápido -->
             <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
               <p class="text-white font-black text-sm">Contactar soporte</p>
-              <a href="https://wa.me/573000000000" target="_blank" rel="noopener"
+              <a href="https://wa.me/573181800264" target="_blank" rel="noopener"
                 class="flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all active:scale-[0.98]"
                 style="background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.25)">
                 <span class="material-symbols-outlined text-green-400" style="font-size:20px">chat</span>
@@ -2059,10 +2162,26 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <div class="flex items-center justify-between px-1 pt-2">
         <div>
           <h1 class="font-black text-lg leading-tight" style="color:#0f172a">¡Hola, {{ firstName() }}!</h1>
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
-            style="background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.25);color:#0891b2;font-size:11px">
-            <span class="material-symbols-outlined" style="font-size:11px">directions_car</span> Modo Conductor
-          </span>
+          <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+              style="background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.25);color:#0891b2;font-size:11px">
+              <span class="material-symbols-outlined" style="font-size:11px">directions_car</span> Modo Conductor
+            </span>
+            @if (driverBenefits()?.is_founder) {
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+                style="background:linear-gradient(135deg,rgba(234,179,8,0.18),rgba(202,138,4,0.12));border:1px solid rgba(234,179,8,0.45);color:#a16207;font-size:11px">
+                <span class="material-symbols-outlined" style="font-size:11px;font-variation-settings:'FILL' 1">workspace_premium</span>
+                Fundador #{{ driverBenefits()?.founder_number }}
+              </span>
+            }
+            @if (driverBenefits()) {
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+                style="background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.25);color:#047857;font-size:11px">
+                <span class="material-symbols-outlined" style="font-size:11px;font-variation-settings:'FILL' 1">local_offer</span>
+                {{ driverBenefits()?.tier_label }} · {{ driverBenefits()?.commission_pct }}%
+              </span>
+            }
+          </div>
         </div>
         <button (click)="driverMenuOpen.set(true)"
           class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 px-2 py-1.5 rounded-xl"
@@ -2145,9 +2264,139 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
-      <!-- ══ Gana por invitar conductor ══ -->
-      <button (click)="openDriverSection('referrals')"
+      <!-- ══ Tarjetas rápidas: Beneficios + Referidos ══ -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Mis Beneficios -->
+        <button (click)="openDriverSection('benefits')"
+          class="flex flex-col items-start gap-2 active:scale-[0.98] transition-transform"
+          style="background:linear-gradient(135deg,#d97706,#b45309);border-radius:16px;padding:14px 14px;border:none;cursor:pointer;position:relative;overflow:hidden">
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center justify-center flex-shrink-0"
+              style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.18)">
+              <span class="material-symbols-outlined" style="font-size:20px;color:#fff;font-variation-settings:'FILL' 1">workspace_premium</span>
+            </div>
+            @if (driverBenefits()?.is_founder) {
+              <span style="font-size:9px;font-weight:800;color:#fef3c7;background:rgba(0,0,0,0.2);border-radius:6px;padding:2px 6px;letter-spacing:0.04em">FUNDADOR</span>
+            }
+          </div>
+          <div class="text-left">
+            <p style="color:#fff;font-weight:700;font-size:13px;margin:0;line-height:1.3">Mis Beneficios</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:11px;margin:0;line-height:1.3">
+              {{ driverBenefits() ? 'Comisión ' + driverBenefits()?.commission_pct + '% · ' + driverBenefits()?.tier_label : 'Ver beneficios' }}
+            </p>
+          </div>
+        </button>
+        <!-- Gana por invitar -->
+        <button (click)="openDriverSection('referrals')"
+          class="flex flex-col items-start gap-2 active:scale-[0.98] transition-transform"
+          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 14px;border:none;cursor:pointer">
+          <div class="flex items-center justify-center flex-shrink-0"
+            style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.15)">
+            <span class="material-symbols-outlined" style="font-size:20px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
+          </div>
+          <div class="text-left">
+            <p style="color:#fff;font-weight:700;font-size:13px;margin:0;line-height:1.3">Gana Invitando</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:11px;margin:0;line-height:1.3">2% vitalicio por referido</p>
+          </div>
+        </button>
+      </div>
+      <!-- Banner resultado pago wallet -->
+      @if (walletPaymentResult() === 'processing') {
+        <div class="w-full flex items-center gap-2 px-4 py-3 rounded-2xl"
+          style="background:linear-gradient(135deg,#1e3a5f,#1e40af);border:1px solid rgba(96,165,250,0.4)">
+          <span class="material-symbols-outlined animate-spin" style="font-size:18px;color:#93c5fd">autorenew</span>
+          <p style="color:#93c5fd;font-size:13px;font-weight:700;margin:0">Verificando tu pago...</p>
+        </div>
+      }
+      @if (walletPaymentResult() === 'ok') {
+        <div class="w-full flex items-center gap-2 px-4 py-3 rounded-2xl"
+          style="background:linear-gradient(135deg,#052e16,#14532d);border:1px solid rgba(74,222,128,0.4)">
+          <span class="material-symbols-outlined" style="font-size:18px;color:#4ade80;font-variation-settings:'FILL' 1">check_circle</span>
+          <div>
+            <p style="color:#4ade80;font-size:13px;font-weight:700;margin:0">¡Pago recibido!</p>
+            <p style="color:rgba(74,222,128,0.7);font-size:11px;margin:0">Saldo actualizado en tu billetera</p>
+          </div>
+        </div>
+      }
+      <!-- ══ Tarjeta Wallet (saldo de recarga) — siempre visible, toggle panel ══ -->
+      <button (click)="walletPanelOpen.set(!walletPanelOpen())"
         class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
+        [style]="walletPanelOpen()
+          ? 'background:linear-gradient(135deg,#0f172a,#1e293b);border:1.5px solid rgba(34,211,238,0.5);border-radius:18px 18px 0 0;padding:14px 16px;cursor:pointer;position:relative;overflow:hidden'
+          : 'background:linear-gradient(135deg,#0f172a,#1e293b);border:1.5px solid rgba(34,211,238,0.25);border-radius:18px;padding:14px 16px;cursor:pointer;position:relative;overflow:hidden'">
+        <!-- glow -->
+        <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(34,211,238,0.08);pointer-events:none"></div>
+        <div class="flex items-center justify-center flex-shrink-0"
+          style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(6,182,212,0.12));border:1px solid rgba(34,211,238,0.3)">
+          <span class="material-symbols-outlined" style="font-size:22px;color:#22d3ee;font-variation-settings:'FILL' 1">account_balance_wallet</span>
+        </div>
+        <div class="flex-1 min-w-0 text-left">
+          <p style="color:rgba(148,163,184,0.9);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0">Saldo de Recarga</p>
+          <p style="color:#fff;font-size:20px;font-weight:900;margin:0;line-height:1.15;letter-spacing:-0.01em">{{ formatCOP(driverWalletBalance()) }}</p>
+          <p style="color:rgba(34,211,238,0.7);font-size:10px;font-weight:600;margin:0;margin-top:1px">Se descuenta desde la 2ª carrera</p>
+        </div>
+        <div class="flex flex-col items-center gap-0.5 flex-shrink-0">
+          @if (walletPanelOpen()) {
+            <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl"
+              style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3)">
+              <span class="material-symbols-outlined" style="font-size:15px;color:#f87171">expand_less</span>
+              <span style="color:#f87171;font-size:11px;font-weight:800">Cerrar</span>
+            </div>
+          } @else {
+            <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl"
+              style="background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(6,182,212,0.12));border:1px solid rgba(34,211,238,0.3)">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#22d3ee">add_circle</span>
+              <span style="color:#22d3ee;font-size:11px;font-weight:800">Recargar</span>
+            </div>
+          }
+        </div>
+      </button>
+
+      <!-- Panel de recarga inline (se abre debajo de la tarjeta) -->
+      @if (walletPanelOpen()) {
+        <div style="background:#FFFFFF;border:1.5px solid rgba(34,211,238,0.25);border-top:none;border-radius:0 0 18px 18px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:-2px">
+          <!-- Montos rápidos -->
+          <div class="grid grid-cols-3 gap-2">
+            @for (amt of rechargePresets; track amt) {
+              <button (click)="rechargeAmount.set(amt)"
+                class="py-2.5 rounded-xl text-xs font-black transition-all active:scale-95"
+                [style]="rechargeAmount() === amt
+                  ? 'background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff'
+                  : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
+                {{ formatCOP(amt) }}
+              </button>
+            }
+          </div>
+          <!-- Monto personalizado -->
+          <div class="flex items-center gap-2 rounded-xl px-3 py-2"
+            style="background:#F9FAFB;border:1px solid #E2E8F0">
+            <span class="text-slate-600 text-sm font-bold">$</span>
+            <input type="number" [(ngModel)]="rechargeCustom"
+              (input)="rechargeAmount.set(+rechargeCustom || 0)"
+              placeholder="Otro monto..."
+              class="flex-1 bg-transparent text-slate-900 text-sm outline-none placeholder-slate-400"/>
+            <span class="text-slate-500 text-xs">COP</span>
+          </div>
+          @if (rechargeError()) {
+            <p class="text-rose-500 text-xs">{{ rechargeError() }}</p>
+          }
+          <button (click)="startWalletRecharge()"
+            [disabled]="rechargeAmount() < 5000 || rechargeLoading()"
+            class="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.98]"
+            style="background:linear-gradient(135deg,#0f6fde,#1d4ed8);color:#fff">
+            @if (rechargeLoading()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Abriendo pago...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:16px">credit_card</span>
+              Pagar {{ rechargeAmount() >= 5000 ? formatCOP(rechargeAmount()) : '' }} con ePayco
+            }
+          </button>
+          <p class="text-slate-400 text-[10px] text-center">Mínimo {{ formatCOP(5000) }} · Pago seguro con ePayco</p>
+        </div>
+      }
+
+      <!-- ══ Gana por invitar conductor (full-width, hidden — kept for menu) ══ -->
+      <button (click)="openDriverSection('referrals')" class="hidden"
         style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
         <div class="flex items-center justify-center flex-shrink-0"
           style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
@@ -2281,39 +2530,76 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                   }
                 </div>
-                <div class="px-4 pb-3 flex flex-wrap gap-2">
-                  <button (click)="openDriverChat(trip)"
-                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
-                    <span class="material-symbols-outlined" style="font-size:15px">chat</span>Chat
-                  </button>
-                  <button (click)="callPassengerFromTrip(trip)"
-                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#16a34a,#22c55e)">
-                    <span class="material-symbols-outlined" style="font-size:15px">call</span>Llamar
-                  </button>
-                  <button (click)="startInAppNav(trip, true)"
-                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#8b5cf6,#6366f1)">
-                    <span class="material-symbols-outlined" style="font-size:15px">navigation</span>Ir a recoger
-                  </button>
-                  <button (click)="startInAppNav(trip, false)"
-                    class="px-3 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#f59e0b,#f97316)">
-                    <span class="material-symbols-outlined" style="font-size:15px">place</span>Ir al destino
-                  </button>
-                  @if (trip.ag_trip_requests?.driver_stage !== 'picked_up' && trip.ag_trip_requests?.driver_stage !== 'on_route') {
-                    <button (click)="advanceStage(trip, 'picked_up')"
-                      class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1"
+                <!-- Botones contextuales según etapa del viaje (estilo inDrive) -->
+                <div class="px-4 pb-3 flex flex-col gap-2">
+                  <!-- Fila: Chat + Llamar siempre -->
+                  <div class="flex gap-2">
+                    <button (click)="openDriverChat(trip)"
+                      class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                      <span class="material-symbols-outlined" style="font-size:15px">chat</span>Chat
+                    </button>
+                    <button (click)="callPassengerFromTrip(trip)"
+                      class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+                      <span class="material-symbols-outlined" style="font-size:15px">call</span>Llamar
+                    </button>
+                  </div>
+                  <!-- Etapa 1: sin etapa o heading_to_pickup → mostrando camino al pasajero -->
+                  @if (!trip.ag_trip_requests?.driver_stage || trip.ag_trip_requests?.driver_stage === 'heading_to_pickup') {
+                    <button (click)="startInAppNav(trip, true)"
+                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#7c3aed,#6366f1)">
+                      <span class="material-symbols-outlined" style="font-size:18px">navigation</span>Navegar al punto de recogida
+                    </button>
+                    <button (click)="advanceStage(trip, 'arrived_at_pickup')"
+                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
                       style="background:linear-gradient(135deg,#0891b2,#06b6d4)">
-                      <span class="material-symbols-outlined" style="font-size:15px">person_check</span>Pasajero a bordo
+                      <span class="material-symbols-outlined" style="font-size:18px">where_to_vote</span>Llegué al punto de recogida
                     </button>
                   }
-                  <button (click)="finishDriverTrip(trip)"
-                    class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#16a34a,#15803d)">
-                    <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>Finalizar
-                  </button>
+                  <!-- Etapa 2: arrived_at_pickup → esperando al pasajero -->
+                  @if (trip.ag_trip_requests?.driver_stage === 'arrived_at_pickup') {
+                    <div class="flex items-center gap-2 px-3 py-2 rounded-xl"
+                      style="background:#fef9c3;border:1px solid #fde047">
+                      <span class="material-symbols-outlined text-yellow-600" style="font-size:16px">hourglass_top</span>
+                      <span class="text-yellow-700 text-xs font-bold">Esperando al pasajero...</span>
+                    </div>
+                    <button (click)="advanceStage(trip, 'picked_up')"
+                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#0891b2,#06b6d4)">
+                      <span class="material-symbols-outlined" style="font-size:18px">person_check</span>Pasajero a bordo
+                    </button>
+                  }
+                  <!-- Etapa 3: picked_up → iniciar ruta -->
+                  @if (trip.ag_trip_requests?.driver_stage === 'picked_up') {
+                    <button (click)="advanceStage(trip, 'on_route')"
+                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#f59e0b,#f97316)">
+                      <span class="material-symbols-outlined" style="font-size:18px">directions_car</span>Iniciar viaje
+                    </button>
+                  }
+                  <!-- Etapa 4: on_route → navegando al destino -->
+                  @if (trip.ag_trip_requests?.driver_stage === 'on_route') {
+                    <button (click)="startInAppNav(trip, false)"
+                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#f59e0b,#f97316)">
+                      <span class="material-symbols-outlined" style="font-size:18px">navigation</span>Navegar al destino
+                    </button>
+                    <button (click)="finishDriverTrip(trip)"
+                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                      <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar viaje
+                    </button>
+                  }
+                  <!-- Etapa final: arrived_at_destination -->
+                  @if (trip.ag_trip_requests?.driver_stage === 'arrived_at_destination' || trip.ag_trip_requests?.driver_stage === 'completed') {
+                    <button (click)="finishDriverTrip(trip)"
+                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                      <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar viaje
+                    </button>
+                  }
                 </div>
               </div>
             }
@@ -2415,7 +2701,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <span class="text-rose-400 text-xs font-black">Mínimo $20.000 para aceptar</span>
                         </div>
                         <p class="text-slate-500 text-[10px]">Recarga tu billetera para poder tomar viajes</p>
-                        <button (click)="openDriverSection('earnings')"
+                        <button (click)="walletPanelOpen.set(true)"
                           class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
                           style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
                           <span class="material-symbols-outlined" style="font-size:12px">add_circle</span>
@@ -2430,7 +2716,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <span class="text-amber-400 text-xs font-black">Saldo insuficiente para comisión</span>
                         </div>
                         <p class="text-slate-500 text-[10px]">Necesitas {{ formatCOP(requiredCommission(req.offered_price)) }}</p>
-                        <button (click)="openDriverSection('earnings')"
+                        <button (click)="walletPanelOpen.set(true)"
                           class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
                           style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
                           <span class="material-symbols-outlined" style="font-size:12px">add_circle</span>
@@ -2452,12 +2738,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
       @if (driverStatus() === 'rejected') {
-        <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 flex flex-col gap-2">
-          <p class="font-bold text-sm" style="color:#0f172a">Tu solicitud fue rechazada</p>
-          @if (driverRejectionReason()) {
-            <p class="text-slate-600 text-xs leading-relaxed"><span class="text-rose-600 font-bold">Motivo:</span> {{ driverRejectionReason() }}</p>
-          }
-          <p class="text-slate-500 text-xs">Puedes contactar al soporte para más información.</p>
+        <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 flex flex-col gap-3">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-rose-500 flex-shrink-0" style="font-size:28px">cancel</span>
+            <div>
+              <p class="font-bold text-sm" style="color:#0f172a">Tu solicitud fue rechazada</p>
+              @if (driverRejectionReason()) {
+                <p class="text-slate-600 text-xs leading-relaxed mt-1"><span class="text-rose-600 font-bold">Motivo:</span> {{ driverRejectionReason() }}</p>
+              }
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs">Corrige los datos o documentos indicados y vuelve a enviar tu solicitud.</p>
+          <button (click)="screen.set('driver-form')"
+            class="w-full py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            style="background:linear-gradient(135deg,#ef4444,#b91c1c)">
+            <span class="material-symbols-outlined" style="font-size:16px">refresh</span>
+            Volver a aplicar
+          </button>
         </div>
       }
 
@@ -2616,7 +2913,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <h2 class="font-black text-lg" style="color:#0f172a">
               {{ driverSection() === 'profile' ? 'Mi Perfil' :
                  driverSection() === 'status' ? 'Estado' :
-                 driverSection() === 'earnings' ? 'Ganancias' :
+                 driverSection() === 'wallet' ? 'Mi Wallet · Recarga' :
+                 driverSection() === 'earnings' ? 'Ganancias de Viajes' :
                  driverSection() === 'trips' ? 'Mis Viajes' :
                  driverSection() === 'referrals' ? 'Recomienda y Gana' :
                  driverSection() === 'analytics' ? 'Analytics' :
@@ -2634,7 +2932,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                  driverSection() === 'support' ? 'Soporte' :
                  driverSection() === 'notifications' ? 'Notificaciones' :
                  driverSection() === 'report' ? 'Reportar problema' :
-                 driverSection() === 'settings' ? 'Configuración' : '' }}
+                 driverSection() === 'settings' ? 'Configuración' :
+                 driverSection() === 'benefits' ? 'Mis Beneficios' : '' }}
             </h2>
           </div>
 
@@ -2746,131 +3045,58 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           }
 
-          <!-- ── GANANCIAS ── -->
+          <!-- ── GANANCIAS DE VIAJES ── -->
           @if (!loadingSection() && driverSection() === 'earnings') {
-            <!-- Balance total -->
-            <div class="rounded-2xl p-5 flex flex-col gap-3"
+            <!-- Total ganado -->
+            <div class="rounded-2xl p-5 flex flex-col gap-2"
               style="background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08));border:1px solid rgba(16,185,129,0.2)">
-              <div>
-                <p class="text-slate-600 text-xs uppercase font-bold tracking-widest">Saldo disponible</p>
-                <p class="font-black text-4xl" style="color:#0f172a">{{ formatCOP(driverWalletBalance()) }}</p>
-                <p class="text-slate-600 text-xs">Total ganado en viajes: {{ formatCOP(driverEarnings().total) }}</p>
-              </div>
-              <!-- Recargar saldo -->
-              <div class="flex flex-col gap-3 pt-2" style="border-top:1px solid rgba(16,185,129,0.15)">
-                <p class="text-slate-600 text-xs font-bold uppercase tracking-widest">Recargar saldo</p>
-                <!-- Montos rápidos -->
-                <div class="grid grid-cols-3 gap-2">
-                  @for (amt of rechargePresets; track amt) {
-                    <button (click)="rechargeAmount.set(amt)"
-                      class="py-2.5 rounded-xl text-xs font-black transition-all active:scale-95"
-                      [style]="rechargeAmount() === amt
-                        ? 'background:linear-gradient(135deg,#10b981,#059669);color:#fff'
-                        : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
-                      {{ formatCOP(amt) }}
-                    </button>
-                  }
-                </div>
-                <!-- Monto personalizado -->
-                <div class="flex items-center gap-2 rounded-xl px-3 py-2"
-                  style="background:#F9FAFB;border:1px solid #E2E8F0">
-                  <span class="text-slate-600 text-sm font-bold">$</span>
-                  <input type="number" [(ngModel)]="rechargeCustom"
-                    (input)="rechargeAmount.set(+rechargeCustom || 0)"
-                    placeholder="Otro monto..."
-                    class="flex-1 bg-transparent text-slate-900 text-sm outline-none placeholder-slate-400"/>
-                  <span class="text-slate-600 text-xs">COP</span>
-                </div>
-                @if (rechargeError()) {
-                  <p class="text-rose-400 text-xs">{{ rechargeError() }}</p>
-                }
-                <!-- Botón pagar -->
-                <button (click)="startWalletRecharge()"
-                  [disabled]="rechargeAmount() < 5000 || rechargeLoading()"
-                  class="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.98]"
-                  style="background:linear-gradient(135deg,#0f6fde,#1d4ed8);color:#fff">
-                  @if (rechargeLoading()) {
-                    <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Abriendo pago...
-                  } @else {
-                    <span class="material-symbols-outlined" style="font-size:16px">credit_card</span>
-                    Pagar {{ rechargeAmount() >= 5000 ? formatCOP(rechargeAmount()) : '' }} con ePayco
-                  }
-                </button>
-                <p class="text-slate-600 text-[10px] text-center">Mínimo {{ formatCOP(5000) }} · Seguro con ePayco</p>
-              </div>
-
-              <!-- Retirar ganancias -->
-              <div class="rounded-2xl p-4 flex flex-col gap-3"
-                style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.3)">
-                <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-emerald-600" style="font-size:18px">payments</span>
-                  <p class="font-black text-sm" style="color:#0f172a">Retirar ganancias</p>
-                </div>
-                <p class="text-slate-600 text-[11px]">Mínimo 20.000 COP. Recibes en 1-3 días hábiles.</p>
-                <input type="number" [(ngModel)]="wdAmount" placeholder="Monto en COP" min="20000"
-                  class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                  style="background:#FFFFFF;border:1px solid #D1FAE5" />
-                <select [(ngModel)]="wdMethod"
-                  class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                  style="background:#FFFFFF;border:1px solid #D1FAE5">
-                  <option value="bank">Transferencia bancaria</option>
-                  <option value="nequi">Nequi</option>
-                  <option value="daviplata">Daviplata</option>
-                  <option value="efectivo">Efectivo (oficina)</option>
-                </select>
-                <input type="text" [(ngModel)]="wdAccount" [placeholder]="wdPlaceholder()"
-                  class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                  style="background:#FFFFFF;border:1px solid #D1FAE5" />
-                <button (click)="requestDriverWithdraw()" [disabled]="wdLoading() || (wdAmount ?? 0) < 20000"
-                  class="w-full py-2.5 rounded-xl font-black text-xs uppercase disabled:opacity-40"
-                  style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
-                  {{ wdLoading() ? 'Procesando...' : 'Solicitar retiro' }}
-                </button>
-                @if (wdMsg()) { <p class="text-xs text-center" [class]="wdMsg()!.startsWith('Error') ? 'text-rose-400' : 'text-emerald-300'">{{ wdMsg() }}</p> }
-                @if (driverWithdrawals().length > 0) {
-                  <div class="pt-2 border-t border-emerald-100 space-y-1">
-                    <p class="text-[10px] text-slate-500 uppercase tracking-wide">Solicitudes recientes</p>
-                    @for (w of driverWithdrawals().slice(0, 5); track w.id) {
-                      <div class="flex items-center justify-between text-[11px]">
-                        <span class="text-slate-500">{{ w.created_at | date:'short' }}</span>
-                        <span class="font-bold" style="color:#0f172a">{{ formatCOP(w.amount) }}</span>
-                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold"
-                          [class]="w.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : w.status === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'">{{ w.status }}</span>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
+              <p class="text-slate-600 text-xs uppercase font-bold tracking-widest">Total ganado en viajes</p>
+              <p class="font-black text-4xl" style="color:#0f172a">{{ formatCOP(driverEarnings().total) }}</p>
+              <p class="text-slate-500 text-xs">Acumulado de todas tus carreras completadas</p>
             </div>
-            <!-- Historial -->
-            <p class="text-slate-600 text-xs font-bold uppercase tracking-widest px-1">Historial de movimientos</p>
-            @if (driverEarnings().walletHistory.length === 0) {
-              <div class="rounded-2xl flex flex-col items-center gap-2 py-10"
-                style="background:#F9FAFB;border:1px solid #E2E8F0">
-                <span class="material-symbols-outlined text-slate-400" style="font-size:36px">receipt_long</span>
-                <p class="text-slate-600 text-sm">Sin movimientos aún</p>
+
+            <!-- Solicitar retiro -->
+            <div class="rounded-2xl p-4 flex flex-col gap-3"
+              style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.3)">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-600" style="font-size:18px">payments</span>
+                <p class="font-black text-sm" style="color:#0f172a">Retirar ganancias</p>
               </div>
-            }
-            @for (tx of driverEarnings().walletHistory; track tx.id) {
-              <div class="flex items-center gap-3 rounded-xl px-4 py-3"
-                style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  [style]="tx.type === 'recharge' ? 'background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2)' : 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2)'">
-                  <span class="material-symbols-outlined" style="font-size:16px"
-                    [class]="tx.type === 'recharge' ? 'text-emerald-600' : 'text-rose-500'">
-                    {{ tx.type === 'recharge' ? 'add_circle' : 'remove_circle' }}
-                  </span>
+              <p class="text-slate-600 text-[11px]">Mínimo 20.000 COP. Recibes en 1-3 días hábiles.</p>
+              <input type="number" [(ngModel)]="wdAmount" placeholder="Monto en COP" min="20000"
+                class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
+                style="background:#FFFFFF;border:1px solid #D1FAE5" />
+              <select [(ngModel)]="wdMethod"
+                class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
+                style="background:#FFFFFF;border:1px solid #D1FAE5">
+                <option value="bank">Transferencia bancaria</option>
+                <option value="nequi">Nequi</option>
+                <option value="daviplata">Daviplata</option>
+                <option value="efectivo">Efectivo (oficina)</option>
+              </select>
+              <input type="text" [(ngModel)]="wdAccount" [placeholder]="wdPlaceholder()"
+                class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
+                style="background:#FFFFFF;border:1px solid #D1FAE5" />
+              <button (click)="requestDriverWithdraw()" [disabled]="wdLoading() || (wdAmount ?? 0) < 20000"
+                class="w-full py-2.5 rounded-xl font-black text-xs uppercase disabled:opacity-40"
+                style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
+                {{ wdLoading() ? 'Procesando...' : 'Solicitar retiro' }}
+              </button>
+              @if (wdMsg()) { <p class="text-xs text-center" [class]="wdMsg()!.startsWith('Error') ? 'text-rose-400' : 'text-emerald-600'">{{ wdMsg() }}</p> }
+              @if (driverWithdrawals().length > 0) {
+                <div class="pt-2 border-t border-emerald-100 space-y-1">
+                  <p class="text-[10px] text-slate-500 uppercase tracking-wide">Solicitudes recientes</p>
+                  @for (w of driverWithdrawals().slice(0, 5); track w.id) {
+                    <div class="flex items-center justify-between text-[11px]">
+                      <span class="text-slate-500">{{ w.created_at | date:'short' }}</span>
+                      <span class="font-bold" style="color:#0f172a">{{ formatCOP(w.amount) }}</span>
+                      <span class="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                        [class]="w.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : w.status === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'">{{ w.status }}</span>
+                    </div>
+                  }
                 </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-slate-700 text-xs truncate">{{ tx.description }}</p>
-                  <p class="text-slate-500 text-[10px]">{{ tx.created_at | slice:0:10 }}</p>
-                </div>
-                <p class="font-black text-sm flex-shrink-0"
-                  [class]="tx.amount > 0 ? 'text-emerald-600' : 'text-rose-500'">
-                  {{ tx.amount > 0 ? '+' : '' }}{{ formatCOP(tx.amount) }}
-                </p>
-              </div>
-            }
+              }
+            </div>
           }
 
           <!-- ── MIS VIAJES ── -->
@@ -2960,13 +3186,29 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="flex flex-col gap-3">
               <p class="text-slate-600 text-sm">Completa estas metas para ganar bonos extras.</p>
               @for (q of quests(); track q.id) {
+                @let prog = questProgressFor(q.id);
+                @let current = prog?.current_value ?? 0;
+                @let target = q.target_value ?? 1;
+                @let done = prog?.completed_at != null;
                 <div class="rounded-2xl p-4" style="background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.2)">
                   <div class="flex items-center gap-2 mb-1">
                     <span class="material-symbols-outlined text-purple-600" style="font-size:22px">emoji_events</span>
                     <p class="font-black text-sm flex-1" style="color:#0f172a">{{ q.title }}</p>
-                    <span class="text-amber-600 font-black text-sm">+{{ formatCOP(q.reward_cop) }}</span>
+                    @if (done) {
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-black" style="background:rgba(16,185,129,0.15);color:#059669">✓ Completada</span>
+                    } @else {
+                      <span class="text-amber-600 font-black text-sm">+{{ formatCOP(q.reward_cop) }}</span>
+                    }
                   </div>
                   <p class="text-slate-600 text-xs mb-2">{{ q.description }}</p>
+                  <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 h-1.5 rounded-full overflow-hidden" style="background:rgba(168,85,247,0.15)">
+                      <div class="h-full rounded-full transition-all"
+                        [style.width.%]="current / target * 100 > 100 ? 100 : current / target * 100"
+                        [style.background]="done ? '#059669' : 'linear-gradient(90deg,#a855f7,#7c3aed)'"></div>
+                    </div>
+                    <span class="text-[10px] font-bold" style="color:#7c3aed">{{ current }}/{{ target }}</span>
+                  </div>
                   <p class="text-[10px] text-slate-500">Expira: {{ q.valid_until | date:'shortDate' }} · {{ q.period }}</p>
                 </div>
               }
@@ -3026,7 +3268,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               @for (b of blacklist(); track b.id) {
                 <div class="flex items-center justify-between rounded-xl p-3" style="background:#FFF7F7;border:1px solid rgba(239,68,68,0.25)">
                   <div>
-                    <p class="text-slate-900 text-xs font-mono">{{ b.passenger_user_id.slice(0, 8) }}...</p>
+                    <p class="text-slate-900 text-xs font-semibold">{{ b.ag_users?.full_name ?? (b.passenger_user_id.slice(0, 8) + '...') }}</p>
+                    @if (b.ag_users?.phone) { <p class="text-slate-500 text-[10px]">{{ b.ag_users.phone }}</p> }
                     @if (b.reason) { <p class="text-slate-600 text-[10px]">{{ b.reason }}</p> }
                   </div>
                   <button (click)="removeFromBlacklist(b.id)" class="text-emerald-600 text-xs">Desbloquear</button>
@@ -3172,7 +3415,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (!loadingSection() && driverSection() === 'support') {
             <div class="flex flex-col gap-4">
               <!-- Contacto directo -->
-              <a href="https://wa.me/573000000000" target="_blank"
+              <a href="https://wa.me/573181800264" target="_blank"
                 class="w-full py-4 rounded-2xl flex items-center justify-center gap-3"
                 style="background:linear-gradient(135deg,rgba(37,211,102,0.1),rgba(18,140,126,0.07));border:1px solid rgba(37,211,102,0.3)">
                 <span class="material-symbols-outlined text-emerald-600" style="font-size:24px">chat</span>
@@ -3364,6 +3607,155 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <p class="text-slate-700 text-xs leading-relaxed">Cada vez que usen Movi, tú ganas el <span class="text-amber-600 font-bold">2% del valor del servicio</span> en tu billetera de retiro</p>
                 </div>
               </div>
+            </div>
+          }
+
+          <!-- ── MIS BENEFICIOS ── -->
+          @if (!loadingSection() && driverSection() === 'benefits') {
+            <div class="flex flex-col gap-4">
+
+              <!-- Badge Fundador -->
+              @if (driverBenefits()?.is_founder) {
+                <div class="rounded-2xl p-5 flex items-center gap-4"
+                  style="background:linear-gradient(135deg,#92400e,#78350f,#451a03);border:1px solid rgba(234,179,8,0.45);box-shadow:0 4px 20px rgba(234,179,8,0.15)">
+                  <div class="flex items-center justify-center flex-shrink-0"
+                    style="width:52px;height:52px;border-radius:16px;background:rgba(234,179,8,0.2);border:1px solid rgba(234,179,8,0.4)">
+                    <span class="material-symbols-outlined" style="font-size:30px;color:#fbbf24;font-variation-settings:'FILL' 1">workspace_premium</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <p class="font-black text-base" style="color:#fef3c7">Conductor Fundador</p>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-black"
+                        style="background:rgba(234,179,8,0.25);border:1px solid rgba(234,179,8,0.5);color:#fbbf24">
+                        #{{ driverBenefits()?.founder_number }} de 500
+                      </span>
+                    </div>
+                    <p class="text-yellow-200/70 text-xs mt-0.5 leading-relaxed">Eres parte exclusiva de los primeros 500 conductores que hicieron posible Movi. Este badge es tuyo de por vida.</p>
+                  </div>
+                </div>
+              } @else {
+                <div class="rounded-2xl p-4 flex items-center gap-3"
+                  style="background:#F9FAFB;border:1px solid #E2E8F0">
+                  <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style="background:rgba(148,163,184,0.15);border:1px solid rgba(148,163,184,0.25)">
+                    <span class="material-symbols-outlined text-slate-400" style="font-size:22px">workspace_premium</span>
+                  </div>
+                  <div>
+                    <p class="font-bold text-sm" style="color:#64748b">Programa Fundadores cerrado</p>
+                    <p class="text-slate-500 text-xs mt-0.5">Los primeros 500 cupos ya están llenos. ¡Sigue ganando beneficios con tu nivel!</p>
+                  </div>
+                </div>
+              }
+
+              <!-- Comisión escalonada — tarjeta principal -->
+              <div class="rounded-2xl overflow-hidden"
+                style="background:#fff;border:1px solid #E2E8F0;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
+                <div class="px-5 pt-5 pb-3">
+                  <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Tu comisión este mes</p>
+                  <div class="flex items-end gap-2 mt-1">
+                    <span class="font-black" style="font-size:42px;color:#0f172a;line-height:1">{{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}</span>
+                    <span class="font-black text-lg text-slate-400 mb-1.5">%</span>
+                    <span class="mb-1.5 px-2 py-0.5 rounded-full text-xs font-black"
+                      [style.background]="driverBenefits()?.tier_label === 'Leyenda' ? 'rgba(234,179,8,0.12)' : driverBenefits()?.tier_label === 'Pro' ? 'rgba(8,145,178,0.10)' : driverBenefits()?.tier_label === 'Activo' ? 'rgba(16,185,129,0.10)' : 'rgba(148,163,184,0.12)'"
+                      [style.color]="driverBenefits()?.tier_label === 'Leyenda' ? '#a16207' : driverBenefits()?.tier_label === 'Pro' ? '#0369a1' : driverBenefits()?.tier_label === 'Activo' ? '#047857' : '#64748b'">
+                      {{ driverBenefits()?.tier_label ?? 'Nuevo' }}
+                    </span>
+                  </div>
+                  <p class="text-slate-500 text-xs mt-1">Pagas solo el {{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}% de lo que ganas · Nada más.</p>
+                </div>
+
+                <!-- Barra de progreso hacia el siguiente nivel -->
+                @if (driverBenefits()?.next_tier_trips > 0) {
+                  <div class="px-5 pb-4">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="text-xs text-slate-500 font-medium">{{ driverBenefits()?.monthly_trips }} viajes este mes</span>
+                      <span class="text-xs font-bold" style="color:#0f172a">Meta: {{ driverBenefits()?.next_tier_trips }} → {{ driverBenefits()?.next_tier_pct }}%</span>
+                    </div>
+                    <div class="w-full h-2.5 rounded-full overflow-hidden" style="background:#F1F5F9">
+                      <div class="h-full rounded-full transition-all duration-500"
+                        style="background:linear-gradient(90deg,#10b981,#0891b2)"
+                        [style.width]="(((driverBenefits()?.monthly_trips ?? 0) / (driverBenefits()?.next_tier_trips ?? 1)) * 100 | number:'1.0-0') + '%'"></div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1.5">Te faltan <span class="font-bold text-slate-600">{{ (driverBenefits()?.next_tier_trips ?? 0) - (driverBenefits()?.monthly_trips ?? 0) }} viajes</span> para bajar tu comisión a {{ driverBenefits()?.next_tier_pct }}%</p>
+                  </div>
+                } @else {
+                  <div class="px-5 pb-4">
+                    <div class="flex items-center gap-2 px-3 py-2 rounded-xl"
+                      style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25)">
+                      <span class="material-symbols-outlined text-amber-500" style="font-size:16px;font-variation-settings:'FILL' 1">emoji_events</span>
+                      <span class="text-amber-700 text-xs font-bold">¡Nivel máximo! Tienes la comisión más baja posible.</span>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Tabla completa de niveles -->
+              <div class="rounded-2xl overflow-hidden" style="background:#fff;border:1px solid #E2E8F0">
+                <div class="px-4 pt-4 pb-2">
+                  <p class="font-black text-sm" style="color:#0f172a">Cómo funciona la escala</p>
+                  <p class="text-slate-500 text-xs mt-0.5">Tu comisión baja según los viajes completados cada mes. Se reinicia el 1° de cada mes.</p>
+                </div>
+                <div class="divide-y divide-slate-100">
+                  @for (tier of [
+                    { label: 'Nuevo',   range: '0 – 30 viajes',   pct: 12, color: '#64748b', bg: 'rgba(148,163,184,0.08)', icon: 'directions_car' },
+                    { label: 'Activo',  range: '31 – 70 viajes',  pct: 10, color: '#047857', bg: 'rgba(16,185,129,0.06)',  icon: 'trending_up' },
+                    { label: 'Pro',     range: '71 – 120 viajes', pct: 8,  color: '#0369a1', bg: 'rgba(8,145,178,0.06)',   icon: 'star' },
+                    { label: 'Leyenda', range: '121+ viajes',     pct: 6,  color: '#a16207', bg: 'rgba(234,179,8,0.08)',   icon: 'emoji_events' }
+                  ]; track tier.label) {
+                    <div class="flex items-center gap-3 px-4 py-3"
+                      [style.background]="driverBenefits()?.tier_label === tier.label ? tier.bg : 'transparent'">
+                      <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px"
+                        [style.color]="driverBenefits()?.tier_label === tier.label ? tier.color : '#94a3b8'">{{ tier.icon }}</span>
+                      <div class="flex-1">
+                        <p class="font-bold text-sm"
+                          [style.color]="driverBenefits()?.tier_label === tier.label ? '#0f172a' : '#64748b'">{{ tier.label }}</p>
+                        <p class="text-xs" style="color:#94a3b8">{{ tier.range }}</p>
+                      </div>
+                      <div class="text-right">
+                        <span class="font-black text-base" [style.color]="tier.color">{{ tier.pct }}%</span>
+                        @if (driverBenefits()?.tier_label === tier.label) {
+                          <p class="text-[9px] font-bold uppercase tracking-wide" [style.color]="tier.color">Tu nivel</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Beneficio de referidos -->
+              <div class="rounded-2xl p-4 flex items-start gap-3"
+                style="background:linear-gradient(135deg,rgba(108,58,237,0.07),rgba(37,99,235,0.05));border:1px solid rgba(108,58,237,0.18)">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style="background:rgba(108,58,237,0.12);border:1px solid rgba(108,58,237,0.25)">
+                  <span class="material-symbols-outlined" style="font-size:20px;color:#7c3aed;font-variation-settings:'FILL' 1">group_add</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-black text-sm" style="color:#0f172a">2% vitalicio por referido</p>
+                  <p class="text-slate-600 text-xs mt-0.5 leading-relaxed">Cada conductor o pasajero que se registre con tu link y complete servicios, te genera el <span class="font-bold text-purple-700">2% de cada servicio</span> de por vida.</p>
+                  <button (click)="openDriverSection('referrals')"
+                    class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black active:scale-95 transition-all"
+                    style="background:rgba(108,58,237,0.12);border:1px solid rgba(108,58,237,0.25);color:#7c3aed">
+                    <span class="material-symbols-outlined" style="font-size:14px">share</span> Ver mi link de referido
+                  </button>
+                </div>
+              </div>
+
+              <!-- Resumen de métricas -->
+              <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-2xl p-4 flex flex-col gap-1 items-center"
+                  style="background:#F9FAFB;border:1px solid #E2E8F0;text-align:center">
+                  <span class="material-symbols-outlined text-cyan-500" style="font-size:24px;font-variation-settings:'FILL' 1">route</span>
+                  <p class="font-black text-lg" style="color:#0f172a">{{ driverBenefits()?.monthly_trips ?? 0 }}</p>
+                  <p class="text-slate-500 text-[11px]">Viajes este mes</p>
+                </div>
+                <div class="rounded-2xl p-4 flex flex-col gap-1 items-center"
+                  style="background:#F9FAFB;border:1px solid #E2E8F0;text-align:center">
+                  <span class="material-symbols-outlined text-emerald-500" style="font-size:24px;font-variation-settings:'FILL' 1">check_circle</span>
+                  <p class="font-black text-lg" style="color:#0f172a">{{ driverBenefits()?.total_trips ?? 0 }}</p>
+                  <p class="text-slate-500 text-[11px]">Viajes totales</p>
+                </div>
+              </div>
+
             </div>
           }
 
@@ -3760,6 +4152,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- ── VIAJES PROGRAMADOS ── -->
           @if (!loadingSection() && driverSection() === 'scheduled') {
             <div class="flex flex-col gap-4">
+              <!-- Aviso: notificaciones manuales -->
+              <div class="flex items-start gap-2 rounded-xl p-3" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3)">
+                <span class="material-symbols-outlined text-amber-500 mt-0.5" style="font-size:18px">info</span>
+                <p class="text-amber-700 text-xs leading-snug">Los viajes programados se almacenan pero las notificaciones automáticas aún no están activas. Los conductores asignados son contactados manualmente por el equipo.</p>
+              </div>
               <!-- Mis reservas -->
               <div>
                 <p class="font-black text-sm mb-2" style="color:#0f172a">Mis reservas</p>
@@ -4373,8 +4770,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="display:flex;flex-direction:column;gap:5px">
               <label style="color:#374151;font-size:11px;font-weight:700;letter-spacing:0.08em">Nombre</label>
               <input
-                [value]="qrName()"
-                (input)="qrName.set($any($event.target).value)"
+                [(ngModel)]="qrNameDisplay"
+                (ngModelChange)="qrName.set($event)"
+                name="qrName"
                 type="text" autocomplete="given-name" placeholder="Tu nombre"
                 class="qr-input"
                 style="background:#F9FAFB;border-style:solid;border-radius:14px;padding:14px 16px;color:#111827;font-size:16px;font-weight:600;width:100%;box-sizing:border-box"
@@ -4389,8 +4787,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   +57
                 </div>
                 <input
-                  [value]="qrPhone()"
-                  (input)="qrPhone.set($any($event.target).value.replace(/\D/g,'').slice(0,10))"
+                  [(ngModel)]="qrPhoneDisplay"
+                  (ngModelChange)="qrPhone.set($event.replace(/\D/g,'').slice(0,10))"
+                  name="qrPhone"
                   type="tel" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
                   class="qr-input"
                   style="flex:1;background:#F9FAFB;border-style:solid;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;box-sizing:border-box"
@@ -4465,8 +4864,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:5px">
             <label style="color:#6B7280;font-size:13px;font-weight:500;text-align:center">Código de verificación</label>
             <input
-              [value]="qrOtpCode()"
-              (input)="qrOtpCode.set($any($event.target).value.replace(/\D/g,'').slice(0,6))"
+              [(ngModel)]="qrOtpCodeDisplay"
+              (ngModelChange)="qrOtpCode.set($event.replace(/\D/g,'').slice(0,6))"
+              name="qrOtpCode"
               type="tel" inputmode="numeric" maxlength="6"
               placeholder="_ _ _ _ _ _"
               [disabled]="qrOtpVerifying()"
@@ -4866,7 +5266,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
-              <input [value]="pf.fullName" (input)="pf.fullName = $any($event.target).value"
+              <input [(ngModel)]="pf.fullName" name="pfFullName"
                 placeholder="Ej: Juan Carlos Pérez"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -4901,7 +5301,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                 </select>
               } @else {
-                <input [value]="pf.department" (input)="pf.department = $any($event.target).value"
+                <input [(ngModel)]="pf.department" name="pfDepartment"
                   placeholder="Tu departamento o estado"
                   autocomplete="off" spellcheck="false"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -4919,7 +5319,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                 </select>
               } @else {
-                <input [value]="pf.city" (input)="pf.city = $any($event.target).value"
+                <input [(ngModel)]="pf.city" name="pfCity"
                   placeholder="Tu ciudad"
                   autocomplete="off" spellcheck="false"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -4927,7 +5327,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Número de cédula / documento *</label>
-              <input [value]="pf.idNumber" (input)="pf.idNumber = $any($event.target).value"
+              <input [(ngModel)]="pf.idNumber" name="pfIdNumber"
                 placeholder="Número de identificación"
                 autocomplete="off" spellcheck="false" inputmode="numeric"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -4942,7 +5342,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Número de teléfono *</label>
               <div class="flex gap-2">
-                <input [value]="pf.phone" (input)="pf.phone = $any($event.target).value"
+                <input [(ngModel)]="pf.phone" name="pfPhone"
                   type="tel" placeholder="+57 300 000 0000"
                   autocomplete="off" inputmode="tel"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -4950,14 +5350,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
-              <input [value]="pf.email" (input)="pf.email = $any($event.target).value"
+              <input [(ngModel)]="pf.email" name="pfEmail"
                 type="email" placeholder="correo@ejemplo.com"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
-              <input [value]="pf.password" (input)="pf.password = $any($event.target).value"
+              <input [(ngModel)]="pf.password" name="pfPassword"
                 type="password" placeholder="Mínimo 8 caracteres"
                 autocomplete="new-password"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -5005,14 +5405,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
-              <input [value]="pf.emergencyName" (input)="pf.emergencyName = $any($event.target).value"
+              <input [(ngModel)]="pf.emergencyName" name="pfEmergencyName"
                 placeholder="Nombre completo"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
-              <input [value]="pf.emergencyPhone" (input)="pf.emergencyPhone = $any($event.target).value"
+              <input [(ngModel)]="pf.emergencyPhone" name="pfEmergencyPhone"
                 type="tel" placeholder="+57 300 000 0000"
                 autocomplete="off" inputmode="tel"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -5093,7 +5493,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </h3>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
-                <input [value]="df.fullName" (input)="df.fullName = $any($event.target).value"
+                <input [(ngModel)]="df.fullName" name="dfFullName"
                   placeholder="Nombre y apellidos"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
@@ -5128,7 +5528,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     }
                   </select>
                 } @else {
-                  <input [value]="df.department" (input)="df.department = $any($event.target).value"
+                  <input [(ngModel)]="df.department" name="dfDepartment"
                     placeholder="Tu departamento o estado"
                     autocomplete="off" spellcheck="false"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
@@ -5146,7 +5546,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     }
                   </select>
                 } @else {
-                  <input [value]="df.city" (input)="df.city = $any($event.target).value"
+                  <input [(ngModel)]="df.city" name="dfCity"
                     placeholder="Tu ciudad"
                     autocomplete="off" spellcheck="false"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
@@ -5154,7 +5554,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Número de cédula *</label>
-                <input [value]="df.idNumber" (input)="df.idNumber = $any($event.target).value"
+                <input [(ngModel)]="df.idNumber" name="dfIdNumber"
                   placeholder="Número de identificación"
                   autocomplete="off" spellcheck="false" inputmode="numeric"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
@@ -5162,7 +5562,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Teléfono *</label>
                 <div class="flex gap-2">
-                  <input [value]="df.phone" (input)="df.phone = $any($event.target).value"
+                  <input [(ngModel)]="df.phone" name="dfPhone"
                     type="tel" placeholder="+57 300 000 0000"
                     autocomplete="off" inputmode="tel"
                     class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
@@ -5170,14 +5570,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
-                <input [value]="df.email" (input)="df.email = $any($event.target).value"
+                <input [(ngModel)]="df.email" name="dfEmail"
                   type="email" placeholder="correo@ejemplo.com"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
-                <input [value]="df.password" (input)="df.password = $any($event.target).value"
+                <input [(ngModel)]="df.password" name="dfPassword"
                   type="password" placeholder="Mínimo 8 caracteres"
                   autocomplete="new-password"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
@@ -5190,14 +5590,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </h3>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
-                <input [value]="df.emergencyName" (input)="df.emergencyName = $any($event.target).value"
+                <input [(ngModel)]="df.emergencyName" name="dfEmergencyName"
                   placeholder="Nombre completo"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
-                <input [value]="df.emergencyPhone" (input)="df.emergencyPhone = $any($event.target).value"
+                <input [(ngModel)]="df.emergencyPhone" name="dfEmergencyPhone"
                   type="tel" placeholder="+57 300 000 0000"
                   autocomplete="off" inputmode="tel"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
@@ -5648,6 +6048,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripPayment     = signal<AgPaymentMethod>('efectivo');
   tripDistKm      = signal(0);
   tripSending     = signal(false);
+  tripGpsError    = signal(false);
   tripSent        = signal(false);
   tripPinDrop     = signal(false);
   // true mientras haya solicitud activa O viaje aceptado en curso
@@ -5665,6 +6066,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   receivedOffers       = signal<AgTripOffer[]>([]);
   acceptingOfferId     = signal<string | null>(null);
   tripAccepted         = signal<AgTripOffer | null>(null);
+  offerAcceptError     = signal<string | null>(null);
   // Offer system — driver
   driverRequests       = signal<AgTripRequest[]>([]);
   driverRequestsOpen   = signal(false);
@@ -5684,7 +6086,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ratingTarget     = signal<{ userId: string; name: string; role: 'driver' | 'passenger' } | null>(null);
   ratingTripId     = signal<string | null>(null);
   // Driver active trips (accepted offers)
-  driverActiveTrips = signal<any[]>([]);
+  driverActiveTrips  = signal<any[]>([]);
+  driverTripAlert    = signal<any | null>(null); // full-screen inDrive-style alert when offer accepted
+  driverBenefits     = signal<any | null>(null); // tier + founder + commission data
   // Driver menu sections
   driverSection      = signal<string | null>(null);
   loadingSection     = signal(false);
@@ -5702,6 +6106,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   rechargeCustom     = '';
   rechargeLoading    = signal(false);
   rechargeError      = signal<string | null>(null);
+  walletPaymentResult = signal<'processing' | 'ok' | null>(null);
   panicActivated     = signal(false);
   panicSending       = signal(false);
   panicContactsNotified = signal(0);
@@ -5740,8 +6145,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverDailyEarnings   = signal<{ day: string; trips: number; earnings: number }[]>([]);
 
   // Quests + vehicles + blacklist + tutorial
-  quests      = signal<any[]>([]);
-  myVehicles  = signal<any[]>([]);
+  quests         = signal<any[]>([]);
+  questProgress  = signal<any[]>([]);
+  myVehicles     = signal<any[]>([]);
   blacklist   = signal<any[]>([]);
   addingVehicle = signal(false);
   newVehicle = { vehicle_type: 'carro', plate: '', brand: '', model: '', color: '', year: new Date().getFullYear() };
@@ -5860,7 +6266,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // Quests
   async loadQuests(): Promise<void> {
-    this.quests.set(await this.agService.listQuests());
+    const d = this.driverData();
+    const [quests, progress] = await Promise.all([
+      this.agService.listQuests(),
+      d ? this.agService.getQuestProgress(d.id) : Promise.resolve([]),
+    ]);
+    this.quests.set(quests);
+    this.questProgress.set(progress);
+  }
+
+  questProgressFor(questId: string): any {
+    return this.questProgress().find(p => p.quest_id === questId || p.ag_quests?.id === questId) ?? null;
   }
 
   // Vehicles
@@ -6136,13 +6552,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   readonly driverMenuItems = [
     { icon: 'person',          label: 'Mi Perfil',            action: 'profile',      sectionLabel: 'Principal',     danger: false, divider: false },
     { icon: 'wifi_tethering',  label: 'Estado / En Línea',    action: 'status',       sectionLabel: '',              danger: false, divider: false },
-    { icon: 'payments',        label: 'Ganancias',            action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'account_balance_wallet', label: 'Mi Wallet · Recarga', action: 'wallet-panel', sectionLabel: '',           danger: false, divider: false },
+    { icon: 'payments',        label: 'Ganancias de Viajes',  action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'route',           label: 'Mis Viajes',           action: 'trips',        sectionLabel: '',              danger: false, divider: false },
     { icon: 'schedule',        label: 'Viajes programados',   action: 'scheduled',    sectionLabel: '',              danger: false, divider: false },
     { icon: 'analytics',       label: 'Analytics',            action: 'analytics',    sectionLabel: '',              danger: false, divider: false },
     { icon: 'insights',        label: 'Rendimiento',          action: 'performance',  sectionLabel: '',              danger: false, divider: false },
     { icon: 'emoji_events',    label: 'Metas y bonos',        action: 'quests',       sectionLabel: '',              danger: false, divider: false },
     { icon: '',                label: '',                     action: '',             sectionLabel: 'Ganancias',     danger: false, divider: true },
+    { icon: 'workspace_premium', label: 'Mis Beneficios',    action: 'benefits',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'card_giftcard',   label: 'Recomienda y Gana',    action: 'referrals',    sectionLabel: '',              danger: false, divider: false },
     { icon: '',                label: '',                     action: '',             sectionLabel: 'Configuración', danger: false, divider: true },
     { icon: 'description',     label: 'Mis documentos',       action: 'documents',    sectionLabel: '',              danger: false, divider: false },
@@ -6161,11 +6579,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'logout',          label: 'Cerrar Sesión',        action: 'logout',       sectionLabel: '',              danger: true,  divider: false },
   ];
 
-  driverMenuOpen = signal(false);
+  driverMenuOpen    = signal(false);
+  walletPanelOpen   = signal(false);
 
   private _map:             any    = null;
   private _userMarker:      any    = null;
   private _vehicleMarkers:  any[]  = [];
+  private _markerLastSeen = new Map<string, number>();
+  private _staleMarkerTimer: ReturnType<typeof setInterval> | null = null;
+  driverNearbyAlert = signal(false);
+  private _driverNearbyShown = false;
   private _vehicleStates: Array<{
     path: [number, number][]; segIdx: number; t: number;
     speed: number; forward: boolean; marker: any; heading: number;
@@ -6175,6 +6598,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _waitingInterval: ReturnType<typeof setInterval> | null = null;
   private _offerChannel: RealtimeChannel | null = null;
   private _requestsChannel: RealtimeChannel | null = null;
+  private _myOffersChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
 
@@ -6213,8 +6637,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Capturar referido desde query param ?ref=
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');
 
+    // Retorno de ePayco tras pago de wallet
+    if (this.route.snapshot.queryParamMap.get('wallet') === 'result') {
+      this.walletPaymentResult.set('processing');
+    }
+
     // Detectar soporte push y estado
     this.checkPushSupport();
+
+    // En SSR no hay sesión de usuario: mostrar loading y dejar que el cliente evalúe
+    if (!isPlatformBrowser(this.platformId)) {
+      this.screen.set('loading');
+      return;
+    }
 
     // Cargar surge actual
     this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
@@ -6233,8 +6668,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (profile.role === 'passenger') {
       this.screen.set('passenger-home');
       this._startPassengerWatch();
-      // Suscribirse a ubicaciones de conductores en tiempo real
+      this.agService.cancelStaleTrips().catch(() => {});
       this._subscribeToDriverLocations();
+      // Restaurar viaje activo tras crash/recarga de página
+      this._restoreActiveTrip();
     } else {
       let mine = await this.agService.getMyDriverProfile();
       // Auto-upgrade: cualquier conductor pending pasa directo a quick (habilitado para primera carrera)
@@ -6267,10 +6704,43 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     ]);
     this.driverCommissionPct.set(pct);
     this.driverWalletBalance.set(balance);
+    if (this.walletPaymentResult() === 'processing') {
+      this.walletPaymentResult.set('ok');
+      this.cdr.markForCheck();
+      setTimeout(() => { this.walletPaymentResult.set(null); this.cdr.markForCheck(); }, 6000);
+    }
     // Para aprobados: sincronizar estado online
     if (status === 'approved' && mine.is_online) {
       this.driverOnline.set(true);
     }
+    // Cargar viajes activos (ofertas aceptadas por el pasajero)
+    const activeTrips = await this.agService.getDriverActiveTrips(mine.id);
+    if (activeTrips.length > 0) this.driverActiveTrips.set(activeTrips);
+    // Cargar beneficios (tier, fundador, comisión escalonada)
+    const benefits = await this.agService.getDriverBenefits(mine.id);
+    if (benefits) {
+      this.driverBenefits.set(benefits);
+      // Usar la tasa personal del conductor (no la tasa global de la plataforma)
+      this.driverCommissionPct.set(benefits.commission_pct);
+    }
+    // Suscripción realtime: saber cuando el pasajero acepta la oferta
+    this._subscribeToMyOffers(mine.id);
+    this.cdr.markForCheck();
+  }
+
+  private _subscribeToMyOffers(driverId: string): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
+    this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, (offer) => {
+      // Mostrar alerta inDrive full-screen
+      this.driverTripAlert.set(offer);
+      // Agregar a viajes activos si no está ya
+      this.driverActiveTrips.update(list => list.some(t => t.id === offer.id) ? list : [offer, ...list]);
+      // Quitar la solicitud del listado en vivo
+      const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
+      if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
+      this.cdr.markForCheck();
+    });
   }
 
   private _locationChannel: RealtimeChannel | null = null;
@@ -6281,11 +6751,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._unsubscribeOffers();
     this._unsubscribeChat();
     this.stopGpsTracking();
-    this._stopPassengerWatch();   // libera batería al salir
+    this._stopPassengerWatch();
     this._unsubscribeLocations();
     this._stopTrackingAssignedDriver();
+    this.stopDriverTracking(); // limpia _driverLocChannel + _tripStageChannel
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+    if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
+    if (this._waitingInterval) { clearInterval(this._waitingInterval); this._waitingInterval = null; }
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
+    if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
+    if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
   }
 
   /**
@@ -6371,6 +6846,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const record = payload.new as { driver_id: string; lat: number; lng: number; heading: number } | undefined;
         if (!record) return;
 
+        this._markerLastSeen.set(record.driver_id, Date.now());
+
         // Buscar marcador existente o crear uno nuevo
         const existingIdx = this._vehicleMarkers.findIndex((m: any) => m._agDriverId === record.driver_id);
         if (existingIdx >= 0) {
@@ -6393,6 +6870,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           if (idx >= 0) {
             try { this._vehicleMarkers[idx].remove(); } catch {}
             this._vehicleMarkers.splice(idx, 1);
+            this._markerLastSeen.delete(delId);
           }
         }
 
@@ -6400,12 +6878,34 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       })
       .subscribe();
+
+    // Limpiar marcadores stale cada 60s (sin actualización en 90s = conductor desconectado)
+    if (this._staleMarkerTimer) clearInterval(this._staleMarkerTimer);
+    this._staleMarkerTimer = setInterval(() => {
+      const cutoff = Date.now() - 90_000;
+      this._vehicleMarkers = this._vehicleMarkers.filter(m => {
+        const id: string = (m as any)._agDriverId;
+        const lastSeen = this._markerLastSeen.get(id) ?? 0;
+        if (lastSeen < cutoff) {
+          try { m.remove(); } catch {}
+          this._markerLastSeen.delete(id);
+          return false;
+        }
+        return true;
+      });
+      this.noDriversNearby.set(this._vehicleMarkers.length === 0);
+      this.cdr.markForCheck();
+    }, 60_000);
   }
 
   private _unsubscribeLocations(): void {
     if (this._locationChannel) {
       this._locationChannel.unsubscribe();
       this._locationChannel = null;
+    }
+    if (this._staleMarkerTimer) {
+      clearInterval(this._staleMarkerTimer);
+      this._staleMarkerTimer = null;
     }
   }
 
@@ -7184,7 +7684,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const tripId = this.currentTripRequestId();
     const offer  = this.tripAccepted();
     if (!tripId || !offer) { this._resetTrip(); return; }
-    await this.agService.completeTrip(tripId);
+    try {
+      await this._withTimeout(this.agService.completeTrip(tripId));
+    } catch (e: any) {
+      alert(e?.message ?? 'Error al finalizar el viaje. Intenta de nuevo.');
+      return;
+    }
     const driverUser = offer.ag_drivers?.ag_users;
     this.ratingTripId.set(tripId);
     this.ratingTarget.set({
@@ -7203,7 +7708,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async finishDriverTrip(trip: any) {
     const tripRequestId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripRequestId) return;
-    await this.agService.completeTrip(tripRequestId);
+    try {
+      await this._withTimeout(this.agService.completeTrip(tripRequestId));
+    } catch (e: any) {
+      alert(e?.message ?? 'Error al finalizar el viaje.'); return;
+    }
     this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
     // Disparar rating detallado de pasajero (con tags)
     await this.promptRatePassenger(trip);
@@ -7289,6 +7798,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.driverMenuOpen.set(false);
     if (!action) return;
     if (action === 'logout') { await this.agService.signOut(); window.location.href = '/login'; return; }
+    if (action === 'wallet-panel') { this.walletPanelOpen.set(true); return; }
     this.driverSection.set(action);
     const driver = this.driverData();
     if (!driver) return;
@@ -7358,6 +7868,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       });
     } else if (action === 'report') {
       await this.loadDriverReports();
+    } else if (action === 'benefits') {
+      const benefits = await this.agService.getDriverBenefits(driver.id);
+      if (benefits) this.driverBenefits.set(benefits);
     }
     this.loadingSection.set(false);
   }
@@ -7718,6 +8231,22 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!tripReqId) return;
     await this.agService.updateTripStage(tripReqId, stage);
     if (trip.ag_trip_requests) trip.ag_trip_requests.driver_stage = stage;
+    this.cdr.markForCheck();
+  }
+
+  // Botón "Iniciar recogida" desde la alerta inDrive full-screen
+  async acceptTripAndGo(alert: any): Promise<void> {
+    this.driverTripAlert.set(null);
+    await this.advanceStage(alert, 'heading_to_pickup');
+    // Lanzar navegación al punto de recogida
+    const req = alert.ag_trip_requests ?? alert;
+    if (req?.origin_lat && req?.origin_lng) {
+      this.startInAppNav(alert, true);
+    }
+  }
+
+  dismissTripAlert(): void {
+    this.driverTripAlert.set(null);
   }
 
   navigateTo(lat: number, lng: number, label: 'pickup' | 'dest' = 'dest'): void {
@@ -8186,7 +8715,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.receivedOffers.set([]);
     this.tripAccepted.set(null);
     this.acceptingOfferId.set(null);
+    this.offerAcceptError.set(null);
     this._clearRoute();
+    // Limpiar estado persistido del viaje
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
   }
 
   scrollIcons(px: number) {
@@ -8459,6 +8991,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   async findOffers() {
     const dest = this.tripDest();
     if (!dest) return;
+    if (this.gpsStatus() === 'denied') {
+      this.tripGpsError.set(true);
+      setTimeout(() => this.tripGpsError.set(false), 3500);
+      return;
+    }
+    this.tripGpsError.set(false);
     this.tripSending.set(true);
     const profile = this.agProfile();
     if (profile) {
@@ -8551,35 +9089,82 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ── Accept / reject offer (passenger) ─────────────────────────
   async acceptOfferCard(offer: AgTripOffer) {
     this.acceptingOfferId.set(offer.id);
-    const result = await this.agService.acceptOffer(offer.id);
-    if (result.success) {
-      this._stopWaiting();
-      this._unsubscribeOffers();
-      this.tripAccepted.set(offer);
-      this.tripSent.set(false);
-      this._startTrackingAssignedDriver(offer.driver_id);
-      // Dibujar ruta al destino en el mapa del pasajero
-      const dest = this.tripDest();
-      if (dest) setTimeout(() => this._drawRoute(dest.lng, dest.lat), 500);
-      // Suscripción realtime a ubicación + estados del viaje
-      const tripId = (offer as any).trip_request_id ?? this.currentTripRequestId();
-      if (tripId && offer.driver_id) {
-        this.startDriverTracking(offer.driver_id, tripId);
-      }
-      // Notificar al conductor que su oferta fue aceptada
-      try {
-        const driverAuthUserId = (offer as any)?.ag_drivers?.ag_users?.auth_user_id;
-        if (driverAuthUserId) {
-          this.agService.sendPush({
-            userIds: [driverAuthUserId],
-            title: '🎉 Tu oferta fue aceptada',
-            body: 'Dirígete al punto de recogida. Revisa detalles en la app.',
-            tag: `offer-accepted-${offer.id}`, urgent: true,
-          }).catch(() => {});
-        }
-      } catch {}
+    this.offerAcceptError.set(null);
+    let result: { success: boolean; error?: string };
+    try {
+      result = await this._withTimeout(this.agService.acceptOffer(offer.id));
+    } catch (e: any) {
+      this.acceptingOfferId.set(null);
+      this.offerAcceptError.set(e?.message ?? 'Error al aceptar la oferta. Intenta de nuevo.');
+      setTimeout(() => this.offerAcceptError.set(null), 5000);
+      return;
     }
+    if (!result.success) {
+      this.acceptingOfferId.set(null);
+      this.offerAcceptError.set(result.error ?? 'No se pudo aceptar la oferta.');
+      setTimeout(() => this.offerAcceptError.set(null), 5000);
+      return;
+    }
+    this._stopWaiting();
+    this._unsubscribeOffers();
+    this.tripAccepted.set(offer);
+    this.tripSent.set(false);
+    const tripId = (offer as any).trip_request_id ?? this.currentTripRequestId();
+    // Persistir estado del viaje para recuperación tras crash
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('movi_active_trip', JSON.stringify({
+        tripId, driverId: offer.driver_id, offerId: offer.id,
+        ts: Date.now(),
+      }));
+    }
+    this._startTrackingAssignedDriver(offer.driver_id);
+    const dest = this.tripDest();
+    if (dest) setTimeout(() => this._drawRoute(dest.lng, dest.lat), 500);
+    if (tripId && offer.driver_id) {
+      this.startDriverTracking(offer.driver_id, tripId);
+    }
+    // Notificar al conductor — con logging de error
+    try {
+      const driverAuthUserId = (offer as any)?.ag_drivers?.ag_users?.auth_user_id;
+      if (driverAuthUserId) {
+        this.agService.sendPush({
+          userIds: [driverAuthUserId],
+          title: '🎉 Tu oferta fue aceptada',
+          body: 'Dirígete al punto de recogida. Revisa detalles en la app.',
+          tag: `offer-accepted-${offer.id}`, urgent: true,
+        }).catch((e) => console.error('[Movi] Push al conductor falló:', e));
+      }
+    } catch (e) { console.error('[Movi] sendPush error:', e); }
     this.acceptingOfferId.set(null);
+  }
+
+  /** Restaura el estado del viaje activo si la app se cerró durante un viaje */
+  private async _restoreActiveTrip(): Promise<void> {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem('movi_active_trip');
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as { tripId: string; driverId: string; offerId: string; ts: number };
+      // Ignorar si tiene más de 2 horas (viaje muy viejo)
+      if (Date.now() - saved.ts > 2 * 60 * 60 * 1000) { localStorage.removeItem('movi_active_trip'); return; }
+      // Verificar que el viaje sigue activo en BD
+      const { data: trip } = await getSupabaseClient()
+        .from('ag_trip_requests').select('id, status, accepted_offer_id').eq('id', saved.tripId).maybeSingle();
+      if (!trip || !['accepted', 'in_progress'].includes(trip.status)) {
+        localStorage.removeItem('movi_active_trip'); return;
+      }
+      // Restaurar estado
+      this.currentTripRequestId.set(saved.tripId);
+      const { data: offer } = await getSupabaseClient()
+        .from('ag_trip_offers').select('*, ag_drivers(*, ag_users(*))').eq('id', saved.offerId).maybeSingle();
+      if (offer) {
+        this.tripAccepted.set(offer as any);
+        this.tripSent.set(false);
+        this._startTrackingAssignedDriver(saved.driverId);
+        this.startDriverTracking(saved.driverId, saved.tripId);
+        this.cdr.markForCheck();
+      }
+    } catch { localStorage.removeItem('movi_active_trip'); }
   }
 
   /** Tracking en vivo del conductor asignado: muestra marker + ETA + centra mapa */
@@ -8593,6 +9178,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     });
     this._assignedDriverChannel = this.agService.subscribeDriverLocation(driverId, (loc) => {
       this._drawAssignedDriverMarker(loc.lat, loc.lng, loc.heading);
+      // Alerta "conductor cerca" cuando está a menos de 500m
+      if (!this._driverNearbyShown && this._distKm(this._currentLat, this._currentLng, loc.lat, loc.lng) < 0.5) {
+        this._driverNearbyShown = true;
+        this.driverNearbyAlert.set(true);
+        this.cdr.markForCheck();
+        setTimeout(() => { this.driverNearbyAlert.set(false); this.cdr.markForCheck(); }, 6000);
+      }
     });
   }
 
@@ -8720,6 +9312,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   cancelTrip() {
+    this._driverNearbyShown = false;
+    this.driverNearbyAlert.set(false);
     this._stopWaiting();
     this._unsubscribeOffers();
     const tripId = this.currentTripRequestId();
@@ -8739,6 +9333,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripAccepted.set(null);
     this.acceptingOfferId.set(null);
     this._clearRoute();
+  }
+
+  private _withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
+    return Promise.race([p, new Promise<never>((_, rej) =>
+      setTimeout(() => rej(new Error('Tiempo de espera agotado. Verifica tu conexión.')), ms))]);
   }
 
   private _calcPrice(km: number, vehicle: 'carro' | 'moto' | 'camion'): number {
@@ -8959,6 +9558,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrName              = signal('');
   qrPhone             = signal('');
   qrOtpCode           = signal('');
+  // display vars for [(ngModel)] — avoids cursor-jump caused by [value] re-evaluation on signal CD
+  otpCodeDisplay   = '';
+  qrNameDisplay    = '';
+  qrPhoneDisplay   = '';
+  qrOtpCodeDisplay = '';
   qrOtpError          = signal('');
   qrOtpSending        = signal(false);
   qrOtpVerifying      = signal(false);
@@ -9400,6 +10004,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.otpContext.set(context);
     this.otpPhone.set(phone);
     this.otpCode.set('');
+    this.otpCodeDisplay = '';
     this.otpError.set('');
     this.otpStep.set('sending');
     this.cdr.markForCheck();
@@ -9427,6 +10032,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.phoneAuth.reset();
     this.otpStep.set('idle');
     this.otpCode.set('');
+    this.otpCodeDisplay = '';
     this.otpError.set('');
     this.cdr.markForCheck();
   }
@@ -9554,6 +10160,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // ── Recarga de billetera vía ePayco ────────────────────────────────────────
 
+  private _loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as any)['ePayco']) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = 'https://checkout.epayco.co/checkout.js';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('No se pudo cargar el sistema de pagos. Verifica tu conexión.'));
+      document.head.appendChild(s);
+    });
+  }
+
   async startWalletRecharge(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
 
@@ -9562,33 +10179,55 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.rechargeError.set('El monto mínimo es $5.000 COP');
       return;
     }
+    if (amount > 500000) {
+      this.rechargeError.set('El monto máximo es $500.000 COP');
+      return;
+    }
 
     this.rechargeError.set(null);
     this.rechargeLoading.set(true);
 
     try {
-      const params = await this.agService.createWalletRecharge(amount);
-      await this._openEpaycoWalletCheckout(params);
+      // 1. Obtener parámetros del checkout desde el servidor
+      const params = await this.agService.createWalletRechargeParams(amount);
+
+      // 2. Cargar el SDK de ePayco
+      await this._loadEpaycoScript();
+      const epayco = (window as any)['ePayco'];
+      if (!epayco) throw new Error('No se pudo inicializar el sistema de pagos.');
+
+      // 3. Abrir el modal de pago
+      const handler = epayco.checkout.configure({
+        key: params['publicKey'],
+        test: params['test'] ?? false,
+      });
+      handler.open({
+        name:             params['name'],
+        description:      params['description'],
+        invoice:          params['invoice'],
+        currency:         params['currency'],
+        amount:           params['amount'],
+        tax_base:         params['tax_base'],
+        tax:              params['tax'],
+        country:          params['country'],
+        lang:             params['lang'],
+        external:         'true',
+        methodConfirmation: 'POST',
+        email_billing:    params['email_billing'],
+        name_billing:     params['name_billing'],
+        mobilephone_billing: params['mobilephone_billing'],
+        extra1:           params['extra1'],
+        extra2:           params['extra2'],
+        extra3:           params['extra3'],
+        confirmation:     params['confirmation'],
+        response:         params['response'],
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al iniciar el pago';
       this.rechargeError.set(msg);
     } finally {
       this.rechargeLoading.set(false);
     }
-  }
-
-  private _loadEpaycoScript(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if ((window as unknown as Record<string, unknown>)['ePayco']) {
-        resolve();
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.epayco.co/checkout.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('No se pudo cargar el script de ePayco'));
-      document.head.appendChild(script);
-    });
   }
 
   // ── Passenger menu methods ─────────────────────────────────────
@@ -10467,39 +11106,6 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     }
   }
 
-  private async _openEpaycoWalletCheckout(params: Record<string, unknown>): Promise<void> {
-    await this._loadEpaycoScript();
-
-    const epayco = (window as unknown as Record<string, unknown>)['ePayco'] as {
-      checkout: { configure: (cfg: unknown) => { open: (params: unknown) => void } };
-    };
-
-    const handler = epayco.checkout.configure({
-      key:  params['publicKey'],
-      test: params['test'],
-    });
-
-    handler.open({
-      name:          params['name'],
-      description:   params['description'],
-      invoice:       params['invoice'],
-      currency:      params['currency'],
-      amount:        params['amount'],
-      tax_base:      params['tax_base'],
-      tax:           params['tax'],
-      country:       params['country'],
-      lang:          params['lang'],
-      external:      'true',
-      methodConfirmation: 'GET',
-      confirmation:  params['confirmation'],
-      response:      params['response'],
-      email_billing: params['email_billing'],
-      name_billing:  params['name_billing'],
-      extra1:        params['extra1'],
-      extra2:        params['extra2'],
-      extra3:        params['extra3'],
-    });
-  }
 
   // ══════════════════════════════════════════════════════════
   // QUICK-REGISTER: registro rápido en 3 pasos
@@ -10543,6 +11149,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrName.set('');
     this.qrPhone.set('');
     this.qrOtpCode.set('');
+    this.qrNameDisplay    = '';
+    this.qrPhoneDisplay   = '';
+    this.qrOtpCodeDisplay = '';
     this.qrOtpError.set('');
     this.qrError.set('');
     this.qrOriginQuery.set('');
@@ -10569,6 +11178,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpSending.set(false);
     if (result.ok) {
       this.qrOtpCode.set('');
+      this.qrOtpCodeDisplay = '';
       this.qrOtpError.set('');
       this.qrStep.set(2);
       this._startQrCountdown();
@@ -10595,6 +11205,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   async qrResendOtp() {
     this.phoneAuth.reset();
     this.qrOtpCode.set('');
+    this.qrOtpCodeDisplay = '';
     this.qrOtpError.set('');
     setTimeout(() => this.phoneAuth.setupRecaptcha('qr-recaptcha-container'), 100);
     await this.qrSendOtp();
