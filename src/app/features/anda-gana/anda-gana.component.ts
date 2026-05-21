@@ -10158,75 +10158,45 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
   }
 
-  // ── Recarga de billetera vía ePayco ────────────────────────────────────────
-
-  private _loadEpaycoScript(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if ((window as any)['ePayco']) { resolve(); return; }
-      const s = document.createElement('script');
-      s.src = 'https://checkout.epayco.co/checkout.js';
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('No se pudo cargar el sistema de pagos. Verifica tu conexión.'));
-      document.head.appendChild(s);
-    });
-  }
+  // ── Recarga de billetera vía ePayco (form POST directo) ───────────────────
 
   async startWalletRecharge(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
 
     const amount = this.rechargeAmount();
-    if (amount < 5000) {
-      this.rechargeError.set('El monto mínimo es $5.000 COP');
-      return;
-    }
-    if (amount > 500000) {
-      this.rechargeError.set('El monto máximo es $500.000 COP');
-      return;
-    }
+    if (amount < 5000) { this.rechargeError.set('El monto mínimo es $5.000 COP'); return; }
+    if (amount > 500000) { this.rechargeError.set('El monto máximo es $500.000 COP'); return; }
 
     this.rechargeError.set(null);
     this.rechargeLoading.set(true);
+    this.cdr.markForCheck();
 
     try {
-      // 1. Obtener parámetros del checkout desde el servidor
-      const params = await this.agService.createWalletRechargeParams(amount);
+      const { formAction, formFields } = await this.agService.createWalletRechargeParams(amount);
 
-      // 2. Cargar el SDK de ePayco
-      await this._loadEpaycoScript();
-      const epayco = (window as any)['ePayco'];
-      if (!epayco) throw new Error('No se pudo inicializar el sistema de pagos.');
+      // Form POST directo — funciona en browser, WebView Android/iOS y Capacitor
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = formAction;
+      form.style.display = 'none';
 
-      // 3. Abrir el modal de pago
-      const handler = epayco.checkout.configure({
-        key: params['publicKey'],
-        test: params['test'] ?? false,
-      });
-      handler.open({
-        name:             params['name'],
-        description:      params['description'],
-        invoice:          params['invoice'],
-        currency:         params['currency'],
-        amount:           params['amount'],
-        tax_base:         params['tax_base'],
-        tax:              params['tax'],
-        country:          params['country'],
-        lang:             params['lang'],
-        external:         'true',
-        methodConfirmation: 'POST',
-        email_billing:    params['email_billing'],
-        name_billing:     params['name_billing'],
-        mobilephone_billing: params['mobilephone_billing'],
-        extra1:           params['extra1'],
-        extra2:           params['extra2'],
-        extra3:           params['extra3'],
-        confirmation:     params['confirmation'],
-        response:         params['response'],
-      });
+      for (const [key, value] of Object.entries(formFields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = String(value);
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      // La página navega al checkout de ePayco — no se llama rechargeLoading.set(false)
+
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al iniciar el pago';
       this.rechargeError.set(msg);
-    } finally {
       this.rechargeLoading.set(false);
+      this.cdr.markForCheck();
     }
   }
 

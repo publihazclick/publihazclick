@@ -105,6 +105,15 @@ export interface AgRegistrationResult {
 export class AndaGanaService {
   private readonly supabase: SupabaseClient = getSupabaseClient();
 
+  private _withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Tiempo de espera agotado. Verifica tu conexión.')), ms)
+      ),
+    ]);
+  }
+
   // ── Auth ──────────────────────────────────────────────────────
   private async currentUserId(): Promise<string | null> {
     const { data } = await this.supabase.auth.getUser();
@@ -221,7 +230,10 @@ export class AndaGanaService {
       if (referredBy) insertData.referred_by = referredBy;
       const { data: profile, error } = await this.supabase
         .from('ag_users').insert(insertData).select('*').single();
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        console.error('[registerQuickDriver] ag_users insert:', error);
+        return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+      }
       const { error: driverError } = await this.supabase.from('ag_drivers').insert({
         ag_user_id: profile.id, vehicle_type: vehicleType,
         vehicle_brand: vehicleDetails?.brand ?? '',
@@ -230,10 +242,14 @@ export class AndaGanaService {
         vehicle_plate: vehicleDetails?.plate ?? 'PENDIENTE',
         status: 'quick', is_online: false, wallet_balance: 0,
       });
-      if (driverError) return { success: false, error: 'No se pudo guardar el perfil. Intenta de nuevo.' };
+      if (driverError) {
+        console.error('[registerQuickDriver] ag_drivers insert:', driverError);
+        return { success: false, error: 'No se pudo guardar el vehículo. Intenta de nuevo.' };
+      }
       return { success: true, profile: profile as AgUser };
     } catch (e: any) {
-      return { success: false, error: e?.message ?? 'Error inesperado.' };
+      console.error('[registerQuickDriver] catch:', e);
+      return { success: false, error: 'Error al registrarse. Intenta de nuevo.' };
     }
   }
 
@@ -269,10 +285,14 @@ export class AndaGanaService {
 
       const { error } = await this.supabase.from('ag_users').insert(insertData);
 
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        console.error('[registerPassenger] ag_users insert:', error);
+        return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+      }
       return { success: true };
     } catch (e: any) {
-      return { success: false, error: e?.message ?? 'Error inesperado.' };
+      console.error('[registerPassenger] catch:', e);
+      return { success: false, error: 'Error al registrarse. Intenta de nuevo.' };
     }
   }
 
@@ -282,6 +302,16 @@ export class AndaGanaService {
       if (!uid) return { success: false, error: 'Debes iniciar sesión primero.' };
 
       const existing = await this.getMyAgProfile();
+
+      // Quick/pending_docs drivers complete their full registration by updating existing rows
+      if (existing && existing.role === 'driver') {
+        const { data: existingDriver } = await this.supabase
+          .from('ag_drivers').select('id, status').eq('ag_user_id', existing.id).maybeSingle();
+        if (existingDriver && ['quick', 'pending_docs', 'rejected'].includes(existingDriver.status)) {
+          return this._completeDriverRegistration(existing.id, existingDriver.id, uid, form);
+        }
+        return { success: false, error: 'Ya tienes un perfil de conductor activo.' };
+      }
       if (existing) return { success: false, error: 'Ya tienes un perfil en Anda y Gana.' };
 
       const uploadTasks = Object.entries(form.files).map(async ([key, file]) => {
@@ -314,7 +344,10 @@ export class AndaGanaService {
         .select('id')
         .single();
 
-      if (userError) return { success: false, error: userError.message };
+      if (userError) {
+        console.error('[registerDriver] ag_users insert:', userError);
+        return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+      }
 
       const { data: driverRow, error: driverError } = await this.supabase.from('ag_drivers').insert({
         ag_user_id: agUser.id,
@@ -346,7 +379,10 @@ export class AndaGanaService {
         status: 'pending',
       }).select('id').single();
 
-      if (driverError) return { success: false, error: driverError.message };
+      if (driverError) {
+        console.error('[registerDriver] ag_drivers insert:', driverError);
+        return { success: false, error: 'No se pudo guardar los documentos. Intenta de nuevo.' };
+      }
 
       // Disparar verificación automática con GPT-4o Vision (no bloquea el registro)
       if (driverRow?.id) {
@@ -354,8 +390,68 @@ export class AndaGanaService {
       }
       return { success: true };
     } catch (e: any) {
-      return { success: false, error: e?.message ?? 'Error inesperado.' };
+      console.error('[registerDriver] catch:', e);
+      return { success: false, error: 'Error al registrarse. Intenta de nuevo.' };
     }
+  }
+
+  private async _completeDriverRegistration(
+    agUserId: string, driverId: string, uid: string, form: DriverFormData
+  ): Promise<AgRegistrationResult> {
+    const uploadTasks = Object.entries(form.files).map(async ([key, file]) => {
+      const url = await this.uploadFile('ag-drivers', uid, file);
+      return [key, url] as [string, string | null];
+    });
+    const results = await Promise.all(uploadTasks);
+    const documents: Record<string, string> = {};
+    for (const [key, url] of results) { if (url) documents[key] = url; }
+
+    const { error: userError } = await this.supabase.from('ag_users').update({
+      full_name: form.fullName,
+      birth_date: form.birthDate,
+      country: form.country ?? 'Colombia',
+      department: form.department ?? '',
+      city: form.city,
+      id_number: form.idNumber,
+      phone: form.phone,
+      email: form.email,
+      emergency_contact_name: form.emergencyName,
+      emergency_contact_phone: form.emergencyPhone,
+    }).eq('id', agUserId);
+    if (userError) return { success: false, error: userError.message };
+
+    const { error: driverError } = await this.supabase.from('ag_drivers').update({
+      license_number: form.licenseNumber,
+      license_category: form.licenseCategory,
+      license_expiry: form.licenseExpiry,
+      plate: form.plate.toUpperCase(),
+      vehicle_plate: form.plate.toUpperCase(),
+      vehicle_type: form.vehicleType,
+      vehicle_brand: form.vehicleBrand,
+      vehicle_model: form.vehicleModel,
+      vehicle_year: form.vehicleYear,
+      vehicle_color: form.vehicleColor,
+      id_number: form.idNumber,
+      id_front_url:            documents['idFront']            ?? null,
+      id_back_url:             documents['idBack']             ?? null,
+      selfie_with_id_url:      documents['selfieWithId']       ?? null,
+      license_photo_url:       documents['licensePhoto']       ?? null,
+      license_back_url:        documents['licenseBack']        ?? null,
+      vehicle_photo_url:       documents['vehiclePhoto']       ?? null,
+      vehicle_side_photo_url:  documents['vehicleSidePhoto']   ?? null,
+      soat_photo_url:          documents['soatPhoto']          ?? null,
+      property_card_front_url: documents['propertyCardFront']  ?? null,
+      property_card_back_url:  documents['propertyCardBack']   ?? null,
+      tecno_photo_url:         documents['tecnoPhoto']         ?? null,
+      civil_liability_url:     documents['civilLiability']     ?? null,
+      criminal_record_url:     documents['criminalRecord']     ?? null,
+      documents,
+      status: 'pending',
+    }).eq('id', driverId);
+    if (driverError) return { success: false, error: driverError.message };
+
+    this.triggerDriverVerification(driverId).catch(() => {});
+    return { success: true };
   }
 
   // ── Auto-asignación conductor más cercano ─────────────────────
@@ -531,11 +627,62 @@ export class AndaGanaService {
   }
 
   async acceptOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
-    const { error } = await this.supabase
+    // Un solo UPDATE dispara el trigger ag_on_offer_accepted que:
+    //  - Valida saldo del conductor
+    //  - Cancela otras ofertas pendientes
+    //  - Actualiza ag_trip_requests
+    //  - Descuenta comisión de la wallet
+    const { error: offerErr } = await this.supabase
       .from('ag_trip_offers')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
-      .eq('id', offerId);
-    return error ? { success: false, error: error.message } : { success: true };
+      .eq('id', offerId)
+      .eq('status', 'pending'); // solo acepta si aún está pendiente
+
+    if (offerErr) {
+      const msg = offerErr.message ?? '';
+      if (msg.includes('SALDO_INSUFICIENTE')) {
+        const match = msg.match(/Necesita \$(\d+) pero tiene \$(\d+)/);
+        if (match) return { success: false, error: `El conductor no tiene saldo suficiente. Necesita $${Number(match[1]).toLocaleString('es-CO')} pero tiene $${Number(match[2]).toLocaleString('es-CO')} en su wallet.` };
+        return { success: false, error: 'El conductor no tiene saldo suficiente en su wallet para aceptar este viaje.' };
+      }
+      return { success: false, error: offerErr.message };
+    }
+    return { success: true };
+  }
+
+  /** Carga viajes activos (oferta aceptada, sin completar) del conductor */
+  async getDriverActiveTrips(driverId: string): Promise<any[]> {
+    const { data } = await this.supabase
+      .from('ag_trip_offers')
+      .select('*, ag_trip_requests(*, ag_users!passenger_user_id(*))')
+      .eq('driver_id', driverId)
+      .eq('status', 'accepted');
+    return ((data ?? []) as any[]).filter(
+      (t: any) => t.ag_trip_requests?.status !== 'completed' && t.ag_trip_requests?.status !== 'cancelled',
+    );
+  }
+
+  /** Realtime: notifica al conductor cuando su oferta es aceptada por el pasajero */
+  subscribeToDriverOfferAccepted(
+    driverId: string,
+    onAccepted: (offer: any) => void,
+  ): RealtimeChannel {
+    return this.supabase
+      .channel(`driver-offer-accepted-${driverId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ag_trip_offers', filter: `driver_id=eq.${driverId}` },
+        async (payload) => {
+          if (payload.new['status'] !== 'accepted') return;
+          const { data } = await this.supabase
+            .from('ag_trip_offers')
+            .select('*, ag_trip_requests(*, ag_users!passenger_user_id(*))')
+            .eq('id', payload.new['id'])
+            .single();
+          if (data) onAccepted(data);
+        },
+      )
+      .subscribe();
   }
 
   async rejectOffer(offerId: string): Promise<{ success: boolean; error?: string }> {
@@ -650,6 +797,17 @@ export class AndaGanaService {
     return parseInt(data?.value ?? '0', 10);
   }
 
+  /** Beneficios completos del conductor: tier, comisión, fundador, progreso */
+  async getDriverBenefits(driverId: string): Promise<{
+    monthly_trips: number; total_trips: number; commission_pct: number;
+    tier_label: string; next_tier_trips: number; next_tier_pct: number;
+    is_founder: boolean; founder_number: number | null; founders_left: number;
+  } | null> {
+    const { data, error } = await this.supabase.rpc('ag_get_driver_benefits', { p_driver_id: driverId });
+    if (error || !data) return null;
+    return data as any;
+  }
+
   async setCommissionPct(pct: number): Promise<boolean> {
     const { error } = await this.supabase
       .from('platform_settings')
@@ -740,27 +898,31 @@ export class AndaGanaService {
     await this.supabase.from('ag_drivers').update({ ...prefs, updated_at: new Date().toISOString() }).eq('id', driverId);
   }
 
-  async createWalletRecharge(amount: number): Promise<any> {
+  // Crea el registro de pago en BD y devuelve formAction + formFields firmados.
+  // El frontend hace un form POST directo a secure.epayco.co (sin checkout.js).
+  async createWalletRechargeParams(amount: number): Promise<{ formAction: string; formFields: Record<string, string> }> {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) throw new Error('Sin sesión activa');
-    const res = await fetch(
-      `${environment.supabase.url}/functions/v1/ag-create-wallet-recharge`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ amount }),
-      }
-    );
+    const res = await fetch('/api/wallet/topup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ amount }),
+    });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Error al crear pago');
-    return data;
+    if (!res.ok) throw new Error(data.error ?? 'Error al iniciar el pago');
+    if (!data.formFields) throw new Error('No se recibieron los parámetros de pago');
+    return { formAction: data.formAction, formFields: data.formFields };
   }
 
   async signOut(): Promise<void> {
     await this.supabase.auth.signOut();
+  }
+
+  async cancelStaleTrips(): Promise<void> {
+    await this.supabase.rpc('ag_cancel_stale_trips');
   }
 
   async completeTrip(tripRequestId: string): Promise<{ success: boolean; error?: string }> {
@@ -1106,6 +1268,27 @@ export class AndaGanaService {
     return data ?? [];
   }
 
+  async adminListWithdrawals(status?: string): Promise<any[]> {
+    let q = this.supabase.from('ag_withdrawals')
+      .select('*, ag_drivers(plate, vehicle_brand, ag_users(full_name, phone))')
+      .order('created_at', { ascending: false }).limit(200);
+    if (status) q = q.eq('status', status);
+    const { data } = await q;
+    return data ?? [];
+  }
+
+  async adminApproveWithdrawal(id: string): Promise<void> {
+    await this.supabase.from('ag_withdrawals').update({ status: 'completed', processed_at: new Date().toISOString() }).eq('id', id);
+  }
+
+  async adminRejectWithdrawal(id: string, reason: string): Promise<void> {
+    await this.supabase.from('ag_withdrawals').update({
+      status: 'rejected', rejection_reason: reason, processed_at: new Date().toISOString(),
+    }).eq('id', id);
+    // Devuelve el saldo al conductor via función DB
+    await this.supabase.rpc('ag_admin_refund_withdrawal', { p_withdrawal_id: id });
+  }
+
   // ═══════════════════════════════════════════════════
   // DRIVER: analytics + niveles + quests
   // ═══════════════════════════════════════════════════
@@ -1138,7 +1321,9 @@ export class AndaGanaService {
   // DRIVER: blacklist pasajeros
   // ═══════════════════════════════════════════════════
   async listBlacklist(driverId: string): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_passenger_blacklist').select('*').eq('driver_id', driverId).order('created_at', { ascending: false }).limit(100);
+    const { data } = await this.supabase.from('ag_passenger_blacklist')
+      .select('*, ag_users!passenger_user_id(full_name, phone)')
+      .eq('driver_id', driverId).order('created_at', { ascending: false }).limit(100);
     return data ?? [];
   }
 
