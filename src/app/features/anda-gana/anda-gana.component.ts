@@ -7882,7 +7882,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async openDriverSection(action: string) {
     this.driverMenuOpen.set(false);
     if (!action) return;
-    if (action === 'logout') { await this.agService.signOut(); window.location.href = '/login'; return; }
     if (action === 'wallet-panel') { this.walletPanelOpen.set(true); return; }
     this.driverSection.set(action);
     const driver = this.driverData();
@@ -10348,10 +10347,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.screen.set('driver-home');
       return;
     }
-    if (action === 'logout') {
-      this.doPassengerLogout();
-      return;
-    }
     this.passengerSection.set(action);
     if (action === 'history') this.loadPassengerHistory();
     if (action === 'referrals') this.loadReferralData();
@@ -10367,11 +10362,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (action === 'blockeddrivers') this.loadPassengerBlockedDrivers();
   }
 
-  async doPassengerLogout() {
-    if (!confirm('¿Cerrar sesión?')) return;
-    await this.agService.signOut();
-    window.location.href = '/login';
-  }
+
 
   // ═══════════════════════════════════════════════════
   // PASSENGER: blocked drivers
