@@ -4,7 +4,8 @@ import { Router, CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot, Url
 import { AuthService } from '../services/auth.service';
 import { ProfileService } from '../services/profile.service';
 import { environment } from '../../../environments/environment';
-import { map, take } from 'rxjs/operators';
+import { filter, map, take, timeout, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 /**
  * Opciones para el guard de autenticación
@@ -47,12 +48,13 @@ export function createAuthGuard(options: AuthGuardOptions = {}): CanActivateFn {
       return handleAuthCheck(authService, router, mergedOptions, state.url);
     }
 
-    // Esperar a que getSession() termine antes de verificar
+    // Esperar a que la sesión esté resuelta (isLoading = false) antes de decidir
     return authService.authStateObservable$.pipe(
+      filter(authState => !authState.isLoading),
       take(1),
-      map((authState) => {
-        return handleAuthCheck(authService, router, mergedOptions, state.url);
-      })
+      timeout(5000),
+      map(() => handleAuthCheck(authService, router, mergedOptions, state.url)),
+      catchError(() => of(handleAuthCheck(authService, router, mergedOptions, state.url)))
     );
   };
 }
@@ -165,6 +167,10 @@ export const guestGuard: CanActivateFn = async (route, state) => {
       case 'admin':
       case 'dev':
         return router.createUrlTree(['/admin']);
+      case 'super_admin':
+      case 'movi_admin':
+      case 'contable':
+        return router.createUrlTree(['/movi-admin']);
       case 'advertiser':
         return router.createUrlTree(['/advertiser']);
       case 'guest':
@@ -273,6 +279,10 @@ export const dashboardGuard: CanActivateFn = async (route, state) => {
       case 'admin':
       case 'dev':
         return router.parseUrl('/admin' + subPath);
+      case 'super_admin':
+      case 'movi_admin':
+      case 'contable':
+        return router.parseUrl('/movi-admin');
       default:
         return true; // guest puede entrar a /dashboard
     }
@@ -323,7 +333,7 @@ export const roleRedirectGuard: CanActivateFn = async (route, state) => {
   try {
     // Obtener el perfil del usuario
     const profile = await profileService.getCurrentProfile();
-    
+
     if (!profile) {
       // No hay perfil, cerrar sesión y mostrar landing
       await authService.logout();
@@ -334,6 +344,10 @@ export const roleRedirectGuard: CanActivateFn = async (route, state) => {
       case 'admin':
       case 'dev':
         return router.createUrlTree(['/admin']);
+      case 'super_admin':
+      case 'movi_admin':
+      case 'contable':
+        return router.createUrlTree(['/movi-admin']);
       case 'advertiser':
         return router.createUrlTree(['/advertiser']);
       case 'guest':
