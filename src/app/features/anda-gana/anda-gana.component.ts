@@ -1614,10 +1614,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <div class="rounded-2xl p-4 flex flex-col gap-3"
               style="background:linear-gradient(135deg,rgba(108,58,237,0.15),rgba(37,99,235,0.15));border:1px solid rgba(108,58,237,0.3)">
-              <p class="text-white font-black text-base">Gana el 2% vitalicio</p>
+              <p class="text-white font-black text-base">Gana el 2% por referido</p>
               <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
                 Cada vez que alguien se registre en <span class="text-white font-bold">Movi</span> con tu link y use nuestro servicio,
-                tú ganas el <span class="text-amber-400 font-black">2% del valor de cada servicio</span> de por vida.
+                tú ganas el <span class="text-amber-400 font-black">2% del valor de cada servicio</span>.
                 No importa si tus invitados son pasajeros o conductores.
               </p>
             </div>
@@ -2222,18 +2222,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- Estado en línea badge -->
-          <div class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 rounded-xl"
-            style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
-            <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0" style="box-shadow:0 0 6px #34d399"></div>
-            <div class="flex-1">
-              <p class="text-emerald-400 font-black text-xs">En línea</p>
-              <p class="text-slate-500 text-[10px]">Disponible para viajes</p>
+          <button (click)="toggleOnline()" [disabled]="togglingOnline()"
+            class="mx-4 mt-4 flex items-center gap-3 px-4 py-3 rounded-xl w-[calc(100%-2rem)] transition-all active:scale-[0.98] disabled:opacity-60"
+            [style]="driverOnline() ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25)' : 'background:rgba(148,163,184,0.06);border:1px solid rgba(148,163,184,0.2)'">
+            @if (togglingOnline()) {
+              <span class="material-symbols-outlined animate-spin flex-shrink-0" style="font-size:16px;color:#94a3b8">autorenew</span>
+            } @else {
+              <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                [style]="driverOnline() ? 'background:#34d399;box-shadow:0 0 6px #34d399' : 'background:#94a3b8'"></div>
+            }
+            <div class="flex-1 text-left">
+              <p class="font-black text-xs" [style.color]="driverOnline() ? '#34d399' : '#94a3b8'">{{ driverOnline() ? 'En línea' : 'Fuera de línea' }}</p>
+              <p class="text-slate-500 text-[10px]">{{ driverOnline() ? 'Disponible para viajes' : 'Toca para conectarte' }}</p>
             </div>
-            <div class="w-10 h-5 rounded-full flex items-center px-0.5 cursor-pointer"
-              style="background:linear-gradient(135deg,#10b981,#059669)">
-              <div class="w-4 h-4 rounded-full bg-white ml-auto"></div>
+            <div class="w-10 h-5 rounded-full flex items-center px-0.5 transition-colors flex-shrink-0"
+              [style]="driverOnline() ? 'background:linear-gradient(135deg,#10b981,#059669)' : 'background:#374151'">
+              <div class="w-4 h-4 rounded-full bg-white transition-transform"
+                [style.transform]="driverOnline() ? 'translateX(20px)' : 'translateX(0)'"></div>
             </div>
-          </div>
+          </button>
 
           <!-- Opciones -->
           <nav class="flex-1 overflow-y-auto py-3 px-3">
@@ -2296,7 +2303,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
           <div class="text-left">
             <p style="color:#fff;font-weight:700;font-size:13px;margin:0;line-height:1.3">Gana Invitando</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:11px;margin:0;line-height:1.3">2% vitalicio por referido</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:11px;margin:0;line-height:1.3">Gana 2% por cada referido</p>
           </div>
         </button>
       </div>
@@ -2425,40 +2432,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       </button>
 
       @if (driverSection() === null) {
-      <div class="flex flex-col items-center gap-3 text-center pt-2 pb-2">
-        <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/20 flex items-center justify-center">
-          <span class="material-symbols-outlined text-cyan-500" style="font-size:32px">directions_car</span>
-        </div>
-        <div>
-          <p class="text-slate-600 text-sm">Tu cuenta de conductor</p>
-        </div>
-        @if (driverStatus() === 'quick') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
-            style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.35);color:#c4b5fd">
-            <span class="material-symbols-outlined" style="font-size:14px">rocket_launch</span> Primera carrera gratis
-          </span>
-        } @else if (driverStatus() === 'pending_docs') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
-            style="background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.35);color:#fb923c">
-            <span class="material-symbols-outlined" style="font-size:14px">assignment</span> Completa tu registro
-          </span>
-        } @else if (driverStatus() === 'pending') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
-            style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#fbbf24">
-            <span class="material-symbols-outlined" style="font-size:14px">schedule</span> En revisión
-          </span>
-        } @else if (driverStatus() === 'approved') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
-            style="background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);color:#34d399">
-            <span class="material-symbols-outlined" style="font-size:14px">check_circle</span> Aprobado
-          </span>
-        } @else if (driverStatus() === 'rejected') {
-          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
-            style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#f87171">
-            <span class="material-symbols-outlined" style="font-size:14px">cancel</span> Rechazado
-          </span>
-        }
-      </div>
 
       @if (driverStatus() === 'quick') {
         <div class="rounded-2xl p-4 flex items-start gap-3"
@@ -2926,7 +2899,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               {{ driverSection() === 'profile' ? 'Mi Perfil' :
                  driverSection() === 'status' ? 'Estado' :
                  driverSection() === 'wallet' ? 'Mi Wallet · Recarga' :
-                 driverSection() === 'earnings' ? 'Ganancias de Viajes' :
+                 driverSection() === 'earnings' ? 'Comisión/Referidos' :
                  driverSection() === 'trips' ? 'Mis Viajes' :
                  driverSection() === 'referrals' ? 'Recomienda y Gana' :
                  driverSection() === 'analytics' ? 'Analytics' :
@@ -3057,58 +3030,77 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           }
 
-          <!-- ── GANANCIAS DE VIAJES ── -->
+          <!-- ── COMISIÓN/REFERIDOS ── -->
           @if (!loadingSection() && driverSection() === 'earnings') {
-            <!-- Total ganado -->
-            <div class="rounded-2xl p-5 flex flex-col gap-2"
-              style="background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08));border:1px solid rgba(16,185,129,0.2)">
-              <p class="text-slate-600 text-xs uppercase font-bold tracking-widest">Total ganado en viajes</p>
-              <p class="font-black text-4xl" style="color:#0f172a">{{ formatCOP(driverEarnings().total) }}</p>
-              <p class="text-slate-500 text-xs">Acumulado de todas tus carreras completadas</p>
+            <!-- Tarjeta billetera de comisiones -->
+            <div class="rounded-2xl p-5 flex flex-col gap-3"
+              style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.15)">
+              <p class="text-white/60 text-xs font-bold uppercase tracking-widest">Comisiones por referidos</p>
+              <p class="text-white font-black text-4xl">{{ '$' + referralBalance().toLocaleString() }}</p>
+              <p class="text-white/60 text-[10px]">Disponible para retirar</p>
+              <div class="flex items-center gap-4 pt-1 border-t border-white/15">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-emerald-300" style="font-size:14px">trending_up</span>
+                  <span class="text-emerald-300 text-xs font-bold">Total ganado: {{ '$' + referralTotalEarned().toLocaleString() }}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-amber-300" style="font-size:14px">group</span>
+                  <span class="text-amber-300 text-xs font-bold">{{ referralCount() }} referidos</span>
+                </div>
+              </div>
             </div>
 
-            <!-- Solicitar retiro -->
+            <!-- Retirar comisiones -->
             <div class="rounded-2xl p-4 flex flex-col gap-3"
-              style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.3)">
+              style="background:#EEF2FF;border:1px solid rgba(108,58,237,0.25)">
               <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-emerald-600" style="font-size:18px">payments</span>
-                <p class="font-black text-sm" style="color:#0f172a">Retirar ganancias</p>
+                <span class="material-symbols-outlined text-purple-600" style="font-size:18px">account_balance</span>
+                <p class="font-black text-sm" style="color:#0f172a">Retirar comisiones</p>
               </div>
-              <p class="text-slate-600 text-[11px]">Mínimo 20.000 COP. Recibes en 1-3 días hábiles.</p>
-              <input type="number" [(ngModel)]="wdAmount" placeholder="Monto en COP" min="20000"
+              <p class="text-slate-600 text-[11px]">Mínimo 10.000 COP. Recibes en 1-3 días hábiles.</p>
+              <input type="number" [(ngModel)]="refWdAmount" placeholder="Monto en COP" min="10000"
                 class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                style="background:#FFFFFF;border:1px solid #D1FAE5" />
-              <select [(ngModel)]="wdMethod"
+                style="background:#FFFFFF;border:1px solid #C7D2FE" />
+              <select [(ngModel)]="refWdMethod"
                 class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                style="background:#FFFFFF;border:1px solid #D1FAE5">
-                <option value="bank">Transferencia bancaria</option>
+                style="background:#FFFFFF;border:1px solid #C7D2FE">
+                <option value="bank_ahorros">Bancolombia — Cuenta de Ahorros</option>
+                <option value="bank_corriente">Bancolombia — Cuenta Corriente</option>
                 <option value="nequi">Nequi</option>
                 <option value="daviplata">Daviplata</option>
-                <option value="efectivo">Efectivo (oficina)</option>
               </select>
-              <input type="text" [(ngModel)]="wdAccount" [placeholder]="wdPlaceholder()"
+              <input type="text" [(ngModel)]="refWdAccount" [placeholder]="refWdPlaceholder()"
                 class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                style="background:#FFFFFF;border:1px solid #D1FAE5" />
-              <button (click)="requestDriverWithdraw()" [disabled]="wdLoading() || (wdAmount ?? 0) < 20000"
+                style="background:#FFFFFF;border:1px solid #C7D2FE" />
+              <button (click)="requestReferralWithdraw()" [disabled]="refWdLoading() || (refWdAmount ?? 0) < 10000"
                 class="w-full py-2.5 rounded-xl font-black text-xs uppercase disabled:opacity-40"
-                style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
-                {{ wdLoading() ? 'Procesando...' : 'Solicitar retiro' }}
+                style="background:linear-gradient(135deg,#6C3AED,#2563EB);color:#fff">
+                {{ refWdLoading() ? 'Procesando...' : 'Solicitar retiro' }}
               </button>
-              @if (wdMsg()) { <p class="text-xs text-center" [class]="wdMsg()!.startsWith('Error') ? 'text-rose-400' : 'text-emerald-600'">{{ wdMsg() }}</p> }
-              @if (driverWithdrawals().length > 0) {
-                <div class="pt-2 border-t border-emerald-100 space-y-1">
-                  <p class="text-[10px] text-slate-500 uppercase tracking-wide">Solicitudes recientes</p>
-                  @for (w of driverWithdrawals().slice(0, 5); track w.id) {
-                    <div class="flex items-center justify-between text-[11px]">
-                      <span class="text-slate-500">{{ w.created_at | date:'short' }}</span>
-                      <span class="font-bold" style="color:#0f172a">{{ formatCOP(w.amount) }}</span>
-                      <span class="px-1.5 py-0.5 rounded text-[9px] font-bold"
-                        [class]="w.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : w.status === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'">{{ w.status }}</span>
-                    </div>
-                  }
-                </div>
+              @if (refWdMsg()) {
+                <p class="text-xs text-center" [class]="refWdMsg()!.startsWith('Error') ? 'text-rose-400' : 'text-emerald-600'">{{ refWdMsg() }}</p>
               }
             </div>
+
+            <!-- Historial de retiros de comisiones -->
+            @if (referralWithdrawals().length > 0) {
+              <div class="flex flex-col gap-2">
+                <p class="text-slate-600 text-xs font-bold uppercase tracking-widest">Retiros recientes</p>
+                @for (w of referralWithdrawals(); track w.id) {
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
+                    style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-slate-900 text-xs font-bold">{{ formatCOP(w.amount) }} · {{ w.method }}</p>
+                      <p class="text-slate-500 text-[10px]">{{ w.created_at | slice:0:10 }}</p>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[9px] font-bold flex-shrink-0"
+                      [class]="w.status === 'completed' ? 'bg-emerald-500/20 text-emerald-600' : w.status === 'pending' ? 'bg-amber-500/20 text-amber-600' : 'bg-red-500/20 text-red-500'">
+                      {{ w.status === 'completed' ? 'Completado' : w.status === 'pending' ? 'Pendiente' : 'Rechazado' }}
+                    </span>
+                  </div>
+                }
+              </div>
+            }
           }
 
           <!-- ── MIS VIAJES ── -->
@@ -3555,10 +3547,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <div class="rounded-2xl p-4 flex flex-col gap-3"
                 style="background:linear-gradient(135deg,rgba(108,58,237,0.10),rgba(37,99,235,0.08));border:1px solid rgba(108,58,237,0.25)">
-                <p class="font-black text-base" style="color:#0f172a">Gana el 2% vitalicio</p>
+                <p class="font-black text-base" style="color:#0f172a">Gana el 2% por referido</p>
                 <p class="text-slate-700 text-xs sm:text-sm leading-relaxed">
                   Cada vez que alguien se registre en <span class="font-bold" style="color:#0f172a">Movi</span> con tu link y use nuestro servicio,
-                  tú ganas el <span class="text-amber-600 font-black">2% del valor de cada servicio</span> de por vida.
+                  tú ganas el <span class="text-amber-600 font-black">2% del valor de cada servicio</span>.
                 </p>
               </div>
 
@@ -3642,7 +3634,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         #{{ driverBenefits()?.founder_number }} de 500
                       </span>
                     </div>
-                    <p class="text-yellow-200/70 text-xs mt-0.5 leading-relaxed">Eres parte exclusiva de los primeros 500 conductores que hicieron posible Movi. Este badge es tuyo de por vida.</p>
+                    <p class="text-yellow-200/70 text-xs mt-0.5 leading-relaxed">Eres parte exclusiva de los primeros 500 conductores que hicieron posible Movi. Esta insignia es tuya para siempre.</p>
                   </div>
                 </div>
               } @else {
@@ -3673,7 +3665,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       {{ driverBenefits()?.tier_label ?? 'Nuevo' }}
                     </span>
                   </div>
-                  <p class="text-slate-500 text-xs mt-1">Pagas solo el {{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}% de lo que ganas · Nada más.</p>
+                  <p class="text-slate-500 text-xs mt-1">Pagas solo el {{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}% sobre el valor de cada servicio o viaje finalizado. Nada más.</p>
                 </div>
 
                 <!-- Barra de progreso hacia el siguiente nivel -->
@@ -3742,8 +3734,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <span class="material-symbols-outlined" style="font-size:20px;color:#7c3aed;font-variation-settings:'FILL' 1">group_add</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="font-black text-sm" style="color:#0f172a">2% vitalicio por referido</p>
-                  <p class="text-slate-600 text-xs mt-0.5 leading-relaxed">Cada conductor o pasajero que se registre con tu link y complete servicios, te genera el <span class="font-bold text-purple-700">2% de cada servicio</span> de por vida.</p>
+                  <p class="font-black text-sm" style="color:#0f172a">Gana el 2% por cada referido</p>
+                  <p class="text-slate-600 text-xs mt-0.5 leading-relaxed">Cada conductor o pasajero que se registre con tu link y complete servicios, te genera el <span class="font-bold text-purple-700">2% de cada servicio</span>.</p>
                   <button (click)="openDriverSection('referrals')"
                     class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black active:scale-95 transition-all"
                     style="background:rgba(108,58,237,0.12);border:1px solid rgba(108,58,237,0.25);color:#7c3aed">
@@ -3851,6 +3843,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- ── RENDIMIENTO (aceptación / cancelación) ── -->
           @if (!loadingSection() && driverSection() === 'performance') {
             <div class="flex flex-col gap-4">
+
+              <!-- Total ganado en viajes -->
+              <div class="rounded-2xl p-5 flex flex-col gap-2"
+                style="background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08));border:1px solid rgba(16,185,129,0.2)">
+                <p class="text-slate-600 text-xs uppercase font-bold tracking-widest">Total ganado en viajes</p>
+                <p class="font-black text-4xl" style="color:#0f172a">{{ formatCOP(driverEarnings().total) }}</p>
+                <p class="text-slate-500 text-xs">Acumulado de todas tus carreras completadas</p>
+              </div>
+
               @if (driverMetrics(); as m) {
                 <!-- KPIs principales -->
                 <div class="grid grid-cols-1 gap-3">
@@ -6183,6 +6184,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   wdMsg              = signal<string | null>(null);
   driverWithdrawals  = signal<any[]>([]);
 
+  // Referral commission withdrawals
+  refWdAmount: number | null = null;
+  refWdMethod: 'bank_ahorros'|'bank_corriente'|'nequi'|'daviplata' = 'nequi';
+  refWdAccount = '';
+  refWdLoading       = signal(false);
+  refWdMsg           = signal<string | null>(null);
+  referralWithdrawals = signal<any[]>([]);
+
   // ── Documentos del conductor ─────────────────────────
   driverDocs         = signal<any[]>([]);
   readonly docTypes: Array<{ key: string; label: string; requiresExpiry: boolean; icon: string }> = [
@@ -6251,6 +6260,33 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (m === 'bank') return 'Ej: Bancolombia 1234567890';
     if (m === 'nequi' || m === 'daviplata') return '+57 300 1234567';
     return 'Opcional';
+  }
+
+  refWdPlaceholder(): string {
+    const m = this.refWdMethod;
+    if (m === 'bank_ahorros' || m === 'bank_corriente') return 'Número de cuenta Bancolombia';
+    if (m === 'nequi' || m === 'daviplata') return '+57 300 1234567';
+    return 'Número de cuenta';
+  }
+
+  async requestReferralWithdraw(): Promise<void> {
+    const profile = this.agProfile();
+    const amt = Number(this.refWdAmount);
+    if (!profile || amt < 10000) return;
+    this.refWdLoading.set(true);
+    this.refWdMsg.set(null);
+    try {
+      await this.agService.requestReferralWithdrawal(profile.id, amt, this.refWdMethod, { account: this.refWdAccount.trim() });
+      this.refWdMsg.set('Retiro solicitado. Recibirás en 1-3 días hábiles.');
+      this.refWdAmount = null;
+      const withdrawals = await this.agService.listReferralWithdrawals(profile.id);
+      this.referralWithdrawals.set(withdrawals);
+      await this.loadReferralData();
+    } catch (e: any) {
+      this.refWdMsg.set('Error: ' + (e?.message ?? 'Intenta de nuevo'));
+    } finally {
+      this.refWdLoading.set(false);
+    }
   }
 
   // Driver analytics
@@ -6556,7 +6592,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'help',             label: 'Ayuda',                    action: 'support',           divider: false, section: '' },
     { divider: true,  section: '', icon: '', label: '', action: '' },
     { icon: 'drive_eta',        label: 'Conductor',                action: 'driver',            divider: false, section: '' },
-    { icon: 'logout',           label: 'Cerrar sesión',            action: 'logout',            divider: false, section: '' },
   ];
 
   readonly rechargePresets = [10000, 20000, 50000, 100000, 200000, 500000];
@@ -6565,7 +6600,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'person',          label: 'Mi Perfil',            action: 'profile',      sectionLabel: 'Principal',     danger: false, divider: false },
     { icon: 'wifi_tethering',  label: 'Estado / En Línea',    action: 'status',       sectionLabel: '',              danger: false, divider: false },
     { icon: 'account_balance_wallet', label: 'Mi Wallet · Recarga', action: 'wallet-panel', sectionLabel: '',           danger: false, divider: false },
-    { icon: 'payments',        label: 'Ganancias de Viajes',  action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'payments',        label: 'Comisión/Referidos',   action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'route',           label: 'Mis Viajes',           action: 'trips',        sectionLabel: '',              danger: false, divider: false },
     { icon: 'schedule',        label: 'Viajes programados',   action: 'scheduled',    sectionLabel: '',              danger: false, divider: false },
     { icon: 'analytics',       label: 'Analytics',            action: 'analytics',    sectionLabel: '',              danger: false, divider: false },
@@ -6587,8 +6622,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'flag',            label: 'Reportar problema',    action: 'report',       sectionLabel: '',              danger: false, divider: false },
     { icon: 'support_agent',   label: 'Soporte',              action: 'support',      sectionLabel: '',              danger: false, divider: false },
     { icon: 'school',          label: 'Tutorial',             action: 'tutorial',     sectionLabel: '',              danger: false, divider: false },
-    { icon: '',                label: '',                     action: '',             sectionLabel: '',              danger: false, divider: true },
-    { icon: 'logout',          label: 'Cerrar Sesión',        action: 'logout',       sectionLabel: '',              danger: true,  divider: false },
   ];
 
   driverMenuOpen    = signal(false);
@@ -6705,8 +6738,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async _initDriverHome(mine: any) {
     if (!mine) return;
     const status: string = mine.status ?? 'quick';
-    // Todos los estados activos ven solicitudes de viaje
-    if (status !== 'rejected') {
+    // Approved: solo cargar si ya está online. Quick/otros: siempre cargar.
+    const shouldLoad = status !== 'rejected' && (status !== 'approved' || mine.is_online);
+    if (shouldLoad) {
       this._loadDriverRequests(mine.vehicle_type);
     }
     // Cargar comisión y saldo para todos los conductores activos
@@ -6857,6 +6891,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
         const record = payload.new as { driver_id: string; lat: number; lng: number; heading: number } | undefined;
         if (!record) return;
+
+        // Solo mostrar conductores dentro de 50km del pasajero (si GPS ya está disponible)
+        if (this.gpsStatus() === 'granted' && record.lat && record.lng) {
+          const distM = this._distMeters(this._currentLat, this._currentLng, record.lat, record.lng);
+          if (distM > 50_000) {
+            // Si ya tenía marcador, quitarlo
+            const farIdx = this._vehicleMarkers.findIndex((m: any) => m._agDriverId === record.driver_id);
+            if (farIdx >= 0) {
+              try { this._vehicleMarkers[farIdx].remove(); } catch {}
+              this._vehicleMarkers.splice(farIdx, 1);
+              this._markerLastSeen.delete(record.driver_id);
+            }
+            return;
+          }
+        }
 
         this._markerLastSeen.set(record.driver_id, Date.now());
 
@@ -7016,6 +7065,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._currentLat = lat;
     this._currentLng = lng;
 
+    // Recargar solicitudes con GPS real para filtrar por ciudad actual
+    const driver = this.driverData();
+    if (driver) {
+      this._loadDriverRequests(driver.vehicle_type, lat, lng);
+    }
+
     // Geocodificación inversa en paralelo con la carga del mapa
     this._reverseGeocode(lat, lng);
 
@@ -7173,9 +7228,27 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         + `?access_token=${this.MAPBOX_TOKEN}&language=es&types=address,poi,place&limit=1`;
       const res  = await fetch(url);
       const data = await res.json();
-      this.currentAddress.set(data.features?.[0]?.place_name ?? '');
+      const feature = data.features?.[0];
+      this.currentAddress.set(feature?.place_name ?? '');
+
+      // Extraer ciudad del contexto y actualizar si el conductor cambió de ciudad
+      if (feature) {
+        let cityName = '';
+        if (feature.id?.startsWith('place.')) {
+          cityName = feature.text ?? '';
+        } else {
+          const placeCtx = (feature.context ?? []).find((c: any) => c.id?.startsWith('place.'));
+          cityName = placeCtx?.text ?? '';
+        }
+        const profile = this.agProfile();
+        if (cityName && profile && profile.city !== cityName) {
+          this.agService.updateUserCity(profile.id, cityName).catch(() => {});
+          this.agProfile.update(p => p ? { ...p, city: cityName } : p);
+        }
+      }
     } catch { this.currentAddress.set(''); }
     this.addressLoading.set(false);
+    this.cdr.markForCheck();
   }
 
   private _createMap(containerId: string, lat: number, lng: number) {
@@ -7820,13 +7893,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const stats = await this.agService.getDriverStats(driver.id);
       this.driverStats.set(stats);
     } else if (action === 'earnings') {
-      const [history, total, withdrawals] = await Promise.all([
-        this.agService.getDriverWalletHistory(driver.id),
-        this.agService.getDriverEarningsSummary(driver.id),
-        this.agService.listDriverWithdrawals(driver.id),
-      ]);
-      this.driverEarnings.set({ total, walletHistory: history });
-      this.driverWithdrawals.set(withdrawals);
+      const profile = this.agProfile();
+      if (profile) {
+        await this.loadReferralData();
+        const withdrawals = await this.agService.listReferralWithdrawals(profile.id);
+        this.referralWithdrawals.set(withdrawals);
+      }
     } else if (action === 'trips') {
       const trips = await this.agService.getDriverCompletedTrips(driver.id);
       this.driverCompletedTrips.set(trips);
@@ -7861,7 +7933,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } else if (action === 'documents') {
       await this.loadDriverDocs();
     } else if (action === 'performance') {
-      await this.loadDriverMetrics();
+      const [_, total] = await Promise.all([
+        this.loadDriverMetrics(),
+        this.agService.getDriverEarningsSummary(driver.id),
+      ]);
+      this.driverEarnings.update(e => ({ ...e, total }));
     } else if (action === 'autoaccept') {
       this.autoAcceptCfg.set({
         enabled: driver.auto_accept_enabled ?? false,
@@ -8202,15 +8278,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.driverOnline.set(next);
 
     if (next) {
-      // Iniciar tracking GPS + sesión online
+      // Iniciar tracking GPS + sesión online + cargar solicitudes
       this.startGpsTracking(driver.id);
       try {
         const sessionId = await this.agService.startOnlineSession(driver.id);
         this._onlineSessionId = sessionId;
       } catch {}
       this._startOnlineTimer();
+      this._loadDriverRequests(driver.vehicle_type, this._currentLat, this._currentLng);
     } else {
-      // Detener tracking y cerrar sesión
+      // Detener tracking, cerrar sesión y limpiar solicitudes
       this.stopGpsTracking();
       await this.agService.removeDriverLocation(driver.id);
       if (this._onlineSessionId) {
@@ -8218,6 +8295,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this._onlineSessionId = null;
       }
       this._stopOnlineTimer();
+      // Cancelar suscripción y limpiar lista de solicitudes
+      if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
+      if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+      this.driverRequests.set([]);
+      this.cdr.markForCheck();
     }
 
     this.togglingOnline.set(false);
@@ -9228,11 +9310,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ── Driver: load & refresh trip requests ──────────────────────
   private _driverRefreshInterval: ReturnType<typeof setInterval> | null = null;
 
-  _loadDriverRequests(vehicleType?: string) {
-    // Carga inicial
-    this.agService.getSearchingRequests(vehicleType).then(reqs => {
+  _loadDriverRequests(vehicleType?: string, lat?: number, lng?: number) {
+    const dLat = lat ?? (this._currentLat !== this.DEFAULT_LAT ? this._currentLat : undefined);
+    const dLng = lng ?? (this._currentLng !== this.DEFAULT_LNG ? this._currentLng : undefined);
+    // Carga inicial filtrada por distancia
+    this.agService.getSearchingRequests(vehicleType, dLat, dLng).then(reqs => {
       this.driverRequests.set(reqs);
       if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
+      this.cdr.markForCheck();
     });
     // Cancelar suscripción previa
     if (this._requestsChannel) {
@@ -9243,34 +9328,36 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       clearInterval(this._driverRefreshInterval);
       this._driverRefreshInterval = null;
     }
-    // Suscripción realtime: nuevas solicitudes llegan al instante
+    // Suscripción realtime filtrada por distancia
     this._requestsChannel = this.agService.subscribeToTripRequests(
       vehicleType,
       (req) => {
-        // Nueva solicitud: agregar al inicio si no existe ya
         this.driverRequests.update(list => {
           if (list.some(r => r.id === req.id)) return list;
           this.agService.logMetricEvent('offer_seen').catch(() => {});
           return [req, ...list];
         });
+        this.cdr.markForCheck();
       },
       (req) => {
-        // Solicitud actualizada: quitar si ya no está en searching
         if (req.status !== 'searching') {
           this.driverRequests.update(list => list.filter(r => r.id !== req.id));
+          this.cdr.markForCheck();
         }
       },
+      dLat,
+      dLng,
     );
   }
 
   toggleDriverRequests() {
     const nowOpen = !this.driverRequestsOpen();
     this.driverRequestsOpen.set(nowOpen);
-    if (nowOpen) this._loadDriverRequests(this.driverData()?.vehicle_type);
+    if (nowOpen) this._loadDriverRequests(this.driverData()?.vehicle_type, this._currentLat, this._currentLng);
   }
 
   refreshDriverRequests() {
-    this._loadDriverRequests(this.driverData()?.vehicle_type);
+    this._loadDriverRequests(this.driverData()?.vehicle_type, this._currentLat, this._currentLng);
   }
 
   openMakeOffer(req: AgTripRequest) {
@@ -10170,7 +10257,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
   }
 
-  // ── Recarga de billetera vía ePayco (form POST directo) ───────────────────
+  private loadEpaycoScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as any)['ePayco']) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = 'https://checkout.epayco.co/checkout.js';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('No se pudo cargar ePayco'));
+      document.head.appendChild(s);
+    });
+  }
 
   async startWalletRecharge(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -10184,29 +10280,35 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
 
     try {
-      const { formAction, formFields } = await this.agService.createWalletRechargeParams(amount);
+      const params = await this.agService.createWalletRecharge(amount);
+      await this.loadEpaycoScript();
 
-      // Form POST directo — funciona en browser, WebView Android/iOS y Capacitor
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = formAction;
-      form.style.display = 'none';
-
-      for (const [key, value] of Object.entries(formFields)) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = String(value);
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-      // La página navega al checkout de ePayco — no se llama rechargeLoading.set(false)
-
+      const epayco = (window as any)['ePayco'] as any;
+      const handler = epayco.checkout.configure({ key: params['publicKey'], test: params['test'] });
+      handler.open({
+        name:         params['name'],
+        description:  params['description'],
+        invoice:      params['invoice'],
+        currency:     params['currency'],
+        amount:       params['amount'],
+        tax_base:     params['tax_base'],
+        tax:          params['tax'],
+        country:      params['country'],
+        lang:         params['lang'],
+        external:     'false',
+        methodConfirmation: 'GET',
+        confirmation: params['confirmation'],
+        response:     params['response'],
+        email_billing: params['email_billing'],
+        name_billing:  params['name_billing'],
+        extra1:        params['extra1'],
+        extra2:        params['extra2'],
+        extra3:        params['extra3'],
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al iniciar el pago';
       this.rechargeError.set(msg);
+    } finally {
       this.rechargeLoading.set(false);
       this.cdr.markForCheck();
     }
