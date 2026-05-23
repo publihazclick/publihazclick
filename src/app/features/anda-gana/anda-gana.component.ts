@@ -1085,8 +1085,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               @if (tripGpsError()) {
                 <div class="mx-4 mb-2 flex items-center gap-2 rounded-xl px-3 py-2"
                   style="background:#fff7ed;border:1px solid #fed7aa">
-                  <span class="material-symbols-outlined text-orange-500" style="font-size:16px">location_off</span>
-                  <p class="text-orange-700 text-xs font-semibold">Activa el GPS para solicitar un viaje.</p>
+                  <span class="material-symbols-outlined text-orange-500" style="font-size:16px">my_location</span>
+                  <p class="text-orange-700 text-xs font-semibold">
+                    {{ gpsStatus() === 'denied' ? 'Activa el GPS para solicitar un viaje.' : 'Obteniendo tu ubicación... espera un momento o mueve el pin a tu posición.' }}
+                  </p>
                 </div>
               }
               <div class="px-4 py-3">
@@ -6666,6 +6668,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _destMarker:      any = null;
   private _currentLat = 4.6097;
   private _currentLng = -74.0817;
+  /** true solo cuando tenemos una lectura GPS con precisión real (<300m). Evita usar coords por defecto (Bogotá) como origen de viaje. */
+  private _gpsRealFix = false;
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
   private readonly SUPABASE_ANON = environment.supabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
@@ -6821,22 +6825,29 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     this._passengerWatchId = navigator.geolocation.watchPosition(
       (pos) => {
+        // Rechazar lecturas imprecisas (IP de red o WiFi lejano ubican en ciudad del servidor)
+        // >300m = posición de red, no GPS real del dispositivo
+        if (pos.coords.accuracy > 300) return;
+
         const now = Date.now();
-        // Throttle: ignorar actualizaciones más rápidas de 5 s
-        if (now - this._locationThrottleTs < 5000) return;
+        // Throttle: ignorar actualizaciones más rápidas de 5 s (excepto el primer fix real)
+        if (this._gpsRealFix && now - this._locationThrottleTs < 5000) return;
         this._locationThrottleTs = now;
 
         const { latitude: lat, longitude: lng } = pos.coords;
 
-        // Solo actuar si el usuario se movió más de 500 m
-        const moved = this._distMeters(
-          this._lastNotifiedLat || this._currentLat,
-          this._lastNotifiedLng || this._currentLng,
-          lat, lng
-        );
-        if (moved < 500 && this._lastNotifiedLat !== 0) return;
+        // Solo actuar si el usuario se movió más de 500 m (una vez que ya tenemos fix real)
+        if (this._gpsRealFix) {
+          const moved = this._distMeters(
+            this._lastNotifiedLat || this._currentLat,
+            this._lastNotifiedLng || this._currentLng,
+            lat, lng
+          );
+          if (moved < 500 && this._lastNotifiedLat !== 0) return;
+        }
 
-        // Actualizar posición global
+        // Actualizar posición global con lectura GPS real
+        this._gpsRealFix      = true;
         this._currentLat      = lat;
         this._currentLng      = lng;
         this._lastNotifiedLat = lat;
@@ -7069,6 +7080,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
+      this._gpsRealFix = true;
       this.gpsStatus.set('granted');
     } catch (e: any) {
       if (e?.code === 1 /* PERMISSION_DENIED */) {
@@ -7430,6 +7442,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const lngLat = this._userMarker!.getLngLat();
         this._currentLat = lngLat.lat;
         this._currentLng = lngLat.lng;
+        this._gpsRealFix = true; // el usuario confirmó su posición manualmente
         this._reverseGeocode(lngLat.lat, lngLat.lng);
       });
 
@@ -8636,10 +8649,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       return;
     }
 
-    // Enviar posición inicial
+    // Enviar posición inicial solo si la precisión es real (no lectura de red/IP)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
+        if (pos.coords.accuracy <= 500) {
+          this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
+        }
       },
       (err) => {
         console.error('GPS inicial falló:', err.message);
@@ -8649,12 +8664,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.agService.setDriverOnline(driverId, false);
         }
       },
-      { enableHighAccuracy: true, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
     );
 
-    // Tracking continuo cada vez que se mueve
+    // Tracking continuo — solo actualizar con lecturas de precisión real
     this._gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
+        if (pos.coords.accuracy > 500) return; // rechazar lecturas de red imprecisas
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
         this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude);
       },
@@ -9101,9 +9117,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   async findOffers() {
     const dest = this.tripDest();
     if (!dest) return;
-    if (this.gpsStatus() === 'denied') {
+    // Bloquear si GPS denegado O si aún no tenemos una lectura de precisión real
+    // (evita enviar coords por defecto de Bogotá como origen del viaje)
+    if (this.gpsStatus() === 'denied' || !this._gpsRealFix) {
       this.tripGpsError.set(true);
-      setTimeout(() => this.tripGpsError.set(false), 3500);
+      setTimeout(() => this.tripGpsError.set(false), 4000);
       return;
     }
     this.tripGpsError.set(false);
