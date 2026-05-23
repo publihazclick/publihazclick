@@ -6863,7 +6863,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         }
         // En cualquier error se mantiene _currentLat/_currentLng anteriores
       },
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
   }
 
@@ -7023,43 +7023,60 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     let lng = this.DEFAULT_LNG;
 
     try {
-      // Obtener la mejor ubicación posible usando watchPosition con timeout
       const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
         let bestPos: GeolocationPosition | null = null;
+        let resolved = false;
+
+        const done = (p: GeolocationPosition) => {
+          if (resolved) return;
+          resolved = true;
+          navigator.geolocation.clearWatch(watchId);
+          clearTimeout(hardTimer);
+          resolve(p);
+        };
+
         const watchId = navigator.geolocation.watchPosition(
           (p) => {
-            // Guardar la mejor lectura (menor accuracy = más preciso)
             if (!bestPos || p.coords.accuracy < bestPos.coords.accuracy) {
               bestPos = p;
             }
-            // Si tenemos precisión ≤30m, aceptar de inmediato
-            if (p.coords.accuracy <= 30) {
-              navigator.geolocation.clearWatch(watchId);
-              clearTimeout(timer);
-              resolve(p);
+            // Aceptar de inmediato solo si la precisión es real (≤100m = GPS real, no IP)
+            if (p.coords.accuracy <= 100) {
+              done(p);
             }
           },
           (err) => {
+            if (resolved) return;
+            resolved = true;
             navigator.geolocation.clearWatch(watchId);
-            clearTimeout(timer);
-            if (bestPos) resolve(bestPos);
+            clearTimeout(hardTimer);
+            // Usar mejor lectura solo si tiene precisión aceptable (<1000m)
+            if (bestPos && bestPos.coords.accuracy < 1000) resolve(bestPos);
             else reject(err);
           },
-          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 25000, maximumAge: 5000 }
         );
-        // Después de 6s, usar la mejor lectura que tengamos
-        const timer = setTimeout(() => {
+
+        // Hard timeout de 20s: aceptar solo si tenemos lectura con precisión real (<800m)
+        const hardTimer = setTimeout(() => {
+          if (resolved) return;
+          resolved = true;
           navigator.geolocation.clearWatch(watchId);
-          if (bestPos) resolve(bestPos);
+          if (bestPos && bestPos.coords.accuracy < 800) resolve(bestPos);
           else reject(new Error('GPS timeout'));
-        }, 6000);
+        }, 20000);
       });
 
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
       this.gpsStatus.set('granted');
-    } catch {
-      this.gpsStatus.set('denied');
+    } catch (e: any) {
+      if (e?.code === 1 /* PERMISSION_DENIED */) {
+        this.gpsStatus.set('denied');
+      } else {
+        // Timeout sin lectura precisa — mostrar mapa igualmente para no bloquear al usuario
+        this.gpsStatus.set('granted');
+      }
     }
 
     this._currentLat = lat;
