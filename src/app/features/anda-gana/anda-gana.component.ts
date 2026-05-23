@@ -7121,7 +7121,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const lat = this._currentLat;
         const lng = this._currentLng;
         const sb = getSupabaseClient();
-        if (lat && lng) {
+        if (this._gpsRealFix && lat && lng) {
           sb.from('ag_driver_notifications').upsert({
             user_phone: this.agProfile()?.phone ?? '',
             lat, lng, radius_km: 2, active: true,
@@ -8734,7 +8734,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         distanceFilter: 20,
       }, (location: any, error: any) => {
         if (error) { console.error('bg-loc', error); return; }
-        if (location) {
+        if (location && (location.accuracy == null || location.accuracy <= 500)) {
           this.agService.updateDriverLocation(driverId, location.latitude, location.longitude, location.bearing ?? 0);
         }
       });
@@ -8909,7 +8909,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!sdkOk) { this._searchNominatimFallback(query); return; }
     if (!this._autocompleteService) this._initGooglePlaces();
 
-    const hasGps = this._currentLat !== 0 && this._currentLng !== 0;
+    const hasGps = this._gpsRealFix; // solo usar bias de ubicación si tenemos GPS real confirmado
     const request: any = {
       input: query,
       componentRestrictions: { country: 'co' },
@@ -8992,7 +8992,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       const params = new URLSearchParams({
         q: query, format: 'json', countrycodes: 'co', limit: '5', addressdetails: '1',
       });
-      if (this._currentLat !== 0) {
+      if (this._gpsRealFix) {
         params.set('viewbox', `${this._currentLng - 0.5},${this._currentLat + 0.5},${this._currentLng + 0.5},${this._currentLat - 0.5}`);
         params.set('bounded', '1');
       }
@@ -9000,7 +9000,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         headers: { 'Accept-Language': 'es' },
       });
       const data = await res.json();
-      const hasGps = this._currentLat !== 0 && this._currentLng !== 0;
+      const hasGps = this._gpsRealFix;
       const results = (data ?? []).slice(0, 5).map((r: any) => {
         const rLat = parseFloat(r.lat), rLng = parseFloat(r.lon);
         let distanceKm: number | null = null;
