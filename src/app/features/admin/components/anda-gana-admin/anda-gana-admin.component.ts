@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { SlicePipe, DatePipe } from '@angular/common';
 import { AndaGanaService, AgUser, AgDriver } from '../../../../features/anda-gana/anda-gana.service';
 
-type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'cupones';
+type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'cupones' | 'retiros';
 
 @Component({
   selector: 'app-anda-gana-admin',
@@ -83,6 +83,12 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition"
       [class]="tab() === 'cupones' ? 'text-pink-400 border-b-2 border-pink-400' : 'text-slate-500 hover:text-slate-300'">
       🎟️ Cupones
+    </button>
+    <button (click)="tab.set('retiros'); loadWithdrawals()"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1"
+      [class]="tab() === 'retiros' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-500 hover:text-slate-300'">
+      💸 Retiros
+      @if (pendingWithdrawalsCount() > 0) { <span class="px-1.5 py-0.5 bg-emerald-600 rounded-full text-[10px] font-black text-white">{{ pendingWithdrawalsCount() }}</span> }
     </button>
     <button (click)="tab.set('configuracion')"
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
@@ -480,6 +486,70 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
     }
   }
 
+  <!-- ═══ RETIROS ═══ -->
+  @if (tab() === 'retiros') {
+    <div class="flex gap-2 mb-4">
+      @for (s of ['pending','completed','rejected']; track s) {
+        <button (click)="withdrawalFilter.set(s); loadWithdrawals()" class="px-3 py-1 rounded-lg text-xs font-bold"
+          [class]="withdrawalFilter() === s ? 'bg-emerald-600 text-white' : 'bg-white/5 text-slate-400'">{{ s }}</button>
+      }
+      <button (click)="withdrawalFilter.set(''); loadWithdrawals()" class="px-3 py-1 rounded-lg text-xs font-bold"
+        [class]="withdrawalFilter() === '' ? 'bg-white/20 text-white' : 'bg-white/5 text-slate-400'">Todos</button>
+    </div>
+    @if (withdrawals().length === 0) {
+      <div class="text-center py-16 text-slate-500 text-sm">Sin retiros en este estado.</div>
+    }
+    @for (w of withdrawals(); track w.id) {
+      <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-4 mb-3 flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p class="text-white font-black text-sm">{{ w.ag_drivers?.ag_users?.full_name ?? 'Conductor' }}</p>
+            <p class="text-slate-400 text-xs">{{ w.ag_drivers?.plate ?? '—' }} · {{ w.ag_drivers?.vehicle_brand ?? '' }}</p>
+            <p class="text-slate-500 text-[10px]">{{ w.ag_drivers?.ag_users?.phone ?? '' }}</p>
+          </div>
+          <div class="flex flex-col items-end gap-1">
+            <p class="text-emerald-400 font-black text-lg">{{ formatCOP(w.amount) }}</p>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+              [class]="w.status === 'pending' ? 'bg-amber-500/15 text-amber-400' : w.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'">
+              {{ w.status }}
+            </span>
+            <span class="text-slate-600 text-[10px]">{{ w.created_at | date:'dd/MM/yy HH:mm' }}</span>
+          </div>
+        </div>
+        <div class="flex gap-2 flex-wrap text-xs text-slate-400">
+          <span class="px-2 py-1 rounded bg-white/5">{{ w.method }}</span>
+          @if (w.details?.account) { <span class="px-2 py-1 rounded bg-white/5">{{ w.details.account }}</span> }
+        </div>
+        @if (w.status === 'pending') {
+          @if (rejectingWithdrawalId() === w.id) {
+            <div class="flex gap-2">
+              <input [(ngModel)]="withdrawalRejectReason" placeholder="Motivo del rechazo"
+                class="flex-1 bg-white/5 border border-rose-500/30 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none"/>
+              <button (click)="confirmWithdrawalReject(w.id)"
+                [disabled]="actionLoading() === w.id"
+                class="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-black disabled:opacity-50">Confirmar</button>
+              <button (click)="rejectingWithdrawalId.set(null)" class="px-2 py-1.5 bg-white/5 text-slate-400 rounded-lg text-xs">✕</button>
+            </div>
+          } @else {
+            <div class="flex gap-2">
+              <button (click)="approveWithdrawal(w.id)"
+                [disabled]="actionLoading() === w.id"
+                class="flex-1 py-2 rounded-xl bg-emerald-500 text-black font-black text-xs uppercase disabled:opacity-50 flex items-center justify-center gap-1">
+                @if (actionLoading() === w.id) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span>
+                } @else { ✓ Pagar }
+              </button>
+              <button (click)="rejectingWithdrawalId.set(w.id)"
+                class="flex-1 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 font-black text-xs uppercase">
+                ✗ Rechazar
+              </button>
+            </div>
+          }
+        }
+      </div>
+    }
+  }
+
   <!-- ═══ VIAJES ACTIVOS ═══ -->
   @if (tab() === 'viajes') {
     @if (activeTrips().length === 0) {
@@ -531,6 +601,13 @@ export class AndaGanaAdminComponent implements OnInit {
   analyticsData   = signal<any | null>(null);
   dailySeries     = signal<{ day: string; trips: number; gmv: number }[]>([]);
 
+  // Retiros
+  withdrawals              = signal<any[]>([]);
+  withdrawalFilter         = signal('pending');
+  rejectingWithdrawalId    = signal<string | null>(null);
+  withdrawalRejectReason   = '';
+  pendingWithdrawalsCount  = signal(0);
+
   // Cupones
   coupons          = signal<any[]>([]);
   savingCoupon     = signal(false);
@@ -541,8 +618,12 @@ export class AndaGanaAdminComponent implements OnInit {
 
   async ngOnInit() {
     await this.load();
-    await this.loadCommission();
-    await this.loadSos();
+    await Promise.all([this.loadCommission(), this.loadSos(), this.loadPendingWithdrawalsCount()]);
+  }
+
+  async loadPendingWithdrawalsCount(): Promise<void> {
+    const list = await this.agService.adminListWithdrawals('pending');
+    this.pendingWithdrawalsCount.set(list.length);
   }
 
   async load() {
@@ -651,6 +732,33 @@ export class AndaGanaAdminComponent implements OnInit {
   barHeight(val: number): number {
     const max = Math.max(...this.dailySeries().map(d => d.trips), 1);
     return Math.round((val / max) * 100);
+  }
+
+  async loadWithdrawals(): Promise<void> {
+    const filter = this.withdrawalFilter();
+    this.withdrawals.set(await this.agService.adminListWithdrawals(filter || undefined));
+    if (!filter) {
+      this.pendingWithdrawalsCount.set(this.withdrawals().filter((w: any) => w.status === 'pending').length);
+    }
+  }
+
+  async approveWithdrawal(id: string): Promise<void> {
+    this.actionLoading.set(id);
+    await this.agService.adminApproveWithdrawal(id);
+    this.actionLoading.set(null);
+    await this.loadWithdrawals();
+    await this.loadPendingWithdrawalsCount();
+  }
+
+  async confirmWithdrawalReject(id: string): Promise<void> {
+    if (!this.withdrawalRejectReason.trim()) return;
+    this.actionLoading.set(id);
+    await this.agService.adminRejectWithdrawal(id, this.withdrawalRejectReason.trim());
+    this.rejectingWithdrawalId.set(null);
+    this.withdrawalRejectReason = '';
+    this.actionLoading.set(null);
+    await this.loadWithdrawals();
+    await this.loadPendingWithdrawalsCount();
   }
 
   async loadCoupons(): Promise<void> {

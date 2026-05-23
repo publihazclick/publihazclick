@@ -116,8 +116,8 @@ export class AndaGanaService {
 
   // ── Auth ──────────────────────────────────────────────────────
   private async currentUserId(): Promise<string | null> {
-    const { data } = await this.supabase.auth.getUser();
-    return data.user?.id ?? null;
+    const { data } = await this.supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
   }
 
   // ── Perfil AG del usuario actual ──────────────────────────────
@@ -722,16 +722,25 @@ export class AndaGanaService {
 
   // ── Trip offers — driver ──────────────────────────────────────
   /** Solicitudes de viaje en estado "searching" compatibles con el tipo de vehículo */
-  async getSearchingRequests(vehicleType?: string): Promise<AgTripRequest[]> {
+  async getSearchingRequests(vehicleType?: string, lat?: number, lng?: number, maxKm = 50): Promise<AgTripRequest[]> {
     let query = this.supabase
       .from('ag_trip_requests')
       .select('*, ag_users(*)')
       .eq('status', 'searching')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     if (vehicleType) query = query.eq('vehicle_type', vehicleType);
     const { data } = await query;
-    return (data ?? []) as AgTripRequest[];
+    const reqs = (data ?? []) as AgTripRequest[];
+    if (!lat || !lng) return reqs;
+    return reqs.filter(r => {
+      if (!r.origin_lat || !r.origin_lng) return true;
+      return this._haversine(lat, lng, r.origin_lat, r.origin_lng) <= maxKm;
+    });
+  }
+
+  async updateUserCity(agUserId: string, city: string): Promise<void> {
+    await this.supabase.from('ag_users').update({ city }).eq('id', agUserId);
   }
 
   /** Suscripción realtime a nuevas solicitudes de viaje para el conductor */
@@ -739,6 +748,9 @@ export class AndaGanaService {
     vehicleType: string | undefined,
     onNew: (req: AgTripRequest) => void,
     onUpdate: (req: AgTripRequest) => void,
+    lat?: number,
+    lng?: number,
+    maxKm = 50,
   ): RealtimeChannel {
     const channel = this.supabase
       .channel(`trip-requests-driver-${vehicleType ?? 'all'}-${Date.now()}`)
@@ -749,6 +761,9 @@ export class AndaGanaService {
           const row = payload.new as any;
           if (row.status !== 'searching') return;
           if (vehicleType && row.vehicle_type !== vehicleType) return;
+          if (lat && lng && row.origin_lat && row.origin_lng) {
+            if (this._haversine(lat, lng, row.origin_lat, row.origin_lng) > maxKm) return;
+          }
           const { data } = await this.supabase
             .from('ag_trip_requests').select('*, ag_users(*)').eq('id', row.id).single();
           if (data) onNew(data as AgTripRequest);
@@ -898,12 +913,10 @@ export class AndaGanaService {
     await this.supabase.from('ag_drivers').update({ ...prefs, updated_at: new Date().toISOString() }).eq('id', driverId);
   }
 
-  // Crea el registro de pago en BD y devuelve formAction + formFields firmados.
-  // El frontend hace un form POST directo a secure.epayco.co (sin checkout.js).
-  async createWalletRechargeParams(amount: number): Promise<{ formAction: string; formFields: Record<string, string> }> {
+  async createWalletRecharge(amount: number): Promise<Record<string, unknown>> {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) throw new Error('Sin sesión activa');
-    const res = await fetch('/api/wallet/topup', {
+    const res = await fetch(`${environment.andaGana.functionsBaseUrl}/ag-create-wallet-recharge`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -913,8 +926,7 @@ export class AndaGanaService {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? 'Error al iniciar el pago');
-    if (!data.formFields) throw new Error('No se recibieron los parámetros de pago');
-    return { formAction: data.formAction, formFields: data.formFields };
+    return data as Record<string, unknown>;
   }
 
   async signOut(): Promise<void> {
@@ -1265,6 +1277,19 @@ export class AndaGanaService {
 
   async listDriverWithdrawals(driverId: string): Promise<any[]> {
     const { data } = await this.supabase.from('ag_withdrawals').select('*').eq('driver_id', driverId).order('created_at', { ascending: false }).limit(100);
+    return data ?? [];
+  }
+
+  async requestReferralWithdrawal(agUserId: string, amount: number, method: 'bank_ahorros'|'bank_corriente'|'nequi'|'daviplata', details: Record<string, string>): Promise<string> {
+    const { data, error } = await this.supabase.rpc('ag_request_referral_withdrawal', {
+      p_user_id: agUserId, p_amount: amount, p_method: method, p_details: details,
+    });
+    if (error) throw error;
+    return data as string;
+  }
+
+  async listReferralWithdrawals(agUserId: string): Promise<any[]> {
+    const { data } = await this.supabase.from('ag_referral_withdrawal_requests').select('*').eq('ag_user_id', agUserId).order('created_at', { ascending: false }).limit(20);
     return data ?? [];
   }
 

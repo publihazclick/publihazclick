@@ -7,6 +7,7 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://www.publihazclick.com/anda-gana',
     cleartext: true,
+    allowNavigation: ['*.epayco.co', 'secure.epayco.co'],
   },
   plugins: {
     SplashScreen: {

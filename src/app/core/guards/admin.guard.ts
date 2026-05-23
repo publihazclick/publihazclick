@@ -36,7 +36,7 @@ export const adminGuard: CanActivateFn = async (route, state) => {
       return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
     }
 
-    if (profile.role !== 'admin' && profile.role !== 'dev') {
+    if (!['admin', 'dev'].includes(profile.role)) {
       return router.createUrlTree(['/unauthorized']);
     }
 

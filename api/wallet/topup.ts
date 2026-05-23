@@ -121,19 +121,20 @@ export default async function handler(req: any, res: any) {
 
     // ── 5. Calcular firma para form POST a secure.epayco.co ───────────────────
     // Fórmula: SHA256(p_cust_id^p_key^invoice^amount^tax^tax_base^currency^test)
-    const testRequest = 'FALSE';
-    const sigStr = [P_CUST_ID, P_KEY, invoice, String(amt), '0', '0', 'COP', testRequest].join('^');
+    // p_test_request: '0' = producción, '1' = pruebas (ePayco usa 0/1, no TRUE/FALSE)
+    // p_amount en formato decimal con 2 cifras para evitar mismatch en la firma
+    const testRequest = '0';
+    const amountStr = amt.toFixed(2);
+    const sigStr = [P_CUST_ID, P_KEY, invoice, amountStr, '0', '0', 'COP', testRequest].join('^');
     const signature = sha256(sigStr);
 
     // ── 6. Devolver campos del formulario ─────────────────────────────────────
-    // El frontend crea un <form> con estos campos y lo envía a formAction.
-    // No se usa checkout.js — funciona en cualquier WebView/Capacitor.
     const formFields = {
       p_cust_id_cliente:  P_CUST_ID,
-      p_key:              P_KEY,   // requerido por secure.epayco.co/payment/process
+      p_key:              P_KEY,
       p_id_invoice:       invoice,
       p_description:      `Recarga Movi - ${agUser.full_name ?? 'Conductor'}`,
-      p_amount:           String(amt),
+      p_amount:           amountStr,
       p_tax:              '0',
       p_tax_base:         '0',
       p_currency_code:    'COP',

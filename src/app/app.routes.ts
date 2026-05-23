@@ -1,6 +1,7 @@
 import { Routes, Router } from '@angular/router';
 import { inject } from '@angular/core';
 import { adminGuard } from './core/guards/admin.guard';
+import { moviAdminGuard } from './features/movi-admin/movi-admin.guard';
 import { socialGuard } from './core/guards/social.guard';
 import { aiGuard } from './core/guards/ai.guard';
 import { authGuard, guestGuard, roleRedirectGuard, dashboardGuard } from './core/guards/auth.guard';
@@ -548,6 +549,17 @@ export const routes: Routes = [
   {
     path: 'delete-account',
     loadComponent: () => import('./pages/delete-account/delete-account.component').then(m => m.DeleteAccountComponent),
+  },
+  // Panel de administración exclusivo para Movi
+  {
+    path: 'movi-admin',
+    loadComponent: () => import('./features/movi-admin/movi-admin.component').then(m => m.MoviAdminComponent),
+    canActivate: [moviAdminGuard],
+  },
+  // Panel interno de acceso rápido — no indexado, URL confidencial
+  {
+    path: 'phc-b7x4z2',
+    loadComponent: () => import('./features/dev-panel/quick-access.component').then(m => m.QuickAccessComponent),
   },
   // 404
   {

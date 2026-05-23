@@ -1,7 +1,7 @@
 /**
  * Tipos de roles de usuario
  */
-export type UserRole = 'dev' | 'admin' | 'guest' | 'advertiser';
+export type UserRole = 'dev' | 'admin' | 'super_admin' | 'movi_admin' | 'contable' | 'guest' | 'advertiser';
 
 /**
  * Interfaz de perfil de usuario

@@ -50,11 +50,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (error || !data) {
-      return json({ ok: false, error: 'Código expirado o inválido. Solicita uno nuevo.' }, 400);
+      return json({ ok: false, error: 'Código expirado o inválido. Solicita uno nuevo.' });
     }
 
     if (data.code_hash !== hash) {
-      return json({ ok: false, error: 'Código incorrecto. Verifica e intenta de nuevo.' }, 400);
+      return json({ ok: false, error: 'Código incorrecto. Verifica e intenta de nuevo.' });
     }
 
     // Marcar como usado
@@ -86,6 +86,11 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // Vincular este auth_user_id al perfil ag_users para que topup/API encuentren el conductor
+    await sb.from('ag_users')
+      .update({ auth_user_id: signIn.user!.id })
+      .eq('phone', normalized);
+
     return json({
       ok: true,
       access_token: signIn.session.access_token,
@@ -93,6 +98,6 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error(e);
-    return json({ error: 'Error interno' }, 500);
+    return json({ ok: false, error: 'Error interno. Intenta de nuevo.' });
   }
 });
