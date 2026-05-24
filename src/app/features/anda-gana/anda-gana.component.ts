@@ -7370,11 +7370,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const feature = data.features?.[0];
       this.currentAddress.set(feature?.place_name ?? '');
 
-      // Extraer barrio/sector del contexto
+      // Extraer barrio/sector del contexto (varios prefijos según país/ciudad)
       if (feature) {
         const ctx = feature.context ?? [];
-        const barrio = ctx.find((c: any) => c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.'));
-        this.currentNeighborhood.set(barrio?.text ?? '');
+        const barrio = ctx.find((c: any) =>
+          c.id?.startsWith('neighborhood.') ||
+          c.id?.startsWith('locality.')     ||
+          c.id?.startsWith('district.')     ||
+          c.id?.startsWith('suburb.')
+        );
+        // Fallback: si no hay barrio específico, usar el texto del propio feature si es poi/address
+        const fallback = (!barrio && feature.id?.startsWith('poi.'))
+          ? ctx.find((c: any) => c.id?.startsWith('place.'))
+          : null;
+        this.currentNeighborhood.set(barrio?.text ?? fallback?.text ?? '');
       }
 
       // Extraer ciudad del contexto y actualizar si el conductor cambió de ciudad
