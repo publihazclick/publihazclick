@@ -8683,7 +8683,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           alert('Se perdió el acceso al GPS. Te pusimos fuera de línea.');
         }
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
     );
 
     // Background tracking con Capacitor (solo app nativa Android/iOS)
