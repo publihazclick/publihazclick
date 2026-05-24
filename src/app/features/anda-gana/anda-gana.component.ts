@@ -533,7 +533,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   @if (addressQuery().trim().length > 0) {
                     <div class="flex items-center gap-1 flex-shrink-0">
-                      <button (click)="addressQuery.set(''); addressSuggestions.set([])"
+                      <button (click)="clearAddressQuery()"
                         class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
                         <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
                       </button>
@@ -2831,7 +2831,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   @if (addressQuery().trim().length > 0) {
                     <div class="flex items-center gap-1 flex-shrink-0">
-                      <button (click)="addressQuery.set(''); addressSuggestions.set([])"
+                      <button (click)="clearAddressQuery()"
                         class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
                         <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
                       </button>
@@ -7229,6 +7229,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   closeAddressEdit() {
     this.addressEditMode.set(false);
+    this.addressQuery.set('');
+    this.addressSuggestions.set([]);
+  }
+
+  clearAddressQuery() {
     this.addressQuery.set('');
     this.addressSuggestions.set([]);
   }
