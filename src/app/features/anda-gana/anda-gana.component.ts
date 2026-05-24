@@ -8670,7 +8670,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Tracking continuo — solo actualizar con lecturas de precisión real
     this._gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
-        if (pos.coords.accuracy > 50) return; // rechazar lecturas de red imprecisas
+        if (pos.coords.accuracy > 50) return; // rechazar lecturas de red imprecisas (>50m)
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
         this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude);
       },
