@@ -8664,7 +8664,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.agService.setDriverOnline(driverId, false);
         }
       },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
     );
 
     // Tracking continuo — solo actualizar con lecturas de precisión real
