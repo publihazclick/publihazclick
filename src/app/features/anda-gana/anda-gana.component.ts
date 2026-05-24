@@ -8649,7 +8649,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       return;
     }
 
-    // Enviar posición inicial solo si la precisión es real (no lectura de red/IP)
+    // Enviar posición inicial solo si la precisión es real (≤50m, no lectura de red/IP)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (pos.coords.accuracy <= 50) {
