@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed, inject, OnInit, OnDestroy, PLATFORM_ID, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -523,8 +523,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="flex flex-col bg-white rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
                 <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
                   <span class="material-symbols-outlined text-orange-500" style="font-size:20px">search</span>
-                  <input #addressInput
-                    [value]="addressQuery()"
+                  <input #addrInput
                     (input)="onAddressInput($any($event.target).value)"
                     (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
@@ -2822,7 +2821,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="flex flex-col bg-white rounded-2xl shadow-xl shadow-black/20 overflow-hidden">
                 <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
                   <span class="material-symbols-outlined text-cyan-500" style="font-size:20px">search</span>
-                  <input [value]="addressQuery()"
+                  <input #addrInput
                     (input)="onAddressInput($any($event.target).value)"
                     (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
@@ -6122,6 +6121,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   addressEditMode    = signal(false);
   addressQuery       = signal('');
   addressSuggestions = signal<any[]>([]);
+  @ViewChild('addrInput') addrInputRef?: ElementRef<HTMLInputElement>;
   addressNoResults   = signal(false);  // true cuando la búsqueda terminó sin resultados
   originEditOpen     = signal(false);  // edición inline del punto de origen
   private _addressDebounceTimer: any = null;
@@ -7236,6 +7236,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   clearAddressQuery() {
     this.addressQuery.set('');
     this.addressSuggestions.set([]);
+    if (this.addrInputRef?.nativeElement) this.addrInputRef.nativeElement.value = '';
   }
 
   handlePaste(event: ClipboardEvent, type: 'address' | 'trip') {
