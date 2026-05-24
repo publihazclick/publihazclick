@@ -6827,7 +6827,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       (pos) => {
         // Rechazar lecturas imprecisas (IP de red o WiFi lejano ubican en ciudad del servidor)
         // >300m = posición de red, no GPS real del dispositivo
-        if (pos.coords.accuracy > 300) return;
+        if (pos.coords.accuracy > 50) return;
 
         const now = Date.now();
         // Throttle: ignorar actualizaciones más rápidas de 5 s (excepto el primer fix real)
