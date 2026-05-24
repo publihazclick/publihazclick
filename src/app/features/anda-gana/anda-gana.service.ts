@@ -837,7 +837,7 @@ export class AndaGanaService {
       .select('value')
       .eq('key', 'ag_distance_filter')
       .maybeSingle();
-    return parseInt(data?.value ?? '20', 10);
+    return parseInt(data?.value ?? '50', 10);
   }
 
   async setDistanceFilter(meters: number): Promise<boolean> {
