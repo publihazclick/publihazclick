@@ -510,6 +510,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
                   } @else if (currentAddress()) {
                     <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
+                    @if (currentNeighborhood()) {
+                      <p class="text-orange-500 text-xs font-medium truncate mt-0.5">{{ currentNeighborhood() }}</p>
+                    }
                   } @else {
                     <p class="text-slate-500 text-sm">Dirección no disponible</p>
                   }
@@ -525,12 +528,30 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     (input)="onAddressInput($any($event.target).value)"
                     (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
-                    placeholder="Busca o pega tu dirección..."
+                    placeholder="Escribe tu dirección exacta de recogida..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   <button (click)="closeAddressEdit()" class="flex-shrink-0">
                     <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                   </button>
                 </div>
+                @if (addressSuggestions().length > 0) {
+                  <div class="flex flex-col divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                    @for (s of addressSuggestions(); track s.place_id) {
+                      <button (click)="selectAddress(s)"
+                        class="flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors">
+                        <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                          @if (s.place_name) {
+                            <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
+                          }
+                        </div>
+                      </button>
+                    }
+                  </div>
+                } @else if (addressNoResults()) {
+                  <p class="text-slate-400 text-xs text-center py-3">Sin resultados. Intenta con otra dirección.</p>
+                }
               </div>
             }
 
@@ -6043,13 +6064,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Mapa / GPS
   noDriversNearby = signal(false);
   gpsStatus      = signal<GpsStatus>('idle');
-  currentAddress = signal('');
+  currentAddress      = signal('');
+  currentNeighborhood = signal('');
   addressLoading = signal(false);
   addressEditMode    = signal(false);
   addressQuery       = signal('');
   addressSuggestions = signal<any[]>([]);
   addressNoResults   = signal(false);  // true cuando la búsqueda terminó sin resultados
   originEditOpen     = signal(false);  // edición inline del punto de origen
+  private _addressDebounceTimer: any = null;
 
   // Trip request
   tripOpen        = signal(false);
@@ -7179,6 +7202,45 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   onAddressInput(query: string) {
     this.addressQuery.set(query);
+    this.addressNoResults.set(false);
+    if (query.trim().length < 3) { this.addressSuggestions.set([]); return; }
+    clearTimeout(this._addressDebounceTimer);
+    this._addressDebounceTimer = setTimeout(() => this._searchAddressSuggestions(query), 300);
+  }
+
+  private async _searchAddressSuggestions(query: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const sdkOk = await this._loadGoogleMapsSDK();
+    if (!sdkOk) return;
+    if (!this._autocompleteService) this._initGooglePlaces();
+    const request: any = {
+      input: query,
+      componentRestrictions: { country: 'co' },
+      sessionToken: this._placesSessionToken,
+    };
+    if (this._gpsRealFix) {
+      const gmaps = (window as any).google.maps;
+      const d = 0.45;
+      request.bounds = new gmaps.LatLngBounds(
+        new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
+        new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
+      );
+    }
+    this._autocompleteService.getPlacePredictions(request, (predictions: any[], status: string) => {
+      if (status !== 'OK' || !predictions?.length) {
+        this.addressSuggestions.set([]);
+        this.addressNoResults.set(true);
+        this.cdr.markForCheck();
+        return;
+      }
+      this.addressSuggestions.set(predictions.slice(0, 5).map((p: any) => ({
+        place_id:   p.place_id,
+        text:       p.structured_formatting?.main_text ?? p.description,
+        place_name: p.structured_formatting?.secondary_text ?? '',
+      })));
+      this.addressNoResults.set(false);
+      this.cdr.markForCheck();
+    });
   }
 
 
@@ -7245,9 +7307,36 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
   }
 
-  selectAddress(feature: any) {
+  async selectAddress(feature: any) {
     this.closeAddressEdit();
     this.originEditOpen.set(false);
+    if (!feature?.place_id) return;
+    try {
+      if (!this._placesService) this._initGooglePlaces();
+      const gmaps = (window as any).google?.maps;
+      if (!gmaps) return;
+      const pos = await new Promise<{ lat: number; lng: number }>((resolve, reject) => {
+        this._placesService.getDetails(
+          { placeId: feature.place_id, fields: ['geometry'] },
+          (res: any, status: string) => {
+            if (status !== 'OK' || !res?.geometry?.location) { reject(status); return; }
+            resolve({ lat: res.geometry.location.lat(), lng: res.geometry.location.lng() });
+          }
+        );
+      });
+      this._currentLat  = pos.lat;
+      this._currentLng  = pos.lng;
+      this._gpsRealFix  = true;
+      this._lastNotifiedLat = pos.lat;
+      this._lastNotifiedLng = pos.lng;
+      this.currentAddress.set(`${feature.text}${feature.place_name ? ', ' + feature.place_name : ''}`);
+      this.currentNeighborhood.set('');
+      if (this._map) {
+        this._map.easeTo({ center: [pos.lng, pos.lat], zoom: 16, duration: 800 });
+        this._userMarker?.setLngLat([pos.lng, pos.lat]);
+      }
+      this.cdr.markForCheck();
+    } catch (e) { console.warn('selectAddress error', e); }
   }
 
 
@@ -7260,6 +7349,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const data = await res.json();
       const feature = data.features?.[0];
       this.currentAddress.set(feature?.place_name ?? '');
+
+      // Extraer barrio/sector del contexto
+      if (feature) {
+        const ctx = feature.context ?? [];
+        const barrio = ctx.find((c: any) => c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.'));
+        this.currentNeighborhood.set(barrio?.text ?? '');
+      }
 
       // Extraer ciudad del contexto y actualizar si el conductor cambió de ciudad
       if (feature) {
