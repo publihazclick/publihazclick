@@ -7065,7 +7065,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             if (bestPos && bestPos.coords.accuracy <= 50) resolve(bestPos);
             else reject(err);
           },
-          { enableHighAccuracy: true, timeout: 25000, maximumAge: 5000 }
+          { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
         );
 
         // Hard timeout de 20s: aceptar solo si tenemos lectura con precisión real (≤50m)
