@@ -6874,7 +6874,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         }
         // En cualquier error se mantiene _currentLat/_currentLng anteriores
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
     );
   }
 
