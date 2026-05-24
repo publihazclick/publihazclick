@@ -552,6 +552,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 } @else if (addressNoResults()) {
                   <p class="text-slate-400 text-xs text-center py-3">Sin resultados. Intenta con otra dirección.</p>
                 }
+                @if (addressQuery().trim().length > 0) {
+                  <button (click)="saveManualAddress()"
+                    class="flex items-center justify-center gap-2 w-full py-3 font-black text-sm uppercase tracking-widest transition-all"
+                    style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
+                    <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
+                    Guardar dirección
+                  </button>
+                }
               </div>
             }
 
@@ -7206,6 +7214,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (query.trim().length < 3) { this.addressSuggestions.set([]); return; }
     clearTimeout(this._addressDebounceTimer);
     this._addressDebounceTimer = setTimeout(() => this._searchAddressSuggestions(query), 300);
+  }
+
+  saveManualAddress() {
+    const q = this.addressQuery().trim();
+    if (!q) return;
+    this.currentAddress.set(q);
+    this.currentNeighborhood.set('');
+    this.closeAddressEdit();
+    this.originEditOpen.set(false);
+    this.cdr.markForCheck();
   }
 
   private async _searchAddressSuggestions(query: string) {
