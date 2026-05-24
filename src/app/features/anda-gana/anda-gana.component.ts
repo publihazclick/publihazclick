@@ -8652,7 +8652,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Enviar posición inicial solo si la precisión es real (no lectura de red/IP)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (pos.coords.accuracy <= 500) {
+        if (pos.coords.accuracy <= 50) {
           this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
         }
       },
@@ -8670,7 +8670,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Tracking continuo — solo actualizar con lecturas de precisión real
     this._gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
-        if (pos.coords.accuracy > 500) return; // rechazar lecturas de red imprecisas
+        if (pos.coords.accuracy > 50) return; // rechazar lecturas de red imprecisas
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
         this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude);
       },
@@ -8734,7 +8734,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         distanceFilter: 20,
       }, (location: any, error: any) => {
         if (error) { console.error('bg-loc', error); return; }
-        if (location && (location.accuracy == null || location.accuracy <= 500)) {
+        if (location && (location.accuracy == null || location.accuracy <= 50)) {
           this.agService.updateDriverLocation(driverId, location.latitude, location.longitude, location.bearing ?? 0);
         }
       });
