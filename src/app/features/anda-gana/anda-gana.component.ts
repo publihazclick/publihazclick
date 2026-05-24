@@ -2801,7 +2801,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
                   } @else if (currentAddress()) {
                     <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
-                    <p class="text-slate-400 text-xs mt-0.5">Toca para cambiar tu ubicación</p>
+                    @if (currentNeighborhood()) {
+                      <p class="text-orange-500 text-xs font-medium truncate mt-0.5">{{ currentNeighborhood() }}</p>
+                    } @else {
+                      <p class="text-slate-400 text-xs mt-0.5">Toca para cambiar tu ubicación</p>
+                    }
                   } @else {
                     <p class="text-slate-500 text-sm">Dirección no disponible</p>
                     <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu ubicación</p>
@@ -2817,12 +2821,40 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     (input)="onAddressInput($any($event.target).value)"
                     (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
-                    placeholder="Busca o pega tu dirección..."
+                    (keydown.enter)="saveManualAddress()"
+                    placeholder="Escribe tu dirección exacta de recogida..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  <button (click)="closeAddressEdit()">
-                    <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
-                  </button>
+                  @if (addressQuery().trim().length > 0) {
+                    <button (click)="saveManualAddress()"
+                      class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest"
+                      style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
+                      <span class="material-symbols-outlined" style="font-size:14px">check</span>
+                      Guardar
+                    </button>
+                  } @else {
+                    <button (click)="closeAddressEdit()">
+                      <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                    </button>
+                  }
                 </div>
+                @if (addressSuggestions().length > 0) {
+                  <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                    @for (s of addressSuggestions(); track s.place_id) {
+                      <button (click)="selectAddress(s)"
+                        class="flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors">
+                        <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                          @if (s.place_name) {
+                            <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
+                          }
+                        </div>
+                      </button>
+                    }
+                  </div>
+                } @else if (addressNoResults()) {
+                  <p class="text-slate-400 text-xs text-center py-3">Sin resultados. Intenta con otra dirección.</p>
+                }
               </div>
             }
           </div>
