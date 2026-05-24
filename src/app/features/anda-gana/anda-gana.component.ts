@@ -7051,8 +7051,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             if (!bestPos || p.coords.accuracy < bestPos.coords.accuracy) {
               bestPos = p;
             }
-            // Aceptar de inmediato solo si la precisión es real (≤100m = GPS real, no IP)
-            if (p.coords.accuracy <= 100) {
+            // Aceptar de inmediato solo si la precisión es real (≤50m = GPS real, no IP)
+            if (p.coords.accuracy <= 50) {
               done(p);
             }
           },
@@ -7061,19 +7061,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             resolved = true;
             navigator.geolocation.clearWatch(watchId);
             clearTimeout(hardTimer);
-            // Usar mejor lectura solo si tiene precisión aceptable (<1000m)
-            if (bestPos && bestPos.coords.accuracy < 1000) resolve(bestPos);
+            // Usar mejor lectura solo si tiene precisión aceptable (≤50m)
+            if (bestPos && bestPos.coords.accuracy <= 50) resolve(bestPos);
             else reject(err);
           },
           { enableHighAccuracy: true, timeout: 25000, maximumAge: 5000 }
         );
 
-        // Hard timeout de 20s: aceptar solo si tenemos lectura con precisión real (<800m)
+        // Hard timeout de 20s: aceptar solo si tenemos lectura con precisión real (≤50m)
         const hardTimer = setTimeout(() => {
           if (resolved) return;
           resolved = true;
           navigator.geolocation.clearWatch(watchId);
-          if (bestPos && bestPos.coords.accuracy < 800) resolve(bestPos);
+          if (bestPos && bestPos.coords.accuracy <= 50) resolve(bestPos);
           else reject(new Error('GPS timeout'));
         }, 20000);
       });
