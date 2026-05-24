@@ -533,10 +533,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   @if (addressQuery().trim().length > 0) {
                     <button (click)="saveManualAddress()"
-                      class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest"
-                      style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
-                      <span class="material-symbols-outlined" style="font-size:14px">check</span>
-                      Guardar
+                      class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full"
+                      style="background:#16a34a">
+                      <span class="material-symbols-outlined text-white" style="font-size:20px">check</span>
                     </button>
                   } @else {
                     <button (click)="closeAddressEdit()" class="flex-shrink-0">
@@ -2826,10 +2825,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   @if (addressQuery().trim().length > 0) {
                     <button (click)="saveManualAddress()"
-                      class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest"
-                      style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
-                      <span class="material-symbols-outlined" style="font-size:14px">check</span>
-                      Guardar
+                      class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full"
+                      style="background:#16a34a">
+                      <span class="material-symbols-outlined text-white" style="font-size:20px">check</span>
                     </button>
                   } @else {
                     <button (click)="closeAddressEdit()">
