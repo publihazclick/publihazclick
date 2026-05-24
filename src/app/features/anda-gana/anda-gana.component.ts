@@ -532,11 +532,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     placeholder="Escribe tu dirección exacta de recogida..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   @if (addressQuery().trim().length > 0) {
-                    <button (click)="saveManualAddress()"
-                      class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full"
-                      style="background:#16a34a">
-                      <span class="material-symbols-outlined text-white" style="font-size:20px">check</span>
-                    </button>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <button (click)="addressQuery.set(''); addressSuggestions.set([])"
+                        class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
+                        <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
+                      </button>
+                      <button (click)="saveManualAddress()"
+                        class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
+                        style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
+                        <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
+                      </button>
+                    </div>
                   } @else {
                     <button (click)="closeAddressEdit()" class="flex-shrink-0">
                       <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
@@ -2824,11 +2830,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     placeholder="Escribe tu dirección exacta de recogida..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                   @if (addressQuery().trim().length > 0) {
-                    <button (click)="saveManualAddress()"
-                      class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full"
-                      style="background:#16a34a">
-                      <span class="material-symbols-outlined text-white" style="font-size:20px">check</span>
-                    </button>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <button (click)="addressQuery.set(''); addressSuggestions.set([])"
+                        class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
+                        <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
+                      </button>
+                      <button (click)="saveManualAddress()"
+                        class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
+                        style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
+                        <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
+                      </button>
+                    </div>
                   } @else {
                     <button (click)="closeAddressEdit()">
                       <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
