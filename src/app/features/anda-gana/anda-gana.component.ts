@@ -6815,6 +6815,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   /**
    * Inicia watchPosition continuo para pasajeros.
+   * Rechaza lecturas con precisión > 50m (red/IP).
    * Solo actualiza la proximidad de búsqueda si el usuario se movió > 500 m.
    * Throttle de 5 s para no spamear el GPS.
    */
