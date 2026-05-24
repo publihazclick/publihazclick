@@ -11149,9 +11149,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
           const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
             navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 8000 })
           );
-          lat = pos.coords.latitude;
-          lng = pos.coords.longitude;
-          accuracy = pos.coords.accuracy;
+          if (pos.coords.accuracy <= 50) {
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+            accuracy = pos.coords.accuracy;
+          }
         } catch {}
       }
       // Sincronizar contactos locales con DB antes (si no están)
