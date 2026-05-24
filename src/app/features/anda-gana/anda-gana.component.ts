@@ -6837,14 +6837,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
         const { latitude: lat, longitude: lng } = pos.coords;
 
-        // Solo actuar si el usuario se movió más de 500 m (una vez que ya tenemos fix real)
+        // Solo actuar si el usuario se movió más de 20 m (una vez que ya tenemos fix real)
         if (this._gpsRealFix) {
           const moved = this._distMeters(
             this._lastNotifiedLat || this._currentLat,
             this._lastNotifiedLng || this._currentLng,
             lat, lng
           );
-          if (moved < 500 && this._lastNotifiedLat !== 0) return;
+          if (moved < 20 && this._lastNotifiedLat !== 0) return;
         }
 
         // Actualizar posición global con lectura GPS real
