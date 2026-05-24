@@ -7075,7 +7075,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           navigator.geolocation.clearWatch(watchId);
           if (bestPos && bestPos.coords.accuracy <= 50) resolve(bestPos);
           else reject(new Error('GPS timeout'));
-        }, 20000);
+        }, 30000);
       });
 
       lat = pos.coords.latitude;
