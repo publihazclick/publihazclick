@@ -6826,7 +6826,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._passengerWatchId = navigator.geolocation.watchPosition(
       (pos) => {
         // Rechazar lecturas imprecisas (IP de red o WiFi lejano ubican en ciudad del servidor)
-        // >300m = posición de red, no GPS real del dispositivo
+        // >50m = posición de red, no GPS real del dispositivo
         if (pos.coords.accuracy > 50) return;
 
         const now = Date.now();
