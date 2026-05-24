@@ -326,6 +326,62 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         }
       </div>
 
+      <!-- Filtro distancia GPS conductor -->
+      <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-5 flex flex-col gap-5">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:20px">my_location</span>
+          </div>
+          <div>
+            <p class="text-white font-black text-sm">Filtro de distancia GPS (conductor)</p>
+            <p class="text-slate-500 text-xs leading-relaxed">Metros mínimos que debe moverse el conductor para enviar una actualización de posición en background. Valores bajos = más precisión, más batería. Rango: 5–500 m.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-center">
+          <div class="flex flex-col items-center gap-1 px-8 py-4 rounded-2xl"
+            style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
+            <p class="text-emerald-300 font-black text-5xl">{{ distanceFilter() }}<span class="text-2xl">m</span></p>
+            <p class="text-slate-500 text-xs">Filtro actual</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex justify-between text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+            <span>5m</span><span>100m</span><span>200m</span><span>500m</span>
+          </div>
+          <input type="range" min="5" max="500" step="5"
+            [value]="distanceFilter()"
+            (input)="distanceFilter.set(+$any($event.target).value)"
+            class="w-full h-2 rounded-full appearance-none cursor-pointer"
+            style="accent-color:#10b981"/>
+        </div>
+
+        <div class="flex gap-2 flex-wrap">
+          @for (m of [5,10,20,50,100,200]; track m) {
+            <button (click)="distanceFilter.set(m)"
+              class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+              [class]="distanceFilter() === m ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+              [style]="distanceFilter() !== m ? 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)' : ''">
+              {{ m }}m
+            </button>
+          }
+        </div>
+
+        <button (click)="saveDistanceFilter()"
+          [disabled]="savingDistance()"
+          class="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
+          @if (savingDistance()) {
+            <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Guardando…
+          } @else {
+            <span class="material-symbols-outlined" style="font-size:16px">save</span> Guardar filtro
+          }
+        </button>
+
+        <p class="text-slate-500 text-xs text-center">Aplica al iniciar la sesión del conductor. Requiere reiniciar la app para tomar efecto.</p>
+      </div>
+
     </div>
   }
 
@@ -590,6 +646,8 @@ export class AndaGanaAdminComponent implements OnInit {
   commissionPct    = signal(0);
   savingCommission = signal(false);
   exampleCommission = computed(() => Math.ceil(10000 * this.commissionPct() / 100));
+  distanceFilter   = signal(20);
+  savingDistance   = signal(false);
 
   // SOS + Viajes activos
   sosEvents      = signal<any[]>([]);
@@ -618,7 +676,7 @@ export class AndaGanaAdminComponent implements OnInit {
 
   async ngOnInit() {
     await this.load();
-    await Promise.all([this.loadCommission(), this.loadSos(), this.loadPendingWithdrawalsCount()]);
+    await Promise.all([this.loadCommission(), this.loadDistanceFilter(), this.loadSos(), this.loadPendingWithdrawalsCount()]);
   }
 
   async loadPendingWithdrawalsCount(): Promise<void> {
@@ -696,6 +754,17 @@ export class AndaGanaAdminComponent implements OnInit {
     this.savingCommission.set(true);
     await this.agService.setCommissionPct(this.commissionPct());
     this.savingCommission.set(false);
+  }
+
+  async loadDistanceFilter() {
+    const m = await this.agService.getDistanceFilter();
+    this.distanceFilter.set(m);
+  }
+
+  async saveDistanceFilter() {
+    this.savingDistance.set(true);
+    await this.agService.setDistanceFilter(this.distanceFilter());
+    this.savingDistance.set(false);
   }
 
   formatCOP(amount: number): string {

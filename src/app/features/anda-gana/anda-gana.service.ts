@@ -831,6 +831,23 @@ export class AndaGanaService {
     return !error;
   }
 
+  async getDistanceFilter(): Promise<number> {
+    const { data } = await this.supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'ag_distance_filter')
+      .maybeSingle();
+    return parseInt(data?.value ?? '20', 10);
+  }
+
+  async setDistanceFilter(meters: number): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('platform_settings')
+      .upsert({ key: 'ag_distance_filter', value: String(Math.max(5, Math.min(500, meters))) },
+               { onConflict: 'key' });
+    return !error;
+  }
+
   // ── Billetera conductor ───────────────────────────────────────
   async getDriverWalletBalance(driverId: string): Promise<number> {
     const { data } = await this.supabase

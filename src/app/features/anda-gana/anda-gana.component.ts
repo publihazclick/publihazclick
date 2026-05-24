@@ -8726,12 +8726,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (!cap?.isNativePlatform?.()) return; // solo nativa
       const BackgroundGeolocation = cap.Plugins?.BackgroundGeolocation;
       if (!BackgroundGeolocation) return;
+      const distanceFilter = await this.agService.getDistanceFilter();
       this._bgWatcherId = await BackgroundGeolocation.addWatcher({
         backgroundMessage: 'Movi Conductor: tracking activo',
         backgroundTitle: 'Recibiendo solicitudes',
         requestPermissions: true,
         stale: false,
-        distanceFilter: 20,
+        distanceFilter,
       }, (location: any, error: any) => {
         if (error) { console.error('bg-loc', error); return; }
         if (location && (location.accuracy == null || location.accuracy <= 50)) {
