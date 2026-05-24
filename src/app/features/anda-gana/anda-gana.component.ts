@@ -528,14 +528,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     (input)="onAddressInput($any($event.target).value)"
                     (paste)="handlePaste($any($event), 'address')"
                     (keydown.escape)="closeAddressEdit()"
+                    (keydown.enter)="saveManualAddress()"
                     placeholder="Escribe tu dirección exacta de recogida..."
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  <button (click)="closeAddressEdit()" class="flex-shrink-0">
-                    <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
-                  </button>
+                  @if (addressQuery().trim().length > 0) {
+                    <button (click)="saveManualAddress()"
+                      class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest"
+                      style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
+                      <span class="material-symbols-outlined" style="font-size:14px">check</span>
+                      Guardar
+                    </button>
+                  } @else {
+                    <button (click)="closeAddressEdit()" class="flex-shrink-0">
+                      <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                    </button>
+                  }
                 </div>
                 @if (addressSuggestions().length > 0) {
-                  <div class="flex flex-col divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                  <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
                     @for (s of addressSuggestions(); track s.place_id) {
                       <button (click)="selectAddress(s)"
                         class="flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors">
@@ -551,14 +561,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                 } @else if (addressNoResults()) {
                   <p class="text-slate-400 text-xs text-center py-3">Sin resultados. Intenta con otra dirección.</p>
-                }
-                @if (addressQuery().trim().length > 0) {
-                  <button (click)="saveManualAddress()"
-                    class="flex items-center justify-center gap-2 w-full py-3 font-black text-sm uppercase tracking-widest transition-all"
-                    style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
-                    <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
-                    Guardar dirección
-                  </button>
                 }
               </div>
             }
