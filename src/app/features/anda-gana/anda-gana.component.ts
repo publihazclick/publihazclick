@@ -7068,7 +7068,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
         );
 
-        // Hard timeout de 20s: aceptar solo si tenemos lectura con precisión real (≤50m)
+        // Hard timeout de 30s: aceptar solo si tenemos lectura con precisión real (≤50m)
         const hardTimer = setTimeout(() => {
           if (resolved) return;
           resolved = true;
