@@ -861,15 +861,56 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     Ver mapa completo
                   </button>
                 </div>
+                <!-- ETA en vivo -->
+                @if (acceptedDriverEta() !== null) {
+                  <div class="rounded-2xl flex items-center gap-3 px-4 py-3"
+                    style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe">
+                    <span class="material-symbols-outlined text-blue-600 animate-pulse" style="font-size:22px;font-variation-settings:'FILL' 1">directions_car</span>
+                    <div class="flex-1">
+                      <p class="text-blue-800 font-black text-sm">
+                        {{ acceptedDriverEta() === 0 ? '¡Tu conductor llegó!' : 'Llega en ' + acceptedDriverEta() + ' min' }}
+                      </p>
+                      <p class="text-blue-600 text-xs">Ubicación en tiempo real</p>
+                    </div>
+                    @if (acceptedDriverEta() === 0) {
+                      <span class="material-symbols-outlined text-emerald-600" style="font-size:20px;font-variation-settings:'FILL' 1">check_circle</span>
+                    }
+                  </div>
+                }
+
+                <!-- Banner "Conductor llegó — sal ya" con countdown -->
+                @if (arrivedAtPickupTimer() !== null) {
+                  <div class="rounded-2xl flex items-center gap-3 px-4 py-3"
+                    style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #6ee7b7;box-shadow:0 4px 16px rgba(16,185,129,0.2)">
+                    <span class="material-symbols-outlined text-emerald-600" style="font-size:26px;font-variation-settings:'FILL' 1">directions_car</span>
+                    <div class="flex-1">
+                      <p class="text-emerald-800 font-black text-sm">¡Tu conductor llegó!</p>
+                      <p class="text-emerald-700 text-xs">Sal a recibirlo — está esperando</p>
+                    </div>
+                    <div class="flex flex-col items-center">
+                      <p class="text-emerald-700 font-black text-lg leading-none">
+                        {{ padTime(arrivedAtPickupTimer()!) }}
+                      </p>
+                      <p class="text-emerald-600 text-[10px]">espera</p>
+                    </div>
+                  </div>
+                }
+
                 <!-- Datos del conductor -->
                 <div class="rounded-2xl flex flex-col gap-3 px-4 py-4"
                   style="background:#fff;border:1px solid #e2e8f0">
                   <!-- Nombre + precio -->
                   <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                      style="background:linear-gradient(135deg,#f97316,#fb923c)">
-                      <span class="material-symbols-outlined text-white" style="font-size:24px">person</span>
-                    </div>
+                    @if (tripAccepted()!.ag_drivers?.ag_users?.selfie_url) {
+                      <img [src]="tripAccepted()!.ag_drivers!.ag_users!.selfie_url"
+                        class="w-12 h-12 rounded-2xl object-cover flex-shrink-0"
+                        style="border:2px solid #e2e8f0" />
+                    } @else {
+                      <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                        style="background:linear-gradient(135deg,#f97316,#fb923c)">
+                        <span class="material-symbols-outlined text-white" style="font-size:24px">person</span>
+                      </div>
+                    }
                     <div class="flex-1 min-w-0">
                       <p class="text-slate-800 font-black text-sm truncate">
                         {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}
@@ -990,7 +1031,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>
                     Finalizar viaje
                   </button>
-                  <button (click)="cancelTrip()"
+                  <button (click)="openCancelWithReason('passenger')"
                     class="px-4 py-2.5 rounded-xl text-slate-500 text-xs font-bold active:scale-[0.98] transition-all"
                     style="background:#f1f5f9;border:1px solid #e2e8f0">
                     Cancelar
@@ -1344,24 +1385,33 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         </div>
                       </div>
 
-                      <!-- Botones Rechazar / Aceptar -->
-                      <div class="grid grid-cols-2 gap-2 px-4 py-3">
-                        <button (click)="rejectOfferCard(offer)"
-                          class="py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all"
-                          style="background:#fef2f2;border:2px solid #fecaca;color:#dc2626">
-                          <span class="material-symbols-outlined" style="font-size:18px">close</span>
-                          Rechazar
-                        </button>
-                        <button (click)="acceptOfferCard(offer)"
-                          [disabled]="acceptingOfferId() === offer.id"
-                          class="py-3.5 rounded-2xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-60"
-                          style="background:linear-gradient(135deg,#16a34a,#15803d);box-shadow:0 4px 16px rgba(22,163,74,0.35)">
-                          @if (acceptingOfferId() === offer.id) {
-                            <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
-                          } @else {
-                            <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
-                          }
-                          Aceptar
+                      <!-- Botones Rechazar / Contraofertar / Aceptar -->
+                      <div class="flex flex-col gap-2 px-4 py-3">
+                        <div class="grid grid-cols-2 gap-2">
+                          <button (click)="rejectOfferCard(offer)"
+                            class="py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all"
+                            style="background:#fef2f2;border:2px solid #fecaca;color:#dc2626">
+                            <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                            Rechazar
+                          </button>
+                          <button (click)="acceptOfferCard(offer)"
+                            [disabled]="acceptingOfferId() === offer.id"
+                            class="py-3.5 rounded-2xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-60"
+                            style="background:linear-gradient(135deg,#16a34a,#15803d);box-shadow:0 4px 16px rgba(22,163,74,0.35)">
+                            @if (acceptingOfferId() === offer.id) {
+                              <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
+                            } @else {
+                              <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+                            }
+                            Aceptar
+                          </button>
+                        </div>
+                        <!-- Contraofertar — propón un precio diferente -->
+                        <button (click)="openCounterOffer(offer)"
+                          class="w-full py-3 rounded-2xl text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all"
+                          style="background:#fff7ed;border:1.5px solid #fed7aa;color:#ea580c">
+                          <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">local_offer</span>
+                          Contraofertar
                         </button>
                       </div>
 
@@ -2757,7 +2807,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
 
       }
-      @if (driverStatus() !== 'rejected') {
+      @if (driverStatus() !== 'rejected' && driverActiveTrips().length === 0) {
         <!-- Solicitudes en vivo -->
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between px-1">
@@ -6203,6 +6253,226 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ MODAL RECIBO DE VIAJE ═══════════ -->
+  @if (tripReceiptModal() && tripReceiptData()) {
+    <div class="fixed inset-0 z-[9995] flex items-end justify-center pb-0"
+      style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px)">
+      <div class="w-full max-w-md rounded-t-3xl overflow-hidden flex flex-col"
+        style="background:#0f1421;border-top:2px solid rgba(16,185,129,0.4);max-height:92dvh">
+
+        <!-- Handle + header -->
+        <div class="flex flex-col items-center gap-2 px-5 pt-5 pb-4 flex-shrink-0"
+          style="border-bottom:1px solid rgba(255,255,255,0.08)">
+          <div class="w-10 h-1 rounded-full mb-1" style="background:rgba(255,255,255,0.18)"></div>
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style="background:linear-gradient(135deg,#059669,#10b981)">
+            <span class="material-symbols-outlined text-white" style="font-size:30px;font-variation-settings:'FILL' 1">receipt_long</span>
+          </div>
+          <p class="text-white font-black text-xl mt-1">Resumen del viaje</p>
+          <p class="text-emerald-400 font-black text-3xl leading-none">
+            {{ formatCOP(tripReceiptData()!.final_price ?? tripReceiptData()!.offered_price ?? 0) }}
+          </p>
+        </div>
+
+        <!-- Detalles -->
+        <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+
+          <!-- Origen → Destino -->
+          <div class="rounded-2xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+            <div class="flex items-start gap-3 px-4 py-3" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+              <span class="material-symbols-outlined text-blue-400 flex-shrink-0 mt-0.5" style="font-size:16px">my_location</span>
+              <div>
+                <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Origen</p>
+                <p class="text-white text-xs font-semibold">{{ tripReceiptData()!.origin_name ?? 'Punto de recogida' }}</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="material-symbols-outlined text-emerald-400 flex-shrink-0 mt-0.5" style="font-size:16px">location_on</span>
+              <div>
+                <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Destino</p>
+                <p class="text-white text-xs font-semibold">{{ tripReceiptData()!.dest_name ?? 'Destino' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Desglose financiero (solo para conductor) -->
+          @if (tripReceiptData()!._role === 'driver' || tripReceiptData()!.commission_pct) {
+            <div class="rounded-2xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <div class="flex items-center justify-between px-4 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <p class="text-slate-400 text-xs">Precio total</p>
+                <p class="text-white font-bold text-xs">{{ formatCOP(tripReceiptData()!.final_price ?? 0) }}</p>
+              </div>
+              @if (tripReceiptData()!.commission_amount > 0) {
+                <div class="flex items-center justify-between px-4 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                  <p class="text-slate-400 text-xs">Comisión Movi ({{ tripReceiptData()!.commission_pct }}%)</p>
+                  <p class="text-rose-400 font-bold text-xs">-{{ formatCOP(tripReceiptData()!.commission_amount) }}</p>
+                </div>
+              }
+              <div class="flex items-center justify-between px-4 py-2.5">
+                <p class="text-emerald-400 text-xs font-bold">Lo que recibes</p>
+                <p class="text-emerald-400 font-black text-sm">{{ formatCOP(tripReceiptData()!.driver_net ?? tripReceiptData()!.final_price ?? 0) }}</p>
+              </div>
+            </div>
+          }
+
+          <!-- Fecha -->
+          <div class="flex items-center justify-between px-4 py-3 rounded-2xl"
+            style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+            <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:16px">calendar_today</span>
+            <p class="text-white text-xs flex-1 ml-2">{{ tripReceiptData()!.completed_at ? (tripReceiptData()!.completed_at | date:'d MMM yyyy, h:mm a') : 'Ahora' }}</p>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="flex flex-col gap-3 px-5 pb-8 pt-4 flex-shrink-0"
+          style="border-top:1px solid rgba(255,255,255,0.08)">
+          @if (tripReceiptData()!._role === 'driver') {
+            <button (click)="closeDriverReceiptAndRate()"
+              class="w-full py-4 rounded-2xl text-white font-black text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+              <span class="material-symbols-outlined" style="font-size:18px">star</span>
+              Calificar pasajero
+            </button>
+            <button (click)="tripReceiptModal.set(false); tripReceiptData.set(null); tripReceiptTrip.set(null)"
+              class="w-full py-3 rounded-2xl text-slate-400 font-bold text-sm"
+              style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              Omitir calificación
+            </button>
+          } @else {
+            <button (click)="closeReceiptAndRate()"
+              class="w-full py-4 rounded-2xl text-white font-black text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+              <span class="material-symbols-outlined" style="font-size:18px">star</span>
+              Calificar conductor
+            </button>
+            <button (click)="closeReceiptModal()"
+              class="w-full py-3 rounded-2xl text-slate-400 font-bold text-sm"
+              style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              Cerrar
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ MODAL CANCELAR CON MOTIVO ═══════════ -->
+  @if (cancelReasonModal()) {
+    <div class="fixed inset-0 z-[9996] flex items-end justify-center pb-0"
+      style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px)">
+      <div class="w-full max-w-md rounded-t-3xl flex flex-col gap-4 p-5 pb-9"
+        style="background:#0f1421;border-top:2px solid rgba(239,68,68,0.4)">
+        <!-- Handle -->
+        <div class="flex justify-center -mt-1"><div class="w-10 h-1 rounded-full" style="background:rgba(255,255,255,0.18)"></div></div>
+
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3)">
+            <span class="material-symbols-outlined text-rose-400" style="font-size:24px">cancel</span>
+          </div>
+          <div>
+            <p class="text-white font-black text-base">¿Por qué cancelas?</p>
+            <p class="text-slate-500 text-xs">Selecciona el motivo</p>
+          </div>
+        </div>
+
+        <!-- Opciones -->
+        <div class="flex flex-col gap-2">
+          @for (reason of (cancelReasonTarget() === 'passenger' ?
+            ['Esperé demasiado', 'Me equivoqué en el destino', 'Ya no necesito el viaje', 'El conductor no llegó', 'Cambio de planes'] :
+            ['El pasajero no llegó', 'Dirección incorrecta', 'Pasajero agresivo/irrespetuoso', 'Problema con el vehículo', 'Otro']); track reason) {
+            <button (click)="cancelReasonSelected.set(reason)"
+              class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.99] transition-all"
+              [style.background]="cancelReasonSelected() === reason ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.04)'"
+              [style.border]="cancelReasonSelected() === reason ? '1.5px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.08)'">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                [style.background]="cancelReasonSelected() === reason ? '#ef4444' : 'rgba(255,255,255,0.1)'">
+                @if (cancelReasonSelected() === reason) {
+                  <span class="material-symbols-outlined text-white" style="font-size:12px;font-variation-settings:'FILL' 1">check</span>
+                }
+              </div>
+              <p class="text-white text-sm font-semibold">{{ reason }}</p>
+            </button>
+          }
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-3 mt-1">
+          <button (click)="cancelReasonModal.set(false)"
+            class="flex-1 py-3.5 rounded-2xl text-slate-400 text-sm font-bold active:scale-[0.98]"
+            style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+            Volver
+          </button>
+          <button (click)="confirmCancelWithReason()"
+            [disabled]="!cancelReasonSelected()"
+            class="flex-[2] py-3.5 rounded-2xl text-white text-sm font-black active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+            style="background:linear-gradient(135deg,#ef4444,#dc2626)">
+            <span class="material-symbols-outlined" style="font-size:16px">cancel</span>
+            Confirmar cancelación
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ MODAL CONTRAOFERTAR ═══════════ -->
+  @if (counterOfferModal() && counterOfferTarget()) {
+    <div class="fixed inset-0 z-[9997] flex items-end justify-center pb-0"
+      style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px)">
+      <div class="w-full max-w-md rounded-t-3xl flex flex-col gap-4 p-5 pb-9"
+        style="background:#0f1421;border-top:2px solid rgba(249,115,22,0.4)">
+        <!-- Handle -->
+        <div class="flex justify-center -mt-1"><div class="w-10 h-1 rounded-full" style="background:rgba(255,255,255,0.18)"></div></div>
+
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3)">
+            <span class="material-symbols-outlined text-orange-400" style="font-size:24px;font-variation-settings:'FILL' 1">local_offer</span>
+          </div>
+          <div>
+            <p class="text-white font-black text-base">Contraoferta</p>
+            <p class="text-slate-400 text-xs">Oferta del conductor: <span class="font-bold text-orange-400">{{ formatCOP(counterOfferTarget()!.offered_price) }}</span></p>
+          </div>
+        </div>
+
+        <p class="text-slate-400 text-sm text-center">Propón un precio diferente. El conductor lo verá y podrá aceptar.</p>
+
+        <!-- Selector de precio -->
+        <div class="flex items-center gap-3 justify-center">
+          <button (click)="counterOfferValue.set(counterOfferValue() > 2500 ? counterOfferValue() - 500 : 2000)"
+            class="w-14 h-14 rounded-2xl border text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
+            style="background:#1a2035;border-color:rgba(255,255,255,0.12)">−</button>
+          <div class="flex-1 text-center">
+            <p class="text-white font-black leading-none" style="font-size:36px">{{ formatCOP(counterOfferValue()) }}</p>
+          </div>
+          <button (click)="counterOfferValue.set(counterOfferValue() + 500)"
+            class="w-14 h-14 rounded-2xl text-white font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
+            style="background:#f97316">+</button>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-3">
+          <button (click)="counterOfferModal.set(false)"
+            class="flex-1 py-3.5 rounded-2xl text-slate-400 text-sm font-bold active:scale-[0.98]"
+            style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+            Cancelar
+          </button>
+          <button (click)="submitCounterOffer()"
+            [disabled]="submittingCounter() || counterOfferValue() < 2000"
+            class="flex-[2] py-3.5 rounded-2xl text-white text-sm font-black active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+            style="background:linear-gradient(135deg,#f97316,#fb923c)">
+            @if (submittingCounter()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:16px">send</span>
+            }
+            Enviar contraoferta
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══ MODAL CHAT ═══ -->
   @if (showChatModal()) {
     <div class="fixed inset-0 z-[200] flex flex-col">
@@ -6415,6 +6685,26 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   passengerMapFullscreen = signal(false);
   // Trip activo referencia para el conductor en fullscreen
   driverFullscreenTrip   = signal<any | null>(null);
+
+  // ── inDrive parity features ───────────────────────────────────
+  // 1. ETA en vivo mientras conductor se acerca
+  acceptedDriverEta      = signal<number | null>(null);
+  // 2. Timer "Conductor llegó — sal ya"
+  arrivedAtPickupTimer   = signal<number | null>(null);
+  private _arrivalTimerInterval: any = null;
+  // 3. Recibo/resumen del viaje al finalizar
+  tripReceiptModal       = signal(false);
+  tripReceiptData        = signal<any | null>(null);
+  tripReceiptTrip        = signal<any | null>(null); // driver trip ref for post-receipt rating
+  // 4. Modal cancelación con motivo
+  cancelReasonModal      = signal(false);
+  cancelReasonTarget     = signal<'passenger' | 'driver'>('passenger');
+  cancelReasonSelected   = signal('');
+  // 5. Contraoferta del pasajero
+  counterOfferModal      = signal(false);
+  counterOfferTarget     = signal<AgTripOffer | null>(null);
+  counterOfferValue      = signal(0);
+  submittingCounter      = signal(false);
 
   // Llamadas enmascaradas
   callingDriver      = signal(false);
@@ -8166,23 +8456,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!tripId || !offer) { this._resetTrip(); return; }
     this.passengerMapFullscreen.set(false);
     this._clearNavRoute();
+    this._clearArrivalTimer();
     try {
       await this._withTimeout(this.agService.completeTrip(tripId));
     } catch (e: any) {
       alert(e?.message ?? 'Error al finalizar el viaje. Intenta de nuevo.');
       return;
     }
-    const driverUser = offer.ag_drivers?.ag_users;
-    this.ratingTripId.set(tripId);
-    this.ratingTarget.set({
-      userId: offer.ag_drivers?.ag_user_id ?? '',
-      name:   driverUser?.full_name ?? 'Tu conductor',
-      role:   'driver',
-    });
-    this.ratingStars.set(0);
-    this.ratingCommentValue = '';
-    this.ratingSkipped.set(false);
-    this.ratingModal.set(true);
+    this._showTripReceipt('passenger');
     this._resetTrip();
   }
 
@@ -8203,6 +8484,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch (e: any) {
       alert(e?.message ?? 'Error al finalizar el viaje.'); return;
     }
+    // Guardar datos para recibo antes de limpiar el viaje activo
+    const tripDetails = await this.agService.getTripDetails(tripRequestId).catch(() => null);
     this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
     // Si era primera carrera gratis, refrescar estado del conductor para ocultar el banner
     if (wasQuick) {
@@ -8212,8 +8495,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.driverStatus.set(updated.status ?? 'pending_docs');
       }
     }
-    // Disparar rating detallado de pasajero (con tags)
-    await this.promptRatePassenger(trip);
+    // Mostrar recibo del viaje al conductor
+    if (tripDetails) {
+      this.tripReceiptData.set({ ...tripDetails, _role: 'driver' });
+      this.tripReceiptTrip.set(trip);
+      this.tripReceiptModal.set(true);
+      this.cdr.markForCheck();
+    } else {
+      // Si no hay datos del recibo, ir directo al rating
+      await this.promptRatePassenger(trip);
+    }
   }
 
   async submitRating() {
@@ -9524,13 +9815,20 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   adjustTripPrice(delta: number) {
-    this.tripPrice.set(Math.max(2000, this.tripPrice() + delta));
+    const newPrice = Math.max(2000, this.tripPrice() + delta);
+    this.tripPrice.set(newPrice);
+    // Persistir en BD para que los conductores vean el precio actualizado
+    const tripId = this.currentTripRequestId();
+    if (tripId) this.agService.updateTripOfferedPrice(tripId, newPrice).catch(() => {});
   }
 
   adjustTripPriceSmart(dir: 1 | -1) {
     const p = this.tripPrice();
     const step = p < 8000 ? 500 : p < 20000 ? 1000 : 2000;
-    this.tripPrice.set(Math.max(2000, p + dir * step));
+    const newPrice = Math.max(2000, p + dir * step);
+    this.tripPrice.set(newPrice);
+    const tripId = this.currentTripRequestId();
+    if (tripId) this.agService.updateTripOfferedPrice(tripId, newPrice).catch(() => {});
   }
 
   setTripPricePreset(pct: number) {
@@ -9806,8 +10104,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     });
     this._assignedDriverChannel = this.agService.subscribeDriverLocation(driverId, (loc) => {
       this._drawAssignedDriverMarker(loc.lat, loc.lng, loc.heading);
+      const distKm = this._distKm(this._currentLat, this._currentLng, loc.lat, loc.lng);
+      // ETA en vivo: distancia / velocidad promedio 30km/h
+      if (this.currentTripStage() !== 'on_route' && this.currentTripStage() !== 'arrived_at_destination') {
+        this.acceptedDriverEta.set(distKm < 0.05 ? 0 : Math.max(1, Math.round(distKm / 30 * 60)));
+        this.cdr.markForCheck();
+      }
       // Alerta "conductor cerca" cuando está a menos de 500m
-      if (!this._driverNearbyShown && this._distKm(this._currentLat, this._currentLng, loc.lat, loc.lng) < 0.5) {
+      if (!this._driverNearbyShown && distKm < 0.5) {
         this._driverNearbyShown = true;
         this.driverNearbyAlert.set(true);
         this.cdr.markForCheck();
@@ -11498,12 +11802,24 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.currentTripStage.set(stage);
       this.cdr.markForCheck();
 
-      // Cuando el conductor recoge al pasajero: activar mapa fullscreen
-      if (stage === 'on_route') {
-        this.passengerSection.set(null);
-        this.passengerMapFullscreen.set(true);
-        this._drawPassengerTripRoute();
-        setTimeout(() => this._map?.resize(), 200);
+      // Conductor llegó al punto de recogida: mostrar banner + countdown 5 min
+      if (stage === 'arrived_at_pickup') {
+        this.arrivedAtPickupTimer.set(300);
+        this._startArrivalTimer();
+        this.acceptedDriverEta.set(0);
+      }
+
+      // Pasajero recogido: limpiar timer + activar mapa fullscreen
+      if (stage === 'picked_up' || stage === 'on_route') {
+        this._clearArrivalTimer();
+        this.arrivedAtPickupTimer.set(null);
+        this.acceptedDriverEta.set(null);
+        if (stage === 'on_route') {
+          this.passengerSection.set(null);
+          this.passengerMapFullscreen.set(true);
+          this._drawPassengerTripRoute();
+          setTimeout(() => this._map?.resize(), 200);
+        }
       }
 
       // Cuando el conductor llega al destino: mostrar banner "llegaste"
@@ -11517,7 +11833,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.stopDriverTracking();
         this.passengerMapFullscreen.set(false);
         this._clearNavRoute();
-        this._autoCompletePassengerTrip();
+        this._clearArrivalTimer();
+        this.arrivedAtPickupTimer.set(null);
+        this._showTripReceipt('passenger');
       }
     });
   }
@@ -12056,6 +12374,111 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrDestQuery.set('');
     this.qrDestSuggestions.set([]);
     this.cdr.markForCheck();
+  }
+
+  padTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  // ── Arrival timer (conductor llegó) ──────────────────────────
+  private _startArrivalTimer(): void {
+    this._clearArrivalTimer();
+    this._arrivalTimerInterval = setInterval(() => {
+      const t = this.arrivedAtPickupTimer();
+      if (t === null || t <= 0) { this._clearArrivalTimer(); return; }
+      this.arrivedAtPickupTimer.set(t - 1);
+      this.cdr.markForCheck();
+    }, 1000);
+  }
+
+  private _clearArrivalTimer(): void {
+    if (this._arrivalTimerInterval) {
+      clearInterval(this._arrivalTimerInterval);
+      this._arrivalTimerInterval = null;
+    }
+  }
+
+  // ── Trip receipt (recibo al finalizar) ────────────────────────
+  private async _showTripReceipt(role: 'passenger' | 'driver'): Promise<void> {
+    const tripId = role === 'passenger' ? this.currentTripRequestId() : null;
+    let details: any = null;
+    if (tripId) {
+      details = await this.agService.getTripDetails(tripId).catch(() => null);
+    }
+    const offer = this.tripAccepted();
+    const receipt = details ?? {
+      final_price: offer?.offered_price ?? this.tripPrice(),
+      origin_name: null,
+      dest_name: this.tripDest()?.name ?? 'Destino',
+      driver_net: null,
+      commission_amount: null,
+      commission_pct: null,
+      ag_users: null,
+    };
+    if (offer && !receipt.ag_users) {
+      receipt._driver = offer.ag_drivers?.ag_users ?? null;
+    }
+    this.tripReceiptData.set(receipt);
+    this.tripReceiptModal.set(true);
+    this.cdr.markForCheck();
+  }
+
+  closeReceiptModal(): void {
+    this.tripReceiptModal.set(false);
+    this.tripReceiptData.set(null);
+    this._resetTrip();
+  }
+
+  closeReceiptAndRate(): void {
+    this.tripReceiptModal.set(false);
+    this.tripReceiptData.set(null);
+    const offer = this.tripAccepted();
+    if (offer) this._autoCompletePassengerTrip();
+    else this._resetTrip();
+  }
+
+  async closeDriverReceiptAndRate(): Promise<void> {
+    const trip = this.tripReceiptTrip();
+    this.tripReceiptModal.set(false);
+    this.tripReceiptData.set(null);
+    this.tripReceiptTrip.set(null);
+    if (trip) await this.promptRatePassenger(trip);
+  }
+
+  // ── Cancel with reason ────────────────────────────────────────
+  openCancelWithReason(target: 'passenger' | 'driver'): void {
+    this.cancelReasonTarget.set(target);
+    this.cancelReasonSelected.set('');
+    this.cancelReasonModal.set(true);
+  }
+
+  async confirmCancelWithReason(): Promise<void> {
+    this.cancelReasonModal.set(false);
+    await this.cancelTrip();
+  }
+
+  // ── Counter-offer from passenger ─────────────────────────────
+  openCounterOffer(offer: AgTripOffer): void {
+    this.counterOfferTarget.set(offer);
+    this.counterOfferValue.set(offer.offered_price);
+    this.counterOfferModal.set(true);
+  }
+
+  async submitCounterOffer(): Promise<void> {
+    const target = this.counterOfferTarget();
+    const price  = this.counterOfferValue();
+    if (!target || price < 2000) return;
+    this.submittingCounter.set(true);
+    try {
+      // Accept the offer at the counter price: update trip price then accept
+      await this.agService.updateTripOfferedPrice(target.trip_request_id, price).catch(() => {});
+      await this.acceptOfferCard(target);
+    } finally {
+      this.submittingCounter.set(false);
+      this.counterOfferModal.set(false);
+    }
   }
 
   async qrSubmitTrip() {

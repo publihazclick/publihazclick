@@ -1425,7 +1425,23 @@ export class AndaGanaService {
     const patch: any = { driver_stage: stage };
     if (stage === 'heading_to_pickup') patch['driver_started_at'] = new Date().toISOString();
     if (stage === 'picked_up') patch['passenger_picked_at'] = new Date().toISOString();
+    if (stage === 'on_route') patch['trip_started_at'] = new Date().toISOString();
+    if (stage === 'arrived_at_destination') patch['arrived_at'] = new Date().toISOString();
     await this.supabase.from('ag_trip_requests').update(patch).eq('id', tripRequestId);
+  }
+
+  async updateTripOfferedPrice(tripId: string, price: number): Promise<void> {
+    await this.supabase.from('ag_trip_requests')
+      .update({ offered_price: price, updated_at: new Date().toISOString() })
+      .eq('id', tripId).eq('status', 'searching');
+  }
+
+  async getTripDetails(tripId: string): Promise<any | null> {
+    const { data } = await this.supabase
+      .from('ag_trip_requests')
+      .select('*, ag_users!passenger_user_id(full_name, selfie_url, phone)')
+      .eq('id', tripId).maybeSingle();
+    return data ?? null;
   }
 
   async addWaypoint(tripRequestId: string, waypoint: { address: string; lat: number; lng: number }): Promise<void> {
