@@ -2309,38 +2309,38 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       }
 
       <!-- ══ Tarjetas rápidas: Beneficios + Referidos ══ -->
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-2">
         <!-- Mis Beneficios -->
         <button (click)="openDriverSection('benefits')"
-          class="flex flex-col items-start gap-2 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#d97706,#b45309);border-radius:16px;padding:14px 14px;border:none;cursor:pointer;position:relative;overflow:hidden">
+          class="flex flex-col items-start gap-1.5 active:scale-[0.98] transition-transform"
+          style="background:linear-gradient(135deg,#d97706,#b45309);border-radius:12px;padding:10px 12px;border:none;cursor:pointer;position:relative;overflow:hidden">
           <div class="flex items-center justify-between w-full">
             <div class="flex items-center justify-center flex-shrink-0"
-              style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.18)">
-              <span class="material-symbols-outlined" style="font-size:20px;color:#fff;font-variation-settings:'FILL' 1">workspace_premium</span>
+              style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.18)">
+              <span class="material-symbols-outlined" style="font-size:16px;color:#fff;font-variation-settings:'FILL' 1">workspace_premium</span>
             </div>
             @if (driverBenefits()?.is_founder) {
-              <span style="font-size:9px;font-weight:800;color:#fef3c7;background:rgba(0,0,0,0.2);border-radius:6px;padding:2px 6px;letter-spacing:0.04em">FUNDADOR</span>
+              <span style="font-size:8px;font-weight:800;color:#fef3c7;background:rgba(0,0,0,0.2);border-radius:5px;padding:1px 5px;letter-spacing:0.04em">FUNDADOR</span>
             }
           </div>
           <div class="text-left">
-            <p style="color:#fff;font-weight:700;font-size:13px;margin:0;line-height:1.3">Mis Beneficios</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:11px;margin:0;line-height:1.3">
+            <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Mis Beneficios</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">
               {{ driverBenefits() ? 'Comisión ' + driverBenefits()?.commission_pct + '% · ' + driverBenefits()?.tier_label : 'Ver beneficios' }}
             </p>
           </div>
         </button>
         <!-- Gana por invitar -->
         <button (click)="openDriverSection('referrals')"
-          class="flex flex-col items-start gap-2 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 14px;border:none;cursor:pointer">
+          class="flex flex-col items-start gap-1.5 active:scale-[0.98] transition-transform"
+          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:12px;padding:10px 12px;border:none;cursor:pointer">
           <div class="flex items-center justify-center flex-shrink-0"
-            style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.15)">
-            <span class="material-symbols-outlined" style="font-size:20px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
+            style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.15)">
+            <span class="material-symbols-outlined" style="font-size:16px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
           </div>
           <div class="text-left">
-            <p style="color:#fff;font-weight:700;font-size:13px;margin:0;line-height:1.3">Gana Invitando</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:11px;margin:0;line-height:1.3">Gana 2% por cada referido</p>
+            <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Gana Invitando</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">Gana 2% por cada referido</p>
           </div>
         </button>
       </div>
