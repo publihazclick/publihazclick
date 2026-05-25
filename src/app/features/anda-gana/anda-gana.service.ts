@@ -2008,6 +2008,15 @@ export class AndaGanaService {
     return data as any;
   }
 
+  async getDriverAuthUserIds(driverIds: string[]): Promise<string[]> {
+    if (!driverIds.length) return [];
+    const { data } = await this.supabase
+      .from('ag_drivers')
+      .select('ag_users(auth_user_id)')
+      .in('id', driverIds);
+    return (data ?? []).map((d: any) => d.ag_users?.auth_user_id).filter(Boolean);
+  }
+
   // ═══════════════════════════════════════════════════
   // PASSENGER: real-time trip stage subscription
   // ═══════════════════════════════════════════════════

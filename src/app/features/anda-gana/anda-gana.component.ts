@@ -9342,7 +9342,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           try { await this.agService.applyCoupon(ac.couponId, result.tripId, ac.discount); } catch {}
         }
         this._subscribeToOffers(result.tripId);
-
+        // Persistir estado de búsqueda para restaurar si el pasajero cierra la app
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('movi_active_trip', JSON.stringify({
+            tripId: result.tripId, status: 'searching', ts: Date.now(),
+          }));
+        }
         // Auto-buscar conductores cercanos y enviarles la solicitud
         this._autoAssignNearestDrivers(result.tripId, this._currentLat, this._currentLng, this.tripVehicle(), this.tripPrice());
       }
@@ -9493,24 +9498,55 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const raw = localStorage.getItem('movi_active_trip');
     if (!raw) return;
     try {
-      const saved = JSON.parse(raw) as { tripId: string; driverId: string; offerId: string; ts: number };
+      const saved = JSON.parse(raw) as { tripId: string; driverId?: string; offerId?: string; status?: string; ts: number };
       // Ignorar si tiene más de 2 horas (viaje muy viejo)
       if (Date.now() - saved.ts > 2 * 60 * 60 * 1000) { localStorage.removeItem('movi_active_trip'); return; }
-      // Verificar que el viaje sigue activo en BD
+      // Verificar estado actual en BD
       const { data: trip } = await getSupabaseClient()
         .from('ag_trip_requests').select('id, status, accepted_offer_id').eq('id', saved.tripId).maybeSingle();
-      if (!trip || !['accepted', 'in_progress'].includes(trip.status)) {
+      if (!trip || ['cancelled', 'completed'].includes(trip.status)) {
         localStorage.removeItem('movi_active_trip'); return;
       }
-      // Restaurar estado
+      // Si el viaje sigue buscando conductor: re-suscribir a ofertas y cargar las ya recibidas
+      if (trip.status === 'searching') {
+        this.currentTripRequestId.set(saved.tripId);
+        this.tripSent.set(true);
+        this.tripAccepted.set(null);
+        this._subscribeToOffers(saved.tripId);
+        const existingOffers = await this.agService.getOffersForTrip(saved.tripId);
+        if (existingOffers.length > 0) {
+          // Calcular ETA para cada oferta ya existente
+          for (const offer of existingOffers) {
+            try {
+              const loc = await this.agService.getDriverLocation(offer.driver_id);
+              if (loc) {
+                const R = 6371;
+                const dLat = (loc.lat - this._currentLat) * Math.PI / 180;
+                const dLng = (loc.lng - this._currentLng) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) ** 2 + Math.cos(this._currentLat * Math.PI / 180) * Math.cos(loc.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+                const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                this.driverEtaMin.update(m => ({ ...m, [offer.id]: Math.max(1, Math.round(distKm / 30 * 60)) }));
+              }
+            } catch {}
+          }
+          this.receivedOffers.set(existingOffers);
+        }
+        this._startWaiting();
+        this.cdr.markForCheck();
+        return;
+      }
+      // Si ya fue aceptado: restaurar estado de viaje activo
+      if (!['accepted', 'in_progress'].includes(trip.status)) {
+        localStorage.removeItem('movi_active_trip'); return;
+      }
       this.currentTripRequestId.set(saved.tripId);
       const { data: offer } = await getSupabaseClient()
-        .from('ag_trip_offers').select('*, ag_drivers(*, ag_users(*))').eq('id', saved.offerId).maybeSingle();
+        .from('ag_trip_offers').select('*, ag_drivers(*, ag_users(*))').eq('id', saved.offerId!).maybeSingle();
       if (offer) {
         this.tripAccepted.set(offer as any);
         this.tripSent.set(false);
-        this._startTrackingAssignedDriver(saved.driverId);
-        this.startDriverTracking(saved.driverId, saved.tripId);
+        this._startTrackingAssignedDriver(saved.driverId!);
+        this.startDriverTracking(saved.driverId!, saved.tripId);
         this.cdr.markForCheck();
       }
     } catch { localStorage.removeItem('movi_active_trip'); }
@@ -9560,6 +9596,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   async rejectOfferCard(offer: AgTripOffer) {
     await this.agService.rejectOffer(offer.id);
     this.receivedOffers.update(list => list.filter(o => o.id !== offer.id));
+    // Notificar al conductor que su oferta fue rechazada para que pueda contra-ofertar
+    const driverAuthId = (offer as any)?.ag_drivers?.ag_users?.auth_user_id;
+    if (driverAuthId) {
+      this.agService.sendPush({
+        userIds: [driverAuthId],
+        title: '❌ Oferta rechazada',
+        body: 'El pasajero rechazó tu oferta. Puedes hacer una nueva propuesta.',
+        tag: `offer-rejected-${offer.id}`,
+      }).catch(() => {});
+    }
   }
 
   // ── Driver: load & refresh trip requests ──────────────────────
@@ -9739,6 +9785,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripAccepted.set(null);
     this.acceptingOfferId.set(null);
     this._clearRoute();
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
   }
 
   private _withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
@@ -10070,14 +10117,26 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     try {
       const drivers = await this.agService.findNearestDrivers(tripId, lat, lng, vehicleType);
       if (drivers.length === 0) return;
-
-      // Enviar oferta al conductor más cercano con el precio del pasajero
+      const driverIds: string[] = [];
       for (const driver of drivers) {
         await this.agService.autoOfferNearest(tripId, driver.driver_id, price);
+        if (driver.driver_id) driverIds.push(driver.driver_id);
+      }
+      // Push a conductores cercanos para que vean la solicitud aunque tengan la app cerrada
+      if (driverIds.length > 0) {
+        const authIds = await this.agService.getDriverAuthUserIds(driverIds);
+        if (authIds.length > 0) {
+          this.agService.sendPush({
+            userIds: authIds,
+            title: '🔔 Nueva solicitud cerca de ti',
+            body: `Hay un viaje por ${this.formatCOP(price)}. ¡Abre Movi para aceptarlo!`,
+            tag: `new-trip-${tripId}`,
+            urgent: true,
+          }).catch(() => {});
+        }
       }
     } catch {
-      // Silencioso — no afecta el flujo del pasajero, los conductores
-      // también pueden ver la solicitud manualmente en su feed
+      // Silencioso — no afecta el flujo del pasajero
     }
   }
 
@@ -11740,6 +11799,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.receivedOffers.set([]);
       this.tripAccepted.set(null);
       this._subscribeToOffers(tripResult.tripId);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('movi_active_trip', JSON.stringify({ tripId: tripResult.tripId, status: 'searching', ts: Date.now() }));
+      }
       this._autoAssignNearestDrivers(tripResult.tripId, orig.lat, orig.lng, this.qrVehicle(), this.qrPrice());
     }
     this.tripDest.set(dest);
