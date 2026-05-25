@@ -7945,12 +7945,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async finishDriverTrip(trip: any) {
     const tripRequestId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripRequestId) return;
+    const wasQuick = this.driverStatus() === 'quick';
     try {
       await this._withTimeout(this.agService.completeTrip(tripRequestId));
     } catch (e: any) {
       alert(e?.message ?? 'Error al finalizar el viaje.'); return;
     }
     this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
+    // Si era primera carrera gratis, refrescar estado del conductor para ocultar el banner
+    if (wasQuick) {
+      const updated = await this.agService.getMyDriverProfile();
+      if (updated) {
+        this.driverData.set(updated);
+        this.driverStatus.set(updated.status ?? 'pending_docs');
+      }
+    }
     // Disparar rating detallado de pasajero (con tags)
     await this.promptRatePassenger(trip);
   }
