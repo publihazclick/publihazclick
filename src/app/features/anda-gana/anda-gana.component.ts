@@ -7904,55 +7904,56 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async _reverseGeocode(lat: number, lng: number) {
     this.addressLoading.set(true);
     try {
-      // Mismos types que funcionaban antes + neighborhood para mayor cobertura
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json`
-        + `?access_token=${this.MAPBOX_TOKEN}&language=es&types=address,neighborhood,locality,poi,place&limit=1`;
-      const res  = await fetch(url);
-      const data = await res.json();
-      const feature = data.features?.[0];
+      const base = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${this.MAPBOX_TOKEN}&language=es&limit=1`;
+      // Dos requests en paralelo: dirección principal + barrio específico
+      const [dataAddr, dataNeigh] = await Promise.all([
+        fetch(`${base}&types=address,poi,place`).then(r => r.json()),
+        fetch(`${base}&types=neighborhood,locality,district`).then(r => r.json()),
+      ]);
 
-      if (feature) {
-        const ctx = feature.context ?? [];
+      const feat  = dataAddr.features?.[0];
+      const neigh = dataNeigh.features?.[0];
 
-        // Barrio: buscar en context primero, luego si el feature mismo es neighborhood
-        const ctxBarrio = ctx.find((c: any) =>
-          c.id?.startsWith('neighborhood.') ||
-          c.id?.startsWith('locality.')     ||
-          c.id?.startsWith('district.')
-        );
-        const barrioText =
-          ctxBarrio?.text ??
-          (feature.id?.startsWith('neighborhood.') || feature.id?.startsWith('locality.')
-            ? feature.text : null);
-        this.currentNeighborhood.set(barrioText ?? '');
+      if (!feat && !neigh) { this.currentAddress.set(''); this.addressLoading.set(false); this.cdr.markForCheck(); return; }
 
-        // Ciudad: del context o del propio feature si es place
-        const ctxCity = ctx.find((c: any) => c.id?.startsWith('place.'));
-        const cityText = ctxCity?.text ?? (feature.id?.startsWith('place.') ? feature.text : null);
+      const ctx = feat?.context ?? [];
 
-        // Calle: solo si el feature es address o poi (no neighborhood/place)
-        const isStreet = feature.id?.startsWith('address.') || feature.id?.startsWith('poi.');
-        const streetText = isStreet
-          ? (feature.address ? `${feature.text} ${feature.address}` : feature.text)
-          : null;
+      // Barrio: del request dedicado primero, luego del context del address
+      const ctxBarrio = ctx.find((c: any) =>
+        c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.') || c.id?.startsWith('district.')
+      );
+      const barrioText = neigh?.text ?? ctxBarrio?.text ?? null;
+      this.currentNeighborhood.set(barrioText ?? '');
 
-        // Ensamblar sin código postal
-        const parts = [streetText, barrioText, cityText].filter(Boolean);
-        // Fallback: place_name limpiando tokens numéricos de 4-6 dígitos (código postal)
-        const cleanFallback = (feature.place_name ?? '')
-          .split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).join(',').trim();
-        this.currentAddress.set(parts.length > 0 ? parts.join(', ') : cleanFallback);
+      // Ciudad
+      const ctxCity  = ctx.find((c: any) => c.id?.startsWith('place.'));
+      const cityText = ctxCity?.text ?? (feat?.id?.startsWith('place.') ? feat?.text : null);
 
-        // Actualizar ciudad del perfil si cambió
-        if (cityText) {
-          const profile = this.agProfile();
-          if (profile && profile.city !== cityText) {
-            this.agService.updateUserCity(profile.id, cityText).catch(() => {});
-            this.agProfile.update(p => p ? { ...p, city: cityText! } : p);
-          }
-        }
+      // Calle
+      const isStreet  = feat?.id?.startsWith('address.') || feat?.id?.startsWith('poi.');
+      const streetText = isStreet
+        ? (feat.address ? `${feat.text} ${feat.address}` : feat.text)
+        : null;
+
+      const parts = [streetText, barrioText, cityText].filter(Boolean);
+      if (parts.length > 0) {
+        this.currentAddress.set(parts.join(', '));
       } else {
-        this.currentAddress.set('');
+        // Fallback: place_name sin código postal
+        const fallback = feat ?? neigh;
+        this.currentAddress.set(
+          (fallback?.place_name ?? '')
+            .split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).join(',').trim()
+        );
+      }
+
+      // Actualizar ciudad del perfil si el conductor cambió de ciudad
+      if (cityText) {
+        const profile = this.agProfile();
+        if (profile && profile.city !== cityText) {
+          this.agService.updateUserCity(profile.id, cityText).catch(() => {});
+          this.agProfile.update(p => p ? { ...p, city: cityText! } : p);
+        }
       }
     } catch { this.currentAddress.set(''); }
     this.addressLoading.set(false);
