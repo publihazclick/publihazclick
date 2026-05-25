@@ -7245,7 +7245,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _currentLat = 4.6097;
   private _currentLng = -74.0817;
   /** true solo cuando tenemos una lectura GPS con precisión real (<300m). Evita usar coords por defecto (Bogotá) como origen de viaje. */
-  private _gpsRealFix = false;
+  private _gpsRealFix    = false;
+  private _cityFromGps   = '';   // ciudad detectada por GPS — filtra sugerencias de búsqueda
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
   private readonly SUPABASE_ANON = environment.supabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
@@ -7803,7 +7804,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     };
     if (this._gpsRealFix) {
       const gmaps = (window as any).google.maps;
-      const d = 0.45;
+      // Radio ~11km para mantener resultados dentro de la misma ciudad
+      const d = 0.1;
       request.bounds = new gmaps.LatLngBounds(
         new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
         new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
@@ -7816,7 +7818,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
         return;
       }
-      this.addressSuggestions.set(predictions.slice(0, 5).map((p: any) => ({
+      // Filtrar por ciudad detectada para mostrar solo resultados locales
+      const city = this._cityFromGps.toLowerCase();
+      const local = city
+        ? predictions.filter(p => p.description?.toLowerCase().includes(city))
+        : predictions;
+      const final = (local.length > 0 ? local : predictions).slice(0, 5);
+      this.addressSuggestions.set(final.map((p: any) => ({
         place_id:   p.place_id,
         text:       p.structured_formatting?.main_text ?? p.description,
         place_name: p.structured_formatting?.secondary_text ?? '',
@@ -7963,15 +7971,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         ? (feat.address ? `${feat.text} ${feat.address}` : feat.text)
         : (nomAddr.road ? (nomAddr.house_number ? `${nomAddr.road} ${nomAddr.house_number}` : nomAddr.road) : null);
 
-      const parts = [streetText, barrioText, cityText].filter(Boolean);
-      if (parts.length > 0) {
-        this.currentAddress.set(parts.join(', '));
+      // Dirección principal: calle + ciudad (SIN barrio para evitar duplicado en subtítulo)
+      // Si no hay calle, usar barrio como primera línea
+      const mainParts = streetText
+        ? [streetText, cityText].filter(Boolean)
+        : [barrioText, cityText].filter(Boolean);
+
+      if (mainParts.length > 0) {
+        this.currentAddress.set(mainParts.join(', '));
       } else {
         const fallbackName = feat?.place_name ?? dataNom?.display_name ?? '';
         this.currentAddress.set(
           fallbackName.split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).slice(0, 3).join(',').trim()
         );
       }
+
+      // Guardar ciudad para filtrar sugerencias de búsqueda
+      if (cityText) this._cityFromGps = cityText;
 
       // Actualizar ciudad del perfil si el conductor cambió de ciudad
       if (cityText) {
@@ -9687,8 +9703,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     };
     if (hasGps) {
       const gmaps = (window as any).google.maps;
-      // bounds = sesgo hacia la zona del usuario (~50 km), no filtro duro
-      const d = 0.45; // ~50 km en grados
+      // bounds ~11km para mantener resultados dentro de la ciudad actual
+      const d = 0.1;
       request.bounds = new gmaps.LatLngBounds(
         new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
         new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
@@ -9702,7 +9718,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         return;
       }
 
-      const filtered = predictions.slice(0, 5);
+      // Filtrar por ciudad detectada; si no quedan resultados, usar todos
+      const city = this._cityFromGps.toLowerCase();
+      const localPreds = city
+        ? predictions.filter((p: any) => p.description?.toLowerCase().includes(city))
+        : predictions;
+      const filtered = (localPreds.length > 0 ? localPreds : predictions).slice(0, 5);
 
       // Mostrar resultados de inmediato sin distancia
       const results = filtered.map((p: any) => ({
