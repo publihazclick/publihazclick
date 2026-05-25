@@ -614,9 +614,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
                   } @else if (currentAddress()) {
                     <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
-                    @if (currentNeighborhood()) {
-                      <p class="text-orange-500 text-xs font-medium truncate mt-0.5">{{ currentNeighborhood() }}</p>
-                    }
+                    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                      @if (currentNeighborhood()) {
+                        <p class="text-orange-500 text-xs font-medium truncate">{{ currentNeighborhood() }}</p>
+                      }
+                      @if (gpsAccuracy() !== null) {
+                        <span class="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          [style.background]="gpsAccuracy()! <= 10 ? '#d1fae5' : gpsAccuracy()! <= 30 ? '#fef9c3' : '#fee2e2'"
+                          [style.color]="gpsAccuracy()! <= 10 ? '#065f46' : gpsAccuracy()! <= 30 ? '#713f12' : '#991b1b'">
+                          <span class="material-symbols-outlined" style="font-size:10px">my_location</span>
+                          ±{{ gpsAccuracy() }}m
+                        </span>
+                      }
+                    </div>
                   } @else {
                     <p class="text-slate-500 text-sm">Dirección no disponible</p>
                   }
@@ -3008,11 +3018,21 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
                   } @else if (currentAddress()) {
                     <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
-                    @if (currentNeighborhood()) {
-                      <p class="text-orange-500 text-xs font-medium truncate mt-0.5">{{ currentNeighborhood() }}</p>
-                    } @else {
-                      <p class="text-slate-400 text-xs mt-0.5">Toca para cambiar tu ubicación</p>
-                    }
+                    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                      @if (currentNeighborhood()) {
+                        <p class="text-orange-500 text-xs font-medium truncate">{{ currentNeighborhood() }}</p>
+                      } @else {
+                        <p class="text-slate-400 text-xs">Toca para cambiar tu ubicación</p>
+                      }
+                      @if (gpsAccuracy() !== null) {
+                        <span class="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          [style.background]="gpsAccuracy()! <= 10 ? '#d1fae5' : gpsAccuracy()! <= 30 ? '#fef9c3' : '#fee2e2'"
+                          [style.color]="gpsAccuracy()! <= 10 ? '#065f46' : gpsAccuracy()! <= 30 ? '#713f12' : '#991b1b'">
+                          <span class="material-symbols-outlined" style="font-size:10px">my_location</span>
+                          ±{{ gpsAccuracy() }}m
+                        </span>
+                      }
+                    </div>
                   } @else {
                     <p class="text-slate-500 text-sm">Dirección no disponible</p>
                     <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu ubicación</p>
@@ -6569,6 +6589,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Mapa / GPS
   noDriversNearby = signal(false);
   gpsStatus      = signal<GpsStatus>('idle');
+  gpsAccuracy    = signal<number | null>(null);
   currentAddress      = signal('');
   currentNeighborhood = signal('');
   addressLoading = signal(false);
@@ -7651,6 +7672,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       lng = pos.coords.longitude;
       this._gpsRealFix = true;
       this.gpsStatus.set('granted');
+      this.gpsAccuracy.set(Math.round(pos.coords.accuracy));
     } catch (e: any) {
       if (e?.code === 1 /* PERMISSION_DENIED */) {
         this.gpsStatus.set('denied');
