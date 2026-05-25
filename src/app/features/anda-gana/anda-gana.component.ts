@@ -2305,6 +2305,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.18)">
               <span class="material-symbols-outlined" style="font-size:16px;color:#fff;font-variation-settings:'FILL' 1">workspace_premium</span>
             </div>
+            @if (driverBenefits()?.is_founder) {
+              <span style="font-size:8px;font-weight:800;color:#fef3c7;background:rgba(0,0,0,0.2);border-radius:5px;padding:1px 5px;letter-spacing:0.04em">FUNDADOR</span>
+            }
           </div>
           <div class="text-left">
             <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Mis Beneficios</p>
