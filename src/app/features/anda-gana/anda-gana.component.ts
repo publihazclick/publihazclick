@@ -2204,20 +2204,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               style="background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.25);color:#0891b2;font-size:11px">
               <span class="material-symbols-outlined" style="font-size:11px">directions_car</span> Modo Conductor
             </span>
-            @if (driverBenefits()?.is_founder) {
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
-                style="background:linear-gradient(135deg,rgba(234,179,8,0.18),rgba(202,138,4,0.12));border:1px solid rgba(234,179,8,0.45);color:#a16207;font-size:11px">
-                <span class="material-symbols-outlined" style="font-size:11px;font-variation-settings:'FILL' 1">workspace_premium</span>
-                Fundador #{{ driverBenefits()?.founder_number }}
-              </span>
-            }
-            @if (driverBenefits()) {
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
-                style="background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.25);color:#047857;font-size:11px">
-                <span class="material-symbols-outlined" style="font-size:11px;font-variation-settings:'FILL' 1">local_offer</span>
-                {{ driverBenefits()?.tier_label }} · {{ driverBenefits()?.commission_pct }}%
-              </span>
-            }
           </div>
         </div>
         <button (click)="driverMenuOpen.set(true)"
@@ -2319,9 +2305,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.18)">
               <span class="material-symbols-outlined" style="font-size:16px;color:#fff;font-variation-settings:'FILL' 1">workspace_premium</span>
             </div>
-            @if (driverBenefits()?.is_founder) {
-              <span style="font-size:8px;font-weight:800;color:#fef3c7;background:rgba(0,0,0,0.2);border-radius:5px;padding:1px 5px;letter-spacing:0.04em">FUNDADOR</span>
-            }
           </div>
           <div class="text-left">
             <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Mis Beneficios</p>
