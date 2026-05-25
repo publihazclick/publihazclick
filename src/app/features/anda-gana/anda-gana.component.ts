@@ -652,8 +652,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     (keydown.escape)="closeAddressEdit()"
                     (keydown.enter)="saveManualAddress()"
                     placeholder="Escribe tu dirección exacta de recogida..."
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  @if (addressQuery().trim().length > 0) {
+                  @if (addrInputHasText()) {
                     <div class="flex items-center gap-1 flex-shrink-0">
                       <button (click)="clearAddressQuery()"
                         class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
@@ -792,6 +793,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           (paste)="handlePaste($any($event), 'address')"
                           (keydown.escape)="originEditOpen.set(false)"
                           placeholder="Escribe o pega tu punto de salida..."
+                          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                           class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
                         <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
                           <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
@@ -820,6 +822,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       (paste)="handlePaste($any($event), 'trip')"
                       (keydown.escape)="closeTripSearch()"
                       placeholder="Busca o pega tu destino..."
+                      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                       class="flex-1 bg-transparent text-slate-800 text-sm outline-none placeholder-slate-400"/>
                     <button (click)="pasteClipboard('trip')" title="Pegar dirección"
                       class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition"
@@ -847,7 +850,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         </button>
                       }
                     </div>
-                  } @else if (tripQuery().length > 1) {
+                  } @else if (tripInputHasText()) {
                     @if (tripLoading()) {
                       <div class="flex justify-center py-4">
                         <div class="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
@@ -1085,6 +1088,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         (input)="onAddressInput($any($event.target).value)"
                         (keydown.escape)="originEditOpen.set(false)"
                         placeholder="Escribe tu punto de salida..."
+                        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                         class="flex-1 text-slate-800 text-xs outline-none placeholder-slate-500 bg-transparent"/>
                       <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
                         <span class="material-symbols-outlined text-slate-400" style="font-size:17px">close</span>
@@ -3056,8 +3060,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     (keydown.escape)="closeAddressEdit()"
                     (keydown.enter)="saveManualAddress()"
                     placeholder="Escribe tu dirección exacta de recogida..."
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  @if (addressQuery().trim().length > 0) {
+                  @if (addrInputHasText()) {
                     <div class="flex items-center gap-1 flex-shrink-0">
                       <button (click)="clearAddressQuery()"
                         class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
@@ -6599,6 +6604,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   currentAddress      = signal('');
   currentNeighborhood = signal('');
   addrSavedToast      = signal(false);
+  addrInputHasText    = signal(false);   // solo para mostrar/ocultar botones (no re-renderiza todo)
+  tripInputHasText    = signal(false);
+  private _addrRaw    = '';              // valor crudo del input — no signal para no renderizar por cada tecla
+  private _tripRaw    = '';
   addressLoading = signal(false);
   addressEditMode    = signal(false);
   addressQuery       = signal('');
@@ -7757,10 +7766,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   clearAddressQuery() {
+    this._addrRaw = '';
     this.addressQuery.set('');
+    this.addrInputHasText.set(false);
     this.addressSuggestions.set([]);
-    // Limpiar DOM — necesario porque quitamos [value] binding para no interferir con backspace
-    ['#addrInput', '[placeholder="Escribe tu dirección exacta de recogida..."]', '#origin-edit-input'].forEach(sel => {
+    ['[placeholder="Escribe tu dirección exacta de recogida..."]', '#origin-edit-input',
+     '[placeholder="Escribe tu punto de salida..."]', '[placeholder="Escribe o pega tu punto de salida..."]'].forEach(sel => {
       const el = document.querySelector<HTMLInputElement>(sel);
       if (el) { el.value = ''; el.focus(); }
     });
@@ -7787,17 +7798,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   onAddressInput(query: string) {
-    this.addressQuery.set(query);
-    this.addressNoResults.set(false);
-    if (query.trim().length < 3) { this.addressSuggestions.set([]); return; }
+    this._addrRaw = query;
+    // Solo actualizar boolean para botones — evita re-render completo por cada tecla
+    this.addrInputHasText.set(query.trim().length > 0);
+    if (query.trim().length < 3) {
+      if (this.addressSuggestions().length) this.addressSuggestions.set([]);
+      return;
+    }
     clearTimeout(this._addressDebounceTimer);
-    this._addressDebounceTimer = setTimeout(() => this._searchAddressSuggestions(query), 300);
+    this._addressDebounceTimer = setTimeout(() => {
+      this.addressQuery.set(query);   // actualizar signal solo en debounce
+      this._searchAddressSuggestions(query);
+    }, 300);
   }
 
   saveManualAddress() {
-    const q = this.addressQuery().trim();
+    const q = (this._addrRaw || this.addressQuery()).trim();
     if (!q) return;
     this.currentAddress.set(q);
+    this.addressQuery.set(q);
     this.currentNeighborhood.set('');
     this.closeAddressEdit();
     this.originEditOpen.set(false);
@@ -9700,24 +9719,29 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (isPlatformBrowser(this.platformId)) this._loadGoogleMapsSDK();
   }
   closeTripSearch() {
-    this.tripOpen.set(false);
+    this._tripRaw = '';
     this.tripQuery.set('');
+    this.tripInputHasText.set(false);
+    this.tripOpen.set(false);
     this.tripSuggestions.set([]);
-    // Limpiar DOM del input de destino
-    const el = document.querySelector<HTMLInputElement>('#tripInput, [placeholder="Busca o pega tu destino..."]');
+    const el = document.querySelector<HTMLInputElement>('[placeholder="Busca o pega tu destino..."]');
     if (el) el.value = '';
   }
 
   onTripQueryInput(val: string) {
-    this.tripQuery.set(val);
+    this._tripRaw = val;
+    this.tripInputHasText.set(val.trim().length > 0);
     if (this._tripDebounceTimer) clearTimeout(this._tripDebounceTimer);
     if (!val.trim() || val.length < 2) {
-      this.tripSuggestions.set([]);
+      if (this.tripSuggestions().length) this.tripSuggestions.set([]);
       this.tripNoResults.set(false);
       return;
     }
     this.tripLoading.set(true);
-    this._tripDebounceTimer = setTimeout(() => this._searchGooglePlaces(val), 300);
+    this._tripDebounceTimer = setTimeout(() => {
+      this.tripQuery.set(val);        // actualizar signal solo en debounce
+      this._searchGooglePlaces(val);
+    }, 300);
   }
 
   /** Carga el SDK de Google Maps una sola vez de forma lazy */
