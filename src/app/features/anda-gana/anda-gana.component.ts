@@ -7904,46 +7904,50 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async _reverseGeocode(lat: number, lng: number) {
     this.addressLoading.set(true);
     try {
-      const base = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${this.MAPBOX_TOKEN}&language=es&limit=1`;
-      // Dos requests en paralelo: dirección principal + barrio específico
-      const [dataAddr, dataNeigh] = await Promise.all([
-        fetch(`${base}&types=address,poi,place`).then(r => r.json()),
-        fetch(`${base}&types=neighborhood,locality,district`).then(r => r.json()),
+      // Request 1: Mapbox para calle + ciudad (confiable)
+      // Request 2: Nominatim reverse para barrio (mejor cobertura en Colombia)
+      const [dataMapbox, dataNom] = await Promise.all([
+        fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+          `?access_token=${this.MAPBOX_TOKEN}&language=es&types=address,poi,place&limit=1`
+        ).then(r => r.json()).catch(() => ({ features: [] })),
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+          { headers: { 'Accept-Language': 'es' } }
+        ).then(r => r.json()).catch(() => null),
       ]);
 
-      const feat  = dataAddr.features?.[0];
-      const neigh = dataNeigh.features?.[0];
+      const feat = dataMapbox.features?.[0];
+      const ctx  = feat?.context ?? [];
 
-      if (!feat && !neigh) { this.currentAddress.set(''); this.addressLoading.set(false); this.cdr.markForCheck(); return; }
-
-      const ctx = feat?.context ?? [];
-
-      // Barrio: del request dedicado primero, luego del context del address
-      const ctxBarrio = ctx.find((c: any) =>
-        c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.') || c.id?.startsWith('district.')
-      );
-      const barrioText = neigh?.text ?? ctxBarrio?.text ?? null;
+      // Barrio: Nominatim tiene mejor cobertura de barrios en ciudades colombianas
+      const nomAddr   = dataNom?.address ?? {};
+      const barrioText: string | null =
+        nomAddr.neighbourhood ?? nomAddr.suburb ?? nomAddr.quarter ?? nomAddr.hamlet ??
+        ctx.find((c: any) => c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.') || c.id?.startsWith('district.'))?.text ??
+        null;
       this.currentNeighborhood.set(barrioText ?? '');
 
-      // Ciudad
+      // Ciudad: Mapbox primero, Nominatim como fallback
       const ctxCity  = ctx.find((c: any) => c.id?.startsWith('place.'));
-      const cityText = ctxCity?.text ?? (feat?.id?.startsWith('place.') ? feat?.text : null);
+      const cityText: string | null =
+        ctxCity?.text ??
+        (feat?.id?.startsWith('place.') ? feat.text : null) ??
+        nomAddr.city ?? nomAddr.town ?? nomAddr.municipality ?? null;
 
-      // Calle
-      const isStreet  = feat?.id?.startsWith('address.') || feat?.id?.startsWith('poi.');
-      const streetText = isStreet
+      // Calle: del feature Mapbox
+      const isStreet   = feat?.id?.startsWith('address.') || feat?.id?.startsWith('poi.');
+      const streetText: string | null = isStreet
         ? (feat.address ? `${feat.text} ${feat.address}` : feat.text)
-        : null;
+        : (nomAddr.road ? (nomAddr.house_number ? `${nomAddr.road} ${nomAddr.house_number}` : nomAddr.road) : null);
 
       const parts = [streetText, barrioText, cityText].filter(Boolean);
       if (parts.length > 0) {
         this.currentAddress.set(parts.join(', '));
       } else {
-        // Fallback: place_name sin código postal
-        const fallback = feat ?? neigh;
+        const fallbackName = feat?.place_name ?? dataNom?.display_name ?? '';
         this.currentAddress.set(
-          (fallback?.place_name ?? '')
-            .split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).join(',').trim()
+          fallbackName.split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).slice(0, 3).join(',').trim()
         );
       }
 
