@@ -9346,6 +9346,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('movi_active_trip', JSON.stringify({
             tripId: result.tripId, status: 'searching', ts: Date.now(),
+            dest: this.tripDest(), price: this.tripPrice(), vehicle: this.tripVehicle(), payment: this.tripPayment(),
           }));
         }
         // Auto-buscar conductores cercanos y enviarles la solicitud
@@ -9467,8 +9468,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Persistir estado del viaje para recuperación tras crash
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('movi_active_trip', JSON.stringify({
-        tripId, driverId: offer.driver_id, offerId: offer.id,
-        ts: Date.now(),
+        tripId, driverId: offer.driver_id, offerId: offer.id, status: 'accepted', ts: Date.now(),
+        dest: this.tripDest(), price: this.tripPrice(), vehicle: this.tripVehicle(), payment: this.tripPayment(),
       }));
     }
     this._startTrackingAssignedDriver(offer.driver_id);
@@ -9498,7 +9499,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const raw = localStorage.getItem('movi_active_trip');
     if (!raw) return;
     try {
-      const saved = JSON.parse(raw) as { tripId: string; driverId?: string; offerId?: string; status?: string; ts: number };
+      const saved = JSON.parse(raw) as {
+        tripId: string; driverId?: string; offerId?: string; status?: string; ts: number;
+        dest?: { name: string; lat: number; lng: number } | null;
+        price?: number; vehicle?: 'carro' | 'moto' | 'camion'; payment?: AgPaymentMethod;
+      };
       // Ignorar si tiene más de 2 horas (viaje muy viejo)
       if (Date.now() - saved.ts > 2 * 60 * 60 * 1000) { localStorage.removeItem('movi_active_trip'); return; }
       // Verificar estado actual en BD
@@ -9507,6 +9512,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (!trip || ['cancelled', 'completed'].includes(trip.status)) {
         localStorage.removeItem('movi_active_trip'); return;
       }
+      // Restaurar datos del viaje comunes a ambos estados
+      if (saved.dest) this.tripDest.set(saved.dest);
+      if (saved.price) this.tripPrice.set(saved.price);
+      if (saved.vehicle) this.tripVehicle.set(saved.vehicle);
+      if (saved.payment) this.tripPayment.set(saved.payment);
       // Si el viaje sigue buscando conductor: re-suscribir a ofertas y cargar las ya recibidas
       if (trip.status === 'searching') {
         this.currentTripRequestId.set(saved.tripId);
@@ -11800,7 +11810,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.tripAccepted.set(null);
       this._subscribeToOffers(tripResult.tripId);
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('movi_active_trip', JSON.stringify({ tripId: tripResult.tripId, status: 'searching', ts: Date.now() }));
+        localStorage.setItem('movi_active_trip', JSON.stringify({ tripId: tripResult.tripId, status: 'searching', ts: Date.now(), dest, price: this.qrPrice(), vehicle: this.qrVehicle(), payment: this.qrPayment() }));
       }
       this._autoAssignNearestDrivers(tripResult.tripId, orig.lat, orig.lng, this.qrVehicle(), this.qrPrice());
     }
