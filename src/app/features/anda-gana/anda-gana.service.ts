@@ -35,6 +35,7 @@ export interface AgUser {
   total_trips_as_passenger?: number;
   passenger_level?: string;
   passenger_wallet_balance?: number;
+  passenger_rating_avg?: number;
 }
 
 export interface AgDriver {
@@ -84,6 +85,7 @@ export interface AgTripRequest {
   passenger_user_id: string;
   origin_lat: number;
   origin_lng: number;
+  origin_name?: string;
   dest_name: string;
   dest_lat: number;
   dest_lng: number;
@@ -725,7 +727,7 @@ export class AndaGanaService {
   async getSearchingRequests(vehicleType?: string, lat?: number, lng?: number, maxKm = 50): Promise<AgTripRequest[]> {
     let query = this.supabase
       .from('ag_trip_requests')
-      .select('*, ag_users(*)')
+      .select('*, ag_users(id, full_name, total_trips_as_passenger, passenger_rating_avg, selfie_url, passenger_level)')
       .eq('status', 'searching')
       .order('created_at', { ascending: false })
       .limit(50);
@@ -765,7 +767,7 @@ export class AndaGanaService {
             if (this._haversine(lat, lng, row.origin_lat, row.origin_lng) > maxKm) return;
           }
           const { data } = await this.supabase
-            .from('ag_trip_requests').select('*, ag_users(*)').eq('id', row.id).single();
+            .from('ag_trip_requests').select('*, ag_users(id, full_name, total_trips_as_passenger, passenger_rating_avg, selfie_url, passenger_level)').eq('id', row.id).single();
           if (data) onNew(data as AgTripRequest);
         },
       )

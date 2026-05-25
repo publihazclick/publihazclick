@@ -2631,113 +2631,149 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           }
 
           @for (req of driverRequests(); track req.id) {
-              <div class="rounded-2xl overflow-hidden"
-                style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-                <div class="flex items-start gap-3 px-4 pt-3 pb-2">
-                  <!-- Icono tipo -->
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style="background:rgba(8,145,178,0.10);border:1px solid rgba(8,145,178,0.2)">
-                    <span class="material-symbols-outlined text-cyan-600" style="font-size:20px">
-                      {{ req.vehicle_type === 'moto' ? 'two_wheeler' : 'directions_car' }}
-                    </span>
-                  </div>
-                  <!-- Info -->
-                  <div class="flex-1 min-w-0">
-                    <p class="text-slate-700 text-xs mb-0.5">
-                      <span class="font-bold" style="color:#0f172a">{{ req.ag_users?.full_name ?? 'Pasajero' }}</span>
-                      · {{ req.distance_km }} km
-                    </p>
-                    <p class="text-slate-600 text-xs truncate">→ {{ req.dest_name }}</p>
-                    <!-- Método de pago -->
-                    <div class="flex items-center gap-1 mt-1.5 w-fit px-2 py-0.5 rounded-full"
-                      [style.background]="paymentMethodMap[req.payment_method ?? 'efectivo'].bgDark"
-                      [style.border]="'1px solid ' + paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">
-                      <span class="material-symbols-outlined" style="font-size:11px"
-                        [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].icon }}</span>
-                      <span class="text-[10px] font-bold"
-                        [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].label }}</span>
-                    </div>
-                  </div>
-                  <!-- Precio ofrecido -->
-                  <div class="text-right flex-shrink-0">
-                    <p class="text-cyan-600 font-black text-base">{{ formatCOP(req.offered_price) }}</p>
-                    <p class="text-slate-500 text-[10px]">precio pasajero</p>
+            <div class="rounded-2xl overflow-hidden"
+              style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 2px 12px rgba(0,0,0,0.07)">
+
+              <!-- Fila 1: info pasajero + precio -->
+              <div class="flex items-center gap-3 px-4 pt-4 pb-3" style="border-bottom:1px solid #F1F5F9">
+                <!-- Avatar inicial -->
+                <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 font-black text-base text-white"
+                  style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                  {{ (req.ag_users?.full_name ?? 'P')[0].toUpperCase() }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-black text-sm truncate" style="color:#0f172a">{{ req.ag_users?.full_name ?? 'Pasajero' }}</p>
+                  <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                    @if (req.ag_users?.passenger_rating_avg) {
+                      <div class="flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-amber-400" style="font-size:12px;font-variation-settings:'FILL' 1">star</span>
+                        <span class="text-xs font-bold" style="color:#0f172a">{{ req.ag_users!.passenger_rating_avg! | number:'1.1-1' }}</span>
+                      </div>
+                    } @else {
+                      <div class="flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-slate-300" style="font-size:12px;font-variation-settings:'FILL' 1">star</span>
+                        <span class="text-[10px] text-slate-400">Nuevo</span>
+                      </div>
+                    }
+                    <span class="text-slate-400 text-[10px]">·</span>
+                    <span class="text-slate-500 text-[10px] font-medium">{{ req.ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
                   </div>
                 </div>
+                <!-- Precio -->
+                <div class="text-right flex-shrink-0">
+                  <p class="font-black text-xl" style="color:#059669;line-height:1.1">{{ formatCOP(req.offered_price) }}</p>
+                  <p class="text-slate-400 text-[10px] mt-0.5">precio pasajero</p>
+                </div>
+              </div>
 
-                <!-- Botón hacer oferta -->
+              <!-- Fila 2: ruta -->
+              <div class="px-4 py-3 flex flex-col gap-2" style="border-bottom:1px solid #F1F5F9">
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-cyan-500 flex-shrink-0" style="font-size:15px;margin-top:1px">my_location</span>
+                  <p class="text-xs font-medium leading-tight" style="color:#334155">{{ req.origin_name ?? 'Punto de recogida' }}</p>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="material-symbols-outlined text-rose-500 flex-shrink-0" style="font-size:15px;margin-top:1px">location_on</span>
+                  <p class="text-xs font-medium leading-tight" style="color:#334155">{{ req.dest_name }}</p>
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-slate-400 text-[10px]">{{ req.distance_km }} km</span>
+                  <div class="flex items-center gap-1 px-1.5 py-0.5 rounded-full"
+                    [style.background]="paymentMethodMap[req.payment_method ?? 'efectivo'].bgDark"
+                    [style.border]="'1px solid ' + paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">
+                    <span class="material-symbols-outlined" style="font-size:10px"
+                      [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].icon }}</span>
+                    <span class="text-[9px] font-bold"
+                      [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].label }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fila 3: botón acción -->
+              <div class="px-4 pt-3 pb-2">
                 @if (offerSentFor().has(req.id)) {
-                  <div class="flex items-center justify-center gap-1.5 py-2.5 mx-4 mb-3 rounded-xl"
+                  <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl"
                     style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
                     <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span>
                     <span class="text-emerald-400 text-xs font-bold">Oferta enviada</span>
                   </div>
-                } @else {
-                  <div class="px-4 pb-3">
-                    @if (driverStatus() === 'quick') {
-                      <button (click)="openMakeOffer(req)"
-                        class="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-                        style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border:none;cursor:pointer">
-                        <span class="material-symbols-outlined text-white" style="font-size:16px">rocket_launch</span>
-                        <span class="text-white text-xs font-black">1ª carrera gratis · Tomar viaje</span>
-                      </button>
-                    } @else if (driverStatus() === 'pending_docs') {
-                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
-                        style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
-                        <div class="flex items-center gap-1.5">
-                          <span class="material-symbols-outlined text-orange-400" style="font-size:15px">assignment</span>
-                          <span class="text-orange-400 text-xs font-black">Completa tu registro</span>
-                        </div>
-                        <p class="text-slate-500 text-[10px]">Envía tus documentos para seguir aceptando viajes</p>
-                      </div>
-                    } @else if (driverStatus() === 'pending') {
-                      <div class="w-full py-2.5 rounded-xl flex items-center justify-center gap-1.5"
-                        style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
-                        <span class="material-symbols-outlined text-amber-400" style="font-size:15px">hourglass_top</span>
-                        <span class="text-amber-400 text-xs font-black">En revisión (24–48h)</span>
-                      </div>
-                    } @else if (driverStatus() === 'approved' && driverWalletBalance() < 20000) {
-                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
-                        style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
-                        <div class="flex items-center gap-1.5">
-                          <span class="material-symbols-outlined text-rose-400" style="font-size:15px">account_balance_wallet</span>
-                          <span class="text-rose-400 text-xs font-black">Mínimo $20.000 para aceptar</span>
-                        </div>
-                        <p class="text-slate-500 text-[10px]">Recarga tu billetera para poder tomar viajes</p>
-                        <button (click)="walletPanelOpen.set(true)"
-                          class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
-                          style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
-                          <span class="material-symbols-outlined" style="font-size:12px">add_circle</span>
-                          Recargar billetera
-                        </button>
-                      </div>
-                    } @else if (driverStatus() === 'approved' && driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
-                      <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-1"
-                        style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2)">
-                        <div class="flex items-center gap-1.5">
-                          <span class="material-symbols-outlined text-amber-400" style="font-size:15px">account_balance_wallet</span>
-                          <span class="text-amber-400 text-xs font-black">Saldo insuficiente para comisión</span>
-                        </div>
-                        <p class="text-slate-500 text-[10px]">Necesitas {{ formatCOP(requiredCommission(req.offered_price)) }}</p>
-                        <button (click)="walletPanelOpen.set(true)"
-                          class="mt-1 px-4 py-1.5 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
-                          style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
-                          <span class="material-symbols-outlined" style="font-size:12px">add_circle</span>
-                          Recargar billetera
-                        </button>
-                      </div>
-                    } @else if (driverStatus() === 'approved') {
-                      <button (click)="openMakeOffer(req)"
-                        class="w-full py-2.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-                        style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                        <span class="material-symbols-outlined" style="font-size:16px">local_offer</span>
-                        Hacer oferta
-                      </button>
-                    }
+                } @else if (driverStatus() === 'quick') {
+                  <button (click)="openMakeOffer(req)"
+                    class="w-full py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform font-black text-sm text-white"
+                    style="background:linear-gradient(135deg,#7C3AED,#3B82F6)">
+                    <span class="material-symbols-outlined" style="font-size:18px">rocket_launch</span>
+                    Aceptar · 1ª carrera gratis
+                  </button>
+                } @else if (driverStatus() === 'pending_docs') {
+                  <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
+                    style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-orange-400" style="font-size:15px">assignment</span>
+                      <span class="text-orange-400 text-xs font-black">Completa tu registro para aceptar viajes</span>
+                    </div>
                   </div>
+                } @else if (driverStatus() === 'pending') {
+                  <div class="w-full py-2.5 rounded-xl flex items-center justify-center gap-1.5"
+                    style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+                    <span class="material-symbols-outlined text-amber-400" style="font-size:15px">hourglass_top</span>
+                    <span class="text-amber-400 text-xs font-black">Cuenta en revisión (24–48h)</span>
+                  </div>
+                } @else if (driverStatus() === 'approved' && driverWalletBalance() < 20000) {
+                  <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
+                    style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-rose-400" style="font-size:15px">account_balance_wallet</span>
+                      <span class="text-rose-400 text-xs font-black">Mínimo $20.000 para aceptar</span>
+                    </div>
+                    <button (click)="walletPanelOpen.set(true)"
+                      class="mt-1 px-4 py-1 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
+                      style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
+                      <span class="material-symbols-outlined" style="font-size:11px">add_circle</span>Recargar billetera
+                    </button>
+                  </div>
+                } @else if (driverStatus() === 'approved' && driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
+                  <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
+                    style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2)">
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-amber-400" style="font-size:15px">account_balance_wallet</span>
+                      <span class="text-amber-400 text-xs font-black">Saldo insuficiente (necesitas {{ formatCOP(requiredCommission(req.offered_price)) }})</span>
+                    </div>
+                    <button (click)="walletPanelOpen.set(true)"
+                      class="mt-1 px-4 py-1 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
+                      style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
+                      <span class="material-symbols-outlined" style="font-size:11px">add_circle</span>Recargar billetera
+                    </button>
+                  </div>
+                } @else if (driverStatus() === 'approved') {
+                  <button (click)="openMakeOffer(req)"
+                    class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                    style="background:linear-gradient(135deg,#059669,#0891b2)">
+                    <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+                    Aceptar viaje
+                  </button>
                 }
               </div>
-            }
+
+              <!-- Barra temporizador 4 minutos -->
+              <div class="px-4 pb-4 pt-1">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-slate-400 text-[10px] font-medium">Disponible por</span>
+                  <span class="text-[11px] font-black"
+                    [style.color]="reqRemainingPct(req) < 25 ? '#ef4444' : reqRemainingPct(req) < 50 ? '#f59e0b' : '#64748b'">
+                    {{ reqRemainingStr(req) }}
+                  </span>
+                </div>
+                <div class="w-full rounded-full overflow-hidden" style="height:5px;background:#F1F5F9">
+                  <div class="h-full rounded-full"
+                    style="transition:width 1s linear"
+                    [style.width]="reqRemainingPct(req) + '%'"
+                    [style.background]="reqRemainingPct(req) < 25 ? '#ef4444' : reqRemainingPct(req) < 50 ? '#f59e0b' : '#10b981'">
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          }
         </div>
       }
       @if (driverStatus() === 'rejected') {
@@ -6829,6 +6865,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._stopTrackingAssignedDriver();
     this.stopDriverTracking(); // limpia _driverLocChannel + _tripStageChannel
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+    if (this._reqTimerInterval) { clearInterval(this._reqTimerInterval); this._reqTimerInterval = null; }
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
     if (this._waitingInterval) { clearInterval(this._waitingInterval); this._waitingInterval = null; }
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
@@ -8458,6 +8495,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       // Cancelar suscripción y limpiar lista de solicitudes
       if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
       if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
+      if (this._reqTimerInterval) { clearInterval(this._reqTimerInterval); this._reqTimerInterval = null; }
       this.driverRequests.set([]);
       this.cdr.markForCheck();
     }
@@ -9475,6 +9513,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // ── Driver: load & refresh trip requests ──────────────────────
   private _driverRefreshInterval: ReturnType<typeof setInterval> | null = null;
+  private _reqTimerInterval: ReturnType<typeof setInterval> | null = null;
+  reqNowMs = signal(Date.now());
 
   _loadDriverRequests(vehicleType?: string, lat?: number, lng?: number) {
     const dLat = lat ?? (this._currentLat !== this.DEFAULT_LAT ? this._currentLat : undefined);
@@ -9494,6 +9534,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       clearInterval(this._driverRefreshInterval);
       this._driverRefreshInterval = null;
     }
+    // Timer 1s: actualiza reloj para la barra de progreso y expira solicitudes > 4 min
+    if (this._reqTimerInterval) clearInterval(this._reqTimerInterval);
+    this._reqTimerInterval = setInterval(() => {
+      const now = Date.now();
+      this.reqNowMs.set(now);
+      const hasExpired = this.driverRequests().some(r => now - new Date(r.created_at).getTime() > 240000);
+      if (hasExpired) {
+        this.driverRequests.update(list => list.filter(r => now - new Date(r.created_at).getTime() <= 240000));
+        this.cdr.markForCheck();
+      }
+    }, 1000);
     // Suscripción realtime filtrada por distancia
     this._requestsChannel = this.agService.subscribeToTripRequests(
       vehicleType,
@@ -9524,6 +9575,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   refreshDriverRequests() {
     this._loadDriverRequests(this.driverData()?.vehicle_type, this._currentLat, this._currentLng);
+  }
+
+  reqRemainingMs(req: AgTripRequest): number {
+    return Math.max(0, 240000 - (this.reqNowMs() - new Date(req.created_at).getTime()));
+  }
+  reqRemainingPct(req: AgTripRequest): number {
+    return (this.reqRemainingMs(req) / 240000) * 100;
+  }
+  reqRemainingStr(req: AgTripRequest): string {
+    const ms = this.reqRemainingMs(req);
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
   openMakeOffer(req: AgTripRequest) {
