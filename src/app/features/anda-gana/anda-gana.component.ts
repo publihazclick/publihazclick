@@ -9745,10 +9745,18 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           const a = Math.sin(dLat/2)**2 + Math.cos(this._currentLat*Math.PI/180)*Math.cos(rLat*Math.PI/180)*Math.sin(dLng/2)**2;
           distanceKm = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 10) / 10;
         }
+        // Usar campos estructurados de address para evitar mostrar código postal
+        const addr = r.address ?? {};
+        const neighbourhood = addr.neighbourhood ?? addr.suburb ?? addr.quarter ?? addr.hamlet ?? null;
+        const city = addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? null;
+        const placeParts = [neighbourhood, city].filter(Boolean);
+        const placeName = placeParts.length > 0
+          ? placeParts.join(', ')
+          : r.display_name.split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).slice(1, 3).join(',').trim();
         return {
           id: r.place_id, place_id: `nominatim_${r.place_id}`,
           text: r.display_name.split(',')[0],
-          place_name: r.display_name.split(',').slice(1, 3).join(',').trim(),
+          place_name: placeName,
           lat: rLat, lng: rLng, distanceKm, _rawTypes: [] as string[],
         };
       });
@@ -12340,16 +12348,25 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (query.trim().length < 2) return [];
     try {
       const encoded = encodeURIComponent(query + ' Colombia');
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=5&countrycodes=co`, {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=5&countrycodes=co&addressdetails=1`, {
         headers: { 'Accept-Language': 'es' },
       });
       const data = await res.json();
-      return (data as any[]).map((r: any, i: number) => ({
-        id: `nom-${i}`,
-        text: r.display_name?.split(',')[0] ?? '',
-        place_name: r.display_name ?? '',
-        center: [parseFloat(r.lon), parseFloat(r.lat)] as [number, number],
-      }));
+      return (data as any[]).map((r: any, i: number) => {
+        const addr = r.address ?? {};
+        const neighbourhood = addr.neighbourhood ?? addr.suburb ?? addr.quarter ?? null;
+        const city = addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? null;
+        const placeParts = [neighbourhood, city].filter(Boolean);
+        const placeName = placeParts.length > 0
+          ? placeParts.join(', ')
+          : (r.display_name ?? '').split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).slice(1, 3).join(',').trim();
+        return {
+          id: `nom-${i}`,
+          text: r.display_name?.split(',')[0] ?? '',
+          place_name: placeName,
+          center: [parseFloat(r.lon), parseFloat(r.lat)] as [number, number],
+        };
+      });
     } catch { return []; }
   }
 
