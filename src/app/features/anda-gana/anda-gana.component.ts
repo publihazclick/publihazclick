@@ -788,7 +788,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <div class="flex items-center gap-2.5 px-3 py-2.5" style="border-bottom:1px solid #f1f5f9">
                         <div class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></div>
                         <input id="origin-edit-input"
-                          [value]="addressQuery()"
                           (input)="onAddressInput($any($event.target).value)"
                           (paste)="handlePaste($any($event), 'address')"
                           (keydown.escape)="originEditOpen.set(false)"
@@ -817,7 +816,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
                     <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">search</span>
                     <input #tripInput
-                      [value]="tripQuery()"
                       (input)="onTripQueryInput($any($event.target).value)"
                       (paste)="handlePaste($any($event), 'trip')"
                       (keydown.escape)="closeTripSearch()"
@@ -1084,7 +1082,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <div class="flex items-center gap-2.5 px-3 py-2.5">
                       <div class="w-3 h-3 rounded-full border-2 border-orange-500 bg-orange-100 flex-shrink-0"></div>
                       <input id="origin-edit-input"
-                        [value]="addressQuery()"
                         (input)="onAddressInput($any($event.target).value)"
                         (keydown.escape)="originEditOpen.set(false)"
                         placeholder="Escribe tu punto de salida..."
@@ -7762,6 +7759,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   clearAddressQuery() {
     this.addressQuery.set('');
     this.addressSuggestions.set([]);
+    // Limpiar DOM — necesario porque quitamos [value] binding para no interferir con backspace
+    ['#addrInput', '[placeholder="Escribe tu dirección exacta de recogida..."]', '#origin-edit-input'].forEach(sel => {
+      const el = document.querySelector<HTMLInputElement>(sel);
+      if (el) { el.value = ''; el.focus(); }
+    });
     if (this.addrInputRef?.nativeElement) this.addrInputRef.nativeElement.value = '';
   }
 
@@ -9697,7 +9699,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripOpen.set(true);
     if (isPlatformBrowser(this.platformId)) this._loadGoogleMapsSDK();
   }
-  closeTripSearch() { this.tripOpen.set(false); this.tripQuery.set(''); this.tripSuggestions.set([]); }
+  closeTripSearch() {
+    this.tripOpen.set(false);
+    this.tripQuery.set('');
+    this.tripSuggestions.set([]);
+    // Limpiar DOM del input de destino
+    const el = document.querySelector<HTMLInputElement>('#tripInput, [placeholder="Busca o pega tu destino..."]');
+    if (el) el.value = '';
+  }
 
   onTripQueryInput(val: string) {
     this.tripQuery.set(val);
