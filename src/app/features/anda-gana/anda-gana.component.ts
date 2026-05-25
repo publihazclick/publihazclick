@@ -7577,7 +7577,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const res  = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?${params}`);
       const json = await res.json();
       const feat = json.features?.[0];
-      return feat?.place_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (!feat) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      // Construir sin código postal: calle + barrio + ciudad
+      const ctx     = feat.context ?? [];
+      const street  = feat.text ? (feat.address ? `${feat.text} ${feat.address}` : feat.text) : null;
+      const barrio  = ctx.find((c: any) => c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.') || c.id?.startsWith('district.'));
+      const city    = ctx.find((c: any) => c.id?.startsWith('place.'));
+      const parts   = [street, barrio?.text, city?.text].filter(Boolean);
+      return parts.length > 0 ? parts.join(', ') : (feat.place_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     } catch { return `${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
   }
 
@@ -7897,7 +7904,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const res  = await fetch(url);
       const data = await res.json();
       const feature = data.features?.[0];
-      this.currentAddress.set(feature?.place_name ?? '');
 
       // Extraer barrio/sector del contexto (varios prefijos según país/ciudad)
       if (feature) {
@@ -7908,11 +7914,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           c.id?.startsWith('district.')     ||
           c.id?.startsWith('suburb.')
         );
-        // Fallback: si no hay barrio específico, usar el texto del propio feature si es poi/address
         const fallback = (!barrio && feature.id?.startsWith('poi.'))
           ? ctx.find((c: any) => c.id?.startsWith('place.'))
           : null;
         this.currentNeighborhood.set(barrio?.text ?? fallback?.text ?? '');
+
+        // Construir dirección legible: calle + barrio + ciudad (sin código postal)
+        const street = feature.text ? (feature.address ? `${feature.text} ${feature.address}` : feature.text) : null;
+        const barrioText = barrio?.text ?? null;
+        const cityCtx = ctx.find((c: any) => c.id?.startsWith('place.'));
+        const city = cityCtx?.text ?? null;
+        const parts = [street, barrioText, city].filter(Boolean);
+        this.currentAddress.set(parts.length > 0 ? parts.join(', ') : (feature.place_name ?? ''));
+      } else {
+        this.currentAddress.set('');
       }
 
       // Extraer ciudad del contexto y actualizar si el conductor cambió de ciudad
