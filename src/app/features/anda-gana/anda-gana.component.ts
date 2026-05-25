@@ -7806,44 +7806,88 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private async _searchAddressSuggestions(query: string) {
     if (!isPlatformBrowser(this.platformId)) return;
-    const sdkOk = await this._loadGoogleMapsSDK();
-    if (!sdkOk) return;
-    if (!this._autocompleteService) this._initGooglePlaces();
-    const request: any = {
-      input: query,
-      componentRestrictions: { country: 'co' },
-      sessionToken: this._placesSessionToken,
-    };
-    if (this._gpsRealFix) {
-      const gmaps = (window as any).google.maps;
-      // Radio ~11km para mantener resultados dentro de la misma ciudad
-      const d = 0.1;
-      request.bounds = new gmaps.LatLngBounds(
-        new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
-        new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
-      );
+
+    // Google Places + Nominatim en paralelo para mejor cobertura de barrios
+    const [sdkOk, nomSugs] = await Promise.all([
+      this._loadGoogleMapsSDK(),
+      this._fetchNominatimSuggestions(query),
+    ]);
+
+    let googleSugs: { place_id: string; text: string; place_name: string }[] = [];
+    if (sdkOk) {
+      if (!this._autocompleteService) this._initGooglePlaces();
+      googleSugs = await new Promise<typeof googleSugs>(resolve => {
+        const request: any = {
+          input: query,
+          componentRestrictions: { country: 'co' },
+          sessionToken: this._placesSessionToken,
+        };
+        if (this._gpsRealFix) {
+          const gmaps = (window as any).google.maps;
+          const d = 0.1;
+          request.bounds = new gmaps.LatLngBounds(
+            new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
+            new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
+          );
+        }
+        this._autocompleteService.getPlacePredictions(request, (preds: any[], status: string) => {
+          if (status !== 'OK' || !preds?.length) { resolve([]); return; }
+          const city = this._cityFromGps.toLowerCase();
+          const local = city ? preds.filter(p => p.description?.toLowerCase().includes(city)) : preds;
+          resolve((local.length > 0 ? local : preds).slice(0, 5).map((p: any) => ({
+            place_id:   p.place_id,
+            text:       p.structured_formatting?.main_text ?? p.description,
+            place_name: p.structured_formatting?.secondary_text ?? '',
+          })));
+        });
+      });
     }
-    this._autocompleteService.getPlacePredictions(request, (predictions: any[], status: string) => {
-      if (status !== 'OK' || !predictions?.length) {
-        this.addressSuggestions.set([]);
-        this.addressNoResults.set(true);
-        this.cdr.markForCheck();
-        return;
+
+    // Fusionar: Google primero, Nominatim llena los huecos (barrios que Google no conoce)
+    const merged = [...googleSugs];
+    for (const n of nomSugs) {
+      if (merged.length >= 6) break;
+      const key = n.text.toLowerCase().split(',')[0].trim();
+      if (!merged.some(g => g.text.toLowerCase().includes(key) || key.includes(g.text.toLowerCase()))) {
+        merged.push({ place_id: n.place_id, text: n.text, place_name: n.place_name });
       }
-      // Filtrar por ciudad detectada para mostrar solo resultados locales
-      const city = this._cityFromGps.toLowerCase();
-      const local = city
-        ? predictions.filter(p => p.description?.toLowerCase().includes(city))
-        : predictions;
-      const final = (local.length > 0 ? local : predictions).slice(0, 5);
-      this.addressSuggestions.set(final.map((p: any) => ({
-        place_id:   p.place_id,
-        text:       p.structured_formatting?.main_text ?? p.description,
-        place_name: p.structured_formatting?.secondary_text ?? '',
-      })));
-      this.addressNoResults.set(false);
-      this.cdr.markForCheck();
-    });
+    }
+
+    this.addressSuggestions.set(merged.slice(0, 6));
+    this.addressNoResults.set(merged.length === 0);
+    this.cdr.markForCheck();
+  }
+
+  /** Busca en Nominatim OSM — mejor cobertura de barrios colombianos */
+  private async _fetchNominatimSuggestions(query: string): Promise<any[]> {
+    try {
+      const params = new URLSearchParams({
+        q: query, format: 'json', countrycodes: 'co', limit: '6', addressdetails: '1',
+      });
+      if (this._gpsRealFix) {
+        const d = 0.15;
+        params.set('viewbox', `${this._currentLng - d},${this._currentLat + d},${this._currentLng + d},${this._currentLat - d}`);
+        params.set('bounded', '1');
+      }
+      const res  = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { 'Accept-Language': 'es' },
+      });
+      const data = await res.json();
+      return (data ?? []).slice(0, 6).map((r: any) => {
+        const addr = r.address ?? {};
+        const barrio = addr.neighbourhood ?? addr.suburb ?? addr.quarter ?? addr.hamlet ?? null;
+        const city   = addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? null;
+        const placeName = [barrio, city].filter(Boolean).join(', ') ||
+          r.display_name.split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).slice(1, 3).join(',').trim();
+        return {
+          place_id: `nom_${r.place_id}`,
+          text:     r.display_name.split(',')[0].trim(),
+          place_name: placeName,
+          lat: parseFloat(r.lat), lng: parseFloat(r.lon),
+          distanceKm: null, _rawTypes: [] as string[],
+        };
+      });
+    } catch { return []; }
   }
 
 
@@ -9700,14 +9744,29 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._placesSessionToken = new gmaps.places.AutocompleteSessionToken();
   }
 
-  /** Busca sugerencias vía Google Places AutocompleteService */
+  /** Busca sugerencias vía Google Places + Nominatim en paralelo para cobertura completa de barrios */
   private async _searchGooglePlaces(query: string) {
     if (!isPlatformBrowser(this.platformId)) return;
-    const sdkOk = await this._loadGoogleMapsSDK();
-    if (!sdkOk) { this._searchNominatimFallback(query); return; }
+
+    const hasGps = this._gpsRealFix;
+
+    // Google Places y Nominatim en paralelo
+    const [sdkOk, nomSugs] = await Promise.all([
+      this._loadGoogleMapsSDK(),
+      this._fetchNominatimSuggestions(query),
+    ]);
+
+    if (!sdkOk) {
+      // Sin Google SDK: usar solo Nominatim
+      this.tripLoading.set(false);
+      const results = nomSugs.map(n => ({ id: n.place_id, ...n, _rawTypes: [] }));
+      this.tripSuggestions.set(results);
+      this.tripNoResults.set(results.length === 0);
+      this.cdr.markForCheck();
+      return;
+    }
     if (!this._autocompleteService) this._initGooglePlaces();
 
-    const hasGps = this._gpsRealFix; // solo usar bias de ubicación si tenemos GPS real confirmado
     const request: any = {
       input: query,
       componentRestrictions: { country: 'co' },
@@ -9715,7 +9774,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     };
     if (hasGps) {
       const gmaps = (window as any).google.maps;
-      // bounds ~11km para mantener resultados dentro de la ciudad actual
       const d = 0.1;
       request.bounds = new gmaps.LatLngBounds(
         new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
@@ -9725,31 +9783,36 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     this._autocompleteService.getPlacePredictions(request, (predictions: any[], status: string) => {
       this.tripLoading.set(false);
-      if (status !== 'OK' || !predictions?.length) {
-        this._searchNominatimFallback(query);
-        return;
+
+      // Resultados Google (filtrados por ciudad)
+      const city = this._cityFromGps.toLowerCase();
+      const googlePreds = (status === 'OK' && predictions?.length)
+        ? (() => { const loc = city ? predictions.filter((p: any) => p.description?.toLowerCase().includes(city)) : predictions; return (loc.length > 0 ? loc : predictions); })()
+        : [];
+      const googleItems = googlePreds.slice(0, 5).map((p: any) => ({
+        id: p.place_id, place_id: p.place_id,
+        text: p.structured_formatting?.main_text ?? p.description,
+        place_name: p.structured_formatting?.secondary_text ?? '',
+        lat: null as number | null, lng: null as number | null,
+        distanceKm: null as number | null, _rawTypes: p.types,
+      }));
+
+      // Fusionar con Nominatim: llenar huecos con barrios que Google no retornó
+      const merged = [...googleItems];
+      for (const n of nomSugs) {
+        if (merged.length >= 6) break;
+        const key = n.text.toLowerCase().split(',')[0].trim();
+        if (!merged.some(g => g.text.toLowerCase().includes(key) || key.includes(g.text.toLowerCase()))) {
+          merged.push({ id: n.place_id, ...n, _rawTypes: [] });
+        }
       }
 
-      // Filtrar por ciudad detectada; si no quedan resultados, usar todos
-      const city = this._cityFromGps.toLowerCase();
-      const localPreds = city
-        ? predictions.filter((p: any) => p.description?.toLowerCase().includes(city))
-        : predictions;
-      const filtered = (localPreds.length > 0 ? localPreds : predictions).slice(0, 5);
+      // Si no hubo resultados de ninguna fuente
+      if (merged.length === 0) { this._searchNominatimFallback(query); return; }
 
-      // Mostrar resultados de inmediato sin distancia
-      const results = filtered.map((p: any) => ({
-        id:         p.place_id,
-        place_id:   p.place_id,
-        text:       p.structured_formatting?.main_text ?? p.description,
-        place_name: p.structured_formatting?.secondary_text ?? '',
-        lat:        null as number | null,
-        lng:        null as number | null,
-        distanceKm: null as number | null,
-        _rawTypes:  p.types,
-      }));
+      const results = merged.slice(0, 6);
       this.tripSuggestions.set(results);
-      this.tripNoResults.set(results.length === 0);
+      this.tripNoResults.set(false);
       this.cdr.markForCheck();
 
       // Enriquecer con distancia via getDetails + computeDistanceBetween
@@ -9759,7 +9822,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         const detailsService = this._placesService;
 
         Promise.allSettled(
-          filtered.map((p: any) =>
+          googlePreds.slice(0, 5).map((p: any) =>
             new Promise<{ place_id: string; distanceKm: number }>((resolve, reject) => {
               detailsService.getDetails(
                 { placeId: p.place_id, fields: ['geometry'] },
