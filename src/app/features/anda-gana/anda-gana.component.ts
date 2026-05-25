@@ -54,6 +54,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   [style.padding]="screen() === 'quick-register' ? '0' : ''"
   style="min-height:100dvh">
 
+  <!-- ═══════════ TOAST DIRECCIÓN GUARDADA ═══════════ -->
+  @if (addrSavedToast()) {
+    <div class="fixed bottom-28 left-1/2 z-[9999] flex items-center gap-2 px-5 py-3 rounded-full shadow-xl text-white text-sm font-bold animate-bounce-in"
+      style="transform:translateX(-50%);background:#16a34a;box-shadow:0 4px 20px rgba(22,163,74,0.5);pointer-events:none">
+      <span class="material-symbols-outlined" style="font-size:20px">check_circle</span>
+      Dirección guardada correctamente
+    </div>
+  }
+
   <!-- ═══════════ ALERTA VIAJE ACEPTADO (inDrive style) ═══════════ -->
   @if (driverTripAlert()) {
     <div class="fixed inset-0 z-[9990] flex flex-col items-center justify-center px-4"
@@ -6592,6 +6601,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   gpsAccuracy    = signal<number | null>(null);
   currentAddress      = signal('');
   currentNeighborhood = signal('');
+  addrSavedToast      = signal(false);
   addressLoading = signal(false);
   addressEditMode    = signal(false);
   addressQuery       = signal('');
@@ -7789,6 +7799,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.currentNeighborhood.set('');
     this.closeAddressEdit();
     this.originEditOpen.set(false);
+    this.addrSavedToast.set(true);
+    setTimeout(() => this.addrSavedToast.set(false), 2500);
     this.cdr.markForCheck();
   }
 
