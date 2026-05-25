@@ -654,23 +654,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     placeholder="Escribe tu dirección exacta de recogida..."
                     autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  @if (addrInputHasText()) {
-                    <div class="flex items-center gap-1 flex-shrink-0">
-                      <button (click)="clearAddressQuery()"
-                        class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
-                        <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
-                      </button>
-                      <button (click)="saveManualAddress()"
-                        class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
-                        style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
-                        <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
-                      </button>
-                    </div>
-                  } @else {
-                    <button (click)="closeAddressEdit()" class="flex-shrink-0">
-                      <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <button (click)="clearAddressQuery()"
+                      class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
+                      <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
                     </button>
-                  }
+                    <button (click)="saveManualAddress()"
+                      class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
+                      style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
+                      <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
+                    </button>
+                  </div>
                 </div>
                 @if (addressSuggestions().length > 0) {
                   <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
@@ -850,7 +844,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         </button>
                       }
                     </div>
-                  } @else if (tripInputHasText()) {
+                  } @else if (tripLoading() || tripNoResults()) {
                     @if (tripLoading()) {
                       <div class="flex justify-center py-4">
                         <div class="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
@@ -3062,23 +3056,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     placeholder="Escribe tu dirección exacta de recogida..."
                     autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                     class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  @if (addrInputHasText()) {
-                    <div class="flex items-center gap-1 flex-shrink-0">
-                      <button (click)="clearAddressQuery()"
-                        class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
-                        <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
-                      </button>
-                      <button (click)="saveManualAddress()"
-                        class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
-                        style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
-                        <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
-                      </button>
-                    </div>
-                  } @else {
-                    <button (click)="closeAddressEdit()">
-                      <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <button (click)="clearAddressQuery()"
+                      class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
+                      <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
                     </button>
-                  }
+                    <button (click)="saveManualAddress()"
+                      class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
+                      style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
+                      <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
+                    </button>
+                  </div>
                 </div>
                 @if (addressSuggestions().length > 0) {
                   <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
@@ -7798,18 +7786,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   onAddressInput(query: string) {
+    // CERO signal updates aquí — cualquier set() dispara re-render que confunde el IME de Android
     this._addrRaw = query;
-    // Solo actualizar boolean para botones — evita re-render completo por cada tecla
-    this.addrInputHasText.set(query.trim().length > 0);
+    clearTimeout(this._addressDebounceTimer);
     if (query.trim().length < 3) {
-      if (this.addressSuggestions().length) this.addressSuggestions.set([]);
+      if (this.addressSuggestions().length) {
+        this._addressDebounceTimer = setTimeout(() => this.addressSuggestions.set([]), 0);
+      }
       return;
     }
-    clearTimeout(this._addressDebounceTimer);
     this._addressDebounceTimer = setTimeout(() => {
-      this.addressQuery.set(query);   // actualizar signal solo en debounce
+      this.addressQuery.set(query);
       this._searchAddressSuggestions(query);
-    }, 300);
+    }, 350);
   }
 
   saveManualAddress() {
@@ -9729,19 +9718,21 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   onTripQueryInput(val: string) {
+    // CERO signal updates aquí — evita re-render que rompe el IME Android
     this._tripRaw = val;
-    this.tripInputHasText.set(val.trim().length > 0);
     if (this._tripDebounceTimer) clearTimeout(this._tripDebounceTimer);
     if (!val.trim() || val.length < 2) {
-      if (this.tripSuggestions().length) this.tripSuggestions.set([]);
-      this.tripNoResults.set(false);
+      this._tripDebounceTimer = setTimeout(() => {
+        if (this.tripSuggestions().length) this.tripSuggestions.set([]);
+        this.tripNoResults.set(false);
+      }, 0);
       return;
     }
-    this.tripLoading.set(true);
     this._tripDebounceTimer = setTimeout(() => {
-      this.tripQuery.set(val);        // actualizar signal solo en debounce
+      this.tripQuery.set(val);
+      this.tripLoading.set(true);
       this._searchGooglePlaces(val);
-    }, 300);
+    }, 350);
   }
 
   /** Carga el SDK de Google Maps una sola vez de forma lazy */
