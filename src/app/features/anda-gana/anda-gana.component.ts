@@ -7571,34 +7571,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async _reverseGeocodeDirect(lat: number, lng: number): Promise<string> {
     try {
       const params = new URLSearchParams({
-        access_token: this.MAPBOX_TOKEN, language: 'es', limit: '5',
-        types: 'address,neighborhood,locality,district,place',
+        access_token: this.MAPBOX_TOKEN, language: 'es', limit: '1',
+        types: 'address,neighborhood,locality,poi,place',
       });
-      const res      = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?${params}`);
-      const json     = await res.json();
-      const features: any[] = json.features ?? [];
-      if (!features.length) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      const addressFeat       = features.find((f: any) => f.id?.startsWith('address.'));
-      const neighbourhoodFeat = features.find((f: any) => f.id?.startsWith('neighborhood.') || f.id?.startsWith('locality.') || f.id?.startsWith('district.'));
-      const placeFeat         = features.find((f: any) => f.id?.startsWith('place.'));
-      const primary = addressFeat ?? features[0];
-      let street: string | null = primary?.text
-        ? (primary.address ? `${primary.text} ${primary.address}` : primary.text)
-        : null;
-      if (primary?.id?.startsWith('neighborhood.') || primary?.id?.startsWith('locality.') || primary?.id?.startsWith('place.')) street = null;
-      let barrio: string | null = neighbourhoodFeat?.text ?? null;
-      if (!barrio && addressFeat) {
-        const ctxB = (addressFeat.context ?? []).find((c: any) => c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.') || c.id?.startsWith('district.'));
-        barrio = ctxB?.text ?? null;
-      }
-      let city: string | null = placeFeat?.text ?? null;
-      if (!city && primary) {
-        const ctxC = (primary.context ?? []).find((c: any) => c.id?.startsWith('place.'));
-        city = ctxC?.text ?? null;
-      }
-      if (!city && primary?.id?.startsWith('place.')) city = primary.text ?? null;
-      const parts = [street, barrio, city].filter(Boolean);
-      return parts.length > 0 ? parts.join(', ') : (primary?.place_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      const res  = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?${params}`);
+      const json = await res.json();
+      const feat = json.features?.[0];
+      if (!feat) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const ctx       = feat.context ?? [];
+      const ctxBarrio = ctx.find((c: any) => c.id?.startsWith('neighborhood.') || c.id?.startsWith('locality.') || c.id?.startsWith('district.'));
+      const barrioText = ctxBarrio?.text ?? (feat.id?.startsWith('neighborhood.') || feat.id?.startsWith('locality.') ? feat.text : null);
+      const ctxCity   = ctx.find((c: any) => c.id?.startsWith('place.'));
+      const cityText  = ctxCity?.text ?? (feat.id?.startsWith('place.') ? feat.text : null);
+      const isStreet  = feat.id?.startsWith('address.') || feat.id?.startsWith('poi.');
+      const streetText = isStreet ? (feat.address ? `${feat.text} ${feat.address}` : feat.text) : null;
+      const parts = [streetText, barrioText, cityText].filter(Boolean);
+      if (parts.length > 0) return parts.join(', ');
+      // Fallback limpiando código postal del place_name
+      return (feat.place_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`)
+        .split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).join(',').trim();
     } catch { return `${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
   }
 
@@ -7913,74 +7904,55 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async _reverseGeocode(lat: number, lng: number) {
     this.addressLoading.set(true);
     try {
-      // Pedir 5 features con todos los tipos relevantes — así siempre tenemos
-      // un feature de tipo address Y uno de tipo neighborhood aunque sean distintos
+      // Mismos types que funcionaban antes + neighborhood para mayor cobertura
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json`
-        + `?access_token=${this.MAPBOX_TOKEN}&language=es`
-        + `&types=address,neighborhood,locality,district,place&limit=5`;
+        + `?access_token=${this.MAPBOX_TOKEN}&language=es&types=address,neighborhood,locality,poi,place&limit=1`;
       const res  = await fetch(url);
       const data = await res.json();
-      const features: any[] = data.features ?? [];
+      const feature = data.features?.[0];
 
-      // Extraer cada parte del tipo de feature más específico disponible
-      const addressFeat      = features.find((f: any) => f.id?.startsWith('address.'));
-      const neighbourhoodFeat = features.find((f: any) =>
-        f.id?.startsWith('neighborhood.') ||
-        f.id?.startsWith('locality.')     ||
-        f.id?.startsWith('district.')
-      );
-      const placeFeat = features.find((f: any) => f.id?.startsWith('place.'));
+      if (feature) {
+        const ctx = feature.context ?? [];
 
-      // Calle: del feature address o del primero disponible
-      const primary = addressFeat ?? features[0];
-      let street: string | null = null;
-      if (primary) {
-        street = primary.text
-          ? (primary.address ? `${primary.text} ${primary.address}` : primary.text)
-          : null;
-        // Si el primary ya es un neighborhood o place no lo mostramos como "calle"
-        if (primary.id?.startsWith('neighborhood.') || primary.id?.startsWith('locality.') || primary.id?.startsWith('place.')) {
-          street = null;
-        }
-      }
-
-      // Barrio: del feature neighborhood directo, o del contexto del address
-      let barrioText: string | null = neighbourhoodFeat?.text ?? null;
-      if (!barrioText && addressFeat) {
-        const ctx = addressFeat.context ?? [];
+        // Barrio: buscar en context primero, luego si el feature mismo es neighborhood
         const ctxBarrio = ctx.find((c: any) =>
           c.id?.startsWith('neighborhood.') ||
           c.id?.startsWith('locality.')     ||
           c.id?.startsWith('district.')
         );
-        barrioText = ctxBarrio?.text ?? null;
-      }
+        const barrioText =
+          ctxBarrio?.text ??
+          (feature.id?.startsWith('neighborhood.') || feature.id?.startsWith('locality.')
+            ? feature.text : null);
+        this.currentNeighborhood.set(barrioText ?? '');
 
-      // Ciudad: del feature place directo, o del contexto
-      let cityText: string | null = placeFeat?.text ?? null;
-      if (!cityText && primary) {
-        const ctx = primary.context ?? [];
+        // Ciudad: del context o del propio feature si es place
         const ctxCity = ctx.find((c: any) => c.id?.startsWith('place.'));
-        cityText = ctxCity?.text ?? null;
-      }
+        const cityText = ctxCity?.text ?? (feature.id?.startsWith('place.') ? feature.text : null);
 
-      // Si el feature principal ES la ciudad, usarlo como ciudad
-      if (!cityText && primary?.id?.startsWith('place.')) {
-        cityText = primary.text ?? null;
-      }
+        // Calle: solo si el feature es address o poi (no neighborhood/place)
+        const isStreet = feature.id?.startsWith('address.') || feature.id?.startsWith('poi.');
+        const streetText = isStreet
+          ? (feature.address ? `${feature.text} ${feature.address}` : feature.text)
+          : null;
 
-      this.currentNeighborhood.set(barrioText ?? '');
+        // Ensamblar sin código postal
+        const parts = [streetText, barrioText, cityText].filter(Boolean);
+        // Fallback: place_name limpiando tokens numéricos de 4-6 dígitos (código postal)
+        const cleanFallback = (feature.place_name ?? '')
+          .split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).join(',').trim();
+        this.currentAddress.set(parts.length > 0 ? parts.join(', ') : cleanFallback);
 
-      const parts = [street, barrioText, cityText].filter(Boolean);
-      this.currentAddress.set(parts.length > 0 ? parts.join(', ') : (primary?.place_name ?? ''));
-
-      // Actualizar ciudad del perfil si el conductor cambió de ciudad
-      if (cityText) {
-        const profile = this.agProfile();
-        if (profile && profile.city !== cityText) {
-          this.agService.updateUserCity(profile.id, cityText).catch(() => {});
-          this.agProfile.update(p => p ? { ...p, city: cityText! } : p);
+        // Actualizar ciudad del perfil si cambió
+        if (cityText) {
+          const profile = this.agProfile();
+          if (profile && profile.city !== cityText) {
+            this.agService.updateUserCity(profile.id, cityText).catch(() => {});
+            this.agProfile.update(p => p ? { ...p, city: cityText! } : p);
+          }
         }
+      } else {
+        this.currentAddress.set('');
       }
     } catch { this.currentAddress.set(''); }
     this.addressLoading.set(false);
