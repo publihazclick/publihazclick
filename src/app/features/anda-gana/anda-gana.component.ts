@@ -2797,17 +2797,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
-      <!-- Info card -->
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
-        <h3 class="font-black text-sm uppercase tracking-widest" style="color:#0f172a">Tu vehículo</h3>
-        <div class="grid grid-cols-2 gap-3">
-          <div><p class="text-slate-500 text-[10px] uppercase">Placa</p><p class="text-slate-900 text-sm font-black">{{ driverData()?.plate }}</p></div>
-          <div><p class="text-slate-500 text-[10px] uppercase">Tipo</p><p class="text-slate-900 text-sm font-bold">{{ driverData()?.vehicle_type }}</p></div>
-          <div><p class="text-slate-500 text-[10px] uppercase">Marca / Modelo</p><p class="text-slate-700 text-xs">{{ driverData()?.vehicle_brand }} {{ driverData()?.vehicle_model }}</p></div>
-          <div><p class="text-slate-500 text-[10px] uppercase">Año</p><p class="text-slate-700 text-xs">{{ driverData()?.vehicle_year }}</p></div>
-        </div>
-      </div>
-
       <!-- Mapa + dirección -->
       <div class="flex flex-col gap-2">
 
