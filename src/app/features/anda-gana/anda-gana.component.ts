@@ -619,11 +619,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <p class="text-orange-500 text-xs font-medium truncate">{{ currentNeighborhood() }}</p>
                       }
                       @if (gpsAccuracy() !== null) {
-                        <span class="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        <span class="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                           [style.background]="gpsAccuracy()! <= 10 ? '#d1fae5' : gpsAccuracy()! <= 30 ? '#fef9c3' : '#fee2e2'"
                           [style.color]="gpsAccuracy()! <= 10 ? '#065f46' : gpsAccuracy()! <= 30 ? '#713f12' : '#991b1b'">
-                          <span class="material-symbols-outlined" style="font-size:10px">my_location</span>
-                          ±{{ gpsAccuracy() }}m
+                          <span class="material-symbols-outlined" style="font-size:11px">my_location</span>
+                          Precisión ±{{ gpsAccuracy() }}m
                         </span>
                       }
                     </div>
@@ -3025,11 +3025,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <p class="text-slate-400 text-xs">Toca para cambiar tu ubicación</p>
                       }
                       @if (gpsAccuracy() !== null) {
-                        <span class="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        <span class="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                           [style.background]="gpsAccuracy()! <= 10 ? '#d1fae5' : gpsAccuracy()! <= 30 ? '#fef9c3' : '#fee2e2'"
                           [style.color]="gpsAccuracy()! <= 10 ? '#065f46' : gpsAccuracy()! <= 30 ? '#713f12' : '#991b1b'">
-                          <span class="material-symbols-outlined" style="font-size:10px">my_location</span>
-                          ±{{ gpsAccuracy() }}m
+                          <span class="material-symbols-outlined" style="font-size:11px">my_location</span>
+                          Precisión ±{{ gpsAccuracy() }}m
                         </span>
                       }
                     </div>
