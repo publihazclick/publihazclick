@@ -2305,15 +2305,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.18)">
               <span class="material-symbols-outlined" style="font-size:16px;color:#fff;font-variation-settings:'FILL' 1">workspace_premium</span>
             </div>
-            @if (driverBenefits()?.is_founder) {
-              <span style="font-size:8px;font-weight:800;color:#fef3c7;background:rgba(0,0,0,0.2);border-radius:5px;padding:1px 5px;letter-spacing:0.04em">FUNDADOR</span>
-            }
           </div>
           <div class="text-left">
             <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Mis Beneficios</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">
-              {{ driverBenefits() ? 'Comisión ' + driverBenefits()?.commission_pct + '% · ' + driverBenefits()?.tier_label : 'Ver beneficios' }}
-            </p>
+            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">Ver beneficios</p>
           </div>
         </button>
         <!-- Gana por invitar -->
@@ -3677,39 +3672,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- ── MIS BENEFICIOS ── -->
           @if (!loadingSection() && driverSection() === 'benefits') {
             <div class="flex flex-col gap-4">
-
-              <!-- Badge Fundador -->
-              @if (driverBenefits()?.is_founder) {
-                <div class="rounded-2xl p-5 flex items-center gap-4"
-                  style="background:linear-gradient(135deg,#92400e,#78350f,#451a03);border:1px solid rgba(234,179,8,0.45);box-shadow:0 4px 20px rgba(234,179,8,0.15)">
-                  <div class="flex items-center justify-center flex-shrink-0"
-                    style="width:52px;height:52px;border-radius:16px;background:rgba(234,179,8,0.2);border:1px solid rgba(234,179,8,0.4)">
-                    <span class="material-symbols-outlined" style="font-size:30px;color:#fbbf24;font-variation-settings:'FILL' 1">workspace_premium</span>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <p class="font-black text-base" style="color:#fef3c7">Conductor Fundador</p>
-                      <span class="px-2 py-0.5 rounded-full text-[10px] font-black"
-                        style="background:rgba(234,179,8,0.25);border:1px solid rgba(234,179,8,0.5);color:#fbbf24">
-                        #{{ driverBenefits()?.founder_number }} de 500
-                      </span>
-                    </div>
-                    <p class="text-yellow-200/70 text-xs mt-0.5 leading-relaxed">Eres parte exclusiva de los primeros 500 conductores que hicieron posible Movi. Esta insignia es tuya para siempre.</p>
-                  </div>
-                </div>
-              } @else {
-                <div class="rounded-2xl p-4 flex items-center gap-3"
-                  style="background:#F9FAFB;border:1px solid #E2E8F0">
-                  <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style="background:rgba(148,163,184,0.15);border:1px solid rgba(148,163,184,0.25)">
-                    <span class="material-symbols-outlined text-slate-400" style="font-size:22px">workspace_premium</span>
-                  </div>
-                  <div>
-                    <p class="font-bold text-sm" style="color:#64748b">Programa Fundadores cerrado</p>
-                    <p class="text-slate-500 text-xs mt-0.5">Los primeros 500 cupos ya están llenos. ¡Sigue ganando beneficios con tu nivel!</p>
-                  </div>
-                </div>
-              }
 
               <!-- Comisión escalonada — tarjeta principal -->
               <div class="rounded-2xl overflow-hidden"
