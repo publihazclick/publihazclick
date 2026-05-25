@@ -417,7 +417,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       @if (passengerSection() === null) {
       <!-- Mapa con overlays flotantes -->
-      <div class="relative rounded-2xl overflow-hidden" style="height:520px;border:1px solid rgba(255,255,255,0.08)">
+      <div [class]="passengerMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative rounded-2xl overflow-hidden'"
+           [style]="passengerMapFullscreen() ? '' : 'height:520px;border:1px solid rgba(255,255,255,0.08)'">
 
         <!-- GPS loading state -->
         @if (gpsStatus() === 'requesting') {
@@ -430,6 +431,109 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
+
+        <!-- ══ PASAJERO FULLSCREEN: banners flotantes cuando el viaje está en curso ══ -->
+        @if (passengerMapFullscreen() && tripAccepted()) {
+          <!-- Banner de etapa (arriba) -->
+          <div class="absolute top-0 left-0 right-0 z-30 pointer-events-none"
+            style="background:linear-gradient(180deg,rgba(15,20,40,0.97) 0%,rgba(15,20,40,0.9) 80%,transparent 100%);padding:env(safe-area-inset-top,14px) 16px 28px">
+            <div class="flex items-center gap-3 pt-3">
+              <div class="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style="background:rgba(249,115,22,0.25);border:2px solid rgba(249,115,22,0.5)">
+                <span class="material-symbols-outlined text-orange-300" style="font-size:22px">
+                  {{ currentTripStage() === 'on_route' ? 'route' :
+                     currentTripStage() === 'arrived_at_destination' ? 'flag' :
+                     currentTripStage() === 'picked_up' ? 'navigation' :
+                     'directions_car' }}
+                </span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-white font-black text-sm leading-tight">
+                  {{ currentTripStage() === 'on_route' ? '¡Vas en camino a tu destino!' :
+                     currentTripStage() === 'arrived_at_destination' ? '¡Llegaste a tu destino!' :
+                     currentTripStage() === 'picked_up' ? 'Pasajero recogido — iniciando ruta' :
+                     'Conductor en camino...' }}
+                </p>
+                <p class="text-orange-300 text-xs mt-0.5">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
+              </div>
+              <!-- Botón minimizar -->
+              <button (click)="passengerMapFullscreen.set(false)"
+                class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 pointer-events-auto"
+                style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2)">
+                <span class="material-symbols-outlined text-white" style="font-size:18px">close_fullscreen</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tarjeta de viaje (abajo) -->
+          <div class="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto"
+            style="background:linear-gradient(0deg,rgba(15,20,40,1) 0%,rgba(15,20,40,0.97) 85%,transparent 100%);padding:20px 16px calc(env(safe-area-inset-bottom,16px) + 16px)">
+
+            <!-- Datos conductor + precio -->
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style="background:linear-gradient(135deg,#f97316,#fb923c)">
+                <span class="material-symbols-outlined text-white" style="font-size:24px;font-variation-settings:'FILL' 1">person</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-white font-black text-sm truncate">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
+                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span class="text-slate-400 text-xs">{{ tripAccepted()!.ag_drivers?.vehicle_brand ?? '' }}</span>
+                  @if (tripAccepted()!.ag_drivers?.vehicle_color) {
+                    <span class="text-slate-500 text-xs">· {{ tripAccepted()!.ag_drivers?.vehicle_color }}</span>
+                  }
+                  @if (tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate) {
+                    <span class="px-1.5 py-0.5 rounded-lg text-[10px] font-black"
+                      style="background:rgba(249,115,22,0.2);color:#fb923c;border:1px solid rgba(249,115,22,0.3)">
+                      {{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate }}
+                    </span>
+                  }
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-emerald-400 font-black text-xl leading-none">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
+                <p class="text-slate-500 text-[10px] mt-0.5">precio confirmado</p>
+              </div>
+            </div>
+
+            <!-- Destino -->
+            <div class="flex items-center gap-2 rounded-xl px-3 py-2 mb-3"
+              style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1)">
+              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">location_on</span>
+              <p class="text-slate-300 text-xs font-semibold truncate">{{ tripDest()?.name ?? 'Destino' }}</p>
+            </div>
+
+            <!-- Barra de etapas compacta -->
+            <div class="flex items-center gap-1 mb-3">
+              @for (s of passengerTripStages; track s.key) {
+                <div class="flex-1 h-1 rounded-full transition-colors duration-500"
+                  [style.background]="isStagePassed(s.key, currentTripStage()) ? '#f97316' : 'rgba(255,255,255,0.12)'"></div>
+              }
+            </div>
+
+            <!-- Botones: Chat + Llamar + Finalizar -->
+            <div class="flex gap-2">
+              <button (click)="openPassengerChat()"
+                class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                <span class="material-symbols-outlined" style="font-size:16px">chat</span>Chat
+                @if (chatUnread() > 0) {
+                  <span class="w-4 h-4 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center">{{ chatUnread() }}</span>
+                }
+              </button>
+              <button (click)="callDriver()" [disabled]="callingDriver()"
+                class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50"
+                style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+                <span class="material-symbols-outlined" style="font-size:16px">{{ callingDriver() ? 'hourglass_empty' : 'call' }}</span>Llamar
+              </button>
+              <button (click)="finishTrip()"
+                class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>Finalizar
+              </button>
+            </div>
+          </div>
+        }
 
         <!-- Overlay pin-drop — aparece cuando el usuario toca "Marcar en el mapa" -->
         @if (tripPinDrop()) {
@@ -749,6 +853,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                   <p class="text-emerald-800 font-black text-base">¡Conductor en camino!</p>
                   <p class="text-emerald-700 text-xs">Tu viaje ha sido confirmado</p>
+                  <!-- Botón ver mapa completo -->
+                  <button (click)="openPassengerFullscreenMap()"
+                    class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black active:scale-[0.97] transition-all mt-1"
+                    style="background:#059669;color:#fff">
+                    <span class="material-symbols-outlined" style="font-size:15px">open_in_full</span>
+                    Ver mapa completo
+                  </button>
                 </div>
                 <!-- Datos del conductor -->
                 <div class="rounded-2xl flex flex-col gap-3 px-4 py-4"
@@ -2919,9 +3030,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
-        <div class="relative">
-          <div id="ag-map-user" [style.height]="navActive() ? '420px' : '300px'"
-            style="border-radius:16px;overflow:hidden;border:1px solid #E2E8F0;transition:height 0.35s ease"
+        <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
+          <div id="ag-map-user"
+            [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? '420px' : '300px'"
+            [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
+            [style.border]="driverMapFullscreen() ? 'none' : '1px solid #E2E8F0'"
+            style="overflow:hidden;transition:height 0.35s ease"
             [style.display]="gpsStatus() === 'requesting' ? 'none' : 'block'"></div>
 
           <!-- ── Overlay de navegación conductor ── -->
@@ -2980,12 +3094,73 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           }
 
-          @if (driverData() && driverOnline()) {
+          @if (driverData() && driverOnline() && !driverMapFullscreen()) {
             <button (click)="toggleHeatmap()" title="Zonas con demanda"
               class="absolute top-2 right-2 w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition"
               [style]="heatmapVisible() ? 'background:linear-gradient(135deg,#f97316,#ef4444);color:#fff' : 'background:rgba(0,0,0,0.7);color:#fb923c'">
               <span class="material-symbols-outlined" style="font-size:22px">local_fire_department</span>
             </button>
+          }
+
+          <!-- ══ CONDUCTOR FULLSCREEN: tarjeta de viaje activo flotante ══ -->
+          @if (driverMapFullscreen() && driverFullscreenTrip()) {
+            <!-- Botón salir fullscreen (esquina superior izquierda) -->
+            <button (click)="exitDriverFullscreen()"
+              class="absolute z-40 flex items-center justify-center active:scale-90 transition"
+              style="top:calc(env(safe-area-inset-top,14px) + 14px);left:14px;width:40px;height:40px;border-radius:12px;background:rgba(15,20,40,0.85);border:1px solid rgba(255,255,255,0.15)">
+              <span class="material-symbols-outlined text-white" style="font-size:20px">close_fullscreen</span>
+            </button>
+
+            <!-- Tarjeta flotante inferior -->
+            <div class="absolute bottom-0 left-0 right-0 z-40"
+              style="background:linear-gradient(0deg,rgba(10,12,25,1) 0%,rgba(10,12,25,0.97) 80%,transparent 100%);padding:20px 16px calc(env(safe-area-inset-bottom,16px) + 16px)">
+
+              <!-- Datos del pasajero + precio -->
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                  <span class="material-symbols-outlined text-white" style="font-size:24px;font-variation-settings:'FILL' 1">person</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-white font-black text-sm truncate">
+                    {{ driverFullscreenTrip()!.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}
+                  </p>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    @if (driverFullscreenTrip()!.ag_trip_requests?.ag_users?.passenger_rating_avg) {
+                      <div class="flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-amber-400" style="font-size:11px;font-variation-settings:'FILL' 1">star</span>
+                        <span class="text-amber-400 text-xs font-bold">{{ driverFullscreenTrip()!.ag_trip_requests.ag_users.passenger_rating_avg | number:'1.1-1' }}</span>
+                      </div>
+                    }
+                    <span class="text-slate-500 text-xs">Destino:</span>
+                    <span class="text-slate-300 text-xs truncate">{{ driverFullscreenTrip()!.ag_trip_requests?.dest_name }}</span>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <p class="text-emerald-400 font-black text-xl leading-none">{{ formatCOP(driverFullscreenTrip()!.offered_price) }}</p>
+                  <p class="text-slate-500 text-[10px] mt-0.5">tu oferta</p>
+                </div>
+              </div>
+
+              <!-- Fila de botones -->
+              <div class="flex gap-2">
+                <button (click)="openDriverChat(driverFullscreenTrip())"
+                  class="flex-1 py-3.5 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                  <span class="material-symbols-outlined" style="font-size:16px">chat</span>Chat
+                </button>
+                <button (click)="callPassengerFromTrip(driverFullscreenTrip())"
+                  class="flex-1 py-3.5 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+                  <span class="material-symbols-outlined" style="font-size:16px">call</span>Llamar
+                </button>
+                <button (click)="finishDriverTrip(driverFullscreenTrip())"
+                  class="flex-1 py-3.5 rounded-2xl text-white text-sm font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                  <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar
+                </button>
+              </div>
+            </div>
           }
         </div>
 
@@ -6235,6 +6410,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _navStepIdx:    number   = 0;
   private _navSpokenKeys: Set<string> = new Set();
 
+  // ── Mapa fullscreen durante el viaje ─────────────────────────
+  driverMapFullscreen    = signal(false);
+  passengerMapFullscreen = signal(false);
+  // Trip activo referencia para el conductor en fullscreen
+  driverFullscreenTrip   = signal<any | null>(null);
+
   // Llamadas enmascaradas
   callingDriver      = signal(false);
 
@@ -7983,6 +8164,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const tripId = this.currentTripRequestId();
     const offer  = this.tripAccepted();
     if (!tripId || !offer) { this._resetTrip(); return; }
+    this.passengerMapFullscreen.set(false);
+    this._clearNavRoute();
     try {
       await this._withTimeout(this.agService.completeTrip(tripId));
     } catch (e: any) {
@@ -8003,11 +8186,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._resetTrip();
   }
 
-  // ── Rating — driver finishes trip ─────────────────────────────
+  // ── Rating — driver finishes trip ─────────���────────────────���──
   async finishDriverTrip(trip: any) {
     const tripRequestId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripRequestId) return;
     const wasQuick = this.driverStatus() === 'quick';
+    // Salir del fullscreen y detener navegación antes de finalizar
+    if (this.driverMapFullscreen()) {
+      this.driverMapFullscreen.set(false);
+      this.driverFullscreenTrip.set(null);
+      if (this.navActive()) this.stopInAppNav();
+      setTimeout(() => this._map?.resize(), 150);
+    }
     try {
       await this._withTimeout(this.agService.completeTrip(tripRequestId));
     } catch (e: any) {
@@ -8548,6 +8738,30 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!tripReqId) return;
     await this.agService.updateTripStage(tripReqId, stage);
     if (trip.ag_trip_requests) trip.ag_trip_requests.driver_stage = stage;
+
+    // Push al pasajero según etapa
+    const req = trip.ag_trip_requests ?? trip;
+    const passengerAuthId = req?.ag_users?.auth_user_id;
+    if (passengerAuthId) {
+      const pushMap: Partial<Record<string, { title: string; body: string }>> = {
+        arrived_at_pickup:      { title: '🚗 Tu conductor llegó', body: 'Tu conductor está esperándote en el punto de recogida.' },
+        on_route:               { title: '🚀 ¡El viaje inició!', body: 'Estás en camino a tu destino. Buen viaje.' },
+        arrived_at_destination: { title: '📍 Llegaste a tu destino', body: 'El conductor confirma tu llegada. Gracias por viajar con Movi.' },
+      };
+      const pd = pushMap[stage];
+      if (pd) this.agService.sendPush({ userIds: [passengerAuthId], title: pd.title, body: pd.body, tag: `stage-${tripReqId}-${stage}`, urgent: stage === 'arrived_at_pickup' }).catch(() => {});
+    }
+
+    // Cuando inicia el viaje: activar fullscreen + navegar al destino
+    if (stage === 'on_route') {
+      this.driverFullscreenTrip.set(trip);
+      this.driverMapFullscreen.set(true);
+      setTimeout(() => {
+        this._map?.resize();
+        this.startInAppNav(trip, false);
+      }, 200);
+    }
+
     this.cdr.markForCheck();
   }
 
@@ -8564,6 +8778,21 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   dismissTripAlert(): void {
     this.driverTripAlert.set(null);
+  }
+
+  exitDriverFullscreen(): void {
+    this.driverMapFullscreen.set(false);
+    this.driverFullscreenTrip.set(null);
+    setTimeout(() => this._map?.resize(), 150);
+  }
+
+  openPassengerFullscreenMap(): void {
+    this.passengerSection.set(null);
+    this.passengerMapFullscreen.set(true);
+    setTimeout(() => this._map?.resize(), 200);
+    if (this.currentTripStage() === 'on_route' || this.currentTripStage() === 'arrived_at_destination') {
+      this._drawPassengerTripRoute();
+    }
   }
 
   navigateTo(lat: number, lng: number, label: 'pickup' | 'dest' = 'dest'): void {
@@ -9022,6 +9251,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   private _resetTrip() {
     this._stopWaiting();
     this._unsubscribeOffers();
+    this.stopDriverTracking();
+    this.passengerMapFullscreen.set(false);
+    this.currentTripStage.set(null);
+    this._clearNavRoute();
     this.tripDest.set(null);
     this.tripSent.set(false);
     this.tripOpen.set(false);
@@ -9778,6 +10011,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.driverNearbyAlert.set(false);
     this._stopWaiting();
     this._unsubscribeOffers();
+    this.stopDriverTracking();
+    this.passengerMapFullscreen.set(false);
+    this.currentTripStage.set(null);
+    this._clearNavRoute();
     const tripId = this.currentTripRequestId();
     if (tripId) this.agService.cancelTripRequest(tripId);
     this.tripDest.set(null);
@@ -11259,10 +11496,71 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     });
     this._tripStageChannel = this.agService.subscribeTripStage(tripId, (stage: string) => {
       this.currentTripStage.set(stage);
+      this.cdr.markForCheck();
+
+      // Cuando el conductor recoge al pasajero: activar mapa fullscreen
+      if (stage === 'on_route') {
+        this.passengerSection.set(null);
+        this.passengerMapFullscreen.set(true);
+        this._drawPassengerTripRoute();
+        setTimeout(() => this._map?.resize(), 200);
+      }
+
+      // Cuando el conductor llega al destino: mostrar banner "llegaste"
+      if (stage === 'arrived_at_destination') {
+        this.passengerMapFullscreen.set(true);
+        setTimeout(() => this._map?.resize(), 200);
+      }
+
+      // Cuando el conductor finaliza el viaje: auto-completar desde el lado del pasajero
       if (stage === 'completed') {
         this.stopDriverTracking();
+        this.passengerMapFullscreen.set(false);
+        this._clearNavRoute();
+        this._autoCompletePassengerTrip();
       }
     });
+  }
+
+  private _autoCompletePassengerTrip(): void {
+    const offer  = this.tripAccepted();
+    const tripId = this.currentTripRequestId();
+    if (!tripId || !offer) { this._resetTrip(); return; }
+    const driverUser = (offer as any).ag_drivers?.ag_users;
+    this.ratingTripId.set(tripId);
+    this.ratingTarget.set({
+      userId: (offer as any).ag_drivers?.ag_user_id ?? '',
+      name:   driverUser?.full_name ?? 'Tu conductor',
+      role:   'driver',
+    });
+    this.ratingStars.set(0);
+    this.ratingCommentValue = '';
+    this.ratingSkipped.set(false);
+    this.ratingModal.set(true);
+    this._resetTrip();
+  }
+
+  private async _drawPassengerTripRoute(): Promise<void> {
+    const dest = this.tripDest();
+    if (!dest || !this._map) return;
+    try {
+      this._clearNavRoute();
+      const url = [
+        `https://api.mapbox.com/directions/v5/mapbox/driving/`,
+        `${this._currentLng},${this._currentLat};${dest.lng},${dest.lat}`,
+        `?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`,
+      ].join('');
+      const json  = await (await fetch(url)).json();
+      const route = json.routes?.[0];
+      if (!route || !this._map) return;
+      this._map.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+      this._map.addLayer({ id: 'nav-route-bg',   type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 10, 'line-opacity': 0.12 } });
+      this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#f97316', 'line-width': 6,  'line-opacity': 0.9 } });
+      const coords   = route.geometry.coordinates as [number, number][];
+      const mapboxgl = (window as any).mapboxgl;
+      const bounds   = coords.reduce((b: any, c: [number, number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+      this._map.fitBounds(bounds, { padding: { top: 120, bottom: 200, left: 40, right: 40 }, duration: 900 });
+    } catch (e) { console.warn('passenger route err', e); }
   }
 
   stopDriverTracking() {
