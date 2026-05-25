@@ -2025,7 +2025,13 @@ export class AndaGanaService {
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'ag_trip_requests', filter: `id=eq.${tripId}`,
       }, (payload: any) => {
-        if (payload.new?.driver_stage) onUpdate(payload.new.driver_stage);
+        if (payload.new?.driver_stage) {
+          onUpdate(payload.new.driver_stage);
+        }
+        // ag_complete_trip only sets status='completed', not driver_stage — handle both
+        if (payload.new?.status === 'completed') {
+          onUpdate('completed');
+        }
       })
       .subscribe();
     return channel;
