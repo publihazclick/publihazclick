@@ -3263,7 +3263,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
           <div id="ag-map-user"
-            [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? '420px' : '300px'"
+            [style.height]="driverMapFullscreen() ? (navPhase() === 'to_pickup' ? '90dvh' : '100dvh') : navActive() ? '420px' : '300px'"
             [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
             [style.border]="driverMapFullscreen() ? 'none' : '1px solid #E2E8F0'"
             style="overflow:hidden;transition:height 0.35s ease"
@@ -3344,52 +3344,69 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <!-- Tarjeta flotante inferior -->
             <div class="absolute bottom-0 left-0 right-0 z-40"
-              style="background:linear-gradient(0deg,rgba(10,12,25,1) 0%,rgba(10,12,25,0.97) 80%,transparent 100%);padding:20px 16px calc(env(safe-area-inset-bottom,16px) + 16px)">
+              style="background:linear-gradient(0deg,rgba(10,12,25,1) 0%,rgba(10,12,25,0.97) 80%,transparent 100%);padding:16px 16px calc(env(safe-area-inset-bottom,16px) + 12px)">
 
-              <!-- Datos del pasajero + precio -->
-              <div class="flex items-center gap-3 mb-3">
-                <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                  <span class="material-symbols-outlined text-white" style="font-size:24px;font-variation-settings:'FILL' 1">person</span>
+              <!-- Fase: to_pickup → dirección recogida / on_route → destino -->
+              <div class="flex items-start gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                  [style.background]="navPhase() === 'to_pickup' ? 'linear-gradient(135deg,#7c3aed,#6d28d9)' : 'linear-gradient(135deg,#0891b2,#0e7490)'">
+                  <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">
+                    {{ navPhase() === 'to_pickup' ? 'person_pin' : 'flag' }}
+                  </span>
                 </div>
                 <div class="flex-1 min-w-0">
+                  <p class="font-black text-[11px] uppercase tracking-widest mb-0.5"
+                    [style.color]="navPhase() === 'to_pickup' ? '#a78bfa' : '#34d399'">
+                    {{ navPhase() === 'to_pickup' ? 'Recogiendo a' : 'Llevando a' }}
+                  </p>
                   <p class="text-white font-black text-sm truncate">
                     {{ driverFullscreenTrip()!.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}
                   </p>
-                  <div class="flex items-center gap-2 mt-0.5">
-                    @if (driverFullscreenTrip()!.ag_trip_requests?.ag_users?.passenger_rating_avg) {
-                      <div class="flex items-center gap-0.5">
-                        <span class="material-symbols-outlined text-amber-400" style="font-size:11px;font-variation-settings:'FILL' 1">star</span>
-                        <span class="text-amber-400 text-xs font-bold">{{ driverFullscreenTrip()!.ag_trip_requests.ag_users.passenger_rating_avg | number:'1.1-1' }}</span>
-                      </div>
-                    }
-                    <span class="text-slate-500 text-xs">Destino:</span>
-                    <span class="text-slate-300 text-xs truncate">{{ driverFullscreenTrip()!.ag_trip_requests?.dest_name }}</span>
+                  <div class="flex items-start gap-1.5 mt-1">
+                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:12px;margin-top:1px"
+                      [style.color]="navPhase() === 'to_pickup' ? '#38bdf8' : '#f87171'">
+                      {{ navPhase() === 'to_pickup' ? 'my_location' : 'location_on' }}
+                    </span>
+                    <p class="text-slate-300 text-xs leading-tight">
+                      {{ navPhase() === 'to_pickup'
+                          ? (driverFullscreenTrip()!.ag_trip_requests?.origin_name ?? 'Punto de recogida')
+                          : (driverFullscreenTrip()!.ag_trip_requests?.dest_name ?? 'Destino') }}
+                    </p>
                   </div>
                 </div>
                 <div class="text-right flex-shrink-0">
-                  <p class="text-emerald-400 font-black text-xl leading-none">{{ formatCOP(driverFullscreenTrip()!.offered_price) }}</p>
-                  <p class="text-slate-500 text-[10px] mt-0.5">tu oferta</p>
+                  <p class="text-emerald-400 font-black text-lg leading-none">{{ formatCOP(driverFullscreenTrip()!.offered_price) }}</p>
+                  @if (navEtaMin() > 0) {
+                    <p class="text-slate-400 text-[10px] mt-0.5">{{ navEtaMin() }} min · {{ navTotalKm() }} km</p>
+                  }
                 </div>
               </div>
 
               <!-- Fila de botones -->
               <div class="flex gap-2">
                 <button (click)="openDriverChat(driverFullscreenTrip())"
-                  class="flex-1 py-3.5 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                  style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                  class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  style="background:rgba(37,99,235,0.85);border:1px solid rgba(59,130,246,0.4)">
                   <span class="material-symbols-outlined" style="font-size:16px">chat</span>Chat
                 </button>
                 <button (click)="callPassengerFromTrip(driverFullscreenTrip())"
-                  class="flex-1 py-3.5 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                  style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+                  class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  style="background:rgba(22,163,74,0.85);border:1px solid rgba(34,197,94,0.4)">
                   <span class="material-symbols-outlined" style="font-size:16px">call</span>Llamar
                 </button>
-                <button (click)="finishDriverTrip(driverFullscreenTrip())"
-                  class="flex-1 py-3.5 rounded-2xl text-white text-sm font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                  style="background:linear-gradient(135deg,#16a34a,#15803d)">
-                  <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar
-                </button>
+                @if (navPhase() === 'to_pickup') {
+                  <button (click)="advanceStage(driverFullscreenTrip(), 'arrived_at_pickup')"
+                    class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                    style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+                    <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">where_to_vote</span>Llegué
+                  </button>
+                } @else {
+                  <button (click)="finishDriverTrip(driverFullscreenTrip())"
+                    class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                    style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                    <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>Finalizar
+                  </button>
+                }
               </div>
             </div>
           }
@@ -9389,10 +9406,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   async acceptTripAndGo(alert: any): Promise<void> {
     this.driverTripAlert.set(null);
     await this.advanceStage(alert, 'heading_to_pickup');
-    // Lanzar navegación al punto de recogida
     const req = alert.ag_trip_requests ?? alert;
     if (req?.origin_lat && req?.origin_lng) {
-      this.startInAppNav(alert, true);
+      this.driverFullscreenTrip.set(alert);
+      this.driverMapFullscreen.set(true);
+      setTimeout(() => {
+        this._map?.resize();
+        this.startInAppNav(alert, true);
+      }, 200);
     }
   }
 
@@ -9493,7 +9514,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         const mapboxgl = (window as any).mapboxgl;
         const coords = route.geometry.coordinates as [number, number][];
         const bounds = coords.reduce((b: any, c: [number,number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
-        this._map.fitBounds(bounds, { padding: { top: 160, bottom: 80, left: 40, right: 40 }, duration: 900 });
+        const bottomPad = this.driverMapFullscreen() ? 200 : 80;
+        this._map.fitBounds(bounds, { padding: { top: 160, bottom: bottomPad, left: 40, right: 40 }, duration: 900 });
       }
 
       this._applyNavStep(0);
