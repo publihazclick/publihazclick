@@ -10388,6 +10388,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const result = await this.agService.requestTrip({
       passengerUserId: profile.id,
       originLat: this._currentLat, originLng: this._currentLng,
+      originName: this.currentAddress() || undefined,
       destName: dest.name, destLat: dest.lat, destLng: dest.lng,
       distanceKm: this.tripDistKm(),
       vehicleType: this.tripVehicle(),
@@ -13071,6 +13072,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const tripResult = await this.agService.requestTrip({
       passengerUserId: profile.id,
       originLat: orig.lat, originLng: orig.lng,
+      originName: orig.name || undefined,
       destName: dest.name, destLat: dest.lat, destLng: dest.lng,
       distanceKm: dist,
       vehicleType: this.qrVehicle(),

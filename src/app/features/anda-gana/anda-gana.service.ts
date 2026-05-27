@@ -590,6 +590,7 @@ export class AndaGanaService {
   // ── Trip requests ─────────────────────────────────────────────
   async requestTrip(data: {
     passengerUserId: string; originLat: number; originLng: number;
+    originName?: string;
     destName: string; destLat: number; destLng: number;
     distanceKm: number; vehicleType: string; offeredPrice: number;
     paymentMethod: AgPaymentMethod;
@@ -599,6 +600,7 @@ export class AndaGanaService {
       .insert({
         passenger_user_id: data.passengerUserId,
         origin_lat: data.originLat, origin_lng: data.originLng,
+        origin_name: data.originName || null,
         dest_name: data.destName, dest_lat: data.destLat, dest_lng: data.destLng,
         distance_km: data.distanceKm, vehicle_type: data.vehicleType,
         offered_price: data.offeredPrice, payment_method: data.paymentMethod,
@@ -727,7 +729,7 @@ export class AndaGanaService {
   async getSearchingRequests(vehicleType?: string, lat?: number, lng?: number, maxKm = 50): Promise<AgTripRequest[]> {
     let query = this.supabase
       .from('ag_trip_requests')
-      .select('*, ag_users(id, auth_user_id, full_name, total_trips_as_passenger, passenger_rating_avg, selfie_url, passenger_level)')
+      .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)')
       .eq('status', 'searching')
       .order('created_at', { ascending: false })
       .limit(50);
@@ -767,8 +769,9 @@ export class AndaGanaService {
             if (this._haversine(lat, lng, row.origin_lat, row.origin_lng) > maxKm) return;
           }
           const { data } = await this.supabase
-            .from('ag_trip_requests').select('*, ag_users(id, auth_user_id, full_name, total_trips_as_passenger, passenger_rating_avg, selfie_url, passenger_level)').eq('id', row.id).single();
-          if (data) onNew(data as AgTripRequest);
+            .from('ag_trip_requests').select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)').eq('id', row.id).single();
+          // Si el SELECT falla, usar datos básicos del payload para no perder el evento
+          onNew((data ?? row) as AgTripRequest);
         },
       )
       .on(
