@@ -220,8 +220,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Fila pasajero + precio -->
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-            <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:900;font-size:17px;color:#fff;border:2px solid rgba(0,229,255,0.3)">
-              {{ (driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'P')[0].toUpperCase() }}
+            <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,229,255,0.4);overflow:hidden;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center">
+              @if (driverRequests()[0].passenger_selfie_url ?? driverRequests()[0].ag_users?.selfie_url) {
+                <img [src]="driverRequests()[0].passenger_selfie_url ?? driverRequests()[0].ag_users?.selfie_url"
+                  style="width:100%;height:100%;object-fit:cover" alt="foto pasajero">
+              } @else {
+                <span style="font-weight:900;font-size:18px;color:#fff">{{ (driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'P')[0].toUpperCase() }}</span>
+              }
             </div>
             <div style="flex:1;min-width:0">
               <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'Pasajero' }}</p>
@@ -741,6 +746,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </button>
                 </div>
               </div>
+              @if (addressSuggestions().length === 0 && !addressNoResults() && recentOrigins().length > 0) {
+                <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                  <p class="px-4 pt-2 pb-1 text-slate-400 text-[10px] font-black uppercase tracking-widest">Recientes</p>
+                  @for (r of recentOrigins(); track r.name) {
+                    <button (click)="selectRecentOrigin(r)"
+                      class="flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors">
+                      <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:18px">history</span>
+                      <p class="flex-1 text-slate-800 text-sm font-semibold truncate">{{ r.name }}</p>
+                    </button>
+                  }
+                </div>
+              }
               @if (addressSuggestions().length > 0) {
                 <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
                   @for (s of addressSuggestions(); track s.place_id) {
@@ -1081,6 +1098,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
                     </button>
                   </div>
+                  <!-- Destinos recientes (cuando no hay query activo) -->
+                  @if (tripSuggestions().length === 0 && !tripLoading() && !tripNoResults() && recentDests().length > 0) {
+                    <div class="flex flex-col">
+                      <p class="px-4 pt-3 pb-1 text-slate-400 text-[10px] font-black uppercase tracking-widest">Recientes</p>
+                      @for (r of recentDests(); track r.name) {
+                        <button (mousedown)="$event.preventDefault(); selectRecentDest(r)"
+                          class="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 active:bg-slate-100 text-left transition-colors">
+                          <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:20px">history</span>
+                          <p class="flex-1 text-sm font-semibold text-slate-700 truncate">{{ r.name }}</p>
+                        </button>
+                      }
+                    </div>
+                  }
                   <!-- Sugerencias Google Places -->
                   @if (tripSuggestions().length > 0) {
                     <div class="flex flex-col">
@@ -3178,6 +3208,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </button>
                   </div>
                 </div>
+                @if (addressSuggestions().length === 0 && !addressNoResults() && recentOrigins().length > 0) {
+                  <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                    <p class="px-4 pt-2 pb-1 text-slate-400 text-[10px] font-black uppercase tracking-widest">Recientes</p>
+                    @for (r of recentOrigins(); track r.name) {
+                      <button (click)="selectRecentOrigin(r)"
+                        class="flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors">
+                        <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:18px">history</span>
+                        <p class="flex-1 text-slate-800 text-sm font-semibold truncate">{{ r.name }}</p>
+                      </button>
+                    }
+                  </div>
+                }
                 @if (addressSuggestions().length > 0) {
                   <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
                     @for (s of addressSuggestions(); track s.place_id) {
@@ -6664,6 +6706,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripLoading     = signal(false);
   tripNoResults   = signal(false);
   tripDest        = signal<{ name: string; lat: number; lng: number } | null>(null);
+  recentDests     = signal<{ name: string; lat: number; lng: number }[]>([]);
+  recentOrigins   = signal<{ name: string; lat: number; lng: number }[]>([]);
   tripVehicle     = signal<'carro' | 'moto' | 'camion'>('carro');
   tripPrice       = signal(0);
   tripPayment     = signal<AgPaymentMethod>('efectivo');
@@ -7813,6 +7857,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.addressQuery.set('');
     this.addressSuggestions.set([]);
     this.addressEditMode.set(true);
+    this._loadRecentOrigins();
     // Focus input after render
     setTimeout(() => {
       const el = document.querySelector<HTMLInputElement>('[placeholder="Busca tu dirección o lugar..."]');
@@ -8025,6 +8070,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._pinDropMarker) { try { this._pinDropMarker.remove(); } catch {} this._pinDropMarker = null; }
 
     this.tripDest.set({ name, lat, lng });
+    this._saveRecentDest({ name, lat, lng });
     this.cdr.markForCheck();
     this._drawRoute(lng, lat);
   }
@@ -8059,14 +8105,82 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this._gpsRealFix  = true;
       this._lastNotifiedLat = pos.lat;
       this._lastNotifiedLng = pos.lng;
-      this.currentAddress.set(`${feature.text}${feature.place_name ? ', ' + feature.place_name : ''}`);
+      const addrName = `${feature.text}${feature.place_name ? ', ' + feature.place_name : ''}`;
+      this.currentAddress.set(addrName);
       this.currentNeighborhood.set('');
+      this._saveRecentOrigin({ name: addrName, lat: pos.lat, lng: pos.lng });
       if (this._map) {
         this._map.easeTo({ center: [pos.lng, pos.lat], zoom: 16, duration: 800 });
         this._userMarker?.setLngLat([pos.lng, pos.lat]);
       }
       this.cdr.markForCheck();
     } catch (e) { console.warn('selectAddress error', e); }
+  }
+
+  private _saveRecentDest(dest: { name: string; lat: number; lng: number }) {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const list: typeof dest[] = JSON.parse(localStorage.getItem('movi_recent_dest') ?? '[]');
+      const filtered = list.filter(d => d.name !== dest.name);
+      const updated = [dest, ...filtered].slice(0, 5);
+      localStorage.setItem('movi_recent_dest', JSON.stringify(updated));
+      this.recentDests.set(updated);
+    } catch {}
+  }
+
+  private _saveRecentOrigin(origin: { name: string; lat: number; lng: number }) {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const list: typeof origin[] = JSON.parse(localStorage.getItem('movi_recent_origin') ?? '[]');
+      const filtered = list.filter(o => o.name !== origin.name);
+      const updated = [origin, ...filtered].slice(0, 5);
+      localStorage.setItem('movi_recent_origin', JSON.stringify(updated));
+      this.recentOrigins.set(updated);
+    } catch {}
+  }
+
+  private _loadRecentDests() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const list = JSON.parse(localStorage.getItem('movi_recent_dest') ?? '[]');
+      this.recentDests.set(list);
+    } catch {}
+  }
+
+  private _loadRecentOrigins() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const list = JSON.parse(localStorage.getItem('movi_recent_origin') ?? '[]');
+      this.recentOrigins.set(list);
+    } catch {}
+  }
+
+  selectRecentDest(r: { name: string; lat: number; lng: number }) {
+    this.tripOpen.set(false);
+    this.tripQuery.set('');
+    this.tripSuggestions.set([]);
+    this.tripDest.set(r);
+    this._saveRecentDest(r);
+    this.cdr.markForCheck();
+    this._drawRoute(r.lng, r.lat);
+  }
+
+  selectRecentOrigin(r: { name: string; lat: number; lng: number }) {
+    this.closeAddressEdit();
+    this.originEditOpen.set(false);
+    this._currentLat = r.lat;
+    this._currentLng = r.lng;
+    this._gpsRealFix = true;
+    this._lastNotifiedLat = r.lat;
+    this._lastNotifiedLng = r.lng;
+    this.currentAddress.set(r.name);
+    this.currentNeighborhood.set('');
+    this._saveRecentOrigin(r);
+    if (this._map) {
+      this._map.easeTo({ center: [r.lng, r.lat], zoom: 16, duration: 800 });
+      this._userMarker?.setLngLat([r.lng, r.lat]);
+    }
+    this.cdr.markForCheck();
   }
 
 
@@ -9860,6 +9974,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   openTripSearch() {
     this.tripOpen.set(true);
+    this._loadRecentDests();
     if (isPlatformBrowser(this.platformId)) this._loadGoogleMapsSDK();
   }
   closeTripSearch() {
@@ -10107,6 +10222,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Si ya tiene coordenadas (Nominatim fallback), úsalas directo
     if (s.lat != null && s.lng != null) {
       this.tripDest.set({ name, lat: s.lat, lng: s.lng });
+      this._saveRecentDest({ name, lat: s.lat, lng: s.lng });
       this.cdr.markForCheck();
       this._drawRoute(s.lng, s.lat);
       return;
@@ -10125,6 +10241,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       const loc = details.geometry?.location;
       if (loc) {
         this.tripDest.set({ name, lat: loc.lat(), lng: loc.lng() });
+        this._saveRecentDest({ name, lat: loc.lat(), lng: loc.lng() });
         this.cdr.markForCheck();
         this._drawRoute(loc.lng(), loc.lat());
       }
@@ -10197,6 +10314,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const result = await this.agService.requestTrip({
       passengerUserId: profile.id,
       passengerName: profile.full_name || undefined,
+      passengerSelfieUrl: profile.selfie_url || undefined,
       originLat: this._currentLat, originLng: this._currentLng,
       originName: [this.currentNeighborhood(), this.currentAddress()].filter(Boolean).join(' — ') || undefined,
       destName: dest.name, destLat: dest.lat, destLng: dest.lng,
@@ -13013,6 +13131,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const tripResult = await this.agService.requestTrip({
       passengerUserId: profile.id,
       passengerName: profile.full_name || undefined,
+      passengerSelfieUrl: profile.selfie_url || undefined,
       originLat: orig.lat, originLng: orig.lng,
       originName: orig.name || undefined,
       destName: dest.name, destLat: dest.lat, destLng: dest.lng,
