@@ -9389,6 +9389,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (pd) this.agService.sendPush({ userIds: [passengerAuthId], title: pd.title, body: pd.body, tag: `stage-${tripReqId}-${stage}`, urgent: stage === 'arrived_at_pickup' }).catch(() => {});
     }
 
+    // Conductor llegó al punto de recogida: cerrar fullscreen pickup para mostrar vista normal
+    if (stage === 'arrived_at_pickup' && this.driverMapFullscreen()) {
+      this.stopInAppNav();
+      this.driverMapFullscreen.set(false);
+      this.driverFullscreenTrip.set(null);
+      setTimeout(() => this._map?.resize(), 150);
+    }
+
     // Cuando inicia el viaje: activar fullscreen + navegar al destino
     if (stage === 'on_route') {
       this.driverFullscreenTrip.set(trip);
