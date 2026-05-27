@@ -221,10 +221,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Fila pasajero + precio -->
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
             <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:900;font-size:17px;color:#fff;border:2px solid rgba(0,229,255,0.3)">
-              {{ (driverRequests()[0].ag_users?.full_name ?? 'P')[0].toUpperCase() }}
+              {{ (driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'P')[0].toUpperCase() }}
             </div>
             <div style="flex:1;min-width:0">
-              <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ driverRequests()[0].ag_users?.full_name ?? 'Pasajero' }}</p>
+              <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'Pasajero' }}</p>
               <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
                 @if (driverRequests()[0].ag_users?.passenger_rating_avg) {
                   <span style="color:#fbbf24;font-size:11px;font-weight:700">★ {{ driverRequests()[0].ag_users!.passenger_rating_avg! | number:'1.1-1' }}</span>
@@ -275,13 +275,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
                 <span style="font-size:10px;font-weight:700;opacity:0.9;letter-spacing:0.03em;position:relative;z-index:1">{{ reqRemainingStr(driverRequests()[0]) }}</span>
               </button>
-              <button (click)="openMakeOffer(driverRequests()[0])" [disabled]="sendingOffer()"
+              <button (click)="toggleInlineCounter(driverRequests()[0])" [disabled]="sendingOffer()"
                 style="flex:1;padding:11px 0;border-radius:12px;border:1px solid rgba(245,158,11,0.5);cursor:pointer;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity 0.2s;background:rgba(245,158,11,0.12);color:#fbbf24"
                 [style.opacity]="sendingOffer() ? '0.6' : '1'">
                 <span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">swap_vert</span>
                 Contra-oferta
               </button>
             </div>
+            <!-- Inline counter-offer -->
+            @if (inlineCounterOpen()) {
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);margin-top:4px">
+                <span style="color:#94a3b8;font-size:11px;font-weight:700;white-space:nowrap">Tu oferta:</span>
+                <span style="color:#fbbf24;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
+                <button (click)="inlineCounterValue.set(inlineCounterValue() + 500)"
+                  style="width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
+                <button (click)="submitInlineCounter(driverRequests()[0])" [disabled]="sendingOffer()"
+                  style="padding:6px 12px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:900;flex-shrink:0;opacity:1"
+                  [style.opacity]="sendingOffer() ? '0.5' : '1'">Enviar</button>
+              </div>
+            }
           }
 
         </div>
@@ -6757,6 +6769,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverOfferPrice     = signal(0);
   sendingOffer         = signal(false);
   offerSentFor         = signal<Set<string>>(new Set());
+  inlineCounterOpen    = signal(false);
+  inlineCounterValue   = signal(0);
   // Commission + wallet — driver
   driverCommissionPct  = signal(0);
   driverWalletBalance  = signal(0);
@@ -10255,6 +10269,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
     const result = await this.agService.requestTrip({
       passengerUserId: profile.id,
+      passengerName: profile.full_name || undefined,
       originLat: this._currentLat, originLng: this._currentLng,
       originName: [this.currentNeighborhood(), this.currentAddress()].filter(Boolean).join(' — ') || undefined,
       destName: dest.name, destLat: dest.lat, destLng: dest.lng,
@@ -10783,6 +10798,22 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   closeMakeOffer() {
     this.makingOfferFor.set(null);
+  }
+
+  toggleInlineCounter(req: AgTripRequest) {
+    if (this.inlineCounterOpen()) {
+      this.inlineCounterOpen.set(false);
+    } else {
+      this.inlineCounterValue.set(req.offered_price + 500);
+      this.inlineCounterOpen.set(true);
+    }
+  }
+
+  async submitInlineCounter(req: AgTripRequest) {
+    this.makingOfferFor.set(req);
+    this.driverOfferPrice.set(this.inlineCounterValue());
+    this.inlineCounterOpen.set(false);
+    await this.submitDriverOffer();
   }
 
   async submitDriverOffer() {
@@ -13054,6 +13085,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const dist = this._distKm(orig.lat, orig.lng, dest.lat, dest.lng);
     const tripResult = await this.agService.requestTrip({
       passengerUserId: profile.id,
+      passengerName: profile.full_name || undefined,
       originLat: orig.lat, originLng: orig.lng,
       originName: orig.name || undefined,
       destName: dest.name, destLat: dest.lat, destLng: dest.lng,
