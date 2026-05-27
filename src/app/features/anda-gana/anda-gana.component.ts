@@ -287,6 +287,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);margin-top:4px">
                 <span style="color:#94a3b8;font-size:11px;font-weight:700;white-space:nowrap">Tu oferta:</span>
                 <span style="color:#fbbf24;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
+                <button (click)="inlineCounterValue.set(inlineCounterValue() > 2500 ? inlineCounterValue() - 500 : 2000)"
+                  style="width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,255,255,0.1);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>
                 <button (click)="inlineCounterValue.set(inlineCounterValue() + 500)"
                   style="width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
                 <button (click)="submitInlineCounter(driverRequests()[0])" [disabled]="sendingOffer()"
@@ -5052,81 +5054,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       </div>
     }
 
-    <!-- ══ Modal: hacer oferta ══ -->
-    @if (makingOfferFor()) {
-      <!-- Overlay -->
-      <div (click)="closeMakeOffer()"
-        class="fixed inset-0 z-50"
-        style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
-      <!-- Sheet -->
-      <div class="fixed z-50 flex flex-col gap-4 px-5 pt-5 pb-8"
-        style="bottom:12px;left:12px;right:12px;background:#0f1421;border-radius:24px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 16px 60px rgba(0,0,0,0.7)">
-        <!-- Handle -->
-        <div class="mx-auto w-10 h-1 rounded-full bg-white/20 mb-1"></div>
-        <!-- Header -->
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-white font-black text-base">Contra-oferta</p>
-            <p class="text-slate-500 text-xs">{{ makingOfferFor()!.dest_name }} · {{ makingOfferFor()!.distance_km }} km</p>
-          </div>
-          <button (click)="closeMakeOffer()"
-            class="w-8 h-8 rounded-lg flex items-center justify-center"
-            style="background:rgba(255,255,255,0.06)">
-            <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
-          </button>
-        </div>
-        <!-- Precio pasajero vs tu oferta -->
-        <div class="flex items-center gap-3 rounded-2xl px-4 py-3"
-          style="background:rgba(8,145,178,0.07);border:1px solid rgba(8,145,178,0.15)">
-          <div class="flex-1 text-center">
-            <p class="text-slate-500 text-[10px] uppercase font-bold">Pasajero pide</p>
-            <p class="text-slate-300 font-black text-lg">{{ formatCOP(makingOfferFor()!.offered_price) }}</p>
-          </div>
-          <div class="w-px self-stretch bg-white/10"></div>
-          <div class="flex-1 text-center">
-            <p class="text-cyan-400 text-[10px] uppercase font-bold">Tu oferta</p>
-            <p class="text-white font-black text-xl">{{ formatCOP(driverOfferPrice()) }}</p>
-          </div>
-        </div>
-        <!-- Ajustar precio -->
-        <div class="flex items-center gap-3">
-          <button (click)="driverOfferPrice.set(driverOfferPrice() > 2500 ? driverOfferPrice() - 500 : 2000)"
-            class="w-14 h-14 rounded-2xl font-black text-2xl flex items-center justify-center active:scale-90 transition-all text-slate-200"
-            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">−</button>
-          <div class="flex-1 flex flex-col items-center">
-            <input type="number" [value]="driverOfferPrice()"
-              (input)="driverOfferPrice.set(+$any($event.target).value > 2000 ? +$any($event.target).value : 2000)"
-              class="w-full text-center text-white font-black text-2xl bg-transparent outline-none"
-              style="min-width:0"/>
-            <p class="text-slate-600 text-[10px]">COP</p>
-          </div>
-          <button (click)="driverOfferPrice.set(driverOfferPrice() + 500)"
-            class="w-14 h-14 rounded-2xl font-black text-2xl flex items-center justify-center active:scale-90 transition-all text-slate-200"
-            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">+</button>
-        </div>
-        @if (driverStatus() === 'quick') {
-          <div class="flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
-            style="background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.25)">
-            <span class="material-symbols-outlined text-purple-400" style="font-size:14px">rocket_launch</span>
-            <span class="text-purple-400 text-xs font-black">¡Primera carrera sin comisión!</span>
-          </div>
-        }
-        <!-- Enviar oferta -->
-        <button (click)="submitDriverOffer()" [disabled]="sendingOffer()"
-          class="w-full py-4 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
-          [style]="driverStatus() === 'quick' ? 'background:linear-gradient(135deg,#7C3AED,#3B82F6);box-shadow:0 4px 16px rgba(124,58,237,0.3)' : 'background:linear-gradient(135deg,#0891b2,#0e7490);box-shadow:0 4px 16px rgba(8,145,178,0.3)'">
-          @if (sendingOffer()) {
-            <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span> Enviando...
-          } @else if (driverStatus() === 'quick') {
-            <span class="material-symbols-outlined" style="font-size:20px">rocket_launch</span>
-            ¡Tomar viaje gratis! · {{ formatCOP(driverOfferPrice()) }}
-          } @else {
-            <span class="material-symbols-outlined" style="font-size:20px">local_offer</span>
-            Enviar oferta · {{ formatCOP(driverOfferPrice()) }}
-          }
-        </button>
-      </div>
-    }
   }
 
   <!-- ═══════════ HOME ═══════════ -->
