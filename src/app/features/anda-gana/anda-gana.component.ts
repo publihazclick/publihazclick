@@ -63,6 +63,61 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ CONFIRMACIÓN FUERA DE LÍNEA ═══════════ -->
+  @if (offlineConfirmOpen()) {
+    <div class="fixed inset-0 z-[9998] flex items-end justify-center pb-6 px-4"
+      style="background:rgba(0,0,0,0.55);backdrop-filter:blur(4px)"
+      (click)="cancelGoOffline()">
+      <div class="w-full max-w-sm rounded-3xl p-6 flex flex-col gap-4"
+        style="background:#fff;box-shadow:0 24px 60px rgba(0,0,0,0.35)"
+        (click)="$event.stopPropagation()">
+        <!-- Ícono -->
+        <div class="flex justify-center">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center"
+            style="background:rgba(239,68,68,0.1)">
+            <span class="material-symbols-outlined" style="font-size:36px;color:#dc2626;font-variation-settings:'FILL' 1">wifi_off</span>
+          </div>
+        </div>
+        <!-- Título -->
+        <div class="text-center">
+          <p class="font-black text-slate-900" style="font-size:18px;line-height:1.2">¿Salir de línea?</p>
+        </div>
+        <!-- Descripción -->
+        <div class="rounded-2xl p-4 flex flex-col gap-2" style="background:#F8FAFC;border:1px solid #E2E8F0">
+          <div class="flex items-start gap-2">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#dc2626;margin-top:1px;font-variation-settings:'FILL' 1">cancel</span>
+            <p class="text-slate-700 text-sm">Dejarás de recibir solicitudes de viaje.</p>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#dc2626;margin-top:1px;font-variation-settings:'FILL' 1">cancel</span>
+            <p class="text-slate-700 text-sm">No acumularás horas en línea ni estadísticas.</p>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#dc2626;margin-top:1px;font-variation-settings:'FILL' 1">cancel</span>
+            <p class="text-slate-700 text-sm">Los pasajeros no podrán verte en el mapa.</p>
+          </div>
+          <div class="flex items-start gap-2 mt-1">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#16a34a;margin-top:1px;font-variation-settings:'FILL' 1">check_circle</span>
+            <p class="text-slate-700 text-sm">Puedes volver a conectarte cuando quieras.</p>
+          </div>
+        </div>
+        <!-- Botones -->
+        <div class="flex flex-col gap-2">
+          <button (click)="confirmGoOffline()"
+            class="w-full py-3.5 rounded-2xl font-black text-sm"
+            style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff">
+            Aceptar, salir de línea
+          </button>
+          <button (click)="cancelGoOffline()"
+            class="w-full py-3.5 rounded-2xl font-black text-sm"
+            style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
+            Seguir en línea
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ ALERTA VIAJE ACEPTADO (inDrive style) ═══════════ -->
   @if (driverTripAlert()) {
     <div class="fixed inset-0 z-[9990] flex flex-col items-center justify-center px-4"
@@ -132,6 +187,104 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             class="w-full py-3 rounded-2xl text-slate-500 font-bold text-sm active:opacity-70">
             Ver detalles después
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top) ═══════════ -->
+  @if (driverOnline() && !driverTripAlert() && driverActiveTrips().length === 0 && driverRequests().length > 0) {
+    <div style="position:fixed;top:0;left:0;right:0;z-index:8000;pointer-events:none">
+      <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-bottom:2px solid rgba(0,229,255,0.35);box-shadow:0 8px 40px rgba(0,0,0,0.7),0 0 0 1px rgba(0,229,255,0.1)">
+
+        <!-- Franja de alerta superior -->
+        <div style="background:linear-gradient(90deg,rgba(0,229,255,0.15) 0%,rgba(5,150,105,0.1) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00E5FF;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
+            <span style="color:#00E5FF;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡Solicitud de viaje!</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            @if (driverRequests().length > 1) {
+              <span style="background:rgba(0,229,255,0.18);border:1px solid rgba(0,229,255,0.4);color:#00E5FF;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px">{{ driverRequests().length }} disponibles</span>
+            }
+          </div>
+        </div>
+
+        <!-- Cuerpo del banner -->
+        <div style="padding:10px 16px 14px">
+
+          <!-- Fila pasajero + precio -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:900;font-size:17px;color:#fff;border:2px solid rgba(0,229,255,0.3)">
+              {{ (driverRequests()[0].ag_users?.full_name ?? 'P')[0].toUpperCase() }}
+            </div>
+            <div style="flex:1;min-width:0">
+              <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ driverRequests()[0].ag_users?.full_name ?? 'Pasajero' }}</p>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                @if (driverRequests()[0].ag_users?.passenger_rating_avg) {
+                  <span style="color:#fbbf24;font-size:11px;font-weight:700">★ {{ driverRequests()[0].ag_users!.passenger_rating_avg! | number:'1.1-1' }}</span>
+                }
+                <span style="color:rgba(255,255,255,0.4);font-size:10px">{{ driverRequests()[0].ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
+                <span style="color:rgba(255,255,255,0.25)">·</span>
+                <span style="color:rgba(255,255,255,0.45);font-size:10px">{{ driverRequests()[0].distance_km }} km</span>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <p style="font-weight:900;font-size:22px;margin:0;line-height:1"
+                [style.color]="reqRemainingPct(driverRequests()[0]) < 25 ? '#f87171' : '#34d399'">
+                {{ formatCOP(driverRequests()[0].offered_price) }}
+              </p>
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;margin:0">precio cliente</p>
+            </div>
+          </div>
+
+          <!-- Ruta origen → destino -->
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:9px 12px;display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#38bdf8;flex-shrink:0;margin-top:1px">my_location</span>
+              <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ driverRequests()[0].origin_name ?? 'Punto de recogida' }}</p>
+            </div>
+            <div style="height:1px;background:rgba(255,255,255,0.07);margin-left:22px"></div>
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#f87171;flex-shrink:0;margin-top:1px">location_on</span>
+              <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ driverRequests()[0].dest_name ?? 'Destino' }}</p>
+            </div>
+          </div>
+
+          <!-- Timer + botón Aceptar -->
+          <div style="display:flex;align-items:center;gap:10px">
+            <!-- Countdown -->
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:44px">
+              <span style="font-size:19px;font-weight:900;line-height:1;transition:color 0.5s"
+                [style.color]="reqRemainingPct(driverRequests()[0]) < 25 ? '#f87171' : reqRemainingPct(driverRequests()[0]) < 50 ? '#fbbf24' : '#34d399'">
+                {{ reqRemainingStr(driverRequests()[0]) }}
+              </span>
+              <span style="color:rgba(255,255,255,0.3);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em">tiempo</span>
+            </div>
+            <!-- Barra progreso -->
+            <div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
+              <div style="height:100%;border-radius:999px;transition:width 1s linear,background 0.5s"
+                [style.width]="reqRemainingPct(driverRequests()[0]) + '%'"
+                [style.background]="reqRemainingPct(driverRequests()[0]) < 25 ? '#ef4444' : reqRemainingPct(driverRequests()[0]) < 50 ? '#f59e0b' : '#34d399'">
+              </div>
+            </div>
+            <!-- Botón Aceptar -->
+            @if (offerSentFor().has(driverRequests()[0].id)) {
+              <div style="display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);flex-shrink:0">
+                <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
+                <span style="color:#34d399;font-size:13px;font-weight:900">Enviada</span>
+              </div>
+            } @else {
+              <button (click)="openMakeOffer(driverRequests()[0])"
+                style="padding:11px 20px;border-radius:12px;border:none;cursor:pointer;font-weight:900;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px;flex-shrink:0;transition:background 0.5s,transform 0.1s;box-shadow:0 4px 16px rgba(0,0,0,0.3)"
+                [style.background]="reqRemainingPct(driverRequests()[0]) < 25 ? 'linear-gradient(135deg,#dc2626,#ef4444)' : reqRemainingPct(driverRequests()[0]) < 50 ? 'linear-gradient(135deg,#b45309,#f59e0b)' : 'linear-gradient(135deg,#059669,#0891b2)'"
+                [class.animate-pulse]="reqRemainingPct(driverRequests()[0]) < 25">
+                <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>
+                Aceptar
+              </button>
+            }
+          </div>
+
         </div>
       </div>
     </div>
@@ -425,6 +578,105 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
 
       @if (passengerSection() === null) {
+
+      <!-- ══ Barra de dirección (encima del mapa) ══ -->
+      @if (!passengerMapFullscreen() && gpsStatus() !== 'requesting') {
+        <div class="w-full mb-2">
+          @if (locationUpdating()) {
+            <div class="flex items-center justify-center gap-1.5 mb-1.5">
+              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+                style="background:rgba(13,17,26,0.85);border:1px solid rgba(124,58,237,0.35)">
+                <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:12px">autorenew</span>
+                <span class="text-xs font-medium" style="color:rgba(255,255,255,0.75)">Actualizando zona...</span>
+              </div>
+            </div>
+          }
+          @if (!addressEditMode()) {
+            <button (click)="openAddressEdit()"
+              class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-lg text-left transition-all active:scale-[0.98]"
+              style="border:1px solid #e2e8f0">
+              <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">location_on</span>
+              <div class="flex-1 min-w-0">
+                @if (addressLoading()) {
+                  <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
+                } @else if (currentAddress()) {
+                  <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
+                  <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                    @if (currentNeighborhood()) {
+                      <p class="text-orange-500 text-xs font-medium truncate">{{ currentNeighborhood() }}</p>
+                    }
+                    @if (gpsAccuracy() !== null) {
+                      <span class="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                        [style.background]="gpsAccuracy()! <= 10 ? '#d1fae5' : gpsAccuracy()! <= 30 ? '#fef9c3' : '#fee2e2'"
+                        [style.color]="gpsAccuracy()! <= 10 ? '#065f46' : gpsAccuracy()! <= 30 ? '#713f12' : '#991b1b'">
+                        <span class="material-symbols-outlined" style="font-size:11px">my_location</span>
+                        Precisión ±{{ gpsAccuracy() }}m
+                      </span>
+                    }
+                  </div>
+                } @else {
+                  <p class="text-slate-500 text-sm">Toca para ingresar tu dirección</p>
+                }
+              </div>
+              <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:16px">edit</span>
+            </button>
+          } @else {
+            <div class="flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden" style="border:1px solid #e2e8f0">
+              <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
+                <span class="material-symbols-outlined text-orange-500" style="font-size:20px">search</span>
+                <input #addrInput
+                  (input)="onAddressInput($any($event.target).value)"
+                  (paste)="handlePaste($any($event), 'address')"
+                  (keydown.escape)="closeAddressEdit()"
+                  (keydown.enter)="saveManualAddress()"
+                  placeholder="Escribe tu dirección exacta de recogida..."
+                  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
+                  class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <button (click)="clearAddressQuery()"
+                    class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
+                    <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
+                  </button>
+                  <button (click)="saveManualAddress()"
+                    class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
+                    style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
+                    <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
+                  </button>
+                </div>
+              </div>
+              @if (addressSuggestions().length > 0) {
+                <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                  @for (s of addressSuggestions(); track s.place_id) {
+                    <button (click)="selectAddress(s)"
+                      class="flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors">
+                      <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
+                        @if (s.place_name) {
+                          <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
+                        }
+                      </div>
+                    </button>
+                  }
+                </div>
+              } @else if (addressNoResults()) {
+                <p class="text-slate-400 text-xs text-center py-3">Sin resultados. Intenta con otra dirección.</p>
+              }
+            </div>
+          }
+          <!-- GPS denied badge -->
+          @if (gpsStatus() === 'denied') {
+            <div class="mt-1.5 flex justify-end">
+              <button (click)="retryGps('ag-map-user')"
+                class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-orange-600 text-xs font-bold"
+                style="background:#fff7ed;border:1px solid #fed7aa">
+                <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Reintentar GPS
+              </button>
+            </div>
+          }
+        </div>
+      }
+
       <!-- Mapa con overlays flotantes -->
       <div [class]="passengerMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative rounded-2xl overflow-hidden'"
            [style]="passengerMapFullscreen() ? '' : 'height:520px;border:1px solid rgba(255,255,255,0.08)'">
@@ -602,103 +854,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
-        <!-- Barra de dirección (flotante arriba) -->
-        @if (gpsStatus() !== 'requesting') {
-          <div class="absolute top-3 left-3 right-3 z-20">
-            @if (locationUpdating()) {
-              <div class="flex items-center justify-center gap-1.5 mb-1.5">
-                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-                  style="background:rgba(13,17,26,0.75);backdrop-filter:blur(6px);border:1px solid rgba(124,58,237,0.35)">
-                  <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:12px">autorenew</span>
-                  <span class="text-xs font-medium" style="color:rgba(255,255,255,0.75)">Actualizando zona...</span>
-                </div>
-              </div>
-            }
-            @if (!addressEditMode()) {
-              <button (click)="openAddressEdit()"
-                class="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-2.5 shadow-xl shadow-black/40 text-left transition-all active:scale-[0.98]">
-                <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:20px">location_on</span>
-                <div class="flex-1 min-w-0">
-                  @if (addressLoading()) {
-                    <p class="text-slate-400 text-sm animate-pulse">Obteniendo dirección...</p>
-                  } @else if (currentAddress()) {
-                    <p class="text-slate-800 text-sm font-semibold truncate">{{ currentAddress() }}</p>
-                    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                      @if (currentNeighborhood()) {
-                        <p class="text-orange-500 text-xs font-medium truncate">{{ currentNeighborhood() }}</p>
-                      }
-                      @if (gpsAccuracy() !== null) {
-                        <span class="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                          [style.background]="gpsAccuracy()! <= 10 ? '#d1fae5' : gpsAccuracy()! <= 30 ? '#fef9c3' : '#fee2e2'"
-                          [style.color]="gpsAccuracy()! <= 10 ? '#065f46' : gpsAccuracy()! <= 30 ? '#713f12' : '#991b1b'">
-                          <span class="material-symbols-outlined" style="font-size:11px">my_location</span>
-                          Precisión ±{{ gpsAccuracy() }}m
-                        </span>
-                      }
-                    </div>
-                  } @else {
-                    <p class="text-slate-500 text-sm">Dirección no disponible</p>
-                  }
-                </div>
-                <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:16px">edit</span>
-              </button>
-            } @else {
-              <div class="flex flex-col bg-white rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
-                <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
-                  <span class="material-symbols-outlined text-orange-500" style="font-size:20px">search</span>
-                  <input #addrInput
-                    (input)="onAddressInput($any($event.target).value)"
-                    (paste)="handlePaste($any($event), 'address')"
-                    (keydown.escape)="closeAddressEdit()"
-                    (keydown.enter)="saveManualAddress()"
-                    placeholder="Escribe tu dirección exacta de recogida..."
-                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
-                    class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                  <div class="flex items-center gap-1 flex-shrink-0">
-                    <button (click)="clearAddressQuery()"
-                      class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 active:bg-slate-200">
-                      <span class="material-symbols-outlined text-slate-500" style="font-size:18px">close</span>
-                    </button>
-                    <button (click)="saveManualAddress()"
-                      class="flex items-center justify-center w-9 h-9 rounded-full shadow-md active:scale-95 transition-transform"
-                      style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.5)">
-                      <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'wght' 700">check</span>
-                    </button>
-                  </div>
-                </div>
-                @if (addressSuggestions().length > 0) {
-                  <div class="flex flex-col divide-y divide-slate-100 max-h-48 overflow-y-auto">
-                    @for (s of addressSuggestions(); track s.place_id) {
-                      <button (click)="selectAddress(s)"
-                        class="flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors">
-                        <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">place</span>
-                        <div class="flex-1 min-w-0">
-                          <p class="text-slate-800 text-sm font-semibold truncate">{{ s.text }}</p>
-                          @if (s.place_name) {
-                            <p class="text-slate-400 text-xs truncate">{{ s.place_name }}</p>
-                          }
-                        </div>
-                      </button>
-                    }
-                  </div>
-                } @else if (addressNoResults()) {
-                  <p class="text-slate-400 text-xs text-center py-3">Sin resultados. Intenta con otra dirección.</p>
-                }
-              </div>
-            }
-
-            <!-- GPS denied badge -->
-            @if (gpsStatus() === 'denied') {
-              <div class="mt-2 flex justify-end">
-                <button (click)="retryGps('ag-map-user')"
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur text-orange-400 text-xs font-bold border border-orange-500/20">
-                  <span class="material-symbols-outlined" style="font-size:13px">my_location</span> Reintentar GPS
-                </button>
-              </div>
-            }
-          </div>
-        }
-
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
@@ -715,35 +870,35 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span class="material-symbols-outlined text-slate-500" style="font-size:16px">chevron_left</span>
               </button>
             <div id="ag-icons-scroll" class="flex gap-1 flex-1 overflow-x-auto" style="scrollbar-width:none">
-              <button (click)="tripService.set('viaje')"
+              <button (click)="tripService.set('viaje'); setTripVehicle('carro')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='viaje' ? 'bg-orange-50 border border-orange-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='viaje' ? '#f97316' : '#94a3b8'">directions_car</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='viaje' ? '#f97316' : '#94a3b8'">Viaje</span>
               </button>
-              <button (click)="tripService.set('moto')"
+              <button (click)="tripService.set('moto'); setTripVehicle('moto')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='moto' ? 'bg-cyan-50 border border-cyan-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">two_wheeler</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">Moto</span>
               </button>
-              <button (click)="tripService.set('domicilio')"
+              <button (click)="tripService.set('domicilio'); setTripVehicle('moto')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='domicilio' ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">delivery_dining</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">Domicilio</span>
               </button>
-              <button (click)="tripService.set('fletes')"
+              <button (click)="tripService.set('fletes'); setTripVehicle('carro')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='fletes' ? 'bg-amber-50 border border-amber-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">local_shipping</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">Flete</span>
               </button>
-              <button (click)="tripService.set('ciudad')"
+              <button (click)="tripService.set('ciudad'); setTripVehicle('carro')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='ciudad' ? 'bg-purple-50 border border-purple-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
@@ -1290,6 +1445,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <p class="text-orange-700 text-xs font-semibold">
                     {{ gpsStatus() === 'denied' ? 'Activa el GPS para solicitar un viaje.' : 'Obteniendo tu ubicación... espera un momento o mueve el pin a tu posición.' }}
                   </p>
+                </div>
+              }
+              @if (tripRequestError()) {
+                <div class="mx-4 mb-2 flex items-center gap-2 rounded-xl px-3 py-2"
+                  style="background:#fef2f2;border:1px solid #fca5a5">
+                  <span class="material-symbols-outlined text-red-500" style="font-size:16px">error</span>
+                  <p class="text-red-700 text-xs font-semibold">{{ tripRequestError() }}</p>
                 </div>
               }
               <div class="px-4 py-3">
@@ -2599,7 +2761,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 [style]="rechargeAmount() === amt
                   ? 'background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff'
                   : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
-                {{ formatCOP(amt) }}
+                {{ formatAmt(amt) }}
               </button>
             }
           </div>
@@ -2636,7 +2798,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Abriendo pago...
             } @else {
               <span class="material-symbols-outlined" style="font-size:16px">credit_card</span>
-              Pagar {{ rechargeAmount() >= 5000 ? formatCOP(rechargeAmount()) : '' }} con ePayco
+              Pagar {{ rechargeAmount() >= 5000 ? formatCOP(rechargeAmount()) : '' }}
             }
           </button>
           <p class="text-slate-400 text-[10px] text-center">Mínimo {{ formatCOP(5000) }} · Pago seguro con ePayco</p>
@@ -2821,7 +2983,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
 
       }
-      @if (driverStatus() !== 'rejected' && driverActiveTrips().length === 0) {
+      @if (driverStatus() !== 'rejected') {
         <!-- Solicitudes en vivo -->
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between px-1">
@@ -6618,6 +6780,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripDistKm      = signal(0);
   tripSending     = signal(false);
   tripGpsError    = signal(false);
+  tripRequestError = signal<string | null>(null);
   tripSent        = signal(false);
   tripPinDrop     = signal(false);
   // true mientras haya solicitud activa O viaje aceptado en curso
@@ -6663,6 +6826,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   loadingSection     = signal(false);
   driverOnline       = signal(false);
   togglingOnline     = signal(false);
+  offlineConfirmOpen = signal(false);
   driverStats        = signal<{ avgRating: number; completedTrips: number } | null>(null);
   driverCompletedTrips = signal<any[]>([]);
   driverEarnings     = signal<{ total: number; walletHistory: any[] }>({ total: 0, walletHistory: [] });
@@ -7306,7 +7470,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       let mine = await this.agService.getMyDriverProfile();
       // Auto-upgrade: cualquier conductor pending pasa directo a quick (habilitado para primera carrera)
       if (mine && mine.status === 'pending') {
-        getSupabaseClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
+        await getSupabaseClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
         mine = { ...mine, status: 'quick' };
       }
       this.driverData.set(mine);
@@ -7323,8 +7487,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private async _initDriverHome(mine: any) {
     if (!mine) return;
     const status: string = mine.status ?? 'quick';
-    // Approved: solo cargar si ya está online. Quick/otros: siempre cargar.
-    const shouldLoad = status !== 'rejected' && (status !== 'approved' || mine.is_online);
+    // Approved: siempre cargar (conductor está online por defecto). Quick/otros: siempre cargar.
+    const shouldLoad = status !== 'rejected';
     if (shouldLoad) {
       this._loadDriverRequests(mine.vehicle_type);
     }
@@ -7340,9 +7504,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
       setTimeout(() => { this.walletPaymentResult.set(null); this.cdr.markForCheck(); }, 6000);
     }
-    // Para aprobados: sincronizar estado online
-    if (status === 'approved' && mine.is_online) {
+    // Todos los conductores activos: siempre iniciar en línea por defecto
+    // El conductor permanece online hasta que él mismo vaya al menú y confirme salir de línea
+    if (status !== 'rejected') {
       this.driverOnline.set(true);
+      this.agService.setDriverOnline(mine.id, true).catch(() => {});
+      this.startGpsTracking(mine.id);
+      this._startOnlineTimer();
+      if (!this._onlineSessionId) {
+        this.agService.startOnlineSession(mine.id).then(id => { this._onlineSessionId = id; }).catch(() => {});
+      }
     }
     // Cargar viajes activos (ofertas aceptadas por el pasajero)
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id);
@@ -7408,9 +7579,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     this._passengerWatchId = navigator.geolocation.watchPosition(
       (pos) => {
-        // Rechazar lecturas imprecisas (IP de red o WiFi lejano ubican en ciudad del servidor)
-        // >50m = posición de red, no GPS real del dispositivo
-        if (pos.coords.accuracy > 50) return;
+        // Ignorar solo lecturas de red/IP (>300m). ≤300m = GPS real aunque sea interior.
+        if (pos.coords.accuracy > 300) return;
 
         const now = Date.now();
         // Throttle: ignorar actualizaciones más rápidas de 5 s (excepto el primer fix real)
@@ -7429,7 +7599,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           if (moved < 20 && this._lastNotifiedLat !== 0) return;
         }
 
-        // Actualizar posición global con lectura GPS real
+        // Actualizar posición global con cualquier lectura GPS real (≤300m)
         this._gpsRealFix      = true;
         this._currentLat      = lat;
         this._currentLng      = lng;
@@ -7437,8 +7607,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this._lastNotifiedLng = lng;
         this.gpsStatus.set('granted');
 
-        // Centrar mapa en nueva posición si está visible
-        if (this._map && this.passengerSection() === null) {
+        // Centrar mapa en nueva posición si está visible (solo con buena precisión ≤50m)
+        if (pos.coords.accuracy <= 50 && this._map && this.passengerSection() === null) {
           this._map.easeTo({ center: [lng, lat], duration: 800 });
           this._userMarker?.setLngLat([lng, lat]);
         }
@@ -7646,7 +7816,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             if (!bestPos || p.coords.accuracy < bestPos.coords.accuracy) {
               bestPos = p;
             }
-            // Aceptar de inmediato solo si la precisión es real (≤50m = GPS real, no IP)
+            // Aceptar de inmediato con buena precisión (≤50m). Si no, esperar timeout con la mejor lectura.
             if (p.coords.accuracy <= 50) {
               done(p);
             }
@@ -7656,19 +7826,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             resolved = true;
             navigator.geolocation.clearWatch(watchId);
             clearTimeout(hardTimer);
-            // Usar mejor lectura solo si tiene precisión aceptable (≤50m)
-            if (bestPos && bestPos.coords.accuracy <= 50) resolve(bestPos);
+            // Usar mejor lectura si tiene precisión GPS real (≤300m), aunque no sea perfecta
+            if (bestPos && bestPos.coords.accuracy <= 300) resolve(bestPos);
             else reject(err);
           },
           { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
         );
 
-        // Hard timeout de 30s: aceptar solo si tenemos lectura con precisión real (≤50m)
+        // Hard timeout de 30s: aceptar cualquier lectura GPS real (≤300m)
         const hardTimer = setTimeout(() => {
           if (resolved) return;
           resolved = true;
           navigator.geolocation.clearWatch(watchId);
-          if (bestPos && bestPos.coords.accuracy <= 50) resolve(bestPos);
+          if (bestPos && bestPos.coords.accuracy <= 300) resolve(bestPos);
           else reject(new Error('GPS timeout'));
         }, 30000);
       });
@@ -8578,6 +8748,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return '$\u00a0' + n.toLocaleString('es-CO') + ' COP';
   }
 
+  formatAmt(n: number): string {
+    return '$\u00a0' + n.toLocaleString('es-CO');
+  }
+
   requiredCommission(price: number): number {
     return Math.ceil(price * this.driverCommissionPct() / 100);
   }
@@ -9108,8 +9282,30 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   async toggleOnline() {
     const driver = this.driverData();
     if (!driver) return;
+    // Si está en línea, pedir confirmación antes de desconectar
+    if (this.driverOnline()) {
+      this.offlineConfirmOpen.set(true);
+      this.cdr.markForCheck();
+      return;
+    }
+    // Si está fuera de línea, conectar directamente
+    await this._setOnline(true);
+  }
+
+  async confirmGoOffline() {
+    this.offlineConfirmOpen.set(false);
+    await this._setOnline(false);
+  }
+
+  cancelGoOffline() {
+    this.offlineConfirmOpen.set(false);
+    this.cdr.markForCheck();
+  }
+
+  private async _setOnline(next: boolean) {
+    const driver = this.driverData();
+    if (!driver) return;
     this.togglingOnline.set(true);
-    const next = !this.driverOnline();
     await this.agService.setDriverOnline(driver.id, next);
     this.driverOnline.set(next);
 
@@ -9536,6 +9732,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Background tracking con Capacitor (solo app nativa Android/iOS)
     this._startBackgroundTracking(driverId).catch(() => {});
     this._registerNativePush().catch(() => {});
+    // Web Push para navegadores (funciona con app cerrada)
+    this._autoRegisterWebPush().catch(() => {});
   }
 
   private async _registerNativePush(): Promise<void> {
@@ -9563,6 +9761,38 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
       await PushNotifications.register();
     } catch (e) { console.warn('native push init:', e); }
+  }
+
+  private async _autoRegisterWebPush(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const vapid = (environment as any).vapidPublicKey;
+    if (!vapid) return;
+    try {
+      const reg = await navigator.serviceWorker.register('/sw-movi.js');
+      await navigator.serviceWorker.ready;
+
+      // Si ya tiene suscripción activa, solo actualizar el signal y salir
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        this.pushEnabled.set(true);
+        // Re-guardar por si cambió el user (sesión nueva)
+        await this.agService.registerPushSubscription(existing).catch(() => {});
+        return;
+      }
+
+      // Pedir permiso — si el usuario lo niega, no molestamos con alerts
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return;
+
+      const key = this._urlB64ToUint8(vapid);
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key.buffer as ArrayBuffer,
+      });
+      await this.agService.registerPushSubscription(sub);
+      this.pushEnabled.set(true);
+    } catch (e) { console.warn('web push auto-register:', e); }
   }
 
   private _bgWatcherId: string | null = null;
@@ -10030,40 +10260,47 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       return;
     }
     this.tripGpsError.set(false);
+    this.tripRequestError.set(null);
     this.tripSending.set(true);
     const profile = this.agProfile();
-    if (profile) {
-      const result = await this.agService.requestTrip({
-        passengerUserId: profile.id,
-        originLat: this._currentLat, originLng: this._currentLng,
-        destName: dest.name, destLat: dest.lat, destLng: dest.lng,
-        distanceKm: this.tripDistKm(),
-        vehicleType: this.tripVehicle(),
-        offeredPrice: this.tripPrice(),
-        paymentMethod: this.tripPayment(),
-      });
-      if (result.success && result.tripId) {
-        this.currentTripRequestId.set(result.tripId);
-        this.receivedOffers.set([]);
-        this.tripAccepted.set(null);
-        // Aplicar cupón si hay uno
-        const ac = this.appliedCoupon();
-        if (ac) {
-          try { await this.agService.applyCoupon(ac.couponId, result.tripId, ac.discount); } catch {}
-        }
-        this._subscribeToOffers(result.tripId);
-        // Persistir estado de búsqueda para restaurar si el pasajero cierra la app
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('movi_active_trip', JSON.stringify({
-            tripId: result.tripId, status: 'searching', ts: Date.now(),
-            dest: this.tripDest(), price: this.tripPrice(), vehicle: this.tripVehicle(), payment: this.tripPayment(),
-          }));
-        }
-        // Auto-buscar conductores cercanos y enviarles la solicitud
-        this._autoAssignNearestDrivers(result.tripId, this._currentLat, this._currentLng, this.tripVehicle(), this.tripPrice());
-      }
+    if (!profile) {
+      this.tripSending.set(false);
+      this.tripRequestError.set('Debes registrarte antes de solicitar un viaje.');
+      setTimeout(() => this.tripRequestError.set(null), 5000);
+      return;
     }
+    const result = await this.agService.requestTrip({
+      passengerUserId: profile.id,
+      originLat: this._currentLat, originLng: this._currentLng,
+      destName: dest.name, destLat: dest.lat, destLng: dest.lng,
+      distanceKm: this.tripDistKm(),
+      vehicleType: this.tripVehicle(),
+      offeredPrice: this.tripPrice(),
+      paymentMethod: this.tripPayment(),
+    });
     this.tripSending.set(false);
+    if (!result.success || !result.tripId) {
+      this.tripRequestError.set(result.error ?? 'Error al crear el viaje. Intenta de nuevo.');
+      setTimeout(() => this.tripRequestError.set(null), 5000);
+      return;
+    }
+    this.currentTripRequestId.set(result.tripId);
+    this.receivedOffers.set([]);
+    this.tripAccepted.set(null);
+    // Aplicar cupón si hay uno
+    const ac = this.appliedCoupon();
+    if (ac) {
+      try { await this.agService.applyCoupon(ac.couponId, result.tripId, ac.discount); } catch {}
+    }
+    this._subscribeToOffers(result.tripId);
+    // Persistir estado de búsqueda para restaurar si el pasajero cierra la app
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('movi_active_trip', JSON.stringify({
+        tripId: result.tripId, status: 'searching', ts: Date.now(),
+        dest: this.tripDest(), price: this.tripPrice(), vehicle: this.tripVehicle(), payment: this.tripPayment(),
+      }));
+    }
+    this._autoAssignNearestDrivers(result.tripId, this._currentLat, this._currentLng, this.tripVehicle(), this.tripPrice());
     this.tripSent.set(true);
     this._startWaiting();
   }
@@ -10087,7 +10324,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.waitingDriverCount.set(n + 1);
         this.waitingDriverColors.update(arr => [...arr, palette[n % palette.length]]);
       }
-      if (elapsed >= total) this._stopWaiting();
+      if (elapsed >= total) {
+        this._stopWaiting();
+        // El viaje sigue activo — solo el pasajero puede cancelarlo manualmente
+      }
     }, 1000);
   }
 
@@ -10342,10 +10582,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   driverEtaMin = signal<Record<string, number>>({});
 
   _loadDriverRequests(vehicleType?: string, lat?: number, lng?: number) {
+    // ag_trip_requests solo acepta 'carro' o 'moto'; normalizar cualquier otro valor a 'carro'
+    const vt = vehicleType === 'moto' ? 'moto' : vehicleType ? 'carro' : undefined;
     const dLat = lat ?? (this._currentLat !== this.DEFAULT_LAT ? this._currentLat : undefined);
     const dLng = lng ?? (this._currentLng !== this.DEFAULT_LNG ? this._currentLng : undefined);
     // Carga inicial filtrada por distancia
-    this.agService.getSearchingRequests(vehicleType, dLat, dLng).then(reqs => {
+    this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
       this.driverRequests.set(reqs);
       if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
       this.cdr.markForCheck();
@@ -10359,6 +10601,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       clearInterval(this._driverRefreshInterval);
       this._driverRefreshInterval = null;
     }
+    // Refresh cada 20s como respaldo si el realtime pierde algún evento
+    this._driverRefreshInterval = setInterval(() => {
+      this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
+        this.driverRequests.set(reqs);
+        this.cdr.markForCheck();
+      });
+    }, 20000);
     // Timer 1s: actualiza reloj para la barra de progreso y expira solicitudes > 4 min
     if (this._reqTimerInterval) clearInterval(this._reqTimerInterval);
     this._reqTimerInterval = setInterval(() => {
@@ -10372,7 +10621,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }, 1000);
     // Suscripción realtime filtrada por distancia
     this._requestsChannel = this.agService.subscribeToTripRequests(
-      vehicleType,
+      vt,
       (req) => {
         this.driverRequests.update(list => {
           if (list.some(r => r.id === req.id)) return list;
@@ -10450,14 +10699,22 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       alert('Tu solicitud está siendo revisada. En 24–48 horas recibirás respuesta.');
       return;
     }
+    // Validar saldo para conductores aprobados (first trip es gratis para 'quick')
+    const completedTrips = (driver as any)?.metric_trips_completed ?? 0;
+    const commission = this.requiredCommission(this.driverOfferPrice());
     if (status === 'approved') {
       if (this.driverWalletBalance() < 20000) {
         alert('Necesitas mínimo $20.000 en tu billetera para aceptar viajes.');
         return;
       }
-      const commission = this.requiredCommission(this.driverOfferPrice());
       if (this.driverCommissionPct() > 0 && this.driverWalletBalance() < commission) {
         alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} para cubrir la comisión.`);
+        return;
+      }
+    } else if (status === 'quick' && completedTrips >= 1) {
+      // Desde el 2do viaje el conductor quick también paga comisión
+      if (this.driverWalletBalance() < commission) {
+        alert(`Saldo insuficiente. Necesitas al menos ${this.formatCOP(commission)} para cubrir la comisión de este viaje.`);
         return;
       }
     }
@@ -10524,11 +10781,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _calcPrice(km: number, vehicle: 'carro' | 'moto' | 'camion'): number {
+    // Tarifas calibradas para igualar el precio sugerido de InDrive en Colombia
     const raw = vehicle === 'camion'
-      ? Math.max(8000, 8000 + km * 1800)
+      ? Math.max(8000, 6000 + km * 1500)
       : vehicle === 'carro'
-      ? Math.max(4500, 4500 + km * 1200)
-      : Math.max(3000, 3000 + km * 800);
+      ? Math.max(4500, 4000 + km * 1000)
+      : Math.max(3000, 2500 + km * 700);
     const surge = this.surgeMultiplier() ?? 1;
     return Math.round((raw * surge) / 500) * 500;
   }
