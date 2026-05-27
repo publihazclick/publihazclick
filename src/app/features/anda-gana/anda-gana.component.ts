@@ -265,15 +265,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           } @else {
             <div style="display:flex;gap:8px">
               <button (click)="acceptDirectly(driverRequests()[0])" [disabled]="sendingOffer()"
-                style="flex:1;padding:10px 0;border-radius:12px;border:none;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 16px rgba(0,0,0,0.3)"
+                style="flex:1;padding:10px 0;border-radius:12px;border:none;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 16px rgba(0,0,0,0.3);overflow:hidden;position:relative"
                 [style.background]="reqBtnGradient(driverRequests()[0])"
                 [style.opacity]="sendingOffer() ? '0.6' : '1'"
                 [class.animate-pulse]="reqRemainingPct(driverRequests()[0]) < 15">
-                <div style="display:flex;align-items:center;gap:5px">
+                <div style="display:flex;align-items:center;gap:5px;position:relative;z-index:1">
                   <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1">check_circle</span>
                   <span style="font-weight:900;font-size:13px">Aceptar</span>
                 </div>
-                <span style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:0.03em">{{ reqRemainingStr(driverRequests()[0]) }}</span>
+                <span style="font-size:10px;font-weight:700;opacity:0.9;letter-spacing:0.03em;position:relative;z-index:1">{{ reqRemainingStr(driverRequests()[0]) }}</span>
               </button>
               <button (click)="openMakeOffer(driverRequests()[0])" [disabled]="sendingOffer()"
                 style="flex:1;padding:11px 0;border-radius:12px;border:1px solid rgba(245,158,11,0.5);cursor:pointer;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity 0.2s;background:rgba(245,158,11,0.12);color:#fbbf24"
@@ -3072,182 +3072,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Solicitudes en vivo -->
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between px-1">
-            <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Solicitudes en vivo</p>
+            <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Aqui veras las solicitudes en vivo</p>
             <button (click)="refreshDriverRequests()"
               class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
               <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
             </button>
           </div>
 
-          @if (driverRequests().length === 0) {
-            <div class="rounded-2xl flex flex-col items-center gap-2 py-8"
-              style="background:#F9FAFB;border:1px solid #E2E8F0">
-              <span class="material-symbols-outlined text-slate-400" style="font-size:36px">search_off</span>
-              <p class="text-slate-600 text-sm">Sin solicitudes activas ahora</p>
-              <p class="text-slate-500 text-xs">Los pasajeros aparecerán aquí en tiempo real</p>
-            </div>
-          }
 
-          @for (req of driverRequests(); track req.id) {
-            <div class="rounded-2xl overflow-hidden"
-              style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 2px 12px rgba(0,0,0,0.07)">
 
-              <!-- Fila 1: info pasajero + precio -->
-              <div class="flex items-center gap-3 px-4 pt-4 pb-3" style="border-bottom:1px solid #F1F5F9">
-                <!-- Avatar inicial -->
-                <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 font-black text-base text-white"
-                  style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                  {{ (req.ag_users?.full_name ?? 'P')[0].toUpperCase() }}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="font-black text-sm truncate" style="color:#0f172a">{{ req.ag_users?.full_name ?? 'Pasajero' }}</p>
-                  <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                    @if (req.ag_users?.passenger_rating_avg) {
-                      <div class="flex items-center gap-0.5">
-                        <span class="material-symbols-outlined text-amber-400" style="font-size:12px;font-variation-settings:'FILL' 1">star</span>
-                        <span class="text-xs font-bold" style="color:#0f172a">{{ req.ag_users!.passenger_rating_avg! | number:'1.1-1' }}</span>
-                      </div>
-                    } @else {
-                      <div class="flex items-center gap-0.5">
-                        <span class="material-symbols-outlined text-slate-300" style="font-size:12px;font-variation-settings:'FILL' 1">star</span>
-                        <span class="text-[10px] text-slate-400">Nuevo</span>
-                      </div>
-                    }
-                    <span class="text-slate-400 text-[10px]">·</span>
-                    <span class="text-slate-500 text-[10px] font-medium">{{ req.ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
-                  </div>
-                </div>
-                <!-- Precio -->
-                <div class="text-right flex-shrink-0">
-                  <p class="font-black text-xl" style="color:#059669;line-height:1.1">{{ formatCOP(req.offered_price) }}</p>
-                  <p class="text-slate-400 text-[10px] mt-0.5">precio pasajero</p>
-                </div>
-              </div>
-
-              <!-- Fila 2: ruta -->
-              <div class="px-4 py-3 flex flex-col gap-2" style="border-bottom:1px solid #F1F5F9">
-                <div class="flex items-start gap-2">
-                  <span class="material-symbols-outlined text-cyan-500 flex-shrink-0" style="font-size:15px;margin-top:1px">my_location</span>
-                  <p class="text-xs font-medium leading-tight" style="color:#334155">{{ req.origin_name ?? 'Punto de recogida' }}</p>
-                </div>
-                <div class="flex items-start gap-2">
-                  <span class="material-symbols-outlined text-rose-500 flex-shrink-0" style="font-size:15px;margin-top:1px">location_on</span>
-                  <p class="text-xs font-medium leading-tight" style="color:#334155">{{ req.dest_name }}</p>
-                </div>
-                <div class="flex items-center gap-2 mt-0.5">
-                  <span class="text-slate-400 text-[10px]">{{ req.distance_km }} km</span>
-                  <div class="flex items-center gap-1 px-1.5 py-0.5 rounded-full"
-                    [style.background]="paymentMethodMap[req.payment_method ?? 'efectivo'].bgDark"
-                    [style.border]="'1px solid ' + paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">
-                    <span class="material-symbols-outlined" style="font-size:10px"
-                      [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].icon }}</span>
-                    <span class="text-[9px] font-bold"
-                      [style.color]="paymentMethodMap[req.payment_method ?? 'efectivo'].colorDark">{{ paymentMethodMap[req.payment_method ?? 'efectivo'].label }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Fila 3: botón acción -->
-              <div class="px-4 pt-3 pb-2">
-                @if (offerSentFor().has(req.id)) {
-                  <div class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl"
-                    style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
-                    <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span>
-                    <span class="text-emerald-400 text-xs font-bold">Oferta enviada</span>
-                  </div>
-                } @else if (driverStatus() === 'quick') {
-                  <div class="flex gap-2">
-                    <button (click)="acceptDirectly(req)" [disabled]="sendingOffer()"
-                      class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform font-black text-sm text-white disabled:opacity-60"
-                      style="background:linear-gradient(135deg,#7C3AED,#3B82F6)">
-                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">rocket_launch</span>
-                      Aceptar gratis
-                    </button>
-                    <button (click)="openMakeOffer(req)" [disabled]="sendingOffer()"
-                      class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform font-black text-sm disabled:opacity-60"
-                      style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#fbbf24">
-                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">swap_vert</span>
-                      Contra-oferta
-                    </button>
-                  </div>
-                } @else if (driverStatus() === 'pending_docs') {
-                  <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
-                    style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
-                    <div class="flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-orange-400" style="font-size:15px">assignment</span>
-                      <span class="text-orange-400 text-xs font-black">Completa tu registro para aceptar viajes</span>
-                    </div>
-                  </div>
-                } @else if (driverStatus() === 'pending') {
-                  <div class="w-full py-2.5 rounded-xl flex items-center justify-center gap-1.5"
-                    style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
-                    <span class="material-symbols-outlined text-amber-400" style="font-size:15px">hourglass_top</span>
-                    <span class="text-amber-400 text-xs font-black">Cuenta en revisión (24–48h)</span>
-                  </div>
-                } @else if (driverStatus() === 'approved' && driverWalletBalance() < 20000) {
-                  <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
-                    style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)">
-                    <div class="flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-rose-400" style="font-size:15px">account_balance_wallet</span>
-                      <span class="text-rose-400 text-xs font-black">Mínimo $20.000 para aceptar</span>
-                    </div>
-                    <button (click)="walletPanelOpen.set(true)"
-                      class="mt-1 px-4 py-1 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
-                      style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
-                      <span class="material-symbols-outlined" style="font-size:11px">add_circle</span>Recargar billetera
-                    </button>
-                  </div>
-                } @else if (driverStatus() === 'approved' && driverCommissionPct() > 0 && driverWalletBalance() < requiredCommission(req.offered_price)) {
-                  <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
-                    style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2)">
-                    <div class="flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-amber-400" style="font-size:15px">account_balance_wallet</span>
-                      <span class="text-amber-400 text-xs font-black">Saldo insuficiente (necesitas {{ formatCOP(requiredCommission(req.offered_price)) }})</span>
-                    </div>
-                    <button (click)="walletPanelOpen.set(true)"
-                      class="mt-1 px-4 py-1 rounded-lg text-[10px] font-black text-cyan-400 flex items-center gap-1"
-                      style="background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.25)">
-                      <span class="material-symbols-outlined" style="font-size:11px">add_circle</span>Recargar billetera
-                    </button>
-                  </div>
-                } @else if (driverStatus() === 'approved') {
-                  <div class="flex gap-2">
-                    <button (click)="acceptDirectly(req)" [disabled]="sendingOffer()"
-                      class="flex-1 py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
-                      style="background:linear-gradient(135deg,#059669,#10b981)">
-                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>
-                      Aceptar
-                    </button>
-                    <button (click)="openMakeOffer(req)" [disabled]="sendingOffer()"
-                      class="flex-1 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
-                      style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.4);color:#f59e0b">
-                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">swap_vert</span>
-                      Contra-oferta
-                    </button>
-                  </div>
-                }
-              </div>
-
-              <!-- Barra temporizador 4 minutos -->
-              <div class="px-4 pb-4 pt-1">
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-slate-400 text-[10px] font-medium">Disponible por</span>
-                  <span class="text-[11px] font-black"
-                    [style.color]="reqRemainingPct(req) < 25 ? '#ef4444' : reqRemainingPct(req) < 50 ? '#f59e0b' : '#64748b'">
-                    {{ reqRemainingStr(req) }}
-                  </span>
-                </div>
-                <div class="w-full rounded-full overflow-hidden" style="height:5px;background:#F1F5F9">
-                  <div class="h-full rounded-full"
-                    style="transition:width 1s linear"
-                    [style.width]="reqRemainingPct(req) + '%'"
-                    [style.background]="reqRemainingPct(req) < 25 ? '#ef4444' : reqRemainingPct(req) < 50 ? '#f59e0b' : '#10b981'">
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          }
         </div>
       }
       @if (driverStatus() === 'rejected') {
@@ -10913,12 +10746,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return (this.reqRemainingMs(req) / 240000) * 100;
   }
   reqBtnGradient(req: AgTripRequest): string {
-    const pct = this.reqRemainingPct(req);
-    if (pct > 66) return 'linear-gradient(135deg,#059669,#10b981)';
-    if (pct > 50) return 'linear-gradient(135deg,#0d9044,#84cc16)';
-    if (pct > 33) return 'linear-gradient(135deg,#b45309,#f59e0b)';
-    if (pct > 15) return 'linear-gradient(135deg,#c2410c,#f97316)';
-    return 'linear-gradient(135deg,#dc2626,#ef4444)';
+    const pct = Math.max(0, Math.min(100, this.reqRemainingPct(req)));
+    const activeColor = pct > 50 ? '#059669' : pct > 25 ? '#d97706' : '#dc2626';
+    const bg = '#0d1421';
+    return `linear-gradient(to right, ${activeColor} ${pct}%, ${bg} ${pct}%)`;
   }
   reqRemainingStr(req: AgTripRequest): string {
     const ms = this.reqRemainingMs(req);
