@@ -290,6 +290,90 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ BANNER PASAJERO: CONDUCTOR LLEGÓ (flotante top) ═══════════ -->
+  @if (arrivedAtPickupTimer() !== null && tripAccepted()) {
+    <div style="position:fixed;top:0;left:0;right:0;z-index:8500;pointer-events:none">
+      <div style="pointer-events:auto;background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-bottom:2px solid rgba(52,211,153,0.4);box-shadow:0 8px 40px rgba(0,0,0,0.75),0 0 0 1px rgba(52,211,153,0.12)">
+
+        <!-- Franja superior verde -->
+        <div style="background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,rgba(5,150,105,0.1) 100%);padding:9px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#34d399;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
+            <span style="color:#34d399;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡Tu conductor llegó!</span>
+          </div>
+          <span style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700">Sal a recibirlo</span>
+        </div>
+
+        <!-- Cuerpo -->
+        <div style="padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px">
+
+          <!-- Foto + nombre + rating + viajes -->
+          <div style="display:flex;align-items:center;gap:12px">
+            @if (tripAccepted()!.ag_drivers?.ag_users?.selfie_url) {
+              <img [src]="tripAccepted()!.ag_drivers!.ag_users!.selfie_url"
+                style="width:52px;height:52px;border-radius:14px;object-fit:cover;flex-shrink:0;border:2px solid rgba(52,211,153,0.4)" />
+            } @else {
+              <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#059669,#0891b2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;font-weight:900;color:#fff;border:2px solid rgba(52,211,153,0.35)">
+                {{ (tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'C')[0].toUpperCase() }}
+              </div>
+            }
+            <div style="flex:1;min-width:0">
+              <p style="color:#fff;font-weight:900;font-size:15px;margin:0;line-height:1.2">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+                @if (tripAccepted()!.ag_drivers?.rating_avg) {
+                  <div style="display:flex;align-items:center;gap:3px">
+                    <span style="color:#fbbf24;font-size:13px">★</span>
+                    <span style="color:#fbbf24;font-size:12px;font-weight:800">{{ tripAccepted()!.ag_drivers!.rating_avg | number:'1.1-1' }}</span>
+                  </div>
+                }
+                <span style="color:rgba(255,255,255,0.35);font-size:11px">·</span>
+                <span style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:600">{{ tripAccepted()!.ag_drivers?.trips_completed ?? 0 }} viajes</span>
+                @if (tripAccepted()!.ag_drivers?.level) {
+                  <span style="background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.35);color:#fbbf24;font-size:9px;font-weight:900;padding:2px 7px;border-radius:999px;text-transform:capitalize">
+                    {{ tripAccepted()!.ag_drivers!.level }}
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Placa + color -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Placa</p>
+              <p style="color:#fff;font-weight:900;font-size:15px;margin:0;letter-spacing:0.05em">{{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate ?? '—' }}</p>
+            </div>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Color</p>
+              <p style="color:#fff;font-weight:900;font-size:14px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_color ?? '—' }}</p>
+            </div>
+          </div>
+
+          <!-- Timer de espera -->
+          <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px">
+            <span class="material-symbols-outlined" style="font-size:22px;color:#34d399;font-variation-settings:'FILL' 1">timer</span>
+            <div style="flex:1">
+              <p style="color:rgba(255,255,255,0.55);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 1px">Tiempo de espera</p>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:22px;font-weight:900;line-height:1;transition:color 0.5s"
+                  [style.color]="arrivedAtPickupTimer()! < 60 ? '#f87171' : arrivedAtPickupTimer()! < 120 ? '#fbbf24' : '#34d399'">
+                  {{ padTime(arrivedAtPickupTimer()!) }}
+                </span>
+                <div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
+                  <div style="height:100%;border-radius:999px;transition:width 1s linear,background 0.5s"
+                    [style.width]="(arrivedAtPickupTimer()! / 240 * 100) + '%'"
+                    [style.background]="arrivedAtPickupTimer()! < 60 ? '#ef4444' : arrivedAtPickupTimer()! < 120 ? '#f59e0b' : '#34d399'">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ CÁMARA DOCUMENTO ═══════════ -->
   @if (docCameraOpen()) {
     <div class="fixed inset-0 z-[9999]" style="touch-action:none;background:#000">
@@ -678,8 +762,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       }
 
       <!-- Mapa con overlays flotantes -->
-      <div [class]="passengerMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative rounded-2xl overflow-hidden'"
-           [style]="passengerMapFullscreen() ? '' : 'height:520px;border:1px solid rgba(255,255,255,0.08)'">
+      <div [class]="passengerMapFullscreen() ? 'fixed z-[9850]' : 'relative rounded-2xl overflow-hidden'"
+           [style]="passengerMapFullscreen() ? 'top:0;left:0;right:0;height:90dvh' : 'height:520px;border:1px solid rgba(255,255,255,0.08)'"
+           style="overflow:hidden">
 
         <!-- GPS loading state -->
         @if (gpsStatus() === 'requesting') {
@@ -728,44 +813,45 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Tarjeta de viaje (abajo) -->
           <div class="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto"
-            style="background:linear-gradient(0deg,rgba(15,20,40,1) 0%,rgba(15,20,40,0.97) 85%,transparent 100%);padding:20px 16px calc(env(safe-area-inset-bottom,16px) + 16px)">
+            style="background:linear-gradient(0deg,rgba(10,14,30,1) 0%,rgba(10,14,30,0.97) 85%,transparent 100%);padding:14px 16px calc(env(safe-area-inset-bottom,16px) + 10px)">
 
-            <!-- Datos conductor + precio -->
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                style="background:linear-gradient(135deg,#f97316,#fb923c)">
-                <span class="material-symbols-outlined text-white" style="font-size:24px;font-variation-settings:'FILL' 1">person</span>
-              </div>
+            <!-- Fila: conductor + costo a pagar -->
+            <div class="flex items-center gap-3 mb-2">
               <div class="flex-1 min-w-0">
-                <p class="text-white font-black text-sm truncate">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
-                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                  <span class="text-slate-400 text-xs">{{ tripAccepted()!.ag_drivers?.vehicle_brand ?? '' }}</span>
-                  @if (tripAccepted()!.ag_drivers?.vehicle_color) {
-                    <span class="text-slate-500 text-xs">· {{ tripAccepted()!.ag_drivers?.vehicle_color }}</span>
-                  }
+                <p class="font-black text-[10px] uppercase tracking-widest mb-0.5"
+                  [style.color]="currentTripStage() === 'arrived_at_destination' ? '#34d399' : '#fb923c'">
+                  {{ currentTripStage() === 'arrived_at_destination' ? '¡Llegaste! Paga al conductor' : currentTripStage() === 'on_route' ? 'En camino a tu destino' : 'Iniciando viaje...' }}
+                </p>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-white font-black text-sm truncate">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
                   @if (tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate) {
                     <span class="px-1.5 py-0.5 rounded-lg text-[10px] font-black"
                       style="background:rgba(249,115,22,0.2);color:#fb923c;border:1px solid rgba(249,115,22,0.3)">
                       {{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate }}
                     </span>
                   }
+                  @if (tripAccepted()!.ag_drivers?.vehicle_color) {
+                    <span class="text-slate-400 text-xs">{{ tripAccepted()!.ag_drivers?.vehicle_color }}</span>
+                  }
                 </div>
               </div>
-              <div class="text-right flex-shrink-0">
-                <p class="text-emerald-400 font-black text-xl leading-none">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
-                <p class="text-slate-500 text-[10px] mt-0.5">precio confirmado</p>
+              <!-- Precio destacado -->
+              <div class="flex flex-col items-end flex-shrink-0 px-3 py-2 rounded-xl"
+                style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25)">
+                <p class="text-emerald-400 font-black leading-none" style="font-size:22px">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
+                <p class="text-emerald-600 font-bold" style="font-size:9px;margin-top:2px">A PAGAR</p>
               </div>
             </div>
 
             <!-- Destino -->
-            <div class="flex items-center gap-2 rounded-xl px-3 py-2 mb-3"
-              style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1)">
-              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">location_on</span>
+            <div class="flex items-center gap-2 rounded-xl px-3 py-2 mb-2"
+              style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09)">
+              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:15px">location_on</span>
               <p class="text-slate-300 text-xs font-semibold truncate">{{ tripDest()?.name ?? 'Destino' }}</p>
             </div>
 
             <!-- Barra de etapas compacta -->
-            <div class="flex items-center gap-1 mb-3">
+            <div class="flex items-center gap-1 mb-2">
               @for (s of passengerTripStages; track s.key) {
                 <div class="flex-1 h-1 rounded-full transition-colors duration-500"
                   [style.background]="isStagePassed(s.key, currentTripStage()) ? '#f97316' : 'rgba(255,255,255,0.12)'"></div>
@@ -12271,7 +12357,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
       // Conductor llegó al punto de recogida: mostrar banner + countdown 5 min
       if (stage === 'arrived_at_pickup') {
-        this.arrivedAtPickupTimer.set(300);
+        this.arrivedAtPickupTimer.set(240);
         this._startArrivalTimer();
         this.acceptedDriverEta.set(0);
       }
@@ -12281,12 +12367,12 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this._clearArrivalTimer();
         this.arrivedAtPickupTimer.set(null);
         this.acceptedDriverEta.set(null);
+        this.passengerSection.set(null);
+        this.passengerMapFullscreen.set(true);
         if (stage === 'on_route') {
-          this.passengerSection.set(null);
-          this.passengerMapFullscreen.set(true);
           this._drawPassengerTripRoute();
-          setTimeout(() => this._map?.resize(), 200);
         }
+        setTimeout(() => this._map?.resize(), 200);
       }
 
       // Cuando el conductor llega al destino: mostrar banner "llegaste"
