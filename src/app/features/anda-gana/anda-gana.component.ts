@@ -31,6 +31,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       0%,80%,100% { transform:scale(0.5); opacity:0.3; }
       40%         { transform:scale(1);   opacity:1;   }
     }
+    @keyframes modalFloat {
+      0%,100% { transform: translateY(0px);  }
+      50%     { transform: translateY(-5px); }
+    }
+    .modal-float { animation: modalFloat 3s ease-in-out infinite; }
     .movi-logo-wrap {
       animation: moviEntrance 0.85s cubic-bezier(0.34,1.56,0.64,1) forwards,
                  moviFloat    2.8s  ease-in-out 0.85s infinite;
@@ -194,8 +199,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top) ═══════════ -->
   @if (driverOnline() && !driverTripAlert() && driverActiveTrips().length === 0 && driverRequests().length > 0) {
-    <div style="position:fixed;top:0;left:0;right:0;z-index:8000;pointer-events:none">
-      <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-bottom:2px solid rgba(0,229,255,0.35);box-shadow:0 8px 40px rgba(0,0,0,0.7),0 0 0 1px rgba(0,229,255,0.1)">
+    <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8000;pointer-events:none">
+      <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(0,229,255,0.08);overflow:hidden">
 
         <!-- Franja de alerta superior -->
         <div style="background:linear-gradient(90deg,rgba(0,229,255,0.15) 0%,rgba(5,150,105,0.1) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -251,39 +256,33 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
-          <!-- Timer + botón Aceptar -->
-          <div style="display:flex;align-items:center;gap:10px">
-            <!-- Countdown -->
-            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:44px">
-              <span style="font-size:19px;font-weight:900;line-height:1;transition:color 0.5s"
-                [style.color]="reqRemainingPct(driverRequests()[0]) < 25 ? '#f87171' : reqRemainingPct(driverRequests()[0]) < 50 ? '#fbbf24' : '#34d399'">
-                {{ reqRemainingStr(driverRequests()[0]) }}
-              </span>
-              <span style="color:rgba(255,255,255,0.3);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em">tiempo</span>
+          <!-- Botones Aceptar / Contra-oferta -->
+          @if (offerSentFor().has(driverRequests()[0].id)) {
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
+              <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
+              <span style="color:#34d399;font-size:13px;font-weight:900">Oferta enviada — esperando al pasajero</span>
             </div>
-            <!-- Barra progreso -->
-            <div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
-              <div style="height:100%;border-radius:999px;transition:width 1s linear,background 0.5s"
-                [style.width]="reqRemainingPct(driverRequests()[0]) + '%'"
-                [style.background]="reqRemainingPct(driverRequests()[0]) < 25 ? '#ef4444' : reqRemainingPct(driverRequests()[0]) < 50 ? '#f59e0b' : '#34d399'">
-              </div>
-            </div>
-            <!-- Botón Aceptar -->
-            @if (offerSentFor().has(driverRequests()[0].id)) {
-              <div style="display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);flex-shrink:0">
-                <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
-                <span style="color:#34d399;font-size:13px;font-weight:900">Enviada</span>
-              </div>
-            } @else {
-              <button (click)="openMakeOffer(driverRequests()[0])"
-                style="padding:11px 20px;border-radius:12px;border:none;cursor:pointer;font-weight:900;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px;flex-shrink:0;transition:background 0.5s,transform 0.1s;box-shadow:0 4px 16px rgba(0,0,0,0.3)"
-                [style.background]="reqRemainingPct(driverRequests()[0]) < 25 ? 'linear-gradient(135deg,#dc2626,#ef4444)' : reqRemainingPct(driverRequests()[0]) < 50 ? 'linear-gradient(135deg,#b45309,#f59e0b)' : 'linear-gradient(135deg,#059669,#0891b2)'"
-                [class.animate-pulse]="reqRemainingPct(driverRequests()[0]) < 25">
-                <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>
-                Aceptar
+          } @else {
+            <div style="display:flex;gap:8px">
+              <button (click)="acceptDirectly(driverRequests()[0])" [disabled]="sendingOffer()"
+                style="flex:1;padding:10px 0;border-radius:12px;border:none;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 16px rgba(0,0,0,0.3)"
+                [style.background]="reqBtnGradient(driverRequests()[0])"
+                [style.opacity]="sendingOffer() ? '0.6' : '1'"
+                [class.animate-pulse]="reqRemainingPct(driverRequests()[0]) < 15">
+                <div style="display:flex;align-items:center;gap:5px">
+                  <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1">check_circle</span>
+                  <span style="font-weight:900;font-size:13px">Aceptar</span>
+                </div>
+                <span style="font-size:10px;font-weight:700;opacity:0.85;letter-spacing:0.03em">{{ reqRemainingStr(driverRequests()[0]) }}</span>
               </button>
-            }
-          </div>
+              <button (click)="openMakeOffer(driverRequests()[0])" [disabled]="sendingOffer()"
+                style="flex:1;padding:11px 0;border-radius:12px;border:1px solid rgba(245,158,11,0.5);cursor:pointer;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity 0.2s;background:rgba(245,158,11,0.12);color:#fbbf24"
+                [style.opacity]="sendingOffer() ? '0.6' : '1'">
+                <span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">swap_vert</span>
+                Contra-oferta
+              </button>
+            </div>
+          }
 
         </div>
       </div>
@@ -292,8 +291,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ BANNER PASAJERO: CONDUCTOR LLEGÓ (flotante top) ═══════════ -->
   @if (arrivedAtPickupTimer() !== null && tripAccepted()) {
-    <div style="position:fixed;top:0;left:0;right:0;z-index:8500;pointer-events:none">
-      <div style="pointer-events:auto;background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-bottom:2px solid rgba(52,211,153,0.4);box-shadow:0 8px 40px rgba(0,0,0,0.75),0 0 0 1px rgba(52,211,153,0.12)">
+    <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8500;pointer-events:none">
+      <div style="pointer-events:auto;background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:20px;border:1.5px solid rgba(52,211,153,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.8),0 0 0 1px rgba(52,211,153,0.1);overflow:hidden">
 
         <!-- Franja superior verde -->
         <div style="background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,rgba(5,150,105,0.1) 100%);padding:9px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -1579,10 +1578,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- ══ Tarjetas de ofertas reales ══ -->
               @if (receivedOffers().length > 0) {
-                <div class="flex flex-col gap-3 px-4 pt-2 pb-2">
+                <div style="position:fixed;left:12px;right:12px;bottom:80px;z-index:7600;display:flex;flex-direction:column;gap:10px;max-height:70dvh;overflow-y:auto;padding-bottom:4px">
                   @for (offer of receivedOffers(); track offer.id) {
                     <div class="rounded-3xl overflow-hidden"
-                      style="background:#fff;border:2px solid #16a34a;box-shadow:0 8px 32px rgba(22,163,74,0.18),0 2px 8px rgba(0,0,0,0.08)">
+                      style="background:#fff;border:2px solid #16a34a;box-shadow:0 12px 40px rgba(22,163,74,0.22),0 4px 16px rgba(0,0,0,0.12)">
 
                       <!-- Cabecera verde con precio -->
                       <div class="flex items-center justify-between px-4 py-3"
@@ -2915,7 +2914,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           style="background:linear-gradient(135deg,rgba(124,58,237,0.10),rgba(59,130,246,0.07));border:1px solid rgba(124,58,237,0.25)">
           <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#7C3AED">rocket_launch</span>
           <div>
-            <p class="font-black text-sm" style="color:#0f172a">¡Tu primera carrera es gratis!</p>
+            <p class="font-black text-sm" style="color:#0f172a">No necesitas saldo para tu primera carrera</p>
             <p class="text-slate-600 text-xs leading-relaxed mt-0.5">Acepta un viaje ahora mismo sin saldo ni aprobación. Después de tu primer viaje completa tu registro.</p>
           </div>
         </div>
@@ -3157,12 +3156,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <span class="text-emerald-400 text-xs font-bold">Oferta enviada</span>
                   </div>
                 } @else if (driverStatus() === 'quick') {
-                  <button (click)="openMakeOffer(req)"
-                    class="w-full py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform font-black text-sm text-white"
-                    style="background:linear-gradient(135deg,#7C3AED,#3B82F6)">
-                    <span class="material-symbols-outlined" style="font-size:18px">rocket_launch</span>
-                    Aceptar · 1ª carrera gratis
-                  </button>
+                  <div class="flex gap-2">
+                    <button (click)="acceptDirectly(req)" [disabled]="sendingOffer()"
+                      class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform font-black text-sm text-white disabled:opacity-60"
+                      style="background:linear-gradient(135deg,#7C3AED,#3B82F6)">
+                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">rocket_launch</span>
+                      Aceptar gratis
+                    </button>
+                    <button (click)="openMakeOffer(req)" [disabled]="sendingOffer()"
+                      class="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform font-black text-sm disabled:opacity-60"
+                      style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#fbbf24">
+                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">swap_vert</span>
+                      Contra-oferta
+                    </button>
+                  </div>
                 } @else if (driverStatus() === 'pending_docs') {
                   <div class="w-full py-2.5 rounded-xl flex flex-col items-center gap-0.5"
                     style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
@@ -3204,12 +3211,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </button>
                   </div>
                 } @else if (driverStatus() === 'approved') {
-                  <button (click)="openMakeOffer(req)"
-                    class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#059669,#0891b2)">
-                    <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
-                    Aceptar viaje
-                  </button>
+                  <div class="flex gap-2">
+                    <button (click)="acceptDirectly(req)" [disabled]="sendingOffer()"
+                      class="flex-1 py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
+                      style="background:linear-gradient(135deg,#059669,#10b981)">
+                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>
+                      Aceptar
+                    </button>
+                    <button (click)="openMakeOffer(req)" [disabled]="sendingOffer()"
+                      class="flex-1 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60"
+                      style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.4);color:#f59e0b">
+                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">swap_vert</span>
+                      Contra-oferta
+                    </button>
+                  </div>
                 }
               </div>
 
@@ -5199,14 +5214,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         class="fixed inset-0 z-50"
         style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
       <!-- Sheet -->
-      <div class="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col gap-4 px-5 pt-5 pb-8"
-        style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -8px 40px rgba(0,0,0,0.5)">
+      <div class="fixed z-50 flex flex-col gap-4 px-5 pt-5 pb-8"
+        style="bottom:12px;left:12px;right:12px;background:#0f1421;border-radius:24px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 16px 60px rgba(0,0,0,0.7)">
         <!-- Handle -->
         <div class="mx-auto w-10 h-1 rounded-full bg-white/20 mb-1"></div>
         <!-- Header -->
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-white font-black text-base">Tu oferta</p>
+            <p class="text-white font-black text-base">Contra-oferta</p>
             <p class="text-slate-500 text-xs">{{ makingOfferFor()!.dest_name }} · {{ makingOfferFor()!.distance_km }} km</p>
           </div>
           <button (click)="closeMakeOffer()"
@@ -6701,10 +6716,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ MODAL CONTRAOFERTAR ═══════════ -->
   @if (counterOfferModal() && counterOfferTarget()) {
-    <div class="fixed inset-0 z-[9997] flex items-end justify-center pb-0"
-      style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px)">
-      <div class="w-full max-w-md rounded-t-3xl flex flex-col gap-4 p-5 pb-9"
-        style="background:#0f1421;border-top:2px solid rgba(249,115,22,0.4)">
+    <div class="fixed inset-0 z-[9997] flex items-end justify-center"
+      style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);padding:0 12px 12px">
+      <div class="w-full max-w-md rounded-3xl flex flex-col gap-4 p-5 pb-7"
+        style="background:#0f1421;border:1.5px solid rgba(249,115,22,0.4);box-shadow:0 16px 60px rgba(0,0,0,0.7)">
         <!-- Handle -->
         <div class="flex justify-center -mt-1"><div class="w-10 h-1 rounded-full" style="background:rgba(255,255,255,0.18)"></div></div>
 
@@ -7594,6 +7609,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const shouldLoad = status !== 'rejected';
     if (shouldLoad) {
       this._loadDriverRequests(mine.vehicle_type);
+      // Cuando el conductor vuelve a la app desde background, refrescar solicitudes inmediatamente
+      if (isPlatformBrowser(this.platformId) && !this._visibilityHandler) {
+        this._visibilityHandler = () => {
+          if (!document.hidden && this.driverOnline()) {
+            this.refreshDriverRequests();
+          }
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+      }
     }
     // Cargar comisión y saldo para todos los conductores activos
     const [pct, balance] = await Promise.all([
@@ -7662,11 +7686,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.stopDriverTracking(); // limpia _driverLocChannel + _tripStageChannel
     if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
     if (this._reqTimerInterval) { clearInterval(this._reqTimerInterval); this._reqTimerInterval = null; }
+    if (this._cancelCheckInterval) { clearInterval(this._cancelCheckInterval); this._cancelCheckInterval = null; }
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
     if (this._waitingInterval) { clearInterval(this._waitingInterval); this._waitingInterval = null; }
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
+    if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
   }
 
   /**
@@ -9421,6 +9447,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       } catch {}
       this._startOnlineTimer();
       this._loadDriverRequests(driver.vehicle_type, this._currentLat, this._currentLng);
+      if (isPlatformBrowser(this.platformId) && !this._visibilityHandler) {
+        this._visibilityHandler = () => {
+          if (!document.hidden && this.driverOnline()) {
+            this.refreshDriverRequests();
+          }
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+      }
     } else {
       // Detener tracking, cerrar sesión y limpiar solicitudes
       this.stopGpsTracking();
@@ -9434,6 +9468,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
       if (this._driverRefreshInterval) { clearInterval(this._driverRefreshInterval); this._driverRefreshInterval = null; }
       if (this._reqTimerInterval) { clearInterval(this._reqTimerInterval); this._reqTimerInterval = null; }
+      if (this._cancelCheckInterval) { clearInterval(this._cancelCheckInterval); this._cancelCheckInterval = null; }
       this.driverRequests.set([]);
       this.cdr.markForCheck();
     }
@@ -10388,7 +10423,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const result = await this.agService.requestTrip({
       passengerUserId: profile.id,
       originLat: this._currentLat, originLng: this._currentLng,
-      originName: this.currentAddress() || undefined,
+      originName: [this.currentNeighborhood(), this.currentAddress()].filter(Boolean).join(' — ') || undefined,
       destName: dest.name, destLat: dest.lat, destLng: dest.lng,
       distanceKm: this.tripDistKm(),
       vehicleType: this.tripVehicle(),
@@ -10694,19 +10729,83 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ── Driver: load & refresh trip requests ──────────────────────
   private _driverRefreshInterval: ReturnType<typeof setInterval> | null = null;
   private _reqTimerInterval: ReturnType<typeof setInterval> | null = null;
+  private _cancelCheckInterval: ReturnType<typeof setInterval> | null = null;
   private _offerTimerInterval: ReturnType<typeof setInterval> | null = null;
+  private _visibilityHandler: (() => void) | null = null;
+  private readonly _REQUESTS_CACHE_KEY = 'movi_driver_req_cache';
+  private readonly _CANCELLED_CACHE_KEY = 'movi_driver_cancelled_ids';
+  private _cancelledRequestIds = new Set<string>();
   reqNowMs = signal(Date.now());
   driverEtaMin = signal<Record<string, number>>({});
+
+  private _saveRequestsToCache(reqs: AgTripRequest[]): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      localStorage.setItem(this._REQUESTS_CACHE_KEY, JSON.stringify({ ts: Date.now(), reqs }));
+    } catch {}
+  }
+
+  private _loadRequestsFromCache(): AgTripRequest[] {
+    if (!isPlatformBrowser(this.platformId)) return [];
+    try {
+      // Cargar IDs cancelados/aceptados desde localStorage
+      const cancelledRaw = localStorage.getItem(this._CANCELLED_CACHE_KEY);
+      if (cancelledRaw) {
+        const { ids } = JSON.parse(cancelledRaw) as { ids: string[] };
+        ids.forEach(id => this._cancelledRequestIds.add(id));
+      }
+      const raw = localStorage.getItem(this._REQUESTS_CACHE_KEY);
+      if (!raw) return [];
+      const { ts, reqs } = JSON.parse(raw) as { ts: number; reqs: AgTripRequest[] };
+      if (Date.now() - ts > 240000) return [];
+      const now = Date.now();
+      return reqs.filter(r =>
+        now - new Date(r.created_at).getTime() <= 240000 &&
+        !this._cancelledRequestIds.has(r.id)
+      );
+    } catch { return []; }
+  }
+
+  private _markRequestCancelled(id: string): void {
+    this._cancelledRequestIds.add(id);
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      localStorage.setItem(this._CANCELLED_CACHE_KEY, JSON.stringify({ ids: [...this._cancelledRequestIds] }));
+    } catch {}
+    // Quitar también del caché de solicitudes
+    const raw = localStorage.getItem(this._REQUESTS_CACHE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { ts: number; reqs: AgTripRequest[] };
+        parsed.reqs = parsed.reqs.filter(r => r.id !== id);
+        localStorage.setItem(this._REQUESTS_CACHE_KEY, JSON.stringify(parsed));
+      } catch {}
+    }
+  }
 
   _loadDriverRequests(vehicleType?: string, lat?: number, lng?: number) {
     // ag_trip_requests solo acepta 'carro' o 'moto'; normalizar cualquier otro valor a 'carro'
     const vt = vehicleType === 'moto' ? 'moto' : vehicleType ? 'carro' : undefined;
     const dLat = lat ?? (this._currentLat !== this.DEFAULT_LAT ? this._currentLat : undefined);
     const dLng = lng ?? (this._currentLng !== this.DEFAULT_LNG ? this._currentLng : undefined);
-    // Carga inicial filtrada por distancia
+    // Carga inicial: pre-poblar desde caché inmediatamente, luego reemplazar con datos frescos del servidor
+    const cached = this._loadRequestsFromCache();
+    if (cached.length > 0) {
+      this.driverRequests.set(cached);
+      this.cdr.markForCheck();
+    }
     this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
-      this.driverRequests.set(reqs);
-      if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
+      const now = Date.now();
+      const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
+      const fromCache = this.driverRequests().filter(
+        r => !serverIds.has(r.id) && !this._cancelledRequestIds.has(r.id) && now - new Date(r.created_at).getTime() <= 240000
+      );
+      const merged = [...reqs, ...fromCache].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      this.driverRequests.set(merged);
+      this._saveRequestsToCache(merged);
+      if (merged.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
       this.cdr.markForCheck();
     });
     // Cancelar suscripción previa
@@ -10718,18 +10817,50 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       clearInterval(this._driverRefreshInterval);
       this._driverRefreshInterval = null;
     }
-    // Refresh cada 20s como respaldo si el realtime pierde algún evento
+    if (this._cancelCheckInterval) {
+      clearInterval(this._cancelCheckInterval);
+      this._cancelCheckInterval = null;
+    }
+    // Refresh cada 20s — fusiona para preservar solicitudes visibles los 4 minutos completos
     this._driverRefreshInterval = setInterval(() => {
       this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
-        this.driverRequests.set(reqs);
+        const now = Date.now();
+        this.driverRequests.update(current => {
+          const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
+          const kept = current.filter(r =>
+            !serverIds.has(r.id) &&
+            !this._cancelledRequestIds.has(r.id) &&
+            now - new Date(r.created_at).getTime() <= 240000
+          );
+          const merged = [...reqs, ...kept].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          this._saveRequestsToCache(merged);
+          return merged;
+        });
         this.cdr.markForCheck();
       });
     }, 20000);
-    // Timer 1s: actualiza reloj para la barra de progreso y expira solicitudes > 4 min
+    // Cancel-check cada 5s: consulta el status real de las solicitudes visibles para detectar cancelaciones
+    this._cancelCheckInterval = setInterval(() => {
+      const visible = this.driverRequests();
+      if (!visible.length) return;
+      this.agService.checkRequestsStatus(visible.map(r => r.id)).then(statuses => {
+        const cancelledIds = statuses.filter(s => s.status !== 'searching').map(s => s.id);
+        if (!cancelledIds.length) return;
+        cancelledIds.forEach(id => this._markRequestCancelled(id));
+        this.driverRequests.update(list => {
+          const updated = list.filter(r => !cancelledIds.includes(r.id));
+          this._saveRequestsToCache(updated);
+          return updated;
+        });
+        this.cdr.markForCheck();
+      });
+    }, 5000);
+    // Timer 1s: actualiza reloj para el botón de color y expira solicitudes > 4 min
     if (this._reqTimerInterval) clearInterval(this._reqTimerInterval);
     this._reqTimerInterval = setInterval(() => {
       const now = Date.now();
       this.reqNowMs.set(now);
+      this.cdr.markForCheck();
       const hasExpired = this.driverRequests().some(r => now - new Date(r.created_at).getTime() > 240000);
       if (hasExpired) {
         this.driverRequests.update(list => list.filter(r => now - new Date(r.created_at).getTime() <= 240000));
@@ -10743,13 +10874,20 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.driverRequests.update(list => {
           if (list.some(r => r.id === req.id)) return list;
           this.agService.logMetricEvent('offer_seen').catch(() => {});
-          return [req, ...list];
+          const updated = [req, ...list];
+          this._saveRequestsToCache(updated);
+          return updated;
         });
         this.cdr.markForCheck();
       },
       (req) => {
         if (req.status !== 'searching') {
-          this.driverRequests.update(list => list.filter(r => r.id !== req.id));
+          this._markRequestCancelled(req.id);
+          this.driverRequests.update(list => {
+            const updated = list.filter(r => r.id !== req.id);
+            this._saveRequestsToCache(updated);
+            return updated;
+          });
           this.cdr.markForCheck();
         }
       },
@@ -10774,6 +10912,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   reqRemainingPct(req: AgTripRequest): number {
     return (this.reqRemainingMs(req) / 240000) * 100;
   }
+  reqBtnGradient(req: AgTripRequest): string {
+    const pct = this.reqRemainingPct(req);
+    if (pct > 66) return 'linear-gradient(135deg,#059669,#10b981)';
+    if (pct > 50) return 'linear-gradient(135deg,#0d9044,#84cc16)';
+    if (pct > 33) return 'linear-gradient(135deg,#b45309,#f59e0b)';
+    if (pct > 15) return 'linear-gradient(135deg,#c2410c,#f97316)';
+    return 'linear-gradient(135deg,#dc2626,#ef4444)';
+  }
   reqRemainingStr(req: AgTripRequest): string {
     const ms = this.reqRemainingMs(req);
     const m = Math.floor(ms / 60000);
@@ -10791,6 +10937,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const m = Math.floor(ms / 60000);
     const s = Math.floor((ms % 60000) / 1000);
     return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  async acceptDirectly(req: AgTripRequest) {
+    this.makingOfferFor.set(req);
+    this.driverOfferPrice.set(req.offered_price);
+    await this.submitDriverOffer();
   }
 
   openMakeOffer(req: AgTripRequest) {
