@@ -6,7 +6,7 @@ import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } 
 import { AgPhoneAuthService } from './ag-phone-auth.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
-import { getSupabaseClient } from '../../core/supabase.client';
+import { getMoviClient } from './movi.client';
 import { SplashScreen } from '@capacitor/splash-screen';
 
 type AgScreen = 'splash' | 'loading' | 'home' | 'quick-register' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
@@ -6932,7 +6932,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly platformId  = inject(PLATFORM_ID);
   private readonly route       = inject(ActivatedRoute);
   protected readonly cdr       = inject(ChangeDetectorRef);
-  private readonly supabase    = getSupabaseClient();
+  private readonly supabase    = getMoviClient();
   private referredBy: string | null = null;
 
   screen     = signal<AgScreen>('splash');
@@ -7685,7 +7685,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       let mine = await this.agService.getMyDriverProfile();
       // Auto-upgrade: cualquier conductor pending pasa directo a quick (habilitado para primera carrera)
       if (mine && mine.status === 'pending') {
-        await getSupabaseClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
+        await getMoviClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
         mine = { ...mine, status: 'quick' };
       }
       this.driverData.set(mine);
@@ -8162,7 +8162,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (permission === 'granted') {
         const lat = this._currentLat;
         const lng = this._currentLng;
-        const sb = getSupabaseClient();
+        const sb = getMoviClient();
         if (this._gpsRealFix && lat && lng) {
           sb.from('ag_driver_notifications').upsert({
             user_phone: this.agProfile()?.phone ?? '',
@@ -10892,7 +10892,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       // Ignorar si tiene más de 2 horas (viaje muy viejo)
       if (Date.now() - saved.ts > 2 * 60 * 60 * 1000) { localStorage.removeItem('movi_active_trip'); return; }
       // Verificar estado actual en BD
-      const { data: trip } = await getSupabaseClient()
+      const { data: trip } = await getMoviClient()
         .from('ag_trip_requests').select('id, status, accepted_offer_id').eq('id', saved.tripId).maybeSingle();
       if (!trip || ['cancelled', 'completed'].includes(trip.status)) {
         localStorage.removeItem('movi_active_trip'); return;
@@ -10935,7 +10935,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         localStorage.removeItem('movi_active_trip'); return;
       }
       this.currentTripRequestId.set(saved.tripId);
-      const { data: offer } = await getSupabaseClient()
+      const { data: offer } = await getMoviClient()
         .from('ag_trip_offers').select('*, ag_drivers(*, ag_users(*))').eq('id', saved.offerId!).maybeSingle();
       if (offer) {
         this.tripAccepted.set(offer as any);
@@ -13242,7 +13242,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
       let mine = await this.agService.getMyDriverProfile();
       if (mine && mine.status === 'pending') {
-        getSupabaseClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
+        getMoviClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
         mine = { ...mine, status: 'quick' };
       }
       this.driverData.set(mine);

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { getSupabaseClient } from '../../core/supabase.client';
+import { getMoviClient } from './movi.client';
 
 export type PhoneAuthError =
   | 'too-many-requests'
@@ -25,7 +25,7 @@ export class AgPhoneAuthService {
   async sendOTP(phone: string): Promise<PhoneAuthResult> {
     try {
       this.pendingPhone = phone;
-      const sb = getSupabaseClient();
+      const sb = getMoviClient();
       const { data, error } = await sb.functions.invoke('ag-otp-send', {
         body: { phone },
       });
@@ -50,7 +50,7 @@ export class AgPhoneAuthService {
       return { ok: false, error: 'unknown', message: 'Primero envía el OTP' };
     }
     try {
-      const sb = getSupabaseClient();
+      const sb = getMoviClient();
       const { data, error } = await sb.functions.invoke('ag-otp-verify', {
         body: {
           phone: this.pendingPhone,

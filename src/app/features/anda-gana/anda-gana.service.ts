@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
-import { getSupabaseClient } from '../../core/supabase.client';
+import { getMoviClient } from './movi.client';
 import { environment } from '../../../environments/environment';
 
 export interface PassengerFormData {
@@ -107,7 +107,7 @@ export interface AgRegistrationResult {
 
 @Injectable({ providedIn: 'root' })
 export class AndaGanaService {
-  private readonly supabase: SupabaseClient = getSupabaseClient();
+  private readonly supabase: SupabaseClient = getMoviClient();
 
   private _withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
     return Promise.race([
