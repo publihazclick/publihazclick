@@ -7725,13 +7725,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         document.addEventListener('visibilitychange', this._visibilityHandler);
       }
     }
-    // Cargar comisión y saldo para todos los conductores activos
-    const [pct, balance] = await Promise.all([
-      this.agService.getCommissionPct(),
-      this.agService.getDriverWalletBalance(mine.id),
-    ]);
+    // Cargar comisión — y saldo desde mine directamente (evita falla RLS si hay registros duplicados)
+    const pct = await this.agService.getCommissionPct();
     this.driverCommissionPct.set(pct);
-    this.driverWalletBalance.set(balance);
+    // Usar wallet_balance del objeto mine si está disponible; refrescar en background desde DB
+    if (mine.wallet_balance != null) {
+      this.driverWalletBalance.set(mine.wallet_balance);
+    }
+    this.agService.getDriverWalletBalance(mine.id).then(balance => {
+      if (balance !== null) {
+        this.driverWalletBalance.set(balance);
+        this.cdr.markForCheck();
+      }
+    }).catch(() => {});
     if (this.walletPaymentResult() === 'processing') {
       this.walletPaymentResult.set('ok');
       this.cdr.markForCheck();

@@ -875,13 +875,14 @@ export class AndaGanaService {
   }
 
   // ── Billetera conductor ───────────────────────────────────────
-  async getDriverWalletBalance(driverId: string): Promise<number> {
-    const { data } = await this.supabase
+  async getDriverWalletBalance(driverId: string): Promise<number | null> {
+    const { data, error } = await this.supabase
       .from('ag_drivers')
       .select('wallet_balance')
       .eq('id', driverId)
-      .single();
-    return data?.wallet_balance ?? 0;
+      .maybeSingle();
+    if (error || !data) return null; // RLS bloqueó o no hay fila — no sobreescribir
+    return data.wallet_balance ?? 0;
   }
 
   async getDriverWalletHistory(driverId: string): Promise<any[]> {
