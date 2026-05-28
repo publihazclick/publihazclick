@@ -10732,7 +10732,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.cdr.markForCheck();
       });
     }, 20000);
-    // Cancel-check cada 5s: consulta el status real de las solicitudes visibles para detectar cancelaciones
+    // Cancel-check cada 1.5s: backup al realtime para detectar cancelaciones del pasajero rápido
     this._cancelCheckInterval = setInterval(() => {
       const visible = this.driverRequests();
       if (!visible.length) return;
@@ -10747,7 +10747,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         });
         this.cdr.markForCheck();
       });
-    }, 5000);
+    }, 1500);
     // Timer 1s: actualiza reloj para el botón de color y expira solicitudes > 4 min
     if (this._reqTimerInterval) clearInterval(this._reqTimerInterval);
     this._reqTimerInterval = setInterval(() => {
