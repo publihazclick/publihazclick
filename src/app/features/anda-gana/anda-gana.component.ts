@@ -859,7 +859,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       @if (passengerSection() === null) {
 
       <!-- ══ Barra de dirección (encima del mapa) ══ -->
-      @if (!passengerMapFullscreen() && gpsStatus() !== 'requesting') {
+      @if (!passengerMapFullscreen() && gpsStatus() !== 'requesting' && !tripAccepted()) {
         <div class="w-full mb-2">
           @if (locationUpdating()) {
             <div class="flex items-center justify-center gap-1.5 mb-1.5">
@@ -7768,27 +7768,48 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  private _activeTripsInterval: ReturnType<typeof setInterval> | null = null;
+
   private _subscribeToMyOffers(driverId: string): void {
     if (!isPlatformBrowser(this.platformId)) return;
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, (offer) => {
-      // Mostrar alerta inDrive full-screen
-      this.driverTripAlert.set(offer);
-      // Agregar a viajes activos si no está ya
-      this.driverActiveTrips.update(list => list.some(t => t.id === offer.id) ? list : [offer, ...list]);
-      // Quitar la solicitud del listado en vivo
-      const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
-      if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
-      this.cdr.markForCheck();
+      this._handleNewAcceptedOffer(offer);
     });
+    // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
+    if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
+    this._activeTripsInterval = setInterval(async () => {
+      if (!this.driverData() || this.driverActiveTrips().length > 0 || this.driverTripAlert()) return;
+      try {
+        const trips = await this.agService.getDriverActiveTrips(driverId);
+        if (!trips.length) return;
+        const knownIds = new Set(this.driverActiveTrips().map((t: any) => t.id));
+        const newTrips = trips.filter((t: any) => !knownIds.has(t.id));
+        if (!newTrips.length) return;
+        newTrips.forEach((t: any) => this._handleNewAcceptedOffer(t));
+      } catch {}
+    }, 2500);
+  }
+
+  private _handleNewAcceptedOffer(offer: any): void {
+    // Mostrar alerta inDrive full-screen
+    this.driverTripAlert.set(offer);
+    // Agregar a viajes activos si no está ya
+    this.driverActiveTrips.update(list => list.some((t: any) => t.id === offer.id) ? list : [offer, ...list]);
+    // Quitar la solicitud del listado en vivo
+    const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
+    if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
+    this.cdr.markForCheck();
   }
 
   private _waitForMap(cb: () => void, maxAttempts = 30): void {
-    if (this._map) { setTimeout(cb, 250); return; }
+    if (this._map?.isStyleLoaded()) { setTimeout(cb, 150); return; }
+    if (this._map) { this._map.once('idle', () => { setTimeout(cb, 150); }); return; }
     let attempts = 0;
     const iv = setInterval(() => {
       attempts++;
-      if (this._map) { clearInterval(iv); setTimeout(cb, 250); return; }
+      if (this._map?.isStyleLoaded()) { clearInterval(iv); setTimeout(cb, 150); return; }
+      if (this._map) { clearInterval(iv); this._map.once('idle', () => { setTimeout(cb, 150); }); return; }
       if (attempts >= maxAttempts) clearInterval(iv);
     }, 500);
   }
@@ -7810,6 +7831,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._cancelCheckInterval) { clearInterval(this._cancelCheckInterval); this._cancelCheckInterval = null; }
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
     if (this._waitingInterval) { clearInterval(this._waitingInterval); this._waitingInterval = null; }
+    if (this._activeTripsInterval) { clearInterval(this._activeTripsInterval); this._activeTripsInterval = null; }
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
