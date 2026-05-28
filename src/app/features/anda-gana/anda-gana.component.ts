@@ -197,6 +197,168 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ BANNER PASAJERO: BUSCANDO / OFERTAS (flotante top) ═══════════ -->
+  @if (tripSent() && !tripAccepted()) {
+    <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8100;pointer-events:none;max-height:88dvh;display:flex;flex-direction:column;gap:10px">
+
+      <!-- Tarjeta principal: estado + controles -->
+      <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(249,115,22,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.75);overflow:hidden">
+
+        <!-- Franja superior -->
+        <div style="background:linear-gradient(90deg,rgba(249,115,22,0.18) 0%,rgba(234,88,12,0.10) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
+            @if (receivedOffers().length > 0) {
+              <span style="color:#fb923c;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡{{ receivedOffers().length }} {{ receivedOffers().length === 1 ? 'oferta recibida' : 'ofertas recibidas' }}!</span>
+            } @else {
+              <span style="color:#fb923c;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">Buscando conductor...</span>
+            }
+          </div>
+          <span style="color:rgba(255,255,255,0.55);font-size:18px;font-weight:900;font-variant-numeric:tabular-nums">{{ formatTime(waitingCountdown()) }}</span>
+        </div>
+
+        <!-- Cuerpo -->
+        <div style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px">
+
+          <!-- Ruta destino -->
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:9px 12px;display:flex;align-items:center;gap:8px">
+            <span class="material-symbols-outlined" style="font-size:14px;color:#f87171;flex-shrink:0">location_on</span>
+            <p style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:700;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripDest()?.name }}</p>
+            <p style="color:#f97316;font-size:14px;font-weight:900;margin:0;flex-shrink:0">{{ formatCOP(tripPrice()) }}</p>
+          </div>
+
+          <!-- Conductores viendo + avatares -->
+          @if (waitingDriverCount() > 0 || waitingDriverColors().length > 0) {
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="display:flex;align-items:center;flex-shrink:0">
+                @for (color of waitingDriverColors(); track $index) {
+                  <div style="width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:-8px"
+                    [style.background]="color">
+                    <span class="material-symbols-outlined" style="font-size:13px;color:#fff">person</span>
+                  </div>
+                }
+              </div>
+              <p style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;margin:0">
+                <span style="color:#fb923c;font-weight:900">{{ waitingDriverCount() }}</span>
+                {{ waitingDriverCount() === 1 ? ' conductor ve tu solicitud' : ' conductores ven tu solicitud' }}
+              </p>
+            </div>
+          }
+
+          <!-- Barra progreso -->
+          <div style="width:100%;height:3px;border-radius:999px;background:rgba(255,255,255,0.1);overflow:hidden">
+            <div style="height:100%;border-radius:999px;background:#f97316;transition:width 1s linear"
+              [style.width]="waitingProgress() + '%'"></div>
+          </div>
+
+          <!-- Fila: ajustar precio + pago + cancelar -->
+          <div style="display:flex;align-items:center;gap:8px">
+            <button (click)="adjustTripPrice(-500)"
+              style="width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:#94a3b8;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">−</button>
+            <p style="color:#fff;font-size:15px;font-weight:900;margin:0;flex:1;text-align:center">{{ formatCOP(tripPrice()) }}</p>
+            <button (click)="adjustTripPrice(500)"
+              style="width:32px;height:32px;border-radius:8px;border:none;background:#f97316;color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">+</button>
+            <button (click)="cancelTrip()"
+              style="flex:1;padding:8px 0;border-radius:10px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:#f87171;font-size:12px;font-weight:900;cursor:pointer">Cancelar</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Tarjetas de ofertas de conductores -->
+      @for (offer of receivedOffers(); track offer.id) {
+        <div style="pointer-events:auto;border-radius:20px;overflow:hidden;background:#fff;border:2px solid #16a34a;box-shadow:0 12px 40px rgba(22,163,74,0.22),0 4px 16px rgba(0,0,0,0.15)">
+
+          <!-- Cabecera verde precio -->
+          <div style="background:linear-gradient(135deg,#16a34a,#059669);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="material-symbols-outlined" style="font-size:17px;color:#fff;font-variation-settings:'FILL' 1">local_offer</span>
+              <span style="color:#fff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.07em">Nueva oferta</span>
+            </div>
+            <div style="text-align:right">
+              <p style="color:#fff;font-weight:900;font-size:22px;margin:0;line-height:1">{{ formatCOP(offer.offered_price) }}</p>
+              @if (offer.offered_price < tripPrice()) {
+                <p style="color:#bbf7d0;font-size:10px;font-weight:700;margin:0">↓ Más barato que tu precio</p>
+              } @else if (offer.offered_price > tripPrice()) {
+                <p style="color:#fef08a;font-size:10px;font-weight:700;margin:0">↑ Más caro que tu precio</p>
+              } @else {
+                <p style="color:#dcfce7;font-size:10px;margin:0">Igual a tu precio</p>
+              }
+            </div>
+          </div>
+
+          <!-- Info conductor -->
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f0fdf4">
+            @if (offer.ag_drivers?.ag_users?.selfie_url) {
+              <img [src]="offer.ag_drivers!.ag_users!.selfie_url"
+                style="width:48px;height:48px;border-radius:12px;object-fit:cover;flex-shrink:0;border:2px solid #16a34a" />
+            } @else {
+              <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff">
+                {{ (offer.ag_drivers?.ag_users?.full_name ?? 'C')[0].toUpperCase() }}
+              </div>
+            }
+            <div style="flex:1;min-width:0">
+              <p style="font-weight:900;font-size:14px;color:#0f172a;margin:0;line-height:1.2">{{ offer.ag_drivers?.ag_users?.full_name ?? 'Conductor' }}</p>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap">
+                <span style="color:#fbbf24;font-size:13px">★</span>
+                <span style="font-size:12px;font-weight:800;color:#0f172a">{{ offer.ag_drivers?.rating_avg ?? '—' }}</span>
+                <span style="color:#94a3b8;font-size:11px">·</span>
+                <span style="color:#475569;font-size:11px;font-weight:600">{{ offer.ag_drivers?.trips_completed ?? 0 }} viajes</span>
+                @if (driverEtaMin()[offer.id]) {
+                  <span style="background:rgba(8,145,178,0.1);color:#0369a1;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px">~{{ driverEtaMin()[offer.id] }} min</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button (click)="rejectOfferCard(offer)"
+                style="padding:11px 0;border-radius:14px;border:2px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+                <span class="material-symbols-outlined" style="font-size:16px">close</span> Rechazar
+              </button>
+              <button (click)="acceptOfferCard(offer)" [disabled]="acceptingOfferId() === offer.id"
+                style="padding:11px 0;border-radius:14px;border:none;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 4px 16px rgba(22,163,74,0.35)"
+                [style.opacity]="acceptingOfferId() === offer.id ? '0.6' : '1'">
+                @if (acceptingOfferId() === offer.id) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:16px">check_circle</span>
+                }
+                Aceptar
+              </button>
+            </div>
+            <button (click)="openCounterOffer(offer)"
+              style="width:100%;padding:10px 0;border-radius:14px;border:1.5px solid #fed7aa;background:#fff7ed;color:#ea580c;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+              <span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">local_offer</span>
+              Contraofertar
+            </button>
+          </div>
+
+          <!-- Barra timer -->
+          <div style="padding:0 14px 12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <span style="color:#94a3b8;font-size:10px;font-weight:600">Oferta válida por</span>
+              <span style="font-size:11px;font-weight:900"
+                [style.color]="offerRemainingPct(offer) < 25 ? '#dc2626' : offerRemainingPct(offer) < 50 ? '#d97706' : '#16a34a'">
+                {{ offerRemainingStr(offer) }}
+              </span>
+            </div>
+            <div style="width:100%;height:5px;border-radius:999px;background:#f0fdf4;overflow:hidden">
+              <div style="height:100%;border-radius:999px;transition:width 1s linear"
+                [style.width]="offerRemainingPct(offer) + '%'"
+                [style.background]="offerRemainingPct(offer) < 25 ? '#dc2626' : offerRemainingPct(offer) < 50 ? '#f59e0b' : '#16a34a'">
+              </div>
+            </div>
+          </div>
+
+        </div>
+      }
+
+    </div>
+  }
+
   <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top) ═══════════ -->
   @if (driverOnline() && !driverTripAlert() && driverActiveTrips().length === 0 && driverRequests().length > 0) {
     <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8000;pointer-events:none">
@@ -973,6 +1135,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
+            [style.display]="(tripSent() && !tripAccepted()) ? 'none' : ''"
             [style.maxHeight]="(tripSent() || tripAccepted()) ? '58%' : ''"
             [style.overflowY]="(tripSent() || tripAccepted()) ? 'auto' : 'hidden'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
@@ -5076,12 +5239,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           class="w-full px-3 py-2 rounded-lg text-white text-sm"
           style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1)" />
 
-        <label class="w-full py-2 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
-          style="background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2)">
-          <span class="material-symbols-outlined" style="font-size:14px">photo_camera</span>
-          {{ editProfileFile ? editProfileFile.name : 'Cambiar foto de perfil' }}
-          <input type="file" accept="image/*" class="hidden" (change)="onEditProfileFile($event)" />
-        </label>
+        <!-- Foto de perfil -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div style="width:88px;height:88px;border-radius:50%;overflow:hidden;border:3px solid rgba(249,115,22,0.5);background:rgba(249,115,22,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            @if (editProfilePreview) {
+              <img [src]="editProfilePreview" style="width:100%;height:100%;object-fit:cover" alt="preview">
+            } @else if (agProfile()?.selfie_url) {
+              <img [src]="agProfile()!.selfie_url!" style="width:100%;height:100%;object-fit:cover" alt="foto">
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:36px;color:rgba(249,115,22,0.6)">person</span>
+            }
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;font-size:12px;color:#fb923c;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.3)">
+            <span class="material-symbols-outlined" style="font-size:15px">photo_camera</span>
+            {{ editProfileFile ? 'Foto lista' : 'Cambiar foto' }}
+            <input type="file" accept="image/*" class="hidden" (change)="onEditProfileFile($event)" />
+          </label>
+        </div>
 
         <div class="flex gap-2 mt-2">
           <button (click)="editProfileOpen.set(false)"
@@ -7190,6 +7364,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   editProfilePhone  = '';
   editProfileCity   = '';
   editProfileFile: File | null = null;
+  editProfilePreview: string | null = null;
   savingProfile     = signal(false);
 
   // ── Propina ──
@@ -7712,6 +7887,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // Reverse geocoding directo vía Mapbox (sin Edge Function)
   private async _reverseGeocodeDirect(lat: number, lng: number): Promise<string> {
+    const cached = this._getCachedAddress(lat, lng);
+    if (cached) return cached.address;
     try {
       const params = new URLSearchParams({
         access_token: this.MAPBOX_TOKEN, language: 'es', limit: '1',
@@ -7925,11 +8102,38 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.currentAddress.set(q);
     this.addressQuery.set(q);
     this.currentNeighborhood.set('');
+    this._saveLocationAddress(this._currentLat, this._currentLng, q, '');
     this.closeAddressEdit();
     this.originEditOpen.set(false);
     this.addrSavedToast.set(true);
     setTimeout(() => this.addrSavedToast.set(false), 2500);
     this.cdr.markForCheck();
+  }
+
+  private readonly _LOC_ADDR_KEY = 'movi_location_addr_cache';
+
+  private _saveLocationAddress(lat: number, lng: number, address: string, neighborhood: string): void {
+    if (!isPlatformBrowser(this.platformId) || !lat || !lng || !address) return;
+    try {
+      const raw = localStorage.getItem(this._LOC_ADDR_KEY);
+      const list: { lat: number; lng: number; address: string; neighborhood: string }[] = raw ? JSON.parse(raw) : [];
+      // Reemplazar si ya hay una guardada a menos de 80m, sino agregar al inicio
+      const idx = list.findIndex(e => this._distKm(lat, lng, e.lat, e.lng) * 1000 < 80);
+      if (idx >= 0) { list[idx] = { lat, lng, address, neighborhood }; }
+      else { list.unshift({ lat, lng, address, neighborhood }); }
+      localStorage.setItem(this._LOC_ADDR_KEY, JSON.stringify(list.slice(0, 30)));
+    } catch {}
+  }
+
+  private _getCachedAddress(lat: number, lng: number): { address: string; neighborhood: string } | null {
+    if (!isPlatformBrowser(this.platformId) || !lat || !lng) return null;
+    try {
+      const raw = localStorage.getItem(this._LOC_ADDR_KEY);
+      if (!raw) return null;
+      const list: { lat: number; lng: number; address: string; neighborhood: string }[] = JSON.parse(raw);
+      const match = list.find(e => this._distKm(lat, lng, e.lat, e.lng) * 1000 < 80);
+      return match ?? null;
+    } catch { return null; }
   }
 
   private async _searchAddressSuggestions(query: string) {
@@ -8109,6 +8313,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.currentAddress.set(addrName);
       this.currentNeighborhood.set('');
       this._saveRecentOrigin({ name: addrName, lat: pos.lat, lng: pos.lng });
+      this._saveLocationAddress(pos.lat, pos.lng, addrName, '');
       if (this._map) {
         this._map.easeTo({ center: [pos.lng, pos.lat], zoom: 16, duration: 800 });
         this._userMarker?.setLngLat([pos.lng, pos.lat]);
@@ -8185,6 +8390,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
 
   private async _reverseGeocode(lat: number, lng: number) {
+    // Si el usuario ya escribió una dirección en esta ubicación, usarla directamente
+    const cached = this._getCachedAddress(lat, lng);
+    if (cached) {
+      this.currentAddress.set(cached.address);
+      if (cached.neighborhood) this.currentNeighborhood.set(cached.neighborhood);
+      this.addressLoading.set(false);
+      this.cdr.markForCheck();
+      return;
+    }
     this.addressLoading.set(true);
     try {
       // Request 1: Mapbox para calle + ciudad (confiable)
@@ -8237,6 +8451,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.currentAddress.set(
           fallbackName.split(',').filter((p: string) => !/^\s*\d{4,6}\s*$/.test(p)).slice(0, 3).join(',').trim()
         );
+      }
+      // Persistir la dirección detectada para esta ubicación GPS
+      if (this.currentAddress()) {
+        this._saveLocationAddress(lat, lng, this.currentAddress(), this.currentNeighborhood());
       }
 
       // Guardar ciudad para filtrar sugerencias de búsqueda
@@ -12248,12 +12466,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.editProfilePhone = p.phone ?? '';
     this.editProfileCity = (p as any).city ?? '';
     this.editProfileFile = null;
+    this.editProfilePreview = null;
     this.editProfileOpen.set(true);
   }
 
   onEditProfileFile(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
-    this.editProfileFile = file ?? null;
+    if (!file) return;
+    this.editProfileFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => { this.editProfilePreview = e.target?.result as string; this.cdr.markForCheck(); };
+    reader.readAsDataURL(file);
   }
 
   async saveEditProfile() {
