@@ -11,6 +11,7 @@ export interface PhoneAuthResult {
   ok: boolean;
   error?: PhoneAuthError;
   message?: string;
+  profile?: any;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -41,14 +42,23 @@ export class AgPhoneAuthService {
   }
 
   /** Verifica el código de 6 dígitos recibido por SMS */
-  async verifyOTP(code: string): Promise<PhoneAuthResult & { uid?: string }> {
+  async verifyOTP(
+    code: string,
+    opts?: { name?: string; role?: string; referredBy?: string }
+  ): Promise<PhoneAuthResult & { uid?: string }> {
     if (!this.pendingPhone) {
       return { ok: false, error: 'unknown', message: 'Primero envía el OTP' };
     }
     try {
       const sb = getSupabaseClient();
       const { data, error } = await sb.functions.invoke('ag-otp-verify', {
-        body: { phone: this.pendingPhone, code },
+        body: {
+          phone: this.pendingPhone,
+          code,
+          name: opts?.name,
+          role: opts?.role,
+          referred_by: opts?.referredBy ?? null,
+        },
       });
 
       if (error || data?.error || !data?.ok) {
@@ -64,7 +74,7 @@ export class AgPhoneAuthService {
         });
       }
 
-      return { ok: true };
+      return { ok: true, profile: data.profile ?? null };
     } catch (e: any) {
       return { ok: false, error: 'unknown', message: e?.message ?? 'Error desconocido' };
     }

@@ -185,25 +185,30 @@ export class AndaGanaService {
 
   async registerQuickDriver(
     name: string, phone: string, vehicleType: string, referredBy?: string,
-    vehicleDetails?: { brand?: string; color?: string; plate?: string }
+    vehicleDetails?: { brand?: string; color?: string; plate?: string },
+    prebuiltProfile?: any
   ): Promise<AgRegistrationResult & { profile?: AgUser }> {
     try {
-      let { data: { user } } = await this.supabase.auth.getUser();
-      if (!user) {
-        const { data, error } = await this.supabase.auth.signInAnonymously();
-        if (error || !data.user) return { success: false, error: 'No se pudo crear sesión. Intenta de nuevo.' };
-        user = data.user;
+      let profile: AgUser | null = prebuiltProfile ?? null;
+
+      if (!profile) {
+        let { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) {
+          const { data, error } = await this.supabase.auth.signInAnonymously();
+          if (error || !data.user) return { success: false, error: 'No se pudo crear sesión. Intenta de nuevo.' };
+          user = data.user;
+        }
+        // Upsert ag_user via SECURITY DEFINER (bypasses RLS for phone lookup + insert)
+        const { data: profiles, error: upsertError } = await this.supabase.rpc('ag_upsert_user_by_phone', {
+          p_phone: phone,
+          p_auth_uid: user.id,
+          p_role: 'driver',
+          p_full_name: name || 'Conductor',
+          p_referred_by: referredBy ?? null,
+        });
+        if (upsertError) return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+        profile = (Array.isArray(profiles) ? profiles[0] : profiles) as AgUser;
       }
-      // Upsert ag_user via SECURITY DEFINER (bypasses RLS for phone lookup + insert)
-      const { data: profiles, error: upsertError } = await this.supabase.rpc('ag_upsert_user_by_phone', {
-        p_phone: phone,
-        p_auth_uid: user.id,
-        p_role: 'driver',
-        p_full_name: name || 'Conductor',
-        p_referred_by: referredBy ?? null,
-      });
-      if (upsertError) return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
-      const profile = (Array.isArray(profiles) ? profiles[0] : profiles) as AgUser;
 
       // Ensure ag_drivers record exists
       const { data: existingDriver } = await this.supabase

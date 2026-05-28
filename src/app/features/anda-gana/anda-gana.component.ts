@@ -11587,6 +11587,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrError             = signal('');
   private _qrCountdownInterval: ReturnType<typeof setInterval> | null = null;
   private _qrSearchDebounce: ReturnType<typeof setTimeout> | null = null;
+  private _qrEdgeProfile: any = null;
 
   // ── Passenger form state ──
   passengerLoading = signal(false);
@@ -13224,13 +13225,17 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpVerifying.set(true);
     this.qrOtpError.set('');
     this.cdr.markForCheck();
-    const phone = '+57' + this.qrPhone();
+    const phone = '+57' + this.qrPhone().replace(/\D/g, '');
     const name  = this.qrName().trim() || 'Conductor';
+
+    // If edge function already created the ag_users profile, pass it to skip the upsert
     const reg = await this.agService.registerQuickDriver(name, phone, vehicle, this.referredBy ?? undefined, {
       brand: this.qrVehicleBrand(),
       color: this.qrVehicleColor(),
       plate: this.qrVehiclePlate(),
-    });
+    }, this._qrEdgeProfile ?? undefined);
+    this._qrEdgeProfile = null;
+
     this.qrOtpVerifying.set(false);
     if (reg.success && reg.profile) {
       this.agProfile.set(reg.profile);
@@ -13324,7 +13329,18 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpVerifying.set(true);
     this.qrOtpError.set('');
     this.cdr.markForCheck();
-    const result = await this.phoneAuth.verifyOTP(code);
+
+    const phone = '+57' + this.qrPhone().replace(/\D/g, '');
+    const name  = this.qrName().trim() || 'Usuario';
+    const role  = this.qrRole() === 'conductor' ? 'driver' : 'passenger';
+
+    // Pass name + role so the edge function creates ag_users with service role (bypasses RLS)
+    const result = await this.phoneAuth.verifyOTP(code, {
+      name,
+      role,
+      referredBy: this.referredBy ?? undefined,
+    });
+
     if (!result.ok) {
       this.qrOtpVerifying.set(false);
       this.qrOtpError.set(result.message ?? 'Código incorrecto. Verifica e intenta de nuevo.');
@@ -13332,28 +13348,37 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       return;
     }
 
-    // Crear sesión persistente + perfil en ag_users
-    const phone = '+57' + this.qrPhone();
-    const name  = this.qrName().trim() || 'Usuario';
     if (this.qrRole() === 'conductor') {
-      // Para conductor, guardamos el perfil al elegir vehículo (paso 3)
+      // Profile already created in edge function; store it if available
+      if (result.profile) { this._qrEdgeProfile = result.profile; }
       this.qrOtpVerifying.set(false);
       this.qrStep.set(3);
-    } else {
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Passenger: use profile from edge function OR fall back to RPC
+    let profile = result.profile;
+    if (!profile) {
       const reg = await this.agService.registerQuickPassenger(name, phone, this.referredBy ?? undefined);
       this.qrOtpVerifying.set(false);
-      if (reg.success && reg.profile) {
-        this.agProfile.set(reg.profile);
-        this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
-        this.loadReferralData();
-        this.screen.set('passenger-home');
-        this._startPassengerWatch();
-        this._subscribeToDriverLocations();
-        setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
-      } else {
+      if (!reg.success || !reg.profile) {
         this.qrOtpError.set(reg.error ?? 'Error al crear perfil. Intenta de nuevo.');
+        this.cdr.markForCheck();
+        return;
       }
+      profile = reg.profile;
+    } else {
+      this.qrOtpVerifying.set(false);
     }
+
+    this.agProfile.set(profile);
+    this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
+    this.loadReferralData();
+    this.screen.set('passenger-home');
+    this._startPassengerWatch();
+    this._subscribeToDriverLocations();
+    setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
     this.cdr.markForCheck();
   }
 
