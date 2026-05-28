@@ -128,12 +128,14 @@ export class AndaGanaService {
   async getMyAgProfile(): Promise<AgUser | null> {
     const uid = await this.currentUserId();
     if (!uid) return null;
+    // Usar array select para manejar teléfonos duplicados (mismo auth_user_id en varios registros)
     const { data } = await this.supabase
       .from('ag_users')
       .select('*')
       .eq('auth_user_id', uid)
-      .maybeSingle();
-    return data ?? null;
+      .order('created_at', { ascending: false });
+    if (!data || data.length === 0) return null;
+    return (data as any[]).find((u: any) => u.role === 'driver') ?? data[0];
   }
 
   // ── Driver profile for current user ───────────────────────────
