@@ -168,24 +168,18 @@ export class AndaGanaService {
         if (error || !data.user) return { success: false, error: 'No se pudo crear sesión. Intenta de nuevo.' };
         user = data.user;
       }
-      const existing = await this.getMyAgProfile();
-      if (existing) return { success: true, profile: existing };
-      const insertData: any = {
-        auth_user_id: user.id,
-        role: 'passenger',
-        full_name: name || 'Usuario',
-        phone,
-        country: 'Colombia',
-        department: '',
-        city: '',
-      };
-      if (referredBy) insertData.referred_by = referredBy;
-      const { data: profile, error } = await this.supabase
-        .from('ag_users').insert(insertData).select('*').single();
-      if (error) return { success: false, error: error.message };
+      const { data: profiles, error } = await this.supabase.rpc('ag_upsert_user_by_phone', {
+        p_phone: phone,
+        p_auth_uid: user.id,
+        p_role: 'passenger',
+        p_full_name: name || 'Usuario',
+        p_referred_by: referredBy ?? null,
+      });
+      if (error) return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+      const profile = Array.isArray(profiles) ? profiles[0] : profiles;
       return { success: true, profile: profile as AgUser };
     } catch (e: any) {
-      return { success: false, error: e?.message ?? 'Error inesperado.' };
+      return { success: false, error: 'Error al registrarse. Intenta de nuevo.' };
     }
   }
 
@@ -200,59 +194,43 @@ export class AndaGanaService {
         if (error || !data.user) return { success: false, error: 'No se pudo crear sesión. Intenta de nuevo.' };
         user = data.user;
       }
-      const existing = await this.getMyAgProfile();
-      if (existing) {
-        const { data: existingDriver } = await this.supabase
-          .from('ag_drivers').select('id, status, metric_trips_completed').eq('ag_user_id', existing.id).maybeSingle();
-        if (existingDriver) {
-          const updateData: any = {};
-          if (vehicleType) updateData.vehicle_type = vehicleType;
-          if (vehicleDetails?.brand) { updateData.vehicle_brand = vehicleDetails.brand; }
-          if (vehicleDetails?.color) { updateData.vehicle_color = vehicleDetails.color; }
-          if (vehicleDetails?.plate) { updateData.plate = vehicleDetails.plate; updateData.vehicle_plate = vehicleDetails.plate; }
-          if ((existingDriver.metric_trips_completed ?? 0) === 0) updateData.status = 'quick';
-          if (Object.keys(updateData).length > 0) {
-            await this.supabase.from('ag_drivers').update(updateData).eq('id', existingDriver.id);
-          }
-        } else {
-          await this.supabase.from('ag_drivers').insert({
-            ag_user_id: existing.id, vehicle_type: vehicleType,
-            vehicle_brand: vehicleDetails?.brand ?? '',
-            vehicle_color: vehicleDetails?.color ?? '',
-            plate: vehicleDetails?.plate ?? 'PENDIENTE',
-            vehicle_plate: vehicleDetails?.plate ?? 'PENDIENTE',
-            status: 'quick', is_online: false, wallet_balance: 0,
-          });
-        }
-        return { success: true, profile: existing };
-      }
-      const insertData: any = {
-        auth_user_id: user.id, role: 'driver',
-        full_name: name || 'Conductor', phone,
-        country: 'Colombia', department: '', city: '',
-      };
-      if (referredBy) insertData.referred_by = referredBy;
-      const { data: profile, error } = await this.supabase
-        .from('ag_users').insert(insertData).select('*').single();
-      if (error) {
-        console.error('[registerQuickDriver] ag_users insert:', error);
-        return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
-      }
-      const { error: driverError } = await this.supabase.from('ag_drivers').insert({
-        ag_user_id: profile.id, vehicle_type: vehicleType,
-        vehicle_brand: vehicleDetails?.brand ?? '',
-        vehicle_color: vehicleDetails?.color ?? '',
-        plate: vehicleDetails?.plate ?? 'PENDIENTE',
-        vehicle_plate: vehicleDetails?.plate ?? 'PENDIENTE',
-        status: 'quick', is_online: false, wallet_balance: 0,
+      // Upsert ag_user via SECURITY DEFINER (bypasses RLS for phone lookup + insert)
+      const { data: profiles, error: upsertError } = await this.supabase.rpc('ag_upsert_user_by_phone', {
+        p_phone: phone,
+        p_auth_uid: user.id,
+        p_role: 'driver',
+        p_full_name: name || 'Conductor',
+        p_referred_by: referredBy ?? null,
       });
-      if (driverError) {
-        console.error('[registerQuickDriver] ag_drivers insert:', driverError);
-        return { success: false, error: 'No se pudo guardar el vehículo. Intenta de nuevo.' };
+      if (upsertError) return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+      const profile = (Array.isArray(profiles) ? profiles[0] : profiles) as AgUser;
+
+      // Ensure ag_drivers record exists
+      const { data: existingDriver } = await this.supabase
+        .from('ag_drivers').select('id, status, metric_trips_completed').eq('ag_user_id', profile.id).maybeSingle();
+      if (existingDriver) {
+        const updateData: any = {};
+        if (vehicleType) updateData.vehicle_type = vehicleType;
+        if (vehicleDetails?.brand) updateData.vehicle_brand = vehicleDetails.brand;
+        if (vehicleDetails?.color) updateData.vehicle_color = vehicleDetails.color;
+        if (vehicleDetails?.plate) { updateData.plate = vehicleDetails.plate; updateData.vehicle_plate = vehicleDetails.plate; }
+        if ((existingDriver.metric_trips_completed ?? 0) === 0) updateData.status = 'quick';
+        if (Object.keys(updateData).length > 0) {
+          await this.supabase.from('ag_drivers').update(updateData).eq('id', existingDriver.id);
+        }
+      } else {
+        const { error: driverError } = await this.supabase.from('ag_drivers').insert({
+          ag_user_id: profile.id, vehicle_type: vehicleType,
+          vehicle_brand: vehicleDetails?.brand ?? '',
+          vehicle_color: vehicleDetails?.color ?? '',
+          plate: vehicleDetails?.plate ?? 'PENDIENTE',
+          vehicle_plate: vehicleDetails?.plate ?? 'PENDIENTE',
+          status: 'quick', is_online: false, wallet_balance: 0,
+        });
+        if (driverError) return { success: false, error: 'No se pudo guardar el vehículo. Intenta de nuevo.' };
       }
-      return { success: true, profile: profile as AgUser };
+      return { success: true, profile };
     } catch (e: any) {
-      console.error('[registerQuickDriver] catch:', e);
       return { success: false, error: 'Error al registrarse. Intenta de nuevo.' };
     }
   }

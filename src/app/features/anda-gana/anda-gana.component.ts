@@ -7738,6 +7738,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (!this._onlineSessionId) {
         this.agService.startOnlineSession(mine.id).then(id => { this._onlineSessionId = id; }).catch(() => {});
       }
+      // Registrar push si ya tiene permiso; si no, lo pedirá cuando toque el banner
+      setTimeout(() => this._autoRegisterPush(), 500);
     }
     // Cargar viajes activos (ofertas aceptadas por el pasajero)
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id);
@@ -9711,6 +9713,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         };
         document.addEventListener('visibilitychange', this._visibilityHandler);
       }
+      // Auto-registrar push para recibir solicitudes aunque la app esté cerrada
+      this._autoRegisterPush();
     } else {
       // Detener tracking, cerrar sesión y limpiar solicitudes
       this.stopGpsTracking();
@@ -13034,6 +13038,31 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       const reg = await navigator.serviceWorker.getRegistration('/sw-movi.js');
       const sub = await reg?.pushManager.getSubscription();
       this.pushEnabled.set(!!sub);
+    } catch {}
+  }
+
+  async _autoRegisterPush(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const vapid = (environment as any).vapidPublicKey;
+    if (!vapid) return;
+    try {
+      // Si el permiso ya fue negado explícitamente, no insistir
+      if (Notification.permission === 'denied') return;
+      const reg = await navigator.serviceWorker.register('/sw-movi.js');
+      let granted = Notification.permission === 'granted';
+      if (!granted) {
+        const res = await Notification.requestPermission();
+        granted = res === 'granted';
+      }
+      if (!granted) return;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const key = this._urlB64ToUint8(vapid);
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key.buffer as ArrayBuffer });
+      }
+      await this.agService.registerPushSubscription(sub);
+      this.pushEnabled.set(true);
     } catch {}
   }
 
