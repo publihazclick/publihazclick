@@ -806,8 +806,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
-      <!-- ══ Card superior: referidos o métodos de pago ══ -->
-      @if (agProfile()) {
+      <!-- ══ Card superior: dirección de recogida (viaje activo) o referidos/pago ══ -->
+      @if (tripAccepted()) {
+        <!-- Dirección del pasajero — reemplaza el banner mientras el conductor viene o durante el viaje -->
+        <div class="w-full flex items-center gap-3"
+          style="background:linear-gradient(135deg,#0f2027,#1a3a4a);border-radius:16px;padding:12px 16px;border:1px solid rgba(0,229,255,0.2)">
+          <div class="flex items-center justify-center flex-shrink-0"
+            style="width:38px;height:38px;border-radius:12px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.25)">
+            <span class="material-symbols-outlined" style="font-size:20px;color:#00e5ff;font-variation-settings:'FILL' 1">my_location</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p style="color:rgba(0,229,255,0.7);font-size:10px;font-weight:800;margin:0;letter-spacing:0.08em;text-transform:uppercase">Tu punto de recogida</p>
+            <p class="truncate" style="color:#fff;font-size:13px;font-weight:700;margin:0;line-height:1.3">
+              {{ currentAddress() || 'Tu ubicación actual' }}
+            </p>
+          </div>
+        </div>
+      } @else if (agProfile()) {
         <button (click)="openPassengerSection('referrals')"
           class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
           style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
@@ -1314,39 +1329,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             } @else if (tripAccepted()) {
               <!-- ══ Viaje Aceptado ══ -->
               <div class="px-4 pt-4 pb-3 flex flex-col gap-3">
-                <!-- Header éxito -->
-                <div class="rounded-2xl flex flex-col items-center gap-2 py-4"
-                  style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:1px solid #86efac">
-                  <div class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white" style="font-size:24px">check_circle</span>
-                  </div>
-                  <p class="text-emerald-800 font-black text-base">¡Conductor en camino!</p>
-                  <p class="text-emerald-700 text-xs">Tu viaje ha sido confirmado</p>
-                  <!-- Botón ver mapa completo -->
-                  <button (click)="openPassengerFullscreenMap()"
-                    class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black active:scale-[0.97] transition-all mt-1"
-                    style="background:#059669;color:#fff">
-                    <span class="material-symbols-outlined" style="font-size:15px">open_in_full</span>
-                    Ver mapa completo
-                  </button>
-                </div>
-                <!-- ETA en vivo -->
-                @if (acceptedDriverEta() !== null) {
-                  <div class="rounded-2xl flex items-center gap-3 px-4 py-3"
-                    style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe">
-                    <span class="material-symbols-outlined text-blue-600 animate-pulse" style="font-size:22px;font-variation-settings:'FILL' 1">directions_car</span>
-                    <div class="flex-1">
-                      <p class="text-blue-800 font-black text-sm">
-                        {{ acceptedDriverEta() === 0 ? '¡Tu conductor llegó!' : 'Llega en ' + acceptedDriverEta() + ' min' }}
-                      </p>
-                      <p class="text-blue-600 text-xs">Ubicación en tiempo real</p>
-                    </div>
-                    @if (acceptedDriverEta() === 0) {
-                      <span class="material-symbols-outlined text-emerald-600" style="font-size:20px;font-variation-settings:'FILL' 1">check_circle</span>
-                    }
-                  </div>
-                }
-
                 <!-- Banner "Conductor llegó — sal ya" con countdown -->
                 @if (arrivedAtPickupTimer() !== null) {
                   <div class="rounded-2xl flex items-center gap-3 px-4 py-3"
@@ -7789,15 +7771,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _subscribeToMyOffers(driverId: string): void {
     if (!isPlatformBrowser(this.platformId)) return;
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
-    this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, async (offer) => {
+    this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, (offer) => {
+      // Mostrar alerta inDrive full-screen
+      this.driverTripAlert.set(offer);
       // Agregar a viajes activos si no está ya
       this.driverActiveTrips.update(list => list.some(t => t.id === offer.id) ? list : [offer, ...list]);
       // Quitar la solicitud del listado en vivo
       const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
       if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
       this.cdr.markForCheck();
-      // Auto-mostrar mapa fullscreen al instante (sin requerir botón — igual que inDriver)
-      await this.acceptTripAndGo(offer);
     });
   }
 
@@ -9791,10 +9773,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (req?.origin_lat && req?.origin_lng) {
       this.driverFullscreenTrip.set(alert);
       this.driverMapFullscreen.set(true);
-      setTimeout(() => {
+      // Esperar a que el mapa esté listo (puede estar cargando en primer uso)
+      this._waitForMap(() => {
         this._map?.resize();
         this.startInAppNav(alert, true);
-      }, 200);
+      });
     }
   }
 
