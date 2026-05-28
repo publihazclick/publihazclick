@@ -83,6 +83,8 @@ export type AgPaymentMethod = 'efectivo' | 'nequi' | 'daviplata' | 'bancolombia'
 export interface AgTripRequest {
   id: string;
   passenger_user_id: string;
+  passenger_name?: string;
+  passenger_selfie_url?: string;
   origin_lat: number;
   origin_lng: number;
   origin_name?: string;
@@ -589,7 +591,8 @@ export class AndaGanaService {
 
   // ── Trip requests ─────────────────────────────────────────────
   async requestTrip(data: {
-    passengerUserId: string; originLat: number; originLng: number;
+    passengerUserId: string; passengerName?: string; passengerSelfieUrl?: string;
+    originLat: number; originLng: number;
     originName?: string;
     destName: string; destLat: number; destLng: number;
     distanceKm: number; vehicleType: string; offeredPrice: number;
@@ -599,6 +602,8 @@ export class AndaGanaService {
       .from('ag_trip_requests')
       .insert({
         passenger_user_id: data.passengerUserId,
+        passenger_name: data.passengerName || null,
+        passenger_selfie_url: data.passengerSelfieUrl || null,
         origin_lat: data.originLat, origin_lng: data.originLng,
         origin_name: data.originName || null,
         dest_name: data.destName, dest_lat: data.destLat, dest_lng: data.destLng,
@@ -617,6 +622,15 @@ export class AndaGanaService {
       .from('ag_trip_requests')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('id', tripRequestId);
+  }
+
+  async checkRequestsStatus(ids: string[]): Promise<{ id: string; status: string }[]> {
+    if (!ids.length) return [];
+    const { data } = await this.supabase
+      .from('ag_trip_requests')
+      .select('id, status')
+      .in('id', ids);
+    return (data ?? []) as { id: string; status: string }[];
   }
 
   // ── Trip offers — passenger ───────────────────────────────────
@@ -727,10 +741,13 @@ export class AndaGanaService {
   // ── Trip offers — driver ──────────────────────────────────────
   /** Solicitudes de viaje en estado "searching" compatibles con el tipo de vehículo */
   async getSearchingRequests(vehicleType?: string, lat?: number, lng?: number, maxKm = 50): Promise<AgTripRequest[]> {
+    // Solo solicitudes de los últimos 4 minutos (240 segundos)
+    const cutoff = new Date(Date.now() - 240000).toISOString();
     let query = this.supabase
       .from('ag_trip_requests')
       .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)')
       .eq('status', 'searching')
+      .gte('created_at', cutoff)
       .order('created_at', { ascending: false })
       .limit(50);
     if (vehicleType) query = query.eq('vehicle_type', vehicleType);
