@@ -164,9 +164,10 @@ export class AndaGanaService {
     try {
       let { data: { user } } = await this.supabase.auth.getUser();
       if (!user) {
-        const { data, error } = await this.supabase.auth.signInAnonymously();
-        if (error || !data.user) return { success: false, error: 'No se pudo crear sesión. Intenta de nuevo.' };
-        user = data.user;
+        const { data: byPhone } = await this.supabase
+          .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+        if (byPhone) return { success: true, profile: byPhone as AgUser };
+        return { success: false, error: 'Sesión expirada. Vuelve a verificar tu número.' };
       }
       const { data: profiles, error } = await this.supabase.rpc('ag_upsert_user_by_phone', {
         p_phone: phone,
@@ -175,7 +176,12 @@ export class AndaGanaService {
         p_full_name: name || 'Usuario',
         p_referred_by: referredBy ?? null,
       });
-      if (error) return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+      if (error) {
+        const { data: byPhone } = await this.supabase
+          .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+        if (byPhone) return { success: true, profile: byPhone as AgUser };
+        return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+      }
       const profile = Array.isArray(profiles) ? profiles[0] : profiles;
       return { success: true, profile: profile as AgUser };
     } catch (e: any) {
@@ -192,22 +198,37 @@ export class AndaGanaService {
       let profile: AgUser | null = prebuiltProfile ?? null;
 
       if (!profile) {
+        // Try to get the current user (session may have been set by setSession after OTP verify)
         let { data: { user } } = await this.supabase.auth.getUser();
         if (!user) {
-          const { data, error } = await this.supabase.auth.signInAnonymously();
-          if (error || !data.user) return { success: false, error: 'No se pudo crear sesión. Intenta de nuevo.' };
-          user = data.user;
+          // No session — fall back to phone lookup via edge function pattern: fetch profile by phone
+          // (signInAnonymously is disabled, so we skip it)
+          const { data: byPhone } = await this.supabase
+            .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+          if (byPhone) {
+            profile = byPhone as AgUser;
+          } else {
+            return { success: false, error: 'Sesión expirada. Vuelve a verificar tu número.' };
+          }
+        } else {
+          // Upsert ag_user via SECURITY DEFINER (bypasses RLS for phone lookup + insert)
+          const { data: profiles, error: upsertError } = await this.supabase.rpc('ag_upsert_user_by_phone', {
+            p_phone: phone,
+            p_auth_uid: user.id,
+            p_role: 'driver',
+            p_full_name: name || 'Conductor',
+            p_referred_by: referredBy ?? null,
+          });
+          if (upsertError) {
+            // RPC failed — try direct phone lookup as last resort
+            const { data: byPhone } = await this.supabase
+              .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+            if (byPhone) { profile = byPhone as AgUser; }
+            else return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+          } else {
+            profile = (Array.isArray(profiles) ? profiles[0] : profiles) as AgUser;
+          }
         }
-        // Upsert ag_user via SECURITY DEFINER (bypasses RLS for phone lookup + insert)
-        const { data: profiles, error: upsertError } = await this.supabase.rpc('ag_upsert_user_by_phone', {
-          p_phone: phone,
-          p_auth_uid: user.id,
-          p_role: 'driver',
-          p_full_name: name || 'Conductor',
-          p_referred_by: referredBy ?? null,
-        });
-        if (upsertError) return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
-        profile = (Array.isArray(profiles) ? profiles[0] : profiles) as AgUser;
       }
 
       // Ensure ag_drivers record exists

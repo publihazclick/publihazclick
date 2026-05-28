@@ -24,6 +24,49 @@ async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function signInWithRetry(
+  sb: any,
+  email: string,
+  password: string,
+  existingAuthId: string | null
+): Promise<{ userId: string | null; session: any }> {
+  // 1. Try sign-in (user exists with correct password)
+  const { data: si1 } = await sb.auth.signInWithPassword({ email, password });
+  if (si1?.user) return { userId: si1.user.id, session: si1.session };
+
+  // 2. If sign-in failed and we have an existing auth user → update their credentials
+  if (existingAuthId) {
+    try {
+      await sb.auth.admin.updateUserById(existingAuthId, {
+        email,
+        password,
+        email_confirm: true,
+      });
+      const { data: si2 } = await sb.auth.signInWithPassword({ email, password });
+      if (si2?.user) return { userId: si2.user.id, session: si2.session };
+    } catch (e) {
+      console.error('[ag-otp-verify] updateUserById failed:', e);
+    }
+  }
+
+  // 3. Create new auth user (first-time registration or auth user deleted)
+  const { data: cd, error: createErr } = await sb.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { source: 'movi_otp' },
+  });
+  if (cd?.user) {
+    const { data: si3 } = await sb.auth.signInWithPassword({ email, password });
+    if (si3?.user) return { userId: si3.user.id, session: si3.session };
+    // Created but sign-in still failing — return userId without session
+    return { userId: cd.user.id, session: null };
+  }
+
+  console.error('[ag-otp-verify] all auth attempts failed. createErr:', createErr?.message);
+  return { userId: null, session: null };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -40,7 +83,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Verify OTP code
+    // Verify OTP
     const { data: otpData, error: otpError } = await sb
       .from('ag_otp_codes')
       .select('id, code_hash')
@@ -54,75 +97,61 @@ Deno.serve(async (req) => {
     if (otpError || !otpData) {
       return json({ ok: false, error: 'Código expirado o inválido. Solicita uno nuevo.' });
     }
-
     if (otpData.code_hash !== hash) {
       return json({ ok: false, error: 'Código incorrecto. Verifica e intenta de nuevo.' });
     }
-
-    // Mark OTP as used
     await sb.from('ag_otp_codes').update({ used: true }).eq('id', otpData.id);
 
-    // Create/get synthetic auth user (deterministic: same phone = same auth user)
+    // Synthetic auth credentials (deterministic per phone)
     const salt = Deno.env.get('AG_SESSION_SALT') ?? 'movi-ag-2026';
     const pwHash = await sha256(normalized + salt);
     const syntheticEmail = `ag_${normalized.replace(/\+/g, '')}@movi-driver.app`;
     const syntheticPassword = `Ag${pwHash.slice(0, 30)}`;
 
-    // Create user if not exists (ignore error if already exists)
-    const { data: createData } = await sb.auth.admin.createUser({
-      email: syntheticEmail,
-      password: syntheticPassword,
-      email_confirm: true,
-      user_metadata: { phone: normalized, source: 'movi_otp' },
-    });
+    // Check existing ag_users by phone FIRST (so we can reuse their auth_user_id)
+    const { data: existingByPhone } = await sb
+      .from('ag_users').select('*').eq('phone', normalized).maybeSingle();
 
-    // Sign in to get session tokens
-    const { data: signIn, error: signInErr } = await sb.auth.signInWithPassword({
-      email: syntheticEmail,
-      password: syntheticPassword,
-    });
+    const existingAuthId: string | null = existingByPhone?.auth_user_id ?? null;
 
-    const authUserId = signIn?.user?.id ?? createData?.user?.id;
+    // Get or create auth session — with full retry logic
+    const { userId: authUserId, session: signInSession } = await signInWithRetry(
+      sb, syntheticEmail, syntheticPassword, existingAuthId
+    );
 
     if (!authUserId) {
-      // Cannot create auth session — return ok without profile (client falls back)
-      return json({ ok: true });
+      // All auth attempts failed — return ok so client can at least try RPC fallback
+      console.error('[ag-otp-verify] could not obtain authUserId for', normalized);
+      return json({ ok: true, authFailed: true });
     }
 
-    // Upsert ag_users record using service role (bypasses all RLS)
+    // Upsert ag_users (service role — bypasses RLS)
     const userRole = role === 'driver' ? 'driver' : 'passenger';
-    const fullName = (name && String(name).trim()) ? String(name).trim() : (userRole === 'driver' ? 'Conductor' : 'Usuario');
-
-    // Check if user already exists by phone
-    const { data: existing } = await sb
-      .from('ag_users')
-      .select('*')
-      .eq('phone', normalized)
-      .maybeSingle();
+    const fullName = (name && String(name).trim()) ? String(name).trim()
+      : (userRole === 'driver' ? 'Conductor' : 'Usuario');
 
     let agUser: any = null;
 
-    if (existing) {
-      // Update auth_user_id if changed
-      if (existing.auth_user_id !== authUserId) {
+    if (existingByPhone) {
+      // Update auth_user_id to the (possibly new) synthetic auth user
+      if (existingByPhone.auth_user_id !== authUserId) {
         const { data: updated } = await sb
           .from('ag_users')
           .update({ auth_user_id: authUserId })
-          .eq('id', existing.id)
-          .select('*')
-          .single();
-        agUser = updated ?? existing;
+          .eq('id', existingByPhone.id)
+          .select('*').single();
+        agUser = updated ?? existingByPhone;
       } else {
-        agUser = existing;
+        agUser = existingByPhone;
       }
     } else {
-      // Also check by auth_user_id (user may have registered with a different phone before)
+      // Check by auth_user_id
       const { data: byAuth } = await sb
         .from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
       if (byAuth) {
         agUser = byAuth;
       } else {
-        // Insert new user — try with referred_by first, fall back without it on FK error
+        // New user — insert
         const basePayload: Record<string, any> = {
           auth_user_id: authUserId,
           role: userRole,
@@ -132,42 +161,39 @@ Deno.serve(async (req) => {
           department: '',
           city: '',
         };
-        const validRef = referred_by && typeof referred_by === 'string' && /^[0-9a-f-]{36}$/i.test(referred_by);
-        const payloadWithRef = validRef ? { ...basePayload, referred_by } : basePayload;
+        const validRef = referred_by && typeof referred_by === 'string'
+          && /^[0-9a-f-]{36}$/i.test(referred_by);
+        const payload = validRef ? { ...basePayload, referred_by } : basePayload;
 
         let { data: inserted, error: insertErr } = await sb
-          .from('ag_users').insert(payloadWithRef).select('*').single();
+          .from('ag_users').insert(payload).select('*').single();
 
         if (insertErr && validRef) {
-          // referred_by FK might be invalid — retry without it
           const retry = await sb.from('ag_users').insert(basePayload).select('*').single();
-          inserted = retry.data;
-          insertErr = retry.error;
+          inserted = retry.data; insertErr = retry.error;
         }
-
         if (insertErr) {
           console.error('[ag-otp-verify] insert ag_users:', JSON.stringify(insertErr));
-          // Last resort: maybe unique_violation on auth_user_id, fetch by auth_user_id
-          const { data: fallback } = await sb.from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
-          agUser = fallback ?? null;
+          const { data: fb } = await sb.from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
+          agUser = fb ?? null;
         } else {
           agUser = inserted;
         }
       }
     }
 
-    if (!signIn?.session) {
+    if (!signInSession) {
       return json({ ok: true, profile: agUser });
     }
 
     return json({
       ok: true,
-      access_token: signIn.session.access_token,
-      refresh_token: signIn.session.refresh_token,
+      access_token: signInSession.access_token,
+      refresh_token: signInSession.refresh_token,
       profile: agUser,
     });
   } catch (e) {
-    console.error(e);
+    console.error('[ag-otp-verify] unhandled error:', e);
     return json({ ok: false, error: 'Error interno. Intenta de nuevo.' });
   }
 });
