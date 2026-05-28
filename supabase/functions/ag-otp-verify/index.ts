@@ -108,9 +108,14 @@ Deno.serve(async (req) => {
     const syntheticEmail = `ag_${normalized.replace(/\+/g, '')}@movi-driver.app`;
     const syntheticPassword = `Ag${pwHash.slice(0, 30)}`;
 
-    // Check existing ag_users by phone FIRST (so we can reuse their auth_user_id)
-    const { data: existingByPhone } = await sb
-      .from('ag_users').select('*').eq('phone', normalized).maybeSingle();
+    // Check existing ag_users by phone — array select handles duplicate phones
+    const { data: phoneArr } = await sb
+      .from('ag_users').select('*').eq('phone', normalized).order('created_at', { ascending: false });
+
+    // Prefer driver role if duplicates exist
+    const existingByPhone: any = phoneArr && phoneArr.length > 0
+      ? (phoneArr.find((u: any) => u.role === 'driver') ?? phoneArr[0])
+      : null;
 
     const existingAuthId: string | null = existingByPhone?.auth_user_id ?? null;
 
@@ -120,7 +125,6 @@ Deno.serve(async (req) => {
     );
 
     if (!authUserId) {
-      // All auth attempts failed — return ok so client can at least try RPC fallback
       console.error('[ag-otp-verify] could not obtain authUserId for', normalized);
       return json({ ok: true, authFailed: true });
     }

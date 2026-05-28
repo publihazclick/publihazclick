@@ -62,22 +62,24 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // 1. Find ag_users by phone (service_role — bypasses all RLS)
-    let { data: agUser } = await sb
-      .from('ag_users').select('*').eq('phone', normalized).maybeSingle();
+    // 1. Find ag_users by phone — array select to handle duplicate phones (prefer driver role)
+    const { data: agUsersArr } = await sb
+      .from('ag_users').select('*').eq('phone', normalized).order('created_at', { ascending: false });
 
-    console.log('[ag-register-driver] ag_users found by phone:', agUser ? agUser.id : 'NOT FOUND');
+    let agUser: any = null;
+    if (agUsersArr && agUsersArr.length > 0) {
+      agUser = agUsersArr.find((u: any) => u.role === 'driver') ?? agUsersArr[0];
+    }
 
-    // 2. If not found, create ag_users (happens when ag-otp-verify auth step failed)
+    console.log('[ag-register-driver] phone:', normalized, 'found:', agUser ? agUser.id : 'NOT FOUND');
+
+    // 2. If not found, recover via auth user lookup or create new profile
     if (!agUser) {
       const authUserId = await getOrCreateAuthUser(sb, normalized);
-      console.log('[ag-register-driver] authUserId resolved:', authUserId);
-
       if (!authUserId) {
         return json({ ok: false, error: 'No se pudo verificar la cuenta. Vuelve a solicitar el código.' });
       }
 
-      // Try finding by auth_user_id first (in case phone format differs)
       const { data: byAuth } = await sb
         .from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
 
@@ -97,7 +99,6 @@ Deno.serve(async (req) => {
 
         if (insertErr) {
           console.error('[ag-register-driver] insert ag_users failed:', JSON.stringify(insertErr));
-          // Unique violation — fetch by auth_user_id as last resort
           const { data: fb } = await sb.from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
           agUser = fb ?? null;
         } else {
