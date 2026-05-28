@@ -7663,7 +7663,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Cargar surge actual
     this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
 
-    const profile = await this.agService.getMyAgProfile();
+    let profile = await this.agService.getMyAgProfile();
+
+    // Si no hay sesión, intentar re-auth silenciosa con teléfono guardado (evita pedir SMS de nuevo)
+    if (!profile) {
+      const reauth = await this.phoneAuth.tryReAuth();
+      if (reauth?.profile) {
+        profile = reauth.profile;
+      }
+    }
+
     this.agProfile.set(profile);
     if (profile && isPlatformBrowser(this.platformId)) {
       this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);

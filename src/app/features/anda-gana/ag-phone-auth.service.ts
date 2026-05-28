@@ -72,6 +72,10 @@ export class AgPhoneAuthService {
           access_token: data.access_token,
           refresh_token: data.refresh_token,
         });
+        // Guardar teléfono para re-auth silenciosa si la sesión expira
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('movi-ag-phone', this.pendingPhone!);
+        }
       }
 
       return { ok: true, profile: data.profile ?? null };
@@ -80,9 +84,47 @@ export class AgPhoneAuthService {
     }
   }
 
+  /**
+   * Intenta restaurar la sesión silenciosamente usando el teléfono guardado en localStorage.
+   * No requiere SMS. Solo funciona si el usuario ya se registró antes.
+   * Retorna el perfil si tuvo éxito, null si el usuario debe hacer OTP de nuevo.
+   */
+  async tryReAuth(): Promise<{ profile: any; role: string } | null> {
+    if (typeof localStorage === 'undefined') return null;
+    const phone = localStorage.getItem('movi-ag-phone');
+    if (!phone) return null;
+
+    try {
+      const sb = getMoviClient();
+      const { data, error } = await sb.functions.invoke('ag-reauth', {
+        body: { phone },
+      });
+
+      if (error || !data?.ok) return null;
+      if (!data.access_token || !data.refresh_token) return null;
+
+      await sb.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+
+      return { profile: data.profile, role: data.profile?.role ?? 'passenger' };
+    } catch {
+      return null;
+    }
+  }
+
   /** Limpia el estado para reenviar OTP */
   reset(): void {
     this.pendingPhone = null;
+  }
+
+  /** Cierra sesión y borra teléfono guardado */
+  async signOut(): Promise<void> {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('movi-ag-phone');
+    }
+    await getMoviClient().auth.signOut();
   }
 
   private _mapMessage(msg: string): PhoneAuthError {
