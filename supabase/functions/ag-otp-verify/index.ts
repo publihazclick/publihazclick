@@ -116,30 +116,43 @@ Deno.serve(async (req) => {
         agUser = existing;
       }
     } else {
-      // Insert new user
-      const insertPayload: Record<string, any> = {
-        auth_user_id: authUserId,
-        role: userRole,
-        full_name: fullName,
-        phone: normalized,
-        country: 'Colombia',
-        department: '',
-        city: '',
-      };
-      if (referred_by && typeof referred_by === 'string' && referred_by.length === 36) {
-        // Validate referred_by looks like a UUID before inserting
-        insertPayload.referred_by = referred_by;
-      }
-      const { data: inserted, error: insertErr } = await sb
-        .from('ag_users')
-        .insert(insertPayload)
-        .select('*')
-        .single();
-      if (insertErr) {
-        console.error('[ag-otp-verify] insert ag_users:', insertErr);
-        // Don't fail the whole request — return ok with tokens, let client retry
+      // Also check by auth_user_id (user may have registered with a different phone before)
+      const { data: byAuth } = await sb
+        .from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
+      if (byAuth) {
+        agUser = byAuth;
       } else {
-        agUser = inserted;
+        // Insert new user — try with referred_by first, fall back without it on FK error
+        const basePayload: Record<string, any> = {
+          auth_user_id: authUserId,
+          role: userRole,
+          full_name: fullName,
+          phone: normalized,
+          country: 'Colombia',
+          department: '',
+          city: '',
+        };
+        const validRef = referred_by && typeof referred_by === 'string' && /^[0-9a-f-]{36}$/i.test(referred_by);
+        const payloadWithRef = validRef ? { ...basePayload, referred_by } : basePayload;
+
+        let { data: inserted, error: insertErr } = await sb
+          .from('ag_users').insert(payloadWithRef).select('*').single();
+
+        if (insertErr && validRef) {
+          // referred_by FK might be invalid — retry without it
+          const retry = await sb.from('ag_users').insert(basePayload).select('*').single();
+          inserted = retry.data;
+          insertErr = retry.error;
+        }
+
+        if (insertErr) {
+          console.error('[ag-otp-verify] insert ag_users:', JSON.stringify(insertErr));
+          // Last resort: maybe unique_violation on auth_user_id, fetch by auth_user_id
+          const { data: fallback } = await sb.from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
+          agUser = fallback ?? null;
+        } else {
+          agUser = inserted;
+        }
       }
     }
 
