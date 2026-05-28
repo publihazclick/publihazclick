@@ -3706,15 +3706,28 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (!loadingSection() && driverSection() === 'profile') {
             <div class="flex flex-col items-center gap-4 pt-2">
               <!-- Avatar -->
-              <div class="w-24 h-24 rounded-3xl flex items-center justify-center"
-                style="background:linear-gradient(135deg,#0891b2,#0e7490);font-size:36px;color:white;font-weight:900">
-                {{ firstName().charAt(0).toUpperCase() }}
-              </div>
+              @if (driverData()?.selfie_url) {
+                <img [src]="driverData()!.selfie_url" alt="Foto de perfil"
+                  class="w-24 h-24 rounded-3xl object-cover"
+                  style="border:3px solid #0891b2" />
+              } @else {
+                <div class="w-24 h-24 rounded-3xl flex items-center justify-center"
+                  style="background:linear-gradient(135deg,#0891b2,#0e7490);font-size:36px;color:white;font-weight:900">
+                  {{ firstName().charAt(0).toUpperCase() }}
+                </div>
+              }
               <div class="text-center">
                 <p class="font-black text-xl" style="color:#0f172a">{{ agProfile()?.full_name }}</p>
                 <p class="text-slate-600 text-sm">{{ agProfile()?.email }}</p>
                 <p class="text-slate-600 text-sm">{{ agProfile()?.phone }}</p>
               </div>
+              <!-- Editar perfil -->
+              <button (click)="openEditProfile()"
+                class="px-5 py-2.5 rounded-xl text-white font-bold text-sm flex items-center gap-2"
+                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
+                <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+                Editar perfil
+              </button>
               <!-- Verificación -->
               @if (driverStatus() === 'approved') {
                 <div class="flex items-center gap-2 px-4 py-2 rounded-full"
@@ -4135,7 +4148,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (!loadingSection() && driverSection() === 'security') {
             <div class="flex flex-col gap-4">
               <!-- Pánico -->
-              <button (click)="activatePanic()"
+              <button (click)="triggerPanic()"
                 class="w-full py-6 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-[0.98]"
                 [style]="panicActivated() ? 'background:rgba(239,68,68,0.2);border:2px solid #ef4444' : 'background:rgba(239,68,68,0.08);border:2px solid rgba(239,68,68,0.3)'">
                 <span class="material-symbols-outlined text-rose-400" style="font-size:40px">emergency</span>
@@ -4278,7 +4291,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
               <!-- T&C -->
-              <button class="flex items-center gap-3 px-4 py-3 rounded-2xl w-full text-left"
+              <button (click)="openTerms()"
+                class="flex items-center gap-3 px-4 py-3 rounded-2xl w-full text-left"
                 style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
                 <span class="material-symbols-outlined text-slate-500" style="font-size:18px">description</span>
                 <p class="text-slate-800 text-sm">Términos y condiciones</p>
@@ -4553,14 +4567,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   @if (dt.requiresExpiry) {
                     <input type="date" [value]="docExpiryInput[dt.key] || (getDocByType(dt.key)?.expires_at || '')"
                       (change)="onDocExpiryChange(dt.key, $any($event.target).value)"
-                      class="w-full px-3 py-2 rounded-lg text-white text-xs"
-                      style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)" />
+                      class="w-full px-3 py-2 rounded-lg text-slate-900 text-xs focus:outline-none"
+                      style="background:#FFFFFF;border:1px solid #D1D5DB" />
                   }
                   <input type="text" placeholder="Número (opcional)"
                     [value]="docNumberInput[dt.key] || (getDocByType(dt.key)?.number || '')"
                     (input)="onDocNumberChange(dt.key, $any($event.target).value)"
-                    class="w-full px-3 py-2 rounded-lg text-white text-xs"
-                    style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)" />
+                    class="w-full px-3 py-2 rounded-lg text-slate-900 text-xs focus:outline-none"
+                    style="background:#FFFFFF;border:1px solid #D1D5DB" />
 
                   <label class="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
                     style="background:linear-gradient(135deg,#0891b2,#0e7490)"
@@ -4891,7 +4905,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           [class.text-cyan-600]="r.status === 'reviewing'"
                           [class.text-green-600]="r.status === 'resolved'"
                           [class.text-slate-500]="r.status === 'closed'">
-                          {{ r.status }}
+                          {{ r.status === 'open' ? 'Abierto' : r.status === 'reviewing' ? 'En revisión' : r.status === 'resolved' ? 'Resuelto' : r.status === 'closed' ? 'Cerrado' : r.status }}
                         </span>
                       </div>
                       <p class="text-slate-700 text-xs mt-1">{{ r.description }}</p>
@@ -7057,6 +7071,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   navTotalKm         = signal(0);
   navPhase           = signal<'to_pickup' | 'to_dest'>('to_pickup');
   navManeuverIcon    = signal('straight');
+  navVoiceEnabled    = signal(true);
   private _navSteps:      any[]    = [];
   private _navStepIdx:    number   = 0;
   private _navSpokenKeys: Set<string> = new Set();
@@ -12541,6 +12556,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ═══════════════════════════════════════════════════
   // PASSENGER: editar perfil
   // ═══════════════════════════════════════════════════
+  openTerms() {
+    window.open('https://publihazclick.com/terminos', '_blank');
+  }
+
   openEditProfile() {
     const p = this.agProfile();
     if (!p) return;
