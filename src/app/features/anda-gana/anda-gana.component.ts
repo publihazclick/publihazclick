@@ -13254,7 +13254,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const mine = driverRow ? { ...driverRow, status: driverRow.status ?? 'quick' } : null;
     this.driverData.set(mine);
     this.driverStatus.set(mine?.status ?? 'quick');
+    if (driverRow?.wallet_balance != null) {
+      this.driverWalletBalance.set(driverRow.wallet_balance);
+    }
     this.screen.set('driver-home');
+    setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
     await this._initDriverHome(mine);
     this.cdr.markForCheck();
   }
