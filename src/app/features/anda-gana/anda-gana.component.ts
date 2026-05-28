@@ -1220,12 +1220,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           (input)="onAddressInput($any($event.target).value)"
                           (paste)="handlePaste($any($event), 'address')"
                           (keydown.escape)="originEditOpen.set(false)"
+                          (keydown.enter)="saveManualAddress()"
                           placeholder="Escribe o pega tu punto de salida..."
                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                           class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
-                        <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
-                          <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
-                        </button>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                          <button (click)="originEditOpen.set(false)">
+                            <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
+                          </button>
+                          <button (click)="saveManualAddress()"
+                            class="flex items-center justify-center w-8 h-8 rounded-full shadow-md active:scale-95 transition-transform"
+                            style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.4)">
+                            <span class="material-symbols-outlined text-white" style="font-size:19px;font-variation-settings:'wght' 700">check</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   }
@@ -1528,12 +1536,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <input id="origin-edit-input"
                         (input)="onAddressInput($any($event.target).value)"
                         (keydown.escape)="originEditOpen.set(false)"
+                        (keydown.enter)="saveManualAddress()"
                         placeholder="Escribe tu punto de salida..."
                         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"
                         class="flex-1 text-slate-800 text-xs outline-none placeholder-slate-500 bg-transparent"/>
-                      <button (click)="originEditOpen.set(false)" class="flex-shrink-0">
-                        <span class="material-symbols-outlined text-slate-400" style="font-size:17px">close</span>
-                      </button>
+                      <div class="flex items-center gap-1 flex-shrink-0">
+                        <button (click)="originEditOpen.set(false)">
+                          <span class="material-symbols-outlined text-slate-400" style="font-size:17px">close</span>
+                        </button>
+                        <button (click)="saveManualAddress()"
+                          class="flex items-center justify-center w-7 h-7 rounded-full shadow-md active:scale-95 transition-transform"
+                          style="background:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,0.4)">
+                          <span class="material-symbols-outlined text-white" style="font-size:17px;font-variation-settings:'wght' 700">check</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 }
@@ -3498,7 +3514,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
           <div id="ag-map-user"
-            [style.height]="driverMapFullscreen() ? (navPhase() === 'to_pickup' ? '90dvh' : '100dvh') : navActive() ? '420px' : '300px'"
+            [style.height]="driverMapFullscreen() ? (navPhase() === 'to_pickup' ? '95dvh' : '100dvh') : navActive() ? '420px' : '300px'"
             [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
             [style.border]="driverMapFullscreen() ? 'none' : '1px solid #E2E8F0'"
             style="overflow:hidden;transition:height 0.35s ease"
@@ -3508,18 +3524,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (navActive()) {
             <!-- Banner instrucción actual (arriba del mapa) -->
             <div class="absolute top-0 left-0 right-0 z-30 pointer-events-none"
-              style="background:linear-gradient(180deg,rgba(30,27,75,0.97) 0%,rgba(30,27,75,0.92) 85%,transparent 100%);border-radius:16px 16px 0 0;padding:14px 16px 24px">
+              style="background:linear-gradient(180deg,rgba(10,40,90,0.97) 0%,rgba(10,40,90,0.92) 85%,transparent 100%);border-radius:16px 16px 0 0;padding:14px 16px 24px">
               <div class="flex items-center gap-3">
                 <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style="background:rgba(99,102,241,0.25);border:2px solid rgba(99,102,241,0.5)">
-                  <span class="material-symbols-outlined text-indigo-300" style="font-size:28px">{{ navManeuverIcon() }}</span>
+                  style="background:rgba(37,99,235,0.3);border:2px solid rgba(37,99,235,0.6)">
+                  <span class="material-symbols-outlined" style="font-size:28px;color:#93c5fd">{{ navManeuverIcon() }}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-white font-black text-sm leading-tight" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
                     {{ navInstruction() }}
                   </p>
                   @if (navDistToNext()) {
-                    <p class="text-indigo-300 font-black text-xl mt-0.5">{{ navDistToNext() }}</p>
+                    <p class="font-black text-xl mt-0.5" style="color:#60a5fa">{{ navDistToNext() }}</p>
                   }
                 </div>
               </div>
@@ -3550,6 +3566,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     {{ navPhase() === 'to_pickup' ? 'Al pasajero' : 'Al destino' }}
                   </p>
                 </div>
+                <!-- Voz -->
+                <button (click)="navVoiceEnabled.set(!navVoiceEnabled())"
+                  class="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition"
+                  [style]="navVoiceEnabled() ? 'background:rgba(37,99,235,0.2);border:1px solid rgba(37,99,235,0.5)' : 'background:rgba(100,116,139,0.15);border:1px solid rgba(100,116,139,0.3)'">
+                  <span class="material-symbols-outlined" style="font-size:20px"
+                    [style.color]="navVoiceEnabled() ? '#60a5fa' : '#94a3b8'">
+                    {{ navVoiceEnabled() ? 'volume_up' : 'volume_off' }}
+                  </span>
+                </button>
                 <!-- Parar -->
                 <button (click)="stopInAppNav()"
                   class="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition"
@@ -7734,7 +7759,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
     // Cargar viajes activos (ofertas aceptadas por el pasajero)
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id);
-    if (activeTrips.length > 0) this.driverActiveTrips.set(activeTrips);
+    if (activeTrips.length > 0) {
+      this.driverActiveTrips.set(activeTrips);
+      // Si recargó con un viaje activo yendo al pickup, restaurar mapa fullscreen automáticamente
+      const headingTrip = (activeTrips as any[]).find((t: any) =>
+        !t.ag_trip_requests?.driver_stage || t.ag_trip_requests?.driver_stage === 'heading_to_pickup'
+      );
+      if (headingTrip) {
+        const req = headingTrip.ag_trip_requests ?? headingTrip;
+        if (req?.origin_lat && req?.origin_lng) {
+          this.driverFullscreenTrip.set(headingTrip);
+          this.driverMapFullscreen.set(true);
+          this._waitForMap(() => this.startInAppNav(headingTrip, true));
+        }
+      }
+    }
     // Cargar beneficios (tier, fundador, comisión escalonada)
     const benefits = await this.agService.getDriverBenefits(mine.id);
     if (benefits) {
@@ -7750,16 +7789,26 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _subscribeToMyOffers(driverId: string): void {
     if (!isPlatformBrowser(this.platformId)) return;
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
-    this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, (offer) => {
-      // Mostrar alerta inDrive full-screen
-      this.driverTripAlert.set(offer);
+    this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, async (offer) => {
       // Agregar a viajes activos si no está ya
       this.driverActiveTrips.update(list => list.some(t => t.id === offer.id) ? list : [offer, ...list]);
       // Quitar la solicitud del listado en vivo
       const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
       if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
       this.cdr.markForCheck();
+      // Auto-mostrar mapa fullscreen al instante (sin requerir botón — igual que inDriver)
+      await this.acceptTripAndGo(offer);
     });
+  }
+
+  private _waitForMap(cb: () => void, maxAttempts = 30): void {
+    if (this._map) { setTimeout(cb, 250); return; }
+    let attempts = 0;
+    const iv = setInterval(() => {
+      attempts++;
+      if (this._map) { clearInterval(iv); setTimeout(cb, 250); return; }
+      if (attempts >= maxAttempts) clearInterval(iv);
+    }, 500);
   }
 
   private _locationChannel: RealtimeChannel | null = null;
@@ -9778,6 +9827,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _speak(text: string): void {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (!this.navVoiceEnabled()) return;
     window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang  = 'es-CO';
@@ -9836,18 +9886,28 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.navTotalKm.set(Math.round(route.distance / 100) / 10);
       this.navEtaMin.set(Math.round(route.duration / 60));
 
-      // Draw route on map
+      // Switch to light map style for navigation, then draw route
       this._clearNavRoute();
       if (this._map) {
-        this._map.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
-        this._map.addLayer({ id: 'nav-route-bg',   type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 10, 'line-opacity': 0.15 } });
-        this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#4f46e5', 'line-width': 6,  'line-opacity': 0.95 } });
-        this._map.addLayer({ id: 'nav-route-arr',  type: 'line', source: 'nav-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 2,  'line-opacity': 0.4, 'line-dasharray': [0, 5] } });
-        const mapboxgl = (window as any).mapboxgl;
-        const coords = route.geometry.coordinates as [number, number][];
-        const bounds = coords.reduce((b: any, c: [number,number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
-        const bottomPad = this.driverMapFullscreen() ? 200 : 80;
-        this._map.fitBounds(bounds, { padding: { top: 160, bottom: bottomPad, left: 40, right: 40 }, duration: 900 });
+        const drawRoute = () => {
+          this._clearNavRoute();
+          this._map.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+          this._map.addLayer({ id: 'nav-route-bg',   type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#bfdbfe', 'line-width': 12, 'line-opacity': 0.6 } });
+          this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#2563eb', 'line-width': 6,  'line-opacity': 1.0 } });
+          this._map.addLayer({ id: 'nav-route-arr',  type: 'line', source: 'nav-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 2,  'line-opacity': 0.5, 'line-dasharray': [0, 5] } });
+          const mapboxgl = (window as any).mapboxgl;
+          const coords = route.geometry.coordinates as [number, number][];
+          const bounds = coords.reduce((b: any, c: [number,number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+          const bottomPad = this.driverMapFullscreen() ? 200 : 80;
+          this._map.fitBounds(bounds, { padding: { top: 160, bottom: bottomPad, left: 40, right: 40 }, duration: 900 });
+        };
+        const currentStyle = this._map.getStyle()?.name ?? '';
+        if (currentStyle.toLowerCase().includes('dark') || currentStyle.toLowerCase().includes('dark-v11')) {
+          this._map.setStyle('mapbox://styles/mapbox/streets-v12');
+          this._map.once('style.load', drawRoute);
+        } else {
+          drawRoute();
+        }
       }
 
       this._applyNavStep(0);
@@ -9866,6 +9926,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._navSpokenKeys = new Set();
     window.speechSynthesis?.cancel();
     this._clearNavRoute();
+    if (this._map) {
+      const currentStyle = this._map.getStyle()?.name ?? '';
+      if (!currentStyle.toLowerCase().includes('dark')) {
+        this._map.setStyle('mapbox://styles/mapbox/dark-v11');
+      }
+    }
   }
 
   private _clearNavRoute(): void {
