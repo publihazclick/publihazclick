@@ -13226,32 +13226,36 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpError.set('');
     this.cdr.markForCheck();
     const phone = '+57' + this.qrPhone().replace(/\D/g, '');
-    const name  = this.qrName().trim() || 'Conductor';
 
-    // If edge function already created the ag_users profile, pass it to skip the upsert
-    const reg = await this.agService.registerQuickDriver(name, phone, vehicle, this.referredBy ?? undefined, {
-      brand: this.qrVehicleBrand(),
-      color: this.qrVehicleColor(),
-      plate: this.qrVehiclePlate(),
-    }, this._qrEdgeProfile ?? undefined);
+    // Use edge function with service_role — bypasses all client-side auth/RLS issues
+    const sb = getMoviClient();
+    const { data, error } = await sb.functions.invoke('ag-register-driver', {
+      body: {
+        phone,
+        vehicle_type: vehicle,
+        vehicle_brand: this.qrVehicleBrand() || '',
+        vehicle_color: this.qrVehicleColor() || '',
+        plate: this.qrVehiclePlate() || '',
+      },
+    });
     this._qrEdgeProfile = null;
 
     this.qrOtpVerifying.set(false);
-    if (reg.success && reg.profile) {
-      this.agProfile.set(reg.profile);
-      this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${reg.profile.id}`);
-      let mine = await this.agService.getMyDriverProfile();
-      if (mine && mine.status === 'pending') {
-        getMoviClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
-        mine = { ...mine, status: 'quick' };
-      }
-      this.driverData.set(mine);
-      this.driverStatus.set(mine?.status ?? 'quick');
-      this.screen.set('driver-home');
-      await this._initDriverHome(mine);
-    } else {
-      this.qrOtpError.set(reg.error ?? 'Error al crear tu perfil. Intenta de nuevo.');
+    if (error || !data?.ok) {
+      this.qrOtpError.set(data?.error ?? 'Error al guardar el vehículo. Intenta de nuevo.');
+      this.cdr.markForCheck();
+      return;
     }
+
+    const profile = data.profile;
+    const driverRow = data.driver;
+    this.agProfile.set(profile);
+    this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
+    const mine = driverRow ? { ...driverRow, status: driverRow.status ?? 'quick' } : null;
+    this.driverData.set(mine);
+    this.driverStatus.set(mine?.status ?? 'quick');
+    this.screen.set('driver-home');
+    await this._initDriverHome(mine);
     this.cdr.markForCheck();
   }
 
