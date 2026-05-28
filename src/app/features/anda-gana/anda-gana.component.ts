@@ -2234,8 +2234,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
               <p class="text-slate-400 text-xs">Versión de la app</p>
               <p class="text-white font-bold text-sm">Movi v1.0.0</p>
-              <button class="text-slate-500 text-xs text-left hover:text-slate-300 transition-colors">Ver términos y condiciones</button>
-              <button class="text-slate-500 text-xs text-left hover:text-slate-300 transition-colors">Política de privacidad</button>
+              <button class="text-slate-300 text-xs text-left hover:text-white transition-colors underline underline-offset-2">Ver términos y condiciones</button>
+              <button class="text-slate-300 text-xs text-left hover:text-white transition-colors underline underline-offset-2">Política de privacidad</button>
             </div>
             <button (click)="savePassengerSettings()"
               [disabled]="savingPassengerSettings()"
@@ -2407,7 +2407,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
 
             @if (passengerFavorites().length === 0) {
-              <p class="text-slate-500 text-center py-4 text-sm">Aún no tienes favoritas.</p>
+              <p class="text-slate-400 text-center py-4 text-sm">Aún no tienes favoritas.</p>
             } @else {
               @for (f of passengerFavorites(); track f.id) {
                 <div class="rounded-2xl p-3 flex items-center gap-3"
@@ -2473,7 +2473,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
 
             @if (passengerPaymentMethods().length === 0) {
-              <p class="text-slate-500 text-center py-4 text-sm">Aún no tienes métodos guardados.</p>
+              <p class="text-slate-400 text-center py-4 text-sm">Aún no tienes métodos guardados.</p>
             } @else {
               @for (pm of passengerPaymentMethods(); track pm.id) {
                 <div class="rounded-2xl p-3 flex items-center gap-3"
@@ -2540,7 +2540,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div>
               <p class="text-white font-bold text-sm mb-2">Movimientos</p>
               @if (passengerWalletHistory().length === 0) {
-                <p class="text-slate-500 text-xs text-center py-4">Aún no tienes movimientos.</p>
+                <p class="text-slate-400 text-xs text-center py-4">Aún no tienes movimientos.</p>
               } @else {
                 @for (tx of passengerWalletHistory(); track tx.id) {
                   <div class="rounded-xl p-3 mb-2 flex items-center justify-between"
@@ -2592,7 +2592,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div>
               <p class="text-white font-bold text-sm mb-2">Mis viajes programados</p>
               @if (passengerScheduled().length === 0) {
-                <p class="text-slate-500 text-xs text-center py-4">No tienes viajes programados.</p>
+                <p class="text-slate-400 text-xs text-center py-4">No tienes viajes programados.</p>
               } @else {
                 @for (s of passengerScheduled(); track s.id) {
                   <div class="rounded-xl p-3 mb-2 flex flex-col gap-2"
@@ -2740,7 +2740,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </ul>
               </div>
             } @else {
-              <p class="text-slate-500 text-center py-8">Cargando...</p>
+              <p class="text-slate-400 text-center py-8">Cargando...</p>
             }
           </div>
         }
@@ -2801,6 +2801,88 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               class="w-full py-3 rounded-xl text-white font-black text-sm disabled:opacity-50"
               style="background:linear-gradient(135deg,#f97316,#ea580c)">
               @if (passengerTutorialDone()) { ✓ Completado } @else { He leído todo · Completar }
+            </button>
+          </div>
+        }
+
+        <!-- ── MI PERFIL ── -->
+        @if (passengerSection() === 'profile') {
+          <div class="flex flex-col gap-4">
+            <h2 class="text-white font-black text-lg">Mi perfil</h2>
+
+            <!-- Avatar + datos -->
+            <div class="rounded-2xl p-5 flex flex-col items-center gap-4"
+              style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <!-- Foto -->
+              <div style="width:88px;height:88px;border-radius:50%;overflow:hidden;border:3px solid rgba(249,115,22,0.5);background:rgba(249,115,22,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                @if (agProfile()?.selfie_url) {
+                  <img [src]="agProfile()!.selfie_url!" style="width:100%;height:100%;object-fit:cover" alt="foto" />
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:40px;color:rgba(249,115,22,0.6)">person</span>
+                }
+              </div>
+              <!-- Nombre -->
+              <div class="text-center">
+                <p class="text-white font-black text-xl">{{ agProfile()?.full_name ?? '—' }}</p>
+                @if (agProfile()?.phone) {
+                  <p class="text-slate-400 text-sm mt-1">{{ agProfile()!.phone }}</p>
+                }
+                @if (agProfile()?.email) {
+                  <p class="text-slate-500 text-xs mt-0.5">{{ agProfile()!.email }}</p>
+                }
+              </div>
+            </div>
+
+            <!-- Datos en lista -->
+            <div class="rounded-2xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <div class="flex items-center gap-3 px-4 py-3.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">badge</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Nombre</p>
+                  <p class="text-white text-sm font-semibold truncate">{{ agProfile()?.full_name ?? '—' }}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 px-4 py-3.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">phone</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Teléfono</p>
+                  <p class="text-white text-sm font-semibold truncate">{{ agProfile()?.phone ?? '—' }}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 px-4 py-3.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">mail</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Correo</p>
+                  <p class="text-white text-sm font-semibold truncate">{{ agProfile()?.email ?? '—' }}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 px-4 py-3.5">
+                <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:18px">location_city</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Ciudad</p>
+                  <p class="text-white text-sm font-semibold truncate">{{ agProfile()?.city ?? 'No especificada' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nivel pasajero -->
+            @if (agProfile()?.passenger_level) {
+              <div class="rounded-2xl p-4 flex items-center gap-3"
+                style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)">
+                <span class="material-symbols-outlined text-orange-400" style="font-size:24px;font-variation-settings:'FILL' 1">workspace_premium</span>
+                <div class="flex-1">
+                  <p class="text-white font-black text-sm uppercase">Nivel {{ agProfile()!.passenger_level }}</p>
+                  <p class="text-orange-300 text-xs">{{ agProfile()!.loyalty_points ?? 0 }} puntos acumulados</p>
+                </div>
+              </div>
+            }
+
+            <!-- Botón editar -->
+            <button (click)="openEditProfile()"
+              class="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+              style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff">
+              <span class="material-symbols-outlined" style="font-size:18px">edit</span>
+              Editar perfil
             </button>
           </div>
         }
