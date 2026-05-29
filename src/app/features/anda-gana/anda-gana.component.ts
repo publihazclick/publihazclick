@@ -362,7 +362,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top) ═══════════ -->
   @if (driverOnline() && !driverTripAlert() && driverActiveTrips().length === 0 && driverRequests().length > 0) {
     <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8000;pointer-events:none">
-      <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(0,229,255,0.08);overflow:hidden">
+      <div
+        (touchstart)="onRequestSwipeStart($event)"
+        (touchmove)="onRequestSwipeMove($event)"
+        (touchend)="onRequestSwipeEnd(driverRequests()[0].id)"
+        [style.transform]="'translateX(' + requestSwipeX() + 'px)'"
+        [style.transition]="requestSwiping() ? 'none' : 'transform 0.3s ease'"
+        [style.opacity]="1 - Math.min(0.7, Math.abs(requestSwipeX()) / 200)"
+        style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(0,229,255,0.08);overflow:hidden">
 
         <!-- Franja de alerta superior -->
         <div style="background:linear-gradient(90deg,rgba(0,229,255,0.15) 0%,rgba(5,150,105,0.1) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -374,10 +381,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             @if (driverRequests().length > 1) {
               <span style="background:rgba(0,229,255,0.18);border:1px solid rgba(0,229,255,0.4);color:#00E5FF;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px">{{ driverRequests().length }} disponibles</span>
             }
-            <button (click)="dismissDriverRequest(driverRequests()[0].id)"
-              style="width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(239,68,68,0.6);background:rgba(239,68,68,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s"
+            <button (click)="openDismissConfirm(driverRequests()[0].id)"
+              style="width:34px;height:34px;border-radius:50%;border:2px solid #ef4444;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px rgba(239,68,68,0.6),0 2px 8px rgba(0,0,0,0.4)"
               title="Descartar esta solicitud">
-              <span class="material-symbols-outlined" style="font-size:15px;color:#f87171;font-variation-settings:'FILL' 1">close</span>
+              <span class="material-symbols-outlined" style="font-size:20px;color:#fff;font-variation-settings:'FILL' 1">close</span>
             </button>
           </div>
         </div>
@@ -470,6 +477,29 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             }
           }
 
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ CONFIRM DESCARTE SOLICITUD ═══════════ -->
+  @if (dismissConfirmId()) {
+    <div style="position:fixed;inset:0;z-index:9900;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px)">
+      <div style="background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);border-radius:24px;border:1.5px solid rgba(239,68,68,0.4);box-shadow:0 24px 64px rgba(0,0,0,0.8);padding:28px 24px;width:100%;max-width:340px;text-align:center">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#b91c1c);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 0 24px rgba(239,68,68,0.5)">
+          <span class="material-symbols-outlined" style="font-size:28px;color:#fff;font-variation-settings:'FILL' 1">delete</span>
+        </div>
+        <p style="color:#fff;font-weight:900;font-size:17px;margin:0 0 8px">¿Eliminar esta solicitud?</p>
+        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 24px;line-height:1.5">Solo desaparece de tu vista.<br>El pasajero sigue activo para otros conductores.</p>
+        <div style="display:flex;gap:12px">
+          <button (click)="dismissConfirmId.set(null); requestSwipeX.set(0)"
+            style="flex:1;padding:13px 0;border-radius:14px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:#94a3b8;font-weight:900;font-size:15px;cursor:pointer">
+            No
+          </button>
+          <button (click)="confirmDismissRequest()"
+            style="flex:1;padding:13px 0;border-radius:14px;border:none;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px rgba(239,68,68,0.4)">
+            Sí, eliminar
+          </button>
         </div>
       </div>
     </div>
@@ -11363,6 +11393,44 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         !this._cancelledRequestIds.has(r.id)
       );
     } catch { return []; }
+  }
+
+  // ── Swipe-to-dismiss en modal de solicitud ──────────────────────
+  requestSwipeX    = signal(0);
+  requestSwiping   = signal(false);
+  dismissConfirmId = signal<string | null>(null);
+  readonly Math    = Math;
+  private _swipeTouchStartX = 0;
+
+  onRequestSwipeStart(e: TouchEvent): void {
+    this._swipeTouchStartX = e.touches[0].clientX;
+    this.requestSwiping.set(true);
+  }
+
+  onRequestSwipeMove(e: TouchEvent): void {
+    const dx = e.touches[0].clientX - this._swipeTouchStartX;
+    if (dx < 0) this.requestSwipeX.set(Math.max(-140, dx));
+  }
+
+  onRequestSwipeEnd(id: string): void {
+    this.requestSwiping.set(false);
+    if (this.requestSwipeX() < -80) {
+      this.requestSwipeX.set(0);
+      this.dismissConfirmId.set(id);
+    } else {
+      this.requestSwipeX.set(0);
+    }
+  }
+
+  openDismissConfirm(id: string): void {
+    this.dismissConfirmId.set(id);
+  }
+
+  confirmDismissRequest(): void {
+    const id = this.dismissConfirmId();
+    if (!id) return;
+    this.dismissConfirmId.set(null);
+    this.dismissDriverRequest(id);
   }
 
   /** Descarta una solicitud solo de la vista del conductor (no cancela el viaje del pasajero) */
