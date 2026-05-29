@@ -360,7 +360,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   }
 
   <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top) ═══════════ -->
-  @if (driverOnline() && !driverTripAlert() && driverActiveTrips().length === 0 && driverRequests().length > 0) {
+  @if (driverOnline() && !driverTripAlert() && driverRequests().length > 0) {
     <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8000;pointer-events:none">
       <div
         (touchstart)="onRequestSwipeStart($event)"
@@ -3442,7 +3442,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- Lista de solicitudes activas — oldest first -->
-          @if (driverOnline() && driverRequests().length > 0) {
+          @if (driverRequests().length > 0) {
             @for (req of driverRequests(); track req.id) {
               <div style="background:#fff;border-radius:16px;border:1.5px solid #e2e8f0;box-shadow:0 2px 12px rgba(0,0,0,0.06);overflow:hidden">
                 <!-- Header: tiempo restante + X -->
@@ -3503,18 +3503,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
             }
-          } @else if (driverOnline()) {
-            <div style="text-align:center;padding:24px 16px;background:#f8fafc;border-radius:16px;border:1px dashed #cbd5e1">
-              <span class="material-symbols-outlined" style="font-size:36px;color:#cbd5e1">directions_car</span>
-              <p style="color:#94a3b8;font-size:13px;font-weight:600;margin:8px 0 0">Sin solicitudes activas ahora</p>
-              <p style="color:#cbd5e1;font-size:11px;margin:4px 0 0">Las nuevas aparecerán aquí automáticamente</p>
-            </div>
-          } @else {
-            <div style="text-align:center;padding:24px 16px;background:#f8fafc;border-radius:16px;border:1px dashed #cbd5e1">
-              <span class="material-symbols-outlined" style="font-size:36px;color:#cbd5e1">wifi_off</span>
-              <p style="color:#94a3b8;font-size:13px;font-weight:600;margin:8px 0 0">Estás fuera de línea</p>
-              <p style="color:#cbd5e1;font-size:11px;margin:4px 0 0">Conéctate para recibir solicitudes</p>
-            </div>
           }
         </div>
       }
