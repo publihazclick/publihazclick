@@ -11167,7 +11167,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _startTrackingAssignedDriver(driverId: string): void {
     this._stopTrackingAssignedDriver();
-    // Limpiar ruta de destino inmediatamente (sin esperar ubicación del conductor)
+    // Cancelar cualquier _drawRoute en vuelo e limpiar el mapa inmediatamente
+    this._drawRouteToken++;
     this._clearRoute();
     this._approachRouteLastLat = 0;
     this._approachRouteLastLng = 0;
@@ -11623,14 +11624,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
   }
 
+  private _drawRouteToken = 0; // se incrementa para cancelar llamadas async anteriores
+
   private async _drawRoute(destLng: number, destLat: number) {
     if (!this._map) return;
     const mapboxgl = (window as any).mapboxgl;
     if (!mapboxgl) return;
+    const token = ++this._drawRouteToken;
     this._clearRoute();
     try {
       const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${this._currentLng},${this._currentLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
       const json = await (await fetch(url)).json();
+      // Si el token cambió (oferta aceptada u otra ruta), abortar
+      if (token !== this._drawRouteToken) return;
       const route = json.routes?.[0];
       if (!route) return;
 
