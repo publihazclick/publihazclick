@@ -11619,7 +11619,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           if (list.some(r => r.id === req.id)) return list;
           this.agService.logMetricEvent('offer_seen').catch(() => {});
           this._notifyNewTrip(req);
-          // Nuevas solicitudes van al final — ya son las más recientes
           const updated = [...list, req];
           this._saveRequestsToCache(updated);
           return updated;
@@ -11637,8 +11636,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.cdr.markForCheck();
         }
       },
-      dLat,
-      dLng,
+      undefined,
+      undefined,
     );
   }
 
