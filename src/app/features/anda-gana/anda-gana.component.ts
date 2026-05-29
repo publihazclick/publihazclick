@@ -1131,18 +1131,27 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @if (tripAccepted()) {
           <div class="absolute top-3 left-3 right-3 z-30 pointer-events-none">
             <div class="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl shadow-black/60"
-              style="background:rgba(16,185,129,0.93);backdrop-filter:blur(8px)">
-              <span class="material-symbols-outlined text-white animate-pulse" style="font-size:22px">directions_car</span>
+              style="background:rgba(10,22,40,0.95);backdrop-filter:blur(10px);border:1.5px solid rgba(16,185,129,0.4)">
+              <span class="material-symbols-outlined text-emerald-400 animate-pulse" style="font-size:22px;font-variation-settings:'FILL' 1">directions_car</span>
               <div class="flex-1 min-w-0">
                 <p class="text-white font-black text-sm truncate">
                   {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }} en camino
                 </p>
-                <p class="text-emerald-100 text-xs">Sigue la ruta naranja en el mapa</p>
+                @if (approachRouteInfo()) {
+                  <p class="text-emerald-300 text-xs font-bold">
+                    {{ approachRouteInfo()!.distKm }} km · {{ approachRouteInfo()!.durationMin }} min para llegar
+                  </p>
+                } @else {
+                  <p class="text-slate-400 text-xs">Calculando ruta...</p>
+                }
               </div>
-              <div class="flex flex-col items-end flex-shrink-0">
-                <p class="text-white font-black text-base leading-none">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
-                <p class="text-emerald-100 text-[10px]">confirmado</p>
-              </div>
+              @if (approachRouteInfo()) {
+                <div class="flex flex-col items-center justify-center flex-shrink-0 rounded-xl px-3 py-2"
+                  style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.35)">
+                  <p class="text-emerald-300 font-black leading-none" style="font-size:22px">{{ approachRouteInfo()!.durationMin }}</p>
+                  <p class="text-emerald-400 text-[10px] font-bold">min</p>
+                </div>
+              }
             </div>
           </div>
         }
@@ -7131,6 +7140,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── inDrive parity features ───────────────────────────────────
   // 1. ETA en vivo mientras conductor se acerca
   acceptedDriverEta      = signal<number | null>(null);
+  // Distancia y tiempo REALES de Mapbox para la ruta conductor→pasajero
+  approachRouteInfo      = signal<{ distKm: number; durationMin: number } | null>(null);
   // 2. Timer "Conductor llegó — sal ya"
   arrivedAtPickupTimer   = signal<number | null>(null);
   private _arrivalTimerInterval: any = null;
@@ -11202,7 +11213,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         const neverDrawn = this._approachRouteLastAt === 0;
         const movedKm = this._distKm(loc.lat, loc.lng, this._approachRouteLastLat, this._approachRouteLastLng);
         const secsSinceDraw = (Date.now() - this._approachRouteLastAt) / 1000;
-        if (neverDrawn || movedKm > 0.15 || secsSinceDraw > 30) {
+        if (neverDrawn || movedKm > 0.08 || secsSinceDraw > 15) {
           this._drawDriverApproachRoute(loc.lat, loc.lng);
         }
       }
@@ -11213,7 +11224,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (this._assignedDriverChannel) { try { this._assignedDriverChannel.unsubscribe(); } catch {} this._assignedDriverChannel = null; }
     if (this._assignedDriverMarker) { try { this._assignedDriverMarker.remove(); } catch {} this._assignedDriverMarker = null; }
     this._clearApproachRoute();
+    this._approachRouteDrawn = false;
+    this.approachRouteInfo.set(null);
   }
+
+  private _approachRouteDrawn = false; // true tras el primer dibujo exitoso
 
   private async _drawDriverApproachRoute(driverLat: number, driverLng: number): Promise<void> {
     if (!this._map) return;
@@ -11222,9 +11237,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const pickupLat = this._currentLat;
     const pickupLng = this._currentLng;
     if (!pickupLat || !pickupLng) return;
-    // Limpiar CUALQUIER ruta previa del mapa (destino o approach anterior)
-    this._clearRoute();
-    this._clearApproachRoute();
+    const isFirstDraw = !this._approachRouteDrawn;
+    // En primer draw limpiar ruta destino; en updates solo actualizar geometría
+    if (isFirstDraw) {
+      this._clearRoute();
+      this._clearApproachRoute();
+    }
     try {
       const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${driverLng},${driverLat};${pickupLng},${pickupLat}?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
       const json = await (await fetch(url)).json();
@@ -11233,14 +11251,29 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._approachRouteLastLat = driverLat;
       this._approachRouteLastLng = driverLng;
       this._approachRouteLastAt  = Date.now();
-      this._map.addSource('approach-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
-      this._map.addLayer({ id: 'approach-route-bg',   type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
-      this._map.addLayer({ id: 'approach-route-line', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#10b981', 'line-width': 5,  'line-opacity': 0.92 } });
-      this._map.addLayer({ id: 'approach-route-dash', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.5, 'line-dasharray': [0, 4] } });
-      // Ajustar cámara para ver conductor y pickup al mismo tiempo
-      const coords = route.geometry.coordinates as [number, number][];
-      const bounds = coords.reduce((b: any, c: [number, number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
-      this._map.fitBounds(bounds, { padding: { top: 80, bottom: 240, left: 50, right: 50 }, duration: 900 });
+      // Distancia y tiempo REALES del API → actualizar señales visibles al pasajero
+      const distKm      = Math.round(route.distance / 100) / 10;
+      const durationMin = Math.max(1, Math.round(route.duration / 60));
+      this.approachRouteInfo.set({ distKm, durationMin });
+      this.acceptedDriverEta.set(durationMin);
+      this.cdr.markForCheck();
+      // Actualizar geometría sin recrear capas si ya existen
+      const src = this._map.getSource('approach-route') as any;
+      if (src) {
+        src.setData({ type: 'Feature', properties: {}, geometry: route.geometry });
+      } else {
+        this._map.addSource('approach-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+        this._map.addLayer({ id: 'approach-route-bg',   type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
+        this._map.addLayer({ id: 'approach-route-line', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#10b981', 'line-width': 5,  'line-opacity': 0.92 } });
+        this._map.addLayer({ id: 'approach-route-dash', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.5, 'line-dasharray': [0, 4] } });
+      }
+      this._approachRouteDrawn = true;
+      // Solo en el primer dibujo ajustar cámara para mostrar conductor + pickup
+      if (isFirstDraw) {
+        const coords = route.geometry.coordinates as [number, number][];
+        const bounds = coords.reduce((b: any, c: [number, number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+        this._map.fitBounds(bounds, { padding: { top: 80, bottom: 240, left: 50, right: 50 }, duration: 900 });
+      }
     } catch { /* ignorar errores de red */ }
   }
 
