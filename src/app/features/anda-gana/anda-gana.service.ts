@@ -808,7 +808,7 @@ export class AndaGanaService {
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'ag_trip_requests' },
         (payload) => {
-          if (payload.old?.id) onUpdate({ id: payload.old.id, status: 'cancelled' } as any);
+          if (payload.old?.['id']) onUpdate({ id: payload.old['id'], status: 'cancelled' } as any);
         },
       )
       .subscribe();
