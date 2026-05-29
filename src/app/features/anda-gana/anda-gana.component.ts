@@ -3429,15 +3429,93 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Solicitudes en vivo -->
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between px-1">
-            <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Aqui veras las solicitudes en vivo</p>
+            <div class="flex items-center gap-2">
+              <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Solicitudes en vivo</p>
+              @if (driverRequests().length > 0) {
+                <span style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px">{{ driverRequests().length }}</span>
+              }
+            </div>
             <button (click)="refreshDriverRequests()"
               class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
               <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
             </button>
           </div>
 
-
-
+          <!-- Lista de solicitudes activas — oldest first -->
+          @if (driverOnline() && driverRequests().length > 0) {
+            @for (req of driverRequests(); track req.id) {
+              <div style="background:#fff;border-radius:16px;border:1.5px solid #e2e8f0;box-shadow:0 2px 12px rgba(0,0,0,0.06);overflow:hidden">
+                <!-- Header: tiempo restante + X -->
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(90deg,#f0f9ff,#e0f2fe)">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="material-symbols-outlined" style="font-size:13px;color:#0891b2">schedule</span>
+                    <span style="font-size:11px;font-weight:900;color:#0369a1">{{ reqRemainingStr(req) }} restantes</span>
+                  </div>
+                  <button (click)="openDismissConfirm(req.id)"
+                    style="width:24px;height:24px;border-radius:50%;border:1.5px solid #ef4444;background:rgba(239,68,68,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center">
+                    <span class="material-symbols-outlined" style="font-size:14px;color:#ef4444">close</span>
+                  </button>
+                </div>
+                <!-- Cuerpo -->
+                <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+                  <!-- Pasajero + precio -->
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+                      @if (req.passenger_selfie_url ?? req.ag_users?.selfie_url) {
+                        <img [src]="req.passenger_selfie_url ?? req.ag_users?.selfie_url" style="width:100%;height:100%;object-fit:cover">
+                      } @else {
+                        <span style="color:#fff;font-weight:900;font-size:15px">{{ (req.passenger_name ?? req.ag_users?.full_name ?? 'P')[0].toUpperCase() }}</span>
+                      }
+                    </div>
+                    <div style="flex:1;min-width:0">
+                      <p style="font-weight:900;font-size:13px;color:#0f172a;margin:0">{{ req.passenger_name ?? req.ag_users?.full_name ?? 'Pasajero' }}</p>
+                      <p style="font-size:10px;color:#64748b;margin:0">{{ req.distance_km ?? '?' }} km de ti</p>
+                    </div>
+                    <p style="font-weight:900;font-size:18px;margin:0"
+                      [style.color]="reqRemainingPct(req) < 25 ? '#ef4444' : '#059669'">{{ formatCOP(req.offered_price) }}</p>
+                  </div>
+                  <!-- Ruta -->
+                  <div style="background:#f8fafc;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:5px">
+                    <div style="display:flex;align-items:flex-start;gap:6px">
+                      <span class="material-symbols-outlined" style="font-size:12px;color:#38bdf8;flex-shrink:0;margin-top:1px">my_location</span>
+                      <p style="font-size:11px;color:#334155;font-weight:600;margin:0;line-height:1.3">{{ req.origin_name ?? 'Recogida' }}</p>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:6px">
+                      <span class="material-symbols-outlined" style="font-size:12px;color:#f87171;flex-shrink:0;margin-top:1px">location_on</span>
+                      <p style="font-size:11px;color:#334155;font-weight:600;margin:0;line-height:1.3">{{ req.dest_name ?? 'Destino' }}</p>
+                    </div>
+                  </div>
+                  <!-- Botón aceptar -->
+                  @if (offerSentFor().has(req.id)) {
+                    <div style="display:flex;align-items:center;justify-content:center;gap:5px;padding:8px;border-radius:10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3)">
+                      <span class="material-symbols-outlined" style="font-size:14px;color:#10b981">check_circle</span>
+                      <span style="font-size:12px;font-weight:900;color:#10b981">Oferta enviada</span>
+                    </div>
+                  } @else {
+                    <button (click)="acceptDirectly(req)" [disabled]="sendingOffer()"
+                      style="width:100%;padding:10px;border-radius:12px;border:none;cursor:pointer;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px"
+                      [style.background]="reqBtnGradient(req)"
+                      [style.opacity]="sendingOffer() ? '0.6' : '1'">
+                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>
+                      Aceptar · {{ reqRemainingStr(req) }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          } @else if (driverOnline()) {
+            <div style="text-align:center;padding:24px 16px;background:#f8fafc;border-radius:16px;border:1px dashed #cbd5e1">
+              <span class="material-symbols-outlined" style="font-size:36px;color:#cbd5e1">directions_car</span>
+              <p style="color:#94a3b8;font-size:13px;font-weight:600;margin:8px 0 0">Sin solicitudes activas ahora</p>
+              <p style="color:#cbd5e1;font-size:11px;margin:4px 0 0">Las nuevas aparecerán aquí automáticamente</p>
+            </div>
+          } @else {
+            <div style="text-align:center;padding:24px 16px;background:#f8fafc;border-radius:16px;border:1px dashed #cbd5e1">
+              <span class="material-symbols-outlined" style="font-size:36px;color:#cbd5e1">wifi_off</span>
+              <p style="color:#94a3b8;font-size:13px;font-weight:600;margin:8px 0 0">Estás fuera de línea</p>
+              <p style="color:#cbd5e1;font-size:11px;margin:4px 0 0">Conéctate para recibir solicitudes</p>
+            </div>
+          }
         </div>
       }
       @if (driverStatus() === 'rejected') {
