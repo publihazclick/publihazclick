@@ -11283,24 +11283,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const vt = vehicleType === 'moto' ? 'moto' : vehicleType ? 'carro' : undefined;
     const dLat = lat ?? (this._currentLat !== this.DEFAULT_LAT ? this._currentLat : undefined);
     const dLng = lng ?? (this._currentLng !== this.DEFAULT_LNG ? this._currentLng : undefined);
-    // Carga inicial: pre-poblar desde caché inmediatamente, luego reemplazar con datos frescos del servidor
+    // Carga inicial: mostrar caché brevemente mientras llegan datos frescos del servidor
     const cached = this._loadRequestsFromCache();
     if (cached.length > 0) {
       this.driverRequests.set(cached);
       this.cdr.markForCheck();
     }
     this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
-      const now = Date.now();
-      const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
-      const fromCache = this.driverRequests().filter(
-        r => !serverIds.has(r.id) && !this._cancelledRequestIds.has(r.id) && now - new Date(r.created_at).getTime() <= 240000
-      );
-      const merged = [...reqs, ...fromCache].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      this.driverRequests.set(merged);
-      this._saveRequestsToCache(merged);
-      if (merged.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
+      // El servidor es autoritativo: reemplazar caché completamente
+      this.driverRequests.set(reqs);
+      this._saveRequestsToCache(reqs);
+      if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
       this.cdr.markForCheck();
     });
     // Cancelar suscripción previa
@@ -11316,21 +11309,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       clearInterval(this._cancelCheckInterval);
       this._cancelCheckInterval = null;
     }
-    // Refresh cada 20s — fusiona para preservar solicitudes visibles los 4 minutos completos
+    // Refresh cada 20s — el servidor es la fuente de verdad; reemplaza directamente sin merge
     this._driverRefreshInterval = setInterval(() => {
       this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
-        const now = Date.now();
-        this.driverRequests.update(current => {
-          const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
-          const kept = current.filter(r =>
-            !serverIds.has(r.id) &&
-            !this._cancelledRequestIds.has(r.id) &&
-            now - new Date(r.created_at).getTime() <= 240000
-          );
-          const merged = [...reqs, ...kept].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          this._saveRequestsToCache(merged);
-          return merged;
-        });
+        this.driverRequests.set(reqs);
+        this._saveRequestsToCache(reqs);
         this.cdr.markForCheck();
       });
     }, 20000);
