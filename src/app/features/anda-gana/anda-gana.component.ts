@@ -11070,8 +11070,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }));
     }
     this._startTrackingAssignedDriver(offer.driver_id);
-    const dest = this.tripDest();
-    if (dest) setTimeout(() => this._drawRoute(dest.lng, dest.lat), 500);
     if (tripId && offer.driver_id) {
       this.startDriverTracking(offer.driver_id, tripId);
     }
@@ -11162,11 +11160,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   /** Tracking en vivo del conductor asignado: muestra marker + ETA + centra mapa */
   private _assignedDriverChannel: any = null;
   private _assignedDriverMarker: any = null;
+  // Ruta conductor → pickup: última posición del conductor cuando se dibujó y timestamp
+  private _approachRouteLastLat = 0;
+  private _approachRouteLastLng = 0;
+  private _approachRouteLastAt  = 0;
+
   private _startTrackingAssignedDriver(driverId: string): void {
     this._stopTrackingAssignedDriver();
-    // Dibujar marker con última ubicación conocida
+    // Dibujar marker + ruta de aproximación con última ubicación conocida
     this.agService.getLatestDriverLocation(driverId).then(loc => {
-      if (loc) this._drawAssignedDriverMarker(loc.lat, loc.lng);
+      if (loc) {
+        this._drawAssignedDriverMarker(loc.lat, loc.lng);
+        this._drawDriverApproachRoute(loc.lat, loc.lng);
+      }
     });
     this._assignedDriverChannel = this.agService.subscribeDriverLocation(driverId, (loc) => {
       this._drawAssignedDriverMarker(loc.lat, loc.lng, loc.heading);
@@ -11183,12 +11189,59 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.cdr.markForCheck();
         setTimeout(() => { this.driverNearbyAlert.set(false); this.cdr.markForCheck(); }, 6000);
       }
+      // Actualizar ruta conductor→pickup solo mientras va en camino al pasajero
+      // Throttle: redibujar si conductor se movió >150m o pasaron >30s desde el último dibujo
+      const stage = this.currentTripStage();
+      const headingToPassenger = !stage || stage === 'heading_to_pickup' || stage === 'arrived_at_pickup';
+      if (headingToPassenger) {
+        const movedKm = this._distKm(loc.lat, loc.lng, this._approachRouteLastLat, this._approachRouteLastLng);
+        const secsSinceDraw = (Date.now() - this._approachRouteLastAt) / 1000;
+        if (movedKm > 0.15 || secsSinceDraw > 30) {
+          this._drawDriverApproachRoute(loc.lat, loc.lng);
+        }
+      }
     });
   }
 
   private _stopTrackingAssignedDriver(): void {
     if (this._assignedDriverChannel) { try { this._assignedDriverChannel.unsubscribe(); } catch {} this._assignedDriverChannel = null; }
     if (this._assignedDriverMarker) { try { this._assignedDriverMarker.remove(); } catch {} this._assignedDriverMarker = null; }
+    this._clearApproachRoute();
+  }
+
+  private async _drawDriverApproachRoute(driverLat: number, driverLng: number): Promise<void> {
+    if (!this._map) return;
+    const mapboxgl = (window as any).mapboxgl;
+    if (!mapboxgl) return;
+    const pickupLat = this._currentLat;
+    const pickupLng = this._currentLng;
+    if (!pickupLat || !pickupLng || pickupLat === this.DEFAULT_LAT) return;
+    this._clearApproachRoute();
+    try {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${driverLng},${driverLat};${pickupLng},${pickupLat}?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
+      const json = await (await fetch(url)).json();
+      const route = json.routes?.[0];
+      if (!route) return;
+      this._approachRouteLastLat = driverLat;
+      this._approachRouteLastLng = driverLng;
+      this._approachRouteLastAt  = Date.now();
+      this._map.addSource('approach-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+      this._map.addLayer({ id: 'approach-route-bg',   type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
+      this._map.addLayer({ id: 'approach-route-line', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#10b981', 'line-width': 5,  'line-opacity': 0.92 } });
+      this._map.addLayer({ id: 'approach-route-dash', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.5, 'line-dasharray': [0, 4] } });
+      // Ajustar cámara para ver conductor y pickup al mismo tiempo
+      const coords = route.geometry.coordinates as [number, number][];
+      const bounds = coords.reduce((b: any, c: [number, number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+      this._map.fitBounds(bounds, { padding: { top: 80, bottom: 240, left: 50, right: 50 }, duration: 900 });
+    } catch { /* ignorar errores de red */ }
+  }
+
+  private _clearApproachRoute(): void {
+    if (!this._map) return;
+    ['approach-route-dash', 'approach-route-line', 'approach-route-bg'].forEach(id => {
+      try { if (this._map.getLayer(id)) this._map.removeLayer(id); } catch {}
+    });
+    try { if (this._map.getSource('approach-route')) this._map.removeSource('approach-route'); } catch {}
   }
 
   private _drawAssignedDriverMarker(lat: number, lng: number, heading = 0): void {
@@ -13022,8 +13075,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.acceptedDriverEta.set(0);
       }
 
-      // Pasajero recogido: limpiar timer + activar mapa fullscreen
+      // Pasajero recogido: limpiar ruta de aproximación + timer + activar mapa fullscreen
       if (stage === 'picked_up' || stage === 'on_route') {
+        this._clearApproachRoute();
         this._clearArrivalTimer();
         this.arrivedAtPickupTimer.set(null);
         this.acceptedDriverEta.set(null);
