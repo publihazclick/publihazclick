@@ -3435,7 +3435,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px">{{ driverRequests().length }}</span>
               }
             </div>
-            <button (click)="refreshDriverRequests()"
+            <button (click)="debugLoadRequests()"
               class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
               <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
             </button>
@@ -11655,6 +11655,28 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   refreshDriverRequests() {
     this._loadDriverRequests(this.driverData()?.vehicle_type, this._currentLat, this._currentLng);
+  }
+
+  async debugLoadRequests() {
+    // Query directa sin filtros para diagnosticar
+    const cutoff = new Date(Date.now() - 240000).toISOString();
+    const { data, error } = await (this.agService as any).supabase
+      .from('ag_trip_requests')
+      .select('id, status, vehicle_type, created_at, offered_price')
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: true });
+    const msg = error
+      ? `ERROR: ${error.message}`
+      : `Encontradas: ${data?.length ?? 0}\n` +
+        (data ?? []).map((r: any) =>
+          `- ${r.vehicle_type} | ${r.status} | $${r.offered_price} | ${new Date(r.created_at).toLocaleTimeString()}`
+        ).join('\n');
+    alert(`DEBUG solicitudes BD:\n${msg}`);
+    // También cargar en pantalla sin filtro
+    const reqs = (data ?? []).filter((r: any) => r.status === 'searching');
+    if (reqs.length > 0) {
+      this._loadDriverRequests(undefined);
+    }
   }
 
   reqRemainingMs(req: AgTripRequest): number {
