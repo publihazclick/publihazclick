@@ -374,6 +374,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             @if (driverRequests().length > 1) {
               <span style="background:rgba(0,229,255,0.18);border:1px solid rgba(0,229,255,0.4);color:#00E5FF;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px">{{ driverRequests().length }} disponibles</span>
             }
+            <button (click)="dismissDriverRequest(driverRequests()[0].id)"
+              style="width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(239,68,68,0.6);background:rgba(239,68,68,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s"
+              title="Descartar esta solicitud">
+              <span class="material-symbols-outlined" style="font-size:15px;color:#f87171;font-variation-settings:'FILL' 1">close</span>
+            </button>
           </div>
         </div>
 
@@ -11358,6 +11363,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         !this._cancelledRequestIds.has(r.id)
       );
     } catch { return []; }
+  }
+
+  /** Descarta una solicitud solo de la vista del conductor (no cancela el viaje del pasajero) */
+  dismissDriverRequest(id: string): void {
+    this._markRequestCancelled(id);
+    this.driverRequests.update(list => {
+      const updated = list.filter(r => r.id !== id);
+      this._saveRequestsToCache(updated);
+      return updated;
+    });
+    this.cdr.markForCheck();
   }
 
   private _markRequestCancelled(id: string): void {
