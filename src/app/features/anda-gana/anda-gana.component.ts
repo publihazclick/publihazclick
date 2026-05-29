@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed, inject, OnInit, OnDestroy, PLATFORM_ID, ViewChild, ElementRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed, inject, effect, untracked, OnInit, OnDestroy, PLATFORM_ID, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -7094,6 +7094,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly platformId  = inject(PLATFORM_ID);
   private readonly route       = inject(ActivatedRoute);
   protected readonly cdr       = inject(ChangeDetectorRef);
+
+  // Cada vez que el conductor está online en driver-home, recarga solicitudes automáticamente
+  private readonly _autoLoadRequestsEffect = effect(() => {
+    const isDriverHome = this.screen() === 'driver-home';
+    const isOnline     = this.driverOnline();
+    if (isDriverHome && isOnline) {
+      untracked(() => {
+        const vt = this.driverData()?.vehicle_type;
+        this.agService.getSearchingRequests(
+          vt === 'moto' ? 'moto' : vt ? 'carro' : undefined,
+          undefined, undefined
+        ).then(reqs => {
+          this.driverRequests.set(reqs);
+          this.cdr.markForCheck();
+        }).catch(() => {});
+      });
+    }
+  });
   private readonly supabase    = getMoviClient();
   private referredBy: string | null = null;
 
