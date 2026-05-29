@@ -11167,6 +11167,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _startTrackingAssignedDriver(driverId: string): void {
     this._stopTrackingAssignedDriver();
+    // Limpiar ruta de destino inmediatamente (sin esperar ubicación del conductor)
+    this._clearRoute();
+    this._approachRouteLastLat = 0;
+    this._approachRouteLastLng = 0;
+    this._approachRouteLastAt  = 0;
     // Dibujar marker + ruta de aproximación con última ubicación conocida
     this.agService.getLatestDriverLocation(driverId).then(loc => {
       if (loc) {
@@ -11189,14 +11194,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.cdr.markForCheck();
         setTimeout(() => { this.driverNearbyAlert.set(false); this.cdr.markForCheck(); }, 6000);
       }
-      // Actualizar ruta conductor→pickup solo mientras va en camino al pasajero
-      // Throttle: redibujar si conductor se movió >150m o pasaron >30s desde el último dibujo
+      // Ruta conductor→pickup: primera vez siempre dibuja, luego throttle >150m o >30s
       const stage = this.currentTripStage();
       const headingToPassenger = !stage || stage === 'heading_to_pickup' || stage === 'arrived_at_pickup';
       if (headingToPassenger) {
+        const neverDrawn = this._approachRouteLastAt === 0;
         const movedKm = this._distKm(loc.lat, loc.lng, this._approachRouteLastLat, this._approachRouteLastLng);
         const secsSinceDraw = (Date.now() - this._approachRouteLastAt) / 1000;
-        if (movedKm > 0.15 || secsSinceDraw > 30) {
+        if (neverDrawn || movedKm > 0.15 || secsSinceDraw > 30) {
           this._drawDriverApproachRoute(loc.lat, loc.lng);
         }
       }
@@ -11215,7 +11220,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!mapboxgl) return;
     const pickupLat = this._currentLat;
     const pickupLng = this._currentLng;
-    if (!pickupLat || !pickupLng || pickupLat === this.DEFAULT_LAT) return;
+    if (!pickupLat || !pickupLng) return;
     // Limpiar CUALQUIER ruta previa del mapa (destino o approach anterior)
     this._clearRoute();
     this._clearApproachRoute();
