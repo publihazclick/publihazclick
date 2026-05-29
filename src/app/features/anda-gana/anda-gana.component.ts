@@ -8332,12 +8332,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._currentLat = lat;
     this._currentLng = lng;
 
-    // Recargar solicitudes con GPS real para filtrar por ciudad actual
-    const driver = this.driverData();
-    if (driver) {
-      this._loadDriverRequests(driver.vehicle_type, lat, lng);
-    }
-
     // Geocodificación inversa en paralelo con la carga del mapa
     this._reverseGeocode(lat, lng);
 
@@ -11542,19 +11536,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   _loadDriverRequests(vehicleType?: string, lat?: number, lng?: number) {
     // ag_trip_requests solo acepta 'carro' o 'moto'; normalizar cualquier otro valor a 'carro'
     const vt = vehicleType === 'moto' ? 'moto' : vehicleType ? 'carro' : undefined;
-    const dLat = lat ?? (this._currentLat !== this.DEFAULT_LAT ? this._currentLat : undefined);
-    const dLng = lng ?? (this._currentLng !== this.DEFAULT_LNG ? this._currentLng : undefined);
-    // Limpiar caché viejo al arrancar — el servidor es la única fuente de verdad
-    if (isPlatformBrowser(this.platformId)) {
-      try { localStorage.removeItem(this._REQUESTS_CACHE_KEY); } catch {}
-    }
-    this.driverRequests.set([]);
-    this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
+    // Sin filtro de distancia: el conductor debe ver TODAS las solicitudes activas sin importar GPS
+    // El refresh de 20s tampoco usa distancia para no excluir solicitudes válidas
+    this.agService.getSearchingRequests(vt, undefined, undefined).then(reqs => {
       this.driverRequests.set(reqs);
       this._saveRequestsToCache(reqs);
       if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
       this.cdr.markForCheck();
-    });
+    }).catch(() => {});
     // Cancelar suscripción previa
     if (this._requestsChannel) {
       this._requestsChannel.unsubscribe();
@@ -11571,7 +11560,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Refresh cada 20s — merge seguro: agrega nuevas del servidor, expira viejas,
     // pero NO borra solicitudes válidas si el servidor devuelve vacío (error de red)
     this._driverRefreshInterval = setInterval(() => {
-      this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
+      this.agService.getSearchingRequests(vt, undefined, undefined).then(reqs => {
         const now = Date.now();
         this.driverRequests.update(current => {
           const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
