@@ -804,6 +804,13 @@ export class AndaGanaService {
           onUpdate(payload.new as AgTripRequest);
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'ag_trip_requests' },
+        (payload) => {
+          if (payload.old?.id) onUpdate({ id: payload.old.id, status: 'cancelled' } as any);
+        },
+      )
       .subscribe();
     return channel;
   }
@@ -889,6 +896,24 @@ export class AndaGanaService {
       if (!resp.ok) return null;
       const data = await resp.json();
       return typeof data?.wallet_balance === 'number' ? data.wallet_balance : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getDriverProfileByPhone(phone: string): Promise<{ profile: any; driver: any } | null> {
+    try {
+      const url = `${environment.andaGana.functionsBaseUrl}/ag-api?action=driver-by-phone&phone=${encodeURIComponent(phone)}`;
+      const resp = await fetch(url, {
+        headers: {
+          apikey: environment.supabase.anonKey,
+          Authorization: `Bearer ${environment.supabase.anonKey}`,
+        },
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      if (!data?.driver) return null;
+      return { profile: data.profile, driver: data.driver };
     } catch {
       return null;
     }
@@ -1503,6 +1528,7 @@ export class AndaGanaService {
     const json: any = sub.toJSON();
     await this.supabase.from('ag_push_subs').upsert({
       user_id: userId,
+      provider: 'webpush',
       endpoint: json.endpoint,
       p256dh: json.keys?.p256dh,
       auth: json.keys?.auth,

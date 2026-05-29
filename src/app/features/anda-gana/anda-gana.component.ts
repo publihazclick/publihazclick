@@ -3010,6 +3010,28 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </button>
 
+          <!-- Estado notificaciones — visible siempre en el drawer -->
+          @if (driverOnline()) {
+            <div class="mx-4 mt-2 rounded-xl px-3 py-2 flex items-center gap-2 w-[calc(100%-2rem)]"
+              [style]="pushDiagStatus() === 'ok' ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)'">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px"
+                [style.color]="pushDiagStatus() === 'ok' ? '#34d399' : '#f87171'">
+                {{ pushDiagStatus() === 'ok' ? 'notifications_active' : 'notifications_off' }}
+              </span>
+              <p class="text-xs flex-1"
+                [style.color]="pushDiagStatus() === 'ok' ? '#34d399' : '#f87171'">
+                {{ pushDiagLabel() }}
+              </p>
+              @if (pushDiagStatus() !== 'ok' && pushDiagStatus() !== 'checking') {
+                <button (click)="fixPushNotifications()"
+                  class="text-xs font-bold px-2 py-1 rounded-lg flex-shrink-0"
+                  style="background:rgba(124,58,237,0.2);color:#a78bfa">
+                  Activar
+                </button>
+              }
+            </div>
+          }
+
           <!-- Opciones -->
           <nav class="flex-1 overflow-y-auto py-3 px-3">
             @for (item of driverMenuItems; track item.label) {
@@ -3820,6 +3842,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   {{ driverOnline() ? 'Estás recibiendo solicitudes' : 'No recibes solicitudes' }}
                 </p>
                 <p class="text-slate-600 text-xs">Puedes conectarte y desconectarte sin penalizaciones en cualquier momento.</p>
+              </div>
+              <!-- Diagnóstico de notificaciones -->
+              <div class="w-full rounded-2xl p-3 flex flex-col gap-2" style="background:#fafafa;border:1px solid #e2e8f0">
+                <p class="font-bold text-xs text-slate-700">Estado de notificaciones</p>
+                <p class="text-xs" [style.color]="pushDiagStatus() === 'ok' ? '#10b981' : pushDiagStatus() === 'error' ? '#ef4444' : '#f59e0b'">
+                  {{ pushDiagLabel() }}
+                </p>
+                @if (pushDiagStatus() !== 'ok') {
+                  <button (click)="fixPushNotifications()"
+                    class="w-full rounded-xl py-2 text-xs font-bold text-white"
+                    style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+                    Activar notificaciones
+                  </button>
+                }
               </div>
             </div>
           }
@@ -7022,6 +7058,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Commission + wallet — driver
   driverCommissionPct  = signal(0);
   driverWalletBalance  = signal(0);
+  // Push diagnosis
+  pushDiagStatus = signal<'checking'|'ok'|'error'|'denied'>('checking');
+  pushDiagLabel  = signal('Verificando...');
   // Rating
   ratingModal      = signal(false);
   ratingStars      = signal(0);
@@ -7692,6 +7731,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this._restoreActiveTrip();
     } else {
       let mine = await this.agService.getMyDriverProfile();
+      // Fallback: si RLS bloquea la consulta directa, buscar por teléfono guardado (service_role)
+      if (!mine && isPlatformBrowser(this.platformId)) {
+        const savedPhone = localStorage.getItem('movi-ag-phone');
+        if (savedPhone) {
+          const fallback = await this.agService.getDriverProfileByPhone(savedPhone);
+          if (fallback?.driver) {
+            mine = fallback.driver;
+            if (fallback.profile && !this.agProfile()) {
+              this.agProfile.set(fallback.profile);
+            }
+          }
+        }
+      }
       // Auto-upgrade: cualquier conductor pending pasa directo a quick (habilitado para primera carrera)
       if (mine && mine.status === 'pending') {
         await getMoviClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
@@ -7753,7 +7805,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (!this._onlineSessionId) {
         this.agService.startOnlineSession(mine.id).then(id => { this._onlineSessionId = id; }).catch(() => {});
       }
-      // Registrar push si ya tiene permiso; si no, lo pedirá cuando toque el banner
+      // Registrar push — FCM nativo inmediato (no depende del GPS), web push con delay
+      this._registerNativePush().catch(() => {});
       setTimeout(() => this._autoRegisterPush(), 500);
     }
     // Cargar viajes activos (ofertas aceptadas por el pasajero)
@@ -9728,8 +9781,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         };
         document.addEventListener('visibilitychange', this._visibilityHandler);
       }
-      // Auto-registrar push para recibir solicitudes aunque la app esté cerrada
-      this._autoRegisterPush();
+      // Registrar notificaciones para recibir solicitudes aunque la app esté cerrada
+      this._registerNativePush().catch(() => {});
+      this._autoRegisterPush().catch(() => {});
     } else {
       // Detener tracking, cerrar sesión y limpiar solicitudes
       this.stopGpsTracking();
@@ -10175,36 +10229,154 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     // Background tracking con Capacitor (solo app nativa Android/iOS)
     this._startBackgroundTracking(driverId).catch(() => {});
-    this._registerNativePush().catch(() => {});
     // Web Push para navegadores (funciona con app cerrada)
     this._autoRegisterWebPush().catch(() => {});
   }
 
-  private async _registerNativePush(): Promise<void> {
-    try {
-      const w = window as any;
-      const cap = w.Capacitor;
-      if (!cap?.isNativePlatform?.()) return;
-      const PushNotifications = cap.Plugins?.PushNotifications;
-      if (!PushNotifications) return;
+  async fixPushNotifications(): Promise<void> {
+    this.pushDiagStatus.set('checking');
+    this.pushDiagLabel.set('Activando...');
+    this.cdr.markForCheck();
+    this._nativePushRegistered = false;
+    await this._registerNativePush();
+  }
 
-      const perm = await PushNotifications.checkPermissions();
+  private _nativePushRegistered = false;
+  private async _registerNativePush(): Promise<void> {
+    if (this._nativePushRegistered) return;
+
+    const cap = (window as any)?.Capacitor;
+    if (!cap?.isNativePlatform?.()) {
+      this.pushDiagStatus.set('error');
+      this.pushDiagLabel.set('Notificaciones solo funcionan en la app nativa (APK)');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const PP = cap.Plugins?.PushNotifications;
+    if (!PP) {
+      this.pushDiagStatus.set('error');
+      this.pushDiagLabel.set('Plugin FCM no encontrado — reinstala la app');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    try {
+      const perm = await PP.checkPermissions();
+      if (perm.receive === 'denied') {
+        this.pushDiagStatus.set('denied');
+        this.pushDiagLabel.set('Permiso denegado — ve a Ajustes del celular → Apps → Movi → Notificaciones y actívalas');
+        this.cdr.markForCheck();
+        return;
+      }
       if (perm.receive !== 'granted') {
-        const req = await PushNotifications.requestPermissions();
-        if (req.receive !== 'granted') return;
+        const req = await PP.requestPermissions();
+        if (req.receive !== 'granted') {
+          this.pushDiagStatus.set('error');
+          this.pushDiagLabel.set('Debes aceptar los permisos de notificación');
+          this.cdr.markForCheck();
+          return;
+        }
       }
 
-      PushNotifications.addListener('registration', async (token: { value: string }) => {
-        try { await this.agService.registerFcmToken(token.value); } catch (e) { console.warn('fcm reg', e); }
-      });
-      PushNotifications.addListener('registrationError', (err: any) => console.warn('fcm regErr', err));
-      PushNotifications.addListener('pushNotificationActionPerformed', (ev: any) => {
-        const url = ev?.notification?.data?.url;
-        if (url && typeof window !== 'undefined') window.location.href = url;
+      await PP.removeAllListeners().catch(() => {});
+
+      PP.addListener('registration', async (token: { value: string }) => {
+        if (!token?.value) return;
+        this._nativePushRegistered = true;
+        try {
+          await this.agService.registerFcmToken(token.value);
+          this.pushDiagStatus.set('ok');
+          this.pushDiagLabel.set('✓ Activo — recibirás solicitudes aunque la app esté cerrada');
+          this.cdr.markForCheck();
+        } catch {
+          setTimeout(() => this.agService.registerFcmToken(token.value).catch(() => {}), 5000);
+        }
       });
 
-      await PushNotifications.register();
-    } catch (e) { console.warn('native push init:', e); }
+      PP.addListener('registrationError', (err: any) => {
+        this._nativePushRegistered = false;
+        this.pushDiagStatus.set('error');
+        this.pushDiagLabel.set('Error al registrar FCM: ' + (err?.error ?? JSON.stringify(err)));
+        this.cdr.markForCheck();
+      });
+
+      PP.addListener('pushNotificationReceived', (n: any) => {
+        this._notifyNewTrip({ offered_price: n?.data?.price, distance_km: n?.data?.dist });
+      });
+
+      PP.addListener('pushNotificationActionPerformed', (ev: any) => {
+        const url = ev?.notification?.data?.url;
+        if (url) window.location.href = url;
+      });
+
+      this.pushDiagStatus.set('checking');
+      this.pushDiagLabel.set('Registrando con Firebase...');
+      this.cdr.markForCheck();
+      await PP.register();
+
+    } catch (e: any) {
+      this.pushDiagStatus.set('error');
+      this.pushDiagLabel.set('Error: ' + (e?.message ?? String(e)));
+      this.cdr.markForCheck();
+    }
+  }
+
+  private _audioCtx: AudioContext | null = null;
+  private _getAudioCtx(): AudioContext | null {
+    try {
+      if (!this._audioCtx || this._audioCtx.state === 'closed') {
+        this._audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      return this._audioCtx;
+    } catch { return null; }
+  }
+
+  private _notifyNewTrip(req: any): void {
+    if (typeof window === 'undefined') return;
+
+    // 1. Vibración fuerte — funciona en background con foreground service
+    try {
+      navigator.vibrate?.([500, 100, 500, 100, 500, 100, 800]);
+    } catch {}
+
+    // 2. Sonido — reusar AudioContext y forzar resume (necesario en background)
+    try {
+      const ctx = this._getAudioCtx();
+      if (ctx) {
+        const play = () => {
+          // 3 pitidos descendentes: agudo → medio → agudo
+          [[880, 0], [660, 0.2], [880, 0.4]].forEach(([freq, when]) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.8, ctx.currentTime + when);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + 0.18);
+            osc.start(ctx.currentTime + when);
+            osc.stop(ctx.currentTime + when + 0.2);
+          });
+        };
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(play).catch(() => {});
+        } else {
+          play();
+        }
+      }
+    } catch {}
+
+    // 3. Audio HTML como fallback (más compatible con background)
+    try {
+      const a = new Audio('/notification.wav');
+      a.volume = 1;
+      a.play().catch(() => {});
+    } catch {}
+
+    // Pedir permiso si aún no se ha otorgado (solo una vez)
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
   }
 
   private async _autoRegisterWebPush(): Promise<void> {
@@ -10240,25 +10412,50 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _bgWatcherId: string | null = null;
+  private _bgLastCheck = 0;
+  private _bgNotifiedIds = new Set<string>();
+
   private async _startBackgroundTracking(driverId: string): Promise<void> {
     try {
       const w = window as any;
       const cap = w.Capacitor;
-      if (!cap?.isNativePlatform?.()) return; // solo nativa
+      if (!cap?.isNativePlatform?.()) return;
       const BackgroundGeolocation = cap.Plugins?.BackgroundGeolocation;
       if (!BackgroundGeolocation) return;
       const distanceFilter = await this.agService.getDistanceFilter();
       this._bgWatcherId = await BackgroundGeolocation.addWatcher({
-        backgroundMessage: 'Movi Conductor: tracking activo',
-        backgroundTitle: 'Recibiendo solicitudes',
+        backgroundMessage: 'Movi Conductor: hay solicitudes disponibles',
+        backgroundTitle: '🚗 Movi — En línea',
         requestPermissions: true,
         stale: false,
         distanceFilter,
-      }, (location: any, error: any) => {
-        if (error) { console.error('bg-loc', error); return; }
-        if (location && (location.accuracy == null || location.accuracy <= 50)) {
+      }, async (location: any, error: any) => {
+        if (error) return;
+        if (!location) return;
+
+        // Actualizar posición GPS
+        if (location.accuracy == null || location.accuracy <= 50) {
           this.agService.updateDriverLocation(driverId, location.latitude, location.longitude, location.bearing ?? 0);
         }
+
+        // Revisar nuevas solicitudes cada vez que llega una posición GPS
+        // (el callback GPS corre incluso con la app en background)
+        const now = Date.now();
+        if (now - this._bgLastCheck < 15000) return; // máximo 1 vez cada 15s
+        this._bgLastCheck = now;
+
+        try {
+          const driver = this.driverData();
+          const vt = driver?.vehicle_type === 'moto' ? 'moto' : 'carro';
+          const reqs = await this.agService.getSearchingRequests(vt, location.latitude, location.longitude);
+          const newOnes = (reqs as any[]).filter(r => !this._bgNotifiedIds.has(r.id));
+          if (newOnes.length > 0) {
+            newOnes.forEach(r => this._bgNotifiedIds.add(r.id));
+            // Limpiar IDs viejos para no crecer indefinidamente
+            if (this._bgNotifiedIds.size > 50) this._bgNotifiedIds.clear();
+            this._notifyNewTrip(newOnes[0]);
+          }
+        } catch {}
       });
     } catch (e) { console.warn('BG geo init:', e); }
   }
@@ -11141,8 +11338,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._cancelCheckInterval = setInterval(() => {
       const visible = this.driverRequests();
       if (!visible.length) return;
-      this.agService.checkRequestsStatus(visible.map(r => r.id)).then(statuses => {
-        const cancelledIds = statuses.filter(s => s.status !== 'searching').map(s => s.id);
+      const requestedIds = visible.map(r => r.id);
+      this.agService.checkRequestsStatus(requestedIds).then(statuses => {
+        const returnedIds = new Set(statuses.map(s => s.id));
+        // Filas con status != searching + filas que desaparecieron por RLS (canceladas y ya no visibles)
+        const cancelledIds = [
+          ...statuses.filter(s => s.status !== 'searching').map(s => s.id),
+          ...requestedIds.filter(id => !returnedIds.has(id)),
+        ];
         if (!cancelledIds.length) return;
         cancelledIds.forEach(id => this._markRequestCancelled(id));
         this.driverRequests.update(list => {
@@ -11172,6 +11375,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.driverRequests.update(list => {
           if (list.some(r => r.id === req.id)) return list;
           this.agService.logMetricEvent('offer_seen').catch(() => {});
+          this._notifyNewTrip(req);
           const updated = [req, ...list];
           this._saveRequestsToCache(updated);
           return updated;
@@ -13059,19 +13263,30 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   async _autoRegisterPush(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      this.pushDiagStatus.set('error');
+      this.pushDiagLabel.set('Este navegador no soporta Web Push');
+      this.cdr.markForCheck(); return;
+    }
     const vapid = (environment as any).vapidPublicKey;
     if (!vapid) return;
     try {
-      // Si el permiso ya fue negado explícitamente, no insistir
-      if (Notification.permission === 'denied') return;
+      if (Notification.permission === 'denied') {
+        this.pushDiagStatus.set('denied');
+        this.pushDiagLabel.set('Permiso denegado — actívalo en el menú del navegador o en Ajustes → Apps → Movi');
+        this.cdr.markForCheck(); return;
+      }
       const reg = await navigator.serviceWorker.register('/sw-movi.js');
       let granted = Notification.permission === 'granted';
       if (!granted) {
         const res = await Notification.requestPermission();
         granted = res === 'granted';
       }
-      if (!granted) return;
+      if (!granted) {
+        this.pushDiagStatus.set('error');
+        this.pushDiagLabel.set('Permiso no concedido — toca "Activar"');
+        this.cdr.markForCheck(); return;
+      }
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
         const key = this._urlB64ToUint8(vapid);
@@ -13079,7 +13294,14 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       }
       await this.agService.registerPushSubscription(sub);
       this.pushEnabled.set(true);
-    } catch {}
+      this.pushDiagStatus.set('ok');
+      this.pushDiagLabel.set('✓ Notificaciones activas — recibirás viajes con la app cerrada');
+      this.cdr.markForCheck();
+    } catch (e: any) {
+      this.pushDiagStatus.set('error');
+      this.pushDiagLabel.set('Error: ' + (e?.message ?? String(e)));
+      this.cdr.markForCheck();
+    }
   }
 
   async enablePush(): Promise<void> {
@@ -13241,12 +13463,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpError.set('');
     this.cdr.markForCheck();
     const phone = '+57' + this.qrPhone().replace(/\D/g, '');
+    const edgeProfile = this._qrEdgeProfile;
 
     // Use edge function with service_role — bypasses all client-side auth/RLS issues
     const sb = getMoviClient();
     const { data, error } = await sb.functions.invoke('ag-register-driver', {
       body: {
         phone,
+        ag_user_id: edgeProfile?.id ?? null,
+        name: (edgeProfile?.full_name ?? this.qrName().trim()) || 'Conductor',
         vehicle_type: vehicle,
         vehicle_brand: this.qrVehicleBrand() || '',
         vehicle_color: this.qrVehicleColor() || '',
