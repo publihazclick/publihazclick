@@ -144,5 +144,20 @@ serve(async (req) => {
     });
   }
 
+  // ── GET /ag-api?action=driver-wallet&driver_id=... ──────────
+  // Usa service_role para bypasear RLS — el balance siempre se devuelve correctamente
+  if (action === 'driver-wallet' && req.method === 'GET') {
+    const driverId = url.searchParams.get('driver_id') ?? '';
+    if (!driverId) return json({ error: 'driver_id requerido' }, 400);
+    if (!SUPA_URL || !SUPA_KEY) return json({ error: 'Supabase not configured' }, 500);
+    const supabase = createClient(SUPA_URL, SUPA_KEY);
+    const { data } = await supabase
+      .from('ag_drivers')
+      .select('wallet_balance')
+      .eq('id', driverId)
+      .single();
+    return json({ wallet_balance: data?.wallet_balance ?? 0 });
+  }
+
   return json({ error: 'Unknown action' }, 404);
 });
