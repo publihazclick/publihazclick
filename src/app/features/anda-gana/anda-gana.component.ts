@@ -7894,6 +7894,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Approved: siempre cargar (conductor está online por defecto). Quick/otros: siempre cargar.
     const shouldLoad = status !== 'rejected';
     if (shouldLoad) {
+      // Poner online y cargar solicitudes ANTES de cualquier await para que no falle si algo lanza error
+      this.driverOnline.set(true);
+      this.agService.setDriverOnline(mine.id, true).catch(() => {});
       this._loadDriverRequests(mine.vehicle_type);
       // Cuando el conductor vuelve a la app desde background, refrescar solicitudes inmediatamente
       if (isPlatformBrowser(this.platformId) && !this._visibilityHandler) {
@@ -7906,7 +7909,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       }
     }
     // Cargar comisión — y saldo desde mine directamente (evita falla RLS si hay registros duplicados)
-    const pct = await this.agService.getCommissionPct();
+    const pct = await this.agService.getCommissionPct().catch(() => 12);
     this.driverCommissionPct.set(pct);
     // Usar wallet_balance del objeto mine si está disponible; refrescar en background desde DB
     if (mine.wallet_balance != null) {
@@ -7923,11 +7926,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
       setTimeout(() => { this.walletPaymentResult.set(null); this.cdr.markForCheck(); }, 6000);
     }
-    // Todos los conductores activos: siempre iniciar en línea por defecto
-    // El conductor permanece online hasta que él mismo vaya al menú y confirme salir de línea
+    // GPS, timer y push se inician aquí (después de los awaits de comisión/wallet)
     if (status !== 'rejected') {
-      this.driverOnline.set(true);
-      this.agService.setDriverOnline(mine.id, true).catch(() => {});
       this.startGpsTracking(mine.id);
       this._startOnlineTimer();
       if (!this._onlineSessionId) {
@@ -7938,7 +7938,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       setTimeout(() => this._autoRegisterPush(), 500);
     }
     // Cargar viajes activos (ofertas aceptadas por el pasajero)
-    const activeTrips = await this.agService.getDriverActiveTrips(mine.id);
+    const activeTrips = await this.agService.getDriverActiveTrips(mine.id).catch(() => []);
     if (activeTrips.length > 0) {
       this.driverActiveTrips.set(activeTrips);
       // Si recargó con un viaje activo yendo al pickup, restaurar mapa fullscreen automáticamente
@@ -7955,7 +7955,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       }
     }
     // Cargar beneficios (tier, fundador, comisión escalonada)
-    const benefits = await this.agService.getDriverBenefits(mine.id);
+    const benefits = await this.agService.getDriverBenefits(mine.id).catch(() => null);
     if (benefits) {
       this.driverBenefits.set(benefits);
       // Usar la tasa personal del conductor (no la tasa global de la plataforma)
