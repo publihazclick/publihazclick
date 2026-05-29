@@ -11216,6 +11216,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const pickupLat = this._currentLat;
     const pickupLng = this._currentLng;
     if (!pickupLat || !pickupLng || pickupLat === this.DEFAULT_LAT) return;
+    // Limpiar CUALQUIER ruta previa del mapa (destino o approach anterior)
+    this._clearRoute();
     this._clearApproachRoute();
     try {
       const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${driverLng},${driverLat};${pickupLng},${pickupLat}?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`;
