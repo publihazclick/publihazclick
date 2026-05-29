@@ -1400,21 +1400,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                 </div>
                 <!-- Destino + pago -->
-                <div class="flex gap-2">
-                  <div class="flex-1 flex items-center gap-3 rounded-xl px-3 py-2.5"
-                    style="background:#f8fafc;border:1px solid #e2e8f0">
-                    <span class="material-symbols-outlined text-slate-700 flex-shrink-0" style="font-size:18px">place</span>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-slate-500 text-[10px] uppercase font-bold">Destino</p>
-                      <p class="text-slate-800 text-sm font-semibold truncate">{{ tripDest()?.name }}</p>
-                    </div>
+                <div class="rounded-xl px-3 py-3 flex items-center gap-3"
+                  style="background:#f8fafc;border:1px solid #e2e8f0">
+                  <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:18px">place</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-slate-400 text-[10px] uppercase font-bold">Destino</p>
+                    <p class="text-slate-800 text-sm font-semibold truncate">{{ tripDest()?.name }}</p>
                   </div>
-                  <div class="flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2.5"
+                  <div class="flex-shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
                     [style.background]="paymentMethodMap[tripPayment()].bgSel"
                     [style.border]="'1px solid ' + paymentMethodMap[tripPayment()].color">
-                    <span class="material-symbols-outlined" style="font-size:20px"
+                    <span class="material-symbols-outlined" style="font-size:16px"
                       [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].icon }}</span>
-                    <p class="text-[10px] font-black whitespace-nowrap"
+                    <p class="text-xs font-black"
                       [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].label }}</p>
                   </div>
                 </div>
@@ -1469,32 +1467,38 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </button>
 
                 <!-- Chat + Llamar + Finalizar / Cancelar -->
-                <div class="flex gap-2">
-                  <button (click)="openPassengerChat()"
-                    class="px-4 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
-                    <span class="material-symbols-outlined" style="font-size:15px">chat</span>
-                    Chat
-                    @if (chatUnread() > 0) {
-                      <span class="min-w-[16px] h-4 px-1 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center">{{ chatUnread() }}</span>
-                    }
-                  </button>
-                  <button (click)="callDriver()" [disabled]="callingDriver()"
-                    class="px-4 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-50"
-                    style="background:linear-gradient(135deg,#16a34a,#22c55e)">
-                    <span class="material-symbols-outlined" style="font-size:15px">{{ callingDriver() ? 'hourglass_empty' : 'call' }}</span>
-                    {{ callingDriver() ? '...' : 'Llamar' }}
-                  </button>
+                <div class="flex flex-col gap-2">
+                  <!-- Fila 1: Chat y Llamar -->
+                  <div class="grid grid-cols-2 gap-2">
+                    <button (click)="openPassengerChat()"
+                      class="py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                      style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                      <span class="material-symbols-outlined" style="font-size:18px">chat</span>
+                      Chat
+                      @if (chatUnread() > 0) {
+                        <span class="min-w-[18px] h-[18px] px-1 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center">{{ chatUnread() }}</span>
+                      }
+                    </button>
+                    <button (click)="callDriver()" [disabled]="callingDriver()"
+                      class="py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+                      style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+                      <span class="material-symbols-outlined" style="font-size:18px">{{ callingDriver() ? 'hourglass_empty' : 'call' }}</span>
+                      {{ callingDriver() ? 'Llamando...' : 'Llamar' }}
+                    </button>
+                  </div>
+                  <!-- Fila 2: Finalizar viaje -->
                   <button (click)="finishTrip()"
-                    class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-                    style="background:linear-gradient(135deg,#16a34a,#15803d)">
-                    <span class="material-symbols-outlined" style="font-size:15px">check_circle</span>
+                    class="w-full py-3.5 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                    style="background:linear-gradient(135deg,#16a34a,#15803d);box-shadow:0 4px 12px rgba(22,163,74,0.3)">
+                    <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
                     Finalizar viaje
                   </button>
+                  <!-- Fila 3: Cancelar -->
                   <button (click)="openCancelWithReason('passenger')"
-                    class="px-4 py-2.5 rounded-xl text-slate-500 text-xs font-bold active:scale-[0.98] transition-all"
+                    class="w-full py-2.5 rounded-xl text-slate-500 text-sm font-bold flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
                     style="background:#f1f5f9;border:1px solid #e2e8f0">
-                    Cancelar
+                    <span class="material-symbols-outlined" style="font-size:15px">cancel</span>
+                    Cancelar viaje
                   </button>
                 </div>
               </div>
@@ -10558,6 +10562,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._stopWaiting();
     this._unsubscribeOffers();
     this.stopDriverTracking();
+    this._stopTrackingAssignedDriver();
     this.passengerMapFullscreen.set(false);
     this.currentTripStage.set(null);
     this._clearNavRoute();
@@ -11413,14 +11418,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._cancelCheckInterval = setInterval(() => {
       const visible = this.driverRequests();
       if (!visible.length) return;
-      const requestedIds = visible.map(r => r.id);
-      this.agService.checkRequestsStatus(requestedIds).then(statuses => {
-        const returnedIds = new Set(statuses.map(s => s.id));
-        // Filas con status != searching + filas que desaparecieron por RLS (canceladas y ya no visibles)
-        const cancelledIds = [
-          ...statuses.filter(s => s.status !== 'searching').map(s => s.id),
-          ...requestedIds.filter(id => !returnedIds.has(id)),
-        ];
+      // La RLS ya permite ver filas 'cancelled', así que status !== 'searching' detecta cancelaciones.
+      // No usar "missing ID" logic: un error de red devuelve [] y borraría TODO.
+      this.agService.checkRequestsStatus(visible.map(r => r.id)).then(statuses => {
+        if (!statuses.length) return; // query vacío = error de red, no borrar nada
+        const cancelledIds = statuses.filter(s => s.status !== 'searching').map(s => s.id);
         if (!cancelledIds.length) return;
         cancelledIds.forEach(id => this._markRequestCancelled(id));
         this.driverRequests.update(list => {
