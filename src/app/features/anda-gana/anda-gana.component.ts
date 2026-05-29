@@ -11283,14 +11283,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const vt = vehicleType === 'moto' ? 'moto' : vehicleType ? 'carro' : undefined;
     const dLat = lat ?? (this._currentLat !== this.DEFAULT_LAT ? this._currentLat : undefined);
     const dLng = lng ?? (this._currentLng !== this.DEFAULT_LNG ? this._currentLng : undefined);
-    // Carga inicial: mostrar caché brevemente mientras llegan datos frescos del servidor
-    const cached = this._loadRequestsFromCache();
-    if (cached.length > 0) {
-      this.driverRequests.set(cached);
-      this.cdr.markForCheck();
+    // Limpiar caché viejo al arrancar — el servidor es la única fuente de verdad
+    if (isPlatformBrowser(this.platformId)) {
+      try { localStorage.removeItem(this._REQUESTS_CACHE_KEY); } catch {}
     }
+    this.driverRequests.set([]);
     this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
-      // El servidor es autoritativo: reemplazar caché completamente
       this.driverRequests.set(reqs);
       this._saveRequestsToCache(reqs);
       if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
