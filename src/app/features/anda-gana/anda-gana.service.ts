@@ -754,7 +754,7 @@ export class AndaGanaService {
       .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)')
       .eq('status', 'searching')
       .gte('created_at', cutoff)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .limit(50);
     if (vehicleType) query = query.eq('vehicle_type', vehicleType);
     const { data } = await query;

@@ -11503,8 +11503,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
             !this._cancelledRequestIds.has(r.id) &&
             now - new Date(r.created_at).getTime() <= 240000
           );
+          // Orden: más antigua primero (llevan más tiempo esperando → mayor prioridad)
           const merged = [...reqs, ...kept].sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
           this._saveRequestsToCache(merged);
           return merged;
@@ -11551,7 +11552,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           if (list.some(r => r.id === req.id)) return list;
           this.agService.logMetricEvent('offer_seen').catch(() => {});
           this._notifyNewTrip(req);
-          const updated = [req, ...list];
+          // Nuevas solicitudes van al final — ya son las más recientes
+          const updated = [...list, req];
           this._saveRequestsToCache(updated);
           return updated;
         });
