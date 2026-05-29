@@ -11406,11 +11406,25 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       clearInterval(this._cancelCheckInterval);
       this._cancelCheckInterval = null;
     }
-    // Refresh cada 20s — el servidor es la fuente de verdad; reemplaza directamente sin merge
+    // Refresh cada 20s — merge seguro: agrega nuevas del servidor, expira viejas,
+    // pero NO borra solicitudes válidas si el servidor devuelve vacío (error de red)
     this._driverRefreshInterval = setInterval(() => {
       this.agService.getSearchingRequests(vt, dLat, dLng).then(reqs => {
-        this.driverRequests.set(reqs);
-        this._saveRequestsToCache(reqs);
+        const now = Date.now();
+        this.driverRequests.update(current => {
+          const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
+          // Mantener solicitudes locales que: no llegaron del servidor, no están canceladas, < 4 min
+          const kept = current.filter(r =>
+            !serverIds.has(r.id) &&
+            !this._cancelledRequestIds.has(r.id) &&
+            now - new Date(r.created_at).getTime() <= 240000
+          );
+          const merged = [...reqs, ...kept].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          this._saveRequestsToCache(merged);
+          return merged;
+        });
         this.cdr.markForCheck();
       });
     }, 20000);
