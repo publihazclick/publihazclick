@@ -14217,6 +14217,10 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (!tripId) return;
     this._clearArrivalTimer();
     this.arrivedAtPickupTimer.set(null);
+    this.passengerSection.set(null);
+    this.passengerMapFullscreen.set(true);
+    this._drawPassengerTripRoute();
+    setTimeout(() => this._map?.resize(), 200);
     await this.agService.updateTripStage(tripId, 'picked_up');
     this.cdr.markForCheck();
   }
