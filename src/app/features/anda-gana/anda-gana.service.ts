@@ -623,10 +623,10 @@ export class AndaGanaService {
     return { success: true, tripId: row.id };
   }
 
-  async cancelTripRequest(tripRequestId: string): Promise<void> {
+  async cancelTripRequest(tripRequestId: string, reason?: string): Promise<void> {
     await this.supabase
       .from('ag_trip_requests')
-      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .update({ status: 'cancelled', updated_at: new Date().toISOString(), cancel_reason: reason ?? null })
       .eq('id', tripRequestId);
   }
 

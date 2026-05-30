@@ -197,6 +197,46 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ AVISO CONDUCTOR: PASAJERO CANCELÓ ═══════════ -->
+  @if (driverCancelAlert() !== null) {
+    <div class="fixed inset-0 z-[9992] flex items-center justify-center px-5"
+      style="background:rgba(0,0,0,0.75);backdrop-filter:blur(6px)">
+      <div class="w-full max-w-sm rounded-3xl overflow-hidden"
+        style="background:#1a1a2e;border:1.5px solid rgba(239,68,68,0.4);box-shadow:0 24px 60px rgba(0,0,0,0.6)">
+        <!-- Header rojo -->
+        <div class="flex flex-col items-center gap-3 py-7 px-5"
+          style="background:linear-gradient(135deg,#dc2626,#ef4444)">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center"
+            style="background:rgba(255,255,255,0.15)">
+            <span class="material-symbols-outlined text-white" style="font-size:38px;font-variation-settings:'FILL' 1">cancel</span>
+          </div>
+          <p style="color:#fff;font-size:20px;font-weight:900;margin:0;text-align:center">El pasajero canceló el viaje</p>
+        </div>
+        <!-- Motivo -->
+        <div class="px-6 py-5 flex flex-col gap-4">
+          @if (driverCancelAlert()) {
+            <div class="rounded-2xl px-4 py-4 flex items-start gap-3"
+              style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25)">
+              <span class="material-symbols-outlined flex-shrink-0 mt-0.5" style="font-size:20px;color:#f87171">info</span>
+              <div>
+                <p style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 4px">Motivo</p>
+                <p style="color:#fff;font-weight:700;font-size:15px;margin:0;line-height:1.4">{{ driverCancelAlert() }}</p>
+              </div>
+            </div>
+          } @else {
+            <p style="color:rgba(255,255,255,0.5);font-size:13px;text-align:center;margin:0">El pasajero no indicó un motivo.</p>
+          }
+          <button (click)="driverCancelAlert.set(null)"
+            class="w-full py-4 rounded-2xl text-white font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+            style="background:linear-gradient(135deg,#374151,#4b5563);font-size:15px">
+            <span class="material-symbols-outlined" style="font-size:20px">check</span>
+            Entendido
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ BANNER PASAJERO: BUSCANDO / OFERTAS (flotante top) ═══════════ -->
   @if (tripSent() && !tripAccepted()) {
     <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8100;pointer-events:none;max-height:88dvh;display:flex;flex-direction:column;gap:10px">
@@ -7138,6 +7178,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Driver active trips (accepted offers)
   driverActiveTrips  = signal<any[]>([]);
   driverTripAlert    = signal<any | null>(null); // full-screen inDrive-style alert when offer accepted
+  driverCancelAlert  = signal<string | null>(null); // aviso al conductor cuando pasajero cancela
   driverBenefits     = signal<any | null>(null); // tier + founder + commission data
   // Driver menu sections
   driverSection      = signal<string | null>(null);
@@ -7963,25 +8004,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   /** Limpia todo el estado del conductor cuando el pasajero cancela el viaje */
-  private _handleTripCancelled(tripRequestId: string): void {
-    // Verificar si este viaje estaba en los activos del conductor
+  private _handleTripCancelled(tripRequestId: string, cancelReason?: string): void {
     const active = this.driverActiveTrips().find((t: any) =>
       t.trip_request_id === tripRequestId || t.ag_trip_requests?.id === tripRequestId
     );
-    if (!active) return; // No era un viaje del conductor, ignorar
+    if (!active) return;
 
     // Quitar de trips activos
     this.driverActiveTrips.update(list =>
       list.filter((t: any) => t.trip_request_id !== tripRequestId && t.ag_trip_requests?.id !== tripRequestId)
     );
 
-    // Cerrar modal si estaba abierto para este viaje
-    const alert = this.driverTripAlert();
-    if (alert && (alert.trip_request_id === tripRequestId || alert.ag_trip_requests?.id === tripRequestId)) {
+    // Cerrar modal de aceptación si estaba abierto
+    const tripAlert = this.driverTripAlert();
+    if (tripAlert && (tripAlert.trip_request_id === tripRequestId || tripAlert.ag_trip_requests?.id === tripRequestId)) {
       this.driverTripAlert.set(null);
     }
 
-    // Cerrar mapa fullscreen si estaba navegando a este viaje
+    // Cerrar mapa fullscreen si estaba navegando
     const fs = this.driverFullscreenTrip();
     if (fs && (fs.trip_request_id === tripRequestId || fs.ag_trip_requests?.id === tripRequestId)) {
       this.stopInAppNav();
@@ -7990,8 +8030,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       setTimeout(() => this._map?.resize(), 150);
     }
 
-    // Notificar al conductor
-    alert(`❌ El pasajero canceló el viaje.`);
+    // Mostrar aviso con motivo
+    this.driverCancelAlert.set(cancelReason ?? null);
     this.cdr.markForCheck();
   }
 
@@ -11637,7 +11677,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
           // Pasajero canceló el viaje — limpiar todo del conductor
           if (req.status === 'cancelled') {
-            this._handleTripCancelled(req.id);
+            this._handleTripCancelled(req.id, (req as any).cancel_reason);
           }
 
           // Pasajero aceptó — solo si no hay modal ya y el stage es null
@@ -11812,7 +11852,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return `${Math.floor(v / 60)}:${(v % 60).toString().padStart(2, '0')}`;
   }
 
-  cancelTrip() {
+  cancelTrip(reason?: string) {
     this._driverNearbyShown = false;
     this.driverNearbyAlert.set(false);
     this._stopWaiting();
@@ -11822,7 +11862,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.currentTripStage.set(null);
     this._clearNavRoute();
     const tripId = this.currentTripRequestId();
-    if (tripId) this.agService.cancelTripRequest(tripId);
+    if (tripId) this.agService.cancelTripRequest(tripId, reason);
     this.tripDest.set(null);
     this.tripSent.set(false);
     this.tripOpen.set(false);
@@ -14062,7 +14102,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   async confirmCancelWithReason(): Promise<void> {
     this.cancelReasonModal.set(false);
-    await this.cancelTrip();
+    await this.cancelTrip(this.cancelReasonSelected() || undefined);
   }
 
   // ── Counter-offer from passenger ─────────────────────────────
