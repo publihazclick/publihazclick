@@ -11574,6 +11574,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
             return updated;
           });
           this.cdr.markForCheck();
+
+          // Pasajero aceptó la oferta de este conductor
+          if (req.status === 'accepted') {
+            const driverId = this.driverData()?.id;
+            if (driverId) {
+              this.agService.getDriverActiveTrips(driverId).then(trips => {
+                const match = trips.find((t: any) => t.ag_trip_requests?.id === req.id || t.trip_request_id === req.id);
+                if (match) this._handleNewAcceptedOffer(match);
+              }).catch(() => {});
+            }
+          }
         }
       },
       undefined,
