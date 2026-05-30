@@ -11895,6 +11895,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.acceptingOfferId.set(null);
     this._clearRoute();
     if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
+    // Recrear el mapa del pasajero — al volver del viaje el contenedor cambia y Mapbox queda negro
+    setTimeout(() => this.retryGps('ag-map-user'), 400);
   }
 
   private _withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
