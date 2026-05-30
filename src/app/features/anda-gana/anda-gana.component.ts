@@ -8033,14 +8033,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Limpiar rutas y timers del mapa
     this._clearApproachRoute();
     this._clearNavRoute();
-    // Volver al home del conductor
+    // Asegurar estado inicial del conductor: sin fullscreen, sin nav, home visible
+    this.driverMapFullscreen.set(false);
+    this.driverFullscreenTrip.set(null);
+    this.navActive.set(false);
     if (this.driverSection() !== null) this.driverSection.set(null);
     // Mostrar aviso con motivo
     this.driverCancelAlert.set(cancelReason ?? null);
-    // Forzar render y luego resize del mapa
     this.cdr.markForCheck();
-    setTimeout(() => { this._map?.resize(); }, 400);
-    setTimeout(() => { this._map?.resize(); }, 900);
+    // Resize escalonado — conductor vuelve a 300px
+    [200, 500, 1000].forEach(ms => setTimeout(() => this._map?.resize(), ms));
   }
 
   private _waitForMap(cb: () => void, maxAttempts = 30): void {
@@ -13408,6 +13410,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       // Viaje cancelado: resetear home y mapa del pasajero
       if (stage === 'cancelled') {
         this.stopDriverTracking();
+        // Asegurar estado inicial del pasajero: sin fullscreen → 520px
         this.passengerMapFullscreen.set(false);
         this._clearNavRoute();
         this._clearApproachRoute();
@@ -13430,8 +13433,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this._clearRoute();
         if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
         this.cdr.markForCheck();
-        setTimeout(() => { this._map?.resize(); }, 400);
-        setTimeout(() => { this._map?.resize(); }, 900);
+        // Resize escalonado — pasajero vuelve a 520px
+        [200, 500, 1000].forEach(ms => setTimeout(() => this._map?.resize(), ms));
       }
     });
   }
