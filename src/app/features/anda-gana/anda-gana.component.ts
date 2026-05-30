@@ -11896,16 +11896,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._clearRoute();
     if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
     this.passengerSection.set(null);
-    // Recrear el mapa con coords en caché — evita pedir GPS de nuevo y el canvas negro
-    setTimeout(() => {
-      const lat = this._currentLat || this.DEFAULT_LAT;
-      const lng = this._currentLng || this.DEFAULT_LNG;
-      if (this._map) {
-        this._map.resize();
-      } else {
-        this._createMap('ag-map-user', lat, lng);
-      }
-    }, 600);
+    // Destruir y recrear el mapa siempre — resize() solo no es suficiente tras un viaje fullscreen
+    const lat = this._currentLat || this.DEFAULT_LAT;
+    const lng = this._currentLng || this.DEFAULT_LNG;
+    setTimeout(() => this._createMap('ag-map-user', lat, lng), 600);
   }
 
   private _withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
