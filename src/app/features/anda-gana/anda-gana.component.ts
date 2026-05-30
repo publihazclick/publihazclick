@@ -8038,7 +8038,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Mostrar aviso con motivo
     this.driverCancelAlert.set(cancelReason ?? null);
     // Forzar render y luego resize del mapa
-    try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
+    this.cdr.markForCheck();
     setTimeout(() => { this._map?.resize(); }, 400);
     setTimeout(() => { this._map?.resize(); }, 900);
   }
@@ -13429,7 +13429,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.acceptingOfferId.set(null);
         this._clearRoute();
         if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
-        try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
+        this.cdr.markForCheck();
         setTimeout(() => { this._map?.resize(); }, 400);
         setTimeout(() => { this._map?.resize(); }, 900);
       }
