@@ -624,6 +624,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
+          <!-- Botón A bordo -->
+          <button (click)="passengerConfirmBoarding()"
+            style="width:100%;padding:14px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(16,185,129,0.4);active:opacity-80">
+            <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">person_check</span>
+            ¡Ya estoy a bordo!
+          </button>
+
         </div>
       </div>
     </div>
@@ -9999,7 +10006,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const tripReqId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripReqId) return;
     await this.agService.updateTripStage(tripReqId, stage);
-    if (trip.ag_trip_requests) trip.ag_trip_requests.driver_stage = stage;
+    // Actualizar el signal con un nuevo objeto para que Angular OnPush detecte el cambio
+    this.driverActiveTrips.update(list =>
+      list.map(t => {
+        const id = t.trip_request_id ?? t.ag_trip_requests?.id;
+        if (id !== tripReqId) return t;
+        return { ...t, ag_trip_requests: { ...(t.ag_trip_requests ?? {}), driver_stage: stage } };
+      })
+    );
 
     // Push al pasajero según etapa
     const req = trip.ag_trip_requests ?? trip;
@@ -14095,6 +14109,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       clearInterval(this._arrivalTimerInterval);
       this._arrivalTimerInterval = null;
     }
+  }
+
+  async passengerConfirmBoarding(): Promise<void> {
+    const tripId = this.currentTripRequestId();
+    if (!tripId) return;
+    this._clearArrivalTimer();
+    this.arrivedAtPickupTimer.set(null);
+    await this.agService.updateTripStage(tripId, 'picked_up');
+    this.cdr.markForCheck();
   }
 
   // ── Trip receipt (recibo al finalizar) ────────────────────────
