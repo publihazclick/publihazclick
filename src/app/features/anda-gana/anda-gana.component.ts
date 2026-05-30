@@ -8040,9 +8040,21 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this.driverSection() !== null) this.driverSection.set(null);
     // Mostrar aviso con motivo
     this.driverCancelAlert.set(cancelReason ?? null);
+    // Restaurar mapa a estado inicial (300px, tiles recargados)
+    this._resetMapToInitialState();
+  }
+
+  /** Restaura el mapa al estado visual inicial: resize + jumpTo para recargar tiles WebGL */
+  private _resetMapToInitialState(): void {
+    const doReset = () => {
+      const m = this._map;
+      if (!m) return;
+      m.resize();
+      // jumpTo fuerza Mapbox a recargar tiles y redibujar el contexto WebGL
+      try { m.jumpTo({ center: m.getCenter(), zoom: m.getZoom() }); } catch {}
+    };
     this.cdr.markForCheck();
-    // Resize escalonado — conductor vuelve a 300px
-    [200, 500, 1000].forEach(ms => setTimeout(() => this._map?.resize(), ms));
+    [150, 400, 800].forEach(ms => setTimeout(doReset, ms));
   }
 
   private _waitForMap(cb: () => void, maxAttempts = 30): void {
@@ -13432,9 +13444,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.acceptingOfferId.set(null);
         this._clearRoute();
         if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
-        this.cdr.markForCheck();
-        // Resize escalonado — pasajero vuelve a 520px
-        [200, 500, 1000].forEach(ms => setTimeout(() => this._map?.resize(), ms));
+        // Restaurar mapa a estado inicial (520px, tiles recargados)
+        this._resetMapToInitialState();
       }
     });
   }
