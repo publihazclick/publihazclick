@@ -237,6 +237,68 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ MODAL CONDUCTOR: ESPERANDO AL PASAJERO EN PICKUP ═══════════ -->
+  @if (driverArrivalTrip() !== null && driverArrivalTimer() !== null) {
+    <div class="fixed inset-0 z-[9900] flex items-end justify-center pb-6 px-4"
+      style="background:rgba(0,0,0,0.72);backdrop-filter:blur(4px)">
+      <div class="w-full max-w-lg rounded-3xl overflow-hidden"
+        style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border:1.5px solid rgba(124,58,237,0.45);box-shadow:0 24px 64px rgba(0,0,0,0.8)">
+
+        <!-- Header púrpura -->
+        <div style="background:linear-gradient(90deg,rgba(124,58,237,0.25) 0%,rgba(99,102,241,0.15) 100%);padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#a78bfa;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
+            <span style="color:#a78bfa;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">Llegaste al punto de recogida</span>
+          </div>
+          <span style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700">Esperando al pasajero</span>
+        </div>
+
+        <!-- Cuerpo -->
+        <div style="padding:16px 18px 20px;display:flex;flex-direction:column;gap:14px">
+
+          <!-- Info pasajero -->
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff;border:2px solid rgba(124,58,237,0.4)">
+              {{ (driverArrivalTrip()?.ag_trip_requests?.ag_users?.full_name ?? 'P')[0].toUpperCase() }}
+            </div>
+            <div style="flex:1;min-width:0">
+              <p style="color:#fff;font-weight:900;font-size:15px;margin:0;line-height:1.2">{{ driverArrivalTrip()?.ag_trip_requests?.ag_users?.full_name ?? 'Tu pasajero' }}</p>
+              <p style="color:rgba(255,255,255,0.45);font-size:12px;margin:4px 0 0;font-weight:600">Destino: {{ driverArrivalTrip()?.ag_trip_requests?.dest_name ?? '—' }}</p>
+            </div>
+          </div>
+
+          <!-- Timer de espera -->
+          <div style="background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+            <span class="material-symbols-outlined" style="font-size:26px;color:#a78bfa;font-variation-settings:'FILL' 1">timer</span>
+            <div style="flex:1">
+              <p style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 3px">Tiempo de espera gratuito</p>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:28px;font-weight:900;line-height:1;transition:color 0.5s"
+                  [style.color]="driverArrivalTimer()! < 60 ? '#f87171' : driverArrivalTimer()! < 120 ? '#fbbf24' : '#a78bfa'">
+                  {{ padTime(driverArrivalTimer()!) }}
+                </span>
+                <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden">
+                  <div style="height:100%;border-radius:999px;transition:width 1s linear,background 0.5s"
+                    [style.width]="(driverArrivalTimer()! / 240 * 100) + '%'"
+                    [style.background]="driverArrivalTimer()! < 60 ? '#ef4444' : driverArrivalTimer()! < 120 ? '#f59e0b' : '#a78bfa'">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botón Pasajero a Bordo -->
+          <button (click)="driverPassengerBoarded()"
+            style="width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 6px 24px rgba(124,58,237,0.5)">
+            <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">person_check</span>
+            Pasajero a Bordo — Iniciar Ruta
+          </button>
+
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ BANNER PASAJERO: BUSCANDO / OFERTAS (flotante top) ═══════════ -->
   @if (tripSent() && !tripAccepted()) {
     <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8100;pointer-events:none;max-height:88dvh;display:flex;flex-direction:column;gap:10px">
@@ -7247,9 +7309,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   acceptedDriverEta      = signal<number | null>(null);
   // Distancia y tiempo REALES de Mapbox para la ruta conductor→pasajero
   approachRouteInfo      = signal<{ distKm: number; durationMin: number } | null>(null);
-  // 2. Timer "Conductor llegó — sal ya"
-  arrivedAtPickupTimer   = signal<number | null>(null);
+  // 2. Timer "Conductor llegó — sal ya" (pasajero)
+  arrivedAtPickupTimer        = signal<number | null>(null);
   private _arrivalTimerInterval: any = null;
+  // 2b. Modal conductor esperando al pasajero en pickup
+  driverArrivalTrip           = signal<any | null>(null);
+  driverArrivalTimer          = signal<number | null>(null);
+  private _driverArrivalTimerInterval: any = null;
   // 3. Recibo/resumen del viaje al finalizar
   tripReceiptModal       = signal(false);
   tripReceiptData        = signal<any | null>(null);
@@ -8037,6 +8103,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       setTimeout(() => this._map?.resize(), 150);
     }
 
+    // Cerrar modal de espera pickup del conductor si estaba activo
+    this._clearDriverArrivalTimer();
+    this.driverArrivalTrip.set(null);
+    this.driverArrivalTimer.set(null);
     // Limpiar rutas y timers del mapa
     this._clearApproachRoute();
     this._clearNavRoute();
@@ -8088,6 +8158,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
     if (this._waitingInterval) { clearInterval(this._waitingInterval); this._waitingInterval = null; }
     if (this._activeTripsInterval) { clearInterval(this._activeTripsInterval); this._activeTripsInterval = null; }
+    this._clearDriverArrivalTimer();
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
@@ -10028,12 +10099,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (pd) this.agService.sendPush({ userIds: [passengerAuthId], title: pd.title, body: pd.body, tag: `stage-${tripReqId}-${stage}`, urgent: stage === 'arrived_at_pickup' }).catch(() => {});
     }
 
-    // Conductor llegó al punto de recogida: cerrar fullscreen pickup para mostrar vista normal
-    if (stage === 'arrived_at_pickup' && this.driverMapFullscreen()) {
-      this.stopInAppNav();
-      this.driverMapFullscreen.set(false);
-      this.driverFullscreenTrip.set(null);
-      setTimeout(() => this._map?.resize(), 150);
+    // Conductor llegó al punto de recogida: cerrar fullscreen + abrir modal de espera
+    if (stage === 'arrived_at_pickup') {
+      if (this.driverMapFullscreen()) {
+        this.stopInAppNav();
+        this.driverMapFullscreen.set(false);
+        this.driverFullscreenTrip.set(null);
+        setTimeout(() => this._map?.resize(), 150);
+      }
+      this.driverArrivalTrip.set(trip);
+      this._startDriverArrivalTimer();
     }
 
     // Cuando inicia el viaje: activar fullscreen + navegar al destino
@@ -14109,6 +14184,32 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       clearInterval(this._arrivalTimerInterval);
       this._arrivalTimerInterval = null;
     }
+  }
+
+  private _startDriverArrivalTimer(): void {
+    this._clearDriverArrivalTimer();
+    this.driverArrivalTimer.set(240);
+    this._driverArrivalTimerInterval = setInterval(() => {
+      const t = this.driverArrivalTimer();
+      if (t === null || t <= 0) { this._clearDriverArrivalTimer(); return; }
+      this.driverArrivalTimer.set(t - 1);
+    }, 1000);
+  }
+
+  private _clearDriverArrivalTimer(): void {
+    if (this._driverArrivalTimerInterval) {
+      clearInterval(this._driverArrivalTimerInterval);
+      this._driverArrivalTimerInterval = null;
+    }
+  }
+
+  async driverPassengerBoarded(): Promise<void> {
+    const trip = this.driverArrivalTrip();
+    if (!trip) return;
+    this._clearDriverArrivalTimer();
+    this.driverArrivalTrip.set(null);
+    this.driverArrivalTimer.set(null);
+    await this.advanceStage(trip, 'on_route');
   }
 
   async passengerConfirmBoarding(): Promise<void> {
