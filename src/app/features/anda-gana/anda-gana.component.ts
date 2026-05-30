@@ -7908,11 +7908,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private _activeTripsInterval: ReturnType<typeof setInterval> | null = null;
 
+  private _driverBroadcastChannel: any = null;
+
   private _subscribeToMyOffers(driverId: string): void {
     if (!isPlatformBrowser(this.platformId)) return;
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, (offer) => {
       this._handleNewAcceptedOffer(offer);
+    });
+
+    // Canal broadcast directo: el pasajero envía señal sin pasar por RLS
+    if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} }
+    this._driverBroadcastChannel = this.agService.subscribeToDriverBroadcast(driverId, async (payload) => {
+      const trips = await this.agService.getDriverActiveTrips(driverId).catch(() => []);
+      if (!trips.length) return;
+      const match = trips.find((t: any) => t.id === payload?.offerId || t.trip_request_id === payload?.tripRequestId) ?? trips[0];
+      this._handleNewAcceptedOffer(match);
     });
     // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
     if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
@@ -7972,6 +7983,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._activeTripsInterval) { clearInterval(this._activeTripsInterval); this._activeTripsInterval = null; }
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
+    if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
   }
@@ -11135,6 +11147,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._startTrackingAssignedDriver(offer.driver_id);
     if (tripId && offer.driver_id) {
       this.startDriverTracking(offer.driver_id, tripId);
+    }
+    // Broadcast directo al conductor (no depende de RLS)
+    if (offer.driver_id && tripId) {
+      this.agService.broadcastOfferAccepted(offer.driver_id, offer.id, tripId);
     }
     // Notificar al conductor — con logging de error
     try {

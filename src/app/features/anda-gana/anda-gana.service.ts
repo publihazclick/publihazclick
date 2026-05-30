@@ -686,6 +686,26 @@ export class AndaGanaService {
     );
   }
 
+  /** Broadcast directo pasajero → conductor cuando acepta la oferta (sin RLS) */
+  broadcastOfferAccepted(driverId: string, offerId: string, tripRequestId: string): void {
+    const ch = this.supabase.channel(`driver-live-${driverId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'offer_accepted', payload: { offerId, tripRequestId } })
+          .catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
+  /** Conductor suscribe al canal broadcast de su ID para recibir señal de aceptación */
+  subscribeToDriverBroadcast(driverId: string, onAccepted: (payload: any) => void): RealtimeChannel {
+    return this.supabase
+      .channel(`driver-live-${driverId}`)
+      .on('broadcast', { event: 'offer_accepted' }, ({ payload }) => onAccepted(payload))
+      .subscribe();
+  }
+
   /** Realtime: notifica al conductor cuando su oferta es aceptada por el pasajero */
   subscribeToDriverOfferAccepted(
     driverId: string,
