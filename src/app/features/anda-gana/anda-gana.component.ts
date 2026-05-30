@@ -8030,6 +8030,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       setTimeout(() => this._map?.resize(), 150);
     }
 
+    // Limpiar rutas y timers del mapa
+    this._clearApproachRoute();
+    this._clearNavRoute();
+    // Volver al home del conductor
+    if (this.driverSection() !== null) this.driverSection.set(null);
+    setTimeout(() => this._map?.resize(), 200);
     // Mostrar aviso con motivo
     this.driverCancelAlert.set(cancelReason ?? null);
     this.cdr.markForCheck();
@@ -13395,6 +13401,34 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this._clearArrivalTimer();
         this.arrivedAtPickupTimer.set(null);
         this._showTripReceipt('passenger');
+      }
+
+      // Viaje cancelado: resetear home y mapa del pasajero
+      if (stage === 'cancelled') {
+        this.stopDriverTracking();
+        this.passengerMapFullscreen.set(false);
+        this._clearNavRoute();
+        this._clearApproachRoute();
+        this._clearArrivalTimer();
+        this.arrivedAtPickupTimer.set(null);
+        this.acceptedDriverEta.set(null);
+        this.driverLiveLocation.set(null);
+        this.passengerSection.set(null);
+        this.currentTripStage.set(null);
+        this.tripAccepted.set(null);
+        this.tripSent.set(false);
+        this.tripOpen.set(false);
+        this.tripQuery.set('');
+        this.tripSuggestions.set([]);
+        this.tripDistKm.set(0);
+        this.tripPrice.set(0);
+        this.currentTripRequestId.set(null);
+        this.receivedOffers.set([]);
+        this.acceptingOfferId.set(null);
+        this._clearRoute();
+        if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
+        setTimeout(() => this._map?.resize(), 200);
+        this.cdr.markForCheck();
       }
     });
   }

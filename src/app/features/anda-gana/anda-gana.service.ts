@@ -2119,9 +2119,11 @@ export class AndaGanaService {
         if (payload.new?.driver_stage) {
           onUpdate(payload.new.driver_stage);
         }
-        // ag_complete_trip only sets status='completed', not driver_stage — handle both
         if (payload.new?.status === 'completed') {
           onUpdate('completed');
+        }
+        if (payload.new?.status === 'cancelled') {
+          onUpdate('cancelled');
         }
       })
       .subscribe();
