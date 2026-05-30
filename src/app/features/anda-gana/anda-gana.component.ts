@@ -7917,7 +7917,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
     if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
     this._activeTripsInterval = setInterval(async () => {
-      if (!this.driverData() || this.driverActiveTrips().length > 0 || this.driverTripAlert()) return;
+      if (!this.driverData() || this.driverTripAlert()) return;
       try {
         const trips = await this.agService.getDriverActiveTrips(driverId);
         if (!trips.length) return;
