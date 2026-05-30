@@ -7924,16 +7924,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!isPlatformBrowser(this.platformId)) return;
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     this._myOffersChannel = this.agService.subscribeToDriverOfferAccepted(driverId, (offer) => {
-      this._handleNewAcceptedOffer(offer);
+      if (!this.driverTripAlert()) this._handleNewAcceptedOffer(offer);
     });
 
     // Canal broadcast directo: el pasajero envía señal sin pasar por RLS
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} }
     this._driverBroadcastChannel = this.agService.subscribeToDriverBroadcast(driverId, async (payload) => {
+      if (this.driverTripAlert()) return;
       const trips = await this.agService.getDriverActiveTrips(driverId).catch(() => []);
       if (!trips.length) return;
-      const match = trips.find((t: any) => t.id === payload?.offerId || t.trip_request_id === payload?.tripRequestId) ?? trips[0];
-      this._handleNewAcceptedOffer(match);
+      const match = trips.find((t: any) => (t.id === payload?.offerId || t.trip_request_id === payload?.tripRequestId) && !t.ag_trip_requests?.driver_stage) ?? trips.find((t: any) => !t.ag_trip_requests?.driver_stage);
+      if (match && !this.driverTripAlert()) this._handleNewAcceptedOffer(match);
     });
     // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
     if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
@@ -11601,13 +11602,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           });
           this.cdr.markForCheck();
 
-          // Pasajero aceptó la oferta de este conductor
-          if (req.status === 'accepted') {
+          // Pasajero aceptó — solo si no hay modal ya y el stage es null
+          if (req.status === 'accepted' && !(req as any).driver_stage && !this.driverTripAlert()) {
             const driverId = this.driverData()?.id;
             if (driverId) {
               this.agService.getDriverActiveTrips(driverId).then(trips => {
-                const match = trips.find((t: any) => t.ag_trip_requests?.id === req.id || t.trip_request_id === req.id);
-                if (match) this._handleNewAcceptedOffer(match);
+                const match = trips.find((t: any) => (t.ag_trip_requests?.id === req.id || t.trip_request_id === req.id) && !t.ag_trip_requests?.driver_stage);
+                if (match && !this.driverTripAlert()) this._handleNewAcceptedOffer(match);
               }).catch(() => {});
             }
           }
