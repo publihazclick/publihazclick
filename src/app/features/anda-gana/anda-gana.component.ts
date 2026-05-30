@@ -7881,16 +7881,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id).catch(() => []);
     if (activeTrips.length > 0) {
       this.driverActiveTrips.set(activeTrips);
-      // Si recargó con un viaje activo yendo al pickup, restaurar mapa fullscreen automáticamente
-      const headingTrip = (activeTrips as any[]).find((t: any) =>
-        !t.ag_trip_requests?.driver_stage || t.ag_trip_requests?.driver_stage === 'heading_to_pickup'
-      );
-      if (headingTrip) {
-        const req = headingTrip.ag_trip_requests ?? headingTrip;
-        if (req?.origin_lat && req?.origin_lng) {
-          this.driverFullscreenTrip.set(headingTrip);
-          this.driverMapFullscreen.set(true);
-          this._waitForMap(() => this.startInAppNav(headingTrip, true));
+      // Viaje aceptado sin acción del conductor → mostrar modal
+      const pendingTrip = (activeTrips as any[]).find((t: any) => !t.ag_trip_requests?.driver_stage);
+      if (pendingTrip) {
+        setTimeout(() => this._handleNewAcceptedOffer(pendingTrip), 800);
+      } else {
+        // Si recargó con viaje en heading_to_pickup → restaurar mapa
+        const headingTrip = (activeTrips as any[]).find((t: any) =>
+          t.ag_trip_requests?.driver_stage === 'heading_to_pickup'
+        );
+        if (headingTrip) {
+          const req = headingTrip.ag_trip_requests ?? headingTrip;
+          if (req?.origin_lat && req?.origin_lng) {
+            this.driverFullscreenTrip.set(headingTrip);
+            this.driverMapFullscreen.set(true);
+            this._waitForMap(() => this.startInAppNav(headingTrip, true));
+          }
         }
       }
     }
@@ -7933,9 +7939,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const trips = await this.agService.getDriverActiveTrips(driverId);
         if (!trips.length) return;
         const knownIds = new Set(this.driverActiveTrips().map((t: any) => t.id));
+        // Trips nuevos no conocidos
         const newTrips = trips.filter((t: any) => !knownIds.has(t.id));
-        if (!newTrips.length) return;
         newTrips.forEach((t: any) => this._handleNewAcceptedOffer(t));
+        // Trips ya conocidos pero sin stage (aceptados y el modal nunca apareció)
+        if (!newTrips.length) {
+          const pending = trips.find((t: any) => !t.ag_trip_requests?.driver_stage);
+          if (pending) this._handleNewAcceptedOffer(pending);
+        }
       } catch {}
     }, 2500);
   }
