@@ -674,16 +674,11 @@ export class AndaGanaService {
     return { success: true };
   }
 
-  /** Carga viajes activos (oferta aceptada, sin completar) del conductor */
-  async getDriverActiveTrips(driverId: string): Promise<any[]> {
-    const { data } = await this.supabase
-      .from('ag_trip_offers')
-      .select('*, ag_trip_requests(*, ag_users!passenger_user_id(*))')
-      .eq('driver_id', driverId)
-      .eq('status', 'accepted');
-    return ((data ?? []) as any[]).filter(
-      (t: any) => t.ag_trip_requests?.status !== 'completed' && t.ag_trip_requests?.status !== 'cancelled',
-    );
+  /** Carga viajes activos del conductor via RPC SECURITY DEFINER (bypassa RLS) */
+  async getDriverActiveTrips(_driverId: string): Promise<any[]> {
+    const { data, error } = await this.supabase.rpc('ag_get_my_active_trips');
+    if (error) console.error('[Movi] getDriverActiveTrips RPC error:', error);
+    return Array.isArray(data) ? data : [];
   }
 
   /** Broadcast directo pasajero → conductor cuando acepta la oferta (sin RLS) */
