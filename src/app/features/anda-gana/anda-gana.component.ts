@@ -8035,10 +8035,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._clearNavRoute();
     // Volver al home del conductor
     if (this.driverSection() !== null) this.driverSection.set(null);
-    setTimeout(() => this._map?.resize(), 200);
     // Mostrar aviso con motivo
     this.driverCancelAlert.set(cancelReason ?? null);
-    this.cdr.markForCheck();
+    // Forzar render y luego resize del mapa
+    try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
+    setTimeout(() => { this._map?.resize(); }, 400);
+    setTimeout(() => { this._map?.resize(); }, 900);
   }
 
   private _waitForMap(cb: () => void, maxAttempts = 30): void {
@@ -13427,8 +13429,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.acceptingOfferId.set(null);
         this._clearRoute();
         if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
-        setTimeout(() => this._map?.resize(), 200);
-        this.cdr.markForCheck();
+        try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
+        setTimeout(() => { this._map?.resize(); }, 400);
+        setTimeout(() => { this._map?.resize(); }, 900);
       }
     });
   }
