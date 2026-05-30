@@ -182,11 +182,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </span>
           </div>
           <!-- Botones -->
-          <button (click)="irPorElPasajero(driverTripAlert()!)"
+          <button (click)="acceptTripAndGo(driverTripAlert()!)"
             class="w-full py-4 rounded-2xl text-white font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
             style="background:linear-gradient(135deg,#059669,#10b981);font-size:16px">
-            <span class="material-symbols-outlined" style="font-size:22px">directions_car</span>
-            Ir por el pasajero
+            <span class="material-symbols-outlined" style="font-size:22px">navigation</span>
+            Ir a recoger al pasajero
+          </button>
+          <button (click)="dismissTripAlert()"
+            class="w-full py-3 rounded-2xl text-slate-500 font-bold text-sm active:opacity-70">
+            Ver detalles después
           </button>
         </div>
       </div>
@@ -7955,25 +7959,26 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private _handleNewAcceptedOffer(offer: any): void {
-    this.driverTripAlert.set(offer);
     this.driverActiveTrips.update(list => list.some((t: any) => t.id === offer.id) ? list : [offer, ...list]);
     const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
     if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
+    // Siempre ir al home para que el conductor vea el botón "Ir por el pasajero"
     if (this.driverSection() !== null) { this.driverSection.set(null); }
     try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
   }
 
-  /** fixAcceptFlow_activate: muestra alerta al conductor y registra el viaje activo */
+  /** fixAcceptFlow_activate: registra el viaje activo para que el conductor vea el botón "Ir por el pasajero" */
   private async fixAcceptFlow_activate(offer: any): Promise<void> {
     const req = offer.ag_trip_requests ?? offer;
 
+    // Registrar viaje activo y limpiar solicitud
     this.driverActiveTrips.update(list =>
       list.some((t: any) => t.id === offer.id) ? list : [offer, ...list]
     );
     const reqId = offer.trip_request_id ?? req?.id;
     if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
 
-    this.driverTripAlert.set(offer);
+    // Ir al home si está en un menú
     if (this.driverSection() !== null) { this.driverSection.set(null); }
 
     try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
@@ -9976,9 +9981,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
   }
 
-  /** Conductor presiona "Ir por el pasajero" → cierra modal + avanza stage + mapa fullscreen */
+  /** Conductor presiona "Ir por el pasajero" → avanza a heading_to_pickup + mapa fullscreen */
   async irPorElPasajero(trip: any): Promise<void> {
-    this.driverTripAlert.set(null);
     await this.advanceStage(trip, 'heading_to_pickup');
     const req = trip.ag_trip_requests ?? trip;
     if (req?.origin_lat && req?.origin_lng) {
