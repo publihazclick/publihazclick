@@ -7962,6 +7962,39 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  /** Limpia todo el estado del conductor cuando el pasajero cancela el viaje */
+  private _handleTripCancelled(tripRequestId: string): void {
+    // Verificar si este viaje estaba en los activos del conductor
+    const active = this.driverActiveTrips().find((t: any) =>
+      t.trip_request_id === tripRequestId || t.ag_trip_requests?.id === tripRequestId
+    );
+    if (!active) return; // No era un viaje del conductor, ignorar
+
+    // Quitar de trips activos
+    this.driverActiveTrips.update(list =>
+      list.filter((t: any) => t.trip_request_id !== tripRequestId && t.ag_trip_requests?.id !== tripRequestId)
+    );
+
+    // Cerrar modal si estaba abierto para este viaje
+    const alert = this.driverTripAlert();
+    if (alert && (alert.trip_request_id === tripRequestId || alert.ag_trip_requests?.id === tripRequestId)) {
+      this.driverTripAlert.set(null);
+    }
+
+    // Cerrar mapa fullscreen si estaba navegando a este viaje
+    const fs = this.driverFullscreenTrip();
+    if (fs && (fs.trip_request_id === tripRequestId || fs.ag_trip_requests?.id === tripRequestId)) {
+      this.stopInAppNav();
+      this.driverMapFullscreen.set(false);
+      this.driverFullscreenTrip.set(null);
+      setTimeout(() => this._map?.resize(), 150);
+    }
+
+    // Notificar al conductor
+    alert(`❌ El pasajero canceló el viaje.`);
+    this.cdr.markForCheck();
+  }
+
   private _waitForMap(cb: () => void, maxAttempts = 30): void {
     if (this._map?.isStyleLoaded()) { setTimeout(cb, 150); return; }
     if (this._map) { this._map.once('idle', () => { setTimeout(cb, 150); }); return; }
@@ -11601,6 +11634,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
             return updated;
           });
           this.cdr.markForCheck();
+
+          // Pasajero canceló el viaje — limpiar todo del conductor
+          if (req.status === 'cancelled') {
+            this._handleTripCancelled(req.id);
+          }
 
           // Pasajero aceptó — solo si no hay modal ya y el stage es null
           if (req.status === 'accepted' && !(req as any).driver_stage && !this.driverTripAlert()) {
