@@ -8044,17 +8044,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._resetMapToInitialState();
   }
 
-  /** Restaura el mapa al estado visual inicial: resize + jumpTo para recargar tiles WebGL */
+  /** Restaura el mapa al estado visual inicial destruyendo y recreando la instancia Mapbox */
   private _resetMapToInitialState(): void {
-    const doReset = () => {
-      const m = this._map;
-      if (!m) return;
-      m.resize();
-      // jumpTo fuerza Mapbox a recargar tiles y redibujar el contexto WebGL
-      try { m.jumpTo({ center: m.getCenter(), zoom: m.getZoom() }); } catch {}
-    };
     this.cdr.markForCheck();
-    [150, 400, 800].forEach(ms => setTimeout(doReset, ms));
+    // Destruir y recrear el mapa — garantiza tiles limpios en Android WebView
+    setTimeout(() => this.retryGps('ag-map-user'), 300);
   }
 
   private _waitForMap(cb: () => void, maxAttempts = 30): void {
