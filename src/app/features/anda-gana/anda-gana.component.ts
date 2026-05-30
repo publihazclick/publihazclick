@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed, inject, effect, untracked, OnInit, OnDestroy, PLATFORM_ID, ViewChild, ElementRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, NgZone, ApplicationRef, signal, computed, inject, effect, untracked, OnInit, OnDestroy, PLATFORM_ID, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -505,44 +505,44 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
-  <!-- ═══════════ BANNER PASAJERO: CONDUCTOR LLEGÓ (flotante top) ═══════════ -->
+  <!-- ═══════════ MODAL PASAJERO: CONDUCTOR LLEGÓ ═══════════ -->
   @if (arrivedAtPickupTimer() !== null && tripAccepted()) {
-    <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8500;pointer-events:none">
-      <div style="pointer-events:auto;background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:20px;border:1.5px solid rgba(52,211,153,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.8),0 0 0 1px rgba(52,211,153,0.1);overflow:hidden">
+    <div style="position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="width:100%;max-width:380px;background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:24px;border:1.5px solid rgba(52,211,153,0.4);box-shadow:0 24px 60px rgba(0,0,0,0.8);overflow:hidden">
 
         <!-- Franja superior verde -->
-        <div style="background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,rgba(5,150,105,0.1) 100%);padding:9px 16px;display:flex;align-items:center;justify-content:space-between">
+        <div style="background:linear-gradient(90deg,rgba(16,185,129,0.25) 0%,rgba(5,150,105,0.15) 100%);padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#34d399;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
-            <span style="color:#34d399;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡Tu conductor llegó!</span>
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#34d399;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
+            <span style="color:#34d399;font-size:13px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase">¡Tu conductor llegó!</span>
           </div>
-          <span style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700">Sal a recibirlo</span>
+          <span style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:700">No demores en subir</span>
         </div>
 
         <!-- Cuerpo -->
-        <div style="padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px">
 
           <!-- Foto + nombre + rating + viajes -->
-          <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:14px">
             @if (tripAccepted()!.ag_drivers?.ag_users?.selfie_url) {
               <img [src]="tripAccepted()!.ag_drivers!.ag_users!.selfie_url"
-                style="width:52px;height:52px;border-radius:14px;object-fit:cover;flex-shrink:0;border:2px solid rgba(52,211,153,0.4)" />
+                style="width:60px;height:60px;border-radius:16px;object-fit:cover;flex-shrink:0;border:2px solid rgba(52,211,153,0.5)" />
             } @else {
-              <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#059669,#0891b2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;font-weight:900;color:#fff;border:2px solid rgba(52,211,153,0.35)">
+              <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#059669,#0891b2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:26px;font-weight:900;color:#fff;border:2px solid rgba(52,211,153,0.4)">
                 {{ (tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'C')[0].toUpperCase() }}
               </div>
             }
             <div style="flex:1;min-width:0">
-              <p style="color:#fff;font-weight:900;font-size:15px;margin:0;line-height:1.2">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
-              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+              <p style="color:#fff;font-weight:900;font-size:17px;margin:0;line-height:1.2">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap">
                 @if (tripAccepted()!.ag_drivers?.rating_avg) {
                   <div style="display:flex;align-items:center;gap:3px">
-                    <span style="color:#fbbf24;font-size:13px">★</span>
-                    <span style="color:#fbbf24;font-size:12px;font-weight:800">{{ tripAccepted()!.ag_drivers!.rating_avg | number:'1.1-1' }}</span>
+                    <span style="color:#fbbf24;font-size:14px">★</span>
+                    <span style="color:#fbbf24;font-size:13px;font-weight:800">{{ tripAccepted()!.ag_drivers!.rating_avg | number:'1.1-1' }}</span>
                   </div>
                 }
-                <span style="color:rgba(255,255,255,0.35);font-size:11px">·</span>
-                <span style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:600">{{ tripAccepted()!.ag_drivers?.trips_completed ?? 0 }} viajes</span>
+                <span style="color:rgba(255,255,255,0.3);font-size:12px">·</span>
+                <span style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600">{{ tripAccepted()!.ag_drivers?.trips_completed ?? 0 }} viajes</span>
                 @if (tripAccepted()!.ag_drivers?.level) {
                   <span style="background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.35);color:#fbbf24;font-size:9px;font-weight:900;padding:2px 7px;border-radius:999px;text-transform:capitalize">
                     {{ tripAccepted()!.ag_drivers!.level }}
@@ -554,27 +554,27 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Placa + color -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Placa</p>
-              <p style="color:#fff;font-weight:900;font-size:15px;margin:0;letter-spacing:0.05em">{{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate ?? '—' }}</p>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:10px 14px">
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 3px">Placa</p>
+              <p style="color:#fff;font-weight:900;font-size:17px;margin:0;letter-spacing:0.05em">{{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate ?? '—' }}</p>
             </div>
-            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Color</p>
-              <p style="color:#fff;font-weight:900;font-size:14px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_color ?? '—' }}</p>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:10px 14px">
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 3px">Color</p>
+              <p style="color:#fff;font-weight:900;font-size:16px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_color ?? '—' }}</p>
             </div>
           </div>
 
           <!-- Timer de espera -->
-          <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px">
-            <span class="material-symbols-outlined" style="font-size:22px;color:#34d399;font-variation-settings:'FILL' 1">timer</span>
+          <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+            <span class="material-symbols-outlined" style="font-size:26px;color:#34d399;font-variation-settings:'FILL' 1">timer</span>
             <div style="flex:1">
-              <p style="color:rgba(255,255,255,0.55);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 1px">Tiempo de espera</p>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:22px;font-weight:900;line-height:1;transition:color 0.5s"
+              <p style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 2px">Tiempo disponible</p>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:28px;font-weight:900;line-height:1;transition:color 0.5s;font-variant-numeric:tabular-nums"
                   [style.color]="arrivedAtPickupTimer()! < 60 ? '#f87171' : arrivedAtPickupTimer()! < 120 ? '#fbbf24' : '#34d399'">
                   {{ padTime(arrivedAtPickupTimer()!) }}
                 </span>
-                <div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
+                <div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
                   <div style="height:100%;border-radius:999px;transition:width 1s linear,background 0.5s"
                     [style.width]="(arrivedAtPickupTimer()! / 240 * 100) + '%'"
                     [style.background]="arrivedAtPickupTimer()! < 60 ? '#ef4444' : arrivedAtPickupTimer()! < 120 ? '#f59e0b' : '#34d399'">
@@ -583,6 +583,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             </div>
           </div>
+
+          <!-- Botón En camino -->
+          <button (click)="passengerStartRide()"
+            style="width:100%;padding:16px;border-radius:18px;border:none;background:linear-gradient(135deg,#0891b2,#06b6d4);color:#fff;font-size:17px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 28px rgba(8,145,178,0.45);letter-spacing:0.02em">
+            <span class="material-symbols-outlined" style="font-size:24px;font-variation-settings:'FILL' 1">navigation</span>
+            En camino
+          </button>
 
         </div>
       </div>
@@ -3363,8 +3370,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <span class="material-symbols-outlined" style="font-size:15px">call</span>Llamar
                     </button>
                   </div>
-                  <!-- Etapa 1: sin etapa o heading_to_pickup → mostrando camino al pasajero -->
-                  @if (!trip.ag_trip_requests?.driver_stage || trip.ag_trip_requests?.driver_stage === 'heading_to_pickup') {
+                  <!-- Etapa 1a: sin etapa → pasajero aceptó, conductor aún no ha salido -->
+                  @if (!trip.ag_trip_requests?.driver_stage) {
+                    <button (click)="irPorElPasajero(trip)"
+                      class="w-full py-4 rounded-2xl text-white text-base font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#059669,#10b981);box-shadow:0 6px 24px rgba(5,150,105,0.4)">
+                      <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">directions_car</span>Ir por el pasajero
+                    </button>
+                  }
+                  <!-- Etapa 1b: heading_to_pickup → conductor en camino al punto de recogida -->
+                  @if (trip.ag_trip_requests?.driver_stage === 'heading_to_pickup') {
                     <button (click)="startInAppNav(trip, true)"
                       class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
                       style="background:linear-gradient(135deg,#7c3aed,#6366f1)">
@@ -3373,7 +3388,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <button (click)="advanceStage(trip, 'arrived_at_pickup')"
                       class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
                       style="background:linear-gradient(135deg,#0891b2,#06b6d4)">
-                      <span class="material-symbols-outlined" style="font-size:18px">where_to_vote</span>Llegué al punto de recogida
+                      <span class="material-symbols-outlined" style="font-size:18px">where_to_vote</span>Ya estoy aquí
                     </button>
                   }
                   <!-- Etapa 2: arrived_at_pickup → esperando al pasajero -->
@@ -3383,10 +3398,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <span class="material-symbols-outlined text-yellow-600" style="font-size:16px">hourglass_top</span>
                       <span class="text-yellow-700 text-xs font-bold">Esperando al pasajero...</span>
                     </div>
-                    <button (click)="advanceStage(trip, 'picked_up')"
-                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
-                      style="background:linear-gradient(135deg,#0891b2,#06b6d4)">
-                      <span class="material-symbols-outlined" style="font-size:18px">person_check</span>Pasajero a bordo
+                    <button (click)="advanceStage(trip, 'on_route')"
+                      class="w-full py-4 rounded-2xl text-white text-base font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#0891b2,#06b6d4);box-shadow:0 6px 24px rgba(8,145,178,0.4)">
+                      <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">navigation</span>En camino
                     </button>
                   }
                   <!-- Etapa 3: picked_up → iniciar ruta -->
@@ -3709,8 +3724,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 @if (navPhase() === 'to_pickup') {
                   <button (click)="advanceStage(driverFullscreenTrip(), 'arrived_at_pickup')"
                     class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                    style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
-                    <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">where_to_vote</span>Llegué
+                    style="background:linear-gradient(135deg,#059669,#10b981)">
+                    <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">where_to_vote</span>Ya estoy aquí
                   </button>
                 } @else {
                   <button (click)="finishDriverTrip(driverFullscreenTrip())"
@@ -7016,6 +7031,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private readonly platformId  = inject(PLATFORM_ID);
   private readonly route       = inject(ActivatedRoute);
   protected readonly cdr       = inject(ChangeDetectorRef);
+  private readonly ngZone      = inject(NgZone);
+  private readonly appRef      = inject(ApplicationRef);
 
   // Cada vez que el conductor está online en driver-home, recarga solicitudes automáticamente
   private readonly _autoLoadRequestsEffect = effect(() => {
@@ -7917,27 +7934,52 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
     if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
     this._activeTripsInterval = setInterval(async () => {
-      if (!this.driverData() || this.driverActiveTrips().length > 0 || this.driverTripAlert()) return;
+      if (!this.driverData() || this.driverTripAlert()) return;
       try {
         const trips = await this.agService.getDriverActiveTrips(driverId);
         if (!trips.length) return;
         const knownIds = new Set(this.driverActiveTrips().map((t: any) => t.id));
         const newTrips = trips.filter((t: any) => !knownIds.has(t.id));
         if (!newTrips.length) return;
-        newTrips.forEach((t: any) => this._handleNewAcceptedOffer(t));
+        // Solo mostrar modal para viajes aceptados en los últimos 5 minutos
+        const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+        const freshTrips = newTrips.filter((t: any) => {
+          const ts = new Date(t.updated_at ?? t.created_at ?? 0).getTime();
+          return ts > fiveMinAgo;
+        });
+        // Agregar silenciosamente los viajes viejos sin mostrar modal
+        const staleTrips = newTrips.filter((t: any) => !freshTrips.some(f => f.id === t.id));
+        if (staleTrips.length) {
+          this.driverActiveTrips.update(list => [...list, ...staleTrips]);
+        }
+        if (!freshTrips.length) return;
+        freshTrips.forEach((t: any) => this._handleNewAcceptedOffer(t));
       } catch {}
     }, 2500);
   }
 
   private _handleNewAcceptedOffer(offer: any): void {
-    // Mostrar alerta inDrive full-screen
-    this.driverTripAlert.set(offer);
-    // Agregar a viajes activos si no está ya
     this.driverActiveTrips.update(list => list.some((t: any) => t.id === offer.id) ? list : [offer, ...list]);
-    // Quitar la solicitud del listado en vivo
     const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
     if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
-    this.cdr.markForCheck();
+    try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
+  }
+
+  /** fixAcceptFlow_activate: registra el viaje activo para que el conductor vea el botón "Ir por el pasajero" */
+  private async fixAcceptFlow_activate(offer: any): Promise<void> {
+    const req = offer.ag_trip_requests ?? offer;
+
+    // Registrar viaje activo y limpiar solicitud
+    this.driverActiveTrips.update(list =>
+      list.some((t: any) => t.id === offer.id) ? list : [offer, ...list]
+    );
+    const reqId = offer.trip_request_id ?? req?.id;
+    if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
+
+    // Ir al home si está en un menú
+    if (this.driverSection() !== null) { this.driverSection.set(null); }
+
+    try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
   }
 
   private _waitForMap(cb: () => void, maxAttempts = 30): void {
@@ -9922,7 +9964,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
   }
 
-  // Botón "Iniciar recogida" desde la alerta inDrive full-screen
+  // Botón "Ir a recoger al pasajero"
   async acceptTripAndGo(alert: any): Promise<void> {
     this.driverTripAlert.set(null);
     await this.advanceStage(alert, 'heading_to_pickup');
@@ -9930,12 +9972,51 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (req?.origin_lat && req?.origin_lng) {
       this.driverFullscreenTrip.set(alert);
       this.driverMapFullscreen.set(true);
-      // Esperar a que el mapa esté listo (puede estar cargando en primer uso)
       this._waitForMap(() => {
         this._map?.resize();
         this.startInAppNav(alert, true);
       });
     }
+  }
+
+  /** Conductor presiona "Ir por el pasajero" → avanza a heading_to_pickup + mapa fullscreen */
+  async irPorElPasajero(trip: any): Promise<void> {
+    await this.advanceStage(trip, 'heading_to_pickup');
+    const req = trip.ag_trip_requests ?? trip;
+    if (req?.origin_lat && req?.origin_lng) {
+      this.driverFullscreenTrip.set(trip);
+      this.driverMapFullscreen.set(true);
+      try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
+      setTimeout(() => {
+        this._map?.resize();
+        this._waitForMap(() => {
+          this._map?.resize();
+          this.startInAppNav(trip, true);
+        });
+      }, 300);
+    }
+  }
+
+  /** Pasajero presiona "En camino" desde el modal de llegada del conductor */
+  async passengerStartRide(): Promise<void> {
+    const offer = this.tripAccepted();
+    if (!offer) return;
+    const tripReqId = (offer as any).trip_request_id ?? (offer as any).ag_trip_requests?.id;
+    if (!tripReqId) return;
+    try {
+      await getMoviClient().from('ag_trip_requests').update({ driver_stage: 'on_route' }).eq('id', tripReqId);
+    } catch (e) { console.error('[Movi] passengerStartRide:', e); return; }
+    const driverAuthId = (offer as any).driver_auth_id ?? (offer as any).ag_drivers?.auth_user_id;
+    if (driverAuthId) {
+      this.agService.sendPush({
+        userIds: [driverAuthId],
+        title: '🚗 Pasajero a bordo',
+        body: 'Tu pasajero confirmó estar en el vehículo. ¡Buen viaje!',
+        tag: `passenger-boarded-${tripReqId}`, urgent: true,
+      }).catch(() => {});
+    }
+    this._clearArrivalTimer();
+    this.arrivedAtPickupTimer.set(null);
   }
 
   dismissTripAlert(): void {
@@ -11574,6 +11655,31 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
             return updated;
           });
           this.cdr.markForCheck();
+
+          // fixAcceptFlow: cuando el pasajero acepta, activar el flujo del conductor
+          if (req.status === 'accepted' && this.driverActiveTrips().length === 0) {
+            const driverId = this.driverData()?.id;
+            if (driverId) {
+              // Inmediato
+              this.agService.getDriverActiveTrips(driverId)
+                .then(trips => {
+                  if (trips.length > 0 && this.driverActiveTrips().length === 0) {
+                    this.fixAcceptFlow_activate(trips[0]);
+                  }
+                })
+                .catch(() => {});
+              // Fallback 1.5s por latencia del trigger DB
+              setTimeout(() => {
+                if (this.driverActiveTrips().length > 0) return;
+                this.agService.getDriverActiveTrips(driverId)
+                  .then(trips => {
+                    if (trips.length > 0 && this.driverActiveTrips().length === 0) {
+                      this.fixAcceptFlow_activate(trips[0]);
+                    }
+                  }).catch(() => {});
+              }, 1500);
+            }
+          }
         }
       },
       undefined,
