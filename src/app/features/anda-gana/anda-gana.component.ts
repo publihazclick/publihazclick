@@ -3309,7 +3309,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <p class="text-slate-600 text-xs leading-relaxed">Nuestro equipo verificará tus documentos en las próximas 24–48 horas.</p>
         </div>
       }
-      @if (driverStatus() === 'approved') {
+      @if (driverStatus() === 'approved' || driverStatus() === 'quick') {
         <!-- Viajes activos del conductor -->
         @if (driverActiveTrips().length > 0) {
           <div class="flex flex-col gap-2">
@@ -7898,9 +7898,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id).catch(() => []);
     if (activeTrips.length > 0) {
       this.driverActiveTrips.set(activeTrips);
-      // Si recargó con un viaje activo yendo al pickup, restaurar mapa fullscreen automáticamente
+      // Si recargó con un viaje activo yendo al pickup (ya había presionado "Ir por el pasajero"), restaurar mapa
       const headingTrip = (activeTrips as any[]).find((t: any) =>
-        !t.ag_trip_requests?.driver_stage || t.ag_trip_requests?.driver_stage === 'heading_to_pickup'
+        t.ag_trip_requests?.driver_stage === 'heading_to_pickup'
       );
       if (headingTrip) {
         const req = headingTrip.ag_trip_requests ?? headingTrip;
