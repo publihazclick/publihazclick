@@ -7962,8 +7962,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.driverActiveTrips.update(list => list.some((t: any) => t.id === offer.id) ? list : [offer, ...list]);
     const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
     if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
-    // Siempre ir al home para que el conductor vea el botón "Ir por el pasajero"
-    if (this.driverSection() !== null) { this.driverSection.set(null); }
     try { this.appRef.tick(); } catch { this.cdr.markForCheck(); }
   }
 
@@ -11659,22 +11657,23 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.cdr.markForCheck();
 
           // fixAcceptFlow: cuando el pasajero acepta, activar el flujo del conductor
-          if (req.status === 'accepted') {
+          if (req.status === 'accepted' && this.driverActiveTrips().length === 0) {
             const driverId = this.driverData()?.id;
             if (driverId) {
-              // Inmediato: navegar al home y registrar viaje
+              // Inmediato
               this.agService.getDriverActiveTrips(driverId)
                 .then(trips => {
-                  if (trips.length > 0) {
+                  if (trips.length > 0 && this.driverActiveTrips().length === 0) {
                     this.fixAcceptFlow_activate(trips[0]);
                   }
                 })
                 .catch(() => {});
               // Fallback 1.5s por latencia del trigger DB
               setTimeout(() => {
+                if (this.driverActiveTrips().length > 0) return;
                 this.agService.getDriverActiveTrips(driverId)
                   .then(trips => {
-                    if (trips.length > 0) {
+                    if (trips.length > 0 && this.driverActiveTrips().length === 0) {
                       this.fixAcceptFlow_activate(trips[0]);
                     }
                   }).catch(() => {});
