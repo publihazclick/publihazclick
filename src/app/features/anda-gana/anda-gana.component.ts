@@ -9423,13 +9423,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Guardar datos para recibo antes de limpiar el viaje activo
     const tripDetails = await this.agService.getTripDetails(tripRequestId).catch(() => null);
     this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
-    // Si era primera carrera gratis, refrescar estado del conductor para ocultar el banner
+    // Primer viaje completado: ocultar banner inmediatamente y actualizar BD
     if (wasQuick) {
-      const updated = await this.agService.getMyDriverProfile();
-      if (updated) {
-        this.driverData.set(updated);
-        this.driverStatus.set(updated.status ?? 'pending_docs');
-      }
+      this.driverStatus.set('pending_docs');
+      this.agService.graduateQuickDriver().then(() =>
+        this.agService.getMyDriverProfile().then(updated => {
+          if (updated) { this.driverData.set(updated); this.driverStatus.set(updated.status ?? 'pending_docs'); }
+        })
+      );
     }
     // Mostrar recibo del viaje al conductor
     if (tripDetails) {

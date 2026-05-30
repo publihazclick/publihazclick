@@ -1035,6 +1035,16 @@ export class AndaGanaService {
     return error ? { success: false, error: error.message } : { success: true };
   }
 
+  async graduateQuickDriver(): Promise<void> {
+    const profile = await this.getMyAgProfile();
+    if (!profile) return;
+    await this.supabase
+      .from('ag_drivers')
+      .update({ status: 'pending_docs' })
+      .eq('ag_user_id', profile.id)
+      .eq('status', 'quick');
+  }
+
   async submitRating(
     tripRequestId: string,
     raterUserId: string,
