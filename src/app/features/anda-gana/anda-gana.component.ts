@@ -7881,8 +7881,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id).catch(() => []);
     if (activeTrips.length > 0) {
       this.driverActiveTrips.set(activeTrips);
-      // Viaje aceptado sin acción del conductor → mostrar modal
-      const pendingTrip = (activeTrips as any[]).find((t: any) => !t.ag_trip_requests?.driver_stage);
+      // Viaje aceptado recientemente (últimos 5 min) sin acción → mostrar modal
+      const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+      const pendingTrip = (activeTrips as any[]).find((t: any) =>
+        !t.ag_trip_requests?.driver_stage &&
+        new Date(t.updated_at ?? 0).getTime() > fiveMinAgo
+      );
       if (pendingTrip) {
         setTimeout(() => this._handleNewAcceptedOffer(pendingTrip), 800);
       } else {
@@ -7939,14 +7943,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const trips = await this.agService.getDriverActiveTrips(driverId);
         if (!trips.length) return;
         const knownIds = new Set(this.driverActiveTrips().map((t: any) => t.id));
-        // Trips nuevos no conocidos
+        // Solo mostrar modal para trips verdaderamente nuevos (no conocidos)
         const newTrips = trips.filter((t: any) => !knownIds.has(t.id));
         newTrips.forEach((t: any) => this._handleNewAcceptedOffer(t));
-        // Trips ya conocidos pero sin stage (aceptados y el modal nunca apareció)
-        if (!newTrips.length) {
-          const pending = trips.find((t: any) => !t.ag_trip_requests?.driver_stage);
-          if (pending) this._handleNewAcceptedOffer(pending);
-        }
       } catch {}
     }, 2500);
   }
