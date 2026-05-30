@@ -186,7 +186,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             class="w-full py-4 rounded-2xl text-white font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
             style="background:linear-gradient(135deg,#059669,#10b981);font-size:16px">
             <span class="material-symbols-outlined" style="font-size:22px">navigation</span>
-            Ir a recoger al pasajero
+            Ir a recoger pasajero
           </button>
           <button (click)="dismissTripAlert()"
             class="w-full py-3 rounded-2xl text-slate-500 font-bold text-sm active:opacity-70">
