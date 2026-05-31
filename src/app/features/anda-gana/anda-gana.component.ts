@@ -13972,24 +13972,76 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   private async _drawPassengerTripRoute(): Promise<void> {
     const dest = this.tripDest();
     if (!dest || !this._map) return;
+
+    // Origen: usar posición del conductor en vivo (el pasajero está en el carro)
+    // Si no hay ubicación del conductor, usar la propia del pasajero como fallback
+    const driverLoc = this.driverLiveLocation();
+    const originLng = driverLoc ? driverLoc.lng : this._currentLng;
+    const originLat = driverLoc ? driverLoc.lat : this._currentLat;
+
+    // Validar destino
+    const dLat = parseFloat(String(dest.lat));
+    const dLng = parseFloat(String(dest.lng));
+    if (!isFinite(dLat) || !isFinite(dLng)) return;
+
     try {
-      this._clearNavRoute();
       const url = [
         `https://api.mapbox.com/directions/v5/mapbox/driving/`,
-        `${this._currentLng},${this._currentLat};${dest.lng},${dest.lat}`,
-        `?geometries=geojson&overview=full&access_token=${this.MAPBOX_TOKEN}`,
+        `${originLng},${originLat};${dLng},${dLat}`,
+        `?geometries=geojson&overview=full&steps=false`,
+        `&access_token=${this.MAPBOX_TOKEN}`,
       ].join('');
       const json  = await (await fetch(url)).json();
       const route = json.routes?.[0];
       if (!route || !this._map) return;
-      this._map.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
-      this._map.addLayer({ id: 'nav-route-bg',   type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 10, 'line-opacity': 0.12 } });
-      this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#f97316', 'line-width': 6,  'line-opacity': 0.9 } });
-      const coords   = route.geometry.coordinates as [number, number][];
-      const mapboxgl = (window as any).mapboxgl;
-      const bounds   = coords.reduce((b: any, c: [number, number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
-      this._map.fitBounds(bounds, { padding: { top: 120, bottom: 200, left: 40, right: 40 }, duration: 900 });
-    } catch (e) { console.warn('passenger route err', e); }
+
+      const geoData = { type: 'Feature' as const, properties: {}, geometry: route.geometry };
+
+      // Reutilizar source si ya existe (evita error "source already exists")
+      const doDrawPassenger = () => {
+        try {
+          const existing = this._map.getSource('nav-route') as any;
+          if (existing) {
+            existing.setData(geoData);
+          } else {
+            this._map.addSource('nav-route', { type: 'geojson', data: geoData });
+          }
+        } catch (e) { console.error('[Movi Passenger] source error:', e); return; }
+
+        // 3 capas estilo naranja (colores del pasajero, diferente al azul del conductor)
+        const layerDefs = [
+          { id: 'nav-route-halo', paint: { 'line-color': '#7c2d12', 'line-width': 16, 'line-opacity': 0.45 } },
+          { id: 'nav-route-bg',   paint: { 'line-color': '#f97316', 'line-width': 9,  'line-opacity': 1.0 } },
+          { id: 'nav-route-line', paint: { 'line-color': '#fed7aa', 'line-width': 3,  'line-opacity': 0.85 } },
+        ];
+        for (const def of layerDefs) {
+          try {
+            if (!this._map.getLayer(def.id)) {
+              this._map.addLayer({ id: def.id, type: 'line', source: 'nav-route',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: def.paint as any });
+            }
+          } catch (e) { console.error(`[Movi Passenger] layer ${def.id}:`, e); }
+        }
+
+        // Centrar mapa en la ruta completa
+        const coords   = route.geometry.coordinates as [number, number][];
+        const mapboxgl = (window as any).mapboxgl;
+        if (mapboxgl && coords.length > 0) {
+          const bounds = coords.reduce(
+            (b: any, c) => b.extend(c),
+            new mapboxgl.LngLatBounds(coords[0], coords[0])
+          );
+          this._map.fitBounds(bounds, { padding: { top: 100, bottom: 220, left: 40, right: 40 }, duration: 900, maxZoom: 16 });
+        }
+      };
+
+      if (this._map.isStyleLoaded()) {
+        doDrawPassenger();
+      } else {
+        this._map.once('style.load', doDrawPassenger);
+      }
+    } catch (e) { console.error('[Movi Passenger] route error:', e); }
   }
 
   stopDriverTracking() {
@@ -14623,11 +14675,12 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.passengerSection.set(null);
     this.passengerMapFullscreen.set(true);
     this.cdr.markForCheck();
-    // Pequeño delay para que Angular actualice el DOM al fullscreen antes de dibujar la ruta
+    // Doble resize: uno inmediato + uno a 500ms (transición CSS 350ms + buffer)
+    setTimeout(() => this._map?.resize(), 50);
     setTimeout(() => {
       this._map?.resize();
       this._drawPassengerTripRoute();
-    }, 300);
+    }, 500);
   }
 
   async passengerConfirmBoarding(): Promise<void> {
@@ -14649,14 +14702,30 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this._clearDriverArrivalTimer();
     this.driverArrivalTrip.set(null);
     this.driverArrivalTimer.set(null);
-    // Fullscreen + ruta de destino inmediatamente
+
+    // Validar coords de destino antes de ir fullscreen
+    const req = trip.ag_trip_requests ?? trip;
+    const dLat = parseFloat(req?.dest_lat);
+    const dLng = parseFloat(req?.dest_lng);
+    if (!isFinite(dLat) || !isFinite(dLng)) {
+      console.error('[Movi] dest coords missing on boarding', req);
+      this.advanceStage(trip, 'on_route');
+      return;
+    }
+
     this.driverFullscreenTrip.set(trip);
     this.driverMapFullscreen.set(true);
     this.cdr.markForCheck();
-    setTimeout(() => {
+
+    // Doble resize: uno inmediato + uno a 450ms (tras transición CSS de 350ms)
+    this._waitForMap(() => {
       this._map?.resize();
-      this.startInAppNav(trip, false);
-    }, 250);
+      setTimeout(() => {
+        this._map?.resize();
+        this.startInAppNav(trip, false);
+      }, 450);
+    });
+
     // Actualizar DB en segundo plano
     this.advanceStage(trip, 'on_route');
   }
