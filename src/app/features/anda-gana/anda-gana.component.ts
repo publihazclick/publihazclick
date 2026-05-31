@@ -11922,6 +11922,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.cdr.markForCheck();
       },
       (req) => {
+        // Pasajero hizo contraoferta: actualizar precio en la lista sin quitar la solicitud
+        if (req.status === 'searching') {
+          this.driverRequests.update(list =>
+            list.map(r => r.id === req.id ? { ...r, offered_price: (req as any).offered_price ?? r.offered_price } : r)
+          );
+          this.cdr.markForCheck();
+          return;
+        }
         if (req.status !== 'searching') {
           this._markRequestCancelled(req.id);
           this.driverRequests.update(list => {
@@ -14448,12 +14456,14 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (!target || price < 2000) return;
     this.submittingCounter.set(true);
     try {
-      // Accept the offer at the counter price: update trip price then accept
-      await this.agService.updateTripOfferedPrice(target.trip_request_id, price).catch(() => {});
-      await this.acceptOfferCard(target);
+      // Enviar contraoferta al conductor: actualizar el precio propuesto en la solicitud
+      await this.agService.updateTripOfferedPrice(target.trip_request_id, price);
+      this.counterOfferModal.set(false);
+      this.counterOfferTarget.set(null);
+    } catch {
+      // silencioso — el conductor verá el precio actualizado via realtime
     } finally {
       this.submittingCounter.set(false);
-      this.counterOfferModal.set(false);
     }
   }
 
