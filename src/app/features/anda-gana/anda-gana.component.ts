@@ -54,9 +54,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     '[style.transition]': "'background 0.3s'",
   },
   template: `
-<div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
+<div class="min-h-screen w-full flex flex-col items-center"
   [style.background]="screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'"
-  [style.padding]="screen() === 'quick-register' ? '0' : ''"
+  [style.padding]="(screen() === 'quick-register' || screen() === 'passenger-home') ? '0' : '24px 16px'"
   style="min-height:100dvh">
 
   <!-- ═══════════ TOAST DIRECCIÓN GUARDADA ═══════════ -->
@@ -926,10 +926,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ PASAJERO DASHBOARD ═══════════ -->
   @if (screen() === 'passenger-home') {
-    <div class="w-full max-w-lg flex flex-col gap-3">
+    <div class="w-full max-w-lg flex flex-col" style="height:100dvh">
 
       <!-- Header pasajero -->
-      <div class="flex items-center justify-between px-1 pt-2 w-full">
+      <div class="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0 w-full">
         <div>
           <h1 class="text-slate-900 font-black text-lg leading-tight">¡Hola, {{ firstName() }}!</h1>
           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-emerald-700 font-bold" style="font-size:11px;background:#D1FAE5;border:1px solid #A7F3D0">
@@ -1012,6 +1012,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <!-- ══ Card superior: dirección de recogida (viaje activo) o referidos/pago ══ -->
       @if (tripAccepted()) {
         <!-- Dirección del pasajero — reemplaza el banner mientras el conductor viene o durante el viaje -->
+        <div class="px-4 flex-shrink-0 w-full">
         <div class="w-full flex items-center gap-3"
           style="background:linear-gradient(135deg,#0f2027,#1a3a4a);border-radius:16px;padding:12px 16px;border:1px solid rgba(0,229,255,0.2)">
           <div class="flex items-center justify-center flex-shrink-0"
@@ -1025,37 +1026,40 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </p>
           </div>
         </div>
+        </div>
       } @else if (agProfile()) {
+        <div class="px-4 pb-1 flex-shrink-0 w-full">
         <button (click)="openPassengerSection('referrals')"
           class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
+          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:12px 16px;border:none;cursor:pointer">
           <div class="flex items-center justify-center flex-shrink-0"
-            style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
-            <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
+            style="width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,0.15)">
+            <span class="material-symbols-outlined" style="font-size:20px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
           </div>
           <div class="flex-1 min-w-0 text-left">
-            <p style="color:#fff;font-weight:600;font-size:14px;margin:0;line-height:1.3">Gana por invitar</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:0;line-height:1.3">$0 ganados este mes</p>
+            <p style="color:#fff;font-weight:600;font-size:13px;margin:0;line-height:1.3">Gana por invitar</p>
           </div>
           <div class="flex items-center gap-1 flex-shrink-0">
-            <span style="color:#fff;font-size:12px;font-weight:500">Invitar amigos</span>
+            <span style="color:#fff;font-size:12px;font-weight:500">Invitar</span>
             <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
           </div>
         </button>
+        </div>
       } @else {
+        <div class="px-4 pb-1 flex-shrink-0 w-full">
         <button (click)="openPassengerSection('paymentmethods')"
           class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
+          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:12px 16px;border:none;cursor:pointer">
           <div class="flex items-center justify-center flex-shrink-0"
-            style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
-            <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">credit_card</span>
+            style="width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,0.15)">
+            <span class="material-symbols-outlined" style="font-size:20px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">credit_card</span>
           </div>
           <div class="flex-1 min-w-0 text-left">
-            <p style="color:#fff;font-weight:600;font-size:14px;margin:0;line-height:1.3">Métodos de pago</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:0;line-height:1.3">Gestiona tus formas de pago</p>
+            <p style="color:#fff;font-weight:600;font-size:13px;margin:0;line-height:1.3">Métodos de pago</p>
           </div>
           <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
         </button>
+        </div>
       }
 
 
@@ -1063,7 +1067,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- ══ Barra de dirección (encima del mapa) ══ -->
       @if (!passengerMapFullscreen() && gpsStatus() !== 'requesting' && !tripAccepted()) {
-        <div class="w-full mb-2">
+        <div class="w-full px-4 mb-1 flex-shrink-0">
           @if (locationUpdating()) {
             <div class="flex items-center justify-center gap-1.5 mb-1.5">
               <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
@@ -1172,8 +1176,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       }
 
       <!-- Mapa con overlays flotantes -->
-      <div [class]="passengerMapFullscreen() ? 'fixed z-[9850]' : 'relative rounded-2xl overflow-hidden'"
-           [style]="passengerMapFullscreen() ? 'top:0;left:0;right:0;height:100dvh' : 'height:clamp(280px,50dvh,520px);border:1px solid rgba(255,255,255,0.08)'"
+      <div [class]="passengerMapFullscreen() ? 'fixed z-[9850]' : 'relative flex-1 overflow-hidden'"
+           [style]="passengerMapFullscreen() ? 'top:0;left:0;right:0;height:100dvh' : 'min-height:220px;border-top:1px solid rgba(0,0,0,0.06)'"
            style="overflow:hidden">
 
         <!-- GPS loading state -->
