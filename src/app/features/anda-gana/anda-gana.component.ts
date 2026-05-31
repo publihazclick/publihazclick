@@ -7894,6 +7894,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _offerChannel: RealtimeChannel | null = null;
   private _requestsChannel: RealtimeChannel | null = null;
   private _myOffersChannel: RealtimeChannel | null = null;
+  private _tripBoardingChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
 
@@ -8241,6 +8242,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._clearDriverArrivalTimer();
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
+    if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); this._tripBoardingChannel = null; }
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
@@ -10189,6 +10191,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }
       this.driverArrivalTrip.set(trip);
       this._startDriverArrivalTimer();
+      // Canal bidireccional: conductor escucha si el PASAJERO confirma abordaje
+      const boardId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
+      if (boardId) {
+        if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); }
+        this._tripBoardingChannel = this.agService.subscribeTripBoarding(boardId, () => {
+          if (this.driverArrivalTrip()) this._applyDriverBoarding();
+        });
+      }
     }
 
     // Cuando inicia el viaje: activar fullscreen + navegar al destino
@@ -11415,6 +11425,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }));
     }
     this._startTrackingAssignedDriver(offer.driver_id);
+    // Canal bidireccional: pasajero escucha si el CONDUCTOR confirma abordaje
+    if (tripId) {
+      if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); }
+      this._tripBoardingChannel = this.agService.subscribeTripBoarding(tripId, () => {
+        if (this.arrivedAtPickupTimer() !== null) this._applyPassengerBoarding();
+      });
+    }
     if (tripId && offer.driver_id) {
       this.startDriverTracking(offer.driver_id, tripId);
     }
@@ -12081,6 +12098,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._clearRoute();
     if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
     this.passengerSection.set(null);
+    if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); this._tripBoardingChannel = null; }
     // Destruir y recrear el mapa siempre — resize() solo no es suficiente tras un viaje fullscreen
     const lat = this._currentLat || this.DEFAULT_LAT;
     const lng = this._currentLng || this.DEFAULT_LNG;
@@ -14298,29 +14316,44 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     }
   }
 
-  async driverPassengerBoarded(): Promise<void> {
-    const trip = this.driverArrivalTrip();
-    if (!trip) return;
-    this._clearDriverArrivalTimer();
-    this.driverArrivalTrip.set(null);
-    this.driverArrivalTimer.set(null);
-    await this.advanceStage(trip, 'on_route');
-  }
-
-  async passengerConfirmBoarding(): Promise<void> {
-    const tripId = this.currentTripRequestId();
-    const driverId = this.tripAccepted()?.driver_id;
-    if (!tripId) return;
+  // Aplica el estado de abordaje en el lado del pasajero (sin broadcast para evitar bucle)
+  private _applyPassengerBoarding(): void {
     this._clearArrivalTimer();
     this.arrivedAtPickupTimer.set(null);
     this.passengerSection.set(null);
     this.passengerMapFullscreen.set(true);
     this._drawPassengerTripRoute();
     setTimeout(() => this._map?.resize(), 200);
-    // Actualizar BD + notificar al conductor via broadcast (no depende de RLS)
-    await this.agService.updateTripStage(tripId, 'on_route');
-    if (driverId) this.agService.broadcastPassengerBoarded(driverId, tripId);
     this.cdr.markForCheck();
+  }
+
+  async passengerConfirmBoarding(): Promise<void> {
+    const tripId = this.currentTripRequestId();
+    if (!tripId) return;
+    this._applyPassengerBoarding();
+    // Notificar al conductor via canal broadcast dedicado
+    this.agService.broadcastTripBoarding(tripId);
+    await this.agService.updateTripStage(tripId, 'on_route');
+    this.cdr.markForCheck();
+  }
+
+  // Aplica el estado de abordaje en el lado del conductor (sin broadcast para evitar bucle)
+  private _applyDriverBoarding(): void {
+    const trip = this.driverArrivalTrip();
+    if (!trip) return;
+    this._clearDriverArrivalTimer();
+    this.driverArrivalTrip.set(null);
+    this.driverArrivalTimer.set(null);
+    this.advanceStage(trip, 'on_route');
+  }
+
+  async driverPassengerBoarded(): Promise<void> {
+    const trip = this.driverArrivalTrip();
+    if (!trip) return;
+    const tripId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
+    this._applyDriverBoarding();
+    // Notificar al pasajero via canal broadcast dedicado
+    if (tripId) this.agService.broadcastTripBoarding(tripId);
   }
 
   // ── Trip receipt (recibo al finalizar) ────────────────────────

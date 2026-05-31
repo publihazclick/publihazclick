@@ -704,6 +704,24 @@ export class AndaGanaService {
     });
   }
 
+  /** Canal bidireccional para sincronizar el abordaje entre pasajero y conductor */
+  subscribeTripBoarding(tripId: string, onBoarded: () => void): RealtimeChannel {
+    return this.supabase
+      .channel(`trip-boarding-${tripId}`)
+      .on('broadcast', { event: 'boarded' }, () => onBoarded())
+      .subscribe();
+  }
+
+  broadcastTripBoarding(tripId: string): void {
+    const ch = this.supabase.channel(`trip-boarding-${tripId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'boarded', payload: {} }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
   /** Conductor suscribe al canal broadcast de su ID */
   subscribeToDriverBroadcast(
     driverId: string,
