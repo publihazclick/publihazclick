@@ -3810,8 +3810,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                 <div class="flex-1"></div>
 
-                <!-- Botón voz (44px mínimo) -->
-                <button (click)="navVoiceEnabled.set(!navVoiceEnabled())"
+                <!-- Botón voz: tap activa/desactiva + warm-up TTS -->
+                <button (click)="toggleNavVoice()"
                   class="flex items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0"
                   style="min-width:44px;min-height:44px;border:1px solid"
                   [style.background]="navVoiceEnabled() ? 'rgba(37,99,235,0.25)' : 'rgba(100,116,139,0.15)'"
@@ -10292,6 +10292,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // Botón "Iniciar recogida" desde la alerta inDrive full-screen
   async acceptTripAndGo(alert: any): Promise<void> {
+    this.warmUpTts(); // síncronamente antes de cualquier await
     this.driverTripAlert.set(null);
     await this.advanceStage(alert, 'heading_to_pickup');
     const req = alert.ag_trip_requests ?? alert;
@@ -10342,33 +10343,43 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ── Navegación en app ────────────────────────────────────────
 
   // keep-alive para Android WebView: el motor TTS se "pausa" tras ~15s de silencio
-  private _ttsKeepAlive: any = null;
+  private _ttsKeepAlive:  any     = null;
+  private _ttsWarmedUp:   boolean = false;
+
+  // DEBE llamarse síncronamente en el tap del usuario, ANTES de cualquier await/setTimeout.
+  // Dispara un utterance silencioso que "desbloquea" el motor TTS en Android WebView.
+  // Sin este warm-up, los llamados a speak() hechos después de async/await son ignorados.
+  warmUpTts(): void {
+    if (!isPlatformBrowser(this.platformId) || !window.speechSynthesis || this._ttsWarmedUp) return;
+    this._ttsWarmedUp = true;
+    const silent = new SpeechSynthesisUtterance(' ');
+    silent.volume = 0;
+    silent.lang   = 'es';
+    window.speechSynthesis.speak(silent);
+  }
 
   private _speak(text: string): void {
     if (!this.navVoiceEnabled()) return;
     if (!isPlatformBrowser(this.platformId) || !window.speechSynthesis) return;
 
-    // Android WebView bug: speechSynthesis se congela tras ~14s de inactividad.
-    // Solución: pause()+resume() cada 10s mientras la navegación esté activa.
+    // Keep-alive: previene que Android WebView congele el motor TTS tras ~14s
     this._ensureTtsKeepAlive();
 
-    // Cancelar cualquier utterance pendiente y hablar
     window.speechSynthesis.cancel();
 
-    const utt    = new SpeechSynthesisUtterance(text);
-    utt.lang     = 'es';   // 'es' es más compatible en Android que 'es-CO'
-    utt.rate     = 0.9;
-    utt.pitch    = 1;
-    utt.volume   = 1;
-    // NO fijar utt.voice — dejar que Android elija el motor instalado
-    // (forzar una voz específica falla silenciosamente en muchos WebViews)
+    const utt  = new SpeechSynthesisUtterance(text);
+    utt.lang   = 'es';   // 'es' más compatible que 'es-CO' en Android
+    utt.rate   = 0.9;
+    utt.pitch  = 1;
+    utt.volume = 1;
+    // Sin utt.voice: Android elige el motor instalado (Google TTS)
 
+    utt.onerror = (e) => console.error('[TTS error]', e.error, text);
     window.speechSynthesis.speak(utt);
   }
 
   private _ensureTtsKeepAlive(): void {
     if (this._ttsKeepAlive) return;
-    // Cada 10 s: pause+resume para que Android no "duerma" el motor TTS
     this._ttsKeepAlive = setInterval(() => {
       if (!window.speechSynthesis || !this.navActive()) {
         this._stopTtsKeepAlive();
@@ -10380,9 +10391,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _stopTtsKeepAlive(): void {
-    if (this._ttsKeepAlive) {
-      clearInterval(this._ttsKeepAlive);
-      this._ttsKeepAlive = null;
+    if (this._ttsKeepAlive) { clearInterval(this._ttsKeepAlive); this._ttsKeepAlive = null; }
+  }
+
+  toggleNavVoice(): void {
+    const next = !this.navVoiceEnabled();
+    this.navVoiceEnabled.set(next);
+    if (next) {
+      // warm-up síncronamente (esto es un tap = gesto de usuario)
+      this.warmUpTts();
+      // pequeño delay para que el warm-up se registre antes de speak()
+      setTimeout(() => this._speak('Guía de voz activada'), 300);
     }
   }
 
@@ -10411,6 +10430,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   async startInAppNav(trip: any, toPickup: boolean): Promise<void> {
+    this.warmUpTts(); // síncronamente — desbloquea TTS en Android WebView
     const req = trip.ag_trip_requests ?? trip;
     const destLat = toPickup ? req.origin_lat : req.dest_lat;
     const destLng = toPickup ? req.origin_lng : req.dest_lng;
@@ -14751,9 +14771,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   async driverPassengerBoarded(): Promise<void> {
+    this.warmUpTts(); // síncronamente antes de cualquier await
     const trip = this.driverArrivalTrip();
     if (!trip) return;
-    // Notificar al pasajero via passenger-live-${authId} — misma lógica que driver-live
     const passengerAuthId = trip.ag_trip_requests?.ag_users?.auth_user_id;
     this._applyDriverBoarding();
     if (passengerAuthId) this.agService.broadcastBoardingToPassenger(passengerAuthId);
