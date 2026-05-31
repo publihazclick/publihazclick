@@ -8131,6 +8131,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           this.driverPassengerBoarded();
         }
       },
+      async (payload) => {
+        // Pasajero finalizó el viaje → conductor muestra recibo y rating
+        const tripId = payload?.tripRequestId;
+        const trip = this.driverActiveTrips().find((t: any) =>
+          (t.trip_request_id ?? t.ag_trip_requests?.id) === tripId
+        ) ?? this.driverActiveTrips()[0];
+        if (!trip) return;
+        const tripDetails = await this.agService.getTripDetails(tripId).catch(() => null);
+        this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
+        if (tripDetails) {
+          this.tripReceiptData.set({ ...tripDetails, _role: 'driver' });
+          this.tripReceiptTrip.set(trip);
+          this.tripReceiptModal.set(true);
+        } else {
+          await this.promptRatePassenger(trip);
+        }
+        this.cdr.markForCheck();
+      },
     );
     // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
     if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
@@ -9561,6 +9579,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       alert(e?.message ?? 'Error al finalizar el viaje. Intenta de nuevo.');
       return;
     }
+    // Notificar al conductor para que también muestre recibo y rating
+    const driverId = offer.driver_id;
+    if (driverId) this.agService.broadcastTripCompletedToDriver(driverId, tripId);
     this._showTripReceipt('passenger');
     this._resetTrip();
   }
@@ -9582,6 +9603,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     } catch (e: any) {
       alert(e?.message ?? 'Error al finalizar el viaje.'); return;
     }
+    // Notificar al pasajero para que también muestre recibo y rating
+    const passengerAuthId = trip.ag_trip_requests?.ag_users?.auth_user_id;
+    if (passengerAuthId) this.agService.broadcastTripCompletedToPassenger(passengerAuthId);
     // Guardar datos para recibo antes de limpiar el viaje activo
     const tripDetails = await this.agService.getTripDetails(tripRequestId).catch(() => null);
     this.driverActiveTrips.update(list => list.filter(t => t.id !== trip.id));
@@ -11431,9 +11455,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const myAuthId = this.agProfile()?.auth_user_id;
     if (myAuthId) {
       if (this._passengerLiveChannel) { this._passengerLiveChannel.unsubscribe(); }
-      this._passengerLiveChannel = this.agService.subscribeToPassengerBroadcast(myAuthId, () => {
-        this._applyPassengerBoarding();
-      });
+      this._passengerLiveChannel = this.agService.subscribeToPassengerBroadcast(
+        myAuthId,
+        () => { this._applyPassengerBoarding(); },
+        () => {
+          // Conductor finalizó → pasajero muestra recibo y rating (backup, ya manejado por _tripStageChannel)
+          if (this.tripAccepted() && !this.tripReceiptModal()) {
+            this._showTripReceipt('passenger');
+          }
+        },
+      );
     }
     if (tripId && offer.driver_id) {
       this.startDriverTracking(offer.driver_id, tripId);
@@ -13551,11 +13582,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   async openPassengerChat() {
     const tripId = this.tripAccepted()?.trip_request_id ?? this.currentTripRequestId();
     if (!tripId) return;
-    this.chatOpen.set(true);
+    this.chatRequestId.set(tripId);
+    this.chatUnread.set(0);
     const msgs = await this.agService.getChatMessages(tripId);
     this.chatMessages.set(msgs);
+    this.showChatModal.set(true);
+    this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
       this.chatMessages.update(list => [...list, msg]);
+      this.cdr.markForCheck();
     });
   }
 

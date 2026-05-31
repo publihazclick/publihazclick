@@ -715,11 +715,12 @@ export class AndaGanaService {
     });
   }
 
-  subscribeToPassengerBroadcast(passengerAuthId: string, onDriverBoarded: () => void): RealtimeChannel {
-    return this.supabase
+  subscribeToPassengerBroadcast(passengerAuthId: string, onDriverBoarded: () => void, onTripCompleted?: () => void): RealtimeChannel {
+    const ch = this.supabase
       .channel(`passenger-live-${passengerAuthId}`)
-      .on('broadcast', { event: 'driver_boarded' }, () => onDriverBoarded())
-      .subscribe();
+      .on('broadcast', { event: 'driver_boarded' }, () => onDriverBoarded());
+    if (onTripCompleted) ch.on('broadcast', { event: 'trip_completed' }, () => onTripCompleted());
+    return ch.subscribe();
   }
 
   /** Canal bidireccional para sincronizar el abordaje entre pasajero y conductor */
@@ -745,14 +746,34 @@ export class AndaGanaService {
     driverId: string,
     onAccepted: (payload: any) => void,
     onBoarded?: (payload: any) => void,
+    onCompleted?: (payload: any) => void,
   ): RealtimeChannel {
     const ch = this.supabase
       .channel(`driver-live-${driverId}`)
       .on('broadcast', { event: 'offer_accepted' }, ({ payload }) => onAccepted(payload));
-    if (onBoarded) {
-      ch.on('broadcast', { event: 'passenger_boarded' }, ({ payload }) => onBoarded(payload));
-    }
+    if (onBoarded) ch.on('broadcast', { event: 'passenger_boarded' }, ({ payload }) => onBoarded(payload));
+    if (onCompleted) ch.on('broadcast', { event: 'trip_completed' }, ({ payload }) => onCompleted(payload));
     return ch.subscribe();
+  }
+
+  broadcastTripCompletedToDriver(driverId: string, tripRequestId: string): void {
+    const ch = this.supabase.channel(`driver-live-${driverId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'trip_completed', payload: { tripRequestId } }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
+  broadcastTripCompletedToPassenger(passengerAuthId: string): void {
+    const ch = this.supabase.channel(`passenger-live-${passengerAuthId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'trip_completed', payload: {} }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
   }
 
   /** Realtime: notifica al conductor cuando su oferta es aceptada por el pasajero */
