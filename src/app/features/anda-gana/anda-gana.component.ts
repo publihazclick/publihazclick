@@ -7895,6 +7895,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _requestsChannel: RealtimeChannel | null = null;
   private _myOffersChannel: RealtimeChannel | null = null;
   private _tripBoardingChannel: RealtimeChannel | null = null;
+  private _passengerLiveChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
 
@@ -8243,6 +8244,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); this._tripBoardingChannel = null; }
+    if (this._passengerLiveChannel) { this._passengerLiveChannel.unsubscribe(); this._passengerLiveChannel = null; }
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
@@ -11425,10 +11427,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }));
     }
     this._startTrackingAssignedDriver(offer.driver_id);
-    // Canal bidireccional: pasajero escucha si el CONDUCTOR confirma abordaje
-    if (tripId) {
-      if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); }
-      this._tripBoardingChannel = this.agService.subscribeTripBoarding(tripId, () => {
+    // Pasajero escucha canal passenger-live-${authId} — misma lógica que driver-live para conductor
+    const myAuthId = this.agProfile()?.auth_user_id;
+    if (myAuthId) {
+      if (this._passengerLiveChannel) { this._passengerLiveChannel.unsubscribe(); }
+      this._passengerLiveChannel = this.agService.subscribeToPassengerBroadcast(myAuthId, () => {
         this._applyPassengerBoarding();
       });
     }
@@ -12099,6 +12102,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
     this.passengerSection.set(null);
     if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); this._tripBoardingChannel = null; }
+    if (this._passengerLiveChannel) { this._passengerLiveChannel.unsubscribe(); this._passengerLiveChannel = null; }
     // Destruir y recrear el mapa siempre — resize() solo no es suficiente tras un viaje fullscreen
     const lat = this._currentLat || this.DEFAULT_LAT;
     const lng = this._currentLng || this.DEFAULT_LNG;
@@ -14354,10 +14358,10 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   async driverPassengerBoarded(): Promise<void> {
     const trip = this.driverArrivalTrip();
     if (!trip) return;
-    const tripId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
+    // Notificar al pasajero via passenger-live-${authId} — misma lógica que driver-live
+    const passengerAuthId = trip.ag_trip_requests?.ag_users?.auth_user_id;
     this._applyDriverBoarding();
-    // Notificar al pasajero via canal broadcast dedicado
-    if (tripId) this.agService.broadcastTripBoarding(tripId);
+    if (passengerAuthId) this.agService.broadcastBoardingToPassenger(passengerAuthId);
   }
 
   // ── Trip receipt (recibo al finalizar) ────────────────────────

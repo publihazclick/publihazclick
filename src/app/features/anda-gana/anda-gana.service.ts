@@ -704,6 +704,24 @@ export class AndaGanaService {
     });
   }
 
+  /** Conductor → Pasajero: mismo patrón que driver-live pero invertido */
+  broadcastBoardingToPassenger(passengerAuthId: string): void {
+    const ch = this.supabase.channel(`passenger-live-${passengerAuthId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'driver_boarded', payload: {} }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
+  subscribeToPassengerBroadcast(passengerAuthId: string, onDriverBoarded: () => void): RealtimeChannel {
+    return this.supabase
+      .channel(`passenger-live-${passengerAuthId}`)
+      .on('broadcast', { event: 'driver_boarded' }, () => onDriverBoarded())
+      .subscribe();
+  }
+
   /** Canal bidireccional para sincronizar el abordaje entre pasajero y conductor */
   subscribeTripBoarding(tripId: string, onBoarded: () => void): RealtimeChannel {
     return this.supabase
