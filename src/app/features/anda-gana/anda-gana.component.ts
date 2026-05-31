@@ -7894,7 +7894,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _offerChannel: RealtimeChannel | null = null;
   private _requestsChannel: RealtimeChannel | null = null;
   private _myOffersChannel: RealtimeChannel | null = null;
-  private _driverPickupWatchChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
 
@@ -8176,7 +8175,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._clearDriverArrivalTimer();
     this.driverArrivalTrip.set(null);
     this.driverArrivalTimer.set(null);
-    if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); this._driverPickupWatchChannel = null; }
     // Limpiar rutas y timers del mapa
     this._clearApproachRoute();
     this._clearNavRoute();
@@ -8231,7 +8229,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._clearDriverArrivalTimer();
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
-    if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); this._driverPickupWatchChannel = null; }
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
@@ -10180,16 +10177,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }
       this.driverArrivalTrip.set(trip);
       this._startDriverArrivalTimer();
-      // Escuchar si el PASAJERO confirma abordaje — reaccionar igual que si el conductor lo hiciera
-      const watchId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
-      if (watchId) {
-        if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); }
-        this._driverPickupWatchChannel = this.agService.subscribeTripStage(watchId, (stage) => {
-          if (stage === 'on_route' && this.driverArrivalTrip()) {
-            this.driverPassengerBoarded();
-          }
-        });
-      }
     }
 
     // Cuando inicia el viaje: activar fullscreen + navegar al destino
@@ -11853,7 +11840,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.cdr.markForCheck();
       },
       (req) => {
-        // Pasajero hizo contraoferta: actualizar precio en la lista sin quitar la solicitud
+        // Actualizar precio si el pasajero cambió la oferta
         if (req.status === 'searching') {
           this.driverRequests.update(list =>
             list.map(r => r.id === req.id ? { ...r, offered_price: (req as any).offered_price ?? r.offered_price } : r)
@@ -11861,29 +11848,36 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.cdr.markForCheck();
           return;
         }
-        if (req.status !== 'searching') {
-          this._markRequestCancelled(req.id);
-          this.driverRequests.update(list => {
-            const updated = list.filter(r => r.id !== req.id);
-            this._saveRequestsToCache(updated);
-            return updated;
-          });
-          this.cdr.markForCheck();
 
-          // Pasajero canceló el viaje — limpiar todo del conductor
-          if (req.status === 'cancelled') {
-            this._handleTripCancelled(req.id, (req as any).cancel_reason);
+        this._markRequestCancelled(req.id);
+        this.driverRequests.update(list => {
+          const updated = list.filter(r => r.id !== req.id);
+          this._saveRequestsToCache(updated);
+          return updated;
+        });
+        this.cdr.markForCheck();
+
+        // Pasajero canceló el viaje
+        if (req.status === 'cancelled') {
+          this._handleTripCancelled(req.id, (req as any).cancel_reason);
+        }
+
+        // Pasajero aceptó oferta por primera vez
+        if (req.status === 'accepted' && !(req as any).driver_stage && !this.driverTripAlert()) {
+          const driverId = this.driverData()?.id;
+          if (driverId) {
+            this.agService.getDriverActiveTrips(driverId).then(trips => {
+              const match = trips.find((t: any) => (t.ag_trip_requests?.id === req.id || t.trip_request_id === req.id) && !t.ag_trip_requests?.driver_stage);
+              if (match && !this.driverTripAlert()) this._handleNewAcceptedOffer(match);
+            }).catch(() => {});
           }
+        }
 
-          // Pasajero aceptó — solo si no hay modal ya y el stage es null
-          if (req.status === 'accepted' && !(req as any).driver_stage && !this.driverTripAlert()) {
-            const driverId = this.driverData()?.id;
-            if (driverId) {
-              this.agService.getDriverActiveTrips(driverId).then(trips => {
-                const match = trips.find((t: any) => (t.ag_trip_requests?.id === req.id || t.trip_request_id === req.id) && !t.ag_trip_requests?.driver_stage);
-                if (match && !this.driverTripAlert()) this._handleNewAcceptedOffer(match);
-              }).catch(() => {});
-            }
+        // Pasajero confirmó "Ya estoy a bordo" → disparar lo mismo que si el conductor tocara "Pasajero a Bordo"
+        if (req.status === 'accepted' && (req as any).driver_stage === 'on_route' && this.driverArrivalTrip()) {
+          const waitingId = this.driverArrivalTrip()?.trip_request_id ?? this.driverArrivalTrip()?.ag_trip_requests?.id;
+          if (waitingId === req.id) {
+            this.driverPassengerBoarded();
           }
         }
       },
@@ -14298,7 +14292,6 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this._clearDriverArrivalTimer();
     this.driverArrivalTrip.set(null);
     this.driverArrivalTimer.set(null);
-    if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); this._driverPickupWatchChannel = null; }
     await this.advanceStage(trip, 'on_route');
   }
 
