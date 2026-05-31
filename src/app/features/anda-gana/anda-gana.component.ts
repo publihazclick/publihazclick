@@ -3164,16 +3164,35 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </span>
           </div>
         </div>
-        <button (click)="driverMenuOpen.set(true)"
-          class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 rounded-xl"
-          style="background:#F3F4F6;border:1px solid #E5E7EB;min-width:48px;min-height:48px;padding:8px 12px">
-          <div class="flex flex-col items-center gap-1">
-            <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
-            <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
-            <span class="block rounded-full bg-slate-600" style="width:14px;height:2px"></span>
-          </div>
-          <span class="text-slate-600 font-bold" style="font-size:10px;letter-spacing:0.06em">MENÚ</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- BOTÓN PRUEBA DE VOZ — siempre visible -->
+          <button (click)="testVoz()"
+            class="flex flex-col items-center justify-center gap-0.5 rounded-xl active:scale-90 transition"
+            style="min-width:52px;min-height:48px;padding:6px 10px;border:2px solid"
+            [style.background]="ttsStatus()==='playing' ? '#dcfce7' : ttsStatus()==='error' ? '#fee2e2' : '#f0fdf4'"
+            [style.border-color]="ttsStatus()==='playing' ? '#16a34a' : ttsStatus()==='error' ? '#dc2626' : '#86efac'">
+            <span class="material-symbols-outlined"
+              [class.animate-pulse]="ttsStatus()==='playing'"
+              [style.color]="ttsStatus()==='playing' ? '#16a34a' : ttsStatus()==='error' ? '#dc2626' : '#4ade80'"
+              style="font-size:20px">
+              {{ ttsStatus()==='playing' ? 'graphic_eq' : ttsStatus()==='error' ? 'volume_off' : 'volume_up' }}
+            </span>
+            <span style="font-size:9px;font-weight:800;letter-spacing:0.04em"
+              [style.color]="ttsStatus()==='error' ? '#dc2626' : '#16a34a'">
+              {{ ttsStatus()==='error' ? 'ERROR' : 'VOZ' }}
+            </span>
+          </button>
+          <button (click)="driverMenuOpen.set(true)"
+            class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 rounded-xl"
+            style="background:#F3F4F6;border:1px solid #E5E7EB;min-width:48px;min-height:48px;padding:8px 12px">
+            <div class="flex flex-col items-center gap-1">
+              <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
+              <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
+              <span class="block rounded-full bg-slate-600" style="width:14px;height:2px"></span>
+            </div>
+            <span class="text-slate-600 font-bold" style="font-size:10px;letter-spacing:0.06em">MENÚ</span>
+          </button>
+        </div>
       </div>
 
       <!-- Drawer menú conductor -->
