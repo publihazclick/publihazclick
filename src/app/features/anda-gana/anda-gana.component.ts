@@ -5419,7 +5419,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
           </button>
         </div>
-        <div class="flex-1 overflow-y-auto flex flex-col gap-2 px-1 py-2">
+        <div id="passenger-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-2 px-1 py-2">
+          @if (chatMessages().length === 0) {
+            <p class="text-slate-500 text-center py-8 text-sm">Envía un mensaje al conductor.</p>
+          }
           @for (m of chatMessages(); track m.id) {
             <div class="max-w-[80%] rounded-2xl px-3 py-2"
               [class.self-end]="m.sender_ag_user_id === agProfile()?.id"
@@ -5428,9 +5431,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <p class="text-white text-sm">{{ m.message }}</p>
               <p class="text-slate-500 text-[10px] mt-1">{{ m.created_at | date:'HH:mm' }}</p>
             </div>
-          }
-          @if (chatMessages().length === 0) {
-            <p class="text-slate-500 text-center py-8 text-sm">Envía un mensaje al conductor.</p>
           }
         </div>
         <div class="flex gap-2 pt-2 border-t border-white/10">
@@ -7144,7 +7144,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
 
         <!-- Mensajes -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-2" style="min-height:200px">
+        <div id="driver-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-2" style="min-height:200px">
           @if (chatMessages().length === 0) {
             <div class="flex flex-col items-center justify-center py-10 text-center">
               <span class="material-symbols-outlined text-slate-700" style="font-size:40px">chat_bubble_outline</span>
@@ -11469,6 +11469,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (tripId && offer.driver_id) {
       this.startDriverTracking(offer.driver_id, tripId);
     }
+    // Suscripción de fondo al chat para que el badge de no leídos funcione
+    if (tripId) {
+      this.startPassengerChatBackground(tripId);
+    }
     // Broadcast directo al conductor (no depende de RLS)
     if (offer.driver_id && tripId) {
       this.agService.broadcastOfferAccepted(offer.driver_id, offer.id, tripId);
@@ -11552,6 +11556,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.tripSent.set(false);
         this._startTrackingAssignedDriver(saved.driverId!);
         this.startDriverTracking(saved.driverId!, saved.tripId);
+        this.startPassengerChatBackground(saved.tripId);
         this.cdr.markForCheck();
       }
     } catch { localStorage.removeItem('movi_active_trip'); }
@@ -12540,7 +12545,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(requestId, (msg) => {
       this.chatMessages.update(list => [...list, msg]);
+      this.cdr.markForCheck();
+      this._scrollChatToBottom('driver-chat-messages');
     });
+    setTimeout(() => this._scrollChatToBottom('driver-chat-messages'), 50);
   }
 
   closeChatModal(): void {
@@ -12549,15 +12557,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   async sendChatMsg(): Promise<void> {
-    const text = this.chatInput.trim();
     const reqId = this.chatRequestId();
     const myProfile = this.agProfile();
-    if (!text || !reqId || !myProfile) return;
+    if (!this.chatInput.trim() || !reqId || !myProfile) return;
 
     this.chatSending.set(true);
-    await this.agService.sendChatMessage(reqId, myProfile.id, text);
+    const text = this.chatInput;
     this.chatInput = '';
+    await this.agService.sendChatMessage(reqId, myProfile.id, text);
     this.chatSending.set(false);
+    this._scrollChatToBottom('driver-chat-messages');
   }
 
   isMyChatMessage(msg: { sender_ag_user_id: string }): boolean {
@@ -13586,18 +13595,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.chatUnread.set(0);
     const msgs = await this.agService.getChatMessages(tripId);
     this.chatMessages.set(msgs);
-    this.showChatModal.set(true);
+    this.chatOpen.set(true);  // abre el modal del pasajero (no el del conductor)
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
       this.chatMessages.update(list => [...list, msg]);
       this.cdr.markForCheck();
+      this._scrollChatToBottom('passenger-chat-messages');
     });
+    setTimeout(() => this._scrollChatToBottom('passenger-chat-messages'), 50);
   }
 
   closePassengerChat() {
     this.chatOpen.set(false);
-    this.agService.unsubscribeChannel(this._chatChannel);
-    this._chatChannel = null;
+    this._unsubscribeChat();
   }
 
   async sendPassengerChat() {
@@ -13605,9 +13615,36 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const tripId = this.tripAccepted()?.trip_request_id ?? this.currentTripRequestId();
     if (!profile || !tripId || !this.chatInput.trim()) return;
     this.sendingChat.set(true);
-    await this.agService.sendChatMessage(tripId, profile.id, this.chatInput);
+    const text = this.chatInput;
     this.chatInput = '';
+    await this.agService.sendChatMessage(tripId, profile.id, text);
     this.sendingChat.set(false);
+    this._scrollChatToBottom('passenger-chat-messages');
+  }
+
+  // suscripción de fondo — solo incrementa badge cuando el modal está cerrado
+  startPassengerChatBackground(tripId: string) {
+    if (this.chatRequestId() === tripId) return; // ya suscrito
+    this.chatRequestId.set(tripId);
+    this._unsubscribeChat();
+    this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
+      if (!this.chatOpen()) {
+        this.chatUnread.update(n => n + 1);
+        this.cdr.markForCheck();
+      } else {
+        this.chatMessages.update(list => [...list, msg]);
+        this.cdr.markForCheck();
+        this._scrollChatToBottom('passenger-chat-messages');
+      }
+    });
+  }
+
+  private _scrollChatToBottom(containerId: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    setTimeout(() => {
+      const el = document.getElementById(containerId);
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 30);
   }
 
   // ═══════════════════════════════════════════════════
