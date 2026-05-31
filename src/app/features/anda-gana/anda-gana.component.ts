@@ -431,11 +431,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 Aceptar
               </button>
             </div>
-            <button (click)="openCounterOffer(offer)"
-              style="width:100%;padding:10px 0;border-radius:14px;border:1.5px solid #fed7aa;background:#fff7ed;color:#ea580c;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
-              <span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">local_offer</span>
-              Contraofertar
-            </button>
           </div>
 
           <!-- Barra timer -->
@@ -2093,13 +2088,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             Aceptar
                           </button>
                         </div>
-                        <!-- Contraofertar — propón un precio diferente -->
-                        <button (click)="openCounterOffer(offer)"
-                          class="w-full py-3 rounded-2xl text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all"
-                          style="background:#fff7ed;border:1.5px solid #fed7aa;color:#ea580c">
-                          <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">local_offer</span>
-                          Contraofertar
-                        </button>
                       </div>
 
                       <!-- Barra timer 4 min -->
@@ -7135,63 +7123,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
-  <!-- ═══════════ MODAL CONTRAOFERTAR ═══════════ -->
-  @if (counterOfferModal() && counterOfferTarget()) {
-    <div class="fixed inset-0 z-[9997] flex items-end justify-center"
-      style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);padding:0 12px 12px">
-      <div class="w-full max-w-md rounded-3xl flex flex-col gap-4 p-5 pb-7"
-        style="background:#0f1421;border:1.5px solid rgba(249,115,22,0.4);box-shadow:0 16px 60px rgba(0,0,0,0.7)">
-        <!-- Handle -->
-        <div class="flex justify-center -mt-1"><div class="w-10 h-1 rounded-full" style="background:rgba(255,255,255,0.18)"></div></div>
-
-        <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3)">
-            <span class="material-symbols-outlined text-orange-400" style="font-size:24px;font-variation-settings:'FILL' 1">local_offer</span>
-          </div>
-          <div>
-            <p class="text-white font-black text-base">Contraoferta</p>
-            <p class="text-slate-400 text-xs">Oferta del conductor: <span class="font-bold text-orange-400">{{ formatCOP(counterOfferTarget()!.offered_price) }}</span></p>
-          </div>
-        </div>
-
-        <p class="text-slate-400 text-sm text-center">Propón un precio diferente. El conductor lo verá y podrá aceptar.</p>
-
-        <!-- Selector de precio -->
-        <div class="flex items-center gap-3 justify-center">
-          <button (click)="counterOfferValue.set(counterOfferValue() > 2500 ? counterOfferValue() - 500 : 2000)"
-            class="w-14 h-14 rounded-2xl border text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
-            style="background:#1a2035;border-color:rgba(255,255,255,0.12)">−</button>
-          <div class="flex-1 text-center">
-            <p class="text-white font-black leading-none" style="font-size:36px">{{ formatCOP(counterOfferValue()) }}</p>
-          </div>
-          <button (click)="counterOfferValue.set(counterOfferValue() + 500)"
-            class="w-14 h-14 rounded-2xl text-white font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
-            style="background:#f97316">+</button>
-        </div>
-
-        <!-- Botones -->
-        <div class="flex gap-3">
-          <button (click)="counterOfferModal.set(false)"
-            class="flex-1 py-3.5 rounded-2xl text-slate-400 text-sm font-bold active:scale-[0.98]"
-            style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
-            Cancelar
-          </button>
-          <button (click)="submitCounterOffer()"
-            [disabled]="submittingCounter() || counterOfferValue() < 2000"
-            class="flex-[2] py-3.5 rounded-2xl text-white text-sm font-black active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
-            style="background:linear-gradient(135deg,#f97316,#fb923c)">
-            @if (submittingCounter()) {
-              <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span>
-            } @else {
-              <span class="material-symbols-outlined" style="font-size:16px">send</span>
-            }
-            Enviar contraoferta
-          </button>
-        </div>
-      </div>
-    </div>
-  }
 
   <!-- ═══ MODAL CHAT ═══ -->
   @if (showChatModal()) {
