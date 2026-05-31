@@ -8124,10 +8124,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         );
         if (headingTrip) {
           const req = headingTrip.ag_trip_requests ?? headingTrip;
-          if (req?.origin_lat && req?.origin_lng) {
+          const oLat = parseFloat(req?.origin_lat);
+          const oLng = parseFloat(req?.origin_lng);
+          if (isFinite(oLat) && isFinite(oLng)) {
             this.driverFullscreenTrip.set(headingTrip);
             this.driverMapFullscreen.set(true);
-            this._waitForMap(() => this.startInAppNav(headingTrip, true));
+            this._waitForMap(() => {
+              this._map?.resize();
+              setTimeout(() => { this._map?.resize(); this.startInAppNav(headingTrip, true); }, 450);
+            });
           }
         }
       }
@@ -10289,15 +10294,23 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.driverTripAlert.set(null);
     await this.advanceStage(alert, 'heading_to_pickup');
     const req = alert.ag_trip_requests ?? alert;
-    if (req?.origin_lat && req?.origin_lng) {
-      this.driverFullscreenTrip.set(alert);
-      this.driverMapFullscreen.set(true);
-      // Esperar a que el mapa esté listo (puede estar cargando en primer uso)
-      this._waitForMap(() => {
+    // Normalizar: las coords pueden llegar como string desde el RPC
+    const oLat = parseFloat(req?.origin_lat);
+    const oLng = parseFloat(req?.origin_lng);
+    if (!isFinite(oLat) || !isFinite(oLng)) return;
+
+    this.driverFullscreenTrip.set(alert);
+    this.driverMapFullscreen.set(true);
+
+    // 1) Primer resize inmediato cuando el mapa esté listo
+    // 2) Segundo resize + startInAppNav a 500ms — esperar a que la transición CSS (0.35s) termine
+    this._waitForMap(() => {
+      this._map?.resize();
+      setTimeout(() => {
         this._map?.resize();
         this.startInAppNav(alert, true);
-      });
-    }
+      }, 450);
+    });
   }
 
   dismissTripAlert(): void {
@@ -10465,37 +10478,48 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _drawNavRoute(geometry: any): void {
     if (!this._map) return;
-    this._clearNavRoute();
+    const geoData = { type: 'Feature' as const, properties: {}, geometry };
+
     const doAdd = () => {
+      // Reutilizar source si ya existe (setData es más robusto que remove+add)
       try {
-        this._clearNavRoute();
-        // Source con la ruta GeoJSON
-        this._map.addSource('nav-route', {
-          type: 'geojson',
-          data: { type: 'Feature', properties: {}, geometry },
-        });
-        // Capa 1: sombra ancha (halo azul oscuro) — efecto profundidad
-        this._map.addLayer({ id: 'nav-route-halo', type: 'line', source: 'nav-route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#1e3a5f', 'line-width': 18, 'line-opacity': 0.55 },
-        });
-        // Capa 2: línea principal azul brillante
-        this._map.addLayer({ id: 'nav-route-bg', type: 'line', source: 'nav-route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#3b82f6', 'line-width': 10, 'line-opacity': 1.0 },
-        });
-        // Capa 3: brillo blanco central (efecto inDriver)
-        this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#93c5fd', 'line-width': 3.5, 'line-opacity': 0.8 },
-        });
-        // Capa 4: flechas de dirección punteadas
-        this._map.addLayer({ id: 'nav-route-arr', type: 'line', source: 'nav-route',
-          layout: { 'line-cap': 'butt' },
-          paint: { 'line-color': '#fff', 'line-width': 2, 'line-opacity': 0.45, 'line-dasharray': [0, 6] },
-        });
-      } catch { /* style aún cargando */ }
+        const existing = this._map.getSource('nav-route') as any;
+        if (existing) {
+          existing.setData(geoData);
+        } else {
+          this._map.addSource('nav-route', { type: 'geojson', data: geoData });
+        }
+      } catch (e) {
+        console.error('[Movi Nav] source error:', e);
+        return;
+      }
+
+      // Agregar layers solo si no existen
+      const layerDefs = [
+        { id: 'nav-route-halo', cap: 'round', join: 'round',
+          paint: { 'line-color': '#1e3a5f', 'line-width': 18, 'line-opacity': 0.55 } },
+        { id: 'nav-route-bg',   cap: 'round', join: 'round',
+          paint: { 'line-color': '#3b82f6', 'line-width': 10, 'line-opacity': 1.0 } },
+        { id: 'nav-route-line', cap: 'round', join: 'round',
+          paint: { 'line-color': '#93c5fd', 'line-width': 3.5, 'line-opacity': 0.8 } },
+        { id: 'nav-route-arr',  cap: 'butt',  join: 'round',
+          paint: { 'line-color': '#fff',    'line-width': 2,   'line-opacity': 0.45, 'line-dasharray': [0, 6] } },
+      ];
+      for (const def of layerDefs) {
+        try {
+          if (!this._map.getLayer(def.id)) {
+            this._map.addLayer({
+              id: def.id, type: 'line', source: 'nav-route',
+              layout: { 'line-cap': def.cap as any, 'line-join': def.join as any },
+              paint: def.paint as any,
+            });
+          }
+        } catch (e) {
+          console.error(`[Movi Nav] layer ${def.id} error:`, e);
+        }
+      }
     };
+
     if (this._map.isStyleLoaded()) {
       doAdd();
     } else {
