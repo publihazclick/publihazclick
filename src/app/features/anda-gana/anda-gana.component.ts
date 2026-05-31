@@ -14337,9 +14337,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   async passengerConfirmBoarding(): Promise<void> {
     const tripId = this.currentTripRequestId();
+    const driverId = this.tripAccepted()?.driver_id;
     if (!tripId) return;
     this._applyPassengerBoarding();
-    // Notificar al conductor via canal broadcast dedicado
+    // Notificar al conductor por los dos canales para garantizar entrega
+    if (driverId) this.agService.broadcastPassengerBoarded(driverId, tripId);
     this.agService.broadcastTripBoarding(tripId);
     await this.agService.updateTripStage(tripId, 'on_route');
     this.cdr.markForCheck();
@@ -14352,6 +14354,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this._clearDriverArrivalTimer();
     this.driverArrivalTrip.set(null);
     this.driverArrivalTimer.set(null);
+    // Fullscreen + ruta de destino inmediatamente
+    this.driverFullscreenTrip.set(trip);
+    this.driverMapFullscreen.set(true);
+    this.cdr.markForCheck();
+    setTimeout(() => {
+      this._map?.resize();
+      this.startInAppNav(trip, false);
+    }, 250);
+    // Actualizar DB en segundo plano
     this.advanceStage(trip, 'on_route');
   }
 
