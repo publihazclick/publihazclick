@@ -3735,64 +3735,94 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- ── Overlay de navegación conductor ── -->
           @if (navActive()) {
-            <!-- Banner instrucción actual (arriba del mapa) -->
+            <!-- ══ Banner instrucción (arriba) — estilo inDriver ══ -->
             <div class="absolute top-0 left-0 right-0 z-30 pointer-events-none"
-              style="background:linear-gradient(180deg,rgba(10,40,90,0.97) 0%,rgba(10,40,90,0.92) 85%,transparent 100%);border-radius:16px 16px 0 0;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 24px">
+              style="padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 20px;background:linear-gradient(180deg,rgba(7,28,75,0.98) 0%,rgba(10,40,100,0.94) 70%,transparent 100%);border-radius:16px 16px 0 0">
+
+              <!-- Fila principal: icono maniobra + instrucción + distancia -->
               <div class="flex items-center gap-3">
-                <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style="background:rgba(37,99,235,0.3);border:2px solid rgba(37,99,235,0.6)">
-                  <span class="material-symbols-outlined" style="font-size:clamp(22px,7vw,28px);color:#93c5fd">{{ navManeuverIcon() }}</span>
+
+                <!-- Icono maniobra — rectángulo azul brillante -->
+                <div class="flex-shrink-0 flex items-center justify-center rounded-2xl"
+                  style="width:56px;height:56px;background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 4px 20px rgba(37,99,235,0.55);border:1.5px solid rgba(147,197,253,0.4)">
+                  <span class="material-symbols-outlined" style="font-size:30px;color:#fff;font-variation-settings:'FILL' 1">{{ navManeuverIcon() }}</span>
                 </div>
+
+                <!-- Texto instrucción + distancia -->
                 <div class="flex-1 min-w-0">
-                  <p class="text-white font-black text-sm leading-tight" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                  <!-- Distancia al giro (grande y prominente como inDriver) -->
+                  @if (navDistToNext()) {
+                    <p class="font-black leading-none mb-1" style="font-size:clamp(22px,6vw,28px);color:#fff">
+                      {{ navDistToNext() }}
+                    </p>
+                  }
+                  <!-- Instrucción de la maniobra -->
+                  <p class="font-bold text-blue-200 leading-tight"
+                    style="font-size:clamp(13px,3.5vw,15px);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
                     {{ navInstruction() }}
                   </p>
-                  @if (navDistToNext()) {
-                    <p class="font-black text-lg mt-0.5" style="color:#60a5fa">{{ navDistToNext() }}</p>
-                  }
                 </div>
+
+                <!-- Indicador recalculando -->
+                @if (navInstruction() === 'Recalculando ruta.') {
+                  <span class="material-symbols-outlined text-yellow-400 animate-spin flex-shrink-0" style="font-size:22px">sync</span>
+                }
               </div>
-            </div>
-            <!-- Barra inferior: ETA + km + fase + stop -->
-            <div class="absolute bottom-0 left-0 right-0 z-30"
-              style="background:linear-gradient(0deg,rgba(10,10,20,0.97) 0%,rgba(10,10,20,0.85) 80%,transparent 100%);border-radius:0 0 16px 16px;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 14px)">
-              <div class="flex items-center gap-2">
-                <!-- ETA -->
-                <div class="flex flex-col items-center px-2.5 py-2 rounded-xl min-w-[48px]" style="background:rgba(255,255,255,0.06)">
-                  <p class="text-white font-black text-lg leading-none">{{ navEtaMin() }}</p>
-                  <p class="text-slate-400 text-[10px] font-bold">min</p>
-                </div>
-                <!-- km -->
-                <div class="flex flex-col items-center px-2.5 py-2 rounded-xl min-w-[48px]" style="background:rgba(255,255,255,0.06)">
-                  <p class="text-white font-black text-lg leading-none">{{ navTotalKm() }}</p>
-                  <p class="text-slate-400 text-[10px] font-bold">km</p>
-                </div>
-                <!-- Fase -->
-                <div class="flex-1 flex items-center gap-1.5 px-3 py-2 rounded-xl"
-                  [style.background]="navPhase() === 'to_pickup' ? 'rgba(139,92,246,0.15)' : 'rgba(249,115,22,0.15)'">
-                  <span class="material-symbols-outlined" style="font-size:16px"
-                    [style.color]="navPhase() === 'to_pickup' ? '#a78bfa' : '#fb923c'">
+
+              <!-- Fase del viaje (pastilla debajo de la instrucción) -->
+              <div class="flex items-center gap-1.5 mt-2.5 pl-1">
+                <div class="flex items-center gap-1.5 px-3 py-1 rounded-full"
+                  [style.background]="navPhase() === 'to_pickup' ? 'rgba(139,92,246,0.2)' : 'rgba(249,115,22,0.2)'">
+                  <span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'FILL' 1"
+                    [style.color]="navPhase() === 'to_pickup' ? '#c4b5fd' : '#fdba74'">
                     {{ navPhase() === 'to_pickup' ? 'person_pin' : 'flag' }}
                   </span>
                   <p class="text-xs font-black"
-                    [style.color]="navPhase() === 'to_pickup' ? '#a78bfa' : '#fb923c'">
-                    {{ navPhase() === 'to_pickup' ? 'Al pasajero' : 'Al destino' }}
+                    [style.color]="navPhase() === 'to_pickup' ? '#c4b5fd' : '#fdba74'">
+                    {{ navPhase() === 'to_pickup' ? 'Recogiendo pasajero' : 'Llevando al destino' }}
                   </p>
                 </div>
-                <!-- Voz -->
+              </div>
+            </div>
+
+            <!-- ══ Barra inferior: ETA + km + voz + parar ══ -->
+            <div class="absolute bottom-0 left-0 right-0 z-30"
+              style="padding:14px 12px calc(env(safe-area-inset-bottom,0px) + 14px);background:linear-gradient(0deg,rgba(5,10,30,0.98) 0%,rgba(5,10,30,0.90) 70%,transparent 100%);border-radius:0 0 16px 16px">
+              <div class="flex items-center gap-2">
+
+                <!-- ETA -->
+                <div class="flex flex-col items-center justify-center rounded-xl px-3 py-2 flex-shrink-0"
+                  style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);min-width:52px">
+                  <p class="text-white font-black text-xl leading-none">{{ navEtaMin() }}</p>
+                  <p class="text-blue-300 font-bold" style="font-size:10px;margin-top:2px">min</p>
+                </div>
+
+                <!-- km -->
+                <div class="flex flex-col items-center justify-center rounded-xl px-3 py-2 flex-shrink-0"
+                  style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);min-width:52px">
+                  <p class="text-white font-black text-xl leading-none">{{ navTotalKm() }}</p>
+                  <p class="text-blue-300 font-bold" style="font-size:10px;margin-top:2px">km</p>
+                </div>
+
+                <div class="flex-1"></div>
+
+                <!-- Botón voz (44px mínimo) -->
                 <button (click)="navVoiceEnabled.set(!navVoiceEnabled())"
-                  class="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition"
-                  [style]="navVoiceEnabled() ? 'background:rgba(37,99,235,0.2);border:1px solid rgba(37,99,235,0.5)' : 'background:rgba(100,116,139,0.15);border:1px solid rgba(100,116,139,0.3)'">
-                  <span class="material-symbols-outlined" style="font-size:20px"
+                  class="flex items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0"
+                  style="min-width:44px;min-height:44px;border:1px solid"
+                  [style.background]="navVoiceEnabled() ? 'rgba(37,99,235,0.25)' : 'rgba(100,116,139,0.15)'"
+                  [style.border-color]="navVoiceEnabled() ? 'rgba(37,99,235,0.6)' : 'rgba(100,116,139,0.3)'">
+                  <span class="material-symbols-outlined" style="font-size:22px"
                     [style.color]="navVoiceEnabled() ? '#60a5fa' : '#94a3b8'">
                     {{ navVoiceEnabled() ? 'volume_up' : 'volume_off' }}
                   </span>
                 </button>
-                <!-- Parar -->
+
+                <!-- Botón parar nav (44px mínimo) -->
                 <button (click)="stopInAppNav()"
-                  class="w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition"
-                  style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35)">
-                  <span class="material-symbols-outlined text-red-400" style="font-size:20px">close</span>
+                  class="flex items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0"
+                  style="min-width:44px;min-height:44px;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.45)">
+                  <span class="material-symbols-outlined text-red-400" style="font-size:22px">close</span>
                 </button>
               </div>
             </div>
@@ -7899,6 +7929,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
 
+  // ── Navegación profesional ────────────────────────────────────────
+  private _currentHeading   = 0;          // rumbo del conductor en grados (0-360)
+  private _navRouteCoords:  [number,number][] = [];  // coords completas de la ruta activa
+  private _navDestLat       = 0;          // destino actual (para recalcular)
+  private _navDestLng       = 0;
+  private _navToPickup      = true;       // fase actual (recogida o destino final)
+  private _navRecalcCooldown = false;     // evita recalcular en spam
+  private _navFollowActive  = false;      // true cuando la cámara sigue al conductor
+  private _navFollowTimer:  any = null;   // timer para iniciar follow-mode
+
   // ── Geolocalización en tiempo real (pasajero) ──────────────────
   private _passengerWatchId:    number | null = null;   // ID del watchPosition pasajero
   private _locationThrottleTs:  number        = 0;      // timestamp último update (throttle 5s)
@@ -10287,27 +10327,45 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     if (!this.navVoiceEnabled()) return;
     window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang  = 'es-CO';
-    utt.rate  = 1.05;
-    utt.pitch = 1;
-    const voices = window.speechSynthesis.getVoices();
-    const es = voices.find(v => v.lang.startsWith('es')) ?? null;
-    if (es) utt.voice = es;
-    window.speechSynthesis.speak(utt);
+    const doSpeak = () => {
+      const utt    = new SpeechSynthesisUtterance(text);
+      utt.lang     = 'es-CO';
+      utt.rate     = 1.0;
+      utt.pitch    = 1;
+      utt.volume   = 1;
+      const voices = window.speechSynthesis.getVoices();
+      const esVoice = voices.find(v => v.lang.startsWith('es-CO'))
+                    ?? voices.find(v => v.lang.startsWith('es'))
+                    ?? voices.find(v => v.lang.startsWith('en'))
+                    ?? null;
+      if (esVoice) utt.voice = esVoice;
+      window.speechSynthesis.speak(utt);
+    };
+    // Android: voces pueden no estar cargadas en el primer intento
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
+      setTimeout(doSpeak, 600); // fallback si el evento nunca llega
+    }
   }
 
   private _maneuverIconFromStep(step: any): string {
     const t = step.maneuver?.type ?? '';
     const m = step.maneuver?.modifier ?? '';
-    if (t === 'turn' && m.includes('right')) return 'turn_right';
-    if (t === 'turn' && m.includes('left'))  return 'turn_left';
-    if (t === 'fork' && m.includes('right')) return 'fork_right';
-    if (t === 'fork' && m.includes('left'))  return 'fork_left';
-    if (t === 'merge')    return 'merge';
-    if (t === 'roundabout' || t === 'rotary') return 'roundabout_right';
-    if (t === 'arrive')   return 'location_on';
-    if (t === 'depart')   return 'near_me';
+    if (t === 'arrive')                          return 'location_on';
+    if (t === 'depart')                          return 'near_me';
+    if (t === 'roundabout' || t === 'rotary')    return 'roundabout_right';
+    if (t === 'merge')                           return 'merge';
+    if (t === 'fork' && m.includes('right'))     return 'fork_right';
+    if (t === 'fork' && m.includes('left'))      return 'fork_left';
+    if (m === 'sharp right')                     return 'turn_sharp_right';
+    if (m === 'sharp left')                      return 'turn_sharp_left';
+    if (m === 'slight right')                    return 'turn_slight_right';
+    if (m === 'slight left')                     return 'turn_slight_left';
+    if (m.includes('right'))                     return 'turn_right';
+    if (m.includes('left'))                      return 'turn_left';
+    if (m === 'uturn')                           return 'u_turn_right';
     return 'straight';
   }
 
@@ -10322,82 +10380,177 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const destLng = toPickup ? req.origin_lng : req.dest_lng;
     if (!destLat || !destLng) return;
 
+    // Guardar contexto para recalculación posterior
+    this._navDestLat  = destLat;
+    this._navDestLng  = destLng;
+    this._navToPickup = toPickup;
+    this._navFollowActive = false;
+    clearTimeout(this._navFollowTimer);
+
     this.navActive.set(true);
     this.navPhase.set(toPickup ? 'to_pickup' : 'to_dest');
     this.navInstruction.set('Calculando ruta...');
-    this._navSteps     = [];
-    this._navStepIdx   = 0;
+    this._navSteps      = [];
+    this._navStepIdx    = 0;
     this._navSpokenKeys = new Set();
+    this._navRouteCoords = [];
 
     try {
       const url = [
         `https://api.mapbox.com/directions/v5/mapbox/driving/`,
         `${this._currentLng},${this._currentLat};${destLng},${destLat}`,
         `?geometries=geojson&steps=true&voice_instructions=true`,
-        `&language=es&overview=full&access_token=${this.MAPBOX_TOKEN}`,
+        `&banner_instructions=true&language=es&overview=full`,
+        `&access_token=${this.MAPBOX_TOKEN}`,
       ].join('');
       const json  = await (await fetch(url)).json();
       const route = json.routes?.[0];
-      if (!route) { this.navInstruction.set('No se encontró ruta'); return; }
+      if (!route) { this.navInstruction.set('No se encontró ruta'); this.navActive.set(false); return; }
 
-      this._navSteps   = route.legs?.[0]?.steps ?? [];
-      this.navTotalKm.set(Math.round(route.distance / 100) / 10);
+      this._navSteps       = route.legs?.[0]?.steps ?? [];
+      this._navRouteCoords = route.geometry.coordinates as [number, number][];
+      this.navTotalKm.set(+(route.distance / 1000).toFixed(1));
       this.navEtaMin.set(Math.round(route.duration / 60));
 
-      // Switch to light map style for navigation, then draw route
-      this._clearNavRoute();
+      // Dibujar ruta SIN cambiar estilo del mapa (evita el reload jarring)
+      this._drawNavRoute(route.geometry);
+
+      // 1) Muestra la ruta completa (overview) por 2.5 s
       if (this._map) {
-        const drawRoute = () => {
-          this._clearNavRoute();
-          this._map.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
-          this._map.addLayer({ id: 'nav-route-bg',   type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#bfdbfe', 'line-width': 12, 'line-opacity': 0.6 } });
-          this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#2563eb', 'line-width': 6,  'line-opacity': 1.0 } });
-          this._map.addLayer({ id: 'nav-route-arr',  type: 'line', source: 'nav-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 2,  'line-opacity': 0.5, 'line-dasharray': [0, 5] } });
-          const mapboxgl = (window as any).mapboxgl;
-          const coords = route.geometry.coordinates as [number, number][];
-          const bounds = coords.reduce((b: any, c: [number,number]) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
-          const bottomPad = this.driverMapFullscreen() ? 200 : 80;
-          this._map.fitBounds(bounds, { padding: { top: 160, bottom: bottomPad, left: 40, right: 40 }, duration: 900 });
-        };
-        const currentStyle = this._map.getStyle()?.name ?? '';
-        if (currentStyle.toLowerCase().includes('dark') || currentStyle.toLowerCase().includes('dark-v11')) {
-          this._map.setStyle('mapbox://styles/mapbox/streets-v12');
-          this._map.once('style.load', drawRoute);
-        } else {
-          drawRoute();
-        }
+        const mapboxgl  = (window as any).mapboxgl;
+        const coords    = this._navRouteCoords;
+        const bounds    = coords.reduce(
+          (b: any, c) => b.extend(c),
+          new mapboxgl.LngLatBounds(coords[0], coords[0])
+        );
+        const bPad = this.driverMapFullscreen() ? 200 : 80;
+        this._map.fitBounds(bounds, { padding: { top: 180, bottom: bPad, left: 50, right: 50 }, duration: 900 });
+
+        // 2) Tras 2.5 s activa el modo de seguimiento conductor (pitch 45°, bearing=heading)
+        this._navFollowTimer = setTimeout(() => {
+          this._navFollowActive = true;
+          this._applyNavCamera();
+        }, 2500);
       }
 
       this._applyNavStep(0);
       const dest = toPickup ? 'el punto de recogida' : 'tu destino';
-      this._speak(`Ruta calculada. En ${this.navEtaMin()} minutos llegas a ${dest}.`);
+      this._speak(`Ruta calculada. ${this.navEtaMin()} minutos a ${dest}.`);
     } catch (e) {
       this.navInstruction.set('Error al calcular ruta');
+      this.navActive.set(false);
       console.warn('nav error', e);
     }
   }
 
   stopInAppNav(): void {
     this.navActive.set(false);
-    this._navSteps   = [];
-    this._navStepIdx = 0;
+    this._navFollowActive = false;
+    clearTimeout(this._navFollowTimer);
+    this._navSteps      = [];
+    this._navStepIdx    = 0;
     this._navSpokenKeys = new Set();
+    this._navRouteCoords = [];
     window.speechSynthesis?.cancel();
     this._clearNavRoute();
+    // Restablecer cámara a vista normal sin cambiar estilo
     if (this._map) {
-      const currentStyle = this._map.getStyle()?.name ?? '';
-      if (!currentStyle.toLowerCase().includes('dark')) {
-        this._map.setStyle('mapbox://styles/mapbox/dark-v11');
-      }
+      this._map.easeTo({ pitch: 0, bearing: 0, zoom: 14, duration: 600 });
+    }
+  }
+
+  private _drawNavRoute(geometry: any): void {
+    if (!this._map) return;
+    this._clearNavRoute();
+    const doAdd = () => {
+      try {
+        this._clearNavRoute();
+        // Source con la ruta GeoJSON
+        this._map.addSource('nav-route', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry },
+        });
+        // Capa 1: sombra ancha (halo azul oscuro) — efecto profundidad
+        this._map.addLayer({ id: 'nav-route-halo', type: 'line', source: 'nav-route',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#1e3a5f', 'line-width': 18, 'line-opacity': 0.55 },
+        });
+        // Capa 2: línea principal azul brillante
+        this._map.addLayer({ id: 'nav-route-bg', type: 'line', source: 'nav-route',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#3b82f6', 'line-width': 10, 'line-opacity': 1.0 },
+        });
+        // Capa 3: brillo blanco central (efecto inDriver)
+        this._map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#93c5fd', 'line-width': 3.5, 'line-opacity': 0.8 },
+        });
+        // Capa 4: flechas de dirección punteadas
+        this._map.addLayer({ id: 'nav-route-arr', type: 'line', source: 'nav-route',
+          layout: { 'line-cap': 'butt' },
+          paint: { 'line-color': '#fff', 'line-width': 2, 'line-opacity': 0.45, 'line-dasharray': [0, 6] },
+        });
+      } catch { /* style aún cargando */ }
+    };
+    if (this._map.isStyleLoaded()) {
+      doAdd();
+    } else {
+      this._map.once('style.load', doAdd);
     }
   }
 
   private _clearNavRoute(): void {
     if (!this._map) return;
-    ['nav-route-arr','nav-route-line','nav-route-bg'].forEach(id => {
+    ['nav-route-arr','nav-route-line','nav-route-bg','nav-route-halo'].forEach(id => {
       try { if (this._map.getLayer(id)) this._map.removeLayer(id); } catch {}
     });
     try { if (this._map.getSource('nav-route')) this._map.removeSource('nav-route'); } catch {}
+  }
+
+  // Centra la cámara en el conductor con perspectiva 3D tipo inDriver
+  private _applyNavCamera(): void {
+    if (!this._map || !this.navActive()) return;
+    this._map.easeTo({
+      center:  [this._currentLng, this._currentLat],
+      zoom:    17,
+      bearing: this._currentHeading,
+      pitch:   50,       // perspectiva 3D (inDriver usa ~50°)
+      duration: 600,
+    });
+  }
+
+  // Recalcula la ruta cuando el conductor se desvía
+  private async _recalcRoute(): Promise<void> {
+    if (this._navRecalcCooldown || !this.navActive()) return;
+    this._navRecalcCooldown = true;
+    this._speak('Recalculando ruta.');
+    // Pausa de 5 s para no recalcular en spam
+    setTimeout(() => { this._navRecalcCooldown = false; }, 5000);
+
+    // Buscar la oferta activa del conductor para llamar startInAppNav de nuevo
+    const activeTrips = this.driverActiveTrips();
+    if (activeTrips?.length) {
+      const savedFollow = this._navFollowActive;
+      await this.startInAppNav(activeTrips[0], this._navToPickup);
+      this._navFollowActive = savedFollow;
+    }
+  }
+
+  // Anuncia instrucciones de voz en múltiples puntos (500m, 200m, al giro)
+  private _checkVoiceInstructions(distToManeuver: number, step: any): void {
+    const allVoice: { distanceAlongGeometry: number; announcement: string }[] =
+      step.voiceInstructions ?? [];
+    // Los voiceInstructions de Mapbox usan `distanceAlongGeometry` como
+    // "metros desde el punto de maniobra donde hay que anunciar"
+    for (const vi of allVoice) {
+      const trigDist = vi.distanceAlongGeometry ?? 0;
+      const key = `vi-${this._navStepIdx}-${Math.round(trigDist)}`;
+      if (!this._navSpokenKeys.has(key) && distToManeuver <= trigDist + 25) {
+        this._navSpokenKeys.add(key);
+        this._speak(vi.announcement);
+        break; // solo uno a la vez
+      }
+    }
   }
 
   private _applyNavStep(idx: number): void {
@@ -10405,40 +10558,78 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!step) return;
     this._navStepIdx = idx;
 
-    const voiceInstr = step.voiceInstructions?.[0]?.announcement ?? step.maneuver?.instruction ?? '';
-    const dist = step.distance ?? 0;
+    // Texto de instrucción: primero maneuver.instruction (más corto y claro)
+    const instruction = step.maneuver?.instruction ?? step.voiceInstructions?.[0]?.announcement ?? 'Continúa recto';
+    const dist        = step.distance ?? 0;
 
-    this.navInstruction.set(voiceInstr || step.maneuver?.instruction || 'Continúa recto');
+    this.navInstruction.set(instruction);
     this.navDistToNext.set(this._fmtDist(dist));
     this.navManeuverIcon.set(this._maneuverIconFromStep(step));
 
-    const key = `${idx}-${Math.round(dist)}`;
+    // Hablar el primer voiceInstruction del step (el más lejano = contexto completo)
+    const firstVoice = step.voiceInstructions?.[step.voiceInstructions.length - 1]?.announcement
+                    ?? step.voiceInstructions?.[0]?.announcement
+                    ?? instruction;
+    const key = `step-${idx}`;
     if (!this._navSpokenKeys.has(key)) {
       this._navSpokenKeys.add(key);
-      if (voiceInstr) this._speak(voiceInstr);
+      if (firstVoice) this._speak(firstVoice);
     }
   }
 
-  _updateNavFromGps(lat: number, lng: number): void {
+  _updateNavFromGps(lat: number, lng: number, heading?: number): void {
     if (!this.navActive() || this._navSteps.length === 0) return;
+
+    // Actualizar rumbo
+    if (heading != null && isFinite(heading) && heading >= 0) {
+      this._currentHeading = heading;
+    }
+
     const step = this._navSteps[this._navStepIdx];
     if (!step) return;
 
-    // Distance to end of current step (maneuver location)
+    // Distancia al punto de maniobra del paso actual
     const [sLng, sLat] = step.maneuver?.location ?? [lng, lat];
-    const distToStep = this._distKm(lat, lng, sLat, sLng) * 1000;
+    const distToManeuver = this._distMeters(lat, lng, sLat, sLng);
 
-    // Advance step when within 25m of its maneuver point
-    if (distToStep < 25 && this._navStepIdx < this._navSteps.length - 1) {
+    // Anuncios de voz en múltiples distancias (500m, 200m, en el giro)
+    this._checkVoiceInstructions(distToManeuver, step);
+
+    // Avanzar al siguiente paso cuando esté a ≤30 m del punto de maniobra
+    if (distToManeuver < 30 && this._navStepIdx < this._navSteps.length - 1) {
       this._applyNavStep(this._navStepIdx + 1);
     } else {
-      this.navDistToNext.set(this._fmtDist(distToStep));
+      this.navDistToNext.set(this._fmtDist(distToManeuver));
     }
 
-    // Update ETA roughly (subtract driven distance)
-    if (step.duration) {
-      const remaining = this._navSteps.slice(this._navStepIdx).reduce((s: number, st: any) => s + (st.duration ?? 0), 0);
-      this.navEtaMin.set(Math.max(1, Math.round(remaining / 60)));
+    // ETA actualizado con los steps restantes
+    const remaining = this._navSteps
+      .slice(this._navStepIdx)
+      .reduce((s: number, st: any) => s + (st.duration ?? 0), 0);
+    this.navEtaMin.set(Math.max(1, Math.round(remaining / 60)));
+
+    // Detección de desvío: si está >65 m de cualquier punto de la ruta
+    if (!this._navRecalcCooldown && this._navRouteCoords.length > 0) {
+      // Optimización: solo revisar los próximos 60 puntos (no toda la ruta)
+      const startIdx = Math.max(0, this._navStepIdx - 5);
+      const slice    = this._navRouteCoords.slice(startIdx, startIdx + 60);
+      const minDist  = slice.reduce((m, [cLng, cLat]) =>
+        Math.min(m, this._distMeters(lat, lng, cLat, cLng)), Infinity);
+      if (minDist > 65) {
+        this._recalcRoute();
+        return; // no mover cámara hasta que llegue la nueva ruta
+      }
+    }
+
+    // Cámara: seguir al conductor con pitch 50° y bearing = rumbo (modo inDriver)
+    if (this._navFollowActive && this._map) {
+      this._map.easeTo({
+        center:   [lng, lat],
+        bearing:  this._currentHeading,
+        pitch:    50,
+        zoom:     17,
+        duration: 350,
+      });
     }
   }
 
@@ -10592,8 +10783,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
         if (pos.coords.accuracy > 50) return; // rechazar lecturas de red imprecisas (>50m)
+        // Actualizar heading antes de llamar a updateNavFromGps
+        if (pos.coords.heading != null && isFinite(pos.coords.heading) && pos.coords.heading >= 0) {
+          this._currentHeading = pos.coords.heading;
+        }
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
-        this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude);
+        this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined);
       },
       (err) => {
         console.error('GPS tracking error:', err.message);
