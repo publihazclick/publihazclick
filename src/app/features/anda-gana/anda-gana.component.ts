@@ -3810,19 +3810,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                 <div class="flex-1"></div>
 
-                <!-- Botón voz: tap activa/desactiva + warm-up TTS -->
-                <button (click)="toggleNavVoice()"
-                  class="flex items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0"
-                  style="min-width:44px;min-height:44px;border:1px solid"
-                  [style.background]="navVoiceEnabled() ? 'rgba(37,99,235,0.25)' : 'rgba(100,116,139,0.15)'"
-                  [style.border-color]="navVoiceEnabled() ? 'rgba(37,99,235,0.6)' : 'rgba(100,116,139,0.3)'">
-                  <span class="material-symbols-outlined" style="font-size:22px"
-                    [style.color]="navVoiceEnabled() ? '#60a5fa' : '#94a3b8'">
-                    {{ navVoiceEnabled() ? 'volume_up' : 'volume_off' }}
+                <!-- BOTÓN PRUEBA DE VOZ — toca aquí para escuchar -->
+                <button (click)="testVoz()"
+                  class="flex flex-col items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0 gap-0.5"
+                  style="min-width:52px;min-height:44px;padding:6px 8px;border:2px solid"
+                  [style.background]="ttsStatus()==='playing' ? 'rgba(16,185,129,0.35)' : ttsStatus()==='error' ? 'rgba(239,68,68,0.25)' : 'rgba(37,99,235,0.25)'"
+                  [style.border-color]="ttsStatus()==='playing' ? '#34d399' : ttsStatus()==='error' ? '#f87171' : 'rgba(37,99,235,0.6)'">
+                  <span class="material-symbols-outlined" style="font-size:20px"
+                    [style.color]="ttsStatus()==='playing' ? '#34d399' : ttsStatus()==='error' ? '#f87171' : '#60a5fa'"
+                    [class.animate-pulse]="ttsStatus()==='playing'">
+                    {{ ttsStatus()==='playing' ? 'graphic_eq' : ttsStatus()==='error' ? 'volume_off' : 'volume_up' }}
+                  </span>
+                  <span style="font-size:9px;font-weight:800;letter-spacing:0.04em"
+                    [style.color]="ttsStatus()==='error' ? '#f87171' : '#93c5fd'">
+                    {{ ttsStatus()==='error' ? 'ERROR' : 'VOZ' }}
                   </span>
                 </button>
 
-                <!-- Botón parar nav (44px mínimo) -->
+                <!-- Botón parar nav -->
                 <button (click)="stopInAppNav()"
                   class="flex items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0"
                   style="min-width:44px;min-height:44px;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.45)">
@@ -8292,7 +8297,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _locationChannel: RealtimeChannel | null = null;
 
   ngOnDestroy() {
-    if (this._ttsAudio) { this._ttsAudio.pause(); this._ttsAudio.src = ''; this._ttsAudio = null; }
+    try { const el = document.getElementById('movi-nav-audio') as HTMLAudioElement; if (el) { el.pause(); el.src = ''; } } catch {}
     this._destroyMap();
     this._stopWaiting();
     this._unsubscribeOffers();
@@ -10342,40 +10347,51 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ── Navegación en app ────────────────────────────────────────
 
   // Cache de audio: text → blob URL (evita re-fetching la misma frase)
-  private _ttsCache = new Map<string, string>();
-  private _ttsAudio: HTMLAudioElement | null = null;
+  ttsStatus = signal<'idle'|'playing'|'error'>('idle');
+  ttsLastText = signal('');
 
-  // URL base del edge function de TTS
-  private readonly TTS_URL = 'https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/ag-tts';
-
-  warmUpTts(): void { /* no-op — audio no necesita warm-up */ }
+  warmUpTts(): void { /* no-op */ }
 
   private _speak(text: string): void {
-    if (!this.navVoiceEnabled() || !isPlatformBrowser(this.platformId)) return;
+    if (!this.navVoiceEnabled() || !isPlatformBrowser(this.platformId) || !text) return;
+    this.ttsLastText.set(text);
+    this.ttsStatus.set('playing');
     this._playTts(text);
   }
 
-  private async _playTts(text: string): Promise<void> {
-    if (!text) return;
-
-    // Detener audio previo
-    if (this._ttsAudio) {
-      try { this._ttsAudio.pause(); this._ttsAudio.src = ''; } catch {}
-      this._ttsAudio = null;
+  private _getAudioEl(): HTMLAudioElement | null {
+    // Reutiliza un elemento <audio> persistente del DOM — más confiable que new Audio() en Android
+    let el = document.getElementById('movi-nav-audio') as HTMLAudioElement | null;
+    if (!el && typeof document !== 'undefined') {
+      el = document.createElement('audio');
+      el.id = 'movi-nav-audio';
+      el.setAttribute('playsinline', '');
+      el.setAttribute('webkit-playsinline', '');
+      el.volume = 1;
+      document.body.appendChild(el);
     }
+    return el;
+  }
 
-    // Google Translate TTS — gratis, sin API key, funciona en TODO Android WebView.
-    // Los elementos <audio> no tienen restricción CORS, el WebView los descarga igual que imágenes.
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
-    const audio = new Audio(url);
-    audio.volume = 1;
-    this._ttsAudio = audio;
+  private async _playTts(text: string): Promise<void> {
+    const el = this._getAudioEl();
+    if (!el) return;
+
+    try { el.pause(); } catch {}
+
+    // Google Translate TTS — sin API key, sin CORS, funciona en Android WebView
+    el.src = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
+    el.load();
 
     try {
-      await audio.play();
-    } catch (e) {
-      console.error('[TTS play error]', e);
-      // Fallback final: Web Speech (funciona en Chrome de escritorio)
+      await el.play();
+      this.ttsStatus.set('playing');
+      el.onended = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
+    } catch (e: any) {
+      this.ttsStatus.set('error');
+      this.cdr.markForCheck();
+      console.error('[TTS]', e?.name, e?.message);
+      // Fallback: Web Speech
       try {
         window.speechSynthesis?.cancel();
         const utt = new SpeechSynthesisUtterance(text);
@@ -10385,8 +10401,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
   }
 
-  // Pre-carga no hace nada ahora — Audio carga directo del src sin fetch previo
-  private _prefetchTts(_texts: string[]): void { /* no-op con Google Translate directo */ }
+  private _prefetchTts(_texts: string[]): void { /* no-op */ }
+
+  testVoz(): void {
+    this._speak('Prueba de voz Movi. En trescientos metros gira a la derecha.');
+  }
 
   toggleNavVoice(): void {
     const next = !this.navVoiceEnabled();
@@ -10501,7 +10520,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._navStepIdx    = 0;
     this._navSpokenKeys = new Set();
     this._navRouteCoords = [];
-    if (this._ttsAudio) { this._ttsAudio.pause(); this._ttsAudio.src = ''; this._ttsAudio = null; }
+    try { const el = document.getElementById('movi-nav-audio') as HTMLAudioElement; if (el) { el.pause(); el.src = ''; } } catch {}
     window.speechSynthesis?.cancel();
     this._clearNavRoute();
     // Restablecer cámara a vista normal sin cambiar estilo
