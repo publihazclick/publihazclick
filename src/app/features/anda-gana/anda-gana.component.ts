@@ -8292,6 +8292,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _locationChannel: RealtimeChannel | null = null;
 
   ngOnDestroy() {
+    this._stopTtsKeepAlive();
     this._destroyMap();
     this._stopWaiting();
     this._unsubscribeOffers();
@@ -10340,53 +10341,48 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // ── Navegación en app ────────────────────────────────────────
 
-  private _ttsAvailable: boolean | null = null; // null = no chequeado
+  // keep-alive para Android WebView: el motor TTS se "pausa" tras ~15s de silencio
+  private _ttsKeepAlive: any = null;
 
-  private async _speak(text: string): Promise<void> {
+  private _speak(text: string): void {
     if (!this.navVoiceEnabled()) return;
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!isPlatformBrowser(this.platformId) || !window.speechSynthesis) return;
 
-    // ── Intento 1: TTS nativo Capacitor (Android/iOS) ──────────
-    if (this._ttsAvailable !== false) {
-      try {
-        const { TextToSpeech } = await import('@capacitor-community/text-to-speech');
-        await TextToSpeech.speak({
-          text,
-          lang: 'es-CO',
-          rate: 1.0,
-          pitch: 1.0,
-          volume: 1.0,
-          category: 'ambient',
-        });
-        this._ttsAvailable = true;
-        return;
-      } catch {
-        // Plugin no disponible (navegador web) — usar Web Speech
-        this._ttsAvailable = false;
-      }
-    }
+    // Android WebView bug: speechSynthesis se congela tras ~14s de inactividad.
+    // Solución: pause()+resume() cada 10s mientras la navegación esté activa.
+    this._ensureTtsKeepAlive();
 
-    // ── Fallback: Web Speech Synthesis (Chrome, Safari, Firefox) ─
-    if (!window.speechSynthesis) return;
+    // Cancelar cualquier utterance pendiente y hablar
     window.speechSynthesis.cancel();
-    const doSpeak = () => {
-      const utt  = new SpeechSynthesisUtterance(text);
-      utt.lang   = 'es-CO';
-      utt.rate   = 1.0;
-      utt.pitch  = 1;
-      utt.volume = 1;
-      const voices  = window.speechSynthesis.getVoices();
-      const esVoice = voices.find(v => v.lang.startsWith('es-CO'))
-                   ?? voices.find(v => v.lang.startsWith('es'))
-                   ?? null;
-      if (esVoice) utt.voice = esVoice;
-      window.speechSynthesis.speak(utt);
-    };
-    if (window.speechSynthesis.getVoices().length > 0) {
-      doSpeak();
-    } else {
-      window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
-      setTimeout(doSpeak, 500);
+
+    const utt    = new SpeechSynthesisUtterance(text);
+    utt.lang     = 'es';   // 'es' es más compatible en Android que 'es-CO'
+    utt.rate     = 0.9;
+    utt.pitch    = 1;
+    utt.volume   = 1;
+    // NO fijar utt.voice — dejar que Android elija el motor instalado
+    // (forzar una voz específica falla silenciosamente en muchos WebViews)
+
+    window.speechSynthesis.speak(utt);
+  }
+
+  private _ensureTtsKeepAlive(): void {
+    if (this._ttsKeepAlive) return;
+    // Cada 10 s: pause+resume para que Android no "duerma" el motor TTS
+    this._ttsKeepAlive = setInterval(() => {
+      if (!window.speechSynthesis || !this.navActive()) {
+        this._stopTtsKeepAlive();
+        return;
+      }
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }, 10000);
+  }
+
+  private _stopTtsKeepAlive(): void {
+    if (this._ttsKeepAlive) {
+      clearInterval(this._ttsKeepAlive);
+      this._ttsKeepAlive = null;
     }
   }
 
@@ -10491,6 +10487,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._navStepIdx    = 0;
     this._navSpokenKeys = new Set();
     this._navRouteCoords = [];
+    this._stopTtsKeepAlive();
     window.speechSynthesis?.cancel();
     this._clearNavRoute();
     // Restablecer cámara a vista normal sin cambiar estilo
