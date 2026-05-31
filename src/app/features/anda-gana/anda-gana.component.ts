@@ -654,7 +654,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
-          <!-- Placa + color -->
+          <!-- Placa + color + marca + tipo -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
               <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Placa</p>
@@ -663,6 +663,51 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
               <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Color</p>
               <p style="color:#fff;font-weight:900;font-size:14px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_color ?? '—' }}</p>
+            </div>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Marca</p>
+              <p style="color:#fff;font-weight:900;font-size:13px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_brand ?? '—' }}</p>
+            </div>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Tipo</p>
+              <p style="color:#fff;font-weight:900;font-size:13px;margin:0">{{ tripAccepted()!.ag_drivers?.vehicle_type === 'moto' ? 'Moto' : tripAccepted()!.ag_drivers?.vehicle_type === 'camion' ? 'Camión' : 'Carro' }}</p>
+            </div>
+          </div>
+
+          <!-- Destino + pago -->
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#f97316;flex-shrink:0">location_on</span>
+            <div style="flex:1;min-width:0">
+              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Destino</p>
+              <p style="color:#fff;font-weight:700;font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripDest()?.name ?? '—' }}</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;border-radius:8px;padding:4px 8px;flex-shrink:0"
+              [style.background]="paymentMethodMap[tripPayment()].bgSel"
+              [style.border]="'1px solid ' + paymentMethodMap[tripPayment()].color">
+              <span class="material-symbols-outlined" style="font-size:14px" [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].icon }}</span>
+              <p style="font-size:10px;font-weight:900;margin:0" [style.color]="paymentMethodMap[tripPayment()].color">{{ paymentMethodMap[tripPayment()].label }}</p>
+            </div>
+          </div>
+
+          <!-- Barra de etapas -->
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px">
+            <p style="color:rgba(255,255,255,0.4);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px">{{ stageLabel(currentTripStage()) }}</p>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px">
+              @for (s of passengerTripStages; track s.key) {
+                <div style="flex:1;height:3px;border-radius:999px;transition:background 0.4s"
+                  [style.background]="isStagePassed(s.key, currentTripStage()) ? '#10b981' : 'rgba(255,255,255,0.1)'"></div>
+              }
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              @for (s of passengerTripStages; track s.key) {
+                <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+                  <span class="material-symbols-outlined" style="font-size:13px;transition:color 0.4s"
+                    [style.color]="isStagePassed(s.key, currentTripStage()) ? '#34d399' : 'rgba(255,255,255,0.2)'">{{ s.icon }}</span>
+                  <p style="font-size:8px;text-align:center;line-height:1.2;margin:0;transition:color 0.4s"
+                    [style.color]="isStagePassed(s.key, currentTripStage()) ? '#6ee7b7' : 'rgba(255,255,255,0.2)'"
+                    [style.font-weight]="currentTripStage() === s.key ? '900' : '600'">{{ s.label }}</p>
+                </div>
+              }
             </div>
           </div>
 
@@ -686,9 +731,28 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
+          <!-- Botones acción: Chat + Llamar + Cancelar -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <button (click)="openPassengerChat()"
+              style="padding:11px 0;border-radius:12px;border:none;cursor:pointer;background:rgba(37,99,235,0.85);color:#fff;font-size:12px;font-weight:900;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+              <span class="material-symbols-outlined" style="font-size:18px">chat</span>Chat
+              @if (chatUnread() > 0) {
+                <span style="position:absolute;top:5px;right:8px;width:15px;height:15px;background:#ef4444;border-radius:50%;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center">{{ chatUnread() }}</span>
+              }
+            </button>
+            <button (click)="callDriver()" [disabled]="callingDriver()"
+              style="padding:11px 0;border-radius:12px;border:none;cursor:pointer;background:rgba(22,163,74,0.85);color:#fff;font-size:12px;font-weight:900;display:flex;flex-direction:column;align-items:center;gap:3px">
+              <span class="material-symbols-outlined" style="font-size:18px">{{ callingDriver() ? 'hourglass_empty' : 'call' }}</span>Llamar
+            </button>
+            <button (click)="openCancelWithReason('passenger')"
+              style="padding:11px 0;border-radius:12px;border:1px solid rgba(239,68,68,0.4);cursor:pointer;background:rgba(239,68,68,0.12);color:#f87171;font-size:12px;font-weight:900;display:flex;flex-direction:column;align-items:center;gap:3px">
+              <span class="material-symbols-outlined" style="font-size:18px">cancel</span>Cancelar
+            </button>
+          </div>
+
           <!-- Botón A bordo -->
           <button (click)="passengerConfirmBoarding()"
-            style="width:100%;padding:14px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(16,185,129,0.4);active:opacity-80">
+            style="width:100%;padding:14px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(16,185,129,0.4)">
             <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">person_check</span>
             ¡Ya estoy a bordo!
           </button>
@@ -1303,7 +1367,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
-            [style.display]="(tripSent() && !tripAccepted()) || passengerMapFullscreen() ? 'none' : ''"
+            [style.display]="(tripSent() && !tripAccepted()) || passengerMapFullscreen() || arrivedAtPickupTimer() !== null ? 'none' : ''"
             [style.maxHeight]="(tripSent() || tripAccepted()) ? '58%' : ''"
             [style.overflowY]="(tripSent() || tripAccepted()) ? 'auto' : 'hidden'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
