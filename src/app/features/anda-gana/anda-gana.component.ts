@@ -1303,7 +1303,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
-            [style.display]="(tripSent() && !tripAccepted()) ? 'none' : ''"
+            [style.display]="(tripSent() && !tripAccepted()) || passengerMapFullscreen() ? 'none' : ''"
             [style.maxHeight]="(tripSent() || tripAccepted()) ? '58%' : ''"
             [style.overflowY]="(tripSent() || tripAccepted()) ? 'auto' : 'hidden'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
