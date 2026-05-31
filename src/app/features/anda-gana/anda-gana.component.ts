@@ -10375,23 +10375,35 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private async _playTts(text: string): Promise<void> {
     const el = this._getAudioEl();
-    if (!el) return;
+    if (!el) {
+      this.ttsStatus.set('error');
+      this.cdr.markForCheck();
+      return;
+    }
 
     try { el.pause(); } catch {}
 
-    // Google Translate TTS — sin API key, sin CORS, funciona en Android WebView
-    el.src = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
+    el.src = url;
     el.load();
+
+    el.onended = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
+    el.onerror = (e) => {
+      console.error('[TTS audio error]', e);
+      this.ttsStatus.set('error');
+      this.cdr.markForCheck();
+    };
 
     try {
       await el.play();
       this.ttsStatus.set('playing');
-      el.onended = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
+      this.cdr.markForCheck();
     } catch (e: any) {
+      console.error('[TTS play]', e?.name, e?.message);
       this.ttsStatus.set('error');
       this.cdr.markForCheck();
-      console.error('[TTS]', e?.name, e?.message);
-      // Fallback: Web Speech
+
+      // Fallback: Web Speech Synthesis
       try {
         window.speechSynthesis?.cancel();
         const utt = new SpeechSynthesisUtterance(text);
@@ -10403,8 +10415,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _prefetchTts(_texts: string[]): void { /* no-op */ }
 
-  testVoz(): void {
-    this._speak('Prueba de voz Movi. En trescientos metros gira a la derecha.');
+  async testVoz(): Promise<void> {
+    // Prueba directa — no depende de navVoiceEnabled ni de nada más
+    this.navVoiceEnabled.set(true);
+    this.ttsStatus.set('playing');
+    this.cdr.markForCheck();
+    const texto = 'Prueba de voz. En doscientos metros gira a la derecha.';
+    this.ttsLastText.set(texto);
+    await this._playTts(texto);
   }
 
   toggleNavVoice(): void {
