@@ -10435,11 +10435,37 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   private _prefetchTts(_texts: string[]): void { /* no-op */ }
 
   async testVoz(): Promise<void> {
-    // Prueba directa — no depende de navVoiceEnabled ni de nada más
     this.navVoiceEnabled.set(true);
     this.ttsStatus.set('playing');
     this.cdr.markForCheck();
-    const texto = 'Prueba de voz. En doscientos metros gira a la derecha.';
+
+    // Test 1: Web Audio API — genera un BEEP sin internet ni APIs
+    // Si escuchas el beep, el audio funciona y el problema es solo la fuente TTS
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.8);
+        // Si llegamos aquí sin error = audio funciona
+        setTimeout(() => {
+          this.ttsStatus.set('idle');
+          this.cdr.markForCheck();
+        }, 900);
+        return;
+      }
+    } catch (e) { console.error('[BEEP]', e); }
+
+    // Test 2: audio element con Google Translate
+    const texto = 'En doscientos metros gira a la derecha.';
     this.ttsLastText.set(texto);
     await this._playTts(texto);
   }
