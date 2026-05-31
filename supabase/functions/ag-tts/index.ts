@@ -1,5 +1,4 @@
-// ag-tts: convierte texto a voz usando OpenAI TTS y retorna MP3
-// El cliente lo reproduce con new Audio() — funciona en TODO Android WebView
+// ag-tts: proxy de Google Translate TTS (gratuito, sin API key)
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
 const CORS = {
@@ -12,43 +11,29 @@ serve(async (req) => {
 
   try {
     const url  = new URL(req.url);
-    const text = (url.searchParams.get('text') || '').slice(0, 300);
+    const text = (url.searchParams.get('text') || '').slice(0, 200);
     if (!text) return new Response('missing text', { status: 400, headers: CORS });
 
-    const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_KEY) return new Response('no key', { status: 500, headers: CORS });
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
 
-    const res = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
+    const res = await fetch(ttsUrl, {
       headers: {
-        'Authorization': `Bearer ${OPENAI_KEY}`,
-        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
+        'Referer': 'https://translate.google.com/',
       },
-      body: JSON.stringify({
-        model: 'tts-1',      // más rápido que tts-1-hd, suficiente para nav
-        voice: 'nova',       // voz femenina cálida, clara, similar a Google Maps
-        input: text,
-        speed: 1.0,
-        response_format: 'mp3',
-      }),
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('OpenAI TTS error:', res.status, err);
-      return new Response('tts error', { status: 502, headers: CORS });
-    }
+    if (!res.ok) return new Response('tts error', { status: 502, headers: CORS });
 
     const audio = await res.arrayBuffer();
     return new Response(audio, {
       headers: {
         ...CORS,
         'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=86400', // 24h cache — mismas instrucciones = mismo audio
+        'Cache-Control': 'public, max-age=86400',
       },
     });
   } catch (e) {
-    console.error('ag-tts error:', e);
     return new Response('error', { status: 500, headers: CORS });
   }
 });

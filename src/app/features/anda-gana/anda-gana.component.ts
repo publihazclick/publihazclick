@@ -10356,66 +10356,37 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private async _playTts(text: string): Promise<void> {
+    if (!text) return;
+
+    // Detener audio previo
+    if (this._ttsAudio) {
+      try { this._ttsAudio.pause(); this._ttsAudio.src = ''; } catch {}
+      this._ttsAudio = null;
+    }
+
+    // Google Translate TTS — gratis, sin API key, funciona en TODO Android WebView.
+    // Los elementos <audio> no tienen restricción CORS, el WebView los descarga igual que imágenes.
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
+    const audio = new Audio(url);
+    audio.volume = 1;
+    this._ttsAudio = audio;
+
     try {
-      // Detener audio previo
-      if (this._ttsAudio) {
-        this._ttsAudio.pause();
-        this._ttsAudio.src = '';
-        this._ttsAudio = null;
-      }
-
-      // Usar cache si ya se descargó esta frase
-      let src = this._ttsCache.get(text);
-
-      if (!src) {
-        const res = await fetch(
-          `${this.TTS_URL}?text=${encodeURIComponent(text)}`,
-          { headers: { 'Authorization': `Bearer ${this.SUPABASE_ANON}` } }
-        );
-        if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
-        const blob = await res.blob();
-        src = URL.createObjectURL(blob);
-        this._ttsCache.set(text, src);
-        // Limitar cache a 30 entradas
-        if (this._ttsCache.size > 30) {
-          const first = this._ttsCache.keys().next().value as string;
-          URL.revokeObjectURL(this._ttsCache.get(first) ?? '');
-          this._ttsCache.delete(first);
-        }
-      }
-
-      const audio = new Audio(src);
-      audio.volume = 1;
-      this._ttsAudio = audio;
       await audio.play();
     } catch (e) {
-      console.error('[TTS]', e);
-      // Fallback: Web Speech (para el navegador web donde sí funciona)
+      console.error('[TTS play error]', e);
+      // Fallback final: Web Speech (funciona en Chrome de escritorio)
       try {
         window.speechSynthesis?.cancel();
-        const utt  = new SpeechSynthesisUtterance(text);
-        utt.lang   = 'es';
-        utt.rate   = 0.9;
-        utt.volume = 1;
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.lang = 'es'; utt.rate = 0.9; utt.volume = 1;
         window.speechSynthesis?.speak(utt);
       } catch {}
     }
   }
 
-  // Pre-carga el audio de las próximas instrucciones para eliminar latencia
-  private _prefetchTts(texts: string[]): void {
-    for (const text of texts) {
-      if (!this._ttsCache.has(text) && text) {
-        fetch(`${this.TTS_URL}?text=${encodeURIComponent(text)}`,
-              { headers: { 'Authorization': `Bearer ${this.SUPABASE_ANON}` } })
-          .then(r => r.ok ? r.blob() : null)
-          .then(blob => {
-            if (blob) this._ttsCache.set(text, URL.createObjectURL(blob));
-          })
-          .catch(() => {});
-      }
-    }
-  }
+  // Pre-carga no hace nada ahora — Audio carga directo del src sin fetch previo
+  private _prefetchTts(_texts: string[]): void { /* no-op con Google Translate directo */ }
 
   toggleNavVoice(): void {
     const next = !this.navVoiceEnabled();
