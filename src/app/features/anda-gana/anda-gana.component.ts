@@ -11429,7 +11429,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (tripId) {
       if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); }
       this._tripBoardingChannel = this.agService.subscribeTripBoarding(tripId, () => {
-        if (this.arrivedAtPickupTimer() !== null) this._applyPassengerBoarding();
+        this._applyPassengerBoarding();
       });
     }
     if (tripId && offer.driver_id) {
@@ -14318,13 +14318,17 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   // Aplica el estado de abordaje en el lado del pasajero (sin broadcast para evitar bucle)
   private _applyPassengerBoarding(): void {
+    if (!this.tripAccepted()) return;
     this._clearArrivalTimer();
     this.arrivedAtPickupTimer.set(null);
     this.passengerSection.set(null);
     this.passengerMapFullscreen.set(true);
-    this._drawPassengerTripRoute();
-    setTimeout(() => this._map?.resize(), 200);
     this.cdr.markForCheck();
+    // Pequeño delay para que Angular actualice el DOM al fullscreen antes de dibujar la ruta
+    setTimeout(() => {
+      this._map?.resize();
+      this._drawPassengerTripRoute();
+    }, 300);
   }
 
   async passengerConfirmBoarding(): Promise<void> {
