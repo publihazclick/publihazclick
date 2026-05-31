@@ -7963,6 +7963,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _offerChannel: RealtimeChannel | null = null;
   private _requestsChannel: RealtimeChannel | null = null;
   private _myOffersChannel: RealtimeChannel | null = null;
+  private _driverPickupWatchChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
 
@@ -8244,6 +8245,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._clearDriverArrivalTimer();
     this.driverArrivalTrip.set(null);
     this.driverArrivalTimer.set(null);
+    if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); this._driverPickupWatchChannel = null; }
     // Limpiar rutas y timers del mapa
     this._clearApproachRoute();
     this._clearNavRoute();
@@ -8298,6 +8300,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._clearDriverArrivalTimer();
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
+    if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); this._driverPickupWatchChannel = null; }
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
     if (this._visibilityHandler) { document.removeEventListener('visibilitychange', this._visibilityHandler); this._visibilityHandler = null; }
@@ -10246,6 +10249,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }
       this.driverArrivalTrip.set(trip);
       this._startDriverArrivalTimer();
+      // Escuchar si el PASAJERO confirma abordaje — reaccionar igual que si el conductor lo hiciera
+      const watchId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
+      if (watchId) {
+        if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); }
+        this._driverPickupWatchChannel = this.agService.subscribeTripStage(watchId, (stage) => {
+          if (stage === 'on_route' && this.driverArrivalTrip()) {
+            this.driverPassengerBoarded();
+          }
+        });
+      }
     }
 
     // Cuando inicia el viaje: activar fullscreen + navegar al destino
@@ -14346,6 +14359,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this._clearDriverArrivalTimer();
     this.driverArrivalTrip.set(null);
     this.driverArrivalTimer.set(null);
+    if (this._driverPickupWatchChannel) { this._driverPickupWatchChannel.unsubscribe(); this._driverPickupWatchChannel = null; }
     await this.advanceStage(trip, 'on_route');
   }
 
@@ -14358,7 +14372,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.passengerMapFullscreen.set(true);
     this._drawPassengerTripRoute();
     setTimeout(() => this._map?.resize(), 200);
-    await this.agService.updateTripStage(tripId, 'picked_up');
+    await this.agService.updateTripStage(tripId, 'on_route');
     this.cdr.markForCheck();
   }
 
