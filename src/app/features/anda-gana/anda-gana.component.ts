@@ -56,7 +56,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   template: `
 <div class="min-h-screen w-full flex flex-col items-center"
   [style.background]="screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'"
-  [style.padding]="(screen() === 'quick-register' || screen() === 'passenger-home') ? '0' : '24px 16px'"
+  [style.padding]="screen() === 'quick-register' || screen() === 'passenger-home' ? '0' : screen() === 'driver-home' ? '0 16px' : '24px 16px'"
   style="min-height:100dvh">
 
   <!-- ═══════════ TOAST DIRECCIÓN GUARDADA ═══════════ -->
@@ -3151,10 +3151,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
     <!-- ═══════════ CONDUCTOR DASHBOARD ═══════════ -->
   @if (screen() === 'driver-home') {
-    <div class="w-full max-w-lg flex flex-col gap-5">
+    <div class="w-full max-w-lg flex flex-col gap-4 pt-3 pb-8">
 
       <!-- Header conductor -->
-      <div class="flex items-center justify-between px-1 pt-2">
+      <div class="flex items-center justify-between">
         <div>
           <h1 class="font-black text-lg leading-tight" style="color:#0f172a">¡Hola, {{ firstName() }}!</h1>
           <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
@@ -3731,7 +3731,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
           <div id="ag-map-user"
-            [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? 'clamp(320px,48dvh,420px)' : 'clamp(240px,38dvh,300px)'"
+            [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? 'clamp(340px,52dvh,460px)' : 'clamp(260px,42dvh,340px)'"
             [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
             [style.border]="driverMapFullscreen() ? 'none' : '1px solid #E2E8F0'"
             style="overflow:hidden;transition:height 0.35s ease"
