@@ -10340,30 +10340,53 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // ── Navegación en app ────────────────────────────────────────
 
-  private _speak(text: string): void {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  private _ttsAvailable: boolean | null = null; // null = no chequeado
+
+  private async _speak(text: string): Promise<void> {
     if (!this.navVoiceEnabled()) return;
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    // ── Intento 1: TTS nativo Capacitor (Android/iOS) ──────────
+    if (this._ttsAvailable !== false) {
+      try {
+        const { TextToSpeech } = await import('@capacitor-community/text-to-speech');
+        await TextToSpeech.speak({
+          text,
+          lang: 'es-CO',
+          rate: 1.0,
+          pitch: 1.0,
+          volume: 1.0,
+          category: 'ambient',
+        });
+        this._ttsAvailable = true;
+        return;
+      } catch {
+        // Plugin no disponible (navegador web) — usar Web Speech
+        this._ttsAvailable = false;
+      }
+    }
+
+    // ── Fallback: Web Speech Synthesis (Chrome, Safari, Firefox) ─
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const doSpeak = () => {
-      const utt    = new SpeechSynthesisUtterance(text);
-      utt.lang     = 'es-CO';
-      utt.rate     = 1.0;
-      utt.pitch    = 1;
-      utt.volume   = 1;
-      const voices = window.speechSynthesis.getVoices();
+      const utt  = new SpeechSynthesisUtterance(text);
+      utt.lang   = 'es-CO';
+      utt.rate   = 1.0;
+      utt.pitch  = 1;
+      utt.volume = 1;
+      const voices  = window.speechSynthesis.getVoices();
       const esVoice = voices.find(v => v.lang.startsWith('es-CO'))
-                    ?? voices.find(v => v.lang.startsWith('es'))
-                    ?? voices.find(v => v.lang.startsWith('en'))
-                    ?? null;
+                   ?? voices.find(v => v.lang.startsWith('es'))
+                   ?? null;
       if (esVoice) utt.voice = esVoice;
       window.speechSynthesis.speak(utt);
     };
-    // Android: voces pueden no estar cargadas en el primer intento
     if (window.speechSynthesis.getVoices().length > 0) {
       doSpeak();
     } else {
       window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true });
-      setTimeout(doSpeak, 600); // fallback si el evento nunca llega
+      setTimeout(doSpeak, 500);
     }
   }
 
