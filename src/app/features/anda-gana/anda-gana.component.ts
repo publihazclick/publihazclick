@@ -8292,7 +8292,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _locationChannel: RealtimeChannel | null = null;
 
   ngOnDestroy() {
-    this._stopTtsKeepAlive();
+    if (this._ttsAudio) { this._ttsAudio.pause(); this._ttsAudio.src = ''; this._ttsAudio = null; }
     this._destroyMap();
     this._stopWaiting();
     this._unsubscribeOffers();
@@ -10292,7 +10292,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // Botón "Iniciar recogida" desde la alerta inDrive full-screen
   async acceptTripAndGo(alert: any): Promise<void> {
-    this.warmUpTts(); // síncronamente antes de cualquier await
     this.driverTripAlert.set(null);
     await this.advanceStage(alert, 'heading_to_pickup');
     const req = alert.ag_trip_requests ?? alert;
@@ -10342,67 +10341,86 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // ── Navegación en app ────────────────────────────────────────
 
-  // keep-alive para Android WebView: el motor TTS se "pausa" tras ~15s de silencio
-  private _ttsKeepAlive:  any     = null;
-  private _ttsWarmedUp:   boolean = false;
+  // Cache de audio: text → blob URL (evita re-fetching la misma frase)
+  private _ttsCache = new Map<string, string>();
+  private _ttsAudio: HTMLAudioElement | null = null;
 
-  // DEBE llamarse síncronamente en el tap del usuario, ANTES de cualquier await/setTimeout.
-  // Dispara un utterance silencioso que "desbloquea" el motor TTS en Android WebView.
-  // Sin este warm-up, los llamados a speak() hechos después de async/await son ignorados.
-  warmUpTts(): void {
-    if (!isPlatformBrowser(this.platformId) || !window.speechSynthesis || this._ttsWarmedUp) return;
-    this._ttsWarmedUp = true;
-    const silent = new SpeechSynthesisUtterance(' ');
-    silent.volume = 0;
-    silent.lang   = 'es';
-    window.speechSynthesis.speak(silent);
-  }
+  // URL base del edge function de TTS
+  private readonly TTS_URL = 'https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/ag-tts';
+
+  warmUpTts(): void { /* no-op — audio no necesita warm-up */ }
 
   private _speak(text: string): void {
-    if (!this.navVoiceEnabled()) return;
-    if (!isPlatformBrowser(this.platformId) || !window.speechSynthesis) return;
-
-    // Keep-alive: previene que Android WebView congele el motor TTS tras ~14s
-    this._ensureTtsKeepAlive();
-
-    window.speechSynthesis.cancel();
-
-    const utt  = new SpeechSynthesisUtterance(text);
-    utt.lang   = 'es';   // 'es' más compatible que 'es-CO' en Android
-    utt.rate   = 0.9;
-    utt.pitch  = 1;
-    utt.volume = 1;
-    // Sin utt.voice: Android elige el motor instalado (Google TTS)
-
-    utt.onerror = (e) => console.error('[TTS error]', e.error, text);
-    window.speechSynthesis.speak(utt);
+    if (!this.navVoiceEnabled() || !isPlatformBrowser(this.platformId)) return;
+    this._playTts(text);
   }
 
-  private _ensureTtsKeepAlive(): void {
-    if (this._ttsKeepAlive) return;
-    this._ttsKeepAlive = setInterval(() => {
-      if (!window.speechSynthesis || !this.navActive()) {
-        this._stopTtsKeepAlive();
-        return;
+  private async _playTts(text: string): Promise<void> {
+    try {
+      // Detener audio previo
+      if (this._ttsAudio) {
+        this._ttsAudio.pause();
+        this._ttsAudio.src = '';
+        this._ttsAudio = null;
       }
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    }, 10000);
+
+      // Usar cache si ya se descargó esta frase
+      let src = this._ttsCache.get(text);
+
+      if (!src) {
+        const res = await fetch(
+          `${this.TTS_URL}?text=${encodeURIComponent(text)}`,
+          { headers: { 'Authorization': `Bearer ${this.SUPABASE_ANON}` } }
+        );
+        if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
+        const blob = await res.blob();
+        src = URL.createObjectURL(blob);
+        this._ttsCache.set(text, src);
+        // Limitar cache a 30 entradas
+        if (this._ttsCache.size > 30) {
+          const first = this._ttsCache.keys().next().value as string;
+          URL.revokeObjectURL(this._ttsCache.get(first) ?? '');
+          this._ttsCache.delete(first);
+        }
+      }
+
+      const audio = new Audio(src);
+      audio.volume = 1;
+      this._ttsAudio = audio;
+      await audio.play();
+    } catch (e) {
+      console.error('[TTS]', e);
+      // Fallback: Web Speech (para el navegador web donde sí funciona)
+      try {
+        window.speechSynthesis?.cancel();
+        const utt  = new SpeechSynthesisUtterance(text);
+        utt.lang   = 'es';
+        utt.rate   = 0.9;
+        utt.volume = 1;
+        window.speechSynthesis?.speak(utt);
+      } catch {}
+    }
   }
 
-  private _stopTtsKeepAlive(): void {
-    if (this._ttsKeepAlive) { clearInterval(this._ttsKeepAlive); this._ttsKeepAlive = null; }
+  // Pre-carga el audio de las próximas instrucciones para eliminar latencia
+  private _prefetchTts(texts: string[]): void {
+    for (const text of texts) {
+      if (!this._ttsCache.has(text) && text) {
+        fetch(`${this.TTS_URL}?text=${encodeURIComponent(text)}`,
+              { headers: { 'Authorization': `Bearer ${this.SUPABASE_ANON}` } })
+          .then(r => r.ok ? r.blob() : null)
+          .then(blob => {
+            if (blob) this._ttsCache.set(text, URL.createObjectURL(blob));
+          })
+          .catch(() => {});
+      }
+    }
   }
 
   toggleNavVoice(): void {
     const next = !this.navVoiceEnabled();
     this.navVoiceEnabled.set(next);
-    if (next) {
-      // warm-up síncronamente (esto es un tap = gesto de usuario)
-      this.warmUpTts();
-      // pequeño delay para que el warm-up se registre antes de speak()
-      setTimeout(() => this._speak('Guía de voz activada'), 300);
-    }
+    if (next) this._speak('Guía de voz activada');
   }
 
   private _maneuverIconFromStep(step: any): string {
@@ -10430,7 +10448,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   async startInAppNav(trip: any, toPickup: boolean): Promise<void> {
-    this.warmUpTts(); // síncronamente — desbloquea TTS en Android WebView
     const req = trip.ag_trip_requests ?? trip;
     const destLat = toPickup ? req.origin_lat : req.dest_lat;
     const destLng = toPickup ? req.origin_lng : req.dest_lng;
@@ -10489,6 +10506,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         }, 2500);
       }
 
+      // Pre-cargar audio de los primeros 5 pasos para eliminar latencia
+      const prefetchTexts = this._navSteps.slice(0, 5).flatMap((s: any) =>
+        (s.voiceInstructions ?? []).map((v: any) => v.announcement).filter(Boolean)
+      );
+      this._prefetchTts(prefetchTexts);
+
       this._applyNavStep(0);
       const dest = toPickup ? 'el punto de recogida' : 'tu destino';
       this._speak(`Ruta calculada. ${this.navEtaMin()} minutos a ${dest}.`);
@@ -10507,7 +10530,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._navStepIdx    = 0;
     this._navSpokenKeys = new Set();
     this._navRouteCoords = [];
-    this._stopTtsKeepAlive();
+    if (this._ttsAudio) { this._ttsAudio.pause(); this._ttsAudio.src = ''; this._ttsAudio = null; }
     window.speechSynthesis?.cancel();
     this._clearNavRoute();
     // Restablecer cámara a vista normal sin cambiar estilo
@@ -14771,7 +14794,6 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   async driverPassengerBoarded(): Promise<void> {
-    this.warmUpTts(); // síncronamente antes de cualquier await
     const trip = this.driverArrivalTrip();
     if (!trip) return;
     const passengerAuthId = trip.ag_trip_requests?.ag_users?.auth_user_id;
