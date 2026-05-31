@@ -48,14 +48,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .qr-input:focus { border-width: 1.5px !important; border-color: #7C3AED !important; outline: none; }
   `],
   host: {
-    '[style.background]': "screen() === 'splash' ? '#7C3AED' : '#FFFFFF'",
+    '[style.background]': "screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'",
     '[style.min-height]': "'100dvh'",
     '[style.display]': "'block'",
     '[style.transition]': "'background 0.3s'",
   },
   template: `
 <div class="min-h-screen w-full flex flex-col items-center py-6 px-4"
-  [style.background]="screen() === 'splash' ? '#7C3AED' : '#FFFFFF'"
+  [style.background]="screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'"
   [style.padding]="screen() === 'quick-register' ? '0' : ''"
   style="min-height:100dvh">
 
@@ -6164,26 +6164,26 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <form (ngSubmit)="submitPassenger()" novalidate autocomplete="off" class="flex flex-col gap-4">
 
           <!-- Datos personales -->
-          <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
+          <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
             <h3 class="text-orange-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
               <span class="material-symbols-outlined" style="font-size:14px">person</span>Datos Personales
             </h3>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Nombre completo *</label>
               <input [(ngModel)]="pf.fullName" name="pfFullName"
                 placeholder="Ej: Juan Carlos Pérez"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Fecha de nacimiento *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Fecha de nacimiento *</label>
               <input [value]="pf.birthDate" (change)="pf.birthDate = $any($event.target).value"
                 type="date"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <!-- País → Departamento → Ciudad -->
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">País *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">País *</label>
               <select (change)="pf.country = $any($event.target).value; pf.department = ''; pf.city = ''; cdr.markForCheck()"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
                 style="background:rgba(30,30,40,0.95);color-scheme:dark">
@@ -6194,7 +6194,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </select>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Departamento / Estado *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Departamento / Estado *</label>
               @if (getDepts(pf.country).length > 0) {
                 <select (change)="pf.department = $any($event.target).value; pf.city = ''; cdr.markForCheck()"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
@@ -6212,7 +6212,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Ciudad *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Ciudad *</label>
               @if (getCities(pf.country, pf.department).length > 0) {
                 <select (change)="pf.city = $any($event.target).value"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500/50 transition-colors w-full"
@@ -6230,7 +6230,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Número de cédula / documento *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de cédula / documento *</label>
               <input [(ngModel)]="pf.idNumber" name="pfIdNumber"
                 placeholder="Número de identificación"
                 autocomplete="off" spellcheck="false" inputmode="numeric"
@@ -6239,12 +6239,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- Contacto -->
-          <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
+          <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
             <h3 class="text-orange-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
               <span class="material-symbols-outlined" style="font-size:14px">phone</span>Contacto y Acceso
             </h3>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Número de teléfono *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de teléfono *</label>
               <div class="flex gap-2">
                 <input [(ngModel)]="pf.phone" name="pfPhone"
                   type="tel" placeholder="+57 300 000 0000"
@@ -6253,14 +6253,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Correo electrónico *</label>
               <input [(ngModel)]="pf.email" name="pfEmail"
                 type="email" placeholder="correo@ejemplo.com"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Contraseña *</label>
               <input [(ngModel)]="pf.password" name="pfPassword"
                 type="password" placeholder="Mínimo 8 caracteres"
                 autocomplete="new-password"
@@ -6269,7 +6269,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- Foto de Documento de Identidad -->
-          <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
+          <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
             <h3 class="text-orange-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
               <span class="material-symbols-outlined" style="font-size:14px">badge</span>Foto de tu Documento de Identidad
             </h3>
@@ -6303,19 +6303,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- Contacto de emergencia -->
-          <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
+          <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
             <h3 class="text-orange-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
               <span class="material-symbols-outlined" style="font-size:14px">emergency</span>Contacto de Emergencia
             </h3>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Nombre del contacto *</label>
               <input [(ngModel)]="pf.emergencyName" name="pfEmergencyName"
                 placeholder="Nombre completo"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
+              <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Teléfono del contacto *</label>
               <input [(ngModel)]="pf.emergencyPhone" name="pfEmergencyPhone"
                 type="tel" placeholder="+57 300 000 0000"
                 autocomplete="off" inputmode="tel"
@@ -6348,72 +6348,127 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ FORMULARIO CONDUCTOR ═══════════ -->
   @if (screen() === 'driver-form') {
-    <div class="w-full max-w-lg px-1">
+    <div class="w-full max-w-lg" style="padding-bottom:32px">
 
-      <!-- Header -->
-      <div class="flex items-center gap-3 mb-4">
-        <button (click)="driverStep() === 1 ? screen.set('home') : driverStep.set(driverStep() - 1)"
-          class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform">
-          <span class="material-symbols-outlined text-white" style="font-size:18px">arrow_back</span>
-        </button>
-        <div class="flex-1">
-          <h2 class="text-white font-black text-lg sm:text-xl">Registro de Conductor</h2>
-          <p class="text-slate-500 text-xs">Paso {{ driverStep() }} de 4</p>
+      <!-- Hero header -->
+      <div style="background:linear-gradient(135deg,#0d1b3e 0%,#0a1628 60%,#060b17 100%);padding:24px 20px 20px;margin:-24px -16px 0;border-bottom:1px solid rgba(99,102,241,0.15)">
+        <!-- Back + logo row -->
+        <div class="flex items-center justify-between mb-5">
+          <button (click)="driverStep() === 1 ? screen.set('home') : driverStep.set(driverStep() - 1)"
+            class="flex items-center gap-2 active:opacity-70 transition-opacity">
+            <div class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)">
+              <span class="material-symbols-outlined text-white" style="font-size:18px">arrow_back</span>
+            </div>
+          </button>
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-full" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
+            <span class="material-symbols-outlined" style="font-size:14px;color:#818cf8">local_taxi</span>
+            <span style="color:#818cf8;font-size:11px;font-weight:800;letter-spacing:0.08em">MOVI CONDUCTORES</span>
+          </div>
+        </div>
+
+        <!-- Title -->
+        <div class="mb-5">
+          <h1 style="color:#fff;font-size:22px;font-weight:900;line-height:1.2;margin:0 0 6px">
+            Activa tu cuenta<br><span style="background:linear-gradient(90deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">de conductor</span>
+          </h1>
+          <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0">Verificación segura · 4 pasos · ~5 minutos</p>
+        </div>
+
+        <!-- Step indicators -->
+        <div class="flex items-center gap-2">
+          @for (i of [1,2,3,4]; track i) {
+            <div class="flex items-center gap-2 flex-1">
+              <div class="flex items-center justify-center rounded-full flex-shrink-0 transition-all duration-300"
+                style="width:28px;height:28px"
+                [style.background]="driverStep() > i ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : driverStep() === i ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)'"
+                [style.border]="driverStep() === i ? '2px solid #6366f1' : driverStep() > i ? 'none' : '1.5px solid rgba(255,255,255,0.1)'">
+                @if (driverStep() > i) {
+                  <span class="material-symbols-outlined text-white" style="font-size:14px;font-variation-settings:'wght' 700">check</span>
+                } @else {
+                  <span [style.color]="driverStep() === i ? '#a5b4fc' : 'rgba(255,255,255,0.2)'" style="font-size:11px;font-weight:900">{{ i }}</span>
+                }
+              </div>
+              @if (i < 4) {
+                <div class="h-px flex-1 rounded-full transition-all duration-500"
+                  [style.background]="driverStep() > i ? 'linear-gradient(90deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.08)'"></div>
+              }
+            </div>
+          }
+        </div>
+        <div class="flex justify-between mt-2" style="padding:0 2px">
+          @for (label of ['Personal','Documentos','Licencia','Vehículo']; track label; let i = $index) {
+            <span style="font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;flex:1;text-align:center"
+              [style.color]="driverStep() > i+1 ? '#818cf8' : driverStep() === i+1 ? '#a5b4fc' : 'rgba(255,255,255,0.2)'">
+              {{ label }}
+            </span>
+          }
         </div>
       </div>
 
-      <!-- Progress bar -->
-      <div class="w-full h-1.5 bg-white/5 rounded-full mb-4 overflow-hidden">
-        <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-500"
-          [style.width]="(driverStep() / 4 * 100) + '%'"></div>
-      </div>
-
-      <div class="rounded-2xl p-3 mb-4"
-        style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2)">
-        <p class="text-slate-300 text-xs leading-relaxed">
-          <span class="material-symbols-outlined text-cyan-400 align-middle" style="font-size:14px">shield</span>
-          En <span class="text-white font-bold">Movi</span> aplicamos un proceso riguroso de verificación para tu seguridad y la de los pasajeros. Todos los datos serán validados con fuentes oficiales antes de activarte como conductor. Escribe <span class="text-white font-black">EXACTAMENTE</span> como aparece en tu cédula y tarjeta de propiedad. La precisión evita rechazos.
+      <!-- Security notice -->
+      <div class="mx-0 mt-4 mb-1 rounded-2xl flex items-start gap-3 px-4 py-3"
+        style="background:linear-gradient(135deg,rgba(16,185,129,0.06),rgba(6,182,212,0.04));border:1px solid rgba(16,185,129,0.18)">
+        <span class="material-symbols-outlined flex-shrink-0 mt-0.5" style="font-size:18px;color:#34d399">verified_user</span>
+        <p style="color:rgba(255,255,255,0.5);font-size:11px;line-height:1.6;margin:0">
+          Escribe <span style="color:#fff;font-weight:800">EXACTAMENTE</span> como aparece en tus documentos oficiales. Los datos se validan con fuentes gubernamentales — la precisión evita rechazos automáticos.
         </p>
       </div>
 
       @if (driverSuccess()) {
-        <div class="flex flex-col items-center gap-4 py-16 text-center">
-          <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center">
-            <span class="material-symbols-outlined text-emerald-400" style="font-size:36px">check_circle</span>
+        <div class="flex flex-col items-center gap-5 py-12 text-center px-4">
+          <div class="relative">
+            <div class="w-24 h-24 rounded-3xl flex items-center justify-center" style="background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.15));border:2px solid rgba(99,102,241,0.4)">
+              <span class="material-symbols-outlined" style="font-size:48px;color:#818cf8;font-variation-settings:'FILL' 1">check_circle</span>
+            </div>
+            <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+              <span class="material-symbols-outlined text-white" style="font-size:14px">star</span>
+            </div>
           </div>
-          <h3 class="text-white font-black text-xl">¡Solicitud enviada!</h3>
-          <p class="text-slate-400 text-sm leading-relaxed">Tu solicitud como conductor está en revisión. Te notificaremos cuando sea aprobada.</p>
-          <button (click)="screen.set('home'); driverSuccess.set(false)" class="mt-2 px-8 py-3 rounded-xl bg-cyan-500 text-black font-black text-sm">Volver al inicio</button>
+          <div>
+            <h3 style="color:#fff;font-size:22px;font-weight:900;margin:0 0 8px">¡Solicitud enviada!</h3>
+            <p style="color:rgba(255,255,255,0.45);font-size:14px;line-height:1.6;margin:0">Tu solicitud está en revisión.<br>Te notificaremos cuando sea aprobada (24–48 h).</p>
+          </div>
+          <div class="w-full rounded-2xl px-4 py-3 flex items-center gap-3" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25)">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px;color:#818cf8">notifications_active</span>
+            <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">Recibirás una notificación push cuando tu cuenta sea activada.</p>
+          </div>
+          <button (click)="screen.set('home'); driverSuccess.set(false)"
+            class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+            style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.03em">
+            <span class="material-symbols-outlined" style="font-size:18px">home</span> Volver al inicio
+          </button>
         </div>
 
       } @else {
 
         <!-- PASO 1: Datos Personales -->
         @if (driverStep() === 1) {
-          <div class="flex flex-col gap-4">
-            <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
-              <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:14px">person</span>Datos Personales
-              </h3>
+          <div class="flex flex-col gap-4 mt-4">
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">person</span>
+                </div>
+                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Datos Personales</h3>
+              </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Nombre completo *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Nombre completo *</label>
                 <input [(ngModel)]="df.fullName" name="dfFullName"
                   placeholder="Nombre y apellidos"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Fecha de nacimiento *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Fecha de nacimiento *</label>
                 <input [value]="df.birthDate" (change)="df.birthDate = $any($event.target).value"
                   type="date"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark"/>
               </div>
               <!-- País → Departamento → Ciudad -->
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">País *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">País *</label>
                 <select (change)="df.country = $any($event.target).value; df.department = ''; df.city = ''; cdr.markForCheck()"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
-                  style="background:rgba(30,30,40,0.95);color-scheme:dark">
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark">
                   <option value="" style="background:#1e1e28">— Selecciona tu país —</option>
                   @for (c of agCountries; track c) {
                     <option [value]="c" [selected]="df.country === c" style="background:#1e1e28">{{ c }}</option>
@@ -6421,10 +6476,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </select>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Departamento / Estado *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Departamento / Estado *</label>
                 @if (getDepts(df.country).length > 0) {
                   <select (change)="df.department = $any($event.target).value; df.city = ''; cdr.markForCheck()"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark"
                     style="background:rgba(30,30,40,0.95);color-scheme:dark">
                     <option value="" style="background:#1e1e28">— Selecciona tu departamento —</option>
                     @for (d of getDepts(df.country); track d) {
@@ -6435,14 +6490,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input [(ngModel)]="df.department" name="dfDepartment"
                     placeholder="Tu departamento o estado"
                     autocomplete="off" spellcheck="false"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 }
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Ciudad *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Ciudad *</label>
                 @if (getCities(df.country, df.department).length > 0) {
                   <select (change)="df.city = $any($event.target).value"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark"
                     style="background:rgba(30,30,40,0.95);color-scheme:dark">
                     <option value="" style="background:#1e1e28">— Selecciona tu ciudad —</option>
                     @for (c of getCities(df.country, df.department); track c) {
@@ -6453,58 +6508,61 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input [(ngModel)]="df.city" name="dfCity"
                     placeholder="Tu ciudad"
                     autocomplete="off" spellcheck="false"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 }
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Número de cédula *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de cédula *</label>
                 <input [(ngModel)]="df.idNumber" name="dfIdNumber"
                   placeholder="Número de identificación"
                   autocomplete="off" spellcheck="false" inputmode="numeric"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Teléfono *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Teléfono *</label>
                 <div class="flex gap-2">
                   <input [(ngModel)]="df.phone" name="dfPhone"
                     type="tel" placeholder="+57 300 000 0000"
                     autocomplete="off" inputmode="tel"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Correo electrónico *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Correo electrónico *</label>
                 <input [(ngModel)]="df.email" name="dfEmail"
                   type="email" placeholder="correo@ejemplo.com"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Contraseña *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Contraseña *</label>
                 <input [(ngModel)]="df.password" name="dfPassword"
                   type="password" placeholder="Mínimo 8 caracteres"
                   autocomplete="new-password"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
             </div>
 
-            <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
-              <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:14px">emergency</span>Contacto de Emergencia
-              </h3>
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#f87171">emergency</span>
+                </div>
+                <h3 style="color:#fca5a5;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Contacto de Emergencia</h3>
+              </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Nombre del contacto *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Nombre del contacto *</label>
                 <input [(ngModel)]="df.emergencyName" name="dfEmergencyName"
                   placeholder="Nombre completo"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Teléfono del contacto *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Teléfono del contacto *</label>
                 <input [(ngModel)]="df.emergencyPhone" name="dfEmergencyPhone"
                   type="tel" placeholder="+57 300 000 0000"
                   autocomplete="off" inputmode="tel"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
             </div>
 
@@ -6512,7 +6570,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-300 text-xs">{{ driverError() }}</div>
             }
             <button (click)="nextDriverStep(1)"
-              class="w-full py-4 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-500 text-black flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
               Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
             </button>
           </div>
@@ -6520,11 +6578,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- PASO 2: Documentos de Identidad -->
         @if (driverStep() === 2) {
-          <div class="flex flex-col gap-4">
-            <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
-              <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:14px">badge</span>Documentos de Identidad
-              </h3>
+          <div class="flex flex-col gap-4 mt-4">
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">badge</span>
+                </div>
+                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Documentos de Identidad</h3>
+              </div>
               <!-- Aviso de privacidad y uso legal -->
               <div class="rounded-xl p-3 flex gap-2.5" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2)">
                 <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:18px">lock</span>
@@ -6535,7 +6596,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               @for (f of idPhotoFields; track f.key) {
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">{{ f.label }} *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
                   <button type="button" (click)="openDocCamera(f.key, true)"
                     class="w-full flex items-center gap-3 rounded-xl px-4 py-3 active:scale-95 transition-transform"
                     style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25)">
@@ -6558,19 +6619,22 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
             </div>
 
-            <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
-              <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:14px">policy</span>Antecedentes
-              </h3>
-              <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Certificado de antecedentes judiciales *</label>
-                <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
-                  <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                  <span class="text-slate-500 text-xs flex-1 truncate">{{ df.criminalRecord || 'Toca para subir documento' }}</span>
-                  @if (df.criminalRecord) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#fbbf24">policy</span>
+                </div>
+                <h3 style="color:#fde68a;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Antecedentes Judiciales</h3>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Certificado de antecedentes judiciales *</label>
+                <label class="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.04);border:1.5px dashed rgba(255,255,255,0.15)">
+                  <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:rgba(255,255,255,0.3)">upload_file</span>
+                  <span class="text-xs flex-1 truncate" style="color:rgba(255,255,255,0.4)">{{ df.criminalRecord || 'Toca para subir documento' }}</span>
+                  @if (df.criminalRecord) { <span class="material-symbols-outlined" style="font-size:18px;color:#34d399">check_circle</span> }
                   <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, 'criminalRecord')"/>
                 </label>
-                <p class="text-slate-600 text-[10px]">Emitido en los últimos 30 días</p>
+                <p style="color:rgba(255,255,255,0.25);font-size:10px">Emitido en los últimos 30 días</p>
               </div>
             </div>
 
@@ -6578,7 +6642,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-300 text-xs">{{ driverError() }}</div>
             }
             <button (click)="nextDriverStep(2)"
-              class="w-full py-4 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-500 text-black flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
               Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
             </button>
           </div>
@@ -6586,20 +6650,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- PASO 3: Licencia de Conducción -->
         @if (driverStep() === 3) {
-          <div class="flex flex-col gap-4">
-            <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
-              <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:14px">id_card</span>Licencia de Conducción
-              </h3>
-              <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Número de licencia *</label>
-                <input [(ngModel)]="df.licenseNumber" name="d_licenseNumber" placeholder="Número"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+          <div class="flex flex-col gap-4 mt-4">
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">id_card</span>
+                </div>
+                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Licencia de Conducción</h3>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Categoría *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de licencia *</label>
+                <input [(ngModel)]="df.licenseNumber" name="d_licenseNumber" placeholder="Número"
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Categoría *</label>
                 <select [(ngModel)]="df.licenseCategory" name="d_licenseCategory"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full">
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark">
                   <option value="" class="bg-zinc-900">Seleccionar</option>
                   <option value="B1" class="bg-zinc-900">B1 — Automóvil</option>
                   <option value="B2" class="bg-zinc-900">B2 — Camioneta</option>
@@ -6609,12 +6676,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </select>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Fecha de vencimiento *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Fecha de vencimiento *</label>
                 <input [(ngModel)]="df.licenseExpiry" name="d_licenseExpiry" type="date"
-                  class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark"/>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Foto frontal de la licencia *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Foto frontal de la licencia *</label>
                 <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
                   <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
                   <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licensePhoto || 'Toca para subir foto' }}</span>
@@ -6623,7 +6690,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </label>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-slate-400 text-xs font-bold">Foto trasera de la licencia *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Foto trasera de la licencia *</label>
                 <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
                   <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
                   <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licenseBack || 'Toca para subir foto' }}</span>
@@ -6637,7 +6704,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-300 text-xs">{{ driverError() }}</div>
             }
             <button (click)="nextDriverStep(3)"
-              class="w-full py-4 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-500 text-black flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
               Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
             </button>
           </div>
@@ -6645,21 +6712,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- PASO 4: Vehículo y Documentos -->
         @if (driverStep() === 4) {
-          <div class="flex flex-col gap-4">
-            <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
-              <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:14px">directions_car</span>Datos del Vehículo
-              </h3>
+          <div class="flex flex-col gap-4 mt-4">
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">directions_car</span>
+                </div>
+                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Datos del Vehículo</h3>
+              </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">Placa *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Placa *</label>
                   <input [(ngModel)]="df.plate" name="d_plate" placeholder="ABC123"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors uppercase w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all uppercase" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">Tipo *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Tipo *</label>
                   <select [(ngModel)]="df.vehicleType" name="d_vehicleType"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-colors w-full">
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark">
                     <option value="" class="bg-zinc-900">Seleccionar</option>
                     <option value="sedan" class="bg-zinc-900">Sedán</option>
                     <option value="suv" class="bg-zinc-900">SUV</option>
@@ -6671,31 +6741,31 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">Marca *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Marca *</label>
                   <input [(ngModel)]="df.vehicleBrand" name="d_vehicleBrand" placeholder="Toyota"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">Modelo *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Modelo *</label>
                   <input [(ngModel)]="df.vehicleModel" name="d_vehicleModel" placeholder="Corolla"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">Año *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Año *</label>
                   <input [(ngModel)]="df.vehicleYear" name="d_vehicleYear" type="number" placeholder="2020" min="2000"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">Color *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Color *</label>
                   <input [(ngModel)]="df.vehicleColor" name="d_vehicleColor" placeholder="Blanco"
-                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
               @for (f of vehiclePhotoFields; track f.key) {
                 <div class="flex flex-col gap-1">
-                  <label class="text-slate-400 text-xs font-bold">{{ f.label }} *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
                   <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-4 py-3 cursor-pointer hover:border-cyan-500/40 transition-colors">
                     <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
                     <span class="text-slate-500 text-xs flex-1">{{ dfr[f.key] || 'Toca para subir foto' }}</span>
@@ -6706,16 +6776,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
             </div>
 
-            <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
-              <h3 class="text-cyan-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:14px">description</span>Documentos del Vehículo
-              </h3>
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">description</span>
+                </div>
+                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Documentos del Vehículo</h3>
+              </div>
               @for (f of vehicleDocFields; track f.key) {
                 <div class="flex flex-col gap-2">
-                  <label class="text-slate-400 text-xs font-bold">{{ f.label }} *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
                   @if (f.expiry) {
                     <input [(ngModel)]="dfr[f.expiry]" [name]="'d_' + f.expiry" type="date"
-                      class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-cyan-500/50 transition-colors w-full"/>
+                      class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:13px;color-scheme:dark"/>
                   }
                   <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
                     <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
@@ -6738,7 +6811,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             }
 
             <button (click)="submitDriver()" [disabled]="driverLoading()"
-              class="w-full py-4 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-500 text-black disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-50" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
               @if (driverLoading()) {
                 <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Enviando...
               } @else {
