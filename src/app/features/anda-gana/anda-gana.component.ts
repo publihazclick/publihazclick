@@ -239,9 +239,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ MODAL CONDUCTOR: ESPERANDO AL PASAJERO EN PICKUP ═══════════ -->
   @if (driverArrivalTrip() !== null && driverArrivalTimer() !== null) {
-    <div class="fixed inset-0 z-[9900] flex items-end justify-center pb-6 px-4"
-      style="background:rgba(0,0,0,0.72);backdrop-filter:blur(4px)">
-      <div class="w-full max-w-lg rounded-3xl overflow-hidden"
+    <div class="fixed inset-0 z-[9900] flex items-end justify-center px-4"
+      style="background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);padding-bottom:max(1.5rem,env(safe-area-inset-bottom))">
+      <div class="w-full max-w-lg rounded-2xl overflow-hidden"
         style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border:1.5px solid rgba(124,58,237,0.45);box-shadow:0 24px 64px rgba(0,0,0,0.8)">
 
         <!-- Header púrpura -->
@@ -258,7 +258,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Info pasajero -->
           <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff;border:2px solid rgba(124,58,237,0.4)">
+            <div style="width:clamp(44px,13vw,50px);height:clamp(44px,13vw,50px);border-radius:14px;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff;border:2px solid rgba(124,58,237,0.4)">
               {{ (driverArrivalTrip()?.ag_trip_requests?.ag_users?.full_name ?? 'P')[0].toUpperCase() }}
             </div>
             <div style="flex:1;min-width:0">
@@ -273,7 +273,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="flex:1">
               <p style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 3px">Tiempo de espera gratuito</p>
               <div style="display:flex;align-items:center;gap:10px">
-                <span style="font-size:28px;font-weight:900;line-height:1;transition:color 0.5s"
+                <span style="font-size:clamp(22px,7vw,28px);font-weight:900;line-height:1;transition:color 0.5s"
                   [style.color]="driverArrivalTimer()! < 60 ? '#f87171' : driverArrivalTimer()! < 120 ? '#fbbf24' : '#a78bfa'">
                   {{ padTime(driverArrivalTimer()!) }}
                 </span>
@@ -301,7 +301,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ BANNER PASAJERO: BUSCANDO / OFERTAS (flotante top) ═══════════ -->
   @if (tripSent() && !tripAccepted()) {
-    <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8100;pointer-events:none;max-height:88dvh;display:flex;flex-direction:column;gap:10px">
+    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8100;pointer-events:none;max-height:88dvh;display:flex;flex-direction:column;gap:10px;overflow-y:auto">
 
       <!-- Tarjeta principal: estado + controles -->
       <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(249,115,22,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.75);overflow:hidden">
@@ -311,9 +311,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;align-items:center;gap:8px">
             <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
             @if (receivedOffers().length > 0) {
-              <span style="color:#fb923c;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡{{ receivedOffers().length }} {{ receivedOffers().length === 1 ? 'oferta recibida' : 'ofertas recibidas' }}!</span>
+              <span style="color:#fb923c;font-size:12px;font-weight:900;letter-spacing:0.07em;text-transform:uppercase">¡{{ receivedOffers().length }} {{ receivedOffers().length === 1 ? 'oferta recibida' : 'ofertas recibidas' }}!</span>
             } @else {
-              <span style="color:#fb923c;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">Buscando conductor...</span>
+              <span style="color:#fb923c;font-size:12px;font-weight:900;letter-spacing:0.07em;text-transform:uppercase">Buscando conductor...</span>
             }
           </div>
           <span style="color:rgba(255,255,255,0.55);font-size:18px;font-weight:900;font-variant-numeric:tabular-nums">{{ formatTime(waitingCountdown()) }}</span>
@@ -356,12 +356,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Fila: ajustar precio + pago + cancelar -->
           <div style="display:flex;align-items:center;gap:8px">
             <button (click)="adjustTripPrice(-500)"
-              style="width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:#94a3b8;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">−</button>
-            <p style="color:#fff;font-size:15px;font-weight:900;margin:0;flex:1;text-align:center">{{ formatCOP(tripPrice()) }}</p>
+              style="min-width:44px;min-height:44px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">−</button>
+            <p style="color:#fff;font-size:16px;font-weight:900;margin:0;flex:1;text-align:center">{{ formatCOP(tripPrice()) }}</p>
             <button (click)="adjustTripPrice(500)"
-              style="width:32px;height:32px;border-radius:8px;border:none;background:#f97316;color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">+</button>
+              style="min-width:44px;min-height:44px;border-radius:10px;border:none;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">+</button>
             <button (click)="cancelTrip()"
-              style="flex:1;padding:8px 0;border-radius:10px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:#f87171;font-size:12px;font-weight:900;cursor:pointer">Cancelar</button>
+              style="flex:1;padding:12px 0;border-radius:10px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:#f87171;font-size:13px;font-weight:900;cursor:pointer">Cancelar</button>
           </div>
 
         </div>
@@ -378,7 +378,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <span style="color:#fff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.07em">Nueva oferta</span>
             </div>
             <div style="text-align:right">
-              <p style="color:#fff;font-weight:900;font-size:22px;margin:0;line-height:1">{{ formatCOP(offer.offered_price) }}</p>
+              <p style="color:#fff;font-weight:900;font-size:clamp(18px,5vw,22px);margin:0;line-height:1">{{ formatCOP(offer.offered_price) }}</p>
               @if (offer.offered_price < tripPrice()) {
                 <p style="color:#bbf7d0;font-size:10px;font-weight:700;margin:0">↓ Más barato que tu precio</p>
               } @else if (offer.offered_price > tripPrice()) {
@@ -458,7 +458,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top) ═══════════ -->
   @if (driverOnline() && !driverTripAlert() && driverRequests().length > 0) {
-    <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8000;pointer-events:none">
+    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8000;pointer-events:none">
       <div
         (touchstart)="onRequestSwipeStart($event)"
         (touchmove)="onRequestSwipeMove($event)"
@@ -472,16 +472,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div style="background:linear-gradient(90deg,rgba(0,229,255,0.15) 0%,rgba(5,150,105,0.1) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00E5FF;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
-            <span style="color:#00E5FF;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡Solicitud de viaje!</span>
+            <span style="color:#00E5FF;font-size:12px;font-weight:900;letter-spacing:0.07em;text-transform:uppercase">¡Solicitud de viaje!</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             @if (driverRequests().length > 1) {
               <span style="background:rgba(0,229,255,0.18);border:1px solid rgba(0,229,255,0.4);color:#00E5FF;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px">{{ driverRequests().length }} disponibles</span>
             }
             <button (click)="openDismissConfirm(driverRequests()[0].id)"
-              style="width:34px;height:34px;border-radius:50%;border:2px solid #ef4444;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px rgba(239,68,68,0.6),0 2px 8px rgba(0,0,0,0.4)"
+              style="min-width:44px;min-height:44px;border-radius:50%;border:2px solid #ef4444;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px rgba(239,68,68,0.6),0 2px 8px rgba(0,0,0,0.4)"
               title="Descartar esta solicitud">
-              <span class="material-symbols-outlined" style="font-size:20px;color:#fff;font-variation-settings:'FILL' 1">close</span>
+              <span class="material-symbols-outlined" style="font-size:22px;color:#fff;font-variation-settings:'FILL' 1">close</span>
             </button>
           </div>
         </div>
@@ -511,11 +511,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             </div>
             <div style="text-align:right;flex-shrink:0">
-              <p style="font-weight:900;font-size:22px;margin:0;line-height:1"
+              <p style="font-weight:900;font-size:clamp(18px,5vw,22px);margin:0;line-height:1"
                 [style.color]="reqRemainingPct(driverRequests()[0]) < 25 ? '#f87171' : '#34d399'">
                 {{ formatCOP(driverRequests()[0].offered_price) }}
               </p>
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;margin:0">precio cliente</p>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0">precio cliente</p>
             </div>
           </div>
 
@@ -564,9 +564,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span style="color:#94a3b8;font-size:11px;font-weight:700;white-space:nowrap">Tu oferta:</span>
                 <span style="color:#fbbf24;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
                 <button (click)="inlineCounterValue.set(inlineCounterValue() > 2500 ? inlineCounterValue() - 500 : 2000)"
-                  style="width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;background:rgba(255,255,255,0.1);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>
+                  style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:rgba(255,255,255,0.1);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>
                 <button (click)="inlineCounterValue.set(inlineCounterValue() + 500)"
-                  style="width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
+                  style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
                 <button (click)="submitInlineCounter(driverRequests()[0])" [disabled]="sendingOffer()"
                   style="padding:6px 12px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:900;flex-shrink:0;opacity:1"
                   [style.opacity]="sendingOffer() ? '0.5' : '1'">Enviar</button>
@@ -604,7 +604,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ BANNER PASAJERO: CONDUCTOR LLEGÓ (flotante top) ═══════════ -->
   @if (arrivedAtPickupTimer() !== null && tripAccepted()) {
-    <div class="modal-float" style="position:fixed;top:12px;left:12px;right:12px;z-index:8500;pointer-events:none">
+    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8500;pointer-events:none;max-height:90dvh;overflow-y:auto">
       <div style="pointer-events:auto;background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:20px;border:1.5px solid rgba(52,211,153,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.8),0 0 0 1px rgba(52,211,153,0.1);overflow:hidden">
 
         <!-- Franja superior verde -->
@@ -652,19 +652,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Placa + color + marca + tipo -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Placa</p>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 2px">Placa</p>
               <p style="color:#fff;font-weight:900;font-size:15px;margin:0;letter-spacing:0.05em">{{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate ?? '—' }}</p>
             </div>
             <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Color</p>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 2px">Color</p>
               <p style="color:#fff;font-weight:900;font-size:14px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_color ?? '—' }}</p>
             </div>
             <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Marca</p>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 2px">Marca</p>
               <p style="color:#fff;font-weight:900;font-size:13px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_brand ?? '—' }}</p>
             </div>
             <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Tipo</p>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 2px">Tipo</p>
               <p style="color:#fff;font-weight:900;font-size:13px;margin:0">{{ tripAccepted()!.ag_drivers?.vehicle_type === 'moto' ? 'Moto' : tripAccepted()!.ag_drivers?.vehicle_type === 'camion' ? 'Camión' : 'Carro' }}</p>
             </div>
           </div>
@@ -673,7 +673,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">
             <span class="material-symbols-outlined" style="font-size:18px;color:#f97316;flex-shrink:0">location_on</span>
             <div style="flex:1;min-width:0">
-              <p style="color:rgba(255,255,255,0.35);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px">Destino</p>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 2px">Destino</p>
               <p style="color:#fff;font-weight:700;font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripDest()?.name ?? '—' }}</p>
             </div>
             <div style="display:flex;align-items:center;gap:5px;border-radius:8px;padding:4px 8px;flex-shrink:0"
@@ -686,7 +686,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Barra de etapas -->
           <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px">
-            <p style="color:rgba(255,255,255,0.4);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px">{{ stageLabel(currentTripStage()) }}</p>
+            <p style="color:rgba(255,255,255,0.4);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 8px">{{ stageLabel(currentTripStage()) }}</p>
             <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px">
               @for (s of passengerTripStages; track s.key) {
                 <div style="flex:1;height:3px;border-radius:999px;transition:background 0.4s"
@@ -698,7 +698,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
                   <span class="material-symbols-outlined" style="font-size:13px;transition:color 0.4s"
                     [style.color]="isStagePassed(s.key, currentTripStage()) ? '#34d399' : 'rgba(255,255,255,0.2)'">{{ s.icon }}</span>
-                  <p style="font-size:8px;text-align:center;line-height:1.2;margin:0;transition:color 0.4s"
+                  <p style="font-size:10px;text-align:center;line-height:1.2;margin:0;transition:color 0.4s"
                     [style.color]="isStagePassed(s.key, currentTripStage()) ? '#6ee7b7' : 'rgba(255,255,255,0.2)'"
                     [style.font-weight]="currentTripStage() === s.key ? '900' : '600'">{{ s.label }}</p>
                 </div>
@@ -938,14 +938,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
         <!-- Botón hamburguesa -->
         <button (click)="agMenuOpen.set(true)"
-            class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 px-2 py-1.5 rounded-xl"
-            style="background:#F3F4F6;border:1px solid #E5E7EB">
+            class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 rounded-xl"
+            style="background:#F3F4F6;border:1px solid #E5E7EB;min-width:48px;min-height:48px;padding:8px 12px">
             <div class="flex flex-col items-center gap-1">
               <span class="block rounded-full bg-slate-700" style="width:18px;height:2px"></span>
               <span class="block rounded-full bg-slate-700" style="width:18px;height:2px"></span>
               <span class="block rounded-full bg-slate-700" style="width:14px;height:2px"></span>
             </div>
-            <span class="text-slate-700 font-bold" style="font-size:9px;letter-spacing:0.08em">MENÚ</span>
+            <span class="text-slate-700 font-bold" style="font-size:10px;letter-spacing:0.06em">MENÚ</span>
           </button>
       </div>
 
@@ -958,10 +958,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- Panel lateral derecho -->
         <div class="fixed top-0 right-0 bottom-0 z-50 flex flex-col"
-          style="width:280px;background:#0f1421;border-left:1px solid rgba(255,255,255,0.08);box-shadow:-8px 0 32px rgba(0,0,0,0.6)">
+          style="width:min(280px,85vw);background:#0f1421;border-left:1px solid rgba(255,255,255,0.08);box-shadow:-8px 0 32px rgba(0,0,0,0.6)">
 
           <!-- Cabecera del menú -->
-          <div class="flex items-center justify-between px-5 pt-10 pb-5"
+          <div class="flex items-center justify-between px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-4"
             style="border-bottom:1px solid rgba(255,255,255,0.07)">
             <div class="flex items-center gap-2.5">
               <img src="movi-logo.svg" alt="Movi" class="w-8 h-8 rounded-xl" />
@@ -1173,7 +1173,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- Mapa con overlays flotantes -->
       <div [class]="passengerMapFullscreen() ? 'fixed z-[9850]' : 'relative rounded-2xl overflow-hidden'"
-           [style]="passengerMapFullscreen() ? 'top:0;left:0;right:0;height:90dvh' : 'height:520px;border:1px solid rgba(255,255,255,0.08)'"
+           [style]="passengerMapFullscreen() ? 'top:0;left:0;right:0;height:100dvh' : 'height:clamp(280px,50dvh,520px);border:1px solid rgba(255,255,255,0.08)'"
            style="overflow:hidden">
 
         <!-- GPS loading state -->
@@ -1249,7 +1249,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="flex flex-col items-end flex-shrink-0 px-3 py-2 rounded-xl"
                 style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25)">
                 <p class="text-emerald-400 font-black leading-none" style="font-size:22px">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
-                <p class="text-emerald-600 font-bold" style="font-size:9px;margin-top:2px">A PAGAR</p>
+                <p class="text-emerald-600 font-bold" style="font-size:10px;margin-top:2px">A PAGAR</p>
               </div>
             </div>
 
@@ -1363,7 +1363,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
             [style.display]="(tripSent() && !tripAccepted()) || passengerMapFullscreen() || arrivedAtPickupTimer() !== null ? 'none' : ''"
-            [style.maxHeight]="(tripSent() || tripAccepted()) ? '58%' : ''"
+            [style.maxHeight]="(tripSent() || tripAccepted()) ? 'min(62%,480px)' : ''"
             [style.overflowY]="(tripSent() || tripAccepted()) ? 'auto' : 'hidden'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
 
@@ -3161,14 +3161,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         </div>
         <button (click)="driverMenuOpen.set(true)"
-          class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 px-2 py-1.5 rounded-xl"
-          style="background:#F3F4F6;border:1px solid #E5E7EB">
+          class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 rounded-xl"
+          style="background:#F3F4F6;border:1px solid #E5E7EB;min-width:48px;min-height:48px;padding:8px 12px">
           <div class="flex flex-col items-center gap-1">
             <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
             <span class="block rounded-full bg-slate-600" style="width:18px;height:2px"></span>
             <span class="block rounded-full bg-slate-600" style="width:14px;height:2px"></span>
           </div>
-          <span class="text-slate-600 font-bold" style="font-size:9px;letter-spacing:0.08em">MENÚ</span>
+          <span class="text-slate-600 font-bold" style="font-size:10px;letter-spacing:0.06em">MENÚ</span>
         </button>
       </div>
 
@@ -3179,10 +3179,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           style="background:rgba(0,0,0,0.55);backdrop-filter:blur(2px)"></div>
 
         <div class="fixed top-0 right-0 bottom-0 z-50 flex flex-col"
-          style="width:285px;background:#0b1220;border-left:1px solid rgba(8,145,178,0.15);box-shadow:-8px 0 32px rgba(0,0,0,0.6)">
+          style="width:min(285px,85vw);background:#0b1220;border-left:1px solid rgba(8,145,178,0.15);box-shadow:-8px 0 32px rgba(0,0,0,0.6)">
 
           <!-- Cabecera -->
-          <div class="flex items-center justify-between px-5 pt-10 pb-5"
+          <div class="flex items-center justify-between px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-4"
             style="border-bottom:1px solid rgba(255,255,255,0.07)">
             <div class="flex items-center gap-2.5">
               <img src="movi-logo.svg" alt="Movi" class="w-9 h-9 rounded-xl" />
@@ -3504,7 +3504,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <div class="flex-1 flex flex-col items-center gap-0.5">
                       <div class="w-full h-1 rounded-full"
                         [style.background]="isStageReached(trip.ag_trip_requests?.driver_stage, st.key) ? '#10b981' : '#E2E8F0'"></div>
-                      <span class="text-[9px] font-bold"
+                      <span class="text-[10px] font-bold"
                         [style.color]="isStageReached(trip.ag_trip_requests?.driver_stage, st.key) ? '#059669' : '#94a3b8'">{{ st.label }}</span>
                     </div>
                   }
@@ -3727,7 +3727,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
           <div id="ag-map-user"
-            [style.height]="driverMapFullscreen() ? (navPhase() === 'to_pickup' ? '95dvh' : '100dvh') : navActive() ? '420px' : '300px'"
+            [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? 'clamp(320px,48dvh,420px)' : 'clamp(240px,38dvh,300px)'"
             [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
             [style.border]="driverMapFullscreen() ? 'none' : '1px solid #E2E8F0'"
             style="overflow:hidden;transition:height 0.35s ease"
@@ -3737,34 +3737,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (navActive()) {
             <!-- Banner instrucción actual (arriba del mapa) -->
             <div class="absolute top-0 left-0 right-0 z-30 pointer-events-none"
-              style="background:linear-gradient(180deg,rgba(10,40,90,0.97) 0%,rgba(10,40,90,0.92) 85%,transparent 100%);border-radius:16px 16px 0 0;padding:14px 16px 24px">
+              style="background:linear-gradient(180deg,rgba(10,40,90,0.97) 0%,rgba(10,40,90,0.92) 85%,transparent 100%);border-radius:16px 16px 0 0;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 24px">
               <div class="flex items-center gap-3">
                 <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
                   style="background:rgba(37,99,235,0.3);border:2px solid rgba(37,99,235,0.6)">
-                  <span class="material-symbols-outlined" style="font-size:28px;color:#93c5fd">{{ navManeuverIcon() }}</span>
+                  <span class="material-symbols-outlined" style="font-size:clamp(22px,7vw,28px);color:#93c5fd">{{ navManeuverIcon() }}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-white font-black text-sm leading-tight" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
                     {{ navInstruction() }}
                   </p>
                   @if (navDistToNext()) {
-                    <p class="font-black text-xl mt-0.5" style="color:#60a5fa">{{ navDistToNext() }}</p>
+                    <p class="font-black text-lg mt-0.5" style="color:#60a5fa">{{ navDistToNext() }}</p>
                   }
                 </div>
               </div>
             </div>
             <!-- Barra inferior: ETA + km + fase + stop -->
             <div class="absolute bottom-0 left-0 right-0 z-30"
-              style="background:linear-gradient(0deg,rgba(10,10,20,0.97) 0%,rgba(10,10,20,0.85) 80%,transparent 100%);border-radius:0 0 16px 16px;padding:18px 16px 14px">
-              <div class="flex items-center gap-3">
+              style="background:linear-gradient(0deg,rgba(10,10,20,0.97) 0%,rgba(10,10,20,0.85) 80%,transparent 100%);border-radius:0 0 16px 16px;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 14px)">
+              <div class="flex items-center gap-2">
                 <!-- ETA -->
-                <div class="flex flex-col items-center px-3 py-2 rounded-xl" style="background:rgba(255,255,255,0.06)">
-                  <p class="text-white font-black text-xl leading-none">{{ navEtaMin() }}</p>
+                <div class="flex flex-col items-center px-2.5 py-2 rounded-xl min-w-[48px]" style="background:rgba(255,255,255,0.06)">
+                  <p class="text-white font-black text-lg leading-none">{{ navEtaMin() }}</p>
                   <p class="text-slate-400 text-[10px] font-bold">min</p>
                 </div>
                 <!-- km -->
-                <div class="flex flex-col items-center px-3 py-2 rounded-xl" style="background:rgba(255,255,255,0.06)">
-                  <p class="text-white font-black text-xl leading-none">{{ navTotalKm() }}</p>
+                <div class="flex flex-col items-center px-2.5 py-2 rounded-xl min-w-[48px]" style="background:rgba(255,255,255,0.06)">
+                  <p class="text-white font-black text-lg leading-none">{{ navTotalKm() }}</p>
                   <p class="text-slate-400 text-[10px] font-bold">km</p>
                 </div>
                 <!-- Fase -->
@@ -3811,7 +3811,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <!-- Botón salir fullscreen (esquina superior izquierda) -->
             <button (click)="exitDriverFullscreen()"
               class="absolute z-40 flex items-center justify-center active:scale-90 transition"
-              style="top:calc(env(safe-area-inset-top,14px) + 14px);left:14px;width:40px;height:40px;border-radius:12px;background:rgba(15,20,40,0.85);border:1px solid rgba(255,255,255,0.15)">
+              style="top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;min-width:44px;min-height:44px;border-radius:12px;background:rgba(15,20,40,0.85);border:1px solid rgba(255,255,255,0.15)">
               <span class="material-symbols-outlined text-white" style="font-size:20px">close_fullscreen</span>
             </button>
 
