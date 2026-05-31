@@ -693,12 +693,30 @@ export class AndaGanaService {
     });
   }
 
-  /** Conductor suscribe al canal broadcast de su ID para recibir señal de aceptación */
-  subscribeToDriverBroadcast(driverId: string, onAccepted: (payload: any) => void): RealtimeChannel {
-    return this.supabase
+  broadcastPassengerBoarded(driverId: string, tripRequestId: string): void {
+    const ch = this.supabase.channel(`driver-live-${driverId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'passenger_boarded', payload: { tripRequestId } })
+          .catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
+  /** Conductor suscribe al canal broadcast de su ID */
+  subscribeToDriverBroadcast(
+    driverId: string,
+    onAccepted: (payload: any) => void,
+    onBoarded?: (payload: any) => void,
+  ): RealtimeChannel {
+    const ch = this.supabase
       .channel(`driver-live-${driverId}`)
-      .on('broadcast', { event: 'offer_accepted' }, ({ payload }) => onAccepted(payload))
-      .subscribe();
+      .on('broadcast', { event: 'offer_accepted' }, ({ payload }) => onAccepted(payload));
+    if (onBoarded) {
+      ch.on('broadcast', { event: 'passenger_boarded' }, ({ payload }) => onBoarded(payload));
+    }
+    return ch.subscribe();
   }
 
   /** Realtime: notifica al conductor cuando su oferta es aceptada por el pasajero */

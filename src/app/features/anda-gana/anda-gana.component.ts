@@ -8111,13 +8111,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     // Canal broadcast directo: el pasajero envía señal sin pasar por RLS
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} }
-    this._driverBroadcastChannel = this.agService.subscribeToDriverBroadcast(driverId, async (payload) => {
-      if (this.driverTripAlert()) return;
-      const trips = await this.agService.getDriverActiveTrips(driverId).catch(() => []);
-      if (!trips.length) return;
-      const match = trips.find((t: any) => (t.id === payload?.offerId || t.trip_request_id === payload?.tripRequestId) && !t.ag_trip_requests?.driver_stage) ?? trips.find((t: any) => !t.ag_trip_requests?.driver_stage);
-      if (match && !this.driverTripAlert()) this._handleNewAcceptedOffer(match);
-    });
+    this._driverBroadcastChannel = this.agService.subscribeToDriverBroadcast(
+      driverId,
+      async (payload) => {
+        if (this.driverTripAlert()) return;
+        const trips = await this.agService.getDriverActiveTrips(driverId).catch(() => []);
+        if (!trips.length) return;
+        const match = trips.find((t: any) => (t.id === payload?.offerId || t.trip_request_id === payload?.tripRequestId) && !t.ag_trip_requests?.driver_stage) ?? trips.find((t: any) => !t.ag_trip_requests?.driver_stage);
+        if (match && !this.driverTripAlert()) this._handleNewAcceptedOffer(match);
+      },
+      (payload) => {
+        // Pasajero confirmó "Ya estoy a bordo" — activar ruta igual que si el conductor tocara "Pasajero a Bordo"
+        const waitingTrip = this.driverArrivalTrip();
+        if (!waitingTrip) return;
+        const waitingId = waitingTrip.trip_request_id ?? waitingTrip.ag_trip_requests?.id;
+        if (!payload?.tripRequestId || payload.tripRequestId === waitingId) {
+          this.driverPassengerBoarded();
+        }
+      },
+    );
     // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
     if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
     this._activeTripsInterval = setInterval(async () => {
@@ -14297,6 +14309,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   async passengerConfirmBoarding(): Promise<void> {
     const tripId = this.currentTripRequestId();
+    const driverId = this.tripAccepted()?.driver_id;
     if (!tripId) return;
     this._clearArrivalTimer();
     this.arrivedAtPickupTimer.set(null);
@@ -14304,7 +14317,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.passengerMapFullscreen.set(true);
     this._drawPassengerTripRoute();
     setTimeout(() => this._map?.resize(), 200);
+    // Actualizar BD + notificar al conductor via broadcast (no depende de RLS)
     await this.agService.updateTripStage(tripId, 'on_route');
+    if (driverId) this.agService.broadcastPassengerBoarded(driverId, tripId);
     this.cdr.markForCheck();
   }
 
