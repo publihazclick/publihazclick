@@ -1187,7 +1187,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <button (click)="recenterPassengerMap()"
             class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
             [style.z-index]="passengerMapFullscreen() ? '9860' : '40'"
-            style="bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
+            [style.bottom]="(passengerMapFullscreen() && tripAccepted()) ? 'calc(env(safe-area-inset-bottom,0px) + 200px)' : 'calc(env(safe-area-inset-bottom,0px) + 16px)'"
+            style="right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s,bottom 0.3s"
             [style.background]="passengerMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
             [style.border]="passengerMapPanned() ? '2px solid #f97316' : '2px solid rgba(255,255,255,0.15)'"
             [style.box-shadow]="passengerMapPanned() ? '0 4px 16px rgba(249,115,22,0.5)' : '0 2px 8px rgba(0,0,0,0.4)'">
@@ -3753,23 +3754,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
 
-          <!-- BOTÓN VOZ — siempre visible, toggle ON/OFF -->
-          <button (click)="toggleNavVoice()"
-            class="absolute z-[9999] flex flex-col items-center justify-center gap-0.5 rounded-2xl active:scale-90 transition shadow-lg"
-            [style.bottom]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'auto' : 'calc(env(safe-area-inset-bottom,0px) + 14px)'"
-            [style.top]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'calc(env(safe-area-inset-top,0px) + 116px)' : 'auto'"
-            style="left:12px;min-width:52px;min-height:52px;padding:8px 10px;border:2.5px solid;transition:background 0.2s,border-color 0.2s"
-            [style.background]="navVoiceEnabled() ? '#16a34a' : '#334155'"
-            [style.border-color]="navVoiceEnabled() ? '#4ade80' : '#64748b'">
-            <span class="material-symbols-outlined text-white"
-              [class.animate-pulse]="ttsStatus()==='playing'"
-              style="font-size:22px">
-              {{ ttsStatus()==='playing' ? 'graphic_eq' : (navVoiceEnabled() ? 'volume_up' : 'volume_off') }}
-            </span>
-            <span class="text-white font-black" style="font-size:9px;letter-spacing:0.05em">
-              {{ navVoiceEnabled() ? 'VOZ' : 'MUTE' }}
-            </span>
-          </button>
+          <!-- BOTÓN VOZ — esquina inferior-derecha, oculto cuando nav activo en modo no-fullscreen -->
+          @if (!(navActive() && !driverMapFullscreen())) {
+            <button (click)="toggleNavVoice()"
+              class="absolute z-[9999] flex flex-col items-center justify-center gap-0.5 rounded-2xl active:scale-90 transition shadow-lg"
+              [style.bottom]="driverMapFullscreen() ? 'auto' : 'calc(env(safe-area-inset-bottom,0px) + 14px)'"
+              [style.top]="driverMapFullscreen() ? 'calc(env(safe-area-inset-top,0px) + 66px)' : 'auto'"
+              style="right:12px;min-width:48px;min-height:48px;padding:7px 9px;border:2.5px solid;transition:background 0.2s,border-color 0.2s"
+              [style.background]="navVoiceEnabled() ? '#16a34a' : '#334155'"
+              [style.border-color]="navVoiceEnabled() ? '#4ade80' : '#64748b'">
+              <span class="material-symbols-outlined text-white"
+                [class.animate-pulse]="ttsStatus()==='playing'"
+                style="font-size:20px">
+                {{ ttsStatus()==='playing' ? 'graphic_eq' : (navVoiceEnabled() ? 'volume_up' : 'volume_off') }}
+              </span>
+              <span class="text-white font-black" style="font-size:9px;letter-spacing:0.05em">
+                {{ navVoiceEnabled() ? 'VOZ' : 'MUTE' }}
+              </span>
+            </button>
+          }
 
           <div id="ag-map-user"
             [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? 'clamp(340px,52dvh,460px)' : 'clamp(260px,42dvh,340px)'"
@@ -3891,7 +3894,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <button (click)="recenterDriverMap()"
               class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
               [style.z-index]="driverMapFullscreen() ? '9860' : '40'"
-              style="bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
+              [style.bottom]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'calc(env(safe-area-inset-bottom,0px) + 196px)' : 'calc(env(safe-area-inset-bottom,0px) + 14px)'"
+              style="right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s,bottom 0.3s"
               [style.background]="driverMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
               [style.border]="driverMapPanned() ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.15)'"
               [style.box-shadow]="driverMapPanned() ? '0 4px 16px rgba(59,130,246,0.5)' : '0 2px 8px rgba(0,0,0,0.4)'">
