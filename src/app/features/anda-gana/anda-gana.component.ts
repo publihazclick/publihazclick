@@ -626,57 +626,90 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
-  <!-- ═══════════ BANNER DOMICILIOS — conductor (flotante) ═══════════ -->
+  <!-- ═══════════ CARD DOMICILIO — conductor (idéntico al card de viaje) ═══════════ -->
   @if (driverOnline() && !activeDriverDelivery() && !driverTripAlert() && deliveryRequests().length > 0 && driverData()?.vehicle_type === 'moto') {
-    <div style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:7900;max-height:55dvh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
-      @for (req of deliveryRequests().slice(0,3); track req.id) {
-        <div style="background:linear-gradient(180deg,#052e16 0%,#064e3b 100%);border-radius:18px;border:1.5px solid rgba(52,211,153,0.35);box-shadow:0 8px 32px rgba(0,0,0,0.6);overflow:hidden">
-          <!-- Header -->
-          <div style="background:linear-gradient(90deg,rgba(16,185,129,0.2),transparent);padding:8px 14px;display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:7px">
-              <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">delivery_dining</span>
-              <span style="color:#34d399;font-size:10px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase">Domicilio</span>
-            </div>
-            <span style="color:#6ee7b7;font-size:12px;font-weight:900">{{ formatCOP(req.offered_price) }}</span>
+    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8000;pointer-events:none">
+      <div
+        (touchstart)="onDeliverySwipeStart($event)"
+        (touchmove)="onDeliverySwipeMove($event)"
+        (touchend)="onDeliverySwipeEnd(deliveryRequests()[0].id)"
+        [style.transform]="'translateX(' + deliverySwipeX() + 'px)'"
+        [style.transition]="deliverySwiping() ? 'none' : 'transform 0.3s ease'"
+        [style.opacity]="1 - Math.min(0.7, Math.abs(deliverySwipeX()) / 200)"
+        style="pointer-events:auto;background:linear-gradient(180deg,#052e16 0%,#064e3b 100%);border-radius:20px;border:1.5px solid rgba(52,211,153,0.35);box-shadow:0 12px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(52,211,153,0.08);overflow:hidden">
+
+        <!-- Header alerta -->
+        <div style="background:linear-gradient(90deg,rgba(16,185,129,0.18) 0%,rgba(5,150,105,0.08) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#34d399;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
+            <span style="color:#34d399;font-size:12px;font-weight:900;letter-spacing:0.07em;text-transform:uppercase">¡Domicilio disponible!</span>
           </div>
-          <!-- Ruta -->
-          <div style="padding:10px 14px 8px">
-            <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
-              <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;margin-top:3px"></div>
-              <p style="color:#d1fae5;font-size:11px;font-weight:700;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.pickup_name }}</p>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:8px">
-              <div style="width:8px;height:8px;border-radius:50%;background:#f97316;flex-shrink:0;margin-top:3px"></div>
-              <p style="color:#fed7aa;font-size:11px;font-weight:700;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.delivery_name }}</p>
-            </div>
-            <!-- Paquete -->
-            <div style="margin-top:7px;padding:6px 10px;background:rgba(255,255,255,0.06);border-radius:10px;display:flex;align-items:center;gap:6px">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#6ee7b7">inventory_2</span>
-              <p style="color:#a7f3d0;font-size:11px;font-weight:600;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.package_description }}</p>
-              <span style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;font-size:9px;font-weight:900;padding:2px 7px;border-radius:999px;flex-shrink:0">
-                {{ req.package_size === 'small' ? 'Pequeño' : req.package_size === 'medium' ? 'Mediano' : 'Grande' }}
-              </span>
-            </div>
-            @if (req.distance_km) {
-              <p style="color:#6ee7b7;font-size:10px;font-weight:700;margin:5px 0 0;text-align:right">{{ req.distance_km }} km · {{ req.delivery_type === 'from_my_location' ? 'Recoge donde está el pasajero' : 'Recoge en otra dirección' }}</p>
+          <div style="display:flex;align-items:center;gap:8px">
+            @if (deliveryRequests().length > 1) {
+              <span style="background:rgba(52,211,153,0.18);border:1px solid rgba(52,211,153,0.4);color:#34d399;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px">{{ deliveryRequests().length }} disponibles</span>
             }
-          </div>
-          <!-- Botones -->
-          <div style="display:flex;gap:8px;padding:0 14px 12px">
-            <input type="number" [value]="deliveryOfferPrice() || req.offered_price"
-              (input)="deliveryOfferPrice.set(+$any($event.target).value)"
-              style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:8px 10px;color:#fff;font-size:13px;font-weight:900;outline:none;min-width:0" />
-            <button (click)="makeDeliveryOfferDriver(req)"
-              [disabled]="makingDeliveryOffer() === req.id"
-              style="flex:2;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;padding:10px;color:#fff;font-size:12px;font-weight:900;cursor:pointer;opacity:1;transition:opacity 0.2s"
-              [style.opacity]="makingDeliveryOffer() === req.id ? '0.5' : '1'">
-              {{ makingDeliveryOffer() === req.id ? 'Enviando...' : '✓ Ofertar domicilio' }}
+            <button (click)="removeDeliveryRequest(deliveryRequests()[0].id)"
+              style="min-width:44px;min-height:44px;border-radius:50%;border:2px solid #ef4444;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px rgba(239,68,68,0.6),0 2px 8px rgba(0,0,0,0.4)">
+              <span class="material-symbols-outlined" style="font-size:22px;color:#fff;font-variation-settings:'FILL' 1">close</span>
             </button>
-            <button (click)="removeDeliveryRequest(req.id)"
-              style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 12px;color:#f87171;font-size:18px;font-weight:900;cursor:pointer">✕</button>
           </div>
         </div>
-      }
+
+        <!-- Cuerpo -->
+        <div style="padding:10px 16px 14px">
+          <!-- Precio + paquete -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;border:2px solid rgba(52,211,153,0.4);overflow:hidden;background:linear-gradient(135deg,#065f46,#064e3b);display:flex;align-items:center;justify-content:center">
+              <span class="material-symbols-outlined" style="font-size:24px;color:#34d399;font-variation-settings:'FILL' 1">delivery_dining</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <p style="color:#fff;font-weight:900;font-size:13px;margin:0;line-height:1.2">{{ deliveryRequests()[0].package_description || 'Paquete' }}</p>
+              <span style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#6ee7b7;font-size:9px;font-weight:900;padding:1px 7px;border-radius:999px">
+                {{ deliveryRequests()[0].package_size === 'small' ? 'Pequeño' : deliveryRequests()[0].package_size === 'medium' ? 'Mediano' : 'Grande' }}
+              </span>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <p style="font-weight:900;font-size:clamp(18px,5vw,22px);margin:0;line-height:1;color:#34d399">{{ formatCOP(deliveryRequests()[0].offered_price) }}</p>
+              <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0">precio cliente</p>
+            </div>
+          </div>
+
+          <!-- Ruta pickup → entrega -->
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:9px 12px;display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#34d399;flex-shrink:0;margin-top:1px">my_location</span>
+              <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ deliveryRequests()[0].pickup_name ?? 'Punto de recogida' }}</p>
+            </div>
+            <div style="height:1px;background:rgba(255,255,255,0.07);margin-left:22px"></div>
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#f97316;flex-shrink:0;margin-top:1px">location_on</span>
+              <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ deliveryRequests()[0].delivery_name ?? 'Punto de entrega' }}</p>
+            </div>
+            @if (deliveryRequests()[0].distance_km) {
+              <p style="color:rgba(255,255,255,0.4);font-size:10px;font-weight:700;margin:0;text-align:right">{{ deliveryRequests()[0].distance_km }} km</p>
+            }
+          </div>
+
+          <!-- Botones: Aceptar precio | Contraofertar -->
+          @if (makingDeliveryOffer() === deliveryRequests()[0].id) {
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
+              <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
+              <span style="color:#34d399;font-size:13px;font-weight:900">Oferta enviada — esperando al cliente</span>
+            </div>
+          } @else {
+            <div style="display:flex;gap:8px">
+              <button (click)="makeDeliveryOfferDriver(deliveryRequests()[0])"
+                style="flex:2;padding:13px 0;border-radius:14px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 4px 16px rgba(16,185,129,0.35)">
+                ✓ Acepto {{ formatCOP(deliveryRequests()[0].offered_price) }}
+              </button>
+              <button (click)="openDeliveryCounterOfferForReq(deliveryRequests()[0])"
+                style="flex:1;padding:13px 0;border-radius:14px;border:1.5px solid rgba(52,211,153,0.45);background:rgba(16,185,129,0.08);color:#34d399;font-size:12px;font-weight:900;cursor:pointer">
+                Contraofertar
+              </button>
+            </div>
+          }
+        </div>
+      </div>
     </div>
   }
 
@@ -8495,8 +8528,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   deliveryOfferPrice       = signal(0);
   makingDeliveryOffer      = signal<string | null>(null);
   private _deliveryRefreshInterval: any = null;
+  private _deliveryExpireInterval:  any = null;
   private _deliveryAcceptedChannel: any = null;
-  private _deliveryNewReqChannel:   any = null;  // realtime: nuevos domicilios para conductores
+  private _deliveryNewReqChannel:   any = null;
+  deliverySwipeX       = signal(0);
+  deliverySwiping      = signal(false);
+  private _delSwipeStartX = 0;
   private _deliveryPickupRaw      = '';
   private _deliveryDestRaw        = '';
   private _deliveryPickupTimer:  any = null;
@@ -11175,6 +11212,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (this._reqTimerInterval) { clearInterval(this._reqTimerInterval); this._reqTimerInterval = null; }
       if (this._cancelCheckInterval) { clearInterval(this._cancelCheckInterval); this._cancelCheckInterval = null; }
       this.driverRequests.set([]);
+      this._stopDeliveryRealtimeForDriver();
       this.cdr.markForCheck();
     }
 
@@ -16614,10 +16652,56 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.cdr.markForCheck();
   }
 
-  async loadDeliveryRequests(): Promise<void> {
-    const data = await this.agService.getSearchingDeliveries(this._currentLat, this._currentLng);
-    this.deliveryRequests.set(data);
-    this.cdr.markForCheck();
+  loadDeliveryRequests(): void { this._loadDeliveryRequestsForDriver(); }
+
+  _loadDeliveryRequestsForDriver(): void {
+    // Carga inicial
+    this.agService.getSearchingDeliveries(this._currentLat, this._currentLng).then(reqs => {
+      this.deliveryRequests.set(reqs);
+      this.cdr.markForCheck();
+    }).catch(() => {});
+
+    // Limpiar suscripciones previas
+    if (this._deliveryNewReqChannel) { this.agService.unsubscribeChannel(this._deliveryNewReqChannel); this._deliveryNewReqChannel = null; }
+    if (this._deliveryRefreshInterval) { clearInterval(this._deliveryRefreshInterval); this._deliveryRefreshInterval = null; }
+    if (this._deliveryExpireInterval)  { clearInterval(this._deliveryExpireInterval);  this._deliveryExpireInterval  = null; }
+
+    // Refresh cada 20 s (igual que viajes)
+    this._deliveryRefreshInterval = setInterval(() => {
+      if (!this.driverOnline() || this.activeDriverDelivery()) return;
+      this.agService.getSearchingDeliveries(this._currentLat, this._currentLng).then(reqs => {
+        this.deliveryRequests.update(current => {
+          const sIds = new Set(reqs.map((r: any) => r.id));
+          const kept = current.filter(r => !sIds.has(r.id) && Date.now() - new Date(r.created_at).getTime() <= 300000);
+          return [...reqs, ...kept].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        });
+        this.cdr.markForCheck();
+      });
+    }, 20000);
+
+    // Expirar solicitudes > 5 min
+    this._deliveryExpireInterval = setInterval(() => {
+      const now = Date.now();
+      if (this.deliveryRequests().some(r => now - new Date(r.created_at).getTime() > 300000)) {
+        this.deliveryRequests.update(l => l.filter(r => now - new Date(r.created_at).getTime() <= 300000));
+        this.cdr.markForCheck();
+      }
+    }, 5000);
+
+    // Realtime directo (mismo patrón que subscribeToTripRequests)
+    this._deliveryNewReqChannel = this.agService.subscribeToDeliveryRequests(
+      (req) => {
+        if (!this.driverOnline() || this.driverData()?.vehicle_type !== 'moto' || this.activeDriverDelivery()) return;
+        this.deliveryRequests.update(list => list.some(r => r.id === req.id) ? list : [...list, req]);
+        this.cdr.markForCheck();
+      },
+      (req) => {
+        if (req.status !== 'searching') {
+          this.deliveryRequests.update(l => l.filter(r => r.id !== req.id));
+          this.cdr.markForCheck();
+        }
+      }
+    );
   }
 
   async makeDeliveryOfferDriver(req: any): Promise<void> {
@@ -16691,27 +16775,26 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     } catch { /* silencioso */ }
   }
 
-  // Suscripción realtime — conductor ve nuevos domicilios sin refrescar
-  private _startDeliveryRealtimeForDriver(): void {
-    if (this._deliveryNewReqChannel) return;
-    this._deliveryNewReqChannel = this.agService.subscribeToNewDeliveries(() => {
-      if (this.driverOnline() && this.driverData()?.vehicle_type === 'moto' && !this.activeDriverDelivery()) {
-        this.loadDeliveryRequests();
-      }
-    });
-  }
+  private _startDeliveryRealtimeForDriver(): void { this._loadDeliveryRequestsForDriver(); }
 
   private _stopDeliveryRealtimeForDriver(): void {
-    if (this._deliveryNewReqChannel) {
-      this.agService.unsubscribeChannel(this._deliveryNewReqChannel);
-      this._deliveryNewReqChannel = null;
-    }
+    if (this._deliveryNewReqChannel)  { this.agService.unsubscribeChannel(this._deliveryNewReqChannel); this._deliveryNewReqChannel = null; }
+    if (this._deliveryRefreshInterval) { clearInterval(this._deliveryRefreshInterval); this._deliveryRefreshInterval = null; }
+    if (this._deliveryExpireInterval)  { clearInterval(this._deliveryExpireInterval);  this._deliveryExpireInterval  = null; }
+    this.deliveryRequests.set([]);
   }
 
-  // Counter-offer domicilio conductor
+  // Counter-offer domicilio conductor — desde una oferta existente (contraoferta pasajero)
   openDeliveryCounterOffer(offer: any): void {
     this.deliveryCounterOffer.set(offer);
     this.deliveryCounterValue.set(offer.offered_price + 500);
+    this.cdr.markForCheck();
+  }
+  // Counter-offer desde el card de solicitud (conductor quiere precio diferente al del cliente)
+  openDeliveryCounterOfferForReq(req: any): void {
+    // Reutiliza el mismo modal pero mapea el request como una oferta sintética
+    this.deliveryCounterOffer.set({ ...req, delivery_request_id: req.id });
+    this.deliveryCounterValue.set(Math.round(req.offered_price * 1.1 / 500) * 500);
     this.cdr.markForCheck();
   }
   decDeliveryCounterValue(): void { this.deliveryCounterValue.update(v => Math.max(3000, v - 500)); }
@@ -16755,5 +16838,21 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       arrived_at_delivery: 'Llegó al punto de entrega', delivered: '¡Entregado!', cancelled: 'Cancelado',
     };
     return labels[stage ?? ''] ?? 'Buscando conductor';
+  }
+
+  // Swipe para descartar solicitud de domicilio (igual que viaje)
+  onDeliverySwipeStart(e: TouchEvent): void {
+    this._delSwipeStartX = e.touches[0].clientX;
+    this.deliverySwiping.set(true);
+  }
+  onDeliverySwipeMove(e: TouchEvent): void {
+    this.deliverySwipeX.set(e.touches[0].clientX - this._delSwipeStartX);
+  }
+  onDeliverySwipeEnd(reqId: string): void {
+    this.deliverySwiping.set(false);
+    if (Math.abs(this.deliverySwipeX()) > 80) {
+      this.removeDeliveryRequest(reqId);
+    }
+    this.deliverySwipeX.set(0);
   }
 }

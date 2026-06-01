@@ -2381,9 +2381,21 @@ export class AndaGanaService {
       .slice(0, 8);
   }
 
-  subscribeToNewDeliveries(cb: () => void): RealtimeChannel {
-    return this.supabase.channel('new-delivery-requests-driver')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ag_delivery_requests', filter: `status=eq.searching` }, () => cb())
+  subscribeToDeliveryRequests(
+    onNew:    (req: any) => void,
+    onUpdate: (req: any) => void,
+  ): RealtimeChannel {
+    return this.supabase
+      .channel(`delivery-requests-driver-${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ag_delivery_requests' }, async (payload) => {
+        const row = payload.new as any;
+        if (row.status !== 'searching') return;
+        const { data } = await getMoviClient().from('ag_delivery_requests').select('*').eq('id', row.id).single();
+        onNew(data ?? row);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ag_delivery_requests' }, (payload) => {
+        onUpdate(payload.new as any);
+      })
       .subscribe();
   }
 
