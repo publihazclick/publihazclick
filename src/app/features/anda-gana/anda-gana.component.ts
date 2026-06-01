@@ -1185,8 +1185,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Botón centrar pasajero: aparece cuando movió el mapa manualmente -->
         @if (passengerMapPanned() && !driverOnline()) {
           <button (click)="recenterPassengerMap()"
-            class="absolute z-30 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
-            style="bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;background:rgba(10,15,35,0.92);border:2px solid #f97316;box-shadow:0 4px 16px rgba(249,115,22,0.4)">
+            class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
+            style="z-index:9860;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;background:rgba(10,15,35,0.92);border:2px solid #f97316;box-shadow:0 4px 16px rgba(249,115,22,0.4)">
             <span class="material-symbols-outlined text-orange-400" style="font-size:22px;font-variation-settings:'FILL' 1">my_location</span>
             <span class="text-orange-300 font-black" style="font-size:8px;letter-spacing:0.04em">CENTRAR</span>
           </button>
@@ -8449,10 +8449,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this._lastNotifiedLng = lng;
         this.gpsStatus.set('granted');
 
-        // Centrar mapa en nueva posición si está visible (solo con buena precisión ≤50m)
-        if (pos.coords.accuracy <= 50 && this._map && this.passengerSection() === null) {
+        // Centrar mapa en nueva posición si el usuario no está navegando manualmente
+        if (pos.coords.accuracy <= 50 && this._map && this.passengerSection() === null && !this.passengerMapPanned()) {
           this._map.easeTo({ center: [lng, lat], duration: 800 });
           this._userMarker?.setLngLat([lng, lat]);
+        } else {
+          this._userMarker?.setLngLat([lng, lat]); // siempre actualizar marcador aunque no mueva cámara
         }
 
         // Mostrar micro-indicador "Actualizando zona..." por 1 s
@@ -12116,7 +12118,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.approachRouteInfo.set(null);
   }
 
-  private _approachRouteDrawn = false; // true tras el primer dibujo exitoso
+  private _approachRouteDrawn  = false; // true tras el primer dibujo exitoso
+  private _lastFitBoundsAt     = 0;     // timestamp último fitBounds etapa 4 (throttle 8s)
 
   private async _drawDriverApproachRoute(driverLat: number, driverLng: number): Promise<void> {
     if (!this._map) return;
@@ -12194,12 +12197,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const stage = this.currentTripStage();
     if (this.passengerMapPanned()) return; // usuario está explorando el mapa — no mover cámara
 
-    // Etapa 4: mantener ambos (conductor + pasajero) en viewport
+    // Etapa 4: mantener ambos (conductor + pasajero) en viewport — throttle 8s
     if (!stage || stage === 'heading_to_pickup') {
-      const bounds = new mapboxgl.LngLatBounds()
-        .extend([lng, lat])
-        .extend([this._currentLng, this._currentLat]);
-      this._map.fitBounds(bounds, { padding: { top: 80, bottom: 240, left: 50, right: 50 }, duration: 500, maxZoom: 16 });
+      const now = Date.now();
+      if (now - this._lastFitBoundsAt > 8000) {
+        this._lastFitBoundsAt = now;
+        const bounds = new mapboxgl.LngLatBounds()
+          .extend([lng, lat])
+          .extend([this._currentLng, this._currentLat]);
+        this._map.fitBounds(bounds, { padding: { top: 80, bottom: 240, left: 50, right: 50 }, duration: 700, maxZoom: 16 });
+      }
       return;
     }
 
@@ -14242,6 +14249,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.acceptedDriverEta.set(null);
         this.passengerSection.set(null);
         this.passengerMapFullscreen.set(true);
+        this.passengerMapPanned.set(false); // reiniciar follow al conductor desde el principio del viaje
+        clearTimeout(this._passengerRecenterTimer);
         if (stage === 'on_route') {
           this._drawPassengerTripRoute();
         }
