@@ -151,12 +151,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <p class="font-black text-slate-800" style="font-size:15px;margin:0">
                 {{ driverTripAlert()!.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}
               </p>
-              @if (driverTripAlert()!.ag_trip_requests?.ag_users?.phone) {
-                <a [href]="'tel:' + driverTripAlert()!.ag_trip_requests.ag_users.phone"
-                  class="text-emerald-600 font-bold" style="font-size:12px">
-                  {{ driverTripAlert()!.ag_trip_requests.ag_users.phone }}
-                </a>
-              }
             </div>
           </div>
           <!-- Ruta -->
@@ -604,8 +598,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ BANNER PASAJERO: CONDUCTOR LLEGÓ (flotante top) ═══════════ -->
   @if (arrivedAtPickupTimer() !== null && tripAccepted()) {
-    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8500;pointer-events:none;max-height:90dvh;overflow-y:auto">
-      <div style="pointer-events:auto;background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:20px;border:1.5px solid rgba(52,211,153,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.8),0 0 0 1px rgba(52,211,153,0.1);overflow:hidden">
+    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8500;max-height:90dvh;overflow-y:auto">
+      <div style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:20px;border:1.5px solid rgba(52,211,153,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.8),0 0 0 1px rgba(52,211,153,0.1);overflow:hidden">
 
         <!-- Franja superior verde -->
         <div style="background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,rgba(5,150,105,0.1) 100%);padding:9px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -3511,12 +3505,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <span class="text-[9px] font-bold"
                           [style.color]="getPaymentInfo(trip.ag_trip_requests?.payment_method).colorDark">{{ getPaymentInfo(trip.ag_trip_requests?.payment_method).label }}</span>
                       </div>
-                      @if (trip.ag_trip_requests?.ag_users?.phone) {
-                        <a [href]="'tel:' + trip.ag_trip_requests.ag_users.phone" class="flex items-center gap-1 text-[9px] text-slate-500 hover:text-white transition-colors">
-                          <span class="material-symbols-outlined" style="font-size:10px">call</span>
-                          {{ trip.ag_trip_requests.ag_users.phone }}
-                        </a>
-                      }
                     </div>
                   </div>
                   <p class="text-emerald-400 font-black text-sm flex-shrink-0">{{ formatCOP(trip.offered_price) }}</p>
@@ -3753,16 +3741,22 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
 
-          <!-- BOTÓN VOZ — siempre en el mapa, esquina inferior izquierda, z-[9999] -->
-          <button (click)="testVoz()"
+          <!-- BOTÓN VOZ — siempre visible, toggle ON/OFF -->
+          <button (click)="toggleNavVoice()"
             class="absolute z-[9999] flex flex-col items-center justify-center gap-0.5 rounded-2xl active:scale-90 transition shadow-lg"
-            style="bottom:calc(env(safe-area-inset-bottom,0px) + 80px);left:12px;min-width:52px;min-height:52px;padding:8px 10px;border:2.5px solid;background:#16a34a;border-color:#4ade80">
+            [style.bottom]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'auto' : 'calc(env(safe-area-inset-bottom,0px) + 14px)'"
+            [style.top]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'calc(env(safe-area-inset-top,0px) + 66px)' : 'auto'"
+            style="left:12px;min-width:52px;min-height:52px;padding:8px 10px;border:2.5px solid;transition:background 0.2s,border-color 0.2s"
+            [style.background]="navVoiceEnabled() ? '#16a34a' : '#334155'"
+            [style.border-color]="navVoiceEnabled() ? '#4ade80' : '#64748b'">
             <span class="material-symbols-outlined text-white"
               [class.animate-pulse]="ttsStatus()==='playing'"
               style="font-size:22px">
-              {{ ttsStatus()==='playing' ? 'graphic_eq' : 'volume_up' }}
+              {{ ttsStatus()==='playing' ? 'graphic_eq' : (navVoiceEnabled() ? 'volume_up' : 'volume_off') }}
             </span>
-            <span class="text-white font-black" style="font-size:9px;letter-spacing:0.05em">VOZ</span>
+            <span class="text-white font-black" style="font-size:9px;letter-spacing:0.05em">
+              {{ navVoiceEnabled() ? 'VOZ' : 'MUTE' }}
+            </span>
           </button>
 
           <div id="ag-map-user"
@@ -3845,15 +3839,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                 <div class="flex-1"></div>
 
-                <!-- Botón VOZ en barra inferior (respaldo del que está en el mapa) -->
-                <button (click)="testVoz()"
+                <!-- Botón VOZ en barra inferior -->
+                <button (click)="toggleNavVoice()"
                   class="flex flex-col items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0 gap-0.5"
-                  style="min-width:52px;min-height:44px;padding:6px 8px;border:2px solid;background:rgba(16,185,129,0.25);border-color:#34d399">
-                  <span class="material-symbols-outlined text-emerald-400" style="font-size:20px"
-                    [class.animate-pulse]="ttsStatus()==='playing'">
-                    {{ ttsStatus()==='playing' ? 'graphic_eq' : 'volume_up' }}
+                  style="min-width:52px;min-height:44px;padding:6px 8px;border:2px solid;transition:background 0.2s,border-color 0.2s"
+                  [style.background]="navVoiceEnabled() ? 'rgba(16,185,129,0.25)' : 'rgba(100,116,139,0.25)'"
+                  [style.border-color]="navVoiceEnabled() ? '#34d399' : '#64748b'">
+                  <span class="material-symbols-outlined" style="font-size:20px"
+                    [class.animate-pulse]="ttsStatus()==='playing'"
+                    [style.color]="navVoiceEnabled() ? '#34d399' : '#94a3b8'">
+                    {{ ttsStatus()==='playing' ? 'graphic_eq' : (navVoiceEnabled() ? 'volume_up' : 'volume_off') }}
                   </span>
-                  <span class="text-emerald-300" style="font-size:9px;font-weight:800">VOZ</span>
+                  <span style="font-size:9px;font-weight:800" [style.color]="navVoiceEnabled() ? '#6ee7b7' : '#94a3b8'">
+                    {{ navVoiceEnabled() ? 'VOZ' : 'MUTE' }}
+                  </span>
                 </button>
 
                 <!-- Botón parar nav -->
@@ -4383,7 +4382,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <div class="flex items-center justify-between rounded-xl p-3" style="background:#FFF7F7;border:1px solid rgba(239,68,68,0.25)">
                   <div>
                     <p class="text-slate-900 text-xs font-semibold">{{ b.ag_users?.full_name ?? (b.passenger_user_id.slice(0, 8) + '...') }}</p>
-                    @if (b.ag_users?.phone) { <p class="text-slate-500 text-[10px]">{{ b.ag_users.phone }}</p> }
                     @if (b.reason) { <p class="text-slate-600 text-[10px]">{{ b.reason }}</p> }
                   </div>
                   <button (click)="removeFromBlacklist(b.id)" class="text-emerald-600 text-xs">Desbloquear</button>
@@ -5107,13 +5105,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       </span>
                     </div>
                     <div class="flex gap-2">
-                      @if (item.ag_users?.phone) {
-                        <a [href]="'tel:' + item.ag_users.phone"
-                          class="flex-1 py-1.5 rounded-lg text-white text-xs font-bold text-center"
-                          style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.3)">
-                          📞 Llamar
-                        </a>
-                      }
                       @if (item.status !== 'returned' && item.status !== 'closed') {
                         <button (click)="changeLostStatus(item.id, 'returned')"
                           class="flex-1 py-1.5 rounded-lg text-white text-xs font-bold"
@@ -5271,13 +5262,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <p><span class="text-slate-500">Destino:</span> {{ st.dest_name ?? '-' }}</p>
                         </div>
                         <div class="flex gap-2">
-                          @if (st.ag_users?.phone) {
-                            <a [href]="'tel:' + st.ag_users.phone"
-                              class="flex-1 py-1.5 rounded-lg text-white text-xs font-bold text-center"
-                              style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.3)">
-                              📞 Llamar
-                            </a>
-                          }
                           <button (click)="releaseScheduled(st.id)"
                             class="flex-1 py-1.5 rounded-lg text-red-300 text-xs font-bold"
                             style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3)">
@@ -5470,49 +5454,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             class="flex-1 py-3 rounded-xl text-white font-black text-sm disabled:opacity-50"
             style="background:linear-gradient(135deg,#0891b2,#0e7490)">
             @if (submittingPassengerRating()) { Enviando... } @else { Enviar }
-          </button>
-        </div>
-      </div>
-    }
-
-    <!-- ══ Modal: Chat pasajero↔conductor ══ -->
-    @if (chatOpen()) {
-      <div (click)="closePassengerChat()" class="fixed inset-0 z-50"
-        style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
-      <div class="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col gap-2 px-5 pt-5 pb-4"
-        style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -8px 40px rgba(0,0,0,0.5);height:70vh">
-        <div class="mx-auto w-10 h-1 rounded-full bg-white/20 mb-1"></div>
-        <div class="flex items-center justify-between">
-          <p class="text-white font-black text-base">Chat con conductor</p>
-          <button (click)="closePassengerChat()"
-            class="w-8 h-8 rounded-lg flex items-center justify-center"
-            style="background:rgba(255,255,255,0.06)">
-            <span class="material-symbols-outlined text-slate-400" style="font-size:20px">close</span>
-          </button>
-        </div>
-        <div id="passenger-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-2 px-1 py-2">
-          @if (chatMessages().length === 0) {
-            <p class="text-slate-500 text-center py-8 text-sm">Envía un mensaje al conductor.</p>
-          }
-          @for (m of chatMessages(); track m.id) {
-            <div class="max-w-[80%] rounded-2xl px-3 py-2"
-              [class.self-end]="m.sender_ag_user_id === agProfile()?.id"
-              [class.self-start]="m.sender_ag_user_id !== agProfile()?.id"
-              [style.background]="m.sender_ag_user_id === agProfile()?.id ? 'rgba(249,115,22,0.2)' : 'rgba(255,255,255,0.05)'">
-              <p class="text-white text-sm">{{ m.message }}</p>
-              <p class="text-slate-500 text-[10px] mt-1">{{ m.created_at | date:'HH:mm' }}</p>
-            </div>
-          }
-        </div>
-        <div class="flex gap-2 pt-2 border-t border-white/10">
-          <input type="text" [(ngModel)]="chatInput" (keyup.enter)="sendPassengerChat()"
-            placeholder="Escribe un mensaje..."
-            class="flex-1 px-3 py-2 rounded-xl text-white text-sm"
-            style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1)" />
-          <button (click)="sendPassengerChat()" [disabled]="sendingChat() || !chatInput.trim()"
-            class="px-4 py-2 rounded-xl text-white font-bold text-xs disabled:opacity-50"
-            style="background:linear-gradient(135deg,#f97316,#ea580c)">
-            <span class="material-symbols-outlined" style="font-size:18px">send</span>
           </button>
         </div>
       </div>
@@ -7195,61 +7136,148 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   }
 
 
-  <!-- ═══ MODAL CHAT ═══ -->
-  @if (showChatModal()) {
-    <div class="fixed inset-0 z-[200] flex flex-col">
-      <div class="absolute inset-0 bg-black/80" (click)="closeChatModal()"></div>
-      <div class="relative flex flex-col w-full max-w-md mx-auto mt-auto sm:my-auto bg-[#0d0d0d] rounded-t-2xl sm:rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
-           style="max-height:80vh" (click)="$event.stopPropagation()">
-
-        <!-- Header -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0"
-          style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+  <!-- ═══ MODAL CHAT PASAJERO ═══ -->
+  @if (chatOpen()) {
+    <div (click)="closePassengerChat()" class="fixed inset-0"
+      style="z-index:9993;background:rgba(0,0,0,0.5)"></div>
+    <div class="fixed bottom-0 left-0 right-0 rounded-t-3xl flex flex-col"
+      style="z-index:9994;background:#fff;border-top:3px solid #f97316;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:72vh;display:flex;flex-direction:column">
+      <!-- Header -->
+      <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid #f1f5f9">
+        <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:#e2e8f0"></div>
+        <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-white" style="font-size:20px">chat</span>
-            <p class="text-white font-black text-sm">Chat del viaje</p>
-          </div>
-          <button (click)="closeChatModal()" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <span class="material-symbols-outlined text-white" style="font-size:18px">close</span>
-          </button>
-        </div>
-
-        <!-- Mensajes -->
-        <div id="driver-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-2" style="min-height:200px">
-          @if (chatMessages().length === 0) {
-            <div class="flex flex-col items-center justify-center py-10 text-center">
-              <span class="material-symbols-outlined text-slate-700" style="font-size:40px">chat_bubble_outline</span>
-              <p class="text-slate-500 text-sm mt-2">Sin mensajes aún</p>
-              <p class="text-slate-600 text-xs">Envía un mensaje para comunicarte</p>
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+              style="background:#fff7ed;border:1.5px solid #fed7aa">
+              <span class="material-symbols-outlined" style="font-size:20px;color:#f97316">chat</span>
             </div>
-          } @else {
-            @for (msg of chatMessages(); track msg.id) {
-              <div class="flex" [class]="isMyChatMessage(msg) ? 'justify-end' : 'justify-start'">
-                <div class="max-w-[75%] rounded-2xl px-3 py-2"
-                  [class]="isMyChatMessage(msg) ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white/10 text-white rounded-bl-sm'">
-                  <p class="text-sm leading-relaxed">{{ msg.message }}</p>
-                  <p class="text-[9px] mt-0.5 opacity-60">{{ formatChatTime(msg.created_at) }}</p>
-                </div>
-              </div>
-            }
-          }
-        </div>
-
-        <!-- Input -->
-        <div class="flex items-center gap-2 px-3 py-3 border-t border-white/10 flex-shrink-0" style="background:#111">
-          <input [(ngModel)]="chatInput" name="chatInput"
-            placeholder="Escribe un mensaje..."
-            (keydown.enter)="sendChatMsg()"
-            class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50"/>
-          <button (click)="sendChatMsg()" [disabled]="!chatInput.trim() || chatSending()"
-            class="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition-all disabled:opacity-40">
-            @if (chatSending()) {
-              <span class="material-symbols-outlined text-white animate-spin" style="font-size:18px">sync</span>
-            } @else {
-              <span class="material-symbols-outlined text-white" style="font-size:18px">send</span>
-            }
+            <div>
+              <p class="font-black text-sm" style="color:#1e293b">Chat con conductor</p>
+              <p class="text-xs" style="color:#94a3b8">Mensajes en tiempo real</p>
+            </div>
+          </div>
+          <button (click)="closePassengerChat()"
+            class="w-8 h-8 rounded-full flex items-center justify-center"
+            style="background:#f1f5f9">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#64748b">close</span>
           </button>
         </div>
+      </div>
+      <!-- Mensajes -->
+      <div id="passenger-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-3" style="min-height:0;background:#f8fafc">
+        @if (chatMessages().length === 0) {
+          <div class="flex flex-col items-center justify-center h-full text-center gap-3">
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:#fff7ed;border:2px solid #fed7aa">
+              <span class="material-symbols-outlined" style="font-size:32px;color:#f97316">chat_bubble_outline</span>
+            </div>
+            <p class="font-bold text-sm" style="color:#475569">Sin mensajes aún</p>
+            <p class="text-xs" style="color:#94a3b8">Envía un mensaje para hablar con el conductor</p>
+          </div>
+        }
+        @for (m of chatMessages(); track m.id) {
+          <div class="flex" [class]="m.sender_ag_user_id === agProfile()?.id ? 'justify-end' : 'justify-start'">
+            <div class="max-w-[78%] px-3 py-2 shadow-sm"
+              [style.background]="m.sender_ag_user_id === agProfile()?.id ? '#f97316' : '#ffffff'"
+              [style.borderRadius]="m.sender_ag_user_id === agProfile()?.id ? '18px 18px 4px 18px' : '18px 18px 18px 4px'"
+              [style.border]="m.sender_ag_user_id === agProfile()?.id ? 'none' : '1px solid #e2e8f0'">
+              <p class="text-sm leading-snug" [style.color]="m.sender_ag_user_id === agProfile()?.id ? '#fff' : '#1e293b'">{{ m.message }}</p>
+              <p class="text-[10px] mt-1" [style.color]="m.sender_ag_user_id === agProfile()?.id ? 'rgba(255,255,255,0.7)' : '#94a3b8'"
+                [style.textAlign]="m.sender_ag_user_id === agProfile()?.id ? 'right' : 'left'">
+                {{ m.created_at | date:'HH:mm' }}
+              </p>
+            </div>
+          </div>
+        }
+      </div>
+      <!-- Input -->
+      <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid #f1f5f9;background:#fff;padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+        <input type="text" [(ngModel)]="chatInput" (keyup.enter)="sendPassengerChat()"
+          placeholder="Escribe un mensaje..."
+          class="flex-1 px-4 py-2.5 rounded-2xl text-sm focus:outline-none"
+          style="background:#f1f5f9;border:1.5px solid #e2e8f0;color:#1e293b;font-size:14px" />
+        <button (click)="sendPassengerChat()" [disabled]="sendingChat() || !chatInput.trim()"
+          class="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 flex-shrink-0"
+          style="background:#f97316">
+          @if (sendingChat()) {
+            <span class="material-symbols-outlined text-white animate-spin" style="font-size:18px">sync</span>
+          } @else {
+            <span class="material-symbols-outlined text-white" style="font-size:20px">send</span>
+          }
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ MODAL CHAT CONDUCTOR ═══ -->
+  @if (showChatModal()) {
+    <div (click)="closeChatModal()" class="fixed inset-0"
+      style="z-index:9993;background:rgba(0,0,0,0.5)"></div>
+    <div class="fixed bottom-0 left-0 right-0 rounded-t-3xl flex flex-col"
+      style="z-index:9994;background:#fff;border-top:3px solid #2563eb;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:72vh;display:flex;flex-direction:column">
+      <!-- Header -->
+      <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid #f1f5f9">
+        <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:#e2e8f0"></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+              style="background:#eff6ff;border:1.5px solid #bfdbfe">
+              <span class="material-symbols-outlined" style="font-size:20px;color:#2563eb">chat</span>
+            </div>
+            <div>
+              <p class="font-black text-sm" style="color:#1e293b">Chat con pasajero</p>
+              <p class="text-xs" style="color:#94a3b8">Mensajes en tiempo real</p>
+            </div>
+          </div>
+          <button (click)="closeChatModal()"
+            class="w-8 h-8 rounded-full flex items-center justify-center"
+            style="background:#f1f5f9">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#64748b">close</span>
+          </button>
+        </div>
+      </div>
+      <!-- Mensajes -->
+      <div id="driver-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-3" style="min-height:0;background:#f8fafc">
+        @if (chatMessages().length === 0) {
+          <div class="flex flex-col items-center justify-center h-full text-center gap-3">
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:#eff6ff;border:2px solid #bfdbfe">
+              <span class="material-symbols-outlined" style="font-size:32px;color:#2563eb">chat_bubble_outline</span>
+            </div>
+            <p class="font-bold text-sm" style="color:#475569">Sin mensajes aún</p>
+            <p class="text-xs" style="color:#94a3b8">Envía un mensaje para hablar con el pasajero</p>
+          </div>
+        }
+        @for (msg of chatMessages(); track msg.id) {
+          <div class="flex" [class]="isMyChatMessage(msg) ? 'justify-end' : 'justify-start'">
+            <div class="max-w-[78%] px-3 py-2 shadow-sm"
+              [style.background]="isMyChatMessage(msg) ? '#2563eb' : '#ffffff'"
+              [style.borderRadius]="isMyChatMessage(msg) ? '18px 18px 4px 18px' : '18px 18px 18px 4px'"
+              [style.border]="isMyChatMessage(msg) ? 'none' : '1px solid #e2e8f0'">
+              <p class="text-sm leading-snug" [style.color]="isMyChatMessage(msg) ? '#fff' : '#1e293b'">{{ msg.message }}</p>
+              <p class="text-[10px] mt-1"
+                [style.color]="isMyChatMessage(msg) ? 'rgba(255,255,255,0.7)' : '#94a3b8'"
+                [style.textAlign]="isMyChatMessage(msg) ? 'right' : 'left'">
+                {{ formatChatTime(msg.created_at) }}
+              </p>
+            </div>
+          </div>
+        }
+      </div>
+      <!-- Input -->
+      <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid #f1f5f9;background:#fff;padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+        <input [(ngModel)]="chatInput" name="chatInput"
+          placeholder="Escribe un mensaje..."
+          (keydown.enter)="sendChatMsg()"
+          class="flex-1 px-4 py-2.5 rounded-2xl text-sm focus:outline-none"
+          style="background:#f1f5f9;border:1.5px solid #e2e8f0;color:#1e293b;font-size:14px" />
+        <button (click)="sendChatMsg()" [disabled]="!chatInput.trim() || chatSending()"
+          class="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 flex-shrink-0"
+          style="background:#2563eb">
+          @if (chatSending()) {
+            <span class="material-symbols-outlined text-white animate-spin" style="font-size:18px">sync</span>
+          } @else {
+            <span class="material-symbols-outlined text-white" style="font-size:18px">send</span>
+          }
+        </button>
       </div>
     </div>
   }
@@ -7432,7 +7460,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   navTotalKm         = signal(0);
   navPhase           = signal<'to_pickup' | 'to_dest'>('to_pickup');
   navManeuverIcon    = signal('straight');
-  navVoiceEnabled    = signal(true);
+  navVoiceEnabled    = signal(false); // empieza en OFF — primer toque del botón activa
   private _navSteps:      any[]    = [];
   private _navStepIdx:    number   = 0;
   private _navSpokenKeys: Set<string> = new Set();
@@ -9672,11 +9700,40 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       alert(e?.message ?? 'Error al finalizar el viaje. Intenta de nuevo.');
       return;
     }
-    // Notificar al conductor para que también muestre recibo y rating
+
+    // Guardar datos de rating ANTES de resetear (las signals se limpiarán)
+    const driverUser = (offer as any).ag_drivers?.ag_users;
+    this.ratingTripId.set(tripId);
+    this.ratingTarget.set({
+      userId: (offer as any).ag_drivers?.ag_user_id ?? '',
+      name:   driverUser?.full_name ?? 'Tu conductor',
+      role:   'driver',
+    });
+    this.ratingStars.set(0);
+    this.ratingCommentValue = '';
+    this.ratingSkipped.set(false);
+
+    // Notificar al conductor
     const driverId = offer.driver_id;
     if (driverId) this.agService.broadcastTripCompletedToDriver(driverId, tripId);
-    this._showTripReceipt('passenger');
+
+    // Cargar detalles con variables locales antes de que _resetTrip limpie signals
+    const destName  = this.tripDest()?.name ?? 'Destino';
+    const basePrice = offer.offered_price ?? this.tripPrice();
+    const details   = await this.agService.getTripDetails(tripId).catch(() => null);
+    const receipt: any = details ?? {
+      final_price: basePrice, origin_name: null, dest_name: destName,
+      driver_net: null, commission_amount: null, commission_pct: null,
+    };
+    if (!receipt._driver && driverUser) receipt._driver = driverUser;
+
+    // Resetear el viaje (ratingTripId/ratingTarget quedan preservados)
     this._resetTrip();
+
+    // Mostrar recibo con datos cargados
+    this.tripReceiptData.set(receipt);
+    this.tripReceiptModal.set(true);
+    this.cdr.markForCheck();
   }
 
   // ── Rating — driver finishes trip ─────────���────────────────���──
@@ -10277,6 +10334,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   async advanceStage(trip: any, stage: 'heading_to_pickup'|'arrived_at_pickup'|'picked_up'|'on_route'|'arrived_at_destination'|'completed'): Promise<void> {
     const tripReqId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripReqId) return;
+    // Desbloquear AudioContext ANTES del await (requiere estar en gesto del usuario)
+    this._ensureAudioCtx();
     await this.agService.updateTripStage(tripReqId, stage);
     // Actualizar el signal con un nuevo objeto para que Angular OnPush detecte el cambio
     this.driverActiveTrips.update(list =>
@@ -10302,6 +10361,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     // Conductor llegó al punto de recogida: cerrar fullscreen + abrir modal de espera
     if (stage === 'arrived_at_pickup') {
+      this._speak('Llegaste al punto de recogida. Esperando al pasajero.');
       if (this.driverMapFullscreen()) {
         this.stopInAppNav();
         this.driverMapFullscreen.set(false);
@@ -10320,8 +10380,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }
     }
 
+    // Pasajero a bordo
+    if (stage === 'picked_up') {
+      this._speak('Pasajero a bordo.');
+    }
+
     // Cuando inicia el viaje: activar fullscreen + navegar al destino
     if (stage === 'on_route') {
+      this._speak('Iniciando ruta al destino.');
       this.driverFullscreenTrip.set(trip);
       this.driverMapFullscreen.set(true);
       setTimeout(() => {
@@ -10383,99 +10449,67 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (typeof window !== 'undefined') window.open(url, '_blank');
   }
 
-  // ── Navegación en app ────────────────────────────────────────
+  // ── Sistema de voz ────────────────────────────────────────────
 
-  // Cache de audio: text → blob URL (evita re-fetching la misma frase)
-  ttsStatus  = signal<'idle'|'playing'>('idle');
+  ttsStatus    = signal<'idle'|'playing'>('idle');
   private _audioCtx: any = null;
+  private _voiceReady  = false;
 
-  warmUpTts(): void { this._ensureAudioCtx(); }
+  warmUpTts(): void {}
 
-  // Crea/reanuda el AudioContext — DEBE llamarse desde un gesto del usuario
-  private _ensureAudioCtx(): any {
-    if (!isPlatformBrowser(this.platformId)) return null;
-    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!AC) return null;
-    if (!this._audioCtx) this._audioCtx = new AC();
-    if (this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(() => {});
-    return this._audioCtx;
+  private _ensureAudioCtx(): void {
+    try {
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (AC && !this._audioCtx) { this._audioCtx = new AC(); }
+      this._audioCtx?.resume?.().catch(() => {});
+    } catch {}
   }
 
   private _speak(text: string): void {
-    if (!this.navVoiceEnabled() || !isPlatformBrowser(this.platformId) || !text) return;
-    this._speakWithAudioCtx(text);
+    if (!this.navVoiceEnabled() || !isPlatformBrowser(this.platformId) || !text?.trim()) return;
+    this._sayIt(text);
   }
 
-  // Descarga audio de StreamElements TTS y lo decodifica con AudioContext
-  // AudioContext ya está desbloqueado desde el tap del usuario → funciona en contexto async
-  private async _speakWithAudioCtx(text: string): Promise<void> {
-    const ctx = this._audioCtx;
-    if (!ctx) return;
-
-    this.ttsStatus.set('playing');
-    this.cdr.markForCheck();
-
+  private _sayIt(text: string): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     try {
-      // StreamElements TTS — gratis, sin API key, CORS habilitado, voz en español
-      const url = `https://api.streamelements.com/kappa/v2/speech?voice=es-ES-AlvaroNeural&text=${encodeURIComponent(text)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`${res.status}`);
-      const buf     = await res.arrayBuffer();
-      const decoded = await ctx.decodeAudioData(buf);
-      const src     = ctx.createBufferSource();
-      src.buffer    = decoded;
-      src.connect(ctx.destination);
-      src.start(0);
-      src.onended = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
-    } catch (e) {
-      console.error('[TTS]', e);
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      synth.cancel();
+      const utt    = new SpeechSynthesisUtterance(text);
+      utt.volume   = 1;
+      utt.rate     = 0.95;
+      utt.pitch    = 1;
+      // Sin especificar lang — usa el idioma del sistema Android (es por defecto en Colombia)
+      this.ttsStatus.set('playing');
+      this.cdr.markForCheck();
+      utt.onend  = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
+      utt.onerror = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
+      synth.speak(utt);
+    } catch {
       this.ttsStatus.set('idle');
       this.cdr.markForCheck();
-      // Fallback silencioso — speechSynthesis como último recurso
-      try {
-        window.speechSynthesis?.cancel();
-        const utt = new SpeechSynthesisUtterance(text);
-        utt.lang = 'es'; utt.rate = 0.9; utt.volume = 1;
-        window.speechSynthesis?.speak(utt);
-      } catch {}
     }
   }
 
   private _prefetchTts(_texts: string[]): void { /* no-op */ }
 
-  // Botón VOZ — desbloquea AudioContext Y habla una frase de prueba
   testVoz(): void {
-    const ctx = this._ensureAudioCtx(); // unlock audio en user gesture
     this.navVoiceEnabled.set(true);
-    if (!ctx) return;
-
-    this.ttsStatus.set('playing');
-    this.cdr.markForCheck();
-
-    // Beep inmediato para confirmar que el audio está activo
-    try {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = 660;
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.3);
-    } catch {}
-
-    // Habla la instrucción completa usando StreamElements TTS
-    this._speakWithAudioCtx('Guía de voz activada. En doscientos metros gira a la derecha.');
+    this._voiceReady = true;
+    this._sayIt('Guía de voz activada. Seguí las instrucciones en ruta.');
   }
 
   toggleNavVoice(): void {
     const next = !this.navVoiceEnabled();
     this.navVoiceEnabled.set(next);
     if (next) {
-      this._ensureAudioCtx();
-      this._speak('Guía de voz activada');
+      this._voiceReady = true;
+      this._sayIt('Voz activada');
+    } else {
+      try { window.speechSynthesis?.cancel(); } catch {}
+      this.ttsStatus.set('idle');
+      this.cdr.markForCheck();
     }
   }
 
@@ -13955,21 +13989,26 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   // ═══════════════════════════════════════════════════
   // PASSENGER: chat bidireccional
   // ═══════════════════════════════════════════════════
-  async openPassengerChat() {
-    const tripId = this.tripAccepted()?.trip_request_id ?? this.currentTripRequestId();
+  openPassengerChat() {
+    const tripId = this.tripAccepted()?.trip_request_id
+      ?? this.currentTripRequestId()
+      ?? this.chatRequestId();
     if (!tripId) return;
     this.chatRequestId.set(tripId);
     this.chatUnread.set(0);
-    const msgs = await this.agService.getChatMessages(tripId);
-    this.chatMessages.set(msgs);
-    this.chatOpen.set(true);  // abre el modal del pasajero (no el del conductor)
+    this.chatMessages.set([]);
+    this.chatOpen.set(true);
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
       this.chatMessages.update(list => [...list, msg]);
       this.cdr.markForCheck();
       this._scrollChatToBottom('passenger-chat-messages');
     });
-    setTimeout(() => this._scrollChatToBottom('passenger-chat-messages'), 50);
+    this.agService.getChatMessages(tripId).then(msgs => {
+      this.chatMessages.set(msgs);
+      this.cdr.markForCheck();
+      this._scrollChatToBottom('passenger-chat-messages');
+    }).catch(() => {});
   }
 
   closePassengerChat() {
