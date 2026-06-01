@@ -363,9 +363,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Cabecera verde precio -->
           <div style="background:linear-gradient(135deg,#16a34a,#059669);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span class="material-symbols-outlined" style="font-size:17px;color:#fff;font-variation-settings:'FILL' 1">local_offer</span>
-              <span style="color:#fff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.07em">Nueva oferta</span>
+            <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;margin-right:8px">
+              <span class="material-symbols-outlined" style="font-size:17px;color:#fff;flex-shrink:0;font-variation-settings:'FILL' 1">local_offer</span>
+              <span style="color:#fff;font-size:10px;font-weight:900;line-height:1.2">
+                @if (offer.offered_price === tripPrice()) {
+                  {{ offer.ag_drivers?.ag_users?.full_name ?? 'El conductor' }} aceptó tu oferta
+                } @else {
+                  {{ offer.ag_drivers?.ag_users?.full_name ?? 'El conductor' }} ofertó {{ formatCOP(offer.offered_price) }} a tu solicitud
+                }
+              </span>
             </div>
             <div style="text-align:right">
               <p style="color:#fff;font-weight:900;font-size:clamp(18px,5vw,22px);margin:0;line-height:1">{{ formatCOP(offer.offered_price) }}</p>
@@ -2507,9 +2513,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <!-- Cabecera verde con precio -->
                       <div class="flex items-center justify-between px-4 py-3"
                         style="background:linear-gradient(135deg,#16a34a,#059669)">
-                        <div class="flex items-center gap-1.5">
-                          <span class="material-symbols-outlined text-white" style="font-size:18px;font-variation-settings:'FILL' 1">local_offer</span>
-                          <span class="text-white text-xs font-black uppercase tracking-wider">Nueva oferta</span>
+                        <div class="flex items-center gap-1.5 flex-1 min-w-0 mr-2">
+                          <span class="material-symbols-outlined text-white flex-shrink-0" style="font-size:18px;font-variation-settings:'FILL' 1">local_offer</span>
+                          <span class="text-white font-black leading-tight" style="font-size:10px">
+                            @if (offer.offered_price === tripPrice()) {
+                              {{ offer.ag_drivers?.ag_users?.full_name ?? 'El conductor' }} aceptó tu oferta
+                            } @else {
+                              {{ offer.ag_drivers?.ag_users?.full_name ?? 'El conductor' }} ofertó {{ formatCOP(offer.offered_price) }} a tu solicitud
+                            }
+                          </span>
                         </div>
                         <div class="text-right">
                           <p class="text-white font-black" style="font-size:22px;line-height:1">{{ formatCOP(offer.offered_price) }}</p>
@@ -3986,7 +3998,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       }
       @if (driverStatus() === 'approved') {
         <!-- Viajes activos del conductor -->
-        @if (driverActiveTrips().length > 0 && !driverTripAlert()) {
+        @if (driverActiveTrips().length > 0 && !driverTripAlert() && !driverMapFullscreen()) {
           <div class="flex flex-col gap-2">
             <p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Viajes en curso</p>
             @for (trip of driverActiveTrips(); track trip.id) {
@@ -11059,16 +11071,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.navVoiceEnabled.set(true);
     this._ensureAudioCtx();
     this._sayIt('Viaje aceptado. Calculando ruta.');
-    this.driverTripAlert.set(null);
-    await this.advanceStage(alert, 'heading_to_pickup');
+    // Activar fullscreen ANTES de limpiar el alert para evitar flash de "Viajes en curso"
     const req = alert.ag_trip_requests ?? alert;
-    // Normalizar: las coords pueden llegar como string desde el RPC
     const oLat = parseFloat(req?.origin_lat);
     const oLng = parseFloat(req?.origin_lng);
+    if (isFinite(oLat) && isFinite(oLng)) {
+      this.driverFullscreenTrip.set(alert);
+      this.driverMapFullscreen.set(true);
+    }
+    this.driverTripAlert.set(null);
+    await this.advanceStage(alert, 'heading_to_pickup');
     if (!isFinite(oLat) || !isFinite(oLng)) return;
-
-    this.driverFullscreenTrip.set(alert);
-    this.driverMapFullscreen.set(true);
 
     // 1) Primer resize inmediato cuando el mapa esté listo
     // 2) Segundo resize + startInAppNav a 500ms — esperar a que la transición CSS (0.35s) termine
@@ -15931,20 +15944,39 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   private async _searchPlacesForDelivery(query: string): Promise<any[]> {
-    // Reutilizar Google Places si está disponible, sino Nominatim
     const gmaps = (window as any).google?.maps;
-    if (gmaps?.places?.AutocompleteService) {
+
+    // ── Google Places con bounds centrado en la ciudad del usuario ──────
+    if (this._autocompleteService && gmaps) {
       return new Promise(resolve => {
-        const svc = new gmaps.places.AutocompleteService();
-        svc.getPlacePredictions(
-          { input: query, componentRestrictions: { country: 'co' }, types: ['geocode', 'establishment'] },
-          (preds: any[], status: string) => {
-            if (status !== 'OK' || !preds) { resolve([]); return; }
-            const placeSvc = new gmaps.places.PlacesService(document.createElement('div'));
-            const results: any[] = [];
-            let done = 0;
-            preds.slice(0, 5).forEach(pred => {
-              placeSvc.getDetails({ placeId: pred.place_id, fields: ['geometry', 'name', 'formatted_address'] }, (place: any, st: string) => {
+        // Misma ventana ~11 km que el buscador de viajes (d=0.1°)
+        const d = 0.1;
+        const request: any = {
+          input: query,
+          componentRestrictions: { country: 'co' },
+          sessionToken: this._placesSessionToken,
+          types: ['geocode', 'establishment'],
+          bounds: new gmaps.LatLngBounds(
+            new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
+            new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
+          ),
+        };
+        this._autocompleteService.getPlacePredictions(request, (preds: any[], status: string) => {
+          if (status !== 'OK' || !preds?.length) { resolve([]); return; }
+          // Filtrar por ciudad detectada por GPS (igual que el buscador del viaje)
+          const city = this._cityFromGps.toLowerCase();
+          const local = city
+            ? preds.filter((p: any) => p.description?.toLowerCase().includes(city))
+            : preds;
+          const filtered = (local.length > 0 ? local : preds).slice(0, 5);
+          // Resolver coordenadas con PlacesService
+          const placeSvc = new gmaps.places.PlacesService(document.createElement('div'));
+          const results: any[] = [];
+          let done = 0;
+          filtered.forEach((pred: any) => {
+            placeSvc.getDetails(
+              { placeId: pred.place_id, fields: ['geometry', 'formatted_address'], sessionToken: this._placesSessionToken },
+              (place: any, st: string) => {
                 done++;
                 if (st === 'OK' && place?.geometry?.location) {
                   results.push({
@@ -15953,16 +15985,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
                     lng: place.geometry.location.lng(),
                   });
                 }
-                if (done === preds.slice(0, 5).length) resolve(results);
-              });
-            });
-          }
-        );
+                if (done === filtered.length) resolve(results);
+              }
+            );
+          });
+        });
       });
     }
-    // Fallback Nominatim
+
+    // ── Fallback Nominatim con viewbox restringido a ~30km de la ciudad ──
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=co`;
+      const d = 0.27; // ~30 km
+      const viewbox = `${this._currentLng - d},${this._currentLat + d},${this._currentLng + d},${this._currentLat - d}`;
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=co&viewbox=${viewbox}&bounded=1`;
       const data = await (await fetch(url)).json();
       return (data ?? []).map((r: any) => ({ name: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lng) }));
     } catch { return []; }
