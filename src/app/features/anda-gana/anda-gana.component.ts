@@ -10655,7 +10655,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!this._map) return;
     this._map.easeTo({
       center:   [this._currentLng, this._currentLat],
-      bearing:  this._currentHeading,
+      bearing:  this.navActive() ? this._currentHeading : 0,
       pitch:    this.navActive() ? 50 : 0,
       zoom:     15,
       duration: 600,
@@ -11024,7 +11024,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         if (!this.navActive() && !this.driverMapPanned() && this._map) {
           this._map.easeTo({
             center:   [pos.coords.longitude, pos.coords.latitude],
-            bearing:  this._currentHeading,
+            bearing:  0,
             pitch:    0,
             zoom:     15,
             duration: 600,
