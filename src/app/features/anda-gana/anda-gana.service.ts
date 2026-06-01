@@ -2363,6 +2363,30 @@ export class AndaGanaService {
       .subscribe();
   }
 
+  /** Conductores moto online en un radio dado (para auto-asignar domicilios) */
+  async findNearestMotoDrivers(pickupLat: number, pickupLng: number, radiusKm = 5): Promise<any[]> {
+    const { data } = await getMoviClient()
+      .from('ag_driver_locations')
+      .select('driver_id, lat, lng, ag_drivers!inner(id, ag_user_id, vehicle_type, ag_users!inner(auth_user_id))')
+      .eq('ag_drivers.vehicle_type', 'moto')
+      .gte('updated_at', new Date(Date.now() - 10 * 60 * 1000).toISOString()); // activos últimos 10 min
+    if (!data?.length) return [];
+    // Filtrar por distancia haversine en JS
+    return data
+      .filter((d: any) => {
+        const R = 6371, dLat = (d.lat - pickupLat) * Math.PI / 180, dLng = (d.lng - pickupLng) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(pickupLat*Math.PI/180)*Math.cos(d.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) < radiusKm;
+      })
+      .slice(0, 8);
+  }
+
+  subscribeToNewDeliveries(cb: () => void): RealtimeChannel {
+    return this.supabase.channel('new-delivery-requests-driver')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ag_delivery_requests', filter: `status=eq.searching` }, () => cb())
+      .subscribe();
+  }
+
   subscribeToDeliveryAssigned(deliveryRequestId: string, driverId: string, cb: (row: any) => void): RealtimeChannel {
     return this.supabase.channel(`del-assigned-${deliveryRequestId}-${driverId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ag_delivery_requests',

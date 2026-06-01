@@ -159,5 +159,33 @@ serve(async (req) => {
     return json({ wallet_balance: data?.wallet_balance ?? 0 });
   }
 
+  // ── GET /ag-api?action=driver-by-phone&phone=... ─────────────
+  // Usa service_role para obtener perfil conductor por teléfono — bypasea RLS completamente
+  if (action === 'driver-by-phone' && req.method === 'GET') {
+    const phone = url.searchParams.get('phone') ?? '';
+    if (!phone) return json({ error: 'phone requerido' }, 400);
+    if (!SUPA_URL || !SUPA_KEY) return json({ error: 'Supabase not configured' }, 500);
+    const supabase = createClient(SUPA_URL, SUPA_KEY);
+    // Buscar ag_users con role='driver' por teléfono
+    const { data: users } = await supabase
+      .from('ag_users')
+      .select('*')
+      .eq('phone', phone)
+      .eq('role', 'driver')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const agUser = users?.[0] ?? null;
+    if (!agUser) return json({ profile: null, driver: null });
+    // Buscar ag_drivers por ag_user_id
+    const { data: driver } = await supabase
+      .from('ag_drivers')
+      .select('*')
+      .eq('ag_user_id', agUser.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    return json({ profile: agUser, driver: driver ?? null });
+  }
+
   return json({ error: 'Unknown action' }, 404);
 });

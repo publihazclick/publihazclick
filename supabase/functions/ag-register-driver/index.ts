@@ -24,25 +24,30 @@ async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function getOrCreateAuthUser(sb: any, normalized: string): Promise<string | null> {
+async function getOrCreateAuthUser(sb: any, normalized: string, existingAuthId?: string | null): Promise<string | null> {
   const salt = Deno.env.get('AG_SESSION_SALT') ?? 'movi-ag-2026';
   const pwHash = await sha256(normalized + salt);
   const email = `ag_${normalized.replace(/\+/g, '')}@movi-driver.app`;
   const password = `Ag${pwHash.slice(0, 30)}`;
 
-  // Try sign-in first (user already exists)
   const { data: si } = await sb.auth.signInWithPassword({ email, password });
   if (si?.user?.id) return si.user.id;
 
-  // Create new auth user
+  if (existingAuthId) {
+    try {
+      await sb.auth.admin.updateUserById(existingAuthId, { email, password, email_confirm: true });
+      const { data: si2 } = await sb.auth.signInWithPassword({ email, password });
+      if (si2?.user?.id) return si2.user.id;
+      return existingAuthId;
+    } catch {}
+  }
+
   const { data: cd } = await sb.auth.admin.createUser({
     email, password, email_confirm: true,
     user_metadata: { phone: normalized, source: 'movi_otp' },
   });
   if (cd?.user?.id) return cd.user.id;
 
-  // If create failed because user already exists, try updating password then sign-in
-  // (handles salt change scenario)
   return null;
 }
 
@@ -51,58 +56,70 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { phone, name, vehicle_type, vehicle_brand, vehicle_color, plate } = body;
-    if (!phone) return json({ ok: false, error: 'phone requerido' }, 400);
-
-    const normalized = toE164(phone);
-    console.log('[ag-register-driver] phone received:', phone, '-> normalized:', normalized);
+    const { phone, name, vehicle_type, vehicle_brand, vehicle_color, plate, ag_user_id } = body;
+    if (!phone && !ag_user_id) return json({ ok: false, error: 'phone o ag_user_id requerido' }, 400);
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // 1. Find ag_users by phone — array select to handle duplicate phones (prefer driver role)
-    const { data: agUsersArr } = await sb
-      .from('ag_users').select('*').eq('phone', normalized).order('created_at', { ascending: false });
-
     let agUser: any = null;
-    if (agUsersArr && agUsersArr.length > 0) {
-      agUser = agUsersArr.find((u: any) => u.role === 'driver') ?? agUsersArr[0];
+
+    // 1. Lookup directo por ID si viene del paso OTP (más confiable que búsqueda por teléfono)
+    if (ag_user_id) {
+      const { data: byId } = await sb.from('ag_users').select('*').eq('id', ag_user_id).single();
+      if (byId) agUser = byId;
     }
 
-    console.log('[ag-register-driver] phone:', normalized, 'found:', agUser ? agUser.id : 'NOT FOUND');
+    // 2. Buscar por teléfono (múltiples formatos)
+    if (!agUser && phone) {
+      const normalized = toE164(phone);
+      const digits10 = normalized.replace(/^\+57/, '');
+      console.log('[ag-register-driver] phone:', phone, '-> normalized:', normalized);
 
-    // 2. If not found, recover via auth user lookup or create new profile
-    if (!agUser) {
-      const authUserId = await getOrCreateAuthUser(sb, normalized);
-      if (!authUserId) {
-        return json({ ok: false, error: 'No se pudo verificar la cuenta. Vuelve a solicitar el código.' });
+      const { data: byPhone } = await sb
+        .from('ag_users')
+        .select('*')
+        .in('phone', [normalized, digits10, '57' + digits10])
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (byPhone && byPhone.length > 0) {
+        agUser = byPhone.find((u: any) => u.role === 'driver') ?? byPhone[0];
       }
 
-      const { data: byAuth } = await sb
-        .from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
+      // 3. Si no existe, crear via auth + insert
+      if (!agUser) {
+        const authUserId = await getOrCreateAuthUser(sb, normalized, null);
+        if (!authUserId) {
+          return json({ ok: false, error: 'No se pudo verificar la cuenta. Vuelve a solicitar el código.' });
+        }
 
-      if (byAuth) {
-        agUser = byAuth;
-      } else {
-        const fullName = (name && String(name).trim()) ? String(name).trim() : 'Conductor';
-        const { data: inserted, error: insertErr } = await sb.from('ag_users').insert({
-          auth_user_id: authUserId,
-          role: 'driver',
-          full_name: fullName,
-          phone: normalized,
-          country: 'Colombia',
-          department: '',
-          city: '',
-        }).select('*').single();
+        const { data: byAuth } = await sb
+          .from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
 
-        if (insertErr) {
-          console.error('[ag-register-driver] insert ag_users failed:', JSON.stringify(insertErr));
-          const { data: fb } = await sb.from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
-          agUser = fb ?? null;
+        if (byAuth) {
+          agUser = byAuth;
         } else {
-          agUser = inserted;
+          const fullName = (name && String(name).trim()) ? String(name).trim() : 'Conductor';
+          const { data: inserted, error: insertErr } = await sb.from('ag_users').insert({
+            auth_user_id: authUserId,
+            role: 'driver',
+            full_name: fullName,
+            phone: normalized,
+            country: 'Colombia',
+            department: '',
+            city: '',
+          }).select('*').single();
+
+          if (insertErr) {
+            console.error('[ag-register-driver] insert ag_users failed:', JSON.stringify(insertErr));
+            const { data: fb } = await sb.from('ag_users').select('*').eq('auth_user_id', authUserId).maybeSingle();
+            agUser = fb ?? null;
+          } else {
+            agUser = inserted;
+          }
         }
       }
     }
@@ -111,28 +128,29 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' });
     }
 
-    // 3. Ensure role is driver
+    // 4. Asegurar que el rol sea driver
     if (agUser.role !== 'driver') {
-      await sb.from('ag_users').update({ role: 'driver' }).eq('id', agUser.id);
-      agUser.role = 'driver';
+      const { data: updated } = await sb
+        .from('ag_users').update({ role: 'driver' }).eq('id', agUser.id).select('*').single();
+      if (updated) agUser = updated;
     }
 
-    // 4. Find or create ag_drivers record
+    // 5. Crear o actualizar ag_drivers
     const { data: existingDriver } = await sb
       .from('ag_drivers').select('*').eq('ag_user_id', agUser.id).maybeSingle();
 
     if (existingDriver) {
-      const updateData: Record<string, any> = {};
-      if (vehicle_type) updateData.vehicle_type = vehicle_type;
-      if (vehicle_brand) updateData.vehicle_brand = vehicle_brand;
-      if (vehicle_color) updateData.vehicle_color = vehicle_color;
-      if (plate) { updateData.plate = plate; updateData.vehicle_plate = plate; }
-      if ((existingDriver.metric_trips_completed ?? 0) === 0) updateData.status = 'quick';
-      if (Object.keys(updateData).length > 0) {
-        await sb.from('ag_drivers').update(updateData).eq('id', existingDriver.id);
+      const upd: Record<string, any> = {};
+      if (vehicle_type) upd.vehicle_type = vehicle_type;
+      if (vehicle_brand) upd.vehicle_brand = vehicle_brand;
+      if (vehicle_color) upd.vehicle_color = vehicle_color;
+      if (plate) { upd.plate = plate; upd.vehicle_plate = plate; }
+      if ((existingDriver.metric_trips_completed ?? 0) === 0) upd.status = 'quick';
+      if (Object.keys(upd).length > 0) {
+        await sb.from('ag_drivers').update(upd).eq('id', existingDriver.id);
       }
     } else {
-      const { error: insertErr } = await sb.from('ag_drivers').insert({
+      const { error: driverErr } = await sb.from('ag_drivers').insert({
         ag_user_id: agUser.id,
         vehicle_type: vehicle_type ?? 'car',
         vehicle_brand: vehicle_brand ?? '',
@@ -143,13 +161,13 @@ Deno.serve(async (req) => {
         is_online: false,
         wallet_balance: 0,
       });
-      if (insertErr) {
-        console.error('[ag-register-driver] insert ag_drivers:', JSON.stringify(insertErr));
+      if (driverErr) {
+        console.error('[ag-register-driver] insert ag_drivers:', JSON.stringify(driverErr));
         return json({ ok: false, error: 'No se pudo guardar el vehículo. Intenta de nuevo.' });
       }
     }
 
-    // 5. Return fresh data
+    // 6. Retornar datos frescos
     const { data: finalUser } = await sb.from('ag_users').select('*').eq('id', agUser.id).single();
     const { data: driverRow } = await sb.from('ag_drivers').select('*').eq('ag_user_id', agUser.id).single();
 

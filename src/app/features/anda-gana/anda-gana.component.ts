@@ -598,6 +598,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ MODAL COUNTER-OFFER DOMICILIO — conductor ═══════════ -->
+  @if (deliveryCounterOffer()) {
+    <div (click)="deliveryCounterOffer.set(null)" class="fixed inset-0 z-[9910]" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)"></div>
+    <div class="fixed z-[9911] left-4 right-4" style="bottom:max(24px,env(safe-area-inset-bottom));max-width:420px;margin:0 auto">
+      <div style="background:linear-gradient(180deg,#052e16,#064e3b);border-radius:24px;border:2px solid rgba(52,211,153,0.5);padding:20px;box-shadow:0 24px 60px rgba(0,0,0,0.8)">
+        <p class="font-black text-emerald-300 text-sm mb-1">Contraofertar domicilio</p>
+        <p class="text-emerald-600 text-xs mb-4">El pasajero propone {{ formatCOP(deliveryCounterOffer()!.offered_price) }}. ¿Cuánto quieres cobrar?</p>
+        <div class="flex items-center gap-2 mb-4">
+          <button (click)="deliveryCounterValue.update(v => Math.max(3000, v - 500))"
+            style="width:44px;height:44px;border-radius:12px;border:1px solid rgba(52,211,153,0.3);background:rgba(255,255,255,0.08);color:#fff;font-size:20px;font-weight:900;flex-shrink:0">−</button>
+          <div class="flex-1 text-center">
+            <p class="font-black text-white" style="font-size:26px">{{ formatCOP(deliveryCounterValue()) }}</p>
+          </div>
+          <button (click)="deliveryCounterValue.update(v => v + 500)"
+            style="width:44px;height:44px;border-radius:12px;border:none;background:#10b981;color:#fff;font-size:20px;font-weight:900;flex-shrink:0">+</button>
+        </div>
+        <div class="flex gap-2">
+          <button (click)="deliveryCounterOffer.set(null)"
+            style="flex:1;padding:12px;border-radius:14px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:#f87171;font-size:13px;font-weight:900">Cancelar</button>
+          <button (click)="submitDeliveryCounterOffer()"
+            style="flex:2;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:13px;font-weight:900">
+            Enviar contraoferta
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ BANNER DOMICILIOS — conductor (flotante) ═══════════ -->
   @if (driverOnline() && !activeDriverDelivery() && !driverTripAlert() && deliveryRequests().length > 0 && driverData()?.vehicle_type === 'moto') {
     <div style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:7900;max-height:55dvh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
@@ -1832,7 +1860,46 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                     <!-- Dirección confirmada -->
                     @if (deliveryPickupLat() && deliveryPickupName()) {
-                      <p class="text-emerald-600 text-xs font-semibold px-1 mb-2 truncate">✓ {{ deliveryPickupName() }}</p>
+                      <div class="flex items-center gap-2 px-2 py-1.5 mb-2 rounded-xl" style="background:#f0fdf4;border:1px solid #bbf7d0">
+                        <span class="material-symbols-outlined text-emerald-500 flex-shrink-0" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>
+                        <p class="text-emerald-700 text-xs font-semibold flex-1 truncate">{{ deliveryPickupName() }}</p>
+                        <button (click)="toggleSavedDeliveryPickup()" class="flex-shrink-0 active:scale-90">
+                          @if (isPickupSaved()) {
+                            <span class="material-symbols-outlined" style="font-size:18px;color:#10b981;font-variation-settings:'FILL' 1">bookmark</span>
+                          } @else {
+                            <span class="material-symbols-outlined" style="font-size:18px;color:#94a3b8">bookmark</span>
+                          }
+                        </button>
+                      </div>
+                    }
+                    <!-- Guardadas y Recientes — cuando no hay texto ni sugerencias -->
+                    @if (!deliveryPickupLat() && deliveryPickupSugg().length === 0) {
+                      @if (savedDelPickups().length > 0) {
+                        <div class="mb-2">
+                          <p class="text-emerald-500 text-[10px] font-black uppercase tracking-wider px-1 mb-1">Guardadas</p>
+                          @for (s of savedDelPickups(); track s.name) {
+                            <button (mousedown)="$event.preventDefault(); selectSavedDeliveryPickup(s, pickupInput)"
+                              class="w-full text-left px-3 py-2 flex items-center gap-2 rounded-lg active:bg-emerald-50 mb-0.5"
+                              style="background:#f0fdf4;border:1px solid #d1fae5">
+                              <span class="material-symbols-outlined text-emerald-500 flex-shrink-0" style="font-size:14px;font-variation-settings:'FILL' 1">bookmark</span>
+                              <p class="text-slate-700 text-xs truncate flex-1">{{ s.name }}</p>
+                            </button>
+                          }
+                        </div>
+                      }
+                      @if (recentDelPickups().length > 0) {
+                        <div class="mb-2">
+                          <p class="text-slate-400 text-[10px] font-black uppercase tracking-wider px-1 mb-1">Recientes</p>
+                          @for (r of recentDelPickups(); track r.name) {
+                            <button (mousedown)="$event.preventDefault(); selectRecentDeliveryPickup(r, pickupInput)"
+                              class="w-full text-left px-3 py-2 flex items-center gap-2 rounded-lg active:bg-emerald-50 mb-0.5"
+                              style="background:#f8fafc;border:1px solid #f1f5f9">
+                              <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:14px">history</span>
+                              <p class="text-slate-700 text-xs truncate">{{ r.name }}</p>
+                            </button>
+                          }
+                        </div>
+                      }
                     }
                     <!-- Sugerencias — mismo estilo que el viaje -->
                     @if (deliveryPickupSugg().length > 0) {
@@ -1895,7 +1962,46 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                     <!-- Dirección de entrega confirmada -->
                     @if (deliveryDestLat() && deliveryDestName()) {
-                      <p class="text-orange-500 text-xs font-semibold px-1 mb-2 truncate">✓ {{ deliveryDestName() }}</p>
+                      <div class="flex items-center gap-2 px-2 py-1.5 mb-2 rounded-xl" style="background:#fff7ed;border:1px solid #fed7aa">
+                        <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>
+                        <p class="text-orange-700 text-xs font-semibold flex-1 truncate">{{ deliveryDestName() }}</p>
+                        <button (click)="toggleSavedDeliveryDest()" class="flex-shrink-0 active:scale-90">
+                          @if (isDestSaved()) {
+                            <span class="material-symbols-outlined" style="font-size:18px;color:#f97316;font-variation-settings:'FILL' 1">bookmark</span>
+                          } @else {
+                            <span class="material-symbols-outlined" style="font-size:18px;color:#94a3b8">bookmark</span>
+                          }
+                        </button>
+                      </div>
+                    }
+                    <!-- Guardadas y Recientes -->
+                    @if (!deliveryDestLat() && deliveryDestSugg().length === 0) {
+                      @if (savedDelDests().length > 0) {
+                        <div class="mb-2">
+                          <p class="text-orange-500 text-[10px] font-black uppercase tracking-wider px-1 mb-1">Guardadas</p>
+                          @for (s of savedDelDests(); track s.name) {
+                            <button (mousedown)="$event.preventDefault(); selectSavedDeliveryDest(s, destInput)"
+                              class="w-full text-left px-3 py-2 flex items-center gap-2 rounded-lg active:bg-orange-50 mb-0.5"
+                              style="background:#fff7ed;border:1px solid #fed7aa">
+                              <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:14px;font-variation-settings:'FILL' 1">bookmark</span>
+                              <p class="text-slate-700 text-xs truncate flex-1">{{ s.name }}</p>
+                            </button>
+                          }
+                        </div>
+                      }
+                      @if (recentDelDests().length > 0) {
+                        <div class="mb-2">
+                          <p class="text-slate-400 text-[10px] font-black uppercase tracking-wider px-1 mb-1">Recientes</p>
+                          @for (r of recentDelDests(); track r.name) {
+                            <button (mousedown)="$event.preventDefault(); selectRecentDeliveryDest(r, destInput)"
+                              class="w-full text-left px-3 py-2 flex items-center gap-2 rounded-lg active:bg-orange-50 mb-0.5"
+                              style="background:#f8fafc;border:1px solid #f1f5f9">
+                              <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:14px">history</span>
+                              <p class="text-slate-700 text-xs truncate">{{ r.name }}</p>
+                            </button>
+                          }
+                        </div>
+                      }
                     }
                     <!-- Sugerencias — mismo estilo que el viaje -->
                     @if (deliveryDestSugg().length > 0) {
@@ -8390,10 +8496,27 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   makingDeliveryOffer      = signal<string | null>(null);
   private _deliveryRefreshInterval: any = null;
   private _deliveryAcceptedChannel: any = null;
+  private _deliveryNewReqChannel:   any = null;  // realtime: nuevos domicilios para conductores
   private _deliveryPickupRaw      = '';
   private _deliveryDestRaw        = '';
   private _deliveryPickupTimer:  any = null;
   private _deliveryDestTimer:    any = null;
+
+  // Direcciones recientes para domicilio
+  private readonly _RECENT_DEL_PICKUP_KEY = 'movi_recent_del_pickup';
+  private readonly _RECENT_DEL_DEST_KEY   = 'movi_recent_del_dest';
+  recentDelPickups = signal<{name:string,lat:number,lng:number}[]>([]);
+  recentDelDests   = signal<{name:string,lat:number,lng:number}[]>([]);
+
+  // Direcciones guardadas (favoritas) para domicilio — persisten sin límite
+  private readonly _SAVED_DEL_PICKUP_KEY = 'movi_saved_del_pickup';
+  private readonly _SAVED_DEL_DEST_KEY   = 'movi_saved_del_dest';
+  savedDelPickups = signal<{name:string,lat:number,lng:number}[]>([]);
+  savedDelDests   = signal<{name:string,lat:number,lng:number}[]>([]);
+
+  // Counter-offer domicilio conductor
+  deliveryCounterOffer = signal<any|null>(null);   // oferta a contraofertar
+  deliveryCounterValue = signal(0);
 
   // ── Passenger menu sections ────────────────────────────────────
   passengerSection         = signal<string | null>(null);
@@ -8705,6 +8828,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     // Cargar surge actual
     this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
+    // Cargar direcciones recientes y guardadas de domicilio
+    this._loadRecentDeliveryAddresses();
+    this._loadSavedDeliveryAddresses();
 
     let profile = await this.agService.getMyAgProfile();
 
@@ -8774,6 +8900,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.driverOnline.set(true);
       this.agService.setDriverOnline(mine.id, true).catch(() => {});
       this._loadDriverRequests(mine.vehicle_type);
+      if (mine.vehicle_type === 'moto') {
+        this.loadDeliveryRequests();
+        this._startDeliveryRealtimeForDriver();
+      }
       // Cuando el conductor vuelve a la app desde background, refrescar solicitudes inmediatamente
       if (isPlatformBrowser(this.platformId) && !this._visibilityHandler) {
         this._visibilityHandler = () => {
@@ -11014,8 +11144,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       } catch {}
       this._startOnlineTimer();
       this._loadDriverRequests(driver.vehicle_type, this._currentLat, this._currentLng);
-      // Cargar domicilios disponibles si es moto
-      if (driver.vehicle_type === 'moto') this.loadDeliveryRequests();
+      // Cargar domicilios disponibles si es moto + suscripción realtime
+      if (driver.vehicle_type === 'moto') {
+        this.loadDeliveryRequests();
+        this._startDeliveryRealtimeForDriver();
+      }
       if (isPlatformBrowser(this.platformId) && !this._visibilityHandler) {
         this._visibilityHandler = () => {
           if (!document.hidden && this.driverOnline()) {
@@ -13171,6 +13304,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   refreshDriverRequests() {
     this._loadDriverRequests(this.driverData()?.vehicle_type, this._currentLat, this._currentLng);
+    if (this.driverData()?.vehicle_type === 'moto' && !this.activeDriverDelivery()) {
+      this.loadDeliveryRequests();
+    }
   }
 
   async debugLoadRequests() {
@@ -16093,6 +16229,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.deliveryPickupName.set(name);
       this.deliveryPickupLat.set(s.lat);
       this.deliveryPickupLng.set(s.lng);
+      this._saveRecentDeliveryPickup({ name, lat: s.lat, lng: s.lng });
       this.cdr.markForCheck(); return;
     }
     try {
@@ -16103,12 +16240,14 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
           (r: any, st: string) => st === 'OK' ? resolve(r) : reject(st))
       );
       const loc = details.geometry?.location;
-      if (loc) { this.deliveryPickupName.set(name); this.deliveryPickupLat.set(loc.lat()); this.deliveryPickupLng.set(loc.lng()); }
+      if (loc) {
+        this.deliveryPickupName.set(name); this.deliveryPickupLat.set(loc.lat()); this.deliveryPickupLng.set(loc.lng());
+        this._saveRecentDeliveryPickup({ name, lat: loc.lat(), lng: loc.lng() });
+      }
     } catch {
-      // Fallback Nominatim
       try {
         const d = await (await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&countrycodes=co&limit=1`)).json();
-        if (d?.[0]) { this.deliveryPickupName.set(name); this.deliveryPickupLat.set(parseFloat(d[0].lat)); this.deliveryPickupLng.set(parseFloat(d[0].lon)); }
+        if (d?.[0]) { this.deliveryPickupName.set(name); this.deliveryPickupLat.set(parseFloat(d[0].lat)); this.deliveryPickupLng.set(parseFloat(d[0].lon)); this._saveRecentDeliveryPickup({ name, lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) }); }
       } catch { /* nada */ }
     }
     this.cdr.markForCheck();
@@ -16125,6 +16264,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.deliveryDestName.set(name);
       this.deliveryDestLat.set(s.lat);
       this.deliveryDestLng.set(s.lng);
+      this._saveRecentDeliveryDest({ name, lat: s.lat, lng: s.lng });
       this.cdr.markForCheck(); return;
     }
     try {
@@ -16135,11 +16275,14 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
           (r: any, st: string) => st === 'OK' ? resolve(r) : reject(st))
       );
       const loc = details.geometry?.location;
-      if (loc) { this.deliveryDestName.set(name); this.deliveryDestLat.set(loc.lat()); this.deliveryDestLng.set(loc.lng()); }
+      if (loc) {
+        this.deliveryDestName.set(name); this.deliveryDestLat.set(loc.lat()); this.deliveryDestLng.set(loc.lng());
+        this._saveRecentDeliveryDest({ name, lat: loc.lat(), lng: loc.lng() });
+      }
     } catch {
       try {
         const d = await (await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&countrycodes=co&limit=1`)).json();
-        if (d?.[0]) { this.deliveryDestName.set(name); this.deliveryDestLat.set(parseFloat(d[0].lat)); this.deliveryDestLng.set(parseFloat(d[0].lon)); }
+        if (d?.[0]) { this.deliveryDestName.set(name); this.deliveryDestLat.set(parseFloat(d[0].lat)); this.deliveryDestLng.set(parseFloat(d[0].lon)); this._saveRecentDeliveryDest({ name, lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) }); }
       } catch { /* nada */ }
     }
     this.cdr.markForCheck();
@@ -16302,6 +16445,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (!result.success || !result.id) { alert('Error al enviar el domicilio. Intenta de nuevo.'); return; }
     this.currentDeliveryId.set(result.id);
     this.deliverySent.set(true);
+    // Guardar direcciones como recientes
+    this._saveRecentDeliveryPickup({ name: this.deliveryPickupName(), lat: this.deliveryPickupLat(), lng: this.deliveryPickupLng() });
+    this._saveRecentDeliveryDest({ name: this.deliveryDestName(), lat: this.deliveryDestLat(), lng: this.deliveryDestLng() });
+    // Auto-asignar a motos cercanas (push notification)
+    this._autoAssignDeliveryToMotos(result.id, this.deliveryPickupLat(), this.deliveryPickupLng(), this.deliveryEstPrice()).catch(() => {});
     // Suscribir a ofertas de conductores
     this._deliveryOfferChannel = this.agService.subscribeToDeliveryOffers(result.id, (offer) => {
       this.deliveryOffers.update(list => {
@@ -16350,6 +16498,121 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   // ═══════════════════════════════════════════════════════════════════
   // MÓDULO DOMICILIOS — CONDUCTOR
   // ═══════════════════════════════════════════════════════════════════
+
+  // ── Direcciones recientes ────────────────────────────────────────
+  private _loadRecentDeliveryAddresses(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const p = localStorage.getItem(this._RECENT_DEL_PICKUP_KEY);
+      if (p) this.recentDelPickups.set(JSON.parse(p));
+      const d = localStorage.getItem(this._RECENT_DEL_DEST_KEY);
+      if (d) this.recentDelDests.set(JSON.parse(d));
+    } catch {}
+  }
+
+  // ── Direcciones guardadas (favoritas) ────────────────────────────
+  private _loadSavedDeliveryAddresses(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const p = localStorage.getItem(this._SAVED_DEL_PICKUP_KEY);
+      if (p) this.savedDelPickups.set(JSON.parse(p));
+      const d = localStorage.getItem(this._SAVED_DEL_DEST_KEY);
+      if (d) this.savedDelDests.set(JSON.parse(d));
+    } catch {}
+  }
+
+  toggleSavedDeliveryPickup(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const name = this.deliveryPickupName();
+    const lat  = this.deliveryPickupLat();
+    const lng  = this.deliveryPickupLng();
+    if (!name || !lat) return;
+    try {
+      const already = this.savedDelPickups().some(a => a.name === name);
+      const updated = already
+        ? this.savedDelPickups().filter(a => a.name !== name)
+        : [{ name, lat, lng }, ...this.savedDelPickups()].slice(0, 10);
+      this.savedDelPickups.set(updated);
+      localStorage.setItem(this._SAVED_DEL_PICKUP_KEY, JSON.stringify(updated));
+      this.cdr.markForCheck();
+    } catch {}
+  }
+
+  toggleSavedDeliveryDest(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const name = this.deliveryDestName();
+    const lat  = this.deliveryDestLat();
+    const lng  = this.deliveryDestLng();
+    if (!name || !lat) return;
+    try {
+      const already = this.savedDelDests().some(a => a.name === name);
+      const updated = already
+        ? this.savedDelDests().filter(a => a.name !== name)
+        : [{ name, lat, lng }, ...this.savedDelDests()].slice(0, 10);
+      this.savedDelDests.set(updated);
+      localStorage.setItem(this._SAVED_DEL_DEST_KEY, JSON.stringify(updated));
+      this.cdr.markForCheck();
+    } catch {}
+  }
+
+  isPickupSaved(): boolean { return this.savedDelPickups().some(a => a.name === this.deliveryPickupName()); }
+  isDestSaved():   boolean { return this.savedDelDests().some(a => a.name === this.deliveryDestName()); }
+
+  selectSavedDeliveryPickup(addr: {name:string,lat:number,lng:number}, inputEl: HTMLInputElement|null): void {
+    this.deliveryPickupName.set(addr.name);
+    this.deliveryPickupLat.set(addr.lat);
+    this.deliveryPickupLng.set(addr.lng);
+    this.deliveryPickupSugg.set([]);
+    if (inputEl) inputEl.value = addr.name;
+    this.cdr.markForCheck();
+  }
+
+  selectSavedDeliveryDest(addr: {name:string,lat:number,lng:number}, inputEl: HTMLInputElement|null): void {
+    this.deliveryDestName.set(addr.name);
+    this.deliveryDestLat.set(addr.lat);
+    this.deliveryDestLng.set(addr.lng);
+    this.deliveryDestSugg.set([]);
+    if (inputEl) inputEl.value = addr.name;
+    this.cdr.markForCheck();
+  }
+
+  private _saveRecentDeliveryPickup(addr: {name:string,lat:number,lng:number}): void {
+    if (!isPlatformBrowser(this.platformId) || !addr.lat) return;
+    try {
+      const list = this.recentDelPickups().filter(a => a.name !== addr.name);
+      const updated = [addr, ...list].slice(0, 5);
+      this.recentDelPickups.set(updated);
+      localStorage.setItem(this._RECENT_DEL_PICKUP_KEY, JSON.stringify(updated));
+    } catch {}
+  }
+
+  private _saveRecentDeliveryDest(addr: {name:string,lat:number,lng:number}): void {
+    if (!isPlatformBrowser(this.platformId) || !addr.lat) return;
+    try {
+      const list = this.recentDelDests().filter(a => a.name !== addr.name);
+      const updated = [addr, ...list].slice(0, 5);
+      this.recentDelDests.set(updated);
+      localStorage.setItem(this._RECENT_DEL_DEST_KEY, JSON.stringify(updated));
+    } catch {}
+  }
+
+  selectRecentDeliveryPickup(addr: {name:string,lat:number,lng:number}, inputEl: HTMLInputElement|null): void {
+    this.deliveryPickupName.set(addr.name);
+    this.deliveryPickupLat.set(addr.lat);
+    this.deliveryPickupLng.set(addr.lng);
+    this.deliveryPickupSugg.set([]);
+    if (inputEl) inputEl.value = addr.name;
+    this.cdr.markForCheck();
+  }
+
+  selectRecentDeliveryDest(addr: {name:string,lat:number,lng:number}, inputEl: HTMLInputElement|null): void {
+    this.deliveryDestName.set(addr.name);
+    this.deliveryDestLat.set(addr.lat);
+    this.deliveryDestLng.set(addr.lng);
+    this.deliveryDestSugg.set([]);
+    if (inputEl) inputEl.value = addr.name;
+    this.cdr.markForCheck();
+  }
 
   async loadDeliveryRequests(): Promise<void> {
     const data = await this.agService.getSearchingDeliveries(this._currentLat, this._currentLng);
@@ -16406,6 +16669,71 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.cdr.markForCheck();
     };
     input.click();
+  }
+
+  // Auto-asignar domicilio a motos cercanas (igual que _autoAssignNearestDrivers para viajes)
+  private async _autoAssignDeliveryToMotos(deliveryId: string, pickupLat: number, pickupLng: number, price: number): Promise<void> {
+    try {
+      const nearbyMotos = await this.agService.findNearestMotoDrivers(pickupLat, pickupLng, 6);
+      if (!nearbyMotos.length) return;
+      const authIds = nearbyMotos
+        .map((d: any) => d.ag_drivers?.ag_users?.auth_user_id)
+        .filter(Boolean);
+      if (authIds.length > 0) {
+        this.agService.sendPush({
+          userIds: authIds,
+          title: '🛵 Nuevo domicilio cerca de ti',
+          body: `Domicilio por ${this.formatCOP(price)}. ¡Ábrelo para ofertar!`,
+          tag: `new-delivery-${deliveryId}`,
+          urgent: true,
+        }).catch(() => {});
+      }
+    } catch { /* silencioso */ }
+  }
+
+  // Suscripción realtime — conductor ve nuevos domicilios sin refrescar
+  private _startDeliveryRealtimeForDriver(): void {
+    if (this._deliveryNewReqChannel) return;
+    this._deliveryNewReqChannel = this.agService.subscribeToNewDeliveries(() => {
+      if (this.driverOnline() && this.driverData()?.vehicle_type === 'moto' && !this.activeDriverDelivery()) {
+        this.loadDeliveryRequests();
+      }
+    });
+  }
+
+  private _stopDeliveryRealtimeForDriver(): void {
+    if (this._deliveryNewReqChannel) {
+      this.agService.unsubscribeChannel(this._deliveryNewReqChannel);
+      this._deliveryNewReqChannel = null;
+    }
+  }
+
+  // Counter-offer domicilio conductor
+  openDeliveryCounterOffer(offer: any): void {
+    this.deliveryCounterOffer.set(offer);
+    this.deliveryCounterValue.set(offer.offered_price + 500);
+    this.cdr.markForCheck();
+  }
+
+  async submitDeliveryCounterOffer(): Promise<void> {
+    const offer = this.deliveryCounterOffer();
+    const driver = this.driverData();
+    if (!offer || !driver) return;
+    const price = this.deliveryCounterValue();
+    const result = await this.agService.makeDeliveryOffer(offer.delivery_request_id, driver.id, price);
+    if (result.success) {
+      this.deliveryCounterOffer.set(null);
+      this.deliveryOffers.update(l => l.filter(o => o.id !== offer.id));
+      // Suscribirse a la aceptación de la nueva oferta
+      if (this._deliveryAcceptedChannel) this.agService.unsubscribeChannel(this._deliveryAcceptedChannel);
+      this._deliveryAcceptedChannel = this.agService.subscribeToDeliveryAssigned(offer.delivery_request_id, driver.id, (row) => {
+        this.activeDriverDelivery.set({ ...row, driver_stage: row['driver_stage'] ?? 'going_to_pickup' });
+        this.agService.unsubscribeChannel(this._deliveryAcceptedChannel);
+        this._deliveryAcceptedChannel = null;
+        this.cdr.markForCheck();
+      });
+    }
+    this.cdr.markForCheck();
   }
 
   removeDeliveryOffer(offerId: string): void {
