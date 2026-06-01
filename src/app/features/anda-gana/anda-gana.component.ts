@@ -1407,6 +1407,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">two_wheeler</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">Moto</span>
               </button>
+              <button (click)="tripService.set('domicilio'); setTripVehicle('moto')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
+                [class]="tripService()==='domicilio' ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-200'">
+                <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                  [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">delivery_dining</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">Domicilio</span>
+              </button>
               <button (click)="tripService.set('fletes'); setTripVehicle('carro')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='fletes' ? 'bg-amber-50 border border-amber-200' : 'hover:bg-slate-200'">
@@ -1431,7 +1438,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <!-- Divider -->
             <div class="mx-4 h-px bg-slate-300 my-1"></div>
 
-
+            <!-- ══════════ PANEL DOMICILIOS ══════════ -->
+            @if (tripService() === 'domicilio') {
+              <div class="mx-4 my-4 rounded-2xl p-6 flex flex-col items-center gap-3" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #6ee7b7">
+                <span class="material-symbols-outlined text-emerald-400" style="font-size:48px;font-variation-settings:'FILL' 1">delivery_dining</span>
+                <p class="font-black text-emerald-800 text-base">Domicilios</p>
+                <p class="text-emerald-600 text-xs text-center">En construcción</p>
+              </div>
+            } @else {
             @if (!tripDest()) {
               @if (!tripOpen()) {
                 <!-- Punto de origen — clicable para modificar -->
@@ -2201,6 +2215,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           </div>
         }
+            } <!-- /else domicilio -->
 
       </div><!-- /map container -->
       } @else {
@@ -7788,7 +7803,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   newContactPhone    = '';
   reportIncidentText = '';
   reportPassengerText = '';
-  tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'fletes'>('viaje');
+  tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
   // ── Passenger menu sections ────────────────────────────────────
