@@ -1808,43 +1808,50 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <!-- PASO 2: Dirección de recogida -->
                   @if (deliveryStep() === 2) {
                     <p class="font-black text-slate-800 text-sm mb-1">¿Dónde recoge el moto?</p>
-                    <p class="text-slate-400 text-xs mb-3">Escribe la dirección y selecciona o presiona Continuar</p>
-                    <!-- Input recogida -->
+                    <p class="text-slate-400 text-xs mb-3">Escribe la dirección — igual que en Viaje</p>
+                    <!-- Input recogida — SIN [value] para no romper el teclado Android -->
                     <div class="flex items-center gap-2 px-3 py-3 rounded-xl mb-1"
                       [style.border]="deliveryPickupLat() ? '1.5px solid #10b981' : '1.5px solid #e2e8f0'"
                       style="background:#f8fafc">
                       <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         [style.background]="deliveryPickupLat() ? '#10b981' : '#cbd5e1'"></div>
-                      <input [value]="deliveryPickupQuery()"
+                      <input #pickupInput
                         (input)="onDeliveryPickupInput($any($event.target).value)"
                         (keydown.enter)="onDeliveryPickupEnter()"
-                        placeholder="Ej: Calle 50 #20-30"
+                        [attr.placeholder]="deliveryPickupName() || 'Ej: Calle 50 #20-30, Barrio'"
                         class="flex-1 text-slate-800 text-sm outline-none bg-transparent placeholder-slate-400"
                         autocomplete="off" inputmode="text" />
                       @if (deliveryPickupLat()) {
                         <span class="material-symbols-outlined text-emerald-500 flex-shrink-0" style="font-size:18px">check_circle</span>
                       }
-                      @if (deliveryPickupQuery() && !deliveryPickupLat()) {
-                        <button (click)="deliveryPickupQuery.set(''); deliveryPickupSugg.set([])">
+                      @if (deliveryPickupSugg().length > 0 || deliveryPickupLat()) {
+                        <button (click)="clearDeliveryPickup(pickupInput)">
                           <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
                         </button>
                       }
                     </div>
-                    <!-- Sugerencias en flujo normal (no absolute, evita clipping) -->
+                    <!-- Dirección confirmada -->
+                    @if (deliveryPickupLat() && deliveryPickupName()) {
+                      <p class="text-emerald-600 text-xs font-semibold px-1 mb-2 truncate">✓ {{ deliveryPickupName() }}</p>
+                    }
+                    <!-- Sugerencias — mismo estilo que el viaje -->
                     @if (deliveryPickupSugg().length > 0) {
                       <div class="rounded-xl overflow-hidden mb-2" style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 4px 16px rgba(0,0,0,0.08)">
-                        @for (s of deliveryPickupSugg(); track s.name) {
-                          <button (click)="selectDeliveryPickup(s)"
-                            class="w-full text-left px-3 py-2.5 flex items-center gap-2 active:bg-emerald-50"
+                        @for (s of deliveryPickupSugg(); track s.id) {
+                          <button (mousedown)="$event.preventDefault(); selectDeliveryPickup(s, pickupInput)"
+                            class="w-full text-left px-3 py-2.5 flex items-start gap-2 active:bg-emerald-50"
                             style="border-bottom:1px solid #f1f5f9">
-                            <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:16px">location_on</span>
-                            <p class="text-slate-700 text-xs font-semibold">{{ s.name }}</p>
+                            <span class="material-symbols-outlined text-emerald-400 flex-shrink-0 mt-0.5" style="font-size:16px">location_on</span>
+                            <div class="min-w-0">
+                              <p class="text-slate-800 text-xs font-semibold truncate">{{ s.text }}</p>
+                              @if (s.place_name) { <p class="text-slate-400 text-[10px] truncate">{{ s.place_name }}</p> }
+                            </div>
                           </button>
                         }
                       </div>
                     }
                     <!-- Contacto en recogida (opcional) -->
-                    <div class="rounded-xl p-3 mb-3 mt-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+                    <div class="rounded-xl p-3 mb-3 mt-1" style="background:#f8fafc;border:1px solid #e2e8f0">
                       <p class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Contacto en recogida (opcional)</p>
                       <input [value]="deliveryPickupContact()" (input)="deliveryPickupContact.set($any($event.target).value)"
                         placeholder="Nombre de quien entrega"
@@ -1853,55 +1860,61 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         placeholder="Teléfono" inputmode="tel"
                         class="w-full text-slate-700 text-xs outline-none bg-transparent placeholder-slate-400" />
                     </div>
+                    <!-- Botón siempre activo — validación en nextDeliveryStep -->
                     <button (click)="nextDeliveryStep()"
-                      [disabled]="!deliveryPickupQuery().trim()"
-                      class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-40"
+                      class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98]"
                       style="background:linear-gradient(135deg,#10b981,#059669)">
-                      {{ deliveryPickupLat() ? 'Continuar' : 'Confirmar dirección' }}
+                      {{ deliveryPickupLat() ? 'Continuar →' : 'Confirmar dirección' }}
                     </button>
                   }
 
                   <!-- PASO 3: Dirección de entrega -->
                   @if (deliveryStep() === 3) {
                     <p class="font-black text-slate-800 text-sm mb-1">¿Dónde se entrega?</p>
-                    <p class="text-slate-400 text-xs mb-3">Escribe la dirección y selecciona o presiona Continuar</p>
-                    <!-- Input entrega -->
+                    <p class="text-slate-400 text-xs mb-3">Escribe la dirección — igual que en Viaje</p>
+                    <!-- Input entrega — SIN [value] -->
                     <div class="flex items-center gap-2 px-3 py-3 rounded-xl mb-1"
                       [style.border]="deliveryDestLat() ? '1.5px solid #f97316' : '1.5px solid #e2e8f0'"
                       style="background:#f8fafc">
                       <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         [style.background]="deliveryDestLat() ? '#f97316' : '#cbd5e1'"></div>
-                      <input [value]="deliveryDestQuery()"
+                      <input #destInput
                         (input)="onDeliveryDestInput($any($event.target).value)"
                         (keydown.enter)="onDeliveryDestEnter()"
-                        placeholder="Ej: Carrera 70 #45-20"
+                        [attr.placeholder]="deliveryDestName() || 'Ej: Carrera 70 #45-20, Barrio'"
                         class="flex-1 text-slate-800 text-sm outline-none bg-transparent placeholder-slate-400"
                         autocomplete="off" inputmode="text" />
                       @if (deliveryDestLat()) {
                         <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:18px">check_circle</span>
                       }
-                      @if (deliveryDestQuery() && !deliveryDestLat()) {
-                        <button (click)="deliveryDestQuery.set(''); deliveryDestSugg.set([])">
+                      @if (deliveryDestSugg().length > 0 || deliveryDestLat()) {
+                        <button (click)="clearDeliveryDest(destInput)">
                           <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
                         </button>
                       }
                     </div>
-                    <!-- Sugerencias en flujo normal -->
+                    <!-- Dirección de entrega confirmada -->
+                    @if (deliveryDestLat() && deliveryDestName()) {
+                      <p class="text-orange-500 text-xs font-semibold px-1 mb-2 truncate">✓ {{ deliveryDestName() }}</p>
+                    }
+                    <!-- Sugerencias — mismo estilo que el viaje -->
                     @if (deliveryDestSugg().length > 0) {
                       <div class="rounded-xl overflow-hidden mb-2" style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 4px 16px rgba(0,0,0,0.08)">
-                        @for (s of deliveryDestSugg(); track s.name) {
-                          <button (click)="selectDeliveryDest(s)"
-                            class="w-full text-left px-3 py-2.5 flex items-center gap-2 active:bg-orange-50"
+                        @for (s of deliveryDestSugg(); track s.id) {
+                          <button (mousedown)="$event.preventDefault(); selectDeliveryDest(s, destInput)"
+                            class="w-full text-left px-3 py-2.5 flex items-start gap-2 active:bg-orange-50"
                             style="border-bottom:1px solid #f1f5f9">
-                            <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">location_on</span>
-                            <p class="text-slate-700 text-xs font-semibold">{{ s.name }}</p>
+                            <span class="material-symbols-outlined text-orange-400 flex-shrink-0 mt-0.5" style="font-size:16px">location_on</span>
+                            <div class="min-w-0">
+                              <p class="text-slate-800 text-xs font-semibold truncate">{{ s.text }}</p>
+                              @if (s.place_name) { <p class="text-slate-400 text-[10px] truncate">{{ s.place_name }}</p> }
+                            </div>
                           </button>
                         }
                       </div>
                     }
-
                     <!-- Contacto en entrega -->
-                    <div class="rounded-xl p-3 mb-3" style="background:#f8fafc;border:1px solid #e2e8f0">
+                    <div class="rounded-xl p-3 mb-3 mt-1" style="background:#f8fafc;border:1px solid #e2e8f0">
                       <p class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Contacto en entrega (opcional)</p>
                       <input [value]="deliveryDestContact()" (input)="deliveryDestContact.set($any($event.target).value)"
                         placeholder="Nombre de quien recibe"
@@ -1910,11 +1923,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         placeholder="Teléfono" inputmode="tel"
                         class="w-full text-slate-700 text-xs outline-none bg-transparent placeholder-slate-400" />
                     </div>
+                    <!-- Botón siempre activo -->
                     <button (click)="nextDeliveryStep()"
-                      [disabled]="!deliveryDestQuery().trim()"
-                      class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-40"
-                      style="background:linear-gradient(135deg,#10b981,#059669)">
-                      {{ deliveryDestLat() ? 'Ver precio estimado' : 'Confirmar y ver precio' }}
+                      class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#f97316,#ea580c)">
+                      {{ deliveryDestLat() ? 'Ver precio estimado →' : 'Confirmar y ver precio' }}
                     </button>
                   }
 
@@ -8377,6 +8390,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   makingDeliveryOffer      = signal<string | null>(null);
   private _deliveryRefreshInterval: any = null;
   private _deliveryAcceptedChannel: any = null;
+  private _deliveryPickupRaw      = '';
+  private _deliveryDestRaw        = '';
+  private _deliveryPickupTimer:  any = null;
+  private _deliveryDestTimer:    any = null;
 
   // ── Passenger menu sections ────────────────────────────────────
   passengerSection         = signal<string | null>(null);
@@ -15941,13 +15958,30 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   onDeliveryPickupEnter(): void {
     const first = this.deliveryPickupSugg()[0];
-    if (first) this.selectDeliveryPickup(first);
-    // Sin sugerencias: nextDeliveryStep geocodificará el texto
+    if (first) this.selectDeliveryPickup(first, null);
   }
 
   onDeliveryDestEnter(): void {
     const first = this.deliveryDestSugg()[0];
-    if (first) this.selectDeliveryDest(first);
+    if (first) this.selectDeliveryDest(first, null);
+  }
+
+  clearDeliveryPickup(inputEl: HTMLInputElement | null): void {
+    if (inputEl) inputEl.value = '';
+    this.deliveryPickupName.set('');
+    this.deliveryPickupLat.set(0);
+    this.deliveryPickupLng.set(0);
+    this.deliveryPickupSugg.set([]);
+    this._deliveryPickupRaw = '';
+  }
+
+  clearDeliveryDest(inputEl: HTMLInputElement | null): void {
+    if (inputEl) inputEl.value = '';
+    this.deliveryDestName.set('');
+    this.deliveryDestLat.set(0);
+    this.deliveryDestLng.set(0);
+    this.deliveryDestSugg.set([]);
+    this._deliveryDestRaw = '';
   }
 
   resetDelivery(): void {
@@ -15965,42 +15999,149 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.deliveryOffers.set([]); this.deliveryAccepted.set(null);
     this.currentDeliveryId.set(null); this.currentDeliveryStage.set(null);
     this.deliveryPickupPhotoUrl.set(null); this.deliveryDeliveryPhotoUrl.set(null);
+    this._deliveryPickupRaw = ''; this._deliveryDestRaw = '';
+    clearTimeout(this._deliveryPickupTimer); clearTimeout(this._deliveryDestTimer);
     if (this._deliveryOfferChannel)   { this.agService.unsubscribeChannel(this._deliveryOfferChannel);   this._deliveryOfferChannel   = null; }
     if (this._deliveryStageChannel)   { this.agService.unsubscribeChannel(this._deliveryStageChannel);   this._deliveryStageChannel   = null; }
     if (this._deliveryAcceptedChannel){ this.agService.unsubscribeChannel(this._deliveryAcceptedChannel); this._deliveryAcceptedChannel = null; }
   }
 
-  async onDeliveryPickupInput(v: string): Promise<void> {
-    this.deliveryPickupQuery.set(v);
-    if (v.length < 3) { this.deliveryPickupSugg.set([]); return; }
-    const results = await this._searchPlacesForDelivery(v);
-    this.deliveryPickupSugg.set(results);
-    this.cdr.markForCheck();
+  // Idéntico a onTripQueryInput — sin signal updates en el handler para no romper IME Android
+  onDeliveryPickupInput(v: string): void {
+    this._deliveryPickupRaw = v;
+    clearTimeout(this._deliveryPickupTimer);
+    if (!v.trim() || v.length < 2) {
+      if (this.deliveryPickupSugg().length) this.deliveryPickupSugg.set([]);
+      return;
+    }
+    this.deliveryPickupLat.set(0); // resetear confirmación si el usuario vuelve a escribir
+    this._deliveryPickupTimer = setTimeout(() => this._searchDeliveryAddress(v, 'pickup'), 350);
   }
 
-  selectDeliveryPickup(s: any): void {
-    this.deliveryPickupName.set(s.name ?? s.display_name ?? s.description ?? '');
-    this.deliveryPickupLat.set(s.lat ?? parseFloat(s.lat ?? 0));
-    this.deliveryPickupLng.set(s.lng ?? parseFloat(s.lng ?? 0));
-    this.deliveryPickupQuery.set(this.deliveryPickupName());
+  onDeliveryDestInput(v: string): void {
+    this._deliveryDestRaw = v;
+    clearTimeout(this._deliveryDestTimer);
+    if (!v.trim() || v.length < 2) {
+      if (this.deliveryDestSugg().length) this.deliveryDestSugg.set([]);
+      return;
+    }
+    this.deliveryDestLat.set(0);
+    this._deliveryDestTimer = setTimeout(() => this._searchDeliveryAddress(v, 'dest'), 350);
+  }
+
+  // Mismo pipeline que _searchGooglePlaces pero guarda en deliveryPickupSugg o deliveryDestSugg
+  private async _searchDeliveryAddress(query: string, type: 'pickup' | 'dest'): Promise<void> {
+    const [sdkOk, nomSugs] = await Promise.all([
+      this._loadGoogleMapsSDK(),
+      this._fetchNominatimSuggestions(query),
+    ]);
+
+    if (!sdkOk) {
+      const results = nomSugs.map((n: any) => ({ id: n.place_id, ...n }));
+      type === 'pickup' ? this.deliveryPickupSugg.set(results) : this.deliveryDestSugg.set(results);
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this._autocompleteService) this._initGooglePlaces();
+
+    const request: any = {
+      input: query, componentRestrictions: { country: 'co' }, sessionToken: this._placesSessionToken,
+    };
+    if (this._gpsRealFix) {
+      const gmaps = (window as any).google.maps;
+      const d = 0.1;
+      request.bounds = new gmaps.LatLngBounds(
+        new gmaps.LatLng(this._currentLat - d, this._currentLng - d),
+        new gmaps.LatLng(this._currentLat + d, this._currentLng + d)
+      );
+    }
+
+    this._autocompleteService.getPlacePredictions(request, (predictions: any[], status: string) => {
+      const city = this._cityFromGps.toLowerCase();
+      const googlePreds = (status === 'OK' && predictions?.length)
+        ? (() => { const loc = city ? predictions.filter((p: any) => p.description?.toLowerCase().includes(city)) : predictions; return loc.length > 0 ? loc : predictions; })()
+        : [];
+      const googleItems = googlePreds.slice(0, 5).map((p: any) => ({
+        id: p.place_id, place_id: p.place_id,
+        text: p.structured_formatting?.main_text ?? p.description,
+        place_name: p.structured_formatting?.secondary_text ?? '',
+        lat: null as number | null, lng: null as number | null,
+      }));
+      const merged = [...googleItems];
+      for (const n of nomSugs) {
+        if (merged.length >= 6) break;
+        const key = n.text.toLowerCase().split(',')[0].trim();
+        if (!merged.some((g: any) => g.text.toLowerCase().includes(key) || key.includes(g.text.toLowerCase()))) {
+          merged.push({ id: n.place_id, ...n });
+        }
+      }
+      const results = merged.slice(0, 6);
+      type === 'pickup' ? this.deliveryPickupSugg.set(results) : this.deliveryDestSugg.set(results);
+      this.cdr.markForCheck();
+    });
+  }
+
+  // Idéntico a selectTripDest — usa place_id → getDetails si no tiene coords
+  async selectDeliveryPickup(s: any, inputEl: HTMLInputElement | null): Promise<void> {
+    const name = s.text || s.name || 'Punto de recogida';
     this.deliveryPickupSugg.set([]);
+    if (inputEl) inputEl.value = name;
+    if (this._placesSessionToken && (window as any).google?.maps?.places) {
+      this._placesSessionToken = new (window as any).google.maps.places.AutocompleteSessionToken();
+    }
+    if (s.lat != null && s.lng != null) {
+      this.deliveryPickupName.set(name);
+      this.deliveryPickupLat.set(s.lat);
+      this.deliveryPickupLng.set(s.lng);
+      this.cdr.markForCheck(); return;
+    }
+    try {
+      await this._loadGoogleMapsSDK();
+      if (!this._placesService) this._initGooglePlaces();
+      const details = await new Promise<any>((resolve, reject) =>
+        this._placesService.getDetails({ placeId: s.place_id, fields: ['geometry'], sessionToken: this._placesSessionToken },
+          (r: any, st: string) => st === 'OK' ? resolve(r) : reject(st))
+      );
+      const loc = details.geometry?.location;
+      if (loc) { this.deliveryPickupName.set(name); this.deliveryPickupLat.set(loc.lat()); this.deliveryPickupLng.set(loc.lng()); }
+    } catch {
+      // Fallback Nominatim
+      try {
+        const d = await (await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&countrycodes=co&limit=1`)).json();
+        if (d?.[0]) { this.deliveryPickupName.set(name); this.deliveryPickupLat.set(parseFloat(d[0].lat)); this.deliveryPickupLng.set(parseFloat(d[0].lon)); }
+      } catch { /* nada */ }
+    }
     this.cdr.markForCheck();
   }
 
-  async onDeliveryDestInput(v: string): Promise<void> {
-    this.deliveryDestQuery.set(v);
-    if (v.length < 3) { this.deliveryDestSugg.set([]); return; }
-    const results = await this._searchPlacesForDelivery(v);
-    this.deliveryDestSugg.set(results);
-    this.cdr.markForCheck();
-  }
-
-  selectDeliveryDest(s: any): void {
-    this.deliveryDestName.set(s.name ?? s.display_name ?? s.description ?? '');
-    this.deliveryDestLat.set(s.lat ?? parseFloat(s.lat ?? 0));
-    this.deliveryDestLng.set(s.lng ?? parseFloat(s.lng ?? 0));
-    this.deliveryDestQuery.set(this.deliveryDestName());
+  async selectDeliveryDest(s: any, inputEl: HTMLInputElement | null): Promise<void> {
+    const name = s.text || s.name || 'Punto de entrega';
     this.deliveryDestSugg.set([]);
+    if (inputEl) inputEl.value = name;
+    if (this._placesSessionToken && (window as any).google?.maps?.places) {
+      this._placesSessionToken = new (window as any).google.maps.places.AutocompleteSessionToken();
+    }
+    if (s.lat != null && s.lng != null) {
+      this.deliveryDestName.set(name);
+      this.deliveryDestLat.set(s.lat);
+      this.deliveryDestLng.set(s.lng);
+      this.cdr.markForCheck(); return;
+    }
+    try {
+      await this._loadGoogleMapsSDK();
+      if (!this._placesService) this._initGooglePlaces();
+      const details = await new Promise<any>((resolve, reject) =>
+        this._placesService.getDetails({ placeId: s.place_id, fields: ['geometry'], sessionToken: this._placesSessionToken },
+          (r: any, st: string) => st === 'OK' ? resolve(r) : reject(st))
+      );
+      const loc = details.geometry?.location;
+      if (loc) { this.deliveryDestName.set(name); this.deliveryDestLat.set(loc.lat()); this.deliveryDestLng.set(loc.lng()); }
+    } catch {
+      try {
+        const d = await (await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&countrycodes=co&limit=1`)).json();
+        if (d?.[0]) { this.deliveryDestName.set(name); this.deliveryDestLat.set(parseFloat(d[0].lat)); this.deliveryDestLng.set(parseFloat(d[0].lon)); }
+      } catch { /* nada */ }
+    }
     this.cdr.markForCheck();
   }
 
@@ -16100,35 +16241,32 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       }
       this.deliveryStep.set(2);
     } else if (step === 2) {
-      // Si no se seleccionó sugerencia, geocodificar lo que se escribió
+      // Si no hay coordenadas: intentar con el texto escrito
       if (!this.deliveryPickupLat()) {
-        const q = this.deliveryPickupQuery().trim();
+        const q = (this._deliveryPickupRaw || this.deliveryPickupName()).trim();
         if (!q) { alert('Escribe la dirección de recogida.'); return; }
-        const results = await this._searchPlacesForDelivery(q);
-        if (results.length > 0) {
-          this.selectDeliveryPickup(results[0]);
-        } else {
-          // Fallback: guardar texto con coordenada actual (domicilio dentro de la ciudad)
-          this.deliveryPickupName.set(q);
-          this.deliveryPickupLat.set(this._currentLat);
-          this.deliveryPickupLng.set(this._currentLng);
+        const suggs = this.deliveryPickupSugg();
+        if (suggs.length > 0) { await this.selectDeliveryPickup(suggs[0], null); }
+        else {
+          // Geocodificar el raw text
+          await this._searchDeliveryAddress(q, 'pickup');
+          const first = this.deliveryPickupSugg()[0];
+          if (first) await this.selectDeliveryPickup(first, null);
+          else { this.deliveryPickupName.set(q); this.deliveryPickupLat.set(this._currentLat); this.deliveryPickupLng.set(this._currentLng); }
         }
       }
       this.deliveryStep.set(3);
     } else if (step === 3) {
-      // Si no se seleccionó sugerencia, geocodificar
       if (!this.deliveryDestLat()) {
-        const q = this.deliveryDestQuery().trim();
+        const q = (this._deliveryDestRaw || this.deliveryDestName()).trim();
         if (!q) { alert('Escribe la dirección de entrega.'); return; }
-        const results = await this._searchPlacesForDelivery(q);
-        if (results.length > 0) {
-          this.selectDeliveryDest(results[0]);
-        } else {
-          // Guardar como texto libre con coordenadas aproximadas de la ciudad
-          this.deliveryDestName.set(q);
-          this.deliveryDestLat.set(this._currentLat);
-          this.deliveryDestLng.set(this._currentLng);
-          this.deliveryDestQuery.set(q);
+        const suggs = this.deliveryDestSugg();
+        if (suggs.length > 0) { await this.selectDeliveryDest(suggs[0], null); }
+        else {
+          await this._searchDeliveryAddress(q, 'dest');
+          const first = this.deliveryDestSugg()[0];
+          if (first) await this.selectDeliveryDest(first, null);
+          else { this.deliveryDestName.set(q); this.deliveryDestLat.set(this._currentLat); this.deliveryDestLng.set(this._currentLng); }
         }
       }
       await this.calcDeliveryPrice();
