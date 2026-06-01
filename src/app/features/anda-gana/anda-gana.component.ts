@@ -1785,7 +1785,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         [style.background]="deliveryPickupLat() ? '#10b981' : '#cbd5e1'"></div>
                       <input [value]="deliveryPickupQuery()"
                         (input)="onDeliveryPickupInput($any($event.target).value)"
-                        (keydown.enter)="selectDeliveryPickup(deliveryPickupSugg()[0] ?? {name:deliveryPickupQuery(),lat:_currentLat,lng:_currentLng})"
+                        (keydown.enter)="onDeliveryPickupEnter()"
                         placeholder="Ej: Calle 50 #20-30"
                         class="flex-1 text-slate-800 text-sm outline-none bg-transparent placeholder-slate-400"
                         autocomplete="off" inputmode="text" />
@@ -1841,7 +1841,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         [style.background]="deliveryDestLat() ? '#f97316' : '#cbd5e1'"></div>
                       <input [value]="deliveryDestQuery()"
                         (input)="onDeliveryDestInput($any($event.target).value)"
-                        (keydown.enter)="selectDeliveryDest(deliveryDestSugg()[0] ?? {name:deliveryDestQuery(),lat:_currentLat,lng:_currentLng})"
+                        (keydown.enter)="onDeliveryDestEnter()"
                         placeholder="Ej: Carrera 70 #45-20"
                         class="flex-1 text-slate-800 text-sm outline-none bg-transparent placeholder-slate-400"
                         autocomplete="off" inputmode="text" />
@@ -15905,6 +15905,17 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   // ═══════════════════════════════════════════════════════════════════
   // MÓDULO DOMICILIOS — PASAJERO
   // ═══════════════════════════════════════════════════════════════════
+
+  onDeliveryPickupEnter(): void {
+    const first = this.deliveryPickupSugg()[0];
+    if (first) this.selectDeliveryPickup(first);
+    // Sin sugerencias: nextDeliveryStep geocodificará el texto
+  }
+
+  onDeliveryDestEnter(): void {
+    const first = this.deliveryDestSugg()[0];
+    if (first) this.selectDeliveryDest(first);
+  }
 
   resetDelivery(): void {
     this.deliveryStep.set(1);
