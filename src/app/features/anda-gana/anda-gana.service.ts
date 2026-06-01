@@ -2295,6 +2295,119 @@ export class AndaGanaService {
   }
 
   // ═══════════════════════════════════════════════════
+  // MÓDULO DOMICILIOS
+  // ═══════════════════════════════════════════════════
+
+  async createDeliveryRequest(d: {
+    passengerId: string; deliveryType: string;
+    pickupName: string; pickupLat: number; pickupLng: number;
+    pickupContactName?: string; pickupContactPhone?: string;
+    deliveryName: string; deliveryLat: number; deliveryLng: number;
+    deliveryContactName?: string; deliveryContactPhone?: string;
+    packageDescription: string; packageSize: string;
+    specialInstructions?: string;
+    offeredPrice: number; distanceKm: number; paymentMethod: string;
+  }): Promise<{ success: boolean; id?: string; error?: string }> {
+    const { data: row, error } = await getMoviClient()
+      .from('ag_delivery_requests')
+      .insert({
+        passenger_id: d.passengerId, delivery_type: d.deliveryType,
+        pickup_name: d.pickupName, pickup_lat: d.pickupLat, pickup_lng: d.pickupLng,
+        pickup_contact_name: d.pickupContactName || null, pickup_contact_phone: d.pickupContactPhone || null,
+        delivery_name: d.deliveryName, delivery_lat: d.deliveryLat, delivery_lng: d.deliveryLng,
+        delivery_contact_name: d.deliveryContactName || null, delivery_contact_phone: d.deliveryContactPhone || null,
+        package_description: d.packageDescription, package_size: d.packageSize,
+        special_instructions: d.specialInstructions || null,
+        offered_price: d.offeredPrice, distance_km: d.distanceKm, payment_method: d.paymentMethod,
+      })
+      .select('id').single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, id: row.id };
+  }
+
+  async getSearchingDeliveries(lat?: number, lng?: number): Promise<any[]> {
+    const { data } = await getMoviClient()
+      .from('ag_delivery_requests')
+      .select('*')
+      .eq('status', 'searching')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    return data ?? [];
+  }
+
+  async makeDeliveryOffer(deliveryRequestId: string, driverId: string, offeredPrice: number): Promise<{ success: boolean; error?: string }> {
+    const { error } = await getMoviClient()
+      .from('ag_delivery_offers')
+      .upsert({ delivery_request_id: deliveryRequestId, driver_id: driverId, offered_price: offeredPrice, status: 'pending' },
+        { onConflict: 'delivery_request_id,driver_id' });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  async acceptDeliveryOffer(offerId: string, deliveryRequestId: string, driverId: string, offeredPrice: number): Promise<{ success: boolean; error?: string }> {
+    const { error: e1 } = await getMoviClient().from('ag_delivery_offers').update({ status: 'accepted' }).eq('id', offerId);
+    if (e1) return { success: false, error: e1.message };
+    const { error: e2 } = await getMoviClient().from('ag_delivery_requests')
+      .update({ status: 'accepted', driver_id: driverId, offered_price: offeredPrice, driver_stage: 'going_to_pickup', updated_at: new Date().toISOString() })
+      .eq('id', deliveryRequestId);
+    if (e2) return { success: false, error: e2.message };
+    await getMoviClient().from('ag_delivery_offers').update({ status: 'rejected' })
+      .eq('delivery_request_id', deliveryRequestId).neq('id', offerId);
+    return { success: true };
+  }
+
+  subscribeToDeliveryOffers(deliveryRequestId: string, cb: (offer: any) => void): RealtimeChannel {
+    return this.supabase.channel(`del-offers-${deliveryRequestId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ag_delivery_offers',
+        filter: `delivery_request_id=eq.${deliveryRequestId}` }, (p) => cb(p.new))
+      .subscribe();
+  }
+
+  subscribeToDeliveryStage(deliveryRequestId: string, cb: (stage: string, row: any) => void): RealtimeChannel {
+    return this.supabase.channel(`del-stage-${deliveryRequestId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ag_delivery_requests',
+        filter: `id=eq.${deliveryRequestId}` }, (p) => {
+          const stage  = p.new?.['driver_stage'];
+          const status = p.new?.['status'];
+          if (stage) cb(stage, p.new);
+          else if (status === 'cancelled') cb('cancelled', p.new);
+          else if (status === 'delivered') cb('delivered', p.new);
+        })
+      .subscribe();
+  }
+
+  async updateDeliveryStage(deliveryId: string, stage: string): Promise<void> {
+    const statusMap: Record<string, string> = {
+      going_to_pickup: 'accepted', arrived_at_pickup: 'accepted',
+      package_collected: 'accepted', in_transit: 'accepted',
+      arrived_at_delivery: 'accepted', delivered: 'delivered',
+    };
+    await getMoviClient().from('ag_delivery_requests')
+      .update({ driver_stage: stage, status: statusMap[stage] ?? 'accepted', updated_at: new Date().toISOString() })
+      .eq('id', deliveryId);
+  }
+
+  async cancelDelivery(deliveryId: string): Promise<void> {
+    await getMoviClient().from('ag_delivery_requests')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', deliveryId);
+  }
+
+  async uploadDeliveryPhoto(deliveryId: string, file: File, type: 'pickup' | 'delivery'): Promise<string | null> {
+    const path = `${deliveryId}/${type}-${Date.now()}.jpg`;
+    const { error } = await this.supabase.storage.from('movi-delivery-photos').upload(path, file, { upsert: true });
+    if (error) return null;
+    const { data } = this.supabase.storage.from('movi-delivery-photos').getPublicUrl(path);
+    const col = type === 'pickup' ? 'pickup_photo_url' : 'delivery_photo_url';
+    await getMoviClient().from('ag_delivery_requests').update({ [col]: data.publicUrl }).eq('id', deliveryId);
+    return data.publicUrl;
+  }
+
+  async getDeliveryRequest(id: string): Promise<any | null> {
+    const { data } = await getMoviClient().from('ag_delivery_requests').select('*, ag_drivers(*, ag_users(*))').eq('id', id).maybeSingle();
+    return data;
+  }
+
+  // ═══════════════════════════════════════════════════
   // Utility: unsubscribe channel
   // ═══════════════════════════════════════════════════
   unsubscribeChannel(channel: RealtimeChannel | null): void {

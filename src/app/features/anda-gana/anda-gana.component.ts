@@ -592,6 +592,157 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ BANNER DOMICILIOS — conductor (flotante) ═══════════ -->
+  @if (driverOnline() && !activeDriverDelivery() && !driverTripAlert() && deliveryRequests().length > 0 && driverData()?.vehicle_type === 'moto') {
+    <div style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:7900;max-height:55dvh;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+      @for (req of deliveryRequests().slice(0,3); track req.id) {
+        <div style="background:linear-gradient(180deg,#052e16 0%,#064e3b 100%);border-radius:18px;border:1.5px solid rgba(52,211,153,0.35);box-shadow:0 8px 32px rgba(0,0,0,0.6);overflow:hidden">
+          <!-- Header -->
+          <div style="background:linear-gradient(90deg,rgba(16,185,129,0.2),transparent);padding:8px 14px;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:7px">
+              <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">delivery_dining</span>
+              <span style="color:#34d399;font-size:10px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase">Domicilio</span>
+            </div>
+            <span style="color:#6ee7b7;font-size:12px;font-weight:900">{{ formatCOP(req.offered_price) }}</span>
+          </div>
+          <!-- Ruta -->
+          <div style="padding:10px 14px 8px">
+            <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+              <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;margin-top:3px"></div>
+              <p style="color:#d1fae5;font-size:11px;font-weight:700;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.pickup_name }}</p>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div style="width:8px;height:8px;border-radius:50%;background:#f97316;flex-shrink:0;margin-top:3px"></div>
+              <p style="color:#fed7aa;font-size:11px;font-weight:700;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.delivery_name }}</p>
+            </div>
+            <!-- Paquete -->
+            <div style="margin-top:7px;padding:6px 10px;background:rgba(255,255,255,0.06);border-radius:10px;display:flex;align-items:center;gap:6px">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#6ee7b7">inventory_2</span>
+              <p style="color:#a7f3d0;font-size:11px;font-weight:600;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.package_description }}</p>
+              <span style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;font-size:9px;font-weight:900;padding:2px 7px;border-radius:999px;flex-shrink:0">
+                {{ req.package_size === 'small' ? 'Pequeño' : req.package_size === 'medium' ? 'Mediano' : 'Grande' }}
+              </span>
+            </div>
+            @if (req.distance_km) {
+              <p style="color:#6ee7b7;font-size:10px;font-weight:700;margin:5px 0 0;text-align:right">{{ req.distance_km }} km · {{ req.delivery_type === 'from_my_location' ? 'Recoge donde está el pasajero' : 'Recoge en otra dirección' }}</p>
+            }
+          </div>
+          <!-- Botones -->
+          <div style="display:flex;gap:8px;padding:0 14px 12px">
+            <input type="number" [value]="deliveryOfferPrice() || req.offered_price"
+              (input)="deliveryOfferPrice.set(+$any($event.target).value)"
+              style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:8px 10px;color:#fff;font-size:13px;font-weight:900;outline:none;min-width:0" />
+            <button (click)="activeDriverDelivery.set(req); makeDeliveryOfferDriver(req)"
+              [disabled]="makingDeliveryOffer() === req.id"
+              style="flex:2;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;padding:10px;color:#fff;font-size:12px;font-weight:900;cursor:pointer;opacity:1;transition:opacity 0.2s"
+              [style.opacity]="makingDeliveryOffer() === req.id ? '0.5' : '1'">
+              {{ makingDeliveryOffer() === req.id ? 'Enviando...' : '✓ Ofertar domicilio' }}
+            </button>
+            <button (click)="removeDeliveryRequest(req.id)"
+              style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:10px 12px;color:#f87171;font-size:18px;font-weight:900;cursor:pointer">✕</button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══════════ ACTIVE DRIVER DELIVERY — tarjeta de domicilio activo ═══════════ -->
+  @if (driverOnline() && activeDriverDelivery()) {
+    <div style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8050;max-height:60dvh;overflow-y:auto">
+      <div style="background:linear-gradient(180deg,#052e16 0%,#064e3b 100%);border-radius:20px;border:2px solid rgba(52,211,153,0.5);box-shadow:0 12px 40px rgba(0,0,0,0.7);overflow:hidden">
+        <!-- Header -->
+        <div style="background:linear-gradient(90deg,rgba(16,185,129,0.25),transparent);padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#34d399;font-variation-settings:'FILL' 1">delivery_dining</span>
+            <span style="color:#34d399;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em">Domicilio activo</span>
+          </div>
+          <span style="color:#6ee7b7;font-size:14px;font-weight:900">{{ formatCOP(activeDriverDelivery()!.offered_price) }}</span>
+        </div>
+        <!-- Stage actual -->
+        <div style="padding:10px 16px 0">
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(16,185,129,0.12);border:1px solid rgba(52,211,153,0.25);border-radius:12px;padding:8px 12px;margin-bottom:8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#34d399;animation:pulse 1.2s infinite;flex-shrink:0"></span>
+            <p style="color:#d1fae5;font-size:12px;font-weight:900;margin:0">{{ deliveryStageLabel(activeDriverDelivery()!.driver_stage) }}</p>
+          </div>
+          <!-- Ruta compacta -->
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0"></div>
+              <p style="color:#a7f3d0;font-size:11px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{{ activeDriverDelivery()!.pickup_name }}</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="width:8px;height:8px;border-radius:50%;background:#f97316;flex-shrink:0"></div>
+              <p style="color:#fed7aa;font-size:11px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{{ activeDriverDelivery()!.delivery_name }}</p>
+            </div>
+          </div>
+          <!-- Descripción paquete -->
+          <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:7px 12px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <span class="material-symbols-outlined" style="font-size:14px;color:#6ee7b7">inventory_2</span>
+            <p style="color:#d1fae5;font-size:11px;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ activeDriverDelivery()!.package_description }}</p>
+          </div>
+        </div>
+        <!-- Botones de avance de etapa -->
+        <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:8px">
+          @if (!activeDriverDelivery()!.driver_stage || activeDriverDelivery()!.driver_stage === 'going_to_pickup') {
+            <button (click)="advanceDeliveryStage('arrived_at_pickup')"
+              style="width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:14px;color:#fff;font-size:13px;font-weight:900;cursor:pointer">
+              📍 Llegué al punto de recogida
+            </button>
+          }
+          @if (activeDriverDelivery()!.driver_stage === 'arrived_at_pickup') {
+            <button (click)="uploadDeliveryPhotoDriver('pickup')"
+              style="width:100%;padding:13px;background:linear-gradient(135deg,#0891b2,#0e7490);border:none;border-radius:14px;color:#fff;font-size:13px;font-weight:900;cursor:pointer">
+              📸 Tomar foto del paquete y confirmar recogida
+            </button>
+          }
+          @if (activeDriverDelivery()!.driver_stage === 'package_collected' || activeDriverDelivery()!.driver_stage === 'in_transit') {
+            @if (activeDriverDelivery()!.driver_stage === 'package_collected') {
+              <button (click)="advanceDeliveryStage('in_transit')"
+                style="width:100%;padding:13px;background:linear-gradient(135deg,#0891b2,#0e7490);border:none;border-radius:14px;color:#fff;font-size:13px;font-weight:900;cursor:pointer">
+                🚀 Salir hacia la entrega
+              </button>
+            }
+            @if (activeDriverDelivery()!.driver_stage === 'in_transit') {
+              <button (click)="advanceDeliveryStage('arrived_at_delivery')"
+                style="width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:14px;color:#fff;font-size:13px;font-weight:900;cursor:pointer">
+                📍 Llegué al punto de entrega
+              </button>
+            }
+          }
+          @if (activeDriverDelivery()!.driver_stage === 'arrived_at_delivery') {
+            <button (click)="uploadDeliveryPhotoDriver('delivery')"
+              style="width:100%;padding:13px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:14px;color:#fff;font-size:13px;font-weight:900;cursor:pointer">
+              📸 Tomar foto y confirmar entrega
+            </button>
+          }
+          @if (activeDriverDelivery()!.driver_stage === 'delivered') {
+            <div style="text-align:center;padding:8px">
+              <span class="material-symbols-outlined" style="font-size:36px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
+              <p style="color:#6ee7b7;font-size:13px;font-weight:900;margin:4px 0 0">¡Domicilio entregado!</p>
+            </div>
+          }
+          <!-- Contactos -->
+          @if (activeDriverDelivery()!.pickup_contact_phone || activeDriverDelivery()!.delivery_contact_phone) {
+            <div style="display:flex;gap:8px">
+              @if (activeDriverDelivery()!.pickup_contact_phone) {
+                <a [href]="'tel:' + activeDriverDelivery()!.pickup_contact_phone"
+                  style="flex:1;padding:10px;background:rgba(37,99,235,0.2);border:1px solid rgba(59,130,246,0.35);border-radius:12px;color:#93c5fd;font-size:11px;font-weight:900;text-align:center;text-decoration:none">
+                  📞 Recogida
+                </a>
+              }
+              @if (activeDriverDelivery()!.delivery_contact_phone) {
+                <a [href]="'tel:' + activeDriverDelivery()!.delivery_contact_phone"
+                  style="flex:1;padding:10px;background:rgba(234,88,12,0.2);border:1px solid rgba(251,146,60,0.35);border-radius:12px;color:#fdba74;font-size:11px;font-weight:900;text-align:center;text-decoration:none">
+                  📞 Entrega
+                </a>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ BANNER PASAJERO: CONDUCTOR LLEGÓ (flotante top) ═══════════ -->
   @if (arrivedAtPickupTimer() !== null && tripAccepted()) {
     <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8500;max-height:90dvh;overflow-y:auto">
@@ -1432,7 +1583,345 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <!-- Divider -->
             <div class="mx-4 h-px bg-slate-300 my-1"></div>
 
-            <!-- Contenido del panel según estado -->
+            <!-- ══════════════════════════════════════════════════ -->
+            <!-- PANEL DOMICILIOS — flujo separado del viaje       -->
+            <!-- ══════════════════════════════════════════════════ -->
+            @if (tripService() === 'domicilio') {
+
+              <!-- ── Domicilio entregado ── -->
+              @if (currentDeliveryStage() === 'delivered') {
+                <div class="mx-4 my-3 rounded-2xl p-4 text-center" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);border:2px solid #10b981">
+                  <span class="material-symbols-outlined text-emerald-600" style="font-size:40px;font-variation-settings:'FILL' 1">check_circle</span>
+                  <p class="font-black text-emerald-800 text-base mt-1">¡Domicilio entregado!</p>
+                  <p class="text-emerald-600 text-xs mt-1">{{ deliveryDeliveryPhotoUrl() ? 'Foto de entrega disponible' : '' }}</p>
+                  @if (deliveryDeliveryPhotoUrl()) {
+                    <img [src]="deliveryDeliveryPhotoUrl()!" class="w-32 h-32 object-cover rounded-xl mx-auto mt-2" />
+                  }
+                  <button (click)="resetDelivery(); tripService.set('viaje')"
+                    class="mt-3 w-full py-3 rounded-2xl text-white font-black text-sm"
+                    style="background:#10b981">Listo</button>
+                </div>
+              }
+
+              <!-- ── En curso: conductor aceptó ── -->
+              @else if (deliveryAccepted()) {
+                <div class="mx-4 my-2">
+                  <!-- Stage actual -->
+                  <div class="rounded-2xl p-3 mb-2" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-emerald-500" style="font-size:22px;font-variation-settings:'FILL' 1">delivery_dining</span>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-black text-emerald-800 text-sm">{{ deliveryStageLabel(currentDeliveryStage()) }}</p>
+                        <p class="text-emerald-600 text-xs truncate">Conductor: {{ deliveryAccepted()?.ag_drivers?.ag_users?.full_name ?? '—' }}</p>
+                      </div>
+                      <div class="text-right flex-shrink-0">
+                        <p class="font-black text-emerald-700 text-sm">{{ formatCOP(deliveryAccepted()?.offered_price ?? 0) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Barra de progreso stages -->
+                  <div class="flex items-center gap-1 mb-2">
+                    @for (st of ['going_to_pickup','package_collected','in_transit','delivered']; track st) {
+                      <div class="flex-1 h-1.5 rounded-full"
+                        [style.background]="['going_to_pickup','package_collected','in_transit','delivered'].indexOf(currentDeliveryStage() ?? '') >= ['going_to_pickup','package_collected','in_transit','delivered'].indexOf(st) ? '#10b981' : '#e2e8f0'"></div>
+                    }
+                  </div>
+                  <!-- Detalles -->
+                  <div class="rounded-xl px-3 py-2 mb-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+                    <div class="flex items-start gap-2 mb-1.5">
+                      <div class="w-2 h-2 rounded-full bg-emerald-500 mt-1 flex-shrink-0"></div>
+                      <p class="text-slate-600 text-xs truncate">{{ deliveryAccepted()?.pickup_name }}</p>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <div class="w-2 h-2 rounded-full bg-orange-500 mt-1 flex-shrink-0"></div>
+                      <p class="text-slate-600 text-xs truncate">{{ deliveryAccepted()?.delivery_name }}</p>
+                    </div>
+                  </div>
+                  <!-- Foto de recogida -->
+                  @if (deliveryPickupPhotoUrl()) {
+                    <div class="mb-2">
+                      <p class="text-xs text-slate-500 font-bold mb-1">📸 Foto del paquete recogido:</p>
+                      <img [src]="deliveryPickupPhotoUrl()!" class="w-full h-32 object-cover rounded-xl" />
+                    </div>
+                  }
+                  <button (click)="cancelDelivery()"
+                    [disabled]="!(['going_to_pickup','arrived_at_pickup'].includes(currentDeliveryStage() ?? ''))"
+                    class="w-full py-2.5 rounded-2xl text-red-500 font-black text-xs border border-red-200 disabled:opacity-30">
+                    Cancelar domicilio
+                  </button>
+                </div>
+              }
+
+              <!-- ── Esperando conductor ── -->
+              @else if (deliverySent()) {
+                <div class="mx-4 my-3">
+                  <div class="rounded-2xl p-4" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac">
+                    <div class="flex items-center gap-3 mb-3">
+                      <span class="material-symbols-outlined text-emerald-500 animate-pulse" style="font-size:32px;font-variation-settings:'FILL' 1">delivery_dining</span>
+                      <div>
+                        <p class="font-black text-emerald-800 text-sm">Buscando motociclista...</p>
+                        <p class="text-emerald-600 text-xs">{{ deliveryOffers().length > 0 ? deliveryOffers().length + ' oferta(s) recibida(s)' : 'Los conductores ven tu domicilio' }}</p>
+                      </div>
+                    </div>
+                    <!-- Resumen ruta -->
+                    <div class="rounded-xl px-3 py-2 mb-3" style="background:rgba(255,255,255,0.7)">
+                      <div class="flex items-center gap-2 mb-1">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                        <p class="text-slate-700 text-xs font-semibold truncate">{{ deliveryPickupName() }}</p>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0"></div>
+                        <p class="text-slate-700 text-xs font-semibold truncate">{{ deliveryDestName() }}</p>
+                      </div>
+                    </div>
+                    <!-- Ofertas de conductores -->
+                    @for (offer of deliveryOffers(); track offer.id) {
+                      <div class="rounded-2xl overflow-hidden mb-2" style="background:#fff;border:2px solid #10b981;box-shadow:0 4px 16px rgba(16,185,129,0.15)">
+                        <div class="flex items-center justify-between px-3 py-2.5" style="background:linear-gradient(135deg,#10b981,#059669)">
+                          <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-white" style="font-size:18px;font-variation-settings:'FILL' 1">two_wheeler</span>
+                            <span class="text-white text-xs font-black">Oferta de motociclista</span>
+                          </div>
+                          <p class="text-white font-black" style="font-size:18px">{{ formatCOP(offer.offered_price) }}</p>
+                        </div>
+                        <div class="flex gap-2 px-3 py-2">
+                          <button (click)="acceptDeliveryOffer(offer)"
+                            [disabled]="deliveryAcceptingId() === offer.id"
+                            class="flex-1 py-2.5 rounded-xl text-white font-black text-xs active:scale-95 transition"
+                            style="background:linear-gradient(135deg,#10b981,#059669)">
+                            {{ deliveryAcceptingId() === offer.id ? 'Aceptando...' : '✓ Aceptar' }}
+                          </button>
+                          <button (click)="removeDeliveryOffer(offer.id)"
+                            class="px-4 py-2.5 rounded-xl font-black text-xs text-red-500 border border-red-200 active:scale-95 transition">
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    }
+                    <button (click)="cancelDelivery()"
+                      class="w-full py-2.5 rounded-2xl text-red-500 font-bold text-xs border border-red-200 mt-1">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- ── Formulario de creación ── -->
+              @else {
+                <div class="mx-4 my-2">
+
+                  <!-- Header con paso y botón volver -->
+                  <div class="flex items-center gap-2 mb-3">
+                    <button (click)="prevDeliveryStep()"
+                      class="w-8 h-8 rounded-full flex items-center justify-center active:scale-90"
+                      style="background:#f1f5f9">
+                      <span class="material-symbols-outlined text-slate-500" style="font-size:18px">arrow_back</span>
+                    </button>
+                    <div class="flex-1">
+                      <div class="flex gap-1">
+                        @for (s of [1,2,3,4]; track s) {
+                          <div class="flex-1 h-1 rounded-full" [style.background]="deliveryStep() >= s ? '#10b981' : '#e2e8f0'"></div>
+                        }
+                      </div>
+                    </div>
+                    <span class="text-xs text-slate-400 font-bold">{{ deliveryStep() }}/4</span>
+                  </div>
+
+                  <!-- PASO 1: Tipo de domicilio -->
+                  @if (deliveryStep() === 1) {
+                    <p class="font-black text-slate-800 text-sm mb-3">¿Cómo es tu domicilio?</p>
+                    <div class="flex flex-col gap-3">
+                      <button (click)="deliveryType.set('pickup_and_deliver')"
+                        class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition"
+                        [style.border]="deliveryType()==='pickup_and_deliver' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
+                        [style.background]="deliveryType()==='pickup_and_deliver' ? '#f0fdf4' : '#f8fafc'">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                          [style.background]="deliveryType()==='pickup_and_deliver' ? '#dcfce7' : '#f1f5f9'">
+                          <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                            [style.color]="deliveryType()==='pickup_and_deliver' ? '#10b981' : '#94a3b8'">store</span>
+                        </div>
+                        <div>
+                          <p class="font-black text-slate-800 text-sm">Recoger y llevar</p>
+                          <p class="text-slate-500 text-xs mt-0.5">El moto va a un lugar, recoge algo y lo lleva a otra dirección</p>
+                        </div>
+                      </button>
+                      <button (click)="deliveryType.set('from_my_location')"
+                        class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition"
+                        [style.border]="deliveryType()==='from_my_location' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
+                        [style.background]="deliveryType()==='from_my_location' ? '#f0fdf4' : '#f8fafc'">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                          [style.background]="deliveryType()==='from_my_location' ? '#dcfce7' : '#f1f5f9'">
+                          <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                            [style.color]="deliveryType()==='from_my_location' ? '#10b981' : '#94a3b8'">home</span>
+                        </div>
+                        <div>
+                          <p class="font-black text-slate-800 text-sm">Recoger donde estoy</p>
+                          <p class="text-slate-500 text-xs mt-0.5">El moto viene donde estás, recoge y lleva a otra dirección</p>
+                        </div>
+                      </button>
+                    </div>
+                    <button (click)="nextDeliveryStep()"
+                      class="w-full mt-4 py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#10b981,#059669)">
+                      Continuar
+                    </button>
+                  }
+
+                  <!-- PASO 2: Dirección de recogida -->
+                  @if (deliveryStep() === 2) {
+                    <p class="font-black text-slate-800 text-sm mb-1">¿Dónde recoge el moto?</p>
+                    <p class="text-slate-400 text-xs mb-3">Dirección del punto de recogida</p>
+                    <div class="relative mb-3">
+                      <div class="flex items-center gap-2 px-3 py-3 rounded-xl" style="background:#f8fafc;border:1.5px solid #e2e8f0">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                        <input [value]="deliveryPickupQuery()"
+                          (input)="onDeliveryPickupInput($any($event.target).value)"
+                          placeholder="Ej: Calle 50 #20-30, Medellín"
+                          class="flex-1 text-slate-800 text-sm outline-none bg-transparent placeholder-slate-400"
+                          autocomplete="off" inputmode="text" />
+                        @if (deliveryPickupQuery()) {
+                          <button (click)="deliveryPickupQuery.set(''); deliveryPickupSugg.set([]); deliveryPickupLat.set(0); deliveryPickupLng.set(0)">
+                            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+                          </button>
+                        }
+                      </div>
+                      @if (deliveryPickupSugg().length > 0) {
+                        <div class="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-50" style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto">
+                          @for (s of deliveryPickupSugg(); track s.name) {
+                            <button (click)="selectDeliveryPickup(s)"
+                              class="w-full text-left px-3 py-2.5 flex items-center gap-2 active:bg-slate-50"
+                              style="border-bottom:1px solid #f1f5f9">
+                              <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:16px">location_on</span>
+                              <p class="text-slate-700 text-xs font-semibold truncate">{{ s.name }}</p>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <!-- Contacto en recogida (opcional) -->
+                    <div class="rounded-xl p-3 mb-3" style="background:#f8fafc;border:1px solid #e2e8f0">
+                      <p class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Contacto en recogida (opcional)</p>
+                      <input [value]="deliveryPickupContact()" (input)="deliveryPickupContact.set($any($event.target).value)"
+                        placeholder="Nombre de quien entrega"
+                        class="w-full text-slate-700 text-xs outline-none bg-transparent border-b border-slate-200 pb-1.5 mb-1.5 placeholder-slate-400" />
+                      <input [value]="deliveryPickupPhone()" (input)="deliveryPickupPhone.set($any($event.target).value)"
+                        placeholder="Teléfono" inputmode="tel"
+                        class="w-full text-slate-700 text-xs outline-none bg-transparent placeholder-slate-400" />
+                    </div>
+                    <button (click)="nextDeliveryStep()"
+                      [disabled]="!deliveryPickupLat()"
+                      class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-40"
+                      style="background:linear-gradient(135deg,#10b981,#059669)">
+                      Continuar
+                    </button>
+                  }
+
+                  <!-- PASO 3: Dirección de entrega -->
+                  @if (deliveryStep() === 3) {
+                    <p class="font-black text-slate-800 text-sm mb-1">¿Dónde se entrega?</p>
+                    <p class="text-slate-400 text-xs mb-3">Dirección del punto de entrega</p>
+                    <div class="relative mb-3">
+                      <div class="flex items-center gap-2 px-3 py-3 rounded-xl" style="background:#f8fafc;border:1.5px solid #e2e8f0">
+                        <div class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></div>
+                        <input [value]="deliveryDestQuery()"
+                          (input)="onDeliveryDestInput($any($event.target).value)"
+                          placeholder="Ej: Carrera 70 #45-20, Medellín"
+                          class="flex-1 text-slate-800 text-sm outline-none bg-transparent placeholder-slate-400"
+                          autocomplete="off" inputmode="text" />
+                        @if (deliveryDestQuery()) {
+                          <button (click)="deliveryDestQuery.set(''); deliveryDestSugg.set([]); deliveryDestLat.set(0); deliveryDestLng.set(0)">
+                            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+                          </button>
+                        }
+                      </div>
+                      @if (deliveryDestSugg().length > 0) {
+                        <div class="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-50" style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto">
+                          @for (s of deliveryDestSugg(); track s.name) {
+                            <button (click)="selectDeliveryDest(s)"
+                              class="w-full text-left px-3 py-2.5 flex items-center gap-2 active:bg-slate-50"
+                              style="border-bottom:1px solid #f1f5f9">
+                              <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">location_on</span>
+                              <p class="text-slate-700 text-xs font-semibold truncate">{{ s.name }}</p>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                    <!-- Contacto en entrega -->
+                    <div class="rounded-xl p-3 mb-3" style="background:#f8fafc;border:1px solid #e2e8f0">
+                      <p class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Contacto en entrega (opcional)</p>
+                      <input [value]="deliveryDestContact()" (input)="deliveryDestContact.set($any($event.target).value)"
+                        placeholder="Nombre de quien recibe"
+                        class="w-full text-slate-700 text-xs outline-none bg-transparent border-b border-slate-200 pb-1.5 mb-1.5 placeholder-slate-400" />
+                      <input [value]="deliveryDestPhone()" (input)="deliveryDestPhone.set($any($event.target).value)"
+                        placeholder="Teléfono" inputmode="tel"
+                        class="w-full text-slate-700 text-xs outline-none bg-transparent placeholder-slate-400" />
+                    </div>
+                    <button (click)="nextDeliveryStep()"
+                      [disabled]="!deliveryDestLat()"
+                      class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-40"
+                      style="background:linear-gradient(135deg,#10b981,#059669)">
+                      Ver precio estimado
+                    </button>
+                  }
+
+                  <!-- PASO 4: Detalles del paquete + precio + enviar -->
+                  @if (deliveryStep() === 4) {
+                    <!-- Precio estimado -->
+                    @if (deliveryEstPrice() > 0) {
+                      <div class="rounded-2xl p-3 mb-3 text-center" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #6ee7b7">
+                        <p class="text-emerald-600 text-xs font-bold">Precio estimado · {{ deliveryDistKm() }} km</p>
+                        <p class="font-black text-emerald-800" style="font-size:26px">{{ formatCOP(deliveryEstPrice()) }}</p>
+                        <p class="text-emerald-500 text-xs">Los conductores pueden ofertarte otro precio</p>
+                      </div>
+                    } @else {
+                      <div class="rounded-2xl p-3 mb-3 text-center" style="background:#f8fafc;border:1px solid #e2e8f0">
+                        <p class="text-slate-400 text-xs">Calculando precio...</p>
+                      </div>
+                    }
+                    <!-- Descripción del paquete -->
+                    <p class="font-black text-slate-800 text-xs uppercase tracking-wider mb-2">¿Qué vas a enviar?</p>
+                    <textarea [value]="deliveryPackageDesc()" (input)="deliveryPackageDesc.set($any($event.target).value)"
+                      placeholder="Ej: Documentos, ropa, comida, medicamentos..."
+                      rows="2"
+                      class="w-full text-slate-700 text-sm outline-none rounded-xl px-3 py-2.5 mb-3 resize-none placeholder-slate-400"
+                      style="background:#f8fafc;border:1.5px solid #e2e8f0"></textarea>
+                    <!-- Tamaño del paquete -->
+                    <p class="font-black text-slate-800 text-xs uppercase tracking-wider mb-2">Tamaño</p>
+                    <div class="flex gap-2 mb-3">
+                      @for (sz of [{k:'small',l:'Pequeño',d:'Sobre, doc'},{k:'medium',l:'Mediano',d:'Bolsa, caja'},{k:'large',l:'Grande',d:'Caja grande'}]; track sz.k) {
+                        <button (click)="setDeliveryPackageSize(sz.k)"
+                          class="flex-1 py-2 px-1 rounded-xl text-center active:scale-95 transition"
+                          [style.border]="deliveryPackageSize()===sz.k ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
+                          [style.background]="deliveryPackageSize()===sz.k ? '#f0fdf4' : '#f8fafc'">
+                          <p class="font-black text-xs" [style.color]="deliveryPackageSize()===sz.k ? '#059669' : '#64748b'">{{ sz.l }}</p>
+                          <p class="text-[10px]" [style.color]="deliveryPackageSize()===sz.k ? '#10b981' : '#94a3b8'">{{ sz.d }}</p>
+                        </button>
+                      }
+                    </div>
+                    <!-- Instrucciones especiales -->
+                    <input [value]="deliveryInstructions()" (input)="deliveryInstructions.set($any($event.target).value)"
+                      placeholder="Instrucciones especiales (opcional)"
+                      class="w-full text-slate-700 text-sm outline-none rounded-xl px-3 py-2.5 mb-4 placeholder-slate-400"
+                      style="background:#f8fafc;border:1px solid #e2e8f0" />
+                    <!-- Botón enviar -->
+                    <button (click)="submitDelivery()"
+                      [disabled]="deliverySending() || !deliveryPackageDesc().trim()"
+                      class="w-full py-4 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                      style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 6px 24px rgba(16,185,129,0.4)">
+                      <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">delivery_dining</span>
+                      {{ deliverySending() ? 'Enviando...' : 'Solicitar domicilio' }}
+                    </button>
+                  }
+
+                </div>
+              }
+
+            }
+            <!-- ── FIN PANEL DOMICILIOS ── -->
+
+            <!-- Contenido del panel según estado (SOLO si NO es domicilio) -->
+            @if (tripService() !== 'domicilio') {
             @if (!tripDest()) {
               @if (!tripOpen()) {
                 <!-- Punto de origen — clicable para modificar -->
@@ -2192,6 +2681,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </button>
               </div>
             }
+
+          } <!-- /if tripService !== domicilio -->
 
           </div>
         }
@@ -7785,6 +8276,47 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'domicilio' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
+  // ── MÓDULO DOMICILIOS — pasajero ─────────────────────────────────
+  deliveryStep             = signal(1);
+  deliveryType             = signal<'pickup_and_deliver' | 'from_my_location'>('pickup_and_deliver');
+  deliveryPickupQuery      = signal('');
+  deliveryPickupSugg       = signal<any[]>([]);
+  deliveryPickupName       = signal('');
+  deliveryPickupLat        = signal(0);
+  deliveryPickupLng        = signal(0);
+  deliveryPickupContact    = signal('');
+  deliveryPickupPhone      = signal('');
+  deliveryDestQuery        = signal('');
+  deliveryDestSugg         = signal<any[]>([]);
+  deliveryDestName         = signal('');
+  deliveryDestLat          = signal(0);
+  deliveryDestLng          = signal(0);
+  deliveryDestContact      = signal('');
+  deliveryDestPhone        = signal('');
+  deliveryPackageDesc      = signal('');
+  deliveryPackageSize      = signal<'small' | 'medium' | 'large'>('small');
+  deliveryInstructions     = signal('');
+  deliveryEstPrice         = signal(0);
+  deliveryDistKm           = signal(0);
+  deliverySending          = signal(false);
+  deliverySent             = signal(false);
+  deliveryOffers           = signal<any[]>([]);
+  deliveryAccepted         = signal<any | null>(null);
+  currentDeliveryId        = signal<string | null>(null);
+  currentDeliveryStage     = signal<string | null>(null);
+  deliveryAcceptingId      = signal<string | null>(null);
+  deliveryPickupPhotoUrl   = signal<string | null>(null);
+  deliveryDeliveryPhotoUrl = signal<string | null>(null);
+  private _deliveryOfferChannel: any = null;
+  private _deliveryStageChannel: any = null;
+
+  // ── MÓDULO DOMICILIOS — conductor ────────────────────────────────
+  deliveryRequests         = signal<any[]>([]);
+  activeDriverDelivery     = signal<any | null>(null);
+  deliveryOfferPrice       = signal(0);
+  makingDeliveryOffer      = signal<string | null>(null);
+  private _deliveryRefreshInterval: any = null;
+
   // ── Passenger menu sections ────────────────────────────────────
   passengerSection         = signal<string | null>(null);
   passengerHistory         = signal<any[]>([]);
@@ -10404,6 +10936,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       } catch {}
       this._startOnlineTimer();
       this._loadDriverRequests(driver.vehicle_type, this._currentLat, this._currentLng);
+      // Cargar domicilios disponibles si es moto
+      if (driver.vehicle_type === 'moto') this.loadDeliveryRequests();
       if (isPlatformBrowser(this.platformId) && !this._visibilityHandler) {
         this._visibilityHandler = () => {
           if (!document.hidden && this.driverOnline()) {
@@ -10521,7 +11055,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // Botón "Iniciar recogida" desde la alerta inDrive full-screen
   async acceptTripAndGo(alert: any): Promise<void> {
-    this._ensureAudioCtx(); // desbloquear audio dentro del gesto del usuario
+    // Activar voz en el gesto del usuario y desbloquear SpeechSynthesis con frase inmediata
+    this.navVoiceEnabled.set(true);
+    this._ensureAudioCtx();
+    this._sayIt('Viaje aceptado. Calculando ruta.');
     this.driverTripAlert.set(null);
     await this.advanceStage(alert, 'heading_to_pickup');
     const req = alert.ag_trip_requests ?? alert;
@@ -15334,5 +15871,283 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
     }
     this.cdr.markForCheck();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MÓDULO DOMICILIOS — PASAJERO
+  // ═══════════════════════════════════════════════════════════════════
+
+  resetDelivery(): void {
+    this.deliveryStep.set(1);
+    this.deliveryType.set('pickup_and_deliver');
+    this.deliveryPickupQuery.set(''); this.deliveryPickupSugg.set([]);
+    this.deliveryPickupName.set(''); this.deliveryPickupLat.set(0); this.deliveryPickupLng.set(0);
+    this.deliveryPickupContact.set(''); this.deliveryPickupPhone.set('');
+    this.deliveryDestQuery.set(''); this.deliveryDestSugg.set([]);
+    this.deliveryDestName.set(''); this.deliveryDestLat.set(0); this.deliveryDestLng.set(0);
+    this.deliveryDestContact.set(''); this.deliveryDestPhone.set('');
+    this.deliveryPackageDesc.set(''); this.deliveryPackageSize.set('small');
+    this.deliveryInstructions.set(''); this.deliveryEstPrice.set(0); this.deliveryDistKm.set(0);
+    this.deliverySending.set(false); this.deliverySent.set(false);
+    this.deliveryOffers.set([]); this.deliveryAccepted.set(null);
+    this.currentDeliveryId.set(null); this.currentDeliveryStage.set(null);
+    this.deliveryPickupPhotoUrl.set(null); this.deliveryDeliveryPhotoUrl.set(null);
+    if (this._deliveryOfferChannel) { this.agService.unsubscribeChannel(this._deliveryOfferChannel); this._deliveryOfferChannel = null; }
+    if (this._deliveryStageChannel) { this.agService.unsubscribeChannel(this._deliveryStageChannel); this._deliveryStageChannel = null; }
+  }
+
+  async onDeliveryPickupInput(v: string): Promise<void> {
+    this.deliveryPickupQuery.set(v);
+    if (v.length < 3) { this.deliveryPickupSugg.set([]); return; }
+    const results = await this._searchPlacesForDelivery(v);
+    this.deliveryPickupSugg.set(results);
+    this.cdr.markForCheck();
+  }
+
+  selectDeliveryPickup(s: any): void {
+    this.deliveryPickupName.set(s.name ?? s.display_name ?? s.description ?? '');
+    this.deliveryPickupLat.set(s.lat ?? parseFloat(s.lat ?? 0));
+    this.deliveryPickupLng.set(s.lng ?? parseFloat(s.lng ?? 0));
+    this.deliveryPickupQuery.set(this.deliveryPickupName());
+    this.deliveryPickupSugg.set([]);
+    this.cdr.markForCheck();
+  }
+
+  async onDeliveryDestInput(v: string): Promise<void> {
+    this.deliveryDestQuery.set(v);
+    if (v.length < 3) { this.deliveryDestSugg.set([]); return; }
+    const results = await this._searchPlacesForDelivery(v);
+    this.deliveryDestSugg.set(results);
+    this.cdr.markForCheck();
+  }
+
+  selectDeliveryDest(s: any): void {
+    this.deliveryDestName.set(s.name ?? s.display_name ?? s.description ?? '');
+    this.deliveryDestLat.set(s.lat ?? parseFloat(s.lat ?? 0));
+    this.deliveryDestLng.set(s.lng ?? parseFloat(s.lng ?? 0));
+    this.deliveryDestQuery.set(this.deliveryDestName());
+    this.deliveryDestSugg.set([]);
+    this.cdr.markForCheck();
+  }
+
+  private async _searchPlacesForDelivery(query: string): Promise<any[]> {
+    // Reutilizar Google Places si está disponible, sino Nominatim
+    const gmaps = (window as any).google?.maps;
+    if (gmaps?.places?.AutocompleteService) {
+      return new Promise(resolve => {
+        const svc = new gmaps.places.AutocompleteService();
+        svc.getPlacePredictions(
+          { input: query, componentRestrictions: { country: 'co' }, types: ['geocode', 'establishment'] },
+          (preds: any[], status: string) => {
+            if (status !== 'OK' || !preds) { resolve([]); return; }
+            const placeSvc = new gmaps.places.PlacesService(document.createElement('div'));
+            const results: any[] = [];
+            let done = 0;
+            preds.slice(0, 5).forEach(pred => {
+              placeSvc.getDetails({ placeId: pred.place_id, fields: ['geometry', 'name', 'formatted_address'] }, (place: any, st: string) => {
+                done++;
+                if (st === 'OK' && place?.geometry?.location) {
+                  results.push({
+                    name: place.formatted_address ?? pred.description,
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                  });
+                }
+                if (done === preds.slice(0, 5).length) resolve(results);
+              });
+            });
+          }
+        );
+      });
+    }
+    // Fallback Nominatim
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=co`;
+      const data = await (await fetch(url)).json();
+      return (data ?? []).map((r: any) => ({ name: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lng) }));
+    } catch { return []; }
+  }
+
+  async calcDeliveryPrice(): Promise<void> {
+    const pLat = this.deliveryPickupLat(), pLng = this.deliveryPickupLng();
+    const dLat = this.deliveryDestLat(), dLng = this.deliveryDestLng();
+    if (!pLat || !pLng || !dLat || !dLng) return;
+    try {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${pLng},${pLat};${dLng},${dLat}?access_token=${this.MAPBOX_TOKEN}`;
+      const json = await (await fetch(url)).json();
+      const dist = json.routes?.[0]?.distance ?? 0;
+      const km = Math.round(dist / 100) / 10;
+      this.deliveryDistKm.set(km);
+      const base = Math.max(5000, 3500 + km * 1200);
+      this.deliveryEstPrice.set(Math.round(base / 500) * 500);
+    } catch {
+      const km = this._distKm(pLat, pLng, dLat, dLng);
+      this.deliveryDistKm.set(km);
+      this.deliveryEstPrice.set(Math.round(Math.max(5000, 3500 + km * 1200) / 500) * 500);
+    }
+    this.cdr.markForCheck();
+  }
+
+  async nextDeliveryStep(): Promise<void> {
+    const step = this.deliveryStep();
+    if (step === 1) {
+      // Si es "desde mi ubicación", prellenar pickup con posición actual
+      if (this.deliveryType() === 'from_my_location') {
+        this.deliveryPickupName.set(this.currentAddress() || 'Mi ubicación actual');
+        this.deliveryPickupLat.set(this._currentLat);
+        this.deliveryPickupLng.set(this._currentLng);
+        this.deliveryPickupQuery.set(this.deliveryPickupName());
+      }
+      this.deliveryStep.set(2);
+    } else if (step === 2) {
+      if (!this.deliveryPickupLat()) { alert('Selecciona una dirección de recogida.'); return; }
+      this.deliveryStep.set(3);
+    } else if (step === 3) {
+      if (!this.deliveryDestLat()) { alert('Selecciona una dirección de entrega.'); return; }
+      await this.calcDeliveryPrice();
+      this.deliveryStep.set(4);
+    }
+  }
+
+  prevDeliveryStep(): void {
+    const step = this.deliveryStep();
+    if (step > 1) this.deliveryStep.set(step - 1);
+    else this.resetDelivery();
+  }
+
+  async submitDelivery(): Promise<void> {
+    const profile = this.agProfile();
+    if (!profile) { alert('Debes registrarte para solicitar un domicilio.'); return; }
+    if (!this.deliveryPackageDesc().trim()) { alert('Describe qué vas a enviar.'); return; }
+    this.deliverySending.set(true);
+    const result = await this.agService.createDeliveryRequest({
+      passengerId: profile.id,
+      deliveryType: this.deliveryType(),
+      pickupName: this.deliveryPickupName(), pickupLat: this.deliveryPickupLat(), pickupLng: this.deliveryPickupLng(),
+      pickupContactName: this.deliveryPickupContact() || undefined, pickupContactPhone: this.deliveryPickupPhone() || undefined,
+      deliveryName: this.deliveryDestName(), deliveryLat: this.deliveryDestLat(), deliveryLng: this.deliveryDestLng(),
+      deliveryContactName: this.deliveryDestContact() || undefined, deliveryContactPhone: this.deliveryDestPhone() || undefined,
+      packageDescription: this.deliveryPackageDesc(), packageSize: this.deliveryPackageSize(),
+      specialInstructions: this.deliveryInstructions() || undefined,
+      offeredPrice: this.deliveryEstPrice(), distanceKm: this.deliveryDistKm(), paymentMethod: 'cash',
+    });
+    this.deliverySending.set(false);
+    if (!result.success || !result.id) { alert('Error al enviar el domicilio. Intenta de nuevo.'); return; }
+    this.currentDeliveryId.set(result.id);
+    this.deliverySent.set(true);
+    // Suscribir a ofertas de conductores
+    this._deliveryOfferChannel = this.agService.subscribeToDeliveryOffers(result.id, (offer) => {
+      this.deliveryOffers.update(list => {
+        const exists = list.some(o => o.id === offer.id);
+        return exists ? list : [...list, offer];
+      });
+      this.cdr.markForCheck();
+    });
+    this.cdr.markForCheck();
+  }
+
+  async acceptDeliveryOffer(offer: any): Promise<void> {
+    this.deliveryAcceptingId.set(offer.id);
+    const result = await this.agService.acceptDeliveryOffer(offer.id, this.currentDeliveryId()!, offer.driver_id, offer.offered_price);
+    this.deliveryAcceptingId.set(null);
+    if (!result.success) { alert('Error al aceptar la oferta.'); return; }
+    // Cargar datos del conductor
+    const delivery = await this.agService.getDeliveryRequest(this.currentDeliveryId()!);
+    this.deliveryAccepted.set(delivery);
+    this.deliverySent.set(false);
+    // Suscribir al estado del domicilio
+    this._deliveryStageChannel = this.agService.subscribeToDeliveryStage(this.currentDeliveryId()!, (stage, row) => {
+      this.currentDeliveryStage.set(stage);
+      if (row?.pickup_photo_url) this.deliveryPickupPhotoUrl.set(row.pickup_photo_url);
+      if (row?.delivery_photo_url) this.deliveryDeliveryPhotoUrl.set(row.delivery_photo_url);
+      if (stage === 'delivered' || stage === 'cancelled') {
+        setTimeout(() => {
+          alert(stage === 'delivered' ? '¡Tu domicilio fue entregado!' : 'El domicilio fue cancelado.');
+          this.resetDelivery();
+          this.tripService.set('viaje');
+        }, 500);
+      }
+      this.cdr.markForCheck();
+    });
+    this.cdr.markForCheck();
+  }
+
+  async cancelDelivery(): Promise<void> {
+    if (!this.currentDeliveryId()) return;
+    if (!confirm('¿Cancelar el domicilio?')) return;
+    await this.agService.cancelDelivery(this.currentDeliveryId()!);
+    this.resetDelivery();
+    this.tripService.set('viaje');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MÓDULO DOMICILIOS — CONDUCTOR
+  // ═══════════════════════════════════════════════════════════════════
+
+  async loadDeliveryRequests(): Promise<void> {
+    const data = await this.agService.getSearchingDeliveries(this._currentLat, this._currentLng);
+    this.deliveryRequests.set(data);
+    this.cdr.markForCheck();
+  }
+
+  async makeDeliveryOfferDriver(req: any): Promise<void> {
+    const driver = this.driverData();
+    if (!driver) return;
+    const price = this.deliveryOfferPrice() || req.offered_price;
+    this.makingDeliveryOffer.set(req.id);
+    const result = await this.agService.makeDeliveryOffer(req.id, driver.id, price);
+    this.makingDeliveryOffer.set(null);
+    if (!result.success) { alert('Error al enviar oferta.'); return; }
+    // Remover de la lista local (ya ofertó)
+    this.deliveryRequests.update(list => list.filter(r => r.id !== req.id));
+    this.cdr.markForCheck();
+  }
+
+  async advanceDeliveryStage(stage: string): Promise<void> {
+    const delivery = this.activeDriverDelivery();
+    if (!delivery) return;
+    await this.agService.updateDeliveryStage(delivery.id, stage);
+    this.activeDriverDelivery.update(d => ({ ...d, driver_stage: stage }));
+    if (stage === 'delivered') {
+      setTimeout(() => { this.activeDriverDelivery.set(null); this.loadDeliveryRequests(); }, 1500);
+    }
+    this.cdr.markForCheck();
+  }
+
+  async uploadDeliveryPhotoDriver(type: 'pickup' | 'delivery'): Promise<void> {
+    const delivery = this.activeDriverDelivery();
+    if (!delivery) return;
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const url = await this.agService.uploadDeliveryPhoto(delivery.id, file, type);
+      if (url) {
+        if (type === 'pickup') { this.deliveryPickupPhotoUrl.set(url); await this.advanceDeliveryStage('package_collected'); }
+        else { this.deliveryDeliveryPhotoUrl.set(url); await this.advanceDeliveryStage('delivered'); }
+      }
+      this.cdr.markForCheck();
+    };
+    input.click();
+  }
+
+  removeDeliveryOffer(offerId: string): void {
+    this.deliveryOffers.update(l => l.filter(o => o.id !== offerId));
+  }
+  removeDeliveryRequest(reqId: string): void {
+    this.deliveryRequests.update(l => l.filter(r => r.id !== reqId));
+  }
+  setDeliveryPackageSize(size: string): void {
+    this.deliveryPackageSize.set(size as 'small' | 'medium' | 'large');
+  }
+
+  deliveryStageLabel(stage: string | null): string {
+    const labels: Record<string, string> = {
+      going_to_pickup: 'Yendo a recoger', arrived_at_pickup: 'Llegó al punto de recogida',
+      package_collected: 'Paquete recogido — en camino', in_transit: 'En camino a entrega',
+      arrived_at_delivery: 'Llegó al punto de entrega', delivered: '¡Entregado!', cancelled: 'Cancelado',
+    };
+    return labels[stage ?? ''] ?? 'Buscando conductor';
   }
 }
