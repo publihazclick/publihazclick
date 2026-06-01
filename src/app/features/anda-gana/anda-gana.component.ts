@@ -182,10 +182,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <span class="material-symbols-outlined" style="font-size:22px">navigation</span>
             Ir a recoger pasajero
           </button>
-          <button (click)="dismissTripAlert()"
-            class="w-full py-3 rounded-2xl text-slate-500 font-bold text-sm active:opacity-70">
-            Ver detalles después
-          </button>
         </div>
       </div>
     </div>
@@ -3482,7 +3478,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       }
       @if (driverStatus() === 'approved') {
         <!-- Viajes activos del conductor -->
-        @if (driverActiveTrips().length > 0) {
+        @if (driverActiveTrips().length > 0 && !driverTripAlert()) {
           <div class="flex flex-col gap-2">
             <p class="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Viajes en curso</p>
             @for (trip of driverActiveTrips(); track trip.id) {
@@ -3870,6 +3866,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               class="absolute top-2 right-2 w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition"
               [style]="heatmapVisible() ? 'background:linear-gradient(135deg,#f97316,#ef4444);color:#fff' : 'background:rgba(0,0,0,0.7);color:#fb923c'">
               <span class="material-symbols-outlined" style="font-size:22px">local_fire_department</span>
+            </button>
+          }
+
+          <!-- Botón centrar: aparece cuando el conductor mueve el mapa manualmente -->
+          @if (driverOnline() && driverMapPanned()) {
+            <button (click)="recenterDriverMap()"
+              class="absolute z-30 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
+              style="bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:12px;width:52px;height:52px;border-radius:14px;background:rgba(10,15,35,0.92);border:2px solid #3b82f6;box-shadow:0 4px 16px rgba(59,130,246,0.45)">
+              <span class="material-symbols-outlined text-blue-400" style="font-size:22px;font-variation-settings:'FILL' 1">my_location</span>
+              <span class="text-blue-300 font-black" style="font-size:8px;letter-spacing:0.04em">CENTRAR</span>
             </button>
           }
 
@@ -7053,7 +7059,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <span class="material-symbols-outlined" style="font-size:18px">star</span>
               Calificar pasajero
             </button>
-            <button (click)="tripReceiptModal.set(false); tripReceiptData.set(null); tripReceiptTrip.set(null)"
+            <button (click)="skipDriverRating()"
               class="w-full py-3 rounded-2xl text-slate-400 font-bold text-sm"
               style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
               Omitir calificación
@@ -7468,6 +7474,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Mapa fullscreen durante el viaje ─────────────────────────
   driverMapFullscreen    = signal(false);
   passengerMapFullscreen = signal(false);
+  driverMapPanned        = signal(false);   // true cuando el conductor movió el mapa manualmente
   // Trip activo referencia para el conductor en fullscreen
   driverFullscreenTrip   = signal<any | null>(null);
 
@@ -9201,6 +9208,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Deshabilitar rotación táctil
     this._map.touchZoomRotate?.disableRotation?.();
 
+    // Detectar pan manual del conductor → desactiva auto-follow hasta que pulse Centrar
+    this._map.on('dragstart', () => {
+      if (this.driverOnline()) this.driverMapPanned.set(true);
+    });
+
     // Saturación reducida al 40% (−60%) para no competir con UI
     container.style.filter = 'saturate(0.4)';
 
@@ -9806,6 +9818,28 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.ratingCommentValue = '';
     this.ratingTarget.set(null);
     this.ratingTripId.set(null);
+    // _resetTrip ya fue llamado antes; solo asegurar estado limpio del pasajero
+  }
+
+  // Conductor: omitir calificación del pasajero y volver al home
+  skipDriverRating(): void {
+    this.tripReceiptModal.set(false);
+    this.tripReceiptData.set(null);
+    this.tripReceiptTrip.set(null);
+    this._resetDriverTripState();
+  }
+
+  // Resetea el estado del conductor después de completar/calificar un viaje
+  private _resetDriverTripState(): void {
+    this.driverArrivalTrip.set(null);
+    this._clearDriverArrivalTimer();
+    if (this.driverMapFullscreen()) {
+      this.driverMapFullscreen.set(false);
+      this.driverFullscreenTrip.set(null);
+      setTimeout(() => this._map?.resize(), 200);
+    }
+    if (this.navActive()) this.stopInAppNav();
+    this.cdr.markForCheck();
   }
 
   // ── Driver section helpers ────────────────────────────────────
@@ -10233,6 +10267,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (res.success) {
       this.passengerRatingModal.set(false);
       this.pendingRatingTrip.set(null);
+      this._resetDriverTripState();
     } else {
       alert('Error enviando calificación: ' + (res.error ?? 'desconocido'));
     }
@@ -10241,6 +10276,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   skipPassengerRating(): void {
     this.passengerRatingModal.set(false);
     this.pendingRatingTrip.set(null);
+    this._resetDriverTripState();
   }
 
   private _gpsWatchId: number | null = null;
@@ -10549,6 +10585,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._navDestLng  = destLng;
     this._navToPickup = toPickup;
     this._navFollowActive = false;
+    this.driverMapPanned.set(false);   // al iniciar nav, retomar follow automático
     clearTimeout(this._navFollowTimer);
 
     this.navActive.set(true);
@@ -10611,6 +10648,18 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.navActive.set(false);
       console.warn('nav error', e);
     }
+  }
+
+  recenterDriverMap(): void {
+    this.driverMapPanned.set(false);
+    if (!this._map) return;
+    this._map.easeTo({
+      center:   [this._currentLng, this._currentLat],
+      bearing:  this._currentHeading,
+      pitch:    this.navActive() ? 50 : 0,
+      zoom:     15,
+      duration: 600,
+    });
   }
 
   stopInAppNav(): void {
@@ -10971,6 +11020,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         }
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
         this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined);
+        // Auto-follow conductor cuando está online pero sin navegación activa
+        if (!this.navActive() && !this.driverMapPanned() && this._map) {
+          this._map.easeTo({
+            center:   [pos.coords.longitude, pos.coords.latitude],
+            bearing:  this._currentHeading,
+            pitch:    0,
+            zoom:     15,
+            duration: 600,
+          });
+        }
       },
       (err) => {
         console.error('GPS tracking error:', err.message);
@@ -14969,9 +15028,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   closeReceiptAndRate(): void {
     this.tripReceiptModal.set(false);
     this.tripReceiptData.set(null);
+    this.tripReceiptTrip.set(null);
+    // Caso A: conductor finalizó y el pasajero aún tiene tripAccepted
     const offer = this.tripAccepted();
-    if (offer) this._autoCompletePassengerTrip();
-    else this._resetTrip();
+    if (offer) {
+      this._autoCompletePassengerTrip();
+      return;
+    }
+    // Caso B: pasajero finalizó (ratingTripId/ratingTarget pre-cargados antes del _resetTrip)
+    if (this.ratingTripId() && this.ratingTarget()) {
+      this.ratingModal.set(true);
+      return;
+    }
+    this._resetTrip();
   }
 
   async closeDriverReceiptAndRate(): Promise<void> {
