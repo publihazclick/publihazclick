@@ -1186,7 +1186,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @if (!driverOnline() && gpsStatus() !== 'requesting') {
           <button (click)="recenterPassengerMap()"
             class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
-            style="z-index:9860;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
+            [style.z-index]="passengerMapFullscreen() ? '9860' : '40'"
+            style="bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
             [style.background]="passengerMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
             [style.border]="passengerMapPanned() ? '2px solid #f97316' : '2px solid rgba(255,255,255,0.15)'"
             [style.box-shadow]="passengerMapPanned() ? '0 4px 16px rgba(249,115,22,0.5)' : '0 2px 8px rgba(0,0,0,0.4)'">
@@ -3889,7 +3890,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (driverOnline()) {
             <button (click)="recenterDriverMap()"
               class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
-              style="z-index:9860;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
+              [style.z-index]="driverMapFullscreen() ? '9860' : '40'"
+              style="bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
               [style.background]="driverMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
               [style.border]="driverMapPanned() ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.15)'"
               [style.box-shadow]="driverMapPanned() ? '0 4px 16px rgba(59,130,246,0.5)' : '0 2px 8px rgba(0,0,0,0.4)'">
@@ -3902,10 +3904,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- ══ CONDUCTOR FULLSCREEN: tarjeta de viaje activo flotante ══ -->
           @if (driverMapFullscreen() && driverFullscreenTrip()) {
-            <!-- Botón salir fullscreen (esquina superior izquierda) -->
+            <!-- Botón salir fullscreen (esquina superior DERECHA — no tapa la flecha de maniobra) -->
             <button (click)="exitDriverFullscreen()"
-              class="absolute z-40 flex items-center justify-center active:scale-90 transition"
-              style="top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;min-width:44px;min-height:44px;border-radius:12px;background:rgba(15,20,40,0.85);border:1px solid rgba(255,255,255,0.15)">
+              class="absolute z-[9870] flex items-center justify-center active:scale-90 transition"
+              style="top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;min-width:44px;min-height:44px;border-radius:12px;background:rgba(15,20,40,0.85);border:1px solid rgba(255,255,255,0.15)">
               <span class="material-symbols-outlined text-white" style="font-size:20px">close_fullscreen</span>
             </button>
 
@@ -7048,19 +7050,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
-          <!-- Desglose financiero (solo conductor) -->
-          @if (tripReceiptData()!._role === 'driver') {
-            <div class="rounded-2xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
-              <div class="flex items-center justify-between px-4 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
-                <p class="text-slate-400 text-xs">Precio total</p>
-                <p class="text-white font-bold text-xs">{{ formatCOP(tripReceiptData()!.final_price ?? 0) }}</p>
-              </div>
-              <div class="flex items-center justify-between px-4 py-2.5">
-                <p class="text-emerald-400 text-xs font-bold">Lo que recibes</p>
-                <p class="text-emerald-400 font-black text-sm">{{ formatCOP(tripReceiptData()!.driver_net ?? tripReceiptData()!.final_price ?? 0) }}</p>
-              </div>
-            </div>
-          }
 
           <!-- Fecha -->
           <div class="flex items-center justify-between px-4 py-3 rounded-2xl"
