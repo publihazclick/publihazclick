@@ -606,12 +606,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <p class="font-black text-emerald-300 text-sm mb-1">Contraofertar domicilio</p>
         <p class="text-emerald-600 text-xs mb-4">El pasajero propone {{ formatCOP(deliveryCounterOffer()!.offered_price) }}. ¿Cuánto quieres cobrar?</p>
         <div class="flex items-center gap-2 mb-4">
-          <button (click)="deliveryCounterValue.update(v => Math.max(3000, v - 500))"
+          <button (click)="decDeliveryCounterValue()"
             style="width:44px;height:44px;border-radius:12px;border:1px solid rgba(52,211,153,0.3);background:rgba(255,255,255,0.08);color:#fff;font-size:20px;font-weight:900;flex-shrink:0">−</button>
           <div class="flex-1 text-center">
             <p class="font-black text-white" style="font-size:26px">{{ formatCOP(deliveryCounterValue()) }}</p>
           </div>
-          <button (click)="deliveryCounterValue.update(v => v + 500)"
+          <button (click)="incDeliveryCounterValue()"
             style="width:44px;height:44px;border-radius:12px;border:none;background:#10b981;color:#fff;font-size:20px;font-weight:900;flex-shrink:0">+</button>
         </div>
         <div class="flex gap-2">
@@ -16714,6 +16714,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.deliveryCounterValue.set(offer.offered_price + 500);
     this.cdr.markForCheck();
   }
+  decDeliveryCounterValue(): void { this.deliveryCounterValue.update(v => Math.max(3000, v - 500)); }
+  incDeliveryCounterValue(): void { this.deliveryCounterValue.update(v => v + 500); }
 
   async submitDeliveryCounterOffer(): Promise<void> {
     const offer = this.deliveryCounterOffer();
