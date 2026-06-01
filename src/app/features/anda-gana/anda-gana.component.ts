@@ -1714,24 +1714,56 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- ── Formulario de creación ── -->
               @else {
-                <div class="mx-4 my-2">
+                <div class="my-2">
 
-                  <!-- Header con paso y botón volver -->
-                  <div class="flex items-center gap-2 mb-3">
-                    <button (click)="prevDeliveryStep()"
-                      class="w-8 h-8 rounded-full flex items-center justify-center active:scale-90"
-                      style="background:#f1f5f9">
-                      <span class="material-symbols-outlined text-slate-500" style="font-size:18px">arrow_back</span>
-                    </button>
-                    <div class="flex-1">
-                      <div class="flex gap-1">
-                        @for (s of [1,2,3,4]; track s) {
-                          <div class="flex-1 h-1 rounded-full" [style.background]="deliveryStep() >= s ? '#10b981' : '#e2e8f0'"></div>
-                        }
+                  <!-- Banner de color por paso — cambia visualmente entre recogida y entrega -->
+                  <div class="px-4 py-3 mb-2"
+                    [style.background]="deliveryStep() === 3 ? 'linear-gradient(135deg,#fff7ed,#ffedd5)' : deliveryStep() === 4 ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)'"
+                    [style.border-bottom]="deliveryStep() === 3 ? '2px solid #fb923c' : deliveryStep() === 4 ? '2px solid #38bdf8' : '2px solid #6ee7b7'">
+                    <div class="flex items-center gap-3">
+                      <button (click)="prevDeliveryStep()"
+                        class="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 flex-shrink-0"
+                        [style.background]="deliveryStep() === 3 ? 'rgba(249,115,22,0.15)' : deliveryStep() === 4 ? 'rgba(56,189,248,0.15)' : 'rgba(16,185,129,0.15)'">
+                        <span class="material-symbols-outlined" style="font-size:18px"
+                          [style.color]="deliveryStep() === 3 ? '#f97316' : deliveryStep() === 4 ? '#0ea5e9' : '#10b981'">arrow_back</span>
+                      </button>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-black text-sm leading-tight"
+                          [style.color]="deliveryStep() === 3 ? '#c2410c' : deliveryStep() === 4 ? '#0369a1' : '#065f46'">
+                          {{ deliveryStep() === 1 ? '¿Cómo es tu domicilio?' : deliveryStep() === 2 ? '📍 Punto de recogida' : deliveryStep() === 3 ? '🎯 Punto de entrega' : '📦 Detalles del paquete' }}
+                        </p>
+                        <p class="text-xs mt-0.5"
+                          [style.color]="deliveryStep() === 3 ? '#ea580c' : deliveryStep() === 4 ? '#0284c7' : '#059669'">
+                          Paso {{ deliveryStep() }} de 4
+                        </p>
                       </div>
+                      <!-- Indicador visual recogida → entrega -->
+                      @if (deliveryStep() === 2 || deliveryStep() === 3) {
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                          <div class="w-7 h-7 rounded-full flex items-center justify-center"
+                            [style.background]="deliveryStep() === 2 ? '#10b981' : '#e2e8f0'">
+                            <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1"
+                              [style.color]="deliveryStep() === 2 ? '#fff' : '#94a3b8'">where_to_vote</span>
+                          </div>
+                          <span class="material-symbols-outlined text-slate-300" style="font-size:14px">arrow_forward</span>
+                          <div class="w-7 h-7 rounded-full flex items-center justify-center"
+                            [style.background]="deliveryStep() === 3 ? '#f97316' : '#e2e8f0'">
+                            <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1"
+                              [style.color]="deliveryStep() === 3 ? '#fff' : '#94a3b8'">flag</span>
+                          </div>
+                        </div>
+                      }
                     </div>
-                    <span class="text-xs text-slate-400 font-bold">{{ deliveryStep() }}/4</span>
+                    <!-- Barra de progreso -->
+                    <div class="flex gap-1 mt-2.5">
+                      @for (s of [1,2,3,4]; track s) {
+                        <div class="flex-1 h-1.5 rounded-full transition-colors duration-300"
+                          [style.background]="deliveryStep() >= s ? (deliveryStep() === 3 ? '#f97316' : deliveryStep() === 4 ? '#38bdf8' : '#10b981') : 'rgba(0,0,0,0.08)'"></div>
+                      }
+                    </div>
                   </div>
+
+                  <div class="px-4">
 
                   <!-- PASO 1: Tipo de domicilio -->
                   @if (deliveryStep() === 1) {
@@ -1935,6 +1967,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </button>
                   }
 
+                  </div><!-- /px-4 -->
                 </div>
               }
 
@@ -16021,13 +16054,18 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       });
     }
 
-    // ── Fallback Nominatim con viewbox restringido a ~30km de la ciudad ──
+    // ── Fallback Nominatim — viewbox como sugerencia, NO bounded (acepta resultados fuera si no hay dentro) ──
     try {
-      const d = 0.27; // ~30 km
+      const d = 0.27; // ~30 km hint
       const viewbox = `${this._currentLng - d},${this._currentLat + d},${this._currentLng + d},${this._currentLat - d}`;
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=co&viewbox=${viewbox}&bounded=1`;
+      // bounded=0: usa viewbox como prioridad pero no descarta resultados de Colombia completo
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=co&viewbox=${viewbox}&bounded=0`;
       const data = await (await fetch(url)).json();
-      return (data ?? []).map((r: any) => ({ name: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lng) }));
+      if (data?.length > 0) return data.map((r: any) => ({ name: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lng) }));
+      // Segundo intento: sin viewbox, busca en toda Colombia
+      const url2 = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=co`;
+      const data2 = await (await fetch(url2)).json();
+      return (data2 ?? []).map((r: any) => ({ name: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lng) }));
     } catch { return []; }
   }
 
@@ -16086,7 +16124,11 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         if (results.length > 0) {
           this.selectDeliveryDest(results[0]);
         } else {
-          alert('No encontramos esa dirección. Intenta ser más específico o selecciona una sugerencia.'); return;
+          // Guardar como texto libre con coordenadas aproximadas de la ciudad
+          this.deliveryDestName.set(q);
+          this.deliveryDestLat.set(this._currentLat);
+          this.deliveryDestLng.set(this._currentLng);
+          this.deliveryDestQuery.set(q);
         }
       }
       await this.calcDeliveryPrice();
