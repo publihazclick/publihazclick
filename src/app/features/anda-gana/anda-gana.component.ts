@@ -1744,13 +1744,26 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <!-- Ofertas de conductores -->
                     @for (offer of deliveryOffers(); track offer.id) {
                       <div class="rounded-2xl overflow-hidden mb-2" style="background:#fff;border:2px solid #10b981;box-shadow:0 4px 16px rgba(16,185,129,0.15)">
-                        <div class="flex items-center justify-between px-3 py-2.5" style="background:linear-gradient(135deg,#10b981,#059669)">
+                        <!-- Header: conductor info + precio -->
+                        <div class="flex items-center justify-between px-3 py-2" style="background:linear-gradient(135deg,#10b981,#059669)">
                           <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-white" style="font-size:18px;font-variation-settings:'FILL' 1">two_wheeler</span>
-                            <span class="text-white text-xs font-black">Oferta de motociclista</span>
+                            @if (offer.driver_avatar) {
+                              <img [src]="offer.driver_avatar" class="w-7 h-7 rounded-full object-cover border border-white/40" />
+                            } @else {
+                              <div class="w-7 h-7 rounded-full flex items-center justify-center" style="background:rgba(255,255,255,0.2)">
+                                <span class="material-symbols-outlined text-white" style="font-size:16px;font-variation-settings:'FILL' 1">two_wheeler</span>
+                              </div>
+                            }
+                            <div>
+                              <p class="text-white text-xs font-black leading-tight">{{ offer.driver_name || 'Motociclista' }}</p>
+                              @if (offer.driver_level) {
+                                <p class="text-emerald-100 text-[10px] font-semibold capitalize">{{ offer.driver_level }} · {{ offer.driver_trips || 0 }} viajes</p>
+                              }
+                            </div>
                           </div>
                           <p class="text-white font-black" style="font-size:18px">{{ formatCOP(offer.offered_price) }}</p>
                         </div>
+                        <!-- Acciones -->
                         <div class="flex gap-2 px-3 py-2">
                           <button (click)="acceptDeliveryOffer(offer)"
                             [disabled]="deliveryAcceptingId() === offer.id"
@@ -16488,11 +16501,19 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this._saveRecentDeliveryDest({ name: this.deliveryDestName(), lat: this.deliveryDestLat(), lng: this.deliveryDestLng() });
     // Auto-asignar a motos cercanas (push notification)
     this._autoAssignDeliveryToMotos(result.id, this.deliveryPickupLat(), this.deliveryPickupLng(), this.deliveryEstPrice()).catch(() => {});
-    // Suscribir a ofertas de conductores
-    this._deliveryOfferChannel = this.agService.subscribeToDeliveryOffers(result.id, (offer) => {
+    // Suscribir a ofertas de conductores (INSERT y UPDATE — p.ej. contraofertas)
+    this._deliveryOfferChannel = this.agService.subscribeToDeliveryOffers(result.id, async (offer) => {
+      // Enriquecer con datos del conductor (nombre, nivel, viajes)
+      const full = await this.agService.getDeliveryOfferWithDriver(offer.id).catch(() => null);
+      const enriched = full ?? offer;
       this.deliveryOffers.update(list => {
-        const exists = list.some(o => o.id === offer.id);
-        return exists ? list : [...list, offer];
+        const idx = list.findIndex(o => o.id === enriched.id);
+        if (idx >= 0) {
+          const updated = [...list];
+          updated[idx] = enriched;
+          return updated;
+        }
+        return [...list, enriched];
       });
       this.cdr.markForCheck();
     });
@@ -16504,9 +16525,10 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const result = await this.agService.acceptDeliveryOffer(offer.id, this.currentDeliveryId()!, offer.driver_id, offer.offered_price);
     this.deliveryAcceptingId.set(null);
     if (!result.success) { alert('Error al aceptar la oferta.'); return; }
-    // Cargar datos del conductor
+    // Cargar datos del conductor + inicializar stage
     const delivery = await this.agService.getDeliveryRequest(this.currentDeliveryId()!);
     this.deliveryAccepted.set(delivery);
+    this.currentDeliveryStage.set(delivery?.driver_stage ?? 'going_to_pickup');
     this.deliverySent.set(false);
     // Suscribir al estado del domicilio
     this._deliveryStageChannel = this.agService.subscribeToDeliveryStage(this.currentDeliveryId()!, (stage, row) => {
@@ -16732,6 +16754,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     await this.agService.updateDeliveryStage(delivery.id, stage);
     this.activeDriverDelivery.update(d => ({ ...d, driver_stage: stage }));
     if (stage === 'delivered') {
+      this.agService.completeDeliveryEarnings(delivery.id).catch(() => {});
       setTimeout(() => { this.activeDriverDelivery.set(null); this.loadDeliveryRequests(); }, 1500);
     }
     this.cdr.markForCheck();

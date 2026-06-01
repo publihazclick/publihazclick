@@ -2357,10 +2357,26 @@ export class AndaGanaService {
   }
 
   subscribeToDeliveryOffers(deliveryRequestId: string, cb: (offer: any) => void): RealtimeChannel {
+    const handler = (p: any) => cb(p.new);
     return this.supabase.channel(`del-offers-${deliveryRequestId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ag_delivery_offers',
-        filter: `delivery_request_id=eq.${deliveryRequestId}` }, (p) => cb(p.new))
+        filter: `delivery_request_id=eq.${deliveryRequestId}` }, handler)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ag_delivery_offers',
+        filter: `delivery_request_id=eq.${deliveryRequestId}` }, handler)
       .subscribe();
+  }
+
+  async getDeliveryOfferWithDriver(offerId: string): Promise<any | null> {
+    const { data } = await getMoviClient()
+      .from('ag_delivery_offers_v')
+      .select('*')
+      .eq('id', offerId)
+      .maybeSingle();
+    return data;
+  }
+
+  async completeDeliveryEarnings(deliveryId: string): Promise<void> {
+    await getMoviClient().rpc('ag_complete_delivery_earnings', { p_delivery_id: deliveryId });
   }
 
   /** Conductores moto online en un radio dado (para auto-asignar domicilios) */
@@ -2387,11 +2403,10 @@ export class AndaGanaService {
   ): RealtimeChannel {
     return this.supabase
       .channel(`delivery-requests-driver-${Date.now()}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ag_delivery_requests' }, async (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ag_delivery_requests' }, (payload) => {
         const row = payload.new as any;
         if (row.status !== 'searching') return;
-        const { data } = await getMoviClient().from('ag_delivery_requests').select('*').eq('id', row.id).single();
-        onNew(data ?? row);
+        onNew(row);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ag_delivery_requests' }, (payload) => {
         onUpdate(payload.new as any);
