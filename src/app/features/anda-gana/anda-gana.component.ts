@@ -571,7 +571,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ CONFIRM DESCARTE SOLICITUD ═══════════ -->
   @if (dismissConfirmId()) {
-    <div style="position:fixed;inset:0;z-index:9900;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px)">
+    <div style="position:fixed;inset:0;z-index:9905;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px)">
       <div style="background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);border-radius:24px;border:1.5px solid rgba(239,68,68,0.4);box-shadow:0 24px 64px rgba(0,0,0,0.8);padding:28px 24px;width:100%;max-width:340px;text-align:center">
         <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#b91c1c);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 0 24px rgba(239,68,68,0.5)">
           <span class="material-symbols-outlined" style="font-size:28px;color:#fff;font-variation-settings:'FILL' 1">delete</span>
@@ -1232,7 +1232,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Tarjeta de viaje (abajo) -->
           <div class="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto"
-            style="background:linear-gradient(0deg,rgba(10,14,30,1) 0%,rgba(10,14,30,0.97) 85%,transparent 100%);padding:14px 16px calc(env(safe-area-inset-bottom,16px) + 10px)">
+            style="background:linear-gradient(0deg,rgba(10,14,30,1) 0%,rgba(10,14,30,0.97) 85%,transparent 100%);padding:14px 16px calc(env(safe-area-inset-bottom,16px) + 10px);max-height:48dvh;overflow-y:auto">
 
             <!-- Fila: conductor + costo a pagar -->
             <div class="flex items-center gap-3 mb-2">
@@ -2008,7 +2008,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- ══ Tarjetas de ofertas reales ══ -->
               @if (receivedOffers().length > 0) {
-                <div style="position:fixed;left:12px;right:12px;bottom:80px;z-index:7600;display:flex;flex-direction:column;gap:10px;max-height:70dvh;overflow-y:auto;padding-bottom:4px">
+                <div style="position:fixed;left:12px;right:12px;bottom:max(80px,calc(env(safe-area-inset-bottom,0px) + 80px));z-index:7600;display:flex;flex-direction:column;gap:10px;max-height:60dvh;overflow-y:auto;padding-bottom:8px">
                   @for (offer of receivedOffers(); track offer.id) {
                     <div class="rounded-3xl overflow-hidden"
                       style="background:#fff;border:2px solid #16a34a;box-shadow:0 12px 40px rgba(22,163,74,0.22),0 4px 16px rgba(0,0,0,0.12)">
@@ -3756,7 +3756,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <button (click)="toggleNavVoice()"
             class="absolute z-[9999] flex flex-col items-center justify-center gap-0.5 rounded-2xl active:scale-90 transition shadow-lg"
             [style.bottom]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'auto' : 'calc(env(safe-area-inset-bottom,0px) + 14px)'"
-            [style.top]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'calc(env(safe-area-inset-top,0px) + 66px)' : 'auto'"
+            [style.top]="(driverMapFullscreen() && driverFullscreenTrip()) ? 'calc(env(safe-area-inset-top,0px) + 116px)' : 'auto'"
             style="left:12px;min-width:52px;min-height:52px;padding:8px 10px;border:2.5px solid;transition:background 0.2s,border-color 0.2s"
             [style.background]="navVoiceEnabled() ? '#16a34a' : '#334155'"
             [style.border-color]="navVoiceEnabled() ? '#4ade80' : '#64748b'">
@@ -3829,8 +3829,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             </div>
 
-            <!-- ══ Barra inferior: ETA + km + voz + parar ══ -->
+            <!-- ══ Barra inferior: ETA + km + voz + parar — solo cuando NO hay trip card fullscreen encima ══ -->
             <div class="absolute bottom-0 left-0 right-0 z-30"
+              [style.display]="driverFullscreenTrip() ? 'none' : 'block'"
               style="padding:14px 12px calc(env(safe-area-inset-bottom,0px) + 14px);background:linear-gradient(0deg,rgba(5,10,30,0.98) 0%,rgba(5,10,30,0.90) 70%,transparent 100%);border-radius:0 0 16px 16px">
               <div class="flex items-center gap-2">
 
@@ -3910,7 +3911,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <!-- Tarjeta flotante inferior -->
             <div class="absolute bottom-0 left-0 right-0 z-40"
-              style="background:linear-gradient(0deg,rgba(10,12,25,1) 0%,rgba(10,12,25,0.97) 80%,transparent 100%);padding:16px 16px calc(env(safe-area-inset-bottom,16px) + 12px)">
+              style="background:linear-gradient(0deg,rgba(10,12,25,1) 0%,rgba(10,12,25,0.97) 80%,transparent 100%);padding:16px 16px calc(env(safe-area-inset-bottom,16px) + 12px);max-height:48dvh;overflow-y:auto">
 
               <!-- Fase: to_pickup → dirección recogida / on_route → destino -->
               <div class="flex items-start gap-3 mb-3">
@@ -5428,6 +5429,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -8px 40px rgba(0,0,0,0.5)">
         <div class="mx-auto w-10 h-1 rounded-full bg-white/20 mb-1"></div>
 
+        @if (passengerRatingSent()) {
+          <!-- Confirmación de envío -->
+          <div class="flex flex-col items-center gap-3 py-6 text-center">
+            <span class="material-symbols-outlined text-emerald-400" style="font-size:52px;font-variation-settings:'FILL' 1">check_circle</span>
+            <p class="text-white font-black text-xl">¡Calificación enviada!</p>
+            <p class="text-slate-400 text-sm">Gracias por tu valoración</p>
+          </div>
+        } @else {
+
         <div class="text-center">
           <p class="text-white font-black text-lg">Califica al pasajero</p>
           <p class="text-slate-400 text-xs mt-1">{{ pendingRatingTrip()?.passenger_name ?? 'Pasajero' }}</p>
@@ -5477,6 +5487,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             @if (submittingPassengerRating()) { Enviando... } @else { Enviar }
           </button>
         </div>
+        } <!-- fin @else passengerRatingSent -->
       </div>
     }
 
@@ -6917,10 +6928,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         style="background:#0f1421;border-top:1px solid rgba(255,255,255,0.1)">
 
         @if (ratingSkipped()) {
-          <!-- Confirmación de skip -->
           <div class="flex flex-col items-center gap-3 py-4 text-center">
             <span class="material-symbols-outlined text-emerald-400" style="font-size:48px">check_circle</span>
-            <p class="text-white font-black text-lg">¡Viaje finalizado!</p>
+            <p class="text-white font-black text-lg">
+              {{ ratingSubmitted() ? '¡Calificación enviada!' : '¡Viaje finalizado!' }}
+            </p>
             <p class="text-slate-500 text-sm">Gracias por usar Movi</p>
             <button (click)="closeRatingModal()"
               class="mt-2 px-8 py-3 rounded-xl text-white font-black text-sm"
@@ -7156,7 +7168,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div (click)="closePassengerChat()" class="fixed inset-0"
       style="z-index:9993;background:rgba(0,0,0,0.5)"></div>
     <div class="fixed bottom-0 left-0 right-0 rounded-t-3xl flex flex-col"
-      style="z-index:9994;background:#fff;border-top:3px solid #f97316;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:72vh;display:flex;flex-direction:column">
+      style="z-index:9994;background:#fff;border-top:3px solid #f97316;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:min(72dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 40px));display:flex;flex-direction:column">
       <!-- Header -->
       <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid #f1f5f9">
         <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:#e2e8f0"></div>
@@ -7228,7 +7240,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div (click)="closeChatModal()" class="fixed inset-0"
       style="z-index:9993;background:rgba(0,0,0,0.5)"></div>
     <div class="fixed bottom-0 left-0 right-0 rounded-t-3xl flex flex-col"
-      style="z-index:9994;background:#fff;border-top:3px solid #2563eb;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:72vh;display:flex;flex-direction:column">
+      style="z-index:9994;background:#fff;border-top:3px solid #2563eb;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:min(72dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 40px));display:flex;flex-direction:column">
       <!-- Header -->
       <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid #f1f5f9">
         <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:#e2e8f0"></div>
@@ -7422,8 +7434,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ratingModal      = signal(false);
   ratingStars      = signal(0);
   ratingCommentValue = '';
-  submittingRating = signal(false);
-  ratingSkipped    = signal(false);
+  submittingRating  = signal(false);
+  ratingSkipped     = signal(false);
+  ratingSubmitted   = signal(false);
   ratingTarget     = signal<{ userId: string; name: string; role: 'driver' | 'passenger' } | null>(null);
   ratingTripId     = signal<string | null>(null);
   // Driver active trips (accepted offers)
@@ -7608,6 +7621,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   passengerRatingTags  = signal<Set<string>>(new Set());
   passengerRatingComment = '';
   submittingPassengerRating = signal(false);
+  passengerRatingSent       = signal(false);
   pendingRatingTrip    = signal<any | null>(null);
   readonly passengerRatingTagOptions = [
     { key: 'amable',    label: 'Amable' },
@@ -9267,7 +9281,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const zoomBox = document.createElement('div');
       zoomBox.className = 'ag-zoom-ctrl';
       zoomBox.style.cssText = `
-        position:absolute;bottom:80px;right:12px;z-index:10;
+        position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);right:12px;z-index:9855;
         display:flex;flex-direction:column;gap:4px;
       `;
       const btnStyle = `
@@ -9862,7 +9876,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.ratingStars(), this.ratingCommentValue,
     );
     this.submittingRating.set(false);
-    this.ratingSkipped.set(true); // reuse "finished" screen
+    this.ratingSubmitted.set(true);
+    this.ratingSkipped.set(true);
   }
 
   skipRating() {
@@ -9872,11 +9887,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   closeRatingModal() {
     this.ratingModal.set(false);
     this.ratingSkipped.set(false);
+    this.ratingSubmitted.set(false);
     this.ratingStars.set(0);
     this.ratingCommentValue = '';
     this.ratingTarget.set(null);
     this.ratingTripId.set(null);
-    // _resetTrip ya fue llamado antes; solo asegurar estado limpio del pasajero
   }
 
   // Conductor: omitir calificación del pasajero y volver al home
@@ -10287,10 +10302,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!profile) return;
     const already = await this.agService.hasRatedTrip(tripId, profile.id);
     if (already) return;
+
+    // passenger_user_id puede venir null si el RPC no lo incluye — buscarlo directamente
+    let passengerId = trip.ag_trip_requests?.passenger_user_id
+      ?? trip.passenger_user_id
+      ?? trip.ag_trip_requests?.ag_users?.id;
+
+    if (!passengerId) {
+      const details = await this.agService.getTripDetails(tripId);
+      passengerId = details?.passenger_user_id;
+    }
+
+    if (!passengerId) return;
+
     this.pendingRatingTrip.set({
       trip_request_id: tripId,
-      passenger_user_id: trip.ag_trip_requests?.passenger_user_id ?? trip.passenger_user_id,
-      passenger_name: trip.ag_trip_requests?.ag_users?.full_name ?? trip.ag_users?.full_name ?? 'Pasajero',
+      passenger_user_id: passengerId,
+      passenger_name: trip.ag_trip_requests?.ag_users?.full_name
+        ?? trip.ag_users?.full_name ?? 'Pasajero',
     });
     this.passengerRatingStars.set(0);
     this.passengerRatingTags.set(new Set());
@@ -10321,9 +10350,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     );
     this.submittingPassengerRating.set(false);
     if (res.success) {
-      this.passengerRatingModal.set(false);
-      this.pendingRatingTrip.set(null);
-      this._resetDriverTripState();
+      this.passengerRatingSent.set(true);
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.passengerRatingModal.set(false);
+        this.passengerRatingSent.set(false);
+        this.pendingRatingTrip.set(null);
+        this._resetDriverTripState();
+        this.cdr.markForCheck();
+      }, 1800);
     } else {
       alert('Error enviando calificación: ' + (res.error ?? 'desconocido'));
     }
