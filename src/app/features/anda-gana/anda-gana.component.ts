@@ -1182,6 +1182,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
+        <!-- Botón centrar pasajero: aparece cuando movió el mapa manualmente -->
+        @if (passengerMapPanned() && !driverOnline()) {
+          <button (click)="recenterPassengerMap()"
+            class="absolute z-30 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
+            style="bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;background:rgba(10,15,35,0.92);border:2px solid #f97316;box-shadow:0 4px 16px rgba(249,115,22,0.4)">
+            <span class="material-symbols-outlined text-orange-400" style="font-size:22px;font-variation-settings:'FILL' 1">my_location</span>
+            <span class="text-orange-300 font-black" style="font-size:8px;letter-spacing:0.04em">CENTRAR</span>
+          </button>
+        }
+
         <!-- ══ PASAJERO FULLSCREEN: banners flotantes cuando el viaje está en curso ══ -->
         @if (passengerMapFullscreen() && tripAccepted()) {
           <!-- Banner de etapa (arriba) -->
@@ -7475,6 +7485,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverMapFullscreen    = signal(false);
   passengerMapFullscreen = signal(false);
   driverMapPanned        = signal(false);   // true cuando el conductor movió el mapa manualmente
+  passengerMapPanned     = signal(false);   // true cuando el pasajero movió el mapa manualmente
+  private _passengerRecenterTimer: any = null;
   // Trip activo referencia para el conductor en fullscreen
   driverFullscreenTrip   = signal<any | null>(null);
 
@@ -9208,9 +9220,30 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Deshabilitar rotación táctil
     this._map.touchZoomRotate?.disableRotation?.();
 
-    // Detectar pan manual del conductor → desactiva auto-follow hasta que pulse Centrar
+    // Detectar pan manual → desactiva auto-follow hasta que pulse Centrar
     this._map.on('dragstart', () => {
-      if (this.driverOnline()) this.driverMapPanned.set(true);
+      if (this.driverOnline()) {
+        this.driverMapPanned.set(true);
+      } else {
+        clearTimeout(this._passengerRecenterTimer);
+        this.passengerMapPanned.set(true);
+      }
+    });
+    this._map.on('dragend', () => {
+      if (this.driverOnline()) return;
+      // Etapa 3 (esperando conductor): recentrar suave en 3s
+      // Etapa 4 (conductor asignado, heading_to_pickup): recentrar en 5s
+      const stage = this.currentTripStage();
+      const hasDriver = !!this.tripAccepted();
+      const delayMs = (!hasDriver && this.tripSent()) ? 3000
+                    : (hasDriver && (!stage || stage === 'heading_to_pickup')) ? 5000
+                    : 0;
+      if (delayMs > 0) {
+        this._passengerRecenterTimer = setTimeout(() => {
+          this.passengerMapPanned.set(false);
+          this._passengerRecenterMap();
+        }, delayMs);
+      }
     });
 
     // Saturación reducida al 40% (−60%) para no competir con UI
@@ -10648,6 +10681,37 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.navActive.set(false);
       console.warn('nav error', e);
     }
+  }
+
+  recenterPassengerMap(): void {
+    clearTimeout(this._passengerRecenterTimer);
+    this.passengerMapPanned.set(false);
+    this._passengerRecenterMap();
+  }
+
+  private _passengerRecenterMap(): void {
+    if (!this._map) return;
+    const mapboxgl = (window as any).mapboxgl;
+    const stage = this.currentTripStage();
+    const driverLoc = this.driverLiveLocation();
+
+    // Etapa 4: ajustar viewport para mostrar conductor + pasajero
+    if (driverLoc && (!stage || stage === 'heading_to_pickup' || stage === 'arrived_at_pickup')) {
+      if (mapboxgl) {
+        const bounds = new mapboxgl.LngLatBounds()
+          .extend([driverLoc.lng, driverLoc.lat])
+          .extend([this._currentLng, this._currentLat]);
+        this._map.fitBounds(bounds, { padding: { top: 80, bottom: 240, left: 50, right: 50 }, duration: 700 });
+      }
+      return;
+    }
+    // Etapa 6: seguir al conductor
+    if (driverLoc && (stage === 'picked_up' || stage === 'on_route')) {
+      this._map.easeTo({ center: [driverLoc.lng, driverLoc.lat], bearing: driverLoc.heading ?? 0, pitch: 35, zoom: 17, duration: 600 });
+      return;
+    }
+    // Etapa 1/3: centrar en el pasajero
+    this._map.easeTo({ center: [this._currentLng, this._currentLat], bearing: 0, pitch: 0, zoom: 15, duration: 600 });
   }
 
   recenterDriverMap(): void {
@@ -12113,14 +12177,35 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!this._map) return;
     const mapboxgl = (window as any).mapboxgl;
     if (!mapboxgl) return;
+
+    // Actualizar rotación del marcador en tiempo real
     if (this._assignedDriverMarker) {
       this._assignedDriverMarker.setLngLat([lng, lat]);
+      const el = this._assignedDriverMarker.getElement();
+      const rotEl = el?.querySelector('[style*="rotate"]') as HTMLElement | null;
+      if (rotEl) rotEl.style.transform = `rotate(${heading}deg)`;
     } else {
       const el = this._carElement(heading, '#10b981');
       el.style.filter = 'drop-shadow(0 0 12px rgba(16,185,129,0.8))';
       this._assignedDriverMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat]).addTo(this._map);
-      this._map.flyTo({ center: [lng, lat], zoom: 15.5, duration: 1000 });
+    }
+
+    const stage = this.currentTripStage();
+    if (this.passengerMapPanned()) return; // usuario está explorando el mapa — no mover cámara
+
+    // Etapa 4: mantener ambos (conductor + pasajero) en viewport
+    if (!stage || stage === 'heading_to_pickup') {
+      const bounds = new mapboxgl.LngLatBounds()
+        .extend([lng, lat])
+        .extend([this._currentLng, this._currentLat]);
+      this._map.fitBounds(bounds, { padding: { top: 80, bottom: 240, left: 50, right: 50 }, duration: 500, maxZoom: 16 });
+      return;
+    }
+
+    // Etapa 6: pasajero a bordo → seguir al conductor con rotación
+    if (stage === 'picked_up' || stage === 'on_route') {
+      this._map.easeTo({ center: [lng, lat], bearing: heading, pitch: 35, zoom: 17, duration: 400 });
     }
   }
 
@@ -14138,11 +14223,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.currentTripStage.set(stage);
       this.cdr.markForCheck();
 
-      // Conductor llegó al punto de recogida: mostrar banner + countdown 5 min
+      // Conductor llegó al punto de recogida: mostrar banner + countdown 5 min + zoom calle
       if (stage === 'arrived_at_pickup') {
         this.arrivedAtPickupTimer.set(240);
         this._startArrivalTimer();
         this.acceptedDriverEta.set(0);
+        this.passengerMapPanned.set(false);
+        setTimeout(() => {
+          this._map?.easeTo({ center: [this._currentLng, this._currentLat], zoom: 17.5, bearing: 0, pitch: 0, duration: 900 });
+        }, 300);
       }
 
       // Pasajero recogido: limpiar ruta de aproximación + timer + activar mapa fullscreen
@@ -14159,10 +14248,17 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         setTimeout(() => this._map?.resize(), 200);
       }
 
-      // Cuando el conductor llega al destino: mostrar banner "llegaste"
+      // Cuando el conductor llega al destino: mostrar banner "llegaste" + centrar en destino
       if (stage === 'arrived_at_destination') {
         this.passengerMapFullscreen.set(true);
-        setTimeout(() => this._map?.resize(), 200);
+        this.passengerMapPanned.set(false);
+        setTimeout(() => {
+          this._map?.resize();
+          const dest = this.tripDest();
+          if (dest && this._map) {
+            this._map.flyTo({ center: [dest.lng, dest.lat], zoom: 16, bearing: 0, pitch: 0, duration: 1200 });
+          }
+        }, 300);
       }
 
       // Cuando el conductor finaliza el viaje: auto-completar desde el lado del pasajero
