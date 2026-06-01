@@ -5401,15 +5401,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span class="text-white text-sm font-bold">Total al pasajero</span>
                 <span class="text-white text-sm font-black">{{ '$' + (d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO') }}</span>
               </div>
-              <div class="flex items-center justify-between">
-                <span class="text-red-400 text-xs">Comisión plataforma ({{ d.commission_pct ?? 0 }}%)</span>
-                <span class="text-red-400 text-xs font-bold">{{ '-$' + (d.commission_amount ?? 0).toLocaleString('es-CO') }}</span>
-              </div>
-              <div class="border-t border-white/10 my-1"></div>
               <div class="flex items-center justify-between rounded-xl p-3"
                 style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05))">
-                <span class="text-emerald-300 text-sm font-bold">Tu ganancia neta</span>
-                <span class="text-emerald-300 text-lg font-black">{{ '$' + (d.driver_net ?? 0).toLocaleString('es-CO') }}</span>
+                <span class="text-emerald-300 text-sm font-bold">Total al pasajero</span>
+                <span class="text-emerald-300 text-lg font-black">{{ '$' + (d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO') }}</span>
               </div>
             </div>
 
@@ -7041,19 +7036,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
 
-          <!-- Desglose financiero (solo para conductor) -->
-          @if (tripReceiptData()!._role === 'driver' || tripReceiptData()!.commission_pct) {
+          <!-- Desglose financiero (solo conductor) -->
+          @if (tripReceiptData()!._role === 'driver') {
             <div class="rounded-2xl overflow-hidden" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
               <div class="flex items-center justify-between px-4 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
                 <p class="text-slate-400 text-xs">Precio total</p>
                 <p class="text-white font-bold text-xs">{{ formatCOP(tripReceiptData()!.final_price ?? 0) }}</p>
               </div>
-              @if (tripReceiptData()!.commission_amount > 0) {
-                <div class="flex items-center justify-between px-4 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.06)">
-                  <p class="text-slate-400 text-xs">Comisión Movi ({{ tripReceiptData()!.commission_pct }}%)</p>
-                  <p class="text-rose-400 font-bold text-xs">-{{ formatCOP(tripReceiptData()!.commission_amount) }}</p>
-                </div>
-              }
               <div class="flex items-center justify-between px-4 py-2.5">
                 <p class="text-emerald-400 text-xs font-bold">Lo que recibes</p>
                 <p class="text-emerald-400 font-black text-sm">{{ formatCOP(tripReceiptData()!.driver_net ?? tripReceiptData()!.final_price ?? 0) }}</p>
@@ -8007,6 +7996,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   private _map:             any    = null;
   private _userMarker:      any    = null;
+  private _userMarkerEl:    HTMLElement | null = null;
+  private _userMarkerDot:   HTMLElement | null = null;
+
+  // Reacciona en tiempo real a tripSent/tripAccepted para activar el pulso de búsqueda
+  private readonly _searchPulseEffect = effect(() => {
+    const searching = this.tripSent() && !this.tripAccepted();
+    untracked(() => this._setUserMarkerSearching(searching));
+  });
   private _vehicleMarkers:  any[]  = [];
   private _markerLastSeen = new Map<string, number>();
   private _staleMarkerTimer: ReturnType<typeof setInterval> | null = null;
@@ -9373,11 +9370,25 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             0%   { box-shadow:0 0 0 0px rgba(123,47,255,0.45),0 4px 12px rgba(123,47,255,0.4); }
             100% { box-shadow:0 0 0 22px rgba(123,47,255,0),0 4px 12px rgba(123,47,255,0.1); }
           }
+          @keyframes ag-pulse-search {
+            0%   { box-shadow:0 0 0 0px rgba(249,115,22,0.75),0 4px 16px rgba(249,115,22,0.6); }
+            100% { box-shadow:0 0 0 34px rgba(249,115,22,0),0 4px 16px rgba(249,115,22,0.05); }
+          }
+          @keyframes ag-dot-search {
+            0%,100% { transform:scale(1); }
+            50%      { transform:scale(1.4); }
+          }
           .mapboxgl-ctrl-logo { display:none !important; }
           .mapboxgl-ctrl-attrib { display:none !important; }
         `;
         document.head.appendChild(s);
       }
+
+      // Guardar referencias para animar en tiempo real (Etapa 3)
+      this._userMarkerEl  = el;
+      this._userMarkerDot = dot;
+      // Aplicar estado actual al instante (el effect no re-dispara si los signals no cambiaron)
+      this._setUserMarkerSearching(this.tripSent() && !this.tripAccepted());
 
       this._userMarker = new mapboxgl.Marker({ element: el, anchor: 'center', draggable: true })
         .setLngLat([lng, lat])
@@ -9723,7 +9734,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this._clearRoute();
     this._vehicleMarkers.forEach(m => { try { m.remove(); } catch { /**/ } });
     this._vehicleMarkers = [];
-    this._userMarker = null;
+    this._userMarker    = null;
+    this._userMarkerEl  = null;
+    this._userMarkerDot = null;
     if (this._map) {
       try { this._map.remove(); } catch { /* ignore */ }
       this._map = null;
@@ -10137,9 +10150,7 @@ h1{color:#00E5FF;border-bottom:2px solid #00E5FF;padding-bottom:10px}
 <div class="row"><span>Tarifa base</span><span>$${(d.base_fare ?? 0).toLocaleString('es-CO')}</span></div>
 <div class="row"><span>Distancia</span><span>$${(d.distance_fare ?? 0).toLocaleString('es-CO')}</span></div>
 ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multiplier}</span><span>+$${(d.surge_amount ?? 0).toLocaleString('es-CO')}</span></div>` : ''}
-<div class="row"><span>Total cobrado al pasajero</span><span>$${(d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO')}</span></div>
-<div class="row"><span>Comisión plataforma (${d.commission_pct ?? 0}%)</span><span>-$${(d.commission_amount ?? 0).toLocaleString('es-CO')}</span></div>
-<div class="row total"><span>Ganancia neta conductor</span><span>$${(d.driver_net ?? 0).toLocaleString('es-CO')}</span></div>
+<div class="row total"><span>Total del viaje</span><span>$${(d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO')}</span></div>
 <p style="margin-top:30px;font-size:12px;color:#666">Este recibo fue generado automáticamente por Movi (Publihazclick). Para facturación electrónica, contacta soporte.</p>
 </body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
@@ -10692,6 +10703,28 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.navInstruction.set('Error al calcular ruta');
       this.navActive.set(false);
       console.warn('nav error', e);
+    }
+  }
+
+  private _setUserMarkerSearching(searching: boolean): void {
+    const el  = this._userMarkerEl;
+    const dot = this._userMarkerDot;
+    if (!el || !dot) return;
+
+    if (searching) {
+      // Etapa 3: naranja intenso, pulso grande y rápido (1.1s), dot rebota
+      el.style.background  = 'radial-gradient(circle,#f97316 0%,rgba(249,115,22,0.3) 60%,transparent 70%)';
+      el.style.borderColor = '#f97316';
+      el.style.animation   = 'ag-pulse-search 1.1s ease-out infinite';
+      dot.style.background = '#f97316';
+      dot.style.animation  = 'ag-dot-search 1.1s ease-in-out infinite';
+    } else {
+      // Normal: púrpura suave, pulso lento (1.8s)
+      el.style.background  = 'radial-gradient(circle,#7B2FFF 0%,rgba(123,47,255,0.3) 60%,transparent 70%)';
+      el.style.borderColor = '#7B2FFF';
+      el.style.animation   = 'ag-pulse 1.8s ease-out infinite';
+      dot.style.background = '#7B2FFF';
+      dot.style.animation  = 'none';
     }
   }
 
