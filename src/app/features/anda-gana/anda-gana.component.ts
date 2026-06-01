@@ -1380,7 +1380,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
             [style.display]="(tripSent() && !tripAccepted()) || passengerMapFullscreen() || arrivedAtPickupTimer() !== null ? 'none' : ''"
-            [style.maxHeight]="(tripSent() || tripAccepted()) ? 'min(62%,480px)' : 'min(70dvh,520px)'"
+            [style.maxHeight]="(tripSent() || tripAccepted()) ? 'min(62%,480px)' : ''"
             [style.overflowY]="'auto'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
 
