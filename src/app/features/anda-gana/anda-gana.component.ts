@@ -1182,13 +1182,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
-        <!-- Botón centrar pasajero: aparece cuando movió el mapa manualmente -->
-        @if (passengerMapPanned() && !driverOnline()) {
+        <!-- Botón centrar pasajero: siempre visible en idle/espera; resalta cuando movió el mapa -->
+        @if (!driverOnline() && gpsStatus() !== 'requesting') {
           <button (click)="recenterPassengerMap()"
             class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
-            style="z-index:9860;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;background:rgba(10,15,35,0.92);border:2px solid #f97316;box-shadow:0 4px 16px rgba(249,115,22,0.4)">
-            <span class="material-symbols-outlined text-orange-400" style="font-size:22px;font-variation-settings:'FILL' 1">my_location</span>
-            <span class="text-orange-300 font-black" style="font-size:8px;letter-spacing:0.04em">CENTRAR</span>
+            style="z-index:9860;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
+            [style.background]="passengerMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
+            [style.border]="passengerMapPanned() ? '2px solid #f97316' : '2px solid rgba(255,255,255,0.15)'"
+            [style.box-shadow]="passengerMapPanned() ? '0 4px 16px rgba(249,115,22,0.5)' : '0 2px 8px rgba(0,0,0,0.4)'">
+            <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1"
+              [style.color]="passengerMapPanned() ? '#fb923c' : '#94a3b8'">my_location</span>
+            <span class="font-black" style="font-size:8px;letter-spacing:0.04em"
+              [style.color]="passengerMapPanned() ? '#fdba74' : '#64748b'">CENTRAR</span>
           </button>
         }
 
@@ -3879,13 +3884,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </button>
           }
 
-          <!-- Botón centrar: aparece cuando el conductor mueve el mapa manualmente -->
-          @if (driverOnline() && driverMapPanned()) {
+          <!-- Botón centrar conductor: siempre visible; resalta cuando movió el mapa -->
+          @if (driverOnline()) {
             <button (click)="recenterDriverMap()"
-              class="absolute z-30 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
-              style="bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:12px;width:52px;height:52px;border-radius:14px;background:rgba(10,15,35,0.92);border:2px solid #3b82f6;box-shadow:0 4px 16px rgba(59,130,246,0.45)">
-              <span class="material-symbols-outlined text-blue-400" style="font-size:22px;font-variation-settings:'FILL' 1">my_location</span>
-              <span class="text-blue-300 font-black" style="font-size:8px;letter-spacing:0.04em">CENTRAR</span>
+              class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
+              style="z-index:9860;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s"
+              [style.background]="driverMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
+              [style.border]="driverMapPanned() ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.15)'"
+              [style.box-shadow]="driverMapPanned() ? '0 4px 16px rgba(59,130,246,0.5)' : '0 2px 8px rgba(0,0,0,0.4)'">
+              <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1"
+                [style.color]="driverMapPanned() ? '#60a5fa' : '#94a3b8'">my_location</span>
+              <span class="font-black" style="font-size:8px;letter-spacing:0.04em"
+                [style.color]="driverMapPanned() ? '#93c5fd' : '#64748b'">CENTRAR</span>
             </button>
           }
 
