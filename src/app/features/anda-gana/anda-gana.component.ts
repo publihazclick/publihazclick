@@ -3169,17 +3169,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <button (click)="testVoz()"
             class="flex flex-col items-center justify-center gap-0.5 rounded-xl active:scale-90 transition"
             style="min-width:52px;min-height:48px;padding:6px 10px;border:2px solid"
-            [style.background]="ttsStatus()==='playing' ? '#dcfce7' : ttsStatus()==='error' ? '#fee2e2' : '#f0fdf4'"
-            [style.border-color]="ttsStatus()==='playing' ? '#16a34a' : ttsStatus()==='error' ? '#dc2626' : '#86efac'">
+            [style.background]="ttsStatus()==='playing' ? '#dcfce7' : ttsStatus()==='playing' ? '#dcfce7' : '#f0fdf4'"
+            [style.border-color]="ttsStatus()==='playing' ? '#16a34a' : '#86efac'">
             <span class="material-symbols-outlined"
               [class.animate-pulse]="ttsStatus()==='playing'"
-              [style.color]="ttsStatus()==='playing' ? '#16a34a' : ttsStatus()==='error' ? '#dc2626' : '#4ade80'"
+              [style.color]="ttsStatus()==='playing' ? '#16a34a' : ttsStatus()==='playing' ? '#16a34a' : '#4ade80'"
               style="font-size:20px">
-              {{ ttsStatus()==='playing' ? 'graphic_eq' : ttsStatus()==='error' ? 'volume_off' : 'volume_up' }}
+              {{ ttsStatus()==='playing' ? 'graphic_eq' : 'volume_up' }}
             </span>
             <span style="font-size:9px;font-weight:800;letter-spacing:0.04em"
-              [style.color]="ttsStatus()==='error' ? '#dc2626' : '#16a34a'">
-              {{ ttsStatus()==='error' ? 'ERROR' : 'VOZ' }}
+              [style.color]="'#16a34a'">
+              VOZ
             </span>
           </button>
           <button (click)="driverMenuOpen.set(true)"
@@ -3538,8 +3538,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <div class="flex gap-2">
                     <button (click)="openDriverChat(trip)"
                       class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98]"
-                      style="background:linear-gradient(135deg,#2563eb,#3b82f6)">
+                      style="background:linear-gradient(135deg,#2563eb,#3b82f6);position:relative">
                       <span class="material-symbols-outlined" style="font-size:15px">chat</span>Chat
+                      @if (chatUnread() > 0) {
+                        <span style="position:absolute;top:3px;right:5px;min-width:15px;height:15px;background:#ef4444;border-radius:50%;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px">{{ chatUnread() }}</span>
+                      }
                     </button>
                     <button (click)="callPassengerFromTrip(trip)"
                       class="flex-1 py-2.5 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1 active:scale-[0.98]"
@@ -3749,6 +3752,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
 
         <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
+
+          <!-- BOTÓN VOZ — siempre en el mapa, esquina inferior izquierda, z-[9999] -->
+          <button (click)="testVoz()"
+            class="absolute z-[9999] flex flex-col items-center justify-center gap-0.5 rounded-2xl active:scale-90 transition shadow-lg"
+            style="bottom:calc(env(safe-area-inset-bottom,0px) + 80px);left:12px;min-width:52px;min-height:52px;padding:8px 10px;border:2.5px solid;background:#16a34a;border-color:#4ade80">
+            <span class="material-symbols-outlined text-white"
+              [class.animate-pulse]="ttsStatus()==='playing'"
+              style="font-size:22px">
+              {{ ttsStatus()==='playing' ? 'graphic_eq' : 'volume_up' }}
+            </span>
+            <span class="text-white font-black" style="font-size:9px;letter-spacing:0.05em">VOZ</span>
+          </button>
+
           <div id="ag-map-user"
             [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? 'clamp(340px,52dvh,460px)' : 'clamp(260px,42dvh,340px)'"
             [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
@@ -3829,21 +3845,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                 <div class="flex-1"></div>
 
-                <!-- BOTÓN PRUEBA DE VOZ — toca aquí para escuchar -->
+                <!-- Botón VOZ en barra inferior (respaldo del que está en el mapa) -->
                 <button (click)="testVoz()"
                   class="flex flex-col items-center justify-center rounded-xl active:scale-90 transition flex-shrink-0 gap-0.5"
-                  style="min-width:52px;min-height:44px;padding:6px 8px;border:2px solid"
-                  [style.background]="ttsStatus()==='playing' ? 'rgba(16,185,129,0.35)' : ttsStatus()==='error' ? 'rgba(239,68,68,0.25)' : 'rgba(37,99,235,0.25)'"
-                  [style.border-color]="ttsStatus()==='playing' ? '#34d399' : ttsStatus()==='error' ? '#f87171' : 'rgba(37,99,235,0.6)'">
-                  <span class="material-symbols-outlined" style="font-size:20px"
-                    [style.color]="ttsStatus()==='playing' ? '#34d399' : ttsStatus()==='error' ? '#f87171' : '#60a5fa'"
+                  style="min-width:52px;min-height:44px;padding:6px 8px;border:2px solid;background:rgba(16,185,129,0.25);border-color:#34d399">
+                  <span class="material-symbols-outlined text-emerald-400" style="font-size:20px"
                     [class.animate-pulse]="ttsStatus()==='playing'">
-                    {{ ttsStatus()==='playing' ? 'graphic_eq' : ttsStatus()==='error' ? 'volume_off' : 'volume_up' }}
+                    {{ ttsStatus()==='playing' ? 'graphic_eq' : 'volume_up' }}
                   </span>
-                  <span style="font-size:9px;font-weight:800;letter-spacing:0.04em"
-                    [style.color]="ttsStatus()==='error' ? '#f87171' : '#93c5fd'">
-                    {{ ttsStatus()==='error' ? 'ERROR' : 'VOZ' }}
-                  </span>
+                  <span class="text-emerald-300" style="font-size:9px;font-weight:800">VOZ</span>
                 </button>
 
                 <!-- Botón parar nav -->
@@ -3917,8 +3927,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="flex gap-2">
                 <button (click)="openDriverChat(driverFullscreenTrip())"
                   class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                  style="background:rgba(37,99,235,0.85);border:1px solid rgba(59,130,246,0.4)">
+                  style="background:rgba(37,99,235,0.85);border:1px solid rgba(59,130,246,0.4);position:relative">
                   <span class="material-symbols-outlined" style="font-size:16px">chat</span>Chat
+                  @if (chatUnread() > 0) {
+                    <span style="position:absolute;top:3px;right:5px;min-width:15px;height:15px;background:#ef4444;border-radius:50%;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px">{{ chatUnread() }}</span>
+                  }
                 </button>
                 <button (click)="callPassengerFromTrip(driverFullscreenTrip())"
                   class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
@@ -8133,6 +8146,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id).catch(() => []);
     if (activeTrips.length > 0) {
       this.driverActiveTrips.set(activeTrips);
+      // Suscribir chat de fondo para el viaje activo más reciente
+      const firstTrip = (activeTrips as any[])[0];
+      const chatTripId = firstTrip?.trip_request_id ?? firstTrip?.ag_trip_requests?.id;
+      if (chatTripId) this.startDriverChatBackground(chatTripId);
       // Viaje aceptado recientemente (últimos 5 min) sin acción → mostrar modal
       const fiveMinAgo = Date.now() - 5 * 60 * 1000;
       const pendingTrip = (activeTrips as any[]).find((t: any) =>
@@ -8246,6 +8263,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Quitar la solicitud del listado en vivo
     const reqId = offer.trip_request_id ?? offer.ag_trip_requests?.id;
     if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
+    // Iniciar suscripción de fondo al chat para recibir mensajes del pasajero
+    if (reqId) this.startDriverChatBackground(reqId);
     this.cdr.markForCheck();
   }
 
@@ -10316,6 +10335,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // Botón "Iniciar recogida" desde la alerta inDrive full-screen
   async acceptTripAndGo(alert: any): Promise<void> {
+    this._ensureAudioCtx(); // desbloquear audio dentro del gesto del usuario
     this.driverTripAlert.set(null);
     await this.advanceStage(alert, 'heading_to_pickup');
     const req = alert.ag_trip_requests ?? alert;
@@ -10366,63 +10386,52 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // ── Navegación en app ────────────────────────────────────────
 
   // Cache de audio: text → blob URL (evita re-fetching la misma frase)
-  ttsStatus = signal<'idle'|'playing'|'error'>('idle');
-  ttsLastText = signal('');
+  ttsStatus  = signal<'idle'|'playing'>('idle');
+  private _audioCtx: any = null;
 
-  warmUpTts(): void { /* no-op */ }
+  warmUpTts(): void { this._ensureAudioCtx(); }
+
+  // Crea/reanuda el AudioContext — DEBE llamarse desde un gesto del usuario
+  private _ensureAudioCtx(): any {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return null;
+    if (!this._audioCtx) this._audioCtx = new AC();
+    if (this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(() => {});
+    return this._audioCtx;
+  }
 
   private _speak(text: string): void {
     if (!this.navVoiceEnabled() || !isPlatformBrowser(this.platformId) || !text) return;
-    this.ttsLastText.set(text);
+    this._speakWithAudioCtx(text);
+  }
+
+  // Descarga audio de StreamElements TTS y lo decodifica con AudioContext
+  // AudioContext ya está desbloqueado desde el tap del usuario → funciona en contexto async
+  private async _speakWithAudioCtx(text: string): Promise<void> {
+    const ctx = this._audioCtx;
+    if (!ctx) return;
+
     this.ttsStatus.set('playing');
-    this._playTts(text);
-  }
-
-  private _getAudioEl(): HTMLAudioElement | null {
-    // Reutiliza un elemento <audio> persistente del DOM — más confiable que new Audio() en Android
-    let el = document.getElementById('movi-nav-audio') as HTMLAudioElement | null;
-    if (!el && typeof document !== 'undefined') {
-      el = document.createElement('audio');
-      el.id = 'movi-nav-audio';
-      el.setAttribute('playsinline', '');
-      el.setAttribute('webkit-playsinline', '');
-      el.volume = 1;
-      document.body.appendChild(el);
-    }
-    return el;
-  }
-
-  private async _playTts(text: string): Promise<void> {
-    const el = this._getAudioEl();
-    if (!el) {
-      this.ttsStatus.set('error');
-      this.cdr.markForCheck();
-      return;
-    }
-
-    try { el.pause(); } catch {}
-
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=es&client=tw-ob`;
-    el.src = url;
-    el.load();
-
-    el.onended = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
-    el.onerror = (e) => {
-      console.error('[TTS audio error]', e);
-      this.ttsStatus.set('error');
-      this.cdr.markForCheck();
-    };
+    this.cdr.markForCheck();
 
     try {
-      await el.play();
-      this.ttsStatus.set('playing');
+      // StreamElements TTS — gratis, sin API key, CORS habilitado, voz en español
+      const url = `https://api.streamelements.com/kappa/v2/speech?voice=es-ES-AlvaroNeural&text=${encodeURIComponent(text)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const buf     = await res.arrayBuffer();
+      const decoded = await ctx.decodeAudioData(buf);
+      const src     = ctx.createBufferSource();
+      src.buffer    = decoded;
+      src.connect(ctx.destination);
+      src.start(0);
+      src.onended = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
+    } catch (e) {
+      console.error('[TTS]', e);
+      this.ttsStatus.set('idle');
       this.cdr.markForCheck();
-    } catch (e: any) {
-      console.error('[TTS play]', e?.name, e?.message);
-      this.ttsStatus.set('error');
-      this.cdr.markForCheck();
-
-      // Fallback: Web Speech Synthesis
+      // Fallback silencioso — speechSynthesis como último recurso
       try {
         window.speechSynthesis?.cancel();
         const utt = new SpeechSynthesisUtterance(text);
@@ -10434,46 +10443,40 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _prefetchTts(_texts: string[]): void { /* no-op */ }
 
-  async testVoz(): Promise<void> {
+  // Botón VOZ — desbloquea AudioContext Y habla una frase de prueba
+  testVoz(): void {
+    const ctx = this._ensureAudioCtx(); // unlock audio en user gesture
     this.navVoiceEnabled.set(true);
+    if (!ctx) return;
+
     this.ttsStatus.set('playing');
     this.cdr.markForCheck();
 
-    // Test 1: Web Audio API — genera un BEEP sin internet ni APIs
-    // Si escuchas el beep, el audio funciona y el problema es solo la fuente TTS
+    // Beep inmediato para confirmar que el audio está activo
     try {
-      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.value = 880;
-        gain.gain.setValueAtTime(0.5, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.8);
-        // Si llegamos aquí sin error = audio funciona
-        setTimeout(() => {
-          this.ttsStatus.set('idle');
-          this.cdr.markForCheck();
-        }, 900);
-        return;
-      }
-    } catch (e) { console.error('[BEEP]', e); }
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 660;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {}
 
-    // Test 2: audio element con Google Translate
-    const texto = 'En doscientos metros gira a la derecha.';
-    this.ttsLastText.set(texto);
-    await this._playTts(texto);
+    // Habla la instrucción completa usando StreamElements TTS
+    this._speakWithAudioCtx('Guía de voz activada. En doscientos metros gira a la derecha.');
   }
 
   toggleNavVoice(): void {
     const next = !this.navVoiceEnabled();
     this.navVoiceEnabled.set(next);
-    if (next) this._speak('Guía de voz activada');
+    if (next) {
+      this._ensureAudioCtx();
+      this._speak('Guía de voz activada');
+    }
   }
 
   private _maneuverIconFromStep(step: any): string {
@@ -10501,6 +10504,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   async startInAppNav(trip: any, toPickup: boolean): Promise<void> {
+    this._ensureAudioCtx(); // desbloquear audio en gesto del usuario
     const req = trip.ag_trip_requests ?? trip;
     const destLat = toPickup ? req.origin_lat : req.dest_lat;
     const destLng = toPickup ? req.origin_lng : req.dest_lng;
@@ -11041,14 +11045,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
   }
 
-  private _audioCtx: AudioContext | null = null;
-  private _getAudioCtx(): AudioContext | null {
-    try {
-      if (!this._audioCtx || this._audioCtx.state === 'closed') {
-        this._audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      return this._audioCtx;
-    } catch { return null; }
+  private _getAudioCtx(): any {
+    return this._ensureAudioCtx();
   }
 
   private _notifyNewTrip(req: any): void {
@@ -12892,7 +12890,20 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   closeChatModal(): void {
     this.showChatModal.set(false);
+    const tripId = this.chatRequestId();
+    if (!tripId) { this._unsubscribeChat(); return; }
+    // Mantener suscripción en fondo para badge de no leídos
     this._unsubscribeChat();
+    this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
+      if (!this.showChatModal()) {
+        this.chatUnread.update(n => n + 1);
+        this.cdr.markForCheck();
+      } else {
+        this.chatMessages.update(list => [...list, msg]);
+        this.cdr.markForCheck();
+        this._scrollChatToBottom('driver-chat-messages');
+      }
+    });
   }
 
   async sendChatMsg(): Promise<void> {
@@ -12921,6 +12932,23 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._chatChannel.unsubscribe();
       this._chatChannel = null;
     }
+  }
+
+  startDriverChatBackground(tripRequestId: string): void {
+    if (!tripRequestId) return;
+    if (this.chatRequestId() === tripRequestId && this._chatChannel) return;
+    this._unsubscribeChat();
+    this.chatRequestId.set(tripRequestId);
+    this._chatChannel = this.agService.subscribeToChatMessages(tripRequestId, (msg: any) => {
+      if (!this.showChatModal() || this.chatRequestId() !== tripRequestId) {
+        this.chatUnread.update(n => n + 1);
+        this.cdr.markForCheck();
+      } else {
+        this.chatMessages.update(list => [...list, msg]);
+        this.cdr.markForCheck();
+        this._scrollChatToBottom('driver-chat-messages');
+      }
+    });
   }
 
   // ── Cámara de documento ──
@@ -13946,7 +13974,20 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   closePassengerChat() {
     this.chatOpen.set(false);
+    const tripId = this.chatRequestId();
+    if (!tripId) { this._unsubscribeChat(); return; }
+    // Mantener suscripción en fondo para seguir contando mensajes no leídos
     this._unsubscribeChat();
+    this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
+      if (!this.chatOpen()) {
+        this.chatUnread.update(n => n + 1);
+        this.cdr.markForCheck();
+      } else {
+        this.chatMessages.update(list => [...list, msg]);
+        this.cdr.markForCheck();
+        this._scrollChatToBottom('passenger-chat-messages');
+      }
+    });
   }
 
   async sendPassengerChat() {
@@ -14847,6 +14888,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   async driverPassengerBoarded(): Promise<void> {
+    this._ensureAudioCtx();
     const trip = this.driverArrivalTrip();
     if (!trip) return;
     const passengerAuthId = trip.ag_trip_requests?.ag_users?.auth_user_id;
