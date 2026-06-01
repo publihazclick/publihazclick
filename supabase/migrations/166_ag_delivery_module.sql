@@ -58,14 +58,14 @@ ALTER TABLE ag_delivery_offers   ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "agdr_select" ON ag_delivery_requests FOR SELECT USING (
   passenger_id = (SELECT id FROM ag_users WHERE auth_user_id = auth.uid())
   OR status = 'searching'
-  OR driver_id = (SELECT d.id FROM ag_drivers d JOIN ag_users u ON u.id = d.user_id WHERE u.auth_user_id = auth.uid() LIMIT 1)
+  OR driver_id = (SELECT d.id FROM ag_drivers d JOIN ag_users u ON u.id = d.ag_user_id WHERE u.auth_user_id = auth.uid() LIMIT 1)
 );
 CREATE POLICY "agdr_insert" ON ag_delivery_requests FOR INSERT WITH CHECK (
   passenger_id = (SELECT id FROM ag_users WHERE auth_user_id = auth.uid())
 );
 CREATE POLICY "agdr_update" ON ag_delivery_requests FOR UPDATE USING (
   passenger_id = (SELECT id FROM ag_users WHERE auth_user_id = auth.uid())
-  OR driver_id = (SELECT d.id FROM ag_drivers d JOIN ag_users u ON u.id = d.user_id WHERE u.auth_user_id = auth.uid() LIMIT 1)
+  OR driver_id = (SELECT d.id FROM ag_drivers d JOIN ag_users u ON u.id = d.ag_user_id WHERE u.auth_user_id = auth.uid() LIMIT 1)
 );
 
 -- Políticas ag_delivery_offers
