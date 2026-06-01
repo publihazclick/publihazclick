@@ -2363,6 +2363,15 @@ export class AndaGanaService {
       .subscribe();
   }
 
+  subscribeToDeliveryAssigned(deliveryRequestId: string, driverId: string, cb: (row: any) => void): RealtimeChannel {
+    return this.supabase.channel(`del-assigned-${deliveryRequestId}-${driverId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ag_delivery_requests',
+        filter: `id=eq.${deliveryRequestId}` }, (p) => {
+          if (p.new?.['driver_id'] === driverId && p.new?.['status'] === 'accepted') cb(p.new);
+        })
+      .subscribe();
+  }
+
   subscribeToDeliveryStage(deliveryRequestId: string, cb: (stage: string, row: any) => void): RealtimeChannel {
     return this.supabase.channel(`del-stage-${deliveryRequestId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ag_delivery_requests',

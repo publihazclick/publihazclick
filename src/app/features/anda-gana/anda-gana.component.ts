@@ -638,7 +638,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <input type="number" [value]="deliveryOfferPrice() || req.offered_price"
               (input)="deliveryOfferPrice.set(+$any($event.target).value)"
               style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:8px 10px;color:#fff;font-size:13px;font-weight:900;outline:none;min-width:0" />
-            <button (click)="activeDriverDelivery.set(req); makeDeliveryOfferDriver(req)"
+            <button (click)="makeDeliveryOfferDriver(req)"
               [disabled]="makingDeliveryOffer() === req.id"
               style="flex:2;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;padding:10px;color:#fff;font-size:12px;font-weight:900;cursor:pointer;opacity:1;transition:opacity 0.2s"
               [style.opacity]="makingDeliveryOffer() === req.id ? '0.5' : '1'">
@@ -1912,7 +1912,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       style="background:#f8fafc;border:1px solid #e2e8f0" />
                     <!-- Botón enviar -->
                     <button (click)="submitDelivery()"
-                      [disabled]="deliverySending() || !deliveryPackageDesc().trim()"
+                      [disabled]="deliverySending() || !deliveryPackageDesc().trim() || !deliveryPickupLat() || !deliveryDestLat()"
                       class="w-full py-4 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                       style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 6px 24px rgba(16,185,129,0.4)">
                       <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">delivery_dining</span>
@@ -8328,6 +8328,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   deliveryOfferPrice       = signal(0);
   makingDeliveryOffer      = signal<string | null>(null);
   private _deliveryRefreshInterval: any = null;
+  private _deliveryAcceptedChannel: any = null;
 
   // ── Passenger menu sections ────────────────────────────────────
   passengerSection         = signal<string | null>(null);
@@ -15905,8 +15906,9 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.deliveryOffers.set([]); this.deliveryAccepted.set(null);
     this.currentDeliveryId.set(null); this.currentDeliveryStage.set(null);
     this.deliveryPickupPhotoUrl.set(null); this.deliveryDeliveryPhotoUrl.set(null);
-    if (this._deliveryOfferChannel) { this.agService.unsubscribeChannel(this._deliveryOfferChannel); this._deliveryOfferChannel = null; }
-    if (this._deliveryStageChannel) { this.agService.unsubscribeChannel(this._deliveryStageChannel); this._deliveryStageChannel = null; }
+    if (this._deliveryOfferChannel)   { this.agService.unsubscribeChannel(this._deliveryOfferChannel);   this._deliveryOfferChannel   = null; }
+    if (this._deliveryStageChannel)   { this.agService.unsubscribeChannel(this._deliveryStageChannel);   this._deliveryStageChannel   = null; }
+    if (this._deliveryAcceptedChannel){ this.agService.unsubscribeChannel(this._deliveryAcceptedChannel); this._deliveryAcceptedChannel = null; }
   }
 
   async onDeliveryPickupInput(v: string): Promise<void> {
@@ -16013,12 +16015,12 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       const dist = json.routes?.[0]?.distance ?? 0;
       const km = Math.round(dist / 100) / 10;
       this.deliveryDistKm.set(km);
-      const base = Math.max(5000, 3500 + km * 1200);
+      const base = Math.max(4000, 3000 + km * 900); // Tarifa moto inDriver-competitiva
       this.deliveryEstPrice.set(Math.round(base / 500) * 500);
     } catch {
       const km = this._distKm(pLat, pLng, dLat, dLng);
       this.deliveryDistKm.set(km);
-      this.deliveryEstPrice.set(Math.round(Math.max(5000, 3500 + km * 1200) / 500) * 500);
+      this.deliveryEstPrice.set(Math.round(Math.max(4000, 3000 + km * 900) / 500) * 500);
     }
     this.cdr.markForCheck();
   }
@@ -16054,6 +16056,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const profile = this.agProfile();
     if (!profile) { alert('Debes registrarte para solicitar un domicilio.'); return; }
     if (!this.deliveryPackageDesc().trim()) { alert('Describe qué vas a enviar.'); return; }
+    if (!this.deliveryEstPrice()) { await this.calcDeliveryPrice(); }
+    if (!this.deliveryPickupLat() || !this.deliveryDestLat()) { alert('Faltan direcciones.'); return; }
     this.deliverySending.set(true);
     const result = await this.agService.createDeliveryRequest({
       passengerId: profile.id,
@@ -16133,8 +16137,17 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const result = await this.agService.makeDeliveryOffer(req.id, driver.id, price);
     this.makingDeliveryOffer.set(null);
     if (!result.success) { alert('Error al enviar oferta.'); return; }
-    // Remover de la lista local (ya ofertó)
+    // Quitar de la lista: ya ofertó en este domicilio
     this.deliveryRequests.update(list => list.filter(r => r.id !== req.id));
+    this.deliveryOfferPrice.set(0);
+    // Suscribir para saber cuándo el pasajero acepta esta oferta
+    if (this._deliveryAcceptedChannel) this.agService.unsubscribeChannel(this._deliveryAcceptedChannel);
+    this._deliveryAcceptedChannel = this.agService.subscribeToDeliveryAssigned(req.id, driver.id, (row) => {
+      this.activeDriverDelivery.set({ ...row, driver_stage: row['driver_stage'] ?? 'going_to_pickup' });
+      this.agService.unsubscribeChannel(this._deliveryAcceptedChannel);
+      this._deliveryAcceptedChannel = null;
+      this.cdr.markForCheck();
+    });
     this.cdr.markForCheck();
   }
 
