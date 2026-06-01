@@ -3752,10 +3752,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
-        <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850]' : 'relative'">
+        <div [class]="driverMapFullscreen() ? 'fixed inset-0 z-[9850] overflow-hidden' : 'relative overflow-hidden'">
 
-          <!-- BOTÓN VOZ — esquina inferior-derecha, oculto cuando nav activo en modo no-fullscreen -->
-          @if (!(navActive() && !driverMapFullscreen())) {
+          <!-- BOTÓN VOZ — oculto cuando: nav activo no-fullscreen, recibo visible o calificación visible -->
+          @if (!(navActive() && !driverMapFullscreen()) && !tripReceiptModal() && !passengerRatingModal()) {
             <button (click)="toggleNavVoice()"
               class="absolute z-[9999] flex flex-col items-center justify-center gap-0.5 rounded-2xl active:scale-90 transition shadow-lg"
               [style.bottom]="driverMapFullscreen() ? 'auto' : 'calc(env(safe-area-inset-bottom,0px) + 14px)'"
