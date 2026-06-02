@@ -3511,23 +3511,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <!-- BOTÓN PRUEBA DE VOZ — siempre visible -->
-          <button (click)="testVoz()"
-            class="flex flex-col items-center justify-center gap-0.5 rounded-xl active:scale-90 transition"
-            style="min-width:52px;min-height:48px;padding:6px 10px;border:2px solid"
-            [style.background]="ttsStatus()==='playing' ? '#dcfce7' : ttsStatus()==='playing' ? '#dcfce7' : '#f0fdf4'"
-            [style.border-color]="ttsStatus()==='playing' ? '#16a34a' : '#86efac'">
-            <span class="material-symbols-outlined"
-              [class.animate-pulse]="ttsStatus()==='playing'"
-              [style.color]="ttsStatus()==='playing' ? '#16a34a' : ttsStatus()==='playing' ? '#16a34a' : '#4ade80'"
-              style="font-size:20px">
-              {{ ttsStatus()==='playing' ? 'graphic_eq' : 'volume_up' }}
-            </span>
-            <span style="font-size:9px;font-weight:800;letter-spacing:0.04em"
-              [style.color]="'#16a34a'">
-              VOZ
-            </span>
-          </button>
           <button (click)="driverMenuOpen.set(true)"
             class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 rounded-xl"
             style="background:#F3F4F6;border:1px solid #E5E7EB;min-width:48px;min-height:48px;padding:8px 12px">
