@@ -1029,36 +1029,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         </div>
         </div>
-      } @else if (tripDest()) {
-        <!-- Ruta origen → destino (cuando el pasajero ya eligió a dónde va) -->
-        <div class="px-4 pb-1 flex-shrink-0 w-full">
-        <div class="w-full flex flex-col gap-0 overflow-hidden"
-          style="background:linear-gradient(135deg,#0f2027,#1a3a4a);border-radius:16px;border:1px solid rgba(249,115,22,0.2)">
-          <!-- Origen -->
-          <div class="flex items-center gap-3 px-3 py-2.5" style="border-bottom:1px solid rgba(255,255,255,0.07)">
-            <div class="flex items-center justify-center flex-shrink-0"
-              style="width:28px;height:28px;border-radius:8px;background:rgba(249,115,22,0.15)">
-              <span class="material-symbols-outlined" style="font-size:15px;color:#fb923c;font-variation-settings:'FILL' 1">my_location</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p style="color:rgba(255,255,255,0.45);font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Desde</p>
-              <p class="truncate" style="color:#fff;font-size:12px;font-weight:700;margin:0;line-height:1.3">{{ currentAddress() || 'Tu ubicación actual' }}</p>
-            </div>
-          </div>
-          <!-- Destino -->
-          <div class="flex items-center gap-3 px-3 py-2.5">
-            <div class="flex items-center justify-center flex-shrink-0"
-              style="width:28px;height:28px;border-radius:8px;background:rgba(239,68,68,0.15)">
-              <span class="material-symbols-outlined" style="font-size:15px;color:#f87171;font-variation-settings:'FILL' 1">location_on</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p style="color:rgba(255,255,255,0.45);font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Hasta</p>
-              <p class="truncate" style="color:#fff;font-size:12px;font-weight:700;margin:0;line-height:1.3">{{ tripDest()!.name }}</p>
-            </div>
-            <p style="color:#fb923c;font-size:13px;font-weight:900;margin:0;flex-shrink:0">{{ tripDistKm() }} km</p>
-          </div>
-        </div>
-        </div>
       } @else if (agProfile()) {
         <div class="px-4 pb-1 flex-shrink-0 w-full">
         <button (click)="openPassengerSection('referrals')"
