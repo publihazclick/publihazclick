@@ -1034,10 +1034,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
         </div>
         <!-- Código de entrega domicilio (pasajero) -->
-        @if (tripAccepted()?.ag_trip_requests?.service_type === 'domicilio') {
+        @if (tripService() === 'domicilio' && domDeliveryCode()) {
           <div class="mx-4 mb-2 px-4 py-3 rounded-2xl text-center" style="background:linear-gradient(135deg,#1e3a5f,#1e40af);border:1px solid rgba(96,165,250,0.3)">
             <p style="color:rgba(148,163,184,0.8);font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 4px">Código de entrega</p>
-            <p style="color:#fff;font-size:32px;font-weight:900;letter-spacing:0.2em;margin:0">{{ tripAccepted()!.ag_trip_requests?.delivery_code ?? '—' }}</p>
+            <p style="color:#fff;font-size:40px;font-weight:900;letter-spacing:0.3em;margin:0">{{ domDeliveryCode() }}</p>
             <p style="color:rgba(148,163,184,0.7);font-size:10px;margin:4px 0 0">Dáselo al repartidor al recibir tu pedido</p>
           </div>
         }
@@ -10534,6 +10534,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
     this.domActiveReqId.set(result.tripId);
     this.currentTripRequestId.set(result.tripId);
+    // Sincronizar con señales del trip para que el panel aceptado y el tracker funcionen
+    this.tripDest.set(delivery);
+    this.tripPrice.set(this.domEstPrice());
+    this.tripDistKm.set(this.domDistKm());
     this._subscribeToOffers(result.tripId);
     this._autoAssignNearestDrivers(result.tripId, originLat, originLng, 'moto', this.domEstPrice());
     this.tripSent.set(true);
@@ -12743,6 +12747,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripAccepted.set(offer);
     this.tripSent.set(false);
     const tripId = (offer as any).trip_request_id ?? this.currentTripRequestId();
+    // Para domicilio: buscar código de entrega generado por el trigger DB
+    if (this.tripService() === 'domicilio' && tripId) {
+      getMoviClient().from('ag_trip_requests').select('delivery_code').eq('id', tripId).maybeSingle()
+        .then(({ data }) => { if (data?.delivery_code) { this.domDeliveryCode.set(data.delivery_code); this.cdr.markForCheck(); } });
+    }
     // Persistir estado del viaje para recuperación tras crash
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('movi_active_trip', JSON.stringify({
