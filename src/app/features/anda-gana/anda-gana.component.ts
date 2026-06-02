@@ -1810,8 +1810,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="mx-4 mt-3 mb-1 rounded-2xl overflow-hidden"
                 style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 
-                <!-- Fila origen — clicable para cambiar -->
-                @if (!originEditOpen()) {
+                <!-- Fila origen — clicable para cambiar (ocultar en domicilio) -->
+                @if (!originEditOpen() && tripService() !== 'domicilio') {
                   <button (click)="openOriginEdit()"
                     class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors"
                     style="border-bottom:1px solid #f1f5f9">
@@ -1825,7 +1825,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                     <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:15px">edit</span>
                   </button>
-                } @else {
+                } @else if (tripService() !== 'domicilio') {
                   <!-- Búsqueda inline dentro de la tarjeta -->
                   <div style="border-bottom:1px solid #fed7aa;background:#fff7ed">
                     <div class="flex items-center gap-2.5 px-3 py-2.5">
