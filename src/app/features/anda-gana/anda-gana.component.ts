@@ -1477,8 +1477,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             @if (!tripDest()) {
               @if (!tripOpen()) {
-                <!-- Punto de origen — clicable para modificar -->
-                @if (currentAddress()) {
+                <!-- Punto de origen — clicable para modificar (oculto en domicilio) -->
+                @if (currentAddress() && tripService() !== 'domicilio') {
                   @if (!originEditOpen()) {
                     <button (click)="openOriginEdit()"
                       class="mx-4 mt-2 mb-1 w-[calc(100%-2rem)] flex items-center gap-2.5 px-3 py-2 rounded-xl text-left active:scale-[0.98] transition-all"
