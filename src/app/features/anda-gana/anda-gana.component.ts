@@ -6844,7 +6844,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <div style="background:linear-gradient(135deg,#0d1b3e 0%,#0a1628 60%,#060b17 100%);padding:24px 20px 20px;margin:-24px -16px 0;border-bottom:1px solid rgba(99,102,241,0.15)">
         <!-- Back + logo row -->
         <div class="flex items-center justify-between mb-5">
-          <button (click)="driverStep() === 1 ? screen.set('home') : driverStep.set(driverStep() - 1)"
+          <button (click)="driverStep() === 1 ? screen.set(driverData() ? 'driver-home' : 'home') : driverStep.set(driverStep() - 1)"
             class="flex items-center gap-2 active:opacity-70 transition-opacity">
             <div class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)">
               <span class="material-symbols-outlined text-white" style="font-size:18px">arrow_back</span>
