@@ -10401,6 +10401,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Notificar al conductor
     const driverId = offer.driver_id;
     if (driverId) this.agService.broadcastTripCompletedToDriver(driverId, tripId);
+    // Refrescar perfil para que total_trips_as_passenger quede actualizado en memoria
+    this.agService.getMyAgProfile().then(p => { if (p) this.agProfile.set(p); }).catch(() => {});
 
     // Cargar detalles con variables locales antes de que _resetTrip limpie signals
     const destName  = this.tripDest()?.name ?? 'Destino';
@@ -10679,6 +10681,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
     const profile = this.agProfile();
     if (!profile) { this.domReqError.set('Debes iniciar sesión'); return; }
+    // Verificación de identidad obligatoria desde el 2do servicio
+    if ((profile.total_trips_as_passenger ?? 0) >= 1 && !profile.passenger_verified) {
+      this.passengerVerifModal.set(true); return;
+    }
 
     this.domDescription.set(this.domDescVal);
     this.domRecipientName.set(this.domRecipNameVal);
