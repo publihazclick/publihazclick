@@ -633,13 +633,6 @@ export class AndaGanaService {
         distance_km: data.distanceKm, vehicle_type: data.vehicleType,
         offered_price: data.offeredPrice, payment_method: data.paymentMethod,
         status: 'searching',
-        // ── Domicilio ────────────────────────────────────────────
-        service_type:         data.serviceType         ?? 'viaje',
-        package_type:         data.packageType         ?? null,
-        package_description:  data.packageDescription  ?? null,
-        recipient_name:       data.recipientName       ?? null,
-        recipient_phone:      data.recipientPhone      ?? null,
-        contactless_delivery: data.contactlessDelivery ?? false,
       })
       .select('id')
       .single();
