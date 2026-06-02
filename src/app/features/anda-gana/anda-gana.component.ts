@@ -1760,8 +1760,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
 
             } @else if (!tripSent()) {
+              <!-- Botón volver al inicio -->
+              <div class="flex items-center gap-2 px-4 pt-3 pb-1">
+                <button (click)="cancelTrip()"
+                  class="flex items-center gap-1.5 active:scale-95 transition-all"
+                  style="color:#f97316;font-size:13px;font-weight:800">
+                  <span class="material-symbols-outlined" style="font-size:20px">arrow_back</span>
+                  Volver
+                </button>
+              </div>
+
               <!-- ── Tarjeta de ruta: origen → destino ── -->
-              <div class="mx-4 mt-3 mb-1 rounded-2xl overflow-hidden"
+              <div class="mx-4 mt-1 mb-1 rounded-2xl overflow-hidden"
                 style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 
                 <!-- Fila origen — clicable para cambiar -->
