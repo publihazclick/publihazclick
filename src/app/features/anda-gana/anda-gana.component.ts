@@ -1520,12 +1520,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
                 <button (click)="openTripSearch()"
                   class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-200 transition-colors text-left">
-                  <div class="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-orange-500" style="font-size:22px">search</span>
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    [style]="tripService()==='domicilio' ? 'background:#f0fdf4;border:1px solid #86efac' : 'background:#fff7ed;border:1px solid #fed7aa'">
+                    <span class="material-symbols-outlined" style="font-size:22px"
+                      [style.color]="tripService()==='domicilio' ? '#16a34a' : '#f97316'">
+                      {{ tripService()==='domicilio' ? 'delivery_dining' : 'search' }}
+                    </span>
                   </div>
                   <div class="flex-1">
-                    <p class="text-slate-800 font-black text-sm">¿A dónde vas y por cuánto?</p>
-                    <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu destino</p>
+                    <p class="text-slate-800 font-black text-sm">{{ tripService()==='domicilio' ? '¿A dónde enviamos?' : '¿A dónde vas y por cuánto?' }}</p>
+                    <p class="text-slate-400 text-xs mt-0.5">{{ tripService()==='domicilio' ? 'Toca para ingresar la dirección de entrega' : 'Toca para buscar tu destino' }}</p>
                   </div>
                   <span class="material-symbols-outlined text-slate-300" style="font-size:20px">chevron_right</span>
                 </button>
@@ -1921,7 +1925,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
               </div>
 
-              <!-- Categoría de viaje -->
+              <!-- Categoría de viaje — ocultar en domicilio -->
+              @if (tripService() !== 'domicilio') {
               <div class="px-4 pt-2 pb-1">
                 <div class="flex items-center justify-between mb-2">
                   <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Categoría</p>
@@ -1951,8 +1956,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                 </div>
               </div>
+              } <!-- /categoría -->
 
-              <!-- Accesibilidad -->
+              <!-- Accesibilidad — ocultar en domicilio -->
+              @if (tripService() !== 'domicilio') {
               <div class="px-4 pt-1 pb-1">
                 <div class="flex gap-1.5 flex-wrap"
                   [style.pointerEvents]="tripIsActive() ? 'none' : 'auto'"
@@ -1987,6 +1994,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </button>
                 </div>
               </div>
+              } <!-- /accesibilidad -->
 
               <!-- Notas + viaje para otra persona -->
               <div class="px-4 pt-2 pb-1">
