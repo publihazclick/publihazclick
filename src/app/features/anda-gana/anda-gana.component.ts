@@ -7823,7 +7823,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   newContactPhone    = '';
   reportIncidentText = '';
   reportPassengerText = '';
-  tripService     = signal<'viaje' | 'moto' | 'ciudad' | 'fletes'>('viaje');
+  tripService     = signal<'viaje' | 'moto' | 'domicilio' | 'ciudad' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
   // ── Passenger menu sections ────────────────────────────────────
