@@ -76,6 +76,7 @@ export interface AgTripOffer {
   created_at: string;
   updated_at: string;
   ag_drivers?: AgDriver & { ag_users?: AgUser };
+  ag_trip_requests?: AgTripRequest;
 }
 
 export type AgPaymentMethod = 'efectivo' | 'nequi' | 'daviplata' | 'bancolombia' | 'tarjeta';
@@ -98,6 +99,15 @@ export interface AgTripRequest {
   status: string;
   created_at: string;
   ag_users?: AgUser;
+  // ── Domicilio fields ────────────────────────────────────────────
+  service_type?: string;
+  package_type?: string;
+  package_description?: string;
+  recipient_name?: string;
+  recipient_phone?: string;
+  contactless_delivery?: boolean;
+  delivery_code?: string;
+  driver_stage?: string;
 }
 
 export interface AgRegistrationResult {
@@ -603,6 +613,13 @@ export class AndaGanaService {
     destName: string; destLat: number; destLng: number;
     distanceKm: number; vehicleType: string; offeredPrice: number;
     paymentMethod: AgPaymentMethod;
+    // ── Domicilio fields (optional) ───────────────────────────────
+    serviceType?: 'viaje' | 'domicilio';
+    packageType?: string;
+    packageDescription?: string;
+    recipientName?: string;
+    recipientPhone?: string;
+    contactlessDelivery?: boolean;
   }): Promise<{ success: boolean; tripId?: string; error?: string }> {
     const { data: row, error } = await this.supabase
       .from('ag_trip_requests')
@@ -616,11 +633,28 @@ export class AndaGanaService {
         distance_km: data.distanceKm, vehicle_type: data.vehicleType,
         offered_price: data.offeredPrice, payment_method: data.paymentMethod,
         status: 'searching',
+        // ── Domicilio ────────────────────────────────────────────
+        service_type:         data.serviceType         ?? 'viaje',
+        package_type:         data.packageType         ?? null,
+        package_description:  data.packageDescription  ?? null,
+        recipient_name:       data.recipientName       ?? null,
+        recipient_phone:      data.recipientPhone      ?? null,
+        contactless_delivery: data.contactlessDelivery ?? false,
       })
       .select('id')
       .single();
     if (error) return { success: false, error: error.message };
     return { success: true, tripId: row.id };
+  }
+
+  async confirmDeliveryCode(tripRequestId: string, code: string): Promise<{ success: boolean; error?: string }> {
+    const { data } = await this.supabase
+      .from('ag_trip_requests')
+      .select('delivery_code')
+      .eq('id', tripRequestId)
+      .single();
+    if (!data || data.delivery_code !== code) return { success: false, error: 'Código incorrecto' };
+    return this.completeTrip(tripRequestId);
   }
 
   async cancelTripRequest(tripRequestId: string, reason?: string): Promise<void> {

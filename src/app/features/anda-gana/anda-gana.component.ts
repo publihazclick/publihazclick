@@ -1033,6 +1033,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         </div>
         </div>
+        <!-- Código de entrega domicilio (pasajero) -->
+        @if (tripAccepted()?.ag_trip_requests?.service_type === 'domicilio') {
+          <div class="mx-4 mb-2 px-4 py-3 rounded-2xl text-center" style="background:linear-gradient(135deg,#1e3a5f,#1e40af);border:1px solid rgba(96,165,250,0.3)">
+            <p style="color:rgba(148,163,184,0.8);font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 4px">Código de entrega</p>
+            <p style="color:#fff;font-size:32px;font-weight:900;letter-spacing:0.2em;margin:0">{{ tripAccepted()!.ag_trip_requests?.delivery_code ?? '—' }}</p>
+            <p style="color:rgba(148,163,184,0.7);font-size:10px;margin:4px 0 0">Dáselo al repartidor al recibir tu pedido</p>
+          </div>
+        }
       } @else if (tripDest()) {
         <!-- Destino elegido, viaje no enviado aún: origen + destino fondo blanco -->
         <div class="px-4 pb-1 flex-shrink-0 w-full">
@@ -1850,6 +1858,39 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <!-- Hint -->
                 <p class="text-slate-400 text-[10px] text-center">💡 Precio más alto = conductores más rápido</p>
               </div>
+
+              <!-- ── Campos Domicilio ─────────────────────────────────── -->
+              @if (tripService() === 'domicilio') {
+                <div class="px-4 py-3 border-b border-slate-200">
+                  <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2">¿Qué envías?</p>
+                  <div class="grid grid-cols-3 gap-1.5 mb-3">
+                    @for (cat of domCategories; track cat.value) {
+                      <button (click)="domPackageType.set(cat.value)"
+                        class="flex flex-col items-center gap-1 py-2 rounded-xl text-center transition-all"
+                        [style]="domPackageType()===cat.value ? 'background:#fff7ed;border:1.5px solid #f97316' : 'background:#f8fafc;border:1.5px solid #e2e8f0'">
+                        <span class="text-lg">{{ cat.icon }}</span>
+                        <span class="text-[10px] font-bold" [style.color]="domPackageType()===cat.value ? '#ea580c' : '#64748b'">{{ cat.label }}</span>
+                      </button>
+                    }
+                  </div>
+                  <textarea [(ngModel)]="domDescriptionValue" placeholder="Descripción del paquete (opcional)"
+                    rows="2" class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none resize-none mb-2"
+                    style="background:#f8fafc;border:1px solid #e2e8f0"></textarea>
+                  <input [(ngModel)]="domRecipientNameValue" placeholder="Nombre del destinatario"
+                    class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none mb-2"
+                    style="background:#f8fafc;border:1px solid #e2e8f0" />
+                  <input [(ngModel)]="domRecipientPhoneValue" placeholder="Teléfono del destinatario" type="tel"
+                    class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none mb-2"
+                    style="background:#f8fafc;border:1px solid #e2e8f0" />
+                  <button (click)="domContactless.set(!domContactless())"
+                    class="flex items-center gap-2 w-full px-3 py-2 rounded-xl transition-all"
+                    [style]="domContactless() ? 'background:#f0fdf4;border:1px solid #bbf7d0' : 'background:#f8fafc;border:1px solid #e2e8f0'">
+                    <span class="material-symbols-outlined" style="font-size:18px" [style.color]="domContactless() ? '#16a34a' : '#94a3b8'">no_meeting_room</span>
+                    <span class="text-sm font-semibold flex-1 text-left" [style.color]="domContactless() ? '#15803d' : '#64748b'">Entrega sin contacto</span>
+                    <span class="material-symbols-outlined" style="font-size:18px" [style.color]="domContactless() ? '#16a34a' : '#cbd5e1'">{{ domContactless() ? 'toggle_on' : 'toggle_off' }}</span>
+                  </button>
+                </div>
+              }
 
               <!-- Cupón -->
               <div class="px-4 pt-2 pb-1 border-b border-slate-200">
@@ -3633,19 +3674,58 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       style="background:linear-gradient(135deg,#f59e0b,#f97316)">
                       <span class="material-symbols-outlined" style="font-size:18px">navigation</span>Navegar al destino
                     </button>
-                    <button (click)="finishDriverTrip(trip)"
-                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
-                      style="background:linear-gradient(135deg,#16a34a,#15803d)">
-                      <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar viaje
-                    </button>
+                    @if (trip.ag_trip_requests?.service_type === 'domicilio') {
+                      <!-- Domicilio: input de código en card no-fullscreen -->
+                      <div class="mt-1">
+                        <p class="text-slate-400 text-xs mb-1.5">Código del destinatario:</p>
+                        <div class="flex gap-2">
+                          <input [(ngModel)]="domCodeInputValue" maxlength="4" type="tel" placeholder="0000"
+                            class="flex-1 text-center text-xl font-black tracking-widest px-3 py-2 rounded-xl outline-none"
+                            style="background:#1e293b;border:1.5px solid #334155;color:#fff;letter-spacing:0.3em" />
+                          <button (click)="confirmDomDeliveryCode()" [disabled]="domCodeLoading()"
+                            class="px-4 py-2 rounded-xl text-white font-black text-sm active:scale-95 transition-all disabled:opacity-60"
+                            style="background:linear-gradient(135deg,#059669,#10b981)">
+                            {{ domCodeLoading() ? '...' : 'Confirmar' }}
+                          </button>
+                        </div>
+                        @if (domCodeError()) {
+                          <p class="text-red-400 text-xs mt-1">{{ domCodeError() }}</p>
+                        }
+                      </div>
+                    } @else {
+                      <button (click)="finishDriverTrip(trip)"
+                        class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                        style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                        <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar viaje
+                      </button>
+                    }
                   }
                   <!-- Etapa final: arrived_at_destination -->
                   @if (trip.ag_trip_requests?.driver_stage === 'arrived_at_destination' || trip.ag_trip_requests?.driver_stage === 'completed') {
-                    <button (click)="finishDriverTrip(trip)"
-                      class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
-                      style="background:linear-gradient(135deg,#16a34a,#15803d)">
-                      <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar viaje
-                    </button>
+                    @if (trip.ag_trip_requests?.service_type === 'domicilio') {
+                      <div class="mt-1">
+                        <p class="text-slate-400 text-xs mb-1.5">Código del destinatario:</p>
+                        <div class="flex gap-2">
+                          <input [(ngModel)]="domCodeInputValue" maxlength="4" type="tel" placeholder="0000"
+                            class="flex-1 text-center text-xl font-black tracking-widest px-3 py-2 rounded-xl outline-none"
+                            style="background:#1e293b;border:1.5px solid #334155;color:#fff;letter-spacing:0.3em" />
+                          <button (click)="confirmDomDeliveryCode()" [disabled]="domCodeLoading()"
+                            class="px-4 py-2 rounded-xl text-white font-black text-sm active:scale-95 transition-all disabled:opacity-60"
+                            style="background:linear-gradient(135deg,#059669,#10b981)">
+                            {{ domCodeLoading() ? '...' : 'Confirmar' }}
+                          </button>
+                        </div>
+                        @if (domCodeError()) {
+                          <p class="text-red-400 text-xs mt-1">{{ domCodeError() }}</p>
+                        }
+                      </div>
+                    } @else {
+                      <button (click)="finishDriverTrip(trip)"
+                        class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
+                        style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                        <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Finalizar viaje
+                      </button>
+                    }
                   }
                 </div>
               </div>
@@ -4017,6 +4097,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
                     <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">where_to_vote</span>Llegué
                   </button>
+                } @else if (driverFullscreenTrip()?.ag_trip_requests?.service_type === 'domicilio') {
+                  <!-- Domicilio: botón placeholder; el input real está abajo -->
+                  <div class="flex-1 py-3 rounded-2xl flex items-center justify-center"
+                    style="background:rgba(5,150,105,0.2);border:1px solid rgba(16,185,129,0.3)">
+                    <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">lock</span>
+                    <span class="text-emerald-400 text-xs font-black ml-1">Código requerido</span>
+                  </div>
                 } @else {
                   <button (click)="finishDriverTrip(driverFullscreenTrip())"
                     class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
@@ -4025,6 +4112,26 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </button>
                 }
               </div>
+
+              <!-- Código de entrega — solo para domicilios en fase de destino -->
+              @if (driverFullscreenTrip()?.ag_trip_requests?.service_type === 'domicilio' && navPhase() !== 'to_pickup') {
+                <div class="px-1 pt-3">
+                  <p class="text-slate-400 text-xs mb-1.5">Ingresa el código del destinatario para completar la entrega:</p>
+                  <div class="flex gap-2">
+                    <input [(ngModel)]="domCodeInputValue" maxlength="4" type="tel" placeholder="0000"
+                      class="flex-1 text-center text-2xl font-black tracking-widest px-3 py-2 rounded-xl outline-none"
+                      style="background:#1e293b;border:1.5px solid #334155;color:#fff;letter-spacing:0.3em" />
+                    <button (click)="confirmDomDeliveryCode()" [disabled]="domCodeLoading()"
+                      class="px-4 py-2 rounded-xl text-white font-black text-sm active:scale-95 transition-all disabled:opacity-60"
+                      style="background:linear-gradient(135deg,#059669,#10b981)">
+                      {{ domCodeLoading() ? '...' : 'Confirmar' }}
+                    </button>
+                  </div>
+                  @if (domCodeError()) {
+                    <p class="text-red-400 text-xs mt-1">{{ domCodeError() }}</p>
+                  }
+                </div>
+              }
             </div>
           }
         </div>
@@ -7826,6 +7933,30 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripService     = signal<'viaje' | 'moto' | 'domicilio' | 'ciudad' | 'fletes'>('viaje');
   agMenuOpen      = signal(false);
 
+  // ── Domicilio signals & properties ───────────────────────────────────────────
+  domPackageType    = signal<string>('paquete');
+  domDescription    = signal('');
+  domRecipientName  = signal('');
+  domRecipientPhone = signal('');
+  domContactless    = signal(false);
+  domCodeInput      = signal('');
+  domCodeError      = signal('');
+  domCodeLoading    = signal(false);
+  // ngModel helpers (sync to signals in findOffers)
+  domDescriptionValue  = '';
+  domRecipientNameValue = '';
+  domRecipientPhoneValue = '';
+  domCodeInputValue    = '';
+
+  readonly domCategories = [
+    { value: 'comida',      icon: '🍔', label: 'Comida' },
+    { value: 'documentos',  icon: '📄', label: 'Documentos' },
+    { value: 'paquete',     icon: '📦', label: 'Paquete' },
+    { value: 'fragil',      icon: '🫙', label: 'Frágil' },
+    { value: 'farmacia',    icon: '💊', label: 'Farmacia' },
+    { value: 'otro',        icon: '🛍️', label: 'Otro' },
+  ];
+
   // ── Passenger menu sections ────────────────────────────────────
   passengerSection         = signal<string | null>(null);
   passengerHistory         = signal<any[]>([]);
@@ -9916,6 +10047,28 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ── Domicilio: driver confirms delivery code ─────────────────────────────────
+  async confirmDomDeliveryCode(): Promise<void> {
+    // Sync the ngModel value to the signal
+    this.domCodeInput.set(this.domCodeInputValue);
+    const code = this.domCodeInputValue.trim();
+    if (code.length !== 4) { this.domCodeError.set('Ingresa los 4 dígitos'); return; }
+    const reqId = this.currentTripRequestId()
+      ?? this.driverFullscreenTrip()?.trip_request_id
+      ?? this.driverFullscreenTrip()?.ag_trip_requests?.id;
+    if (!reqId) { this.domCodeError.set('No se encontró el viaje'); return; }
+    this.domCodeLoading.set(true);
+    const res = await this.agService.confirmDeliveryCode(reqId, code);
+    this.domCodeLoading.set(false);
+    if (!res.success) { this.domCodeError.set(res.error ?? 'Código incorrecto'); return; }
+    this.domCodeError.set('');
+    // finishDriverTrip handles receipts/rating — pass the active trip object
+    const trip = this.driverFullscreenTrip();
+    if (trip) {
+      await this.finishDriverTrip(trip);
+    }
+  }
+
   async submitRating() {
     if (this.ratingStars() === 0) return;
     const profile = this.agProfile();
@@ -11924,6 +12077,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       setTimeout(() => this.tripRequestError.set(null), 5000);
       return;
     }
+    // Sync domicilio ngModel values to signals before requesting
+    if (this.tripService() === 'domicilio') {
+      this.domDescription.set(this.domDescriptionValue);
+      this.domRecipientName.set(this.domRecipientNameValue);
+      this.domRecipientPhone.set(this.domRecipientPhoneValue);
+    }
+
+    const isDomicilio = this.tripService() === 'domicilio';
     const result = await this.agService.requestTrip({
       passengerUserId: profile.id,
       passengerName: profile.full_name || undefined,
@@ -11935,6 +12096,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       vehicleType: this.tripVehicle(),
       offeredPrice: this.tripPrice(),
       paymentMethod: this.tripPayment(),
+      // ── Domicilio fields ──────────────────────────────────────
+      ...(isDomicilio ? {
+        serviceType:         'domicilio',
+        packageType:         this.domPackageType(),
+        packageDescription:  this.domDescription()    || undefined,
+        recipientName:       this.domRecipientName()  || undefined,
+        recipientPhone:      this.domRecipientPhone() || undefined,
+        contactlessDelivery: this.domContactless(),
+      } : {}),
     });
     this.tripSending.set(false);
     if (!result.success || !result.tripId) {
