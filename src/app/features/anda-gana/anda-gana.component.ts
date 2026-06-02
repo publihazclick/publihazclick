@@ -1057,30 +1057,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       } @else {
         <div class="px-4 pb-1 flex-shrink-0 w-full">
-          <div class="grid grid-cols-2 gap-2">
-            <button (click)="openPassengerSection('paymentmethods')"
-              class="flex items-center gap-2 active:scale-[0.98] transition-transform"
-              style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:14px;padding:11px 12px;border:none;cursor:pointer">
-              <div class="flex items-center justify-center flex-shrink-0"
-                style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,0.15)">
-                <span class="material-symbols-outlined" style="font-size:18px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">credit_card</span>
-              </div>
-              <div class="flex-1 min-w-0 text-left">
-                <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Métodos de pago</p>
-              </div>
-            </button>
-            <button (click)="openPassengerSection('referrals')"
-              class="flex items-center gap-2 active:scale-[0.98] transition-transform"
-              style="background:linear-gradient(135deg,#059669,#0d9488);border-radius:14px;padding:11px 12px;border:none;cursor:pointer">
-              <div class="flex items-center justify-center flex-shrink-0"
-                style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,0.15)">
-                <span class="material-symbols-outlined" style="font-size:18px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
-              </div>
-              <div class="flex-1 min-w-0 text-left">
-                <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Gana por invitar</p>
-              </div>
-            </button>
-          </div>
+          <button (click)="openPassengerSection('referrals')"
+            class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
+            style="background:linear-gradient(135deg,#1D4ED8,#3B82F6);border-radius:16px;padding:12px 16px;border:none;cursor:pointer">
+            <div class="flex items-center justify-center flex-shrink-0"
+              style="width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,0.15)">
+              <span class="material-symbols-outlined" style="font-size:20px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
+            </div>
+            <div class="flex-1 min-w-0 text-left">
+              <p style="color:#fff;font-weight:700;font-size:13px;margin:0;line-height:1.3">Gana por invitar</p>
+              <p style="color:rgba(255,255,255,0.75);font-size:11px;margin:0">Gana 2% por cada referido</p>
+            </div>
+            <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
+          </button>
         </div>
       }
 
