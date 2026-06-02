@@ -8281,11 +8281,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             this.driverRejectionReason.set(d.rejection_reason ?? null);
           }
           _cacheUsed = true;
+          // Iniciar GPS durante el splash para tener fix listo cuando el home aparezca
+          if (p.role === 'passenger') this._startPassengerWatch();
         }
       }
     } catch {}
 
-    // ── Splash mínimo 2 s + Supabase en paralelo ─────────────────────
+    // ── Splash mínimo 3 s + Supabase en paralelo ─────────────────────
     // Si hay caché esperamos AMBOS; si no, solo Supabase (el splash ya duró el tiempo natural)
     const _splashTimer = _cacheUsed
       ? new Promise<void>(r => setTimeout(r, 3000))
