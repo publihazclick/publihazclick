@@ -1224,8 +1224,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Mapa -->
         <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
-        <!-- Botón centrar pasajero: siempre visible en idle/espera; resalta cuando movió el mapa -->
-        @if (!driverOnline() && gpsStatus() !== 'requesting') {
+        <!-- Botón centrar pasajero: solo visible desde buscando conductor en adelante -->
+        @if (!driverOnline() && gpsStatus() !== 'requesting' && (tripSent() || tripAccepted())) {
           <button (click)="recenterPassengerMap()"
             class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
             [style.z-index]="passengerMapFullscreen() ? '9860' : '40'"
