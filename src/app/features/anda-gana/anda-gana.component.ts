@@ -1416,7 +1416,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
             [style.display]="(tripSent() && !tripAccepted()) || passengerMapFullscreen() || arrivedAtPickupTimer() !== null ? 'none' : ''"
-            [style.maxHeight]="(tripSent() || tripAccepted()) ? 'min(62%,480px)' : ''"
+            [style.maxHeight]="(tripSent() || tripAccepted()) ? 'min(62%,480px)' : (tripService()==='domicilio' ? 'min(72dvh,560px)' : '')"
             [style.overflowY]="'auto'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
 
@@ -1524,7 +1524,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <p class="font-black text-slate-800 text-sm mb-3">¿Cómo es tu domicilio?</p>
                     <div class="flex flex-col gap-3">
                       <button (click)="deliveryType.set('pickup_and_deliver')"
-                        class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition-all"
+                        class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.98] transition-all"
                         [style.border]="deliveryType()==='pickup_and_deliver' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
                         [style.background]="deliveryType()==='pickup_and_deliver' ? '#f0fdf4' : '#f8fafc'">
                         <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1538,7 +1538,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         </div>
                       </button>
                       <button (click)="deliveryType.set('from_my_location')"
-                        class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition-all"
+                        class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left active:scale-[0.98] transition-all"
                         [style.border]="deliveryType()==='from_my_location' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
                         [style.background]="deliveryType()==='from_my_location' ? '#f0fdf4' : '#f8fafc'">
                         <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1578,7 +1578,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <div class="flex gap-1.5 flex-wrap">
                         @for (cat of domCategories; track cat.value) {
                           <button (click)="domPackageType.set(cat.value)"
-                            class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all active:scale-95"
+                            class="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold border transition-all active:scale-95 min-h-[36px]"
                             [style.background]="domPackageType()===cat.value ? '#f0fdf4' : '#f8fafc'"
                             [style.borderColor]="domPackageType()===cat.value ? '#10b981' : '#e2e8f0'"
                             [style.color]="domPackageType()===cat.value ? '#065f46' : '#64748b'">
@@ -1648,7 +1648,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl" style="background:#fff7ed;border:1.5px solid #fed7aa">
                           <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:18px;font-variation-settings:'FILL' 1">my_location</span>
                           <div class="flex-1 min-w-0">
-                            <p class="text-[9px] text-orange-400 font-bold uppercase tracking-wider">Tu ubicación actual (automático)</p>
+                            <p class="text-[10px] text-orange-400 font-bold uppercase tracking-wider">Tu ubicación actual · automático</p>
                             <p class="text-sm font-semibold text-slate-700 truncate">{{ currentAddress() || 'Detectando GPS...' }}</p>
                           </div>
                         </div>
@@ -1714,12 +1714,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <!-- Destinatario (opcional) -->
                     <div class="px-4 pb-2">
                       <p class="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-1.5">👤 Destinatario (opcional)</p>
-                      <div class="flex gap-2">
-                        <input [(ngModel)]="domRecipNameVal" placeholder="Nombre"
-                          class="flex-1 px-3 py-2 rounded-xl text-sm text-slate-700 outline-none"
+                      <div class="flex flex-wrap gap-2">
+                        <input [(ngModel)]="domRecipNameVal" placeholder="Nombre del destinatario"
+                          class="flex-1 min-w-[130px] px-3 py-2.5 rounded-xl text-sm text-slate-700 outline-none"
                           style="background:#f8fafc;border:1px solid #e2e8f0"/>
                         <input [(ngModel)]="domRecipPhoneVal" placeholder="Teléfono" type="tel"
-                          class="flex-1 px-3 py-2 rounded-xl text-sm text-slate-700 outline-none"
+                          class="flex-1 min-w-[130px] px-3 py-2.5 rounded-xl text-sm text-slate-700 outline-none"
                           style="background:#f8fafc;border:1px solid #e2e8f0"/>
                       </div>
                     </div>
@@ -1727,7 +1727,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <!-- Nota para el repartidor -->
                     <div class="px-4 pb-2">
                       <textarea [(ngModel)]="domDescVal" placeholder="Nota para el repartidor (opcional)" rows="2"
-                        class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none resize-none"
+                        class="w-full px-3 py-2.5 rounded-xl text-sm text-slate-700 outline-none resize-none"
                         style="background:#f8fafc;border:1px solid #e2e8f0"></textarea>
                     </div>
 
@@ -1737,7 +1737,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <div class="flex items-center justify-between">
                           <div>
                             <p class="text-emerald-700 text-[10px] font-black uppercase tracking-wider">Precio estimado</p>
-                            <p class="text-emerald-800 font-black text-2xl leading-tight">{{ formatCOP(domEstPrice()) }}</p>
+                            <p class="text-emerald-800 font-black leading-tight" style="font-size:clamp(18px,5vw,26px)">{{ formatCOP(domEstPrice()) }}</p>
                           </div>
                           <div class="text-right">
                             <p class="text-emerald-600 text-xs font-semibold">{{ domDistKm() }} km</p>
