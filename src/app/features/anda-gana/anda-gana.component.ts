@@ -1011,41 +1011,49 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
-      <!-- ══ Card superior: dirección de recogida (viaje activo) o referidos/pago ══ -->
+      <!-- ══ Card superior: ruta origen→destino (cuando hay destino) o viaje activo ══ -->
       @if (tripAccepted()) {
-        <!-- Dirección del pasajero — reemplaza el banner mientras el conductor viene o durante el viaje -->
+        <!-- Viaje aceptado: origen + destino -->
         <div class="px-4 flex-shrink-0 w-full">
-        <div class="w-full flex items-center gap-3"
-          style="background:linear-gradient(135deg,#0f2027,#1a3a4a);border-radius:16px;padding:12px 16px;border:1px solid rgba(0,229,255,0.2)">
-          <div class="flex items-center justify-center flex-shrink-0"
-            style="width:38px;height:38px;border-radius:12px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.25)">
-            <span class="material-symbols-outlined" style="font-size:20px;color:#00e5ff;font-variation-settings:'FILL' 1">my_location</span>
+        <div class="w-full flex flex-col overflow-hidden"
+          style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+          <div class="flex items-center gap-3 px-3 py-2.5" style="border-bottom:1px solid #f1f5f9">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#f97316;font-variation-settings:'FILL' 1">my_location</span>
+            <div class="flex-1 min-w-0">
+              <p style="color:#9ca3af;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Desde</p>
+              <p class="truncate" style="color:#111827;font-size:12px;font-weight:700;margin:0">{{ currentAddress() || 'Tu ubicación actual' }}</p>
+            </div>
           </div>
-          <div class="flex-1 min-w-0">
-            <p style="color:rgba(0,229,255,0.7);font-size:10px;font-weight:800;margin:0;letter-spacing:0.08em;text-transform:uppercase">Tu punto de recogida</p>
-            <p class="truncate" style="color:#fff;font-size:13px;font-weight:700;margin:0;line-height:1.3">
-              {{ currentAddress() || 'Tu ubicación actual' }}
-            </p>
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#ef4444">location_on</span>
+            <div class="flex-1 min-w-0">
+              <p style="color:#9ca3af;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Hasta</p>
+              <p class="truncate" style="color:#111827;font-size:12px;font-weight:700;margin:0">{{ tripDest()?.name ?? 'Destino' }}</p>
+            </div>
           </div>
         </div>
         </div>
-      } @else if (agProfile()) {
+      } @else if (tripDest()) {
+        <!-- Destino elegido, viaje no enviado aún: origen + destino fondo blanco -->
         <div class="px-4 pb-1 flex-shrink-0 w-full">
-        <button (click)="openPassengerSection('referrals')"
-          class="w-full flex items-center gap-3 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:12px 16px;border:none;cursor:pointer">
-          <div class="flex items-center justify-center flex-shrink-0"
-            style="width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,0.15)">
-            <span class="material-symbols-outlined" style="font-size:20px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
+        <div class="w-full flex flex-col overflow-hidden"
+          style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+          <div class="flex items-center gap-3 px-3 py-2.5" style="border-bottom:1px solid #f1f5f9">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#f97316;font-variation-settings:'FILL' 1">my_location</span>
+            <div class="flex-1 min-w-0">
+              <p style="color:#9ca3af;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Desde</p>
+              <p class="truncate" style="color:#111827;font-size:12px;font-weight:700;margin:0">{{ currentAddress() || 'Tu ubicación actual' }}</p>
+            </div>
           </div>
-          <div class="flex-1 min-w-0 text-left">
-            <p style="color:#fff;font-weight:600;font-size:13px;margin:0;line-height:1.3">Gana por invitar</p>
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#ef4444">location_on</span>
+            <div class="flex-1 min-w-0">
+              <p style="color:#9ca3af;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Hasta</p>
+              <p class="truncate" style="color:#111827;font-size:12px;font-weight:700;margin:0">{{ tripDest()!.name }}</p>
+            </div>
+            <p style="color:#f97316;font-size:12px;font-weight:900;margin:0;flex-shrink:0">{{ tripDistKm() }} km</p>
           </div>
-          <div class="flex items-center gap-1 flex-shrink-0">
-            <span style="color:#fff;font-size:12px;font-weight:500">Invitar</span>
-            <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
-          </div>
-        </button>
+        </div>
         </div>
       } @else {
         <div class="px-4 pb-1 flex-shrink-0 w-full">
