@@ -8150,7 +8150,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // ── Splash mínimo 2 s + Supabase en paralelo ─────────────────────
     // Si hay caché esperamos AMBOS; si no, solo Supabase (el splash ya duró el tiempo natural)
     const _splashTimer = _cacheUsed
-      ? new Promise<void>(r => setTimeout(r, 2000))
+      ? new Promise<void>(r => setTimeout(r, 3000))
       : Promise.resolve();
 
     const _profilePromise = this.agService.getMyAgProfile().then(async p => {
