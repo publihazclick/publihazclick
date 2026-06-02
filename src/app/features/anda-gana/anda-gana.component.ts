@@ -1443,7 +1443,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">two_wheeler</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='moto' ? '#06b6d4' : '#94a3b8'">Moto</span>
               </button>
-              <button (click)="tripService.set('domicilio'); setTripVehicle('moto'); deliveryStep.set(1)"
+              <button (click)="tripService.set('domicilio'); setTripVehicle('moto')"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='domicilio' ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
@@ -1477,8 +1477,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             @if (!tripDest()) {
               @if (!tripOpen()) {
-                <!-- Punto de origen — clicable para modificar (oculto en domicilio) -->
-                @if (currentAddress() && tripService() !== 'domicilio') {
+                <!-- Punto de origen — clicable para modificar -->
+                @if (currentAddress()) {
                   @if (!originEditOpen()) {
                     <button (click)="openOriginEdit()"
                       class="mx-4 mt-2 mb-1 w-[calc(100%-2rem)] flex items-center gap-2.5 px-3 py-2 rounded-xl text-left active:scale-[0.98] transition-all"
@@ -1558,19 +1558,230 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       Continuar
                     </button>
                   </div>
+                } @else if (tripService() === 'domicilio' && deliveryStep() === 2) {
+                  <!-- ══ DOMICILIO PASO 2: Formulario completo ══ -->
+                  <div class="flex flex-col">
+                    <!-- Header con volver -->
+                    <div class="flex items-center gap-2 px-4 pt-3 pb-2">
+                      <button (click)="deliveryStep.set(1)" class="flex items-center gap-1 active:scale-95 transition-all" style="color:#10b981;font-size:13px;font-weight:800">
+                        <span class="material-symbols-outlined" style="font-size:20px">arrow_back</span>
+                        Volver
+                      </button>
+                      <span class="flex-1 text-center text-slate-700 font-black text-sm">
+                        {{ deliveryType() === 'pickup_and_deliver' ? '🛵 Recoger y llevar' : '📍 Recoger donde estoy' }}
+                      </span>
+                    </div>
+
+                    <!-- Tipo de paquete -->
+                    <div class="px-4 pb-2">
+                      <p class="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-2">¿Qué envías?</p>
+                      <div class="flex gap-1.5 flex-wrap">
+                        @for (cat of domCategories; track cat.value) {
+                          <button (click)="domPackageType.set(cat.value)"
+                            class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all active:scale-95"
+                            [style.background]="domPackageType()===cat.value ? '#f0fdf4' : '#f8fafc'"
+                            [style.borderColor]="domPackageType()===cat.value ? '#10b981' : '#e2e8f0'"
+                            [style.color]="domPackageType()===cat.value ? '#065f46' : '#64748b'">
+                            {{ cat.icon }} {{ cat.label }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Dirección recogida (solo pickup_and_deliver) -->
+                    @if (deliveryType() === 'pickup_and_deliver') {
+                      <div class="px-4 pb-2">
+                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-1.5">📍 Recoger en</p>
+                        @if (!domPickup()) {
+                          @if (!domPickupOpen()) {
+                            <button (click)="domPickupOpen.set(true)"
+                              class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition-all"
+                              style="background:#f0fdf4;border:1.5px solid #86efac">
+                              <span class="material-symbols-outlined text-emerald-500 flex-shrink-0" style="font-size:18px">store</span>
+                              <p class="text-slate-400 text-sm">Buscar dirección de recogida...</p>
+                            </button>
+                          } @else {
+                            <div style="background:#fff;border:1.5px solid #10b981;border-radius:12px;overflow:hidden">
+                              <div class="flex items-center gap-2 px-3 py-2.5">
+                                <span class="material-symbols-outlined text-emerald-500 flex-shrink-0" style="font-size:16px">store</span>
+                                <input
+                                  (input)="onDomPickupInput($any($event.target).value)"
+                                  [value]="domPickupQuery()"
+                                  placeholder="¿Dónde recogemos?"
+                                  autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text"
+                                  class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                                <button (click)="domPickupOpen.set(false); domPickupQuery.set('')">
+                                  <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+                                </button>
+                              </div>
+                              @if (domPickupLoading()) {
+                                <div class="flex justify-center py-3">
+                                  <div class="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                              }
+                              @for (s of domPickupSuggs(); track s.id) {
+                                <button (mousedown)="$event.preventDefault(); selectDomPickup(s)"
+                                  class="w-full flex items-center gap-2 px-3 py-2.5 border-t border-slate-100 text-left hover:bg-slate-50">
+                                  <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:16px">location_on</span>
+                                  <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold truncate text-slate-800">{{ s.text }}</p>
+                                    <p class="text-xs text-slate-400 truncate">{{ s.place_name }}</p>
+                                  </div>
+                                </button>
+                              }
+                            </div>
+                          }
+                        } @else {
+                          <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl" style="background:#f0fdf4;border:1.5px solid #86efac">
+                            <span class="material-symbols-outlined text-emerald-600 flex-shrink-0" style="font-size:18px;font-variation-settings:'FILL' 1">store</span>
+                            <p class="flex-1 text-sm font-semibold text-slate-800 truncate">{{ domPickup()!.name }}</p>
+                            <button (click)="domPickup.set(null); domPickupQuery.set(''); domDistKm.set(0); domEstPrice.set(0)">
+                              <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <!-- from_my_location: mostrar ubicación actual -->
+                      <div class="px-4 pb-2">
+                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-1.5">📍 Recoger en</p>
+                        <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl" style="background:#fff7ed;border:1.5px solid #fed7aa">
+                          <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:18px;font-variation-settings:'FILL' 1">my_location</span>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-[9px] text-orange-400 font-bold uppercase tracking-wider">Tu ubicación actual (automático)</p>
+                            <p class="text-sm font-semibold text-slate-700 truncate">{{ currentAddress() || 'Detectando GPS...' }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Dirección de entrega -->
+                    <div class="px-4 pb-2">
+                      <p class="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-1.5">🏁 Entregar en</p>
+                      @if (!domDelivery()) {
+                        @if (!domDeliveryOpen()) {
+                          <button (click)="domDeliveryOpen.set(true)"
+                            class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition-all"
+                            style="background:#fff7ed;border:1.5px solid #fed7aa">
+                            <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:18px">location_searching</span>
+                            <p class="text-slate-400 text-sm">Buscar dirección de entrega...</p>
+                          </button>
+                        } @else {
+                          <div style="background:#fff;border:1.5px solid #f97316;border-radius:12px;overflow:hidden">
+                            <div class="flex items-center gap-2 px-3 py-2.5">
+                              <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:16px">location_on</span>
+                              <input
+                                (input)="onDomDeliveryInput($any($event.target).value)"
+                                [value]="domDeliveryQuery()"
+                                placeholder="¿A dónde lo llevamos?"
+                                autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text"
+                                class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                              <button (click)="domDeliveryOpen.set(false); domDeliveryQuery.set('')">
+                                <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+                              </button>
+                            </div>
+                            @if (domDeliveryLoading()) {
+                              <div class="flex justify-center py-3">
+                                <div class="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                              </div>
+                            }
+                            @for (s of domDeliverySuggs(); track s.id) {
+                              <button (mousedown)="$event.preventDefault(); selectDomDelivery(s)"
+                                class="w-full flex items-center gap-2 px-3 py-2.5 border-t border-slate-100 text-left hover:bg-slate-50">
+                                <span class="material-symbols-outlined text-slate-400 flex-shrink-0" style="font-size:16px">location_on</span>
+                                <div class="flex-1 min-w-0">
+                                  <p class="text-sm font-semibold truncate text-slate-800">{{ s.text }}</p>
+                                  <p class="text-xs text-slate-400 truncate">{{ s.place_name }}</p>
+                                </div>
+                              </button>
+                            }
+                          </div>
+                        }
+                      } @else {
+                        <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl" style="background:#fff7ed;border:1.5px solid #fed7aa">
+                          <span class="material-symbols-outlined text-orange-500 flex-shrink-0" style="font-size:18px;font-variation-settings:'FILL' 1">location_on</span>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-slate-800 truncate">{{ domDelivery()!.name }}</p>
+                            <p class="text-[10px] text-slate-400">{{ domDistKm() }} km · {{ formatCOP(domEstPrice()) }}</p>
+                          </div>
+                          <button (click)="domDelivery.set(null); domDeliveryQuery.set(''); domDistKm.set(0); domEstPrice.set(0)">
+                            <span class="material-symbols-outlined text-slate-400" style="font-size:18px">close</span>
+                          </button>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Destinatario (opcional) -->
+                    <div class="px-4 pb-2">
+                      <p class="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-1.5">👤 Destinatario (opcional)</p>
+                      <div class="flex gap-2">
+                        <input [(ngModel)]="domRecipNameVal" placeholder="Nombre"
+                          class="flex-1 px-3 py-2 rounded-xl text-sm text-slate-700 outline-none"
+                          style="background:#f8fafc;border:1px solid #e2e8f0"/>
+                        <input [(ngModel)]="domRecipPhoneVal" placeholder="Teléfono" type="tel"
+                          class="flex-1 px-3 py-2 rounded-xl text-sm text-slate-700 outline-none"
+                          style="background:#f8fafc;border:1px solid #e2e8f0"/>
+                      </div>
+                    </div>
+
+                    <!-- Nota para el repartidor -->
+                    <div class="px-4 pb-2">
+                      <textarea [(ngModel)]="domDescVal" placeholder="Nota para el repartidor (opcional)" rows="2"
+                        class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none resize-none"
+                        style="background:#f8fafc;border:1px solid #e2e8f0"></textarea>
+                    </div>
+
+                    <!-- Precio estimado -->
+                    @if (domDelivery() && domEstPrice() > 0) {
+                      <div class="mx-4 mb-2 px-4 py-3 rounded-2xl" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #6ee7b7">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <p class="text-emerald-700 text-[10px] font-black uppercase tracking-wider">Precio estimado</p>
+                            <p class="text-emerald-800 font-black text-2xl leading-tight">{{ formatCOP(domEstPrice()) }}</p>
+                          </div>
+                          <div class="text-right">
+                            <p class="text-emerald-600 text-xs font-semibold">{{ domDistKm() }} km</p>
+                            <p class="text-emerald-500 text-[10px]">El repartidor puede negociar</p>
+                          </div>
+                        </div>
+                        @if (surgeMultiplier() > 1) {
+                          <p class="text-orange-600 text-[10px] font-black mt-1">⚡ Alta demanda ×{{ surgeMultiplier() }}</p>
+                        }
+                      </div>
+                    }
+
+                    <!-- Error -->
+                    @if (domReqError()) {
+                      <div class="mx-4 mb-2 flex items-center gap-2 rounded-xl px-3 py-2" style="background:#fef2f2;border:1px solid #fca5a5">
+                        <span class="material-symbols-outlined text-red-500" style="font-size:16px">error</span>
+                        <p class="text-red-700 text-xs font-semibold">{{ domReqError() }}</p>
+                      </div>
+                    }
+
+                    <!-- Botón pedir -->
+                    <div class="px-4 py-3">
+                      <button (click)="sendDomicilio()" [disabled]="domSending() || !domDelivery() || (deliveryType()==='pickup_and_deliver' && !domPickup())"
+                        class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+                        style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 4px 16px rgba(16,185,129,0.35)">
+                        @if (domSending()) {
+                          <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>
+                          Enviando...
+                        } @else {
+                          <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">delivery_dining</span>
+                          Pedir domicilio
+                        }
+                      </button>
+                    </div>
+                  </div>
                 } @else {
                 <button (click)="openTripSearch()"
                   class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-200 transition-colors text-left">
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    [style]="tripService()==='domicilio' ? 'background:#f0fdf4;border:1px solid #86efac' : 'background:#fff7ed;border:1px solid #fed7aa'">
-                    <span class="material-symbols-outlined" style="font-size:22px"
-                      [style.color]="tripService()==='domicilio' ? '#16a34a' : '#f97316'">
-                      {{ tripService()==='domicilio' ? 'delivery_dining' : 'search' }}
-                    </span>
+                  <div class="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-orange-500" style="font-size:22px">search</span>
                   </div>
                   <div class="flex-1">
-                    <p class="text-slate-800 font-black text-sm">{{ tripService()==='domicilio' ? '¿A dónde enviamos?' : '¿A dónde vas y por cuánto?' }}</p>
-                    <p class="text-slate-400 text-xs mt-0.5">{{ tripService()==='domicilio' ? 'Toca para ingresar la dirección de entrega' : 'Toca para buscar tu destino' }}</p>
+                    <p class="text-slate-800 font-black text-sm">¿A dónde vas y por cuánto?</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Toca para buscar tu destino</p>
                   </div>
                   <span class="material-symbols-outlined text-slate-300" style="font-size:20px">chevron_right</span>
                 </button>
@@ -1810,8 +2021,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="mx-4 mt-3 mb-1 rounded-2xl overflow-hidden"
                 style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 
-                <!-- Fila origen — clicable para cambiar (ocultar en domicilio) -->
-                @if (!originEditOpen() && tripService() !== 'domicilio') {
+                <!-- Fila origen — clicable para cambiar -->
+                @if (!originEditOpen()) {
                   <button (click)="openOriginEdit()"
                     class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors"
                     style="border-bottom:1px solid #f1f5f9">
@@ -1825,7 +2036,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                     <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:15px">edit</span>
                   </button>
-                } @else if (tripService() !== 'domicilio') {
+                } @else {
                   <!-- Búsqueda inline dentro de la tarjeta -->
                   <div style="border-bottom:1px solid #fed7aa;background:#fff7ed">
                     <div class="flex items-center gap-2.5 px-3 py-2.5">
@@ -1967,8 +2178,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
               </div>
 
-              <!-- Categoría de viaje — ocultar en domicilio -->
-              @if (tripService() !== 'domicilio') {
+              <!-- Categoría de viaje -->
               <div class="px-4 pt-2 pb-1">
                 <div class="flex items-center justify-between mb-2">
                   <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Categoría</p>
@@ -1998,10 +2208,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                 </div>
               </div>
-              } <!-- /categoría -->
 
-              <!-- Accesibilidad — ocultar en domicilio -->
-              @if (tripService() !== 'domicilio') {
+              <!-- Accesibilidad -->
               <div class="px-4 pt-1 pb-1">
                 <div class="flex gap-1.5 flex-wrap"
                   [style.pointerEvents]="tripIsActive() ? 'none' : 'auto'"
@@ -2036,7 +2244,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </button>
                 </div>
               </div>
-              } <!-- /accesibilidad -->
 
               <!-- Notas + viaje para otra persona -->
               <div class="px-4 pt-2 pb-1">
@@ -8000,6 +8207,31 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   domRecipientPhoneValue = '';
   domCodeInputValue    = '';
 
+  // ── Domicilio Paso 2 — dirección de recogida (pickup_and_deliver) ────────────
+  domPickup         = signal<{ name: string; lat: number; lng: number } | null>(null);
+  domPickupQuery    = signal('');
+  domPickupOpen     = signal(false);
+  domPickupSuggs    = signal<any[]>([]);
+  domPickupLoading  = signal(false);
+
+  // ── Domicilio Paso 2 — dirección de entrega ──────────────────────────────────
+  domDelivery       = signal<{ name: string; lat: number; lng: number } | null>(null);
+  domDeliveryQuery  = signal('');
+  domDeliveryOpen   = signal(false);
+  domDeliverySuggs  = signal<any[]>([]);
+  domDeliveryLoading= signal(false);
+
+  domDistKm         = signal(0);
+  domEstPrice       = signal(0);
+  domSending        = signal(false);
+  domReqError       = signal<string | null>(null);
+  domActiveReqId    = signal<string | null>(null);
+  domDeliveryCode   = signal<string | null>(null);
+  // ngModel para campos de texto del formulario domicilio
+  domRecipNameVal   = '';
+  domRecipPhoneVal  = '';
+  domDescVal        = '';
+
   readonly domCategories = [
     { value: 'comida',      icon: '🍔', label: 'Comida' },
     { value: 'documentos',  icon: '📄', label: 'Documentos' },
@@ -10101,15 +10333,221 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── Domicilio: driver confirms delivery code ─────────────────────────────────
+  // ── Domicilio: delivery step navigation ─────────────────────────────────────
   nextDeliveryStep() {
-    if (this.deliveryStep() < 2) this.deliveryStep.update(s => s + 1);
+    if (this.deliveryStep() < 3) this.deliveryStep.update(s => s + 1);
   }
   prevDeliveryStep() {
     if (this.deliveryStep() > 1) this.deliveryStep.update(s => s - 1);
     else this.tripService.set('viaje');
   }
 
+  // ── Domicilio Paso 2: buscadores y precio ────────────────────────────────────
+  onDomPickupInput(val: string): void {
+    this.domPickupQuery.set(val);
+    if (!val.trim()) { this.domPickupSuggs.set([]); return; }
+    this.domPickupLoading.set(true);
+    this._loadGoogleMapsSDK().then(ok => {
+      if (!ok) { this.domPickupLoading.set(false); return; }
+      const gmaps = (window as any).google.maps;
+      const svc = this._autocompleteService ?? new gmaps.places.AutocompleteService();
+      const bounds = new gmaps.LatLngBounds(
+        new gmaps.LatLng(this._currentLat - 0.45, this._currentLng - 0.45),
+        new gmaps.LatLng(this._currentLat + 0.45, this._currentLng + 0.45)
+      );
+      svc.getPlacePredictions({
+        input: val, bounds,
+        componentRestrictions: { country: 'co' },
+        sessionToken: new gmaps.places.AutocompleteSessionToken(),
+      }, (preds: any[], status: string) => {
+        this.domPickupLoading.set(false);
+        if (status !== 'OK' || !preds) { this.domPickupSuggs.set([]); return; }
+        this.domPickupSuggs.set(preds.map(p => ({
+          id: p.place_id,
+          text: p.structured_formatting?.main_text ?? p.description,
+          place_name: p.structured_formatting?.secondary_text ?? '',
+          place_id: p.place_id,
+        })));
+        this.cdr.markForCheck();
+      });
+    });
+  }
+
+  selectDomPickup(s: any): void {
+    this.domPickupOpen.set(false);
+    this.domPickupQuery.set(s.text);
+    const gmaps = (window as any).google?.maps;
+    if (!gmaps) return;
+    const svc = new gmaps.places.PlacesService(document.createElement('div'));
+    svc.getDetails({ placeId: s.place_id, fields: ['geometry'] }, (place: any, st: string) => {
+      if (st !== 'OK' || !place?.geometry?.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      this.domPickup.set({ name: s.text, lat, lng });
+      this._calcDomPrice();
+      this.cdr.markForCheck();
+    });
+  }
+
+  onDomDeliveryInput(val: string): void {
+    this.domDeliveryQuery.set(val);
+    if (!val.trim()) { this.domDeliverySuggs.set([]); return; }
+    this.domDeliveryLoading.set(true);
+    this._loadGoogleMapsSDK().then(ok => {
+      if (!ok) { this.domDeliveryLoading.set(false); return; }
+      const gmaps = (window as any).google.maps;
+      const svc = this._autocompleteService ?? new gmaps.places.AutocompleteService();
+      const refLat = this.deliveryType() === 'from_my_location' ? this._currentLat : (this.domPickup()?.lat ?? this._currentLat);
+      const refLng = this.deliveryType() === 'from_my_location' ? this._currentLng : (this.domPickup()?.lng ?? this._currentLng);
+      const bounds = new gmaps.LatLngBounds(
+        new gmaps.LatLng(refLat - 0.45, refLng - 0.45),
+        new gmaps.LatLng(refLat + 0.45, refLng + 0.45)
+      );
+      svc.getPlacePredictions({
+        input: val, bounds,
+        componentRestrictions: { country: 'co' },
+        sessionToken: new gmaps.places.AutocompleteSessionToken(),
+      }, (preds: any[], status: string) => {
+        this.domDeliveryLoading.set(false);
+        if (status !== 'OK' || !preds) { this.domDeliverySuggs.set([]); return; }
+        this.domDeliverySuggs.set(preds.map(p => ({
+          id: p.place_id,
+          text: p.structured_formatting?.main_text ?? p.description,
+          place_name: p.structured_formatting?.secondary_text ?? '',
+          place_id: p.place_id,
+        })));
+        this.cdr.markForCheck();
+      });
+    });
+  }
+
+  selectDomDelivery(s: any): void {
+    this.domDeliveryOpen.set(false);
+    this.domDeliveryQuery.set(s.text);
+    const gmaps = (window as any).google?.maps;
+    if (!gmaps) return;
+    const svc = new gmaps.places.PlacesService(document.createElement('div'));
+    svc.getDetails({ placeId: s.place_id, fields: ['geometry'] }, (place: any, st: string) => {
+      if (st !== 'OK' || !place?.geometry?.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      this.domDelivery.set({ name: s.text, lat, lng });
+      this._calcDomPrice();
+      this.cdr.markForCheck();
+    });
+  }
+
+  private _calcDomPrice(): void {
+    const delivery = this.domDelivery();
+    if (!delivery) return;
+    const fromLat = this.deliveryType() === 'from_my_location'
+      ? this._currentLat
+      : (this.domPickup()?.lat ?? this._currentLat);
+    const fromLng = this.deliveryType() === 'from_my_location'
+      ? this._currentLng
+      : (this.domPickup()?.lng ?? this._currentLng);
+    const R = 6371;
+    const dLat = (delivery.lat - fromLat) * Math.PI / 180;
+    const dLng = (delivery.lng - fromLng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(fromLat * Math.PI / 180) * Math.cos(delivery.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    this.domDistKm.set(Math.round(km * 10) / 10);
+    const price = Math.max(5000, Math.round(km * 1500 * this.surgeMultiplier() / 500) * 500);
+    this.domEstPrice.set(price);
+  }
+
+  resetDomicilio(): void {
+    this.deliveryStep.set(1);
+    this.deliveryType.set('pickup_and_deliver');
+    this.domPickup.set(null);
+    this.domPickupQuery.set('');
+    this.domPickupOpen.set(false);
+    this.domPickupSuggs.set([]);
+    this.domDelivery.set(null);
+    this.domDeliveryQuery.set('');
+    this.domDeliveryOpen.set(false);
+    this.domDeliverySuggs.set([]);
+    this.domDistKm.set(0);
+    this.domEstPrice.set(0);
+    this.domSending.set(false);
+    this.domReqError.set(null);
+    this.domActiveReqId.set(null);
+    this.domDeliveryCode.set(null);
+    this.domPackageType.set('paquete');
+    this.domDescription.set('');
+    this.domRecipientName.set('');
+    this.domRecipientPhone.set('');
+    this.domContactless.set(false);
+    this.domRecipNameVal = '';
+    this.domRecipPhoneVal = '';
+    this.domDescVal = '';
+  }
+
+  async sendDomicilio(): Promise<void> {
+    const delivery = this.domDelivery();
+    if (!delivery) { this.domReqError.set('Ingresa la dirección de entrega'); return; }
+    if (this.deliveryType() === 'pickup_and_deliver' && !this.domPickup()) {
+      this.domReqError.set('Ingresa la dirección de recogida'); return;
+    }
+    if (!this._gpsRealFix && this.deliveryType() === 'from_my_location') {
+      this.domReqError.set('Esperando GPS... intenta en unos segundos'); return;
+    }
+    const profile = this.agProfile();
+    if (!profile) { this.domReqError.set('Debes iniciar sesión'); return; }
+
+    this.domDescription.set(this.domDescVal);
+    this.domRecipientName.set(this.domRecipNameVal);
+    this.domRecipientPhone.set(this.domRecipPhoneVal);
+
+    const originLat = this.deliveryType() === 'from_my_location' ? this._currentLat : this.domPickup()!.lat;
+    const originLng = this.deliveryType() === 'from_my_location' ? this._currentLng : this.domPickup()!.lng;
+    const originName = this.deliveryType() === 'from_my_location'
+      ? (this.currentAddress() || 'Tu ubicación actual')
+      : this.domPickup()!.name;
+
+    this.domSending.set(true);
+    this.domReqError.set(null);
+
+    const result = await this.agService.requestTrip({
+      passengerUserId: profile.id,
+      passengerName: profile.full_name || undefined,
+      passengerSelfieUrl: profile.selfie_url || undefined,
+      originLat, originLng, originName,
+      destName: delivery.name, destLat: delivery.lat, destLng: delivery.lng,
+      distanceKm: this.domDistKm(),
+      vehicleType: 'moto',
+      offeredPrice: this.domEstPrice(),
+      paymentMethod: this.tripPayment(),
+      serviceType: 'domicilio',
+      packageType: this.domPackageType(),
+      packageDescription: this.domDescVal || undefined,
+      recipientName: this.domRecipNameVal || undefined,
+      recipientPhone: this.domRecipPhoneVal || undefined,
+      contactlessDelivery: this.domContactless(),
+    });
+
+    this.domSending.set(false);
+    if (!result.success || !result.tripId) {
+      this.domReqError.set(result.error ?? 'Error al crear el domicilio. Intenta de nuevo.');
+      return;
+    }
+    this.domActiveReqId.set(result.tripId);
+    this.currentTripRequestId.set(result.tripId);
+    this._subscribeToOffers(result.tripId);
+    this._autoAssignNearestDrivers(result.tripId, originLat, originLng, 'moto', this.domEstPrice());
+    this.tripSent.set(true);
+    this._startWaiting();
+    this.deliveryStep.set(3);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('movi_active_trip', JSON.stringify({
+        tripId: result.tripId, status: 'searching', ts: Date.now(),
+        dest: delivery, price: this.domEstPrice(), vehicle: 'moto',
+      }));
+    }
+  }
+
+  // ── Domicilio: driver confirms delivery code ─────────────────────────────────
   async confirmDomDeliveryCode(): Promise<void> {
     // Sync the ngModel value to the signal
     this.domCodeInput.set(this.domCodeInputValue);
