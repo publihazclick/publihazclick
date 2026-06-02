@@ -1055,14 +1055,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
           <!-- Precio sugerido -->
           @if (tripPrice() > 0) {
-            <div class="flex items-center justify-between px-3 py-2.5" style="border-top:1px solid #f1f5f9;background:#fafafa;border-radius:0 0 16px 16px">
+            <div class="flex items-center justify-between px-3 py-2.5" style="border-top:1px solid #fed7aa;background:linear-gradient(135deg,#fff7ed,#ffedd5);border-radius:0 0 16px 16px">
               <div>
-                <p style="color:#9ca3af;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Precio sugerido</p>
-                <p style="color:#111827;font-size:18px;font-weight:900;margin:0;line-height:1.2">{{ formatCOP(tripPrice()) }}</p>
+                <p style="color:#c2410c;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Precio sugerido</p>
+                <p style="color:#ea580c;font-size:20px;font-weight:900;margin:0;line-height:1.2">{{ formatCOP(tripPrice()) }}</p>
               </div>
               <div class="text-right">
-                <p style="color:#6b7280;font-size:10px;font-weight:600;margin:0;line-height:1.4">Mayor precio =</p>
-                <p style="color:#f97316;font-size:10px;font-weight:800;margin:0;line-height:1.4">conductores más rápido</p>
+                <p style="color:#9a3412;font-size:10px;font-weight:600;margin:0;line-height:1.4">Mayor precio =</p>
+                <p style="color:#ea580c;font-size:10px;font-weight:800;margin:0;line-height:1.4">conductores más rápido ⚡</p>
               </div>
             </div>
           }
