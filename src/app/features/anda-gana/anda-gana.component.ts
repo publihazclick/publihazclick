@@ -8123,11 +8123,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.loadMapbox().catch(() => {});
     this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
 
-    // ── Cache del perfil: mostrar pantalla correcta sin esperar red ──
-    // El logo (screen='splash') se mantiene al menos 1.5 s para que sea visible
+    // ── Cache: precargar datos sin cambiar pantalla todavía ──────────
     const _CACHE_KEY = 'movi-profile-cache';
-    const _splashStart = Date.now();
     let _cacheUsed = false;
+    let _cachedRole: string | null = null;
+    let _cachedDriver: any = null;
     try {
       const _raw = localStorage.getItem(_CACHE_KEY);
       if (_raw) {
@@ -8135,41 +8135,39 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         if (p?.role) {
           this.agProfile.set(p);
           this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${p.id}`);
-          const _showHome = () => {
-            if (p.role === 'passenger') {
-              this.screen.set('passenger-home');
-              this._startPassengerWatch();
-              this._subscribeToDriverLocations();
-              setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
-            } else if (d) {
-              this.driverData.set(d);
-              this.driverStatus.set(d.status ?? 'quick');
-              this.driverRejectionReason.set(d.rejection_reason ?? null);
-              this.screen.set('driver-home');
-              setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
-            }
-          };
-          const _elapsed = Date.now() - _splashStart;
-          const _minSplash = 1500;
-          if (_elapsed >= _minSplash) { _showHome(); }
-          else { setTimeout(_showHome, _minSplash - _elapsed); }
+          _cachedRole   = p.role;
+          _cachedDriver = d ?? null;
+          if (d && p.role !== 'passenger') {
+            this.driverData.set(d);
+            this.driverStatus.set(d.status ?? 'quick');
+            this.driverRejectionReason.set(d.rejection_reason ?? null);
+          }
           _cacheUsed = true;
         }
       }
     } catch {}
 
-    // ── Validar perfil fresco en Supabase (siempre, aunque haya caché) ──
-    let profile = await this.agService.getMyAgProfile();
-    if (!profile) {
-      const reauth = await this.phoneAuth.tryReAuth();
-      if (reauth?.profile) profile = reauth.profile;
-    }
+    // ── Splash mínimo 2 s + Supabase en paralelo ─────────────────────
+    // Si hay caché esperamos AMBOS; si no, solo Supabase (el splash ya duró el tiempo natural)
+    const _splashTimer = _cacheUsed
+      ? new Promise<void>(r => setTimeout(r, 2000))
+      : Promise.resolve();
+
+    const _profilePromise = this.agService.getMyAgProfile().then(async p => {
+      if (!p) {
+        const reauth = await this.phoneAuth.tryReAuth();
+        return reauth?.profile ?? null;
+      }
+      return p;
+    });
+
+    const [profile] = await Promise.all([_profilePromise, _splashTimer]);
 
     this.agProfile.set(profile);
     if (profile) this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
     if (!profile) { this.screen.set('home'); return; }
 
-    // Operaciones no críticas: diferir 1.5 s para no bloquear el primer render
+    // Operaciones no críticas diferidas
     setTimeout(() => { this.checkPushSupport(); this.loadReferralData(); }, 1500);
 
     if (profile.role === 'passenger') {
@@ -8203,7 +8201,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       await this._initDriverHome(mine);
     }
 
-    // Iniciar mapa solo si el caché no lo hizo ya
     if (!this._map) {
       setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
     }
