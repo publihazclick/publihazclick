@@ -5948,7 +5948,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               Enviando fotos...
             } @else {
               <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">verified_user</span>
-              {{ (!passengerVerifSelfie() || !passengerVerifFront() || !passengerVerifBack()) ? 'Faltan fotos (' + [!passengerVerifSelfie()?1:0, !passengerVerifFront()?1:0, !passengerVerifBack()?1:0].reduce((a,b)=>a+b,0) + ' de 3)' : 'Confirmar y continuar' }}
+              {{ !passengerVerifSelfie() ? 'Falta selfie' : !passengerVerifFront() ? 'Falta cédula delantera' : !passengerVerifBack() ? 'Falta cédula trasera' : 'Confirmar y continuar' }}
             }
           </button>
         </div>
