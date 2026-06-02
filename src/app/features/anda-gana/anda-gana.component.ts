@@ -8116,8 +8116,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     try {
       const _raw = localStorage.getItem(_CACHE_KEY);
       if (_raw) {
-        const { p, d, ts } = JSON.parse(_raw);
-        if (p && (Date.now() - ts) < 300_000) {
+        const { p, d } = JSON.parse(_raw);
+        if (p?.role) {
           this.agProfile.set(p);
           this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${p.id}`);
           if (p.role === 'passenger') {
@@ -8152,7 +8152,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     setTimeout(() => { this.checkPushSupport(); this.loadReferralData(); }, 1500);
 
     if (profile.role === 'passenger') {
-      localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: null, ts: Date.now() }));
+      localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: null }));
       this.screen.set('passenger-home');
       this._startPassengerWatch();
       this.agService.cancelStaleTrips().catch(() => {});
@@ -8174,7 +8174,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         await getMoviClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
         mine = { ...mine, status: 'quick' };
       }
-      localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: mine, ts: Date.now() }));
+      localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: mine }));
       this.driverData.set(mine);
       this.driverStatus.set(mine?.status ?? 'quick');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
