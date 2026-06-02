@@ -137,7 +137,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <span class="material-symbols-outlined" style="font-size:38px;color:#fff;font-variation-settings:'FILL' 1">check_circle</span>
           </div>
           <p style="color:#fff;font-size:20px;font-weight:900;margin:0">¡Te aceptaron!</p>
-          <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0">{{ driverTripAlert()!.ag_trip_requests?.service_type === 'domicilio' ? 'Domicilio asignado' : 'El pasajero aceptó tu oferta' }}</p>
+          <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0">{{ driverTripAlert()?.ag_trip_requests?.service_type === 'domicilio' ? 'Domicilio asignado' : 'El pasajero aceptó tu oferta' }}</p>
         </div>
         <!-- Detalles -->
         <div class="px-5 py-4 flex flex-col gap-3">
@@ -180,7 +180,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             class="w-full py-4 rounded-2xl text-white font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
             style="background:linear-gradient(135deg,#059669,#10b981);font-size:16px">
             <span class="material-symbols-outlined" style="font-size:22px">navigation</span>
-            {{ driverTripAlert()!.ag_trip_requests?.service_type === 'domicilio' ? 'Ir a recoger paquete' : 'Ir a recoger pasajero' }}
+            {{ driverTripAlert()?.ag_trip_requests?.service_type === 'domicilio' ? 'Ir a recoger paquete' : 'Ir a recoger pasajero' }}
           </button>
         </div>
       </div>
@@ -316,7 +316,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;overflow:hidden">
             <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.07)">
               <span class="material-symbols-outlined" style="font-size:14px;color:#fb923c;flex-shrink:0;font-variation-settings:'FILL' 1">my_location</span>
-              <p style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripService()==='domicilio' && deliveryType()==='pickup_and_deliver' ? (domPickup()?.name || 'Punto de recogida') : (currentAddress() || 'Tu ubicación') }}</p>
+              <p style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripService()==='domicilio' ? (deliveryType()==='pickup_and_deliver' ? (domPickup()?.name || 'Punto de recogida') : 'Tu ubicación actual') : (currentAddress() || 'Tu ubicación') }}</p>
             </div>
             <div style="padding:8px 12px;display:flex;align-items:center;gap:8px">
               <span class="material-symbols-outlined" style="font-size:14px;color:#f87171;flex-shrink:0">location_on</span>
@@ -1429,14 +1429,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span class="material-symbols-outlined text-slate-500" style="font-size:16px">chevron_left</span>
               </button>
             <div id="ag-icons-scroll" class="flex gap-1 flex-1 overflow-x-auto" style="scrollbar-width:none">
-              <button (click)="tripService.set('viaje'); setTripVehicle('carro')"
+              <button (click)="tripService.set('viaje'); setTripVehicle('carro'); resetDomicilio()"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='viaje' ? 'bg-orange-50 border border-orange-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='viaje' ? '#f97316' : '#94a3b8'">directions_car</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='viaje' ? '#f97316' : '#94a3b8'">Viaje</span>
               </button>
-              <button (click)="tripService.set('moto'); setTripVehicle('moto')"
+              <button (click)="tripService.set('moto'); setTripVehicle('moto'); resetDomicilio()"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='moto' ? 'bg-cyan-50 border border-cyan-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
@@ -1450,14 +1450,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">delivery_dining</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">Domicilio</span>
               </button>
-              <button (click)="tripService.set('fletes'); setTripVehicle('carro')"
+              <button (click)="tripService.set('fletes'); setTripVehicle('carro'); resetDomicilio()"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='fletes' ? 'bg-amber-50 border border-amber-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
                   [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">local_shipping</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='fletes' ? '#f59e0b' : '#94a3b8'">Flete</span>
               </button>
-              <button (click)="tripService.set('ciudad'); setTripVehicle('carro')"
+              <button (click)="tripService.set('ciudad'); setTripVehicle('carro'); resetDomicilio()"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='ciudad' ? 'bg-purple-50 border border-purple-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
@@ -2130,13 +2130,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       </button>
                     }
                   </div>
-                  <textarea [(ngModel)]="domDescriptionValue" placeholder="Descripción del paquete (opcional)"
+                  <textarea [(ngModel)]="domDescVal" placeholder="Descripción del paquete (opcional)"
                     rows="2" class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none resize-none mb-2"
                     style="background:#f8fafc;border:1px solid #e2e8f0"></textarea>
-                  <input [(ngModel)]="domRecipientNameValue" placeholder="Nombre del destinatario"
+                  <input [(ngModel)]="domRecipNameVal" placeholder="Nombre del destinatario"
                     class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none mb-2"
                     style="background:#f8fafc;border:1px solid #e2e8f0" />
-                  <input [(ngModel)]="domRecipientPhoneValue" placeholder="Teléfono del destinatario" type="tel"
+                  <input [(ngModel)]="domRecipPhoneVal" placeholder="Teléfono del destinatario" type="tel"
                     class="w-full px-3 py-2 rounded-xl text-sm text-slate-700 outline-none mb-2"
                     style="background:#f8fafc;border:1px solid #e2e8f0" />
                   <button (click)="domContactless.set(!domContactless())"
@@ -10377,10 +10377,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domPickupOpen.set(false);
     this.domPickupQuery.set(s.text);
     const gmaps = (window as any).google?.maps;
-    if (!gmaps) return;
+    if (!gmaps) { this.domReqError.set('Google Maps no disponible'); return; }
     const svc = new gmaps.places.PlacesService(document.createElement('div'));
     svc.getDetails({ placeId: s.place_id, fields: ['geometry'] }, (place: any, st: string) => {
-      if (st !== 'OK' || !place?.geometry?.location) return;
+      if (st !== 'OK' || !place?.geometry?.location) {
+        this.domReqError.set('No se pudo obtener la ubicación de recogida');
+        this.cdr.markForCheck(); return;
+      }
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       this.domPickup.set({ name: s.text, lat, lng });
@@ -10425,10 +10428,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domDeliveryOpen.set(false);
     this.domDeliveryQuery.set(s.text);
     const gmaps = (window as any).google?.maps;
-    if (!gmaps) return;
+    if (!gmaps) { this.domReqError.set('Google Maps no disponible'); return; }
     const svc = new gmaps.places.PlacesService(document.createElement('div'));
     svc.getDetails({ placeId: s.place_id, fields: ['geometry'] }, (place: any, st: string) => {
-      if (st !== 'OK' || !place?.geometry?.location) return;
+      if (st !== 'OK' || !place?.geometry?.location) {
+        this.domReqError.set('No se pudo obtener la ubicación de entrega');
+        this.cdr.markForCheck(); return;
+      }
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       this.domDelivery.set({ name: s.text, lat, lng });
@@ -10482,6 +10488,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domRecipNameVal = '';
     this.domRecipPhoneVal = '';
     this.domDescVal = '';
+    this.domDescriptionValue = '';
+    this.domRecipientNameValue = '';
+    this.domRecipientPhoneValue = '';
   }
 
   async sendDomicilio(): Promise<void> {
@@ -10500,11 +10509,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domRecipientName.set(this.domRecipNameVal);
     this.domRecipientPhone.set(this.domRecipPhoneVal);
 
-    const originLat = this.deliveryType() === 'from_my_location' ? this._currentLat : this.domPickup()!.lat;
-    const originLng = this.deliveryType() === 'from_my_location' ? this._currentLng : this.domPickup()!.lng;
+    const originLat = this.deliveryType() === 'from_my_location' ? this._currentLat : (this.domPickup()?.lat ?? this._currentLat);
+    const originLng = this.deliveryType() === 'from_my_location' ? this._currentLng : (this.domPickup()?.lng ?? this._currentLng);
     const originName = this.deliveryType() === 'from_my_location'
       ? (this.currentAddress() || 'Tu ubicación actual')
-      : this.domPickup()!.name;
+      : (this.domPickup()?.name ?? 'Punto de recogida');
 
     this.domSending.set(true);
     this.domReqError.set(null);
@@ -10557,9 +10566,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domCodeInput.set(this.domCodeInputValue);
     const code = this.domCodeInputValue.trim();
     if (code.length !== 4) { this.domCodeError.set('Ingresa los 4 dígitos'); return; }
-    const reqId = this.currentTripRequestId()
-      ?? this.driverFullscreenTrip()?.trip_request_id
-      ?? this.driverFullscreenTrip()?.ag_trip_requests?.id;
+    const _fstrip = this.driverFullscreenTrip();
+    const reqId = _fstrip?.trip_request_id ?? _fstrip?.ag_trip_requests?.id ?? this.currentTripRequestId();
     if (!reqId) { this.domCodeError.set('No se encontró el viaje'); return; }
     this.domCodeLoading.set(true);
     const res = await this.agService.confirmDeliveryCode(reqId, code);
@@ -12583,9 +12591,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
     // Sync domicilio ngModel values to signals before requesting
     if (this.tripService() === 'domicilio') {
-      this.domDescription.set(this.domDescriptionValue);
-      this.domRecipientName.set(this.domRecipientNameValue);
-      this.domRecipientPhone.set(this.domRecipientPhoneValue);
+      this.domDescription.set(this.domDescVal);
+      this.domRecipientName.set(this.domRecipNameVal);
+      this.domRecipientPhone.set(this.domRecipPhoneVal);
     }
 
     const isDomicilio = this.tripService() === 'domicilio';
@@ -12747,10 +12755,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripAccepted.set(offer);
     this.tripSent.set(false);
     const tripId = (offer as any).trip_request_id ?? this.currentTripRequestId();
-    // Para domicilio: buscar código de entrega generado por el trigger DB
+    // Para domicilio: buscar código de entrega (el trigger DB puede tardar ms → reintentos)
     if (this.tripService() === 'domicilio' && tripId) {
-      getMoviClient().from('ag_trip_requests').select('delivery_code').eq('id', tripId).maybeSingle()
-        .then(({ data }) => { if (data?.delivery_code) { this.domDeliveryCode.set(data.delivery_code); this.cdr.markForCheck(); } });
+      let _retries = 0;
+      const _fetchCode = async () => {
+        const { data } = await getMoviClient()
+          .from('ag_trip_requests').select('delivery_code').eq('id', tripId).maybeSingle();
+        if (data?.delivery_code) {
+          this.domDeliveryCode.set(data.delivery_code); this.cdr.markForCheck();
+        } else if (_retries++ < 6) {
+          setTimeout(_fetchCode, 500); // retry cada 500ms hasta 3s
+        }
+      };
+      setTimeout(_fetchCode, 300); // primer intento a 300ms
     }
     // Persistir estado del viaje para recuperación tras crash
     if (typeof localStorage !== 'undefined') {
