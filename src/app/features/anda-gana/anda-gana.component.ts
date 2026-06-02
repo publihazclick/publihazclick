@@ -1518,6 +1518,47 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                   }
                 }
+                @if (tripService() === 'domicilio' && deliveryStep() === 1) {
+                  <!-- Paso 1 domicilio: tipo de servicio -->
+                  <div class="px-4 py-4">
+                    <p class="font-black text-slate-800 text-sm mb-3">¿Cómo es tu domicilio?</p>
+                    <div class="flex flex-col gap-3">
+                      <button (click)="deliveryType.set('pickup_and_deliver')"
+                        class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition-all"
+                        [style.border]="deliveryType()==='pickup_and_deliver' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
+                        [style.background]="deliveryType()==='pickup_and_deliver' ? '#f0fdf4' : '#f8fafc'">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                          [style.background]="deliveryType()==='pickup_and_deliver' ? '#dcfce7' : '#f1f5f9'">
+                          <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                            [style.color]="deliveryType()==='pickup_and_deliver' ? '#10b981' : '#94a3b8'">store</span>
+                        </div>
+                        <div>
+                          <p class="font-black text-slate-800 text-sm">Recoger y llevar</p>
+                          <p class="text-slate-500 text-xs mt-0.5">El moto va a un lugar, recoge algo y lo lleva a otra dirección</p>
+                        </div>
+                      </button>
+                      <button (click)="deliveryType.set('from_my_location')"
+                        class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition-all"
+                        [style.border]="deliveryType()==='from_my_location' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
+                        [style.background]="deliveryType()==='from_my_location' ? '#f0fdf4' : '#f8fafc'">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                          [style.background]="deliveryType()==='from_my_location' ? '#dcfce7' : '#f1f5f9'">
+                          <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
+                            [style.color]="deliveryType()==='from_my_location' ? '#10b981' : '#94a3b8'">home</span>
+                        </div>
+                        <div>
+                          <p class="font-black text-slate-800 text-sm">Recoger donde estoy</p>
+                          <p class="text-slate-500 text-xs mt-0.5">El moto viene donde estás, recoge y lleva a otra dirección</p>
+                        </div>
+                      </button>
+                    </div>
+                    <button (click)="nextDeliveryStep()"
+                      class="w-full mt-4 py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98]"
+                      style="background:linear-gradient(135deg,#10b981,#059669)">
+                      Continuar
+                    </button>
+                  </div>
+                } @else {
                 <button (click)="openTripSearch()"
                   class="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-200 transition-colors text-left">
                   <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1533,6 +1574,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                   <span class="material-symbols-outlined text-slate-300" style="font-size:20px">chevron_right</span>
                 </button>
+                }
               } @else {
                 <div class="flex flex-col">
                   <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
@@ -1863,50 +1905,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <p class="text-slate-400 text-[10px] text-center">💡 Precio más alto = conductores más rápido</p>
               </div>
 
-              <!-- ── Paso 1 Domicilio: tipo de servicio ──────────────── -->
-              @if (tripService() === 'domicilio' && deliveryStep() === 1) {
-                <div class="px-4 py-4 border-b border-slate-200">
-                  <p class="font-black text-slate-800 text-sm mb-3">¿Cómo es tu domicilio?</p>
-                  <div class="flex flex-col gap-3">
-                    <button (click)="deliveryType.set('pickup_and_deliver')"
-                      class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition-all"
-                      [style.border]="deliveryType()==='pickup_and_deliver' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
-                      [style.background]="deliveryType()==='pickup_and_deliver' ? '#f0fdf4' : '#f8fafc'">
-                      <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                        [style.background]="deliveryType()==='pickup_and_deliver' ? '#dcfce7' : '#f1f5f9'">
-                        <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
-                          [style.color]="deliveryType()==='pickup_and_deliver' ? '#10b981' : '#94a3b8'">store</span>
-                      </div>
-                      <div>
-                        <p class="font-black text-slate-800 text-sm">Recoger y llevar</p>
-                        <p class="text-slate-500 text-xs mt-0.5">El moto va a un lugar, recoge algo y lo lleva a otra dirección</p>
-                      </div>
-                    </button>
-                    <button (click)="deliveryType.set('from_my_location')"
-                      class="flex items-center gap-3 p-4 rounded-2xl text-left active:scale-[0.98] transition-all"
-                      [style.border]="deliveryType()==='from_my_location' ? '2px solid #10b981' : '1.5px solid #e2e8f0'"
-                      [style.background]="deliveryType()==='from_my_location' ? '#f0fdf4' : '#f8fafc'">
-                      <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                        [style.background]="deliveryType()==='from_my_location' ? '#dcfce7' : '#f1f5f9'">
-                        <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
-                          [style.color]="deliveryType()==='from_my_location' ? '#10b981' : '#94a3b8'">home</span>
-                      </div>
-                      <div>
-                        <p class="font-black text-slate-800 text-sm">Recoger donde estoy</p>
-                        <p class="text-slate-500 text-xs mt-0.5">El moto viene donde estás, recoge y lleva a otra dirección</p>
-                      </div>
-                    </button>
-                  </div>
-                  <button (click)="nextDeliveryStep()"
-                    class="w-full mt-4 py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98]"
-                    style="background:linear-gradient(135deg,#10b981,#059669)">
-                    Continuar
-                  </button>
-                </div>
-              }
-
-              <!-- ── Campos Domicilio (paso 2+) ─────────────────────── -->
-              @if (tripService() === 'domicilio' && deliveryStep() > 1) {
+              <!-- ── Campos Domicilio ─────────────────────────────────── -->
+              @if (tripService() === 'domicilio') {
                 <div class="px-4 py-3 border-b border-slate-200">
                   <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2">¿Qué envías?</p>
                   <div class="grid grid-cols-3 gap-1.5 mb-3">
