@@ -8111,7 +8111,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
 
     // ── Cache del perfil: mostrar pantalla correcta sin esperar red ──
+    // El logo (screen='splash') se mantiene al menos 1.5 s para que sea visible
     const _CACHE_KEY = 'movi-profile-cache';
+    const _splashStart = Date.now();
     let _cacheUsed = false;
     try {
       const _raw = localStorage.getItem(_CACHE_KEY);
@@ -8120,18 +8122,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         if (p?.role) {
           this.agProfile.set(p);
           this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${p.id}`);
-          if (p.role === 'passenger') {
-            this.screen.set('passenger-home');
-            this._startPassengerWatch();
-            this._subscribeToDriverLocations();
-            setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
-          } else if (d) {
-            this.driverData.set(d);
-            this.driverStatus.set(d.status ?? 'quick');
-            this.driverRejectionReason.set(d.rejection_reason ?? null);
-            this.screen.set('driver-home');
-            setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
-          }
+          const _showHome = () => {
+            if (p.role === 'passenger') {
+              this.screen.set('passenger-home');
+              this._startPassengerWatch();
+              this._subscribeToDriverLocations();
+              setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
+            } else if (d) {
+              this.driverData.set(d);
+              this.driverStatus.set(d.status ?? 'quick');
+              this.driverRejectionReason.set(d.rejection_reason ?? null);
+              this.screen.set('driver-home');
+              setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
+            }
+          };
+          const _elapsed = Date.now() - _splashStart;
+          const _minSplash = 1500;
+          if (_elapsed >= _minSplash) { _showHome(); }
+          else { setTimeout(_showHome, _minSplash - _elapsed); }
           _cacheUsed = true;
         }
       }
