@@ -1077,7 +1077,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       @if (passengerSection() === null) {
 
       <!-- ══ Barra de dirección (encima del mapa) ══ -->
-      @if (!passengerMapFullscreen() && gpsStatus() !== 'requesting' && !tripAccepted()) {
+      @if (!passengerMapFullscreen() && gpsStatus() !== 'requesting' && !tripAccepted() && !tripDest()) {
         <div class="w-full px-4 mb-1 flex-shrink-0">
           @if (locationUpdating()) {
             <div class="flex items-center justify-center gap-1.5 mb-1.5">
