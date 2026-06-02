@@ -8107,73 +8107,85 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       SplashScreen.hide({ fadeOutDuration: 0 }).catch(() => {});
     }
 
-    // Capturar referido desde query param ?ref=
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');
-
-    // Retorno de ePayco tras pago de wallet
     if (this.route.snapshot.queryParamMap.get('wallet') === 'result') {
       this.walletPaymentResult.set('processing');
     }
 
-    // Detectar soporte push y estado
-    this.checkPushSupport();
-
-    // En SSR no hay sesión de usuario: mostrar loading y dejar que el cliente evalúe
     if (!isPlatformBrowser(this.platformId)) {
       this.screen.set('loading');
       return;
     }
 
-    // Cargar surge actual
+    // ── Precarga inmediata: Mapbox + surge en paralelo con Supabase ──
+    this.loadMapbox().catch(() => {});
     this.agService.currentSurge().then(s => this.surgeMultiplier.set(s)).catch(() => {});
 
-    let profile = await this.agService.getMyAgProfile();
+    // ── Cache del perfil: mostrar pantalla correcta sin esperar red ──
+    const _CACHE_KEY = 'movi-profile-cache';
+    let _cacheUsed = false;
+    try {
+      const _raw = localStorage.getItem(_CACHE_KEY);
+      if (_raw) {
+        const { p, d, ts } = JSON.parse(_raw);
+        if (p && (Date.now() - ts) < 300_000) {
+          this.agProfile.set(p);
+          this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${p.id}`);
+          if (p.role === 'passenger') {
+            this.screen.set('passenger-home');
+            this._startPassengerWatch();
+            this._subscribeToDriverLocations();
+            setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
+          } else if (d) {
+            this.driverData.set(d);
+            this.driverStatus.set(d.status ?? 'quick');
+            this.driverRejectionReason.set(d.rejection_reason ?? null);
+            this.screen.set('driver-home');
+            setTimeout(() => this.initGpsAndMap('ag-map-user'), 0);
+          }
+          _cacheUsed = true;
+        }
+      }
+    } catch {}
 
-    // Si no hay sesión, intentar re-auth silenciosa con teléfono guardado (evita pedir SMS de nuevo)
+    // ── Validar perfil fresco en Supabase (siempre, aunque haya caché) ──
+    let profile = await this.agService.getMyAgProfile();
     if (!profile) {
       const reauth = await this.phoneAuth.tryReAuth();
-      if (reauth?.profile) {
-        profile = reauth.profile;
-      }
+      if (reauth?.profile) profile = reauth.profile;
     }
 
     this.agProfile.set(profile);
-    if (profile && isPlatformBrowser(this.platformId)) {
-      this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
-    }
-
+    if (profile) this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
     if (!profile) { this.screen.set('home'); return; }
 
-    // Cargar datos de billetera de retiro
-    this.loadReferralData();
+    // Operaciones no críticas: diferir 1.5 s para no bloquear el primer render
+    setTimeout(() => { this.checkPushSupport(); this.loadReferralData(); }, 1500);
 
     if (profile.role === 'passenger') {
+      localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: null, ts: Date.now() }));
       this.screen.set('passenger-home');
       this._startPassengerWatch();
       this.agService.cancelStaleTrips().catch(() => {});
       this._subscribeToDriverLocations();
-      // Restaurar viaje activo tras crash/recarga de página
       this._restoreActiveTrip();
     } else {
       let mine = await this.agService.getMyDriverProfile();
-      // Fallback: si RLS bloquea la consulta directa, buscar por teléfono guardado (service_role)
       if (!mine && isPlatformBrowser(this.platformId)) {
         const savedPhone = localStorage.getItem('movi-ag-phone');
         if (savedPhone) {
           const fallback = await this.agService.getDriverProfileByPhone(savedPhone);
           if (fallback?.driver) {
             mine = fallback.driver;
-            if (fallback.profile && !this.agProfile()) {
-              this.agProfile.set(fallback.profile);
-            }
+            if (fallback.profile && !this.agProfile()) this.agProfile.set(fallback.profile);
           }
         }
       }
-      // Auto-upgrade: cualquier conductor pending pasa directo a quick (habilitado para primera carrera)
       if (mine && mine.status === 'pending') {
         await getMoviClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
         mine = { ...mine, status: 'quick' };
       }
+      localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: mine, ts: Date.now() }));
       this.driverData.set(mine);
       this.driverStatus.set(mine?.status ?? 'quick');
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
@@ -8181,8 +8193,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       await this._initDriverHome(mine);
     }
 
-    // Iniciar mapa después de que Angular renderice el DOM
-    setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
+    // Iniciar mapa solo si el caché no lo hizo ya
+    if (!this._map) {
+      setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
+    }
   }
 
   private async _initDriverHome(mine: any) {
