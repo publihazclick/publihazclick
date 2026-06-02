@@ -137,7 +137,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <span class="material-symbols-outlined" style="font-size:38px;color:#fff;font-variation-settings:'FILL' 1">check_circle</span>
           </div>
           <p style="color:#fff;font-size:20px;font-weight:900;margin:0">¡Te aceptaron!</p>
-          <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0">El pasajero aceptó tu oferta</p>
+          <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0">{{ driverTripAlert()!.ag_trip_requests?.service_type === 'domicilio' ? 'Domicilio asignado' : 'El pasajero aceptó tu oferta' }}</p>
         </div>
         <!-- Detalles -->
         <div class="px-5 py-4 flex flex-col gap-3">
@@ -180,7 +180,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             class="w-full py-4 rounded-2xl text-white font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
             style="background:linear-gradient(135deg,#059669,#10b981);font-size:16px">
             <span class="material-symbols-outlined" style="font-size:22px">navigation</span>
-            Ir a recoger pasajero
+            {{ driverTripAlert()!.ag_trip_requests?.service_type === 'domicilio' ? 'Ir a recoger paquete' : 'Ir a recoger pasajero' }}
           </button>
         </div>
       </div>
@@ -316,12 +316,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;overflow:hidden">
             <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.07)">
               <span class="material-symbols-outlined" style="font-size:14px;color:#fb923c;flex-shrink:0;font-variation-settings:'FILL' 1">my_location</span>
-              <p style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ currentAddress() || 'Tu ubicación' }}</p>
+              <p style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripService()==='domicilio' && deliveryType()==='pickup_and_deliver' ? (domPickup()?.name || 'Punto de recogida') : (currentAddress() || 'Tu ubicación') }}</p>
             </div>
             <div style="padding:8px 12px;display:flex;align-items:center;gap:8px">
               <span class="material-symbols-outlined" style="font-size:14px;color:#f87171;flex-shrink:0">location_on</span>
-              <p style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:700;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripDest()?.name }}</p>
-              <p style="color:#f97316;font-size:14px;font-weight:900;margin:0;flex-shrink:0">{{ formatCOP(tripPrice()) }}</p>
+              <p style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:700;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripService()==='domicilio' ? domDelivery()?.name : tripDest()?.name }}</p>
+              <p style="color:#f97316;font-size:14px;font-weight:900;margin:0;flex-shrink:0">{{ formatCOP(tripService()==='domicilio' ? domEstPrice() : tripPrice()) }}</p>
             </div>
           </div>
 
@@ -13465,6 +13465,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.passengerSection.set(null);
     if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); this._tripBoardingChannel = null; }
     if (this._passengerLiveChannel) { this._passengerLiveChannel.unsubscribe(); this._passengerLiveChannel = null; }
+    // Reset domicilio si estaba activo
+    if (this.tripService() === 'domicilio') this.resetDomicilio();
     // Destruir y recrear el mapa siempre — resize() solo no es suficiente tras un viaje fullscreen
     const lat = this._currentLat || this.DEFAULT_LAT;
     const lng = this._currentLng || this.DEFAULT_LNG;
