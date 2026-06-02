@@ -313,14 +313,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px">
 
           <!-- Ruta origen → destino -->
-          <div style="border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
-            <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;background:#fff;border-bottom:1px solid #f1f5f9">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#f97316;flex-shrink:0;font-variation-settings:'FILL' 1">my_location</span>
-              <p style="color:#374151;font-size:12px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ currentAddress() || 'Tu ubicación' }}</p>
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;overflow:hidden">
+            <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.07)">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#fb923c;flex-shrink:0;font-variation-settings:'FILL' 1">my_location</span>
+              <p style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ currentAddress() || 'Tu ubicación' }}</p>
             </div>
-            <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;background:#fff">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#ef4444;flex-shrink:0">location_on</span>
-              <p style="color:#111827;font-size:12px;font-weight:700;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripDest()?.name }}</p>
+            <div style="padding:8px 12px;display:flex;align-items:center;gap:8px">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#f87171;flex-shrink:0">location_on</span>
+              <p style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:700;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tripDest()?.name }}</p>
               <p style="color:#f97316;font-size:14px;font-weight:900;margin:0;flex-shrink:0">{{ formatCOP(tripPrice()) }}</p>
             </div>
           </div>
@@ -1029,8 +1029,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         </div>
         </div>
-      } @else if (tripDest() && !tripSent()) {
-        <!-- Ruta origen → destino (cuando el pasajero eligió destino pero aún no envió) -->
+      } @else if (tripDest()) {
+        <!-- Ruta origen → destino (cuando el pasajero ya eligió a dónde va) -->
         <div class="px-4 pb-1 flex-shrink-0 w-full">
         <div class="w-full flex flex-col gap-0 overflow-hidden"
           style="background:linear-gradient(135deg,#0f2027,#1a3a4a);border-radius:16px;border:1px solid rgba(249,115,22,0.2)">
