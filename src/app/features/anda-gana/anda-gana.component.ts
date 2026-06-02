@@ -1053,6 +1053,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <p style="color:#f97316;font-size:12px;font-weight:900;margin:0;flex-shrink:0">{{ tripDistKm() }} km</p>
           </div>
+          <!-- Precio sugerido -->
+          @if (tripPrice() > 0) {
+            <div class="flex items-center justify-between px-3 py-2.5" style="border-top:1px solid #f1f5f9;background:#fafafa;border-radius:0 0 16px 16px">
+              <div>
+                <p style="color:#9ca3af;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Precio sugerido</p>
+                <p style="color:#111827;font-size:18px;font-weight:900;margin:0;line-height:1.2">{{ formatCOP(tripPrice()) }}</p>
+              </div>
+              <div class="text-right">
+                <p style="color:#6b7280;font-size:10px;font-weight:600;margin:0;line-height:1.4">Mayor precio =</p>
+                <p style="color:#f97316;font-size:10px;font-weight:800;margin:0;line-height:1.4">conductores más rápido</p>
+              </div>
+            </div>
+          }
         </div>
         </div>
       } @else {
