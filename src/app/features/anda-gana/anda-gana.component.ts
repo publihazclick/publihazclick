@@ -5817,6 +5817,144 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     }
 
     <!-- ══ Modal: Calificar pasajero (con tags) ══ -->
+    <!-- ═══════════ MODAL VERIFICACIÓN DE IDENTIDAD PASAJERO ═══════════ -->
+    @if (passengerVerifModal()) {
+      <div class="fixed inset-0 z-[9950]" style="background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)"></div>
+      <div class="fixed inset-x-0 bottom-0 z-[9951] rounded-t-3xl flex flex-col overflow-hidden"
+        style="max-height:92dvh;background:#fff;box-shadow:0 -8px 40px rgba(0,0,0,0.35)">
+        <!-- Handle + header -->
+        <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid #f1f5f9">
+          <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-4"></div>
+          <div class="flex items-start gap-3">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+              <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'FILL' 1">shield_person</span>
+            </div>
+            <div>
+              <p class="font-black text-slate-900 text-base leading-tight">Verifica tu identidad</p>
+              <p class="text-slate-500 text-xs mt-0.5 leading-snug">Para tu seguridad y la de los conductores, necesitamos confirmar quién eres. Solo toma 1 minuto.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fotos -->
+        <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+
+          <!-- Selfie -->
+          <div>
+            <p class="text-slate-700 font-black text-sm mb-2 flex items-center gap-1.5">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#4f46e5">face</span>
+              Foto de tu rostro (selfie)
+            </p>
+            <label class="block cursor-pointer">
+              <input type="file" accept="image/*" capture="user" class="hidden"
+                (change)="onPassengerVerifPhoto('selfie', $event)"/>
+              @if (passengerVerifSelfiePreview()) {
+                <div class="relative w-full rounded-2xl overflow-hidden" style="aspect-ratio:4/3">
+                  <img [src]="passengerVerifSelfiePreview()!" class="w-full h-full object-cover"/>
+                  <div class="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full"
+                    style="background:rgba(79,70,229,0.9)">
+                    <span class="material-symbols-outlined text-white" style="font-size:14px">check_circle</span>
+                    <span class="text-white text-[10px] font-black">Cambiar</span>
+                  </div>
+                </div>
+              } @else {
+                <div class="w-full flex flex-col items-center justify-center gap-2 rounded-2xl py-8"
+                  style="background:#f5f3ff;border:2px dashed #a5b4fc">
+                  <span class="material-symbols-outlined" style="font-size:36px;color:#4f46e5">add_a_photo</span>
+                  <p class="text-indigo-700 font-bold text-sm">Tomar selfie</p>
+                  <p class="text-indigo-400 text-xs">Asegúrate que tu rostro se vea claro</p>
+                </div>
+              }
+            </label>
+          </div>
+
+          <!-- Cédula frente -->
+          <div>
+            <p class="text-slate-700 font-black text-sm mb-2 flex items-center gap-1.5">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#0891b2">badge</span>
+              Cédula — parte delantera
+            </p>
+            <label class="block cursor-pointer">
+              <input type="file" accept="image/*" capture="environment" class="hidden"
+                (change)="onPassengerVerifPhoto('front', $event)"/>
+              @if (passengerVerifFrontPreview()) {
+                <div class="relative w-full rounded-2xl overflow-hidden" style="aspect-ratio:16/9">
+                  <img [src]="passengerVerifFrontPreview()!" class="w-full h-full object-cover"/>
+                  <div class="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full"
+                    style="background:rgba(8,145,178,0.9)">
+                    <span class="material-symbols-outlined text-white" style="font-size:14px">check_circle</span>
+                    <span class="text-white text-[10px] font-black">Cambiar</span>
+                  </div>
+                </div>
+              } @else {
+                <div class="w-full flex flex-col items-center justify-center gap-2 rounded-2xl py-6"
+                  style="background:#ecfeff;border:2px dashed #67e8f9">
+                  <span class="material-symbols-outlined" style="font-size:36px;color:#0891b2">photo_camera</span>
+                  <p class="text-cyan-700 font-bold text-sm">Fotografiar parte delantera</p>
+                  <p class="text-cyan-500 text-xs">Que el número de cédula sea legible</p>
+                </div>
+              }
+            </label>
+          </div>
+
+          <!-- Cédula reverso -->
+          <div>
+            <p class="text-slate-700 font-black text-sm mb-2 flex items-center gap-1.5">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#0891b2">flip</span>
+              Cédula — parte trasera
+            </p>
+            <label class="block cursor-pointer">
+              <input type="file" accept="image/*" capture="environment" class="hidden"
+                (change)="onPassengerVerifPhoto('back', $event)"/>
+              @if (passengerVerifBackPreview()) {
+                <div class="relative w-full rounded-2xl overflow-hidden" style="aspect-ratio:16/9">
+                  <img [src]="passengerVerifBackPreview()!" class="w-full h-full object-cover"/>
+                  <div class="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full"
+                    style="background:rgba(8,145,178,0.9)">
+                    <span class="material-symbols-outlined text-white" style="font-size:14px">check_circle</span>
+                    <span class="text-white text-[10px] font-black">Cambiar</span>
+                  </div>
+                </div>
+              } @else {
+                <div class="w-full flex flex-col items-center justify-center gap-2 rounded-2xl py-6"
+                  style="background:#ecfeff;border:2px dashed #67e8f9">
+                  <span class="material-symbols-outlined" style="font-size:36px;color:#0891b2">flip</span>
+                  <p class="text-cyan-700 font-bold text-sm">Fotografiar parte trasera</p>
+                  <p class="text-cyan-500 text-xs">Ambas caras del documento son necesarias</p>
+                </div>
+              }
+            </label>
+          </div>
+
+          <!-- Error -->
+          @if (passengerVerifError()) {
+            <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl" style="background:#fef2f2;border:1px solid #fca5a5">
+              <span class="material-symbols-outlined text-red-500 flex-shrink-0" style="font-size:16px">error</span>
+              <p class="text-red-700 text-xs font-semibold">{{ passengerVerifError() }}</p>
+            </div>
+          }
+        </div>
+
+        <!-- Botón enviar -->
+        <div class="flex-shrink-0 px-5 pb-6 pt-3" style="border-top:1px solid #f1f5f9">
+          <p class="text-slate-400 text-[10px] text-center mb-3">Tus datos son privados y solo se usan para verificación de seguridad</p>
+          <button (click)="submitPassengerVerif()"
+            [disabled]="passengerVerifSending() || !passengerVerifSelfie() || !passengerVerifFront() || !passengerVerifBack()"
+            class="w-full py-4 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+            style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 16px rgba(79,70,229,0.35)">
+            @if (passengerVerifSending()) {
+              <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>
+              Enviando fotos...
+            } @else {
+              <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">verified_user</span>
+              {{ (!passengerVerifSelfie() || !passengerVerifFront() || !passengerVerifBack()) ? 'Faltan fotos (' + [!passengerVerifSelfie()?1:0, !passengerVerifFront()?1:0, !passengerVerifBack()?1:0].reduce((a,b)=>a+b,0) + ' de 3)' : 'Confirmar y continuar' }}
+            }
+          </button>
+        </div>
+      </div>
+    }
+
     @if (passengerRatingModal()) {
       <div class="fixed inset-0 z-50" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)"></div>
       <div class="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col gap-4 px-5 pt-5 pb-8 max-h-[90vh] overflow-y-auto"
@@ -8225,6 +8363,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ];
 
   // ── Passenger menu sections ────────────────────────────────────
+  // ── Verificación de identidad del pasajero ────────────────────────────────
+  passengerVerifModal      = signal(false);
+  passengerVerifSelfie     = signal<File | null>(null);
+  passengerVerifSelfiePreview = signal<string | null>(null);
+  passengerVerifFront      = signal<File | null>(null);
+  passengerVerifFrontPreview = signal<string | null>(null);
+  passengerVerifBack       = signal<File | null>(null);
+  passengerVerifBackPreview  = signal<string | null>(null);
+  passengerVerifSending    = signal(false);
+  passengerVerifError      = signal<string | null>(null);
+
   passengerSection         = signal<string | null>(null);
   passengerHistory         = signal<any[]>([]);
   passengerHistoryLoading  = signal(false);
@@ -10476,6 +10625,49 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domRecipientPhoneValue = '';
   }
 
+  // ── Verificación identidad pasajero ─────────────────────────────────────────
+  onPassengerVerifPhoto(slot: 'selfie' | 'front' | 'back', event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const url = e.target?.result as string;
+      if (slot === 'selfie') { this.passengerVerifSelfie.set(file); this.passengerVerifSelfiePreview.set(url); }
+      else if (slot === 'front') { this.passengerVerifFront.set(file); this.passengerVerifFrontPreview.set(url); }
+      else { this.passengerVerifBack.set(file); this.passengerVerifBackPreview.set(url); }
+      this.cdr.markForCheck();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async submitPassengerVerif(): Promise<void> {
+    const selfie = this.passengerVerifSelfie();
+    const front  = this.passengerVerifFront();
+    const back   = this.passengerVerifBack();
+    if (!selfie || !front || !back) {
+      this.passengerVerifError.set('Debes tomar las 3 fotos para continuar.');
+      return;
+    }
+    const profile = this.agProfile();
+    if (!profile) return;
+    this.passengerVerifSending.set(true);
+    this.passengerVerifError.set(null);
+    const result = await this.agService.submitPassengerVerification(profile.id, selfie, front, back);
+    this.passengerVerifSending.set(false);
+    if (!result.success) {
+      this.passengerVerifError.set(result.error ?? 'Error al enviar. Intenta de nuevo.');
+      return;
+    }
+    // Actualizar perfil en memoria
+    this.agProfile.update(p => p ? { ...p, passenger_verified: true } : p);
+    // Cerrar modal y limpiar
+    this.passengerVerifModal.set(false);
+    this.passengerVerifSelfie.set(null); this.passengerVerifSelfiePreview.set(null);
+    this.passengerVerifFront.set(null);  this.passengerVerifFrontPreview.set(null);
+    this.passengerVerifBack.set(null);   this.passengerVerifBackPreview.set(null);
+    this.cdr.markForCheck();
+  }
+
   async sendDomicilio(): Promise<void> {
     const delivery = this.domDelivery();
     if (!delivery) { this.domReqError.set('Ingresa la dirección de entrega'); return; }
@@ -12570,6 +12762,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.tripSending.set(false);
       this.tripRequestError.set('Debes registrarte antes de solicitar un viaje.');
       setTimeout(() => this.tripRequestError.set(null), 5000);
+      return;
+    }
+    // Verificación de identidad: obligatoria a partir del 2do servicio
+    if ((profile.total_trips_as_passenger ?? 0) >= 1 && !profile.passenger_verified) {
+      this.tripSending.set(false);
+      this.passengerVerifModal.set(true);
       return;
     }
     // Sync domicilio ngModel values to signals before requesting

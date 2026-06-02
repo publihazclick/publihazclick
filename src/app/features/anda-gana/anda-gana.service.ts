@@ -36,6 +36,9 @@ export interface AgUser {
   passenger_level?: string;
   passenger_wallet_balance?: number;
   passenger_rating_avg?: number;
+  passenger_verified?: boolean;
+  id_front_url?: string;
+  id_back_url?: string;
 }
 
 export interface AgDriver {
@@ -1104,6 +1107,28 @@ export class AndaGanaService {
       status: 'pending',
     });
     return { success: !error };
+  }
+
+  async submitPassengerVerification(
+    agUserId: string,
+    selfieFile: File,
+    idFrontFile: File,
+    idBackFile: File,
+  ): Promise<{ success: boolean; error?: string }> {
+    const uid = agUserId;
+    const [selfieUrl, frontUrl, backUrl] = await Promise.all([
+      this.uploadFile('ag-passengers', uid, selfieFile),
+      this.uploadFile('ag-passengers', `${uid}-doc-front`, idFrontFile),
+      this.uploadFile('ag-passengers', `${uid}-doc-back`, idBackFile),
+    ]);
+    if (!selfieUrl || !frontUrl || !backUrl) {
+      return { success: false, error: 'Error al subir las fotos. Intenta de nuevo.' };
+    }
+    const { error } = await this.supabase
+      .from('ag_users')
+      .update({ selfie_url: selfieUrl, id_front_url: frontUrl, id_back_url: backUrl, passenger_verified: true })
+      .eq('id', agUserId);
+    return error ? { success: false, error: error.message } : { success: true };
   }
 
   async setDriverOnline(driverId: string, online: boolean): Promise<void> {
