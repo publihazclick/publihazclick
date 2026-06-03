@@ -1458,7 +1458,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">delivery_dining</span>
                 <span class="text-[10px] font-bold" [style.color]="tripService()==='domicilio' ? '#10b981' : '#94a3b8'">Domicilio</span>
               </button>
-              <button (click)="tripService.set('fletes'); setTripVehicle('carro'); resetDomicilio()"
+              <button (click)="tripService.set('fletes'); setTripVehicle('carro'); resetDomicilio(); resetFletes()"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
                 [class]="tripService()==='fletes' ? 'bg-amber-50 border border-amber-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
@@ -1780,6 +1780,1597 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         }
                       </button>
                     </div>
+                  </div>
+                } @else if (tripService() === 'fletes') {
+                  <!-- ══ MÓDULO FLETES ══ -->
+                  <div class="flex flex-col">
+                    <!-- Tabs -->
+                    <div class="flex gap-1 px-3 pt-2 pb-2">
+                      <button (click)="fleteViewMode.set('new'); fleteStep.set(1)"
+                        class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+                        [style.background]="fleteViewMode()==='new'?'#f59e0b':'#f1f5f9'"
+                        [style.color]="fleteViewMode()==='new'?'white':'#64748b'">+ Nueva</button>
+                      <button (click)="fleteViewMode.set('list'); loadFleteRequests()"
+                        class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+                        [style.background]="(fleteViewMode()==='list'||fleteViewMode()==='detail')?'#f59e0b':'#f1f5f9'"
+                        [style.color]="(fleteViewMode()==='list'||fleteViewMode()==='detail')?'white':'#64748b'">Mis fletes</button>
+                      <button (click)="onFleteTransporterTab()"
+                        class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+                        [style.background]="fleteViewMode()==='transporter'?'#f59e0b':'#f1f5f9'"
+                        [style.color]="fleteViewMode()==='transporter'?'white':'#64748b'">🚚 Transportar</button>
+                    </div>
+
+                    <!-- ══ NUEVA SOLICITUD ══ -->
+                    @if (fleteViewMode() === 'new') {
+
+                      <!-- Step 1: Tipo -->
+                      @if (fleteStep() === 1) {
+                        <div class="px-4 pb-4">
+                          <p class="font-black text-slate-800 text-sm mb-3">¿Qué tipo de servicio necesitas?</p>
+                          <div class="grid grid-cols-2 gap-2">
+                            @for (st of fleteServiceTypes; track st.value) {
+                              <button (click)="fleteServiceType.set(st.value)"
+                                class="flex items-center gap-2 px-3 py-3 rounded-2xl text-left active:scale-[0.98] transition-all"
+                                [style.border]="fleteServiceType()===st.value?'2px solid #f59e0b':'1.5px solid #e2e8f0'"
+                                [style.background]="fleteServiceType()===st.value?'#fffbeb':'#f8fafc'">
+                                <span class="text-2xl">{{ st.icon }}</span>
+                                <div>
+                                  <p class="font-black text-slate-800 text-xs">{{ st.label }}</p>
+                                  <p class="text-slate-400 text-[10px]">{{ st.desc }}</p>
+                                </div>
+                              </button>
+                            }
+                          </div>
+                          <button (click)="fleteStep.set(2)"
+                            class="w-full mt-4 py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98]"
+                            style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                            Continuar
+                          </button>
+                        </div>
+                      }
+
+                      <!-- Step 2: Origen y destino -->
+                      @else if (fleteStep() === 2) {
+                        <div class="flex flex-col px-4 pb-4 gap-3">
+                          <div class="flex items-center gap-2">
+                            <button (click)="fleteStep.set(1)" style="color:#f59e0b;font-size:13px;font-weight:800" class="flex items-center gap-1">
+                              <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Volver
+                            </button>
+                            <span class="flex-1 text-center text-slate-700 font-black text-sm">📍 Origen y destino</span>
+                          </div>
+                          <!-- Origen -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Punto de origen</p>
+                            <div class="rounded-xl overflow-hidden" style="border:1.5px solid #fde68a;background:#fffbeb">
+                              <div class="flex items-center gap-2 px-3 py-2.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0"></div>
+                                <input [value]="fleteOriginQuery()"
+                                  (input)="onFleteOriginInput($any($event.target).value)"
+                                  (focus)="fleteOriginOpen.set(true)"
+                                  placeholder="Dirección de recogida..."
+                                  autocomplete="off" inputmode="text"
+                                  class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                                @if (fleteOriginLoading()) {
+                                  <span class="material-symbols-outlined animate-spin text-amber-400" style="font-size:18px">autorenew</span>
+                                }
+                              </div>
+                              @if (fleteOriginOpen() && fleteOriginSuggs().length > 0) {
+                                <div class="border-t border-amber-100">
+                                  @for (s of fleteOriginSuggs(); track s.id) {
+                                    <button (mousedown)="$event.preventDefault(); selectFleteAddr(s,'origin')"
+                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-amber-50 last:border-0 hover:bg-amber-50">
+                                      <span class="material-symbols-outlined text-amber-400" style="font-size:16px">location_on</span>
+                                      <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-slate-700 truncate">{{ s.text }}</p>
+                                        <p class="text-xs text-slate-400 truncate">{{ s.place_name }}</p>
+                                      </div>
+                                    </button>
+                                  }
+                                </div>
+                              }
+                            </div>
+                            @if (fleteOrigin()) {
+                              <div class="flex items-center gap-3 mt-1.5">
+                                <div class="flex items-center gap-1">
+                                  <span class="text-xs text-slate-500">Piso</span>
+                                  <select [value]="fleteOriginFloor()" (change)="fleteOriginFloor.set(+$any($event.target).value)"
+                                    class="text-xs rounded-lg border border-slate-200 px-2 py-1 bg-white">
+                                    @for (f of [0,1,2,3,4,5,6,7,8,9,10]; track f) {
+                                      <option [value]="f">{{ f===0?'PB':f }}</option>
+                                    }
+                                  </select>
+                                </div>
+                                <label class="flex items-center gap-1.5">
+                                  <input type="checkbox" [checked]="fleteOriginElevator()" (change)="fleteOriginElevator.set($any($event.target).checked)" class="rounded"/>
+                                  <span class="text-xs text-slate-600">Hay ascensor</span>
+                                </label>
+                              </div>
+                            }
+                          </div>
+                          <!-- Destino -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Punto de destino</p>
+                            <div class="rounded-xl overflow-hidden" style="border:1.5px solid #fde68a;background:#fffbeb">
+                              <div class="flex items-center gap-2 px-3 py-2.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></div>
+                                <input [value]="fleteDestQuery()"
+                                  (input)="onFleteDestInput($any($event.target).value)"
+                                  (focus)="fleteDestOpen.set(true)"
+                                  placeholder="Dirección de entrega..."
+                                  autocomplete="off" inputmode="text"
+                                  class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                                @if (fleteDestLoading()) {
+                                  <span class="material-symbols-outlined animate-spin text-amber-400" style="font-size:18px">autorenew</span>
+                                }
+                              </div>
+                              @if (fleteDestOpen() && fleteDestSuggs().length > 0) {
+                                <div class="border-t border-amber-100">
+                                  @for (s of fleteDestSuggs(); track s.id) {
+                                    <button (mousedown)="$event.preventDefault(); selectFleteAddr(s,'dest')"
+                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-amber-50 last:border-0 hover:bg-amber-50">
+                                      <span class="material-symbols-outlined text-amber-400" style="font-size:16px">location_on</span>
+                                      <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-slate-700 truncate">{{ s.text }}</p>
+                                        <p class="text-xs text-slate-400 truncate">{{ s.place_name }}</p>
+                                      </div>
+                                    </button>
+                                  }
+                                </div>
+                              }
+                            </div>
+                            @if (fleteDest()) {
+                              <div class="flex items-center gap-3 mt-1.5">
+                                <div class="flex items-center gap-1">
+                                  <span class="text-xs text-slate-500">Piso</span>
+                                  <select [value]="fleteDestFloor()" (change)="fleteDestFloor.set(+$any($event.target).value)"
+                                    class="text-xs rounded-lg border border-slate-200 px-2 py-1 bg-white">
+                                    @for (f of [0,1,2,3,4,5,6,7,8,9,10]; track f) {
+                                      <option [value]="f">{{ f===0?'PB':f }}</option>
+                                    }
+                                  </select>
+                                </div>
+                                <label class="flex items-center gap-1.5">
+                                  <input type="checkbox" [checked]="fleteDestElevator()" (change)="fleteDestElevator.set($any($event.target).checked)" class="rounded"/>
+                                  <span class="text-xs text-slate-600">Hay ascensor</span>
+                                </label>
+                              </div>
+                            }
+                          </div>
+                          @if (fleteDistKm() > 0) {
+                            <div class="flex items-center gap-2 rounded-xl px-3 py-2" style="background:#fffbeb;border:1px solid #fde68a">
+                              <span class="material-symbols-outlined text-amber-500" style="font-size:18px">route</span>
+                              <p class="text-sm font-black text-amber-700">Distancia: {{ fleteDistKm() }} km</p>
+                            </div>
+                          }
+                          <button (click)="fleteStep.set(3)" [disabled]="!fleteOrigin() || !fleteDest()"
+                            class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-50"
+                            style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                            Continuar
+                          </button>
+                        </div>
+                      }
+
+                      <!-- Step 3: Inventario -->
+                      @else if (fleteStep() === 3) {
+                        <div class="flex flex-col px-4 pb-4">
+                          <div class="flex items-center gap-2 mb-3">
+                            <button (click)="fleteStep.set(2)" style="color:#f59e0b;font-size:13px;font-weight:800" class="flex items-center gap-1">
+                              <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Volver
+                            </button>
+                            <span class="flex-1 text-center text-slate-700 font-black text-sm">📦 Inventario</span>
+                          </div>
+                          <div class="rounded-xl p-3 mb-3" style="background:#fffbeb;border:1px solid #fde68a">
+                            <p class="text-xs font-black text-slate-600 mb-2">Agregar artículo</p>
+                            <div class="flex gap-2 mb-2">
+                              <select [(ngModel)]="fleteNewItemCat"
+                                class="text-xs rounded-lg border border-amber-200 px-2 py-1.5 bg-white flex-shrink-0">
+                                @for (c of fleteItemCategories; track c.value) {
+                                  <option [value]="c.value">{{ c.icon }} {{ c.label }}</option>
+                                }
+                              </select>
+                              <input [(ngModel)]="fleteNewItemName" placeholder="Nombre del artículo"
+                                class="flex-1 text-sm border border-amber-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
+                                (keydown.enter)="addFleteItem()"/>
+                            </div>
+                            <button (click)="addFleteItem()" [disabled]="!fleteNewItemName.trim()"
+                              class="w-full py-2 rounded-xl text-white text-xs font-black disabled:opacity-50"
+                              style="background:#f59e0b">
+                              + Agregar artículo
+                            </button>
+                          </div>
+                          @if (fleteItems().length > 0) {
+                            <div class="flex flex-col gap-1.5 mb-3">
+                              @for (item of fleteItems(); track item.id) {
+                                <div class="flex items-center gap-2 px-3 py-2 rounded-xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                                  <span class="text-lg">{{ fleteItemIcon(item.category) }}</span>
+                                  <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold text-slate-700 truncate">{{ item.name }}</p>
+                                    <p class="text-xs text-slate-400">{{ item.quantity }} ud.</p>
+                                  </div>
+                                  <label class="flex items-center gap-1 mr-1">
+                                    <input type="checkbox" [checked]="item.is_fragile"
+                                      (change)="toggleFleteItemFragil(item.id, $any($event.target).checked)"
+                                      class="rounded"/>
+                                    <span class="text-xs">🪟 Frágil</span>
+                                  </label>
+                                  <button (click)="removeFleteItem(item.id)" class="text-red-400 active:scale-90">
+                                    <span class="material-symbols-outlined" style="font-size:18px">delete</span>
+                                  </button>
+                                </div>
+                              }
+                            </div>
+                          } @else {
+                            <div class="flex flex-col items-center py-4 text-slate-400 mb-3">
+                              <span class="material-symbols-outlined" style="font-size:36px">inventory_2</span>
+                              <p class="text-xs font-semibold mt-1">Sin artículos — opcional</p>
+                            </div>
+                          }
+                          <button (click)="fleteStep.set(4)"
+                            class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98]"
+                            style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                            Continuar ({{ fleteItems().length }} artículos)
+                          </button>
+                        </div>
+                      }
+
+                      <!-- Step 4: Detalles -->
+                      @else if (fleteStep() === 4) {
+                        <div class="flex flex-col px-4 pb-4 gap-3">
+                          <div class="flex items-center gap-2">
+                            <button (click)="fleteStep.set(3)" style="color:#f59e0b;font-size:13px;font-weight:800" class="flex items-center gap-1">
+                              <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Volver
+                            </button>
+                            <span class="flex-1 text-center text-slate-700 font-black text-sm">🗓️ Detalles</span>
+                          </div>
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Fecha del servicio</p>
+                            <input type="date" [value]="fleteDate()" (change)="fleteDate.set($any($event.target).value)"
+                              [min]="fleteToday()"
+                              class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none bg-white"/>
+                          </div>
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Horario preferido</p>
+                            <div class="grid grid-cols-3 gap-2">
+                              @for (tw of fleteTimeWindows; track tw.value) {
+                                <button (click)="fleteTimeWindow.set(tw.value)"
+                                  class="py-2 rounded-xl text-xs font-bold transition-all"
+                                  [style.background]="fleteTimeWindow()===tw.value?'#f59e0b':'#f1f5f9'"
+                                  [style.color]="fleteTimeWindow()===tw.value?'white':'#64748b'">
+                                  {{ tw.label }}
+                                </button>
+                              }
+                            </div>
+                          </div>
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Vehículo requerido</p>
+                            <div class="grid grid-cols-2 gap-2">
+                              @for (v of fleteVehicleTypes; track v.value) {
+                                <button (click)="fleteVehicleReq.set(v.value)"
+                                  class="flex items-center gap-2 px-3 py-2 rounded-xl text-left transition-all"
+                                  [style.border]="fleteVehicleReq()===v.value?'2px solid #f59e0b':'1.5px solid #e2e8f0'"
+                                  [style.background]="fleteVehicleReq()===v.value?'#fffbeb':'#f8fafc'">
+                                  <span class="text-xl">{{ v.icon }}</span>
+                                  <span class="text-xs font-bold text-slate-700">{{ v.label }}</span>
+                                </button>
+                              }
+                            </div>
+                          </div>
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Auxiliares de cargue</p>
+                            <div class="flex items-center gap-3">
+                              <button (click)="decFleteHelpers()"
+                                class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-black text-lg active:scale-90">−</button>
+                              <span class="font-black text-slate-800 text-lg w-8 text-center">{{ fleteHelpers() }}</span>
+                              <button (click)="incFleteHelpers()"
+                                class="w-9 h-9 rounded-full flex items-center justify-center font-black text-lg active:scale-90 text-white"
+                                style="background:#f59e0b">+</button>
+                              <span class="text-xs text-slate-500 ml-1">persona(s)</span>
+                            </div>
+                          </div>
+                          <div class="flex flex-col gap-2">
+                            <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                              <input type="checkbox" [checked]="fleteNeedsDisasm()" (change)="fleteNeedsDisasm.set($any($event.target).checked)" class="rounded"/>
+                              <div>
+                                <p class="text-sm font-bold text-slate-700">🔧 Desarmado</p>
+                                <p class="text-xs text-slate-400">Muebles, camas, closets</p>
+                              </div>
+                            </label>
+                            <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                              <input type="checkbox" [checked]="fleteNeedsAssm()" (change)="fleteNeedsAssm.set($any($event.target).checked)" class="rounded"/>
+                              <div>
+                                <p class="text-sm font-bold text-slate-700">🔩 Armado en destino</p>
+                                <p class="text-xs text-slate-400">Armar los muebles al llegar</p>
+                              </div>
+                            </label>
+                          </div>
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Nota para el transportista</p>
+                            <textarea [value]="fleteNote()" (input)="fleteNote.set($any($event.target).value)"
+                              placeholder="Ej: Hay escaleras, portón pequeño, 3er piso sin ascensor..."
+                              rows="2"
+                              class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 outline-none resize-none bg-white"></textarea>
+                          </div>
+                          <button (click)="fleteStep.set(5); calcFletePrice()" [disabled]="!fleteDate()"
+                            class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-50"
+                            style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                            Continuar
+                          </button>
+                        </div>
+                      }
+
+                      <!-- Step 5: Precio y seguro -->
+                      @else if (fleteStep() === 5) {
+                        <div class="flex flex-col px-4 pb-4 gap-3">
+                          <div class="flex items-center gap-2">
+                            <button (click)="fleteStep.set(4)" style="color:#f59e0b;font-size:13px;font-weight:800" class="flex items-center gap-1">
+                              <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Volver
+                            </button>
+                            <span class="flex-1 text-center text-slate-700 font-black text-sm">💰 Precio y seguro</span>
+                          </div>
+                          <div class="rounded-2xl p-4" style="background:#fffbeb;border:1.5px solid #fde68a">
+                            <p class="text-xs font-black text-amber-600 mb-2">Precio sugerido (editable)</p>
+                            <div class="flex items-center gap-2">
+                              <span class="text-slate-500 font-bold text-sm">$</span>
+                              <input type="number" [value]="fleteSuggestedPrice()"
+                                (input)="fleteSuggestedPrice.set(+$any($event.target).value)"
+                                class="flex-1 text-2xl font-black text-slate-800 outline-none bg-transparent"
+                                min="0" step="5000"/>
+                              <span class="text-slate-400 text-xs">COP</span>
+                            </div>
+                            <p class="text-[10px] text-amber-600 mt-1">Los transportistas pueden hacer contraofertas</p>
+                          </div>
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-2 uppercase tracking-wider">Seguro de carga</p>
+                            <div class="flex flex-col gap-2">
+                              @for (ins of fleteInsuranceTypes; track ins.value) {
+                                <button (click)="setFleteInsurance(ins.value)"
+                                  class="flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all"
+                                  [style.border]="fleteInsurance()===ins.value?'2px solid #f59e0b':'1.5px solid #e2e8f0'"
+                                  [style.background]="fleteInsurance()===ins.value?'#fffbeb':'#f8fafc'">
+                                  <span class="text-xl">{{ ins.icon }}</span>
+                                  <div class="flex-1">
+                                    <p class="text-sm font-black text-slate-700">{{ ins.label }}</p>
+                                    <p class="text-xs text-slate-400">{{ ins.desc }}</p>
+                                  </div>
+                                  <div class="text-right">
+                                    <p class="text-xs font-black" [style.color]="fleteInsurance()===ins.value?'#f59e0b':'#94a3b8'">
+                                      {{ ins.value==='none' ? 'Gratis' : ('+' + formatCOP(fleteInsurancePremium(ins.value))) }}
+                                    </p>
+                                    @if (ins.coverage > 0) {
+                                      <p class="text-[10px] text-slate-400">hasta {{ formatCOP(ins.coverage) }}</p>
+                                    }
+                                  </div>
+                                </button>
+                              }
+                            </div>
+                          </div>
+                          <div class="rounded-2xl p-3" style="background:#f8fafc;border:1px solid #e2e8f0">
+                            <p class="text-xs font-black text-slate-500 mb-2">RESUMEN</p>
+                            <div class="flex flex-col gap-1">
+                              <div class="flex justify-between text-xs"><span class="text-slate-500">Servicio:</span><span class="font-bold">{{ fleteServiceLabel(fleteServiceType()) }}</span></div>
+                              <div class="flex justify-between text-xs"><span class="text-slate-500">Distancia:</span><span class="font-bold">{{ fleteDistKm() }} km</span></div>
+                              <div class="flex justify-between text-xs"><span class="text-slate-500">Artículos:</span><span class="font-bold">{{ fleteItems().length }}</span></div>
+                              <div class="flex justify-between text-xs"><span class="text-slate-500">Auxiliares:</span><span class="font-bold">{{ fleteHelpers() }}</span></div>
+                              <div class="flex justify-between text-xs"><span class="text-slate-500">Fecha:</span><span class="font-bold">{{ fleteDate() }}</span></div>
+                            </div>
+                          </div>
+                          @if (fleteError()) {
+                            <div class="flex items-center gap-2 rounded-xl px-3 py-2" style="background:#fef2f2;border:1px solid #fca5a5">
+                              <span class="material-symbols-outlined text-red-500" style="font-size:16px">error</span>
+                              <p class="text-red-700 text-xs font-semibold">{{ fleteError() }}</p>
+                            </div>
+                          }
+                          <button (click)="publishFlete()" [disabled]="fleteSending() || fleteSuggestedPrice() < 10000"
+                            class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                            style="background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 4px 16px rgba(245,158,11,0.35)">
+                            @if (fleteSending()) {
+                              <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Publicando...
+                            } @else {
+                              <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">local_shipping</span>Publicar solicitud
+                            }
+                          </button>
+                        </div>
+                      }
+                    }
+
+                    <!-- ══ MIS FLETES ══ -->
+                    @else if (fleteViewMode() === 'list') {
+                      <div class="px-4 pb-4">
+                        @if (fleteMyReqLoading()) {
+                          <div class="flex justify-center py-6">
+                            <span class="material-symbols-outlined animate-spin text-amber-400" style="font-size:32px">autorenew</span>
+                          </div>
+                        } @else if (fleteMyRequests().length === 0) {
+                          <div class="flex flex-col items-center py-6 text-slate-400">
+                            <span class="material-symbols-outlined" style="font-size:48px">local_shipping</span>
+                            <p class="font-bold mt-2 text-sm">Sin solicitudes aún</p>
+                            <button (click)="fleteViewMode.set('new'); fleteStep.set(1)"
+                              class="mt-3 px-4 py-2 rounded-xl text-white text-sm font-black" style="background:#f59e0b">
+                              + Nueva solicitud
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="flex flex-col gap-2">
+                            @for (req of fleteMyRequests(); track req.id) {
+                              <button (click)="openFleteDetail(req)"
+                                class="flex flex-col p-3 rounded-2xl text-left active:scale-[0.98] transition-all"
+                                style="background:#f8fafc;border:1px solid #e2e8f0">
+                                <div class="flex items-start justify-between gap-2 mb-1.5">
+                                  <div class="flex items-center gap-1.5">
+                                    <span class="text-base">{{ fleteServiceIcon(req.service_type) }}</span>
+                                    <p class="font-black text-slate-800 text-sm">{{ fleteServiceLabel(req.service_type) }}</p>
+                                  </div>
+                                  <span class="px-2 py-0.5 rounded-full text-[10px] font-black"
+                                    [style.background]="fleteStatusBg(req.status)"
+                                    [style.color]="fleteStatusColor(req.status)">
+                                    {{ fleteStatusLabel(req.status) }}
+                                  </span>
+                                </div>
+                                <div class="flex items-center gap-1 text-xs text-slate-500 mb-0.5">
+                                  <span class="material-symbols-outlined" style="font-size:13px">location_on</span>
+                                  <span class="truncate">{{ req.origin_address }}</span>
+                                </div>
+                                <div class="flex items-center gap-1 text-xs text-slate-500 mb-2">
+                                  <span class="material-symbols-outlined" style="font-size:13px">flag</span>
+                                  <span class="truncate">{{ req.dest_address }}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                  <p class="text-xs text-slate-400">📅 {{ req.scheduled_date }}</p>
+                                  <p class="text-sm font-black text-amber-600">{{ formatCOP(req.suggested_price) }}</p>
+                                </div>
+                              </button>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <!-- ══ DETALLE SOLICITUD ══ -->
+                    @else if (fleteViewMode() === 'detail' && fleteActiveReq()) {
+                      <div class="flex flex-col">
+                        <div class="flex items-center gap-2 px-4 pt-2 pb-2">
+                          <button (click)="fleteViewMode.set('list'); loadFleteRequests()" style="color:#f59e0b;font-size:13px;font-weight:800" class="flex items-center gap-1">
+                            <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Volver
+                          </button>
+                          <span class="flex-1 text-center text-slate-700 font-black text-sm">{{ fleteServiceLabel(fleteActiveReq().service_type) }}</span>
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-black"
+                            [style.background]="fleteStatusBg(fleteActiveReq().status)"
+                            [style.color]="fleteStatusColor(fleteActiveReq().status)">
+                            {{ fleteStatusLabel(fleteActiveReq().status) }}
+                          </span>
+                        </div>
+                        <div class="px-4 mb-3">
+                          <div class="rounded-2xl p-3" style="background:#fffbeb;border:1px solid #fde68a">
+                            <div class="flex items-start gap-2 mb-1.5">
+                              <div class="w-2.5 h-2.5 rounded-full bg-amber-500 mt-1 flex-shrink-0"></div>
+                              <p class="text-xs text-slate-600">{{ fleteActiveReq().origin_address }}</p>
+                            </div>
+                            <div class="flex items-start gap-2 mb-2">
+                              <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1 flex-shrink-0"></div>
+                              <p class="text-xs text-slate-600">{{ fleteActiveReq().dest_address }}</p>
+                            </div>
+                            <div class="flex items-center justify-between pt-2 border-t border-amber-100">
+                              <p class="text-xs text-slate-500">📅 {{ fleteActiveReq().scheduled_date }}</p>
+                              <p class="text-sm font-black text-amber-600">{{ formatCOP(fleteActiveReq().suggested_price) }}</p>
+                            </div>
+                          </div>
+                        </div>
+                        @if (fleteActiveReq().transporter_id && !['published','negotiating'].includes(fleteActiveReq().status)) {
+                          <div class="px-4 mb-3">
+                            <p class="text-xs font-black text-slate-500 mb-2 uppercase tracking-wider">Transportista asignado</p>
+                            <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#f0fdf4;border:1px solid #bbf7d0">
+                              <div class="w-12 h-12 rounded-full bg-green-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                @if (fleteActiveReq().trans_photo) {
+                                  <img [src]="fleteActiveReq().trans_photo" class="w-full h-full object-cover"/>
+                                } @else {
+                                  <span class="material-symbols-outlined text-green-600" style="font-size:24px">person</span>
+                                }
+                              </div>
+                              <div class="flex-1">
+                                <p class="font-black text-slate-800 text-sm">{{ fleteActiveReq().trans_name || 'Transportista' }}</p>
+                                <p class="text-xs text-slate-500">⭐ {{ fleteActiveReq().trans_rating || '–' }}</p>
+                              </div>
+                              <p class="text-sm font-black text-green-700">{{ formatCOP(fleteActiveReq().accepted_price) }}</p>
+                            </div>
+                          </div>
+                        }
+                        @if (['published','negotiating'].includes(fleteActiveReq().status)) {
+                          <div class="px-4 mb-3">
+                            <p class="text-xs font-black text-slate-500 mb-2 uppercase tracking-wider">Ofertas recibidas</p>
+                            @if (fleteActiveOffersLoading()) {
+                              <div class="flex justify-center py-4">
+                                <span class="material-symbols-outlined animate-spin text-amber-400" style="font-size:28px">autorenew</span>
+                              </div>
+                            } @else if (fleteActiveOffers().length === 0) {
+                              <p class="text-xs text-center text-slate-400 py-3">Esperando ofertas de transportistas...</p>
+                            } @else {
+                              <div class="flex flex-col gap-2">
+                                @for (offer of fleteActiveOffers(); track offer.id) {
+                                  <div class="p-3 rounded-2xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                                    <div class="flex items-center gap-2 mb-2">
+                                      <div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                        @if (offer.trans_photo) {
+                                          <img [src]="offer.trans_photo" class="w-full h-full object-cover"/>
+                                        } @else {
+                                          <span class="material-symbols-outlined text-slate-400" style="font-size:20px">person</span>
+                                        }
+                                      </div>
+                                      <div class="flex-1">
+                                        <p class="font-black text-slate-800 text-sm">{{ offer.trans_name }}</p>
+                                        <p class="text-xs text-slate-400">⭐ {{ offer.trans_rating || '–' }} · {{ offer.trans_services }} servicios</p>
+                                      </div>
+                                      <p class="text-lg font-black text-amber-600">{{ formatCOP(offer.offered_price) }}</p>
+                                    </div>
+                                    @if (offer.presentation_text) {
+                                      <p class="text-xs text-slate-600 mb-2 italic">"{{ offer.presentation_text }}"</p>
+                                    }
+                                    <button (click)="acceptFleteOffer(offer.id)"
+                                      class="w-full py-2.5 rounded-xl text-white text-sm font-black active:scale-[0.98]"
+                                      style="background:linear-gradient(135deg,#10b981,#059669)">
+                                      ✓ Aceptar esta oferta
+                                    </button>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                        @if (fleteActiveReq().status === 'in_progress') {
+                          <div class="px-4 mb-3">
+                            <button (click)="confirmFleteDelivery()"
+                              class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98]"
+                              style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 4px 16px rgba(16,185,129,0.3)">
+                              <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">check_circle</span>
+                              Confirmar recepción del servicio
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <!-- ══ MODO TRANSPORTISTA ══ -->
+                    @else if (fleteViewMode() === 'transporter') {
+                      <div class="flex flex-col">
+                        @if (!fleteIsTransporter()) {
+                          <div class="px-4 pb-4">
+                            <div class="flex flex-col items-center py-4 mb-3">
+                              <span class="text-4xl mb-2">🚚</span>
+                              <p class="font-black text-slate-800 text-base">¿Tienes camión o furgón?</p>
+                              <p class="text-slate-500 text-xs text-center mt-1">Regístrate como transportista y recibe solicitudes en tu zona</p>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                              <input [(ngModel)]="fleteRegName" placeholder="Tu nombre completo"
+                                class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none"/>
+                              <input [(ngModel)]="fleteRegPhone" placeholder="Teléfono de contacto" type="tel"
+                                class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none"/>
+                              <textarea [(ngModel)]="fleteRegBio" placeholder="Cuéntanos sobre ti y tu vehículo..." rows="2"
+                                class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none"></textarea>
+                              <p class="text-xs font-black text-slate-500 uppercase tracking-wider mt-1">Vehículos disponibles</p>
+                              <div class="grid grid-cols-2 gap-2">
+                                @for (v of fleteVehicleTypes.slice(1); track v.value) {
+                                  <label class="flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer"
+                                    [style.background]="fleteRegVehicles.includes(v.value)?'#fffbeb':'#f8fafc'"
+                                    [style.border]="fleteRegVehicles.includes(v.value)?'2px solid #f59e0b':'1.5px solid #e2e8f0'">
+                                    <input type="checkbox" [checked]="fleteRegVehicles.includes(v.value)"
+                                      (change)="toggleFleteRegVehicle(v.value, $any($event.target).checked)"
+                                      class="rounded"/>
+                                    <span class="text-xl">{{ v.icon }}</span>
+                                    <span class="text-xs font-bold text-slate-700">{{ v.label }}</span>
+                                  </label>
+                                }
+                              </div>
+                            </div>
+                            <button (click)="registerFleteTransporter()" [disabled]="fleteRegSending() || !fleteRegName || !fleteRegPhone"
+                              class="w-full mt-4 py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                              style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                              @if (fleteRegSending()) {
+                                <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Registrando...
+                              } @else {
+                                🚚 Registrarme como transportista
+                              }
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="px-4 pb-4">
+                            <div class="flex items-center justify-between mb-3">
+                              <p class="font-black text-slate-700 text-sm">Solicitudes cercanas</p>
+                              <button (click)="loadNearbyFletes()"
+                                class="flex items-center gap-1 text-amber-500 font-bold text-xs active:scale-90">
+                                <span class="material-symbols-outlined" style="font-size:16px">refresh</span>Actualizar
+                              </button>
+                            </div>
+                            @if (fleteNearbyLoading()) {
+                              <div class="flex justify-center py-6">
+                                <span class="material-symbols-outlined animate-spin text-amber-400" style="font-size:32px">autorenew</span>
+                              </div>
+                            } @else if (fleteNearbyReqs().length === 0) {
+                              <div class="flex flex-col items-center py-6 text-slate-400">
+                                <span class="material-symbols-outlined" style="font-size:48px">search_off</span>
+                                <p class="font-bold mt-2 text-sm">Sin solicitudes cercanas</p>
+                              </div>
+                            } @else {
+                              <div class="flex flex-col gap-2">
+                                @for (req of fleteNearbyReqs(); track req.id) {
+                                  <div class="p-3 rounded-2xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                                    <div class="flex items-start justify-between gap-2 mb-2">
+                                      <div>
+                                        <div class="flex items-center gap-1.5 mb-0.5">
+                                          <span class="text-base">{{ fleteServiceIcon(req.service_type) }}</span>
+                                          <p class="font-black text-slate-800 text-sm">{{ fleteServiceLabel(req.service_type) }}</p>
+                                        </div>
+                                        <p class="text-[10px] text-slate-400">📍 A {{ req.dist_to_origin }} km de ti</p>
+                                      </div>
+                                      <div class="text-right">
+                                        <p class="font-black text-amber-600 text-base">{{ formatCOP(req.suggested_price) }}</p>
+                                        <p class="text-[10px] text-slate-400">{{ req.offers_count }} oferta(s)</p>
+                                      </div>
+                                    </div>
+                                    <div class="flex items-center gap-1 text-xs text-slate-500 mb-0.5">
+                                      <span class="material-symbols-outlined" style="font-size:13px">location_on</span>
+                                      <span class="truncate">{{ req.origin_address }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 text-xs text-slate-500 mb-2">
+                                      <span class="material-symbols-outlined" style="font-size:13px">flag</span>
+                                      <span class="truncate">{{ req.dest_address }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-xs text-slate-500 mb-2">
+                                      @if (req.helpers_needed > 0) { <span>👥 {{ req.helpers_needed }} aux</span> }
+                                      <span>📦 {{ req.total_items_count }} ítems</span>
+                                      <span>📏 {{ req.distance_km }} km</span>
+                                      <span>📅 {{ req.scheduled_date }}</span>
+                                    </div>
+                                    <button (click)="openFleteOfferModal(req)"
+                                      class="w-full py-2.5 rounded-xl text-white text-sm font-black active:scale-[0.98]"
+                                      style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+                                      Enviar oferta
+                                    </button>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                } @else if (tripService() === 'ciudad') {
+                  <!-- ══ MÓDULO CIUDAD A CIUDAD ══ -->
+                  <div class="flex flex-col">
+                    <!-- Tabs -->
+                    <div class="flex gap-1 px-3 pt-2 pb-2">
+                      <button (click)="ccGoNew()"
+                        class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+                        [style.background]="(ccView()==='new'||ccView()==='matching'||ccView()==='assigned'||ccView()==='active'||ccView()==='completed')?'#a855f7':'#f1f5f9'"
+                        [style.color]="(ccView()==='new'||ccView()==='matching'||ccView()==='assigned'||ccView()==='active'||ccView()==='completed')?'white':'#64748b'">
+                        + Viaje
+                      </button>
+                      <button (click)="ccGoMyTrips()"
+                        class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+                        [style.background]="ccView()==='my_trips'?'#a855f7':'#f1f5f9'"
+                        [style.color]="ccView()==='my_trips'?'white':'#64748b'">
+                        Mis viajes
+                      </button>
+                      <button (click)="ccGoDriver()"
+                        class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+                        [style.background]="ccView()==='driver'?'#a855f7':'#f1f5f9'"
+                        [style.color]="ccView()==='driver'?'white':'#64748b'">
+                        🚗 Conductor
+                      </button>
+                    </div>
+
+                    <!-- ══ NUEVA SOLICITUD ══ -->
+                    @if (ccView() === 'new') {
+
+                      <!-- Step 1: Ruta y vehículo -->
+                      @if (ccStep() === 1) {
+                        <div class="flex flex-col px-4 pb-4 gap-3">
+                          <p class="font-black text-slate-800 text-sm">¿De dónde a dónde vas?</p>
+
+                          <!-- Origen -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1 uppercase tracking-wider">Ciudad de origen</p>
+                            <div class="rounded-xl overflow-visible" style="border:1.5px solid #d8b4fe;background:#faf5ff;position:relative;z-index:20">
+                              <div class="flex items-center gap-2 px-3 py-2.5">
+                                <div class="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0"></div>
+                                <input [value]="ccOriginQuery()"
+                                  (input)="onCcOriginInput($any($event.target).value)"
+                                  (focus)="ccOriginOpen.set(true)"
+                                  placeholder="Ej: Bogotá, Medellín..."
+                                  autocomplete="off" inputmode="text"
+                                  class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                                @if (ccOriginQuery()) {
+                                  <button (click)="ccOriginQuery.set(''); ccOriginCity.set(null); ccDistKm.set(0)" class="text-slate-400">
+                                    <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                                  </button>
+                                }
+                              </div>
+                              @if (ccOriginOpen()) {
+                                <div class="border-t border-purple-100" style="max-height:160px;overflow-y:auto">
+                                  @for (c of ccFilteredCities(ccOriginQuery()); track c.name) {
+                                    <button (mousedown)="$event.preventDefault(); ccSelectOrigin(c)"
+                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-purple-50 last:border-0 hover:bg-purple-50">
+                                      <span class="material-symbols-outlined text-purple-400" style="font-size:16px">location_city</span>
+                                      <span class="text-sm font-semibold text-slate-700">{{ c.name }}</span>
+                                    </button>
+                                  }
+                                </div>
+                              }
+                            </div>
+                          </div>
+
+                          <!-- Swap button -->
+                          <div class="flex justify-center">
+                            <button (click)="ccSwapCities()"
+                              class="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
+                              style="background:#a855f7;box-shadow:0 2px 8px rgba(168,85,247,0.4)">
+                              <span class="material-symbols-outlined text-white" style="font-size:20px">swap_vert</span>
+                            </button>
+                          </div>
+
+                          <!-- Destino -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1 uppercase tracking-wider">Ciudad de destino</p>
+                            <div class="rounded-xl overflow-visible" style="border:1.5px solid #d8b4fe;background:#faf5ff;position:relative;z-index:19">
+                              <div class="flex items-center gap-2 px-3 py-2.5">
+                                <div class="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
+                                <input [value]="ccDestQuery()"
+                                  (input)="onCcDestInput($any($event.target).value)"
+                                  (focus)="ccDestOpen.set(true)"
+                                  placeholder="Ej: Cali, Bucaramanga..."
+                                  autocomplete="off" inputmode="text"
+                                  class="flex-1 text-slate-800 text-sm outline-none placeholder-slate-400 bg-transparent"/>
+                                @if (ccDestQuery()) {
+                                  <button (click)="ccDestQuery.set(''); ccDestCity.set(null); ccDistKm.set(0)" class="text-slate-400">
+                                    <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                                  </button>
+                                }
+                              </div>
+                              @if (ccDestOpen()) {
+                                <div class="border-t border-purple-100" style="max-height:160px;overflow-y:auto">
+                                  @for (c of ccFilteredCities(ccDestQuery()); track c.name) {
+                                    <button (mousedown)="$event.preventDefault(); ccSelectDest(c)"
+                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-purple-50 last:border-0 hover:bg-purple-50">
+                                      <span class="material-symbols-outlined text-purple-400" style="font-size:16px">location_city</span>
+                                      <span class="text-sm font-semibold text-slate-700">{{ c.name }}</span>
+                                    </button>
+                                  }
+                                </div>
+                              }
+                            </div>
+                          </div>
+
+                          @if (ccDistKm() > 0) {
+                            <div class="flex items-center gap-2 rounded-xl px-3 py-2" style="background:#faf5ff;border:1px solid #d8b4fe">
+                              <span class="material-symbols-outlined text-purple-500" style="font-size:18px">route</span>
+                              <p class="text-sm font-black text-purple-700">~{{ ccDistKm() }} km de distancia</p>
+                            </div>
+                          }
+
+                          <!-- Fecha y hora -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1 uppercase tracking-wider">¿Cuándo sales?</p>
+                            <!-- Toggle Ahora / Agendar -->
+                            <div class="flex gap-2 mb-2">
+                              <button (click)="ccSetAhora()"
+                                class="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
+                                [style.background]="ccSalirAhora()?'#a855f7':'#f1f5f9'"
+                                [style.color]="ccSalirAhora()?'white':'#64748b'">
+                                ⚡ Ahora
+                              </button>
+                              <button (click)="ccSalirAhora.set(false)"
+                                class="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
+                                [style.background]="!ccSalirAhora()?'#a855f7':'#f1f5f9'"
+                                [style.color]="!ccSalirAhora()?'white':'#64748b'">
+                                📅 Agendar
+                              </button>
+                            </div>
+                            @if (!ccSalirAhora()) {
+                              <div class="flex gap-2">
+                                <input type="date" [value]="ccScheduledDt()" (change)="ccScheduledDt.set($any($event.target).value)"
+                                  [min]="ccTodayStr()"
+                                  class="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none bg-white"/>
+                                <input type="time" [value]="ccScheduledTime()" (change)="ccScheduledTime.set($any($event.target).value)"
+                                  class="w-28 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none bg-white"/>
+                              </div>
+                            } @else {
+                              <div class="flex items-center gap-2 rounded-xl px-3 py-2.5" style="background:#faf5ff;border:1px solid #d8b4fe">
+                                <span class="material-symbols-outlined text-purple-500" style="font-size:18px">schedule</span>
+                                <p class="text-sm font-black text-purple-700">Salida inmediata</p>
+                              </div>
+                            }
+                          </div>
+
+                          <!-- Tipo de vehículo -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tipo de vehículo</p>
+                            <div class="grid grid-cols-2 gap-2">
+                              @for (v of ccVehicleTypes; track v.value) {
+                                <button (click)="ccSetVehicle(v.value)"
+                                  class="flex items-center gap-2 px-3 py-2.5 rounded-2xl text-left active:scale-[0.98] transition-all"
+                                  [style.border]="ccVehicleCat()===v.value?'2px solid #a855f7':'1.5px solid #e2e8f0'"
+                                  [style.background]="ccVehicleCat()===v.value?'#faf5ff':'#f8fafc'">
+                                  <span class="text-xl">{{ v.icon }}</span>
+                                  <div>
+                                    <p class="text-xs font-black text-slate-700">{{ v.label }}</p>
+                                    <p class="text-[10px] text-slate-400">{{ v.desc }}</p>
+                                  </div>
+                                </button>
+                              }
+                            </div>
+                          </div>
+
+                          <!-- Ida y vuelta -->
+                          <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer" style="background:#faf5ff;border:1px solid #d8b4fe">
+                            <input type="checkbox" [checked]="ccRoundTrip()" (change)="ccRoundTrip.set($any($event.target).checked)" class="rounded w-4 h-4"/>
+                            <div>
+                              <p class="text-sm font-bold text-slate-700">🔄 Ida y vuelta</p>
+                              <p class="text-xs text-slate-400">Agrega el regreso en el mismo viaje</p>
+                            </div>
+                          </label>
+
+                          @if (ccRoundTrip()) {
+                            <div>
+                              <p class="text-xs font-black text-slate-500 mb-1 uppercase tracking-wider">Fecha y hora de regreso</p>
+                              <div class="flex gap-2">
+                                <input type="date" [value]="ccReturnDt()" (change)="ccReturnDt.set($any($event.target).value)"
+                                  [min]="ccScheduledDt()"
+                                  class="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none bg-white"/>
+                                <input type="time" [value]="ccReturnTime()" (change)="ccReturnTime.set($any($event.target).value)"
+                                  class="w-28 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none bg-white"/>
+                              </div>
+                            </div>
+                          }
+
+                          <button (click)="ccStep.set(2); ccCalcPrice()"
+                            [disabled]="!ccOriginCity() || !ccDestCity() || !ccScheduledDt()"
+                            class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-50"
+                            style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                            Continuar
+                          </button>
+                        </div>
+                      }
+
+                      <!-- Step 2: Pasajeros, precio, publicar -->
+                      @else if (ccStep() === 2) {
+                        <div class="flex flex-col px-4 pb-4 gap-3">
+                          <div class="flex items-center gap-2">
+                            <button (click)="ccStep.set(1)" style="color:#a855f7;font-size:13px;font-weight:800" class="flex items-center gap-1">
+                              <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Volver
+                            </button>
+                            <span class="flex-1 text-center text-slate-700 font-black text-sm">
+                              {{ ccOriginCity()?.name }} → {{ ccDestCity()?.name }}
+                            </span>
+                          </div>
+
+                          <!-- Resumen ruta -->
+                          <div class="rounded-2xl p-3" style="background:#faf5ff;border:1px solid #d8b4fe">
+                            <div class="flex items-center justify-between text-xs">
+                              <span class="font-bold text-slate-600">🗓️ {{ ccScheduledDt() }} {{ ccScheduledTime() }}</span>
+                              <span class="font-bold text-purple-600">~{{ ccDistKm() }} km</span>
+                            </div>
+                          </div>
+
+                          <!-- Pasajeros -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Pasajeros</p>
+                            <div class="flex items-center gap-3">
+                              <button (click)="decCcPassengers()" class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-black text-lg active:scale-90">−</button>
+                              <span class="font-black text-slate-800 text-lg w-8 text-center">{{ ccPassengers() }}</span>
+                              <button (click)="incCcPassengers()" class="w-9 h-9 rounded-full text-white flex items-center justify-center font-black text-lg active:scale-90" style="background:#a855f7">+</button>
+                              <span class="text-xs text-slate-500">persona(s)</span>
+                            </div>
+                          </div>
+
+                          <!-- Maletas -->
+                          <div class="grid grid-cols-2 gap-3">
+                            <div>
+                              <p class="text-xs font-black text-slate-500 mb-1.5">🧳 Maletas grandes</p>
+                              <div class="flex items-center gap-2">
+                                <button (click)="decCcLuggage()" class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-black text-base active:scale-90">−</button>
+                                <span class="font-black text-slate-800 text-base w-6 text-center">{{ ccLuggage() }}</span>
+                                <button (click)="incCcLuggage()" class="w-8 h-8 rounded-full text-white flex items-center justify-center font-black text-base active:scale-90" style="background:#a855f7">+</button>
+                              </div>
+                            </div>
+                            <div>
+                              <p class="text-xs font-black text-slate-500 mb-1.5">👶 Sillas de bebé</p>
+                              <div class="flex items-center gap-2">
+                                <button (click)="decCcBabySeats()" class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-black text-base active:scale-90">−</button>
+                                <span class="font-black text-slate-800 text-base w-6 text-center">{{ ccBabySeats() }}</span>
+                                <button (click)="incCcBabySeats()" class="w-8 h-8 rounded-full text-white flex items-center justify-center font-black text-base active:scale-90" style="background:#a855f7">+</button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Paradas intermedias -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Paradas en ruta (máx. 3)</p>
+                            @if (ccStops().length > 0) {
+                              <div class="flex flex-col gap-1.5 mb-2">
+                                @for (stop of ccStops(); track stop.id) {
+                                  <div class="flex items-center gap-2 px-3 py-2 rounded-xl" style="background:#faf5ff;border:1px solid #e9d5ff">
+                                    <span class="material-symbols-outlined text-purple-400" style="font-size:16px">place</span>
+                                    <div class="flex-1 min-w-0">
+                                      <p class="text-xs font-semibold text-slate-700 truncate">{{ stop.address }}</p>
+                                      <p class="text-[10px] text-slate-400">⏱ {{ stop.wait_min }} min espera</p>
+                                    </div>
+                                    <button (click)="ccRemoveStop(stop.id)" class="text-red-400 active:scale-90">
+                                      <span class="material-symbols-outlined" style="font-size:16px">close</span>
+                                    </button>
+                                  </div>
+                                }
+                              </div>
+                            }
+                            @if (ccStops().length < 3) {
+                              <div class="flex flex-col gap-2">
+                                <div class="flex gap-2">
+                                  <input [(ngModel)]="ccNewStopAddr" placeholder="Ej: Girardot, Cundinamarca"
+                                    class="flex-1 text-sm border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none bg-white"
+                                    (keydown.enter)="ccAddStop()"/>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                  <p class="text-xs text-slate-500 flex-shrink-0">Espera:</p>
+                                  <select [value]="ccNewStopWaitMin()" (change)="ccNewStopWaitMin.set(+$any($event.target).value)"
+                                    class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white">
+                                    @for (m of [5,10,15,20,30,45]; track m) {
+                                      <option [value]="m">{{ m }} min</option>
+                                    }
+                                  </select>
+                                  <button (click)="ccAddStop()" [disabled]="!ccNewStopAddr.trim()"
+                                    class="flex-1 py-1.5 rounded-xl text-white text-xs font-black disabled:opacity-40"
+                                    style="background:#a855f7">+ Agregar parada</button>
+                                </div>
+                              </div>
+                            }
+                          </div>
+
+                          <!-- Nota -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1 uppercase tracking-wider">Nota para el conductor</p>
+                            <textarea [value]="ccNote()" (input)="ccNote.set($any($event.target).value)"
+                              placeholder="Ej: Llevar mucho equipaje, mascota a bordo, punto exacto de recogida..."
+                              rows="2"
+                              class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 outline-none resize-none bg-white"></textarea>
+                          </div>
+
+                          <!-- Precio fijo vs dinámico -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Modalidad de precio</p>
+                            <div class="flex gap-2">
+                              <button (click)="ccPriceDynamic.set(false)"
+                                class="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all"
+                                [style.border]="!ccPriceDynamic()?'2px solid #a855f7':'1.5px solid #e2e8f0'"
+                                [style.background]="!ccPriceDynamic()?'#faf5ff':'#f8fafc'">
+                                <span class="text-lg">🔒</span>
+                                <p class="text-xs font-black text-slate-700">Precio fijo</p>
+                                <p class="text-[10px] text-slate-400 text-center">Tú propones, ellos aceptan o no</p>
+                              </button>
+                              <button (click)="ccPriceDynamic.set(true)"
+                                class="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all"
+                                [style.border]="ccPriceDynamic()?'2px solid #a855f7':'1.5px solid #e2e8f0'"
+                                [style.background]="ccPriceDynamic()?'#faf5ff':'#f8fafc'">
+                                <span class="text-lg">🔄</span>
+                                <p class="text-xs font-black text-slate-700">Dinámico (InDrive)</p>
+                                <p class="text-[10px] text-slate-400 text-center">Negocian hasta acordar</p>
+                              </button>
+                            </div>
+                          </div>
+
+                          <!-- Precio sugerido -->
+                          <div class="rounded-2xl p-4" style="background:#faf5ff;border:1.5px solid #d8b4fe">
+                            <p class="text-xs font-black text-purple-600 mb-2">
+                              {{ ccPriceDynamic() ? 'Tu precio de salida (COP)' : 'Tu precio (COP)' }}
+                            </p>
+                            <div class="flex items-center gap-2">
+                              <span class="text-slate-500 font-bold text-sm">$</span>
+                              <input type="number" [value]="ccSuggestedPrice()"
+                                (input)="ccSuggestedPrice.set(+$any($event.target).value)"
+                                class="flex-1 text-2xl font-black text-slate-800 outline-none bg-transparent" min="0" step="10000"/>
+                              <span class="text-slate-400 text-xs">COP</span>
+                            </div>
+                            @if (ccRoundTrip() && !ccRoundTripSame()) {
+                              <label class="flex items-center gap-2 mt-2 cursor-pointer">
+                                <input type="checkbox" [checked]="ccRoundTripSame()" (change)="ccRoundTripSame.set($any($event.target).checked)" class="rounded w-4 h-4"/>
+                                <p class="text-xs text-purple-700 font-bold">🔄 Mismo conductor ida y vuelta <span class="text-green-600">(-15%)</span></p>
+                              </label>
+                            }
+                            @if (ccRoundTrip() && ccRoundTripSame()) {
+                              <div class="mt-2 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-green-500" style="font-size:16px">check_circle</span>
+                                <p class="text-xs text-green-700 font-bold">Descuento 15% aplicado al precio total</p>
+                              </div>
+                            }
+                            <!-- CO2 -->
+                            <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-purple-100">
+                              <span class="text-base">🌱</span>
+                              <p class="text-[10px] text-slate-500">Huella de carbono estimada: <strong class="text-green-600">~{{ ccCo2Kg() }} kg CO₂</strong></p>
+                            </div>
+                            <p class="text-[10px] text-purple-500 mt-1">Precio por vehículo completo · conductores pueden contraofertar</p>
+                          </div>
+
+                          <!-- Método de pago -->
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Método de pago</p>
+                            <div class="flex flex-col gap-2">
+                              @for (pm of ccPaymentMethods; track pm.value) {
+                                <button (click)="setCcPaymentMethod(pm.value)"
+                                  class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all"
+                                  [style.border]="ccPaymentMethod()===pm.value?'2px solid #a855f7':'1.5px solid #e2e8f0'"
+                                  [style.background]="ccPaymentMethod()===pm.value?'#faf5ff':'#f8fafc'">
+                                  <span class="text-xl">{{ pm.icon }}</span>
+                                  <div class="flex-1">
+                                    <p class="text-sm font-black text-slate-700">{{ pm.label }}</p>
+                                    <p class="text-xs text-slate-400">{{ pm.desc }}</p>
+                                  </div>
+                                  @if (ccPaymentMethod()===pm.value) {
+                                    <span class="material-symbols-outlined text-purple-500" style="font-size:20px">check_circle</span>
+                                  }
+                                </button>
+                              }
+                            </div>
+                          </div>
+
+                          @if (ccError()) {
+                            <div class="flex items-center gap-2 rounded-xl px-3 py-2" style="background:#fef2f2;border:1px solid #fca5a5">
+                              <span class="material-symbols-outlined text-red-500" style="font-size:16px">error</span>
+                              <p class="text-red-700 text-xs font-semibold">{{ ccError() }}</p>
+                            </div>
+                          }
+
+                          <!-- Info penalización -->
+                          <div class="flex items-start gap-2 rounded-xl px-3 py-2" style="background:#fffbeb;border:1px solid #fde68a">
+                            <span class="material-symbols-outlined text-amber-500 flex-shrink-0" style="font-size:16px">info</span>
+                            <p class="text-amber-700 text-[10px]">Cancelar con menos de 30 min de anticipación genera un cargo del <strong>30%</strong> del precio acordado.</p>
+                          </div>
+
+                          <button (click)="ccPublish()" [disabled]="ccSending() || ccSuggestedPrice() < 50000"
+                            class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                            style="background:linear-gradient(135deg,#a855f7,#7c3aed);box-shadow:0 4px 16px rgba(168,85,247,0.4)">
+                            @if (ccSending()) {
+                              <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Publicando...
+                            } @else {
+                              <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">commute</span>Publicar viaje
+                            }
+                          </button>
+                        </div>
+                      }
+                    }
+
+                    <!-- ══ MATCHING — esperando ofertas ══ -->
+                    @else if (ccView() === 'matching') {
+                      <div class="flex flex-col px-4 pb-4">
+                        <!-- Header con timer -->
+                        <div class="flex items-center gap-2 mb-3">
+                          <div class="flex-1">
+                            <p class="font-black text-slate-800 text-sm">Buscando conductores...</p>
+                            <p class="text-xs text-slate-400">{{ ccActiveReq()?.origin_city }} → {{ ccActiveReq()?.dest_city }}</p>
+                          </div>
+                          <div class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:conic-gradient(#a855f7 {{ ccMatchProgress() }}%, #e9d5ff {{ ccMatchProgress() }}%)">
+                              <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center">
+                                <span class="font-black text-purple-700 text-xs">{{ ccMatchMinSec() }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Animación buscando -->
+                        @if (ccOffers().length === 0) {
+                          <div class="flex flex-col items-center py-4 mb-3">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center mb-3" style="background:#faf5ff;border:2px solid #d8b4fe">
+                              <span class="material-symbols-outlined text-purple-500 animate-pulse" style="font-size:32px">commute</span>
+                            </div>
+                            <p class="text-sm font-bold text-slate-600">Esperando conductores...</p>
+                            <p class="text-xs text-slate-400 mt-1 text-center">Recibirás una notificación cuando alguien haga una oferta</p>
+                          </div>
+                        } @else {
+                          <p class="text-xs font-black text-slate-500 mb-2 uppercase tracking-wider">{{ ccOffers().length }} oferta(s) recibida(s)</p>
+                          <div class="flex flex-col gap-2 mb-3">
+                            @for (offer of ccOffers(); track offer.id) {
+                              <div class="p-3 rounded-2xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                                <div class="flex items-center gap-2 mb-2">
+                                  <div class="w-10 h-10 rounded-full bg-purple-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                    @if (offer.driver_photo) {
+                                      <img [src]="offer.driver_photo" class="w-full h-full object-cover"/>
+                                    } @else {
+                                      <span class="material-symbols-outlined text-purple-400" style="font-size:20px">person</span>
+                                    }
+                                  </div>
+                                  <div class="flex-1">
+                                    <p class="font-black text-slate-800 text-sm">{{ offer.driver_name || 'Conductor' }}</p>
+                                    <p class="text-xs text-slate-400">⭐ {{ offer.driver_rating || '–' }} · {{ offer.driver_trips || 0 }} viajes</p>
+                                  </div>
+                                  <p class="text-lg font-black text-purple-600">{{ formatCOP(offer.offered_price) }}</p>
+                                </div>
+                                @if (offer.vehicle_desc || offer.plate) {
+                                  <div class="flex items-center gap-2 mb-2 text-xs text-slate-500">
+                                    <span class="material-symbols-outlined" style="font-size:14px">directions_car</span>
+                                    <span>{{ offer.vehicle_desc }}</span>
+                                    @if (offer.plate) { <span class="font-black">· {{ offer.plate }}</span> }
+                                  </div>
+                                }
+                                @if (offer.message) {
+                                  <p class="text-xs text-slate-600 mb-2 italic">"{{ offer.message }}"</p>
+                                }
+                                <button (click)="ccAcceptOffer(offer.id)"
+                                  class="w-full py-2.5 rounded-xl text-white text-sm font-black active:scale-[0.98]"
+                                  style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                                  ✓ Aceptar esta oferta
+                                </button>
+                              </div>
+                            }
+                          </div>
+                        }
+
+                        <!-- Modificar precio -->
+                        <div class="rounded-xl p-3 mb-2" style="background:#faf5ff;border:1px solid #d8b4fe">
+                          <p class="text-xs font-black text-purple-600 mb-2">Modificar tu precio</p>
+                          <div class="flex gap-2">
+                            <input type="number" [value]="ccSuggestedPrice()"
+                              (input)="ccSuggestedPrice.set(+$any($event.target).value)"
+                              class="flex-1 border border-purple-200 rounded-lg px-2.5 py-1.5 text-sm font-black text-slate-800 outline-none bg-white" min="0" step="10000"/>
+                            <button (click)="ccUpdatePrice()"
+                              class="px-3 py-1.5 rounded-lg text-white text-xs font-black active:scale-90" style="background:#a855f7">
+                              Actualizar
+                            </button>
+                          </div>
+                        </div>
+
+                        <button (click)="ccCancelRequest()"
+                          class="w-full py-2.5 rounded-xl text-red-500 text-sm font-black border border-red-200 active:scale-[0.98]"
+                          style="background:#fef2f2">
+                          Cancelar solicitud
+                        </button>
+                      </div>
+                    }
+
+                    <!-- ══ CONDUCTOR ASIGNADO — pre-viaje ══ -->
+                    @else if (ccView() === 'assigned' && ccActiveReq()) {
+                      <div class="flex flex-col px-4 pb-4 gap-3">
+                        <!-- Info del viaje -->
+                        <div class="rounded-2xl p-3" style="background:#faf5ff;border:1px solid #d8b4fe">
+                          <div class="flex items-center gap-1 text-xs text-slate-600 mb-1">
+                            <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                            <span class="font-semibold">{{ ccActiveReq().origin_city }}</span>
+                            <span class="text-slate-400 mx-1">→</span>
+                            <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                            <span class="font-semibold">{{ ccActiveReq().dest_city }}</span>
+                          </div>
+                          <div class="flex items-center justify-between">
+                            <p class="text-xs text-slate-500">🗓️ {{ ccActiveReq().scheduled_dt | date:'dd/MM HH:mm' }}</p>
+                            <p class="font-black text-purple-700">{{ formatCOP(ccActiveReq().accepted_price) }}</p>
+                          </div>
+                        </div>
+
+                        <!-- Info del conductor -->
+                        <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#f0fdf4;border:1px solid #bbf7d0">
+                          <div class="w-16 h-16 rounded-full bg-green-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            @if (ccActiveReq().driver_photo) {
+                              <img [src]="ccActiveReq().driver_photo" class="w-full h-full object-cover"/>
+                            } @else {
+                              <span class="material-symbols-outlined text-green-600" style="font-size:32px">person</span>
+                            }
+                          </div>
+                          <div class="flex-1">
+                            <p class="font-black text-slate-800">{{ ccActiveReq().driver_name || 'Tu conductor' }}</p>
+                            <p class="text-xs text-slate-500 mt-0.5">⭐ {{ ccActiveReq().driver_rating || '–' }} · {{ ccActiveReq().driver_trips || 0 }} viajes</p>
+                            @if (ccActiveReq().driver_phone) {
+                              <p class="text-xs text-slate-500 mt-0.5">📱 {{ ccActiveReq().driver_phone }}</p>
+                            }
+                          </div>
+                        </div>
+
+                        <!-- Código de verificación de abordaje -->
+                        <div class="rounded-2xl p-4 text-center" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                          <p class="text-white text-xs font-black mb-1 uppercase tracking-wider">Código de abordaje</p>
+                          <p class="text-white font-black tracking-widest" style="font-size:40px;letter-spacing:12px">
+                            {{ ccActiveReq().verification_code }}
+                          </p>
+                          <p class="text-white/70 text-[10px] mt-1">Muestra este código al conductor para subir al vehículo</p>
+                        </div>
+
+                        <!-- Verificar código (conductor) -->
+                        @if (ccActiveReq().driver_id) {
+                          <div>
+                            <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">¿Eres el conductor? Ingresa el código</p>
+                            <div class="flex gap-2">
+                              <input [value]="ccCodeInput()" (input)="ccCodeInput.set($any($event.target).value)"
+                                maxlength="4" placeholder="0000" inputmode="numeric"
+                                class="flex-1 text-center text-2xl font-black border border-slate-200 rounded-xl py-2 outline-none tracking-widest bg-white"/>
+                              <button (click)="ccVerifyCode()"
+                                [disabled]="ccCodeInput().length !== 4 || ccCodeVerifying()"
+                                class="px-4 py-2 rounded-xl text-white font-black text-sm disabled:opacity-50 active:scale-90"
+                                style="background:#a855f7">
+                                @if (ccCodeVerifying()) {
+                                  <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
+                                } @else { Verificar }
+                              </button>
+                            </div>
+                            @if (ccCodeError()) {
+                              <p class="text-red-500 text-xs mt-1">{{ ccCodeError() }}</p>
+                            }
+                          </div>
+                        }
+
+                        <!-- Botones de acción -->
+                        <div class="grid grid-cols-2 gap-2">
+                          @if (ccActiveReq().driver_phone) {
+                            <a [href]="'tel:' + ccActiveReq().driver_phone"
+                              class="flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-black"
+                              style="background:linear-gradient(135deg,#10b981,#059669)">
+                              <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">call</span>
+                              Llamar
+                            </a>
+                          }
+                          <button (click)="ccShareTrip()"
+                            class="flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-black"
+                            style="background:linear-gradient(135deg,#25d366,#128c7e)">
+                            <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">share</span>
+                            Compartir
+                          </button>
+                        </div>
+
+                        <!-- Iniciar viaje (conductor) o Cancelar (pasajero) -->
+                        @if (ccActiveReq().code_verified) {
+                          <button (click)="ccStartTrip()"
+                            class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98]"
+                            style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                            <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">play_arrow</span>
+                            Iniciar viaje
+                          </button>
+                        }
+                        <!-- Info penalización con monto -->
+                        @if (ccActiveReq()?.accepted_price) {
+                          <div class="flex items-start gap-2 rounded-xl px-3 py-2" style="background:#fffbeb;border:1px solid #fde68a">
+                            <span class="material-symbols-outlined text-amber-500 flex-shrink-0" style="font-size:16px">warning</span>
+                            <p class="text-[10px] text-amber-700">Cancelar ahora tiene un cargo de <strong>{{ formatCOP(ccCancelPenalty()) }}</strong> (30% del precio). Cancelaciones restantes este mes: <strong>{{ ccCancelsLeft() }}/3</strong></p>
+                          </div>
+                        }
+                        <button (click)="ccCancelRequest()"
+                          class="w-full py-2 rounded-xl text-red-500 text-xs font-bold border border-red-100 active:scale-[0.98]"
+                          style="background:#fff5f5">
+                          Cancelar viaje
+                        </button>
+                      </div>
+                    }
+
+                    <!-- ══ EN VIAJE ══ -->
+                    @else if (ccView() === 'active' && ccActiveReq()) {
+                      <div class="flex flex-col px-4 pb-4 gap-3">
+                        <!-- Barra de estado con ETA -->
+                        <div class="flex items-center gap-2 p-3 rounded-2xl" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                          <span class="material-symbols-outlined text-white animate-pulse" style="font-size:24px">commute</span>
+                          <div class="flex-1">
+                            <p class="text-white font-black text-sm">En camino a {{ ccActiveReq().dest_city }}</p>
+                            <p class="text-white/70 text-xs">{{ ccActiveReq().origin_city }} → {{ ccActiveReq().dest_city }}</p>
+                          </div>
+                          <div class="text-right flex-shrink-0">
+                            <p class="text-white font-black text-base">~{{ ccEstimatedHours() }}h</p>
+                            <p class="text-white/70 text-[10px]">tiempo est.</p>
+                          </div>
+                        </div>
+
+                        <!-- KPIs ruta -->
+                        <div class="grid grid-cols-3 gap-2">
+                          <div class="rounded-xl p-2.5 text-center" style="background:#faf5ff;border:1px solid #d8b4fe">
+                            <p class="text-[10px] text-slate-500">Distancia</p>
+                            <p class="font-black text-purple-700 text-sm">{{ ccActiveReq().distance_km }} km</p>
+                          </div>
+                          <div class="rounded-xl p-2.5 text-center" style="background:#faf5ff;border:1px solid #d8b4fe">
+                            <p class="text-[10px] text-slate-500">Precio</p>
+                            <p class="font-black text-purple-700 text-sm">{{ formatCOP(ccActiveReq().accepted_price) }}</p>
+                          </div>
+                          <div class="rounded-xl p-2.5 text-center" style="background:#faf5ff;border:1px solid #d8b4fe">
+                            <p class="text-[10px] text-slate-500">Pago</p>
+                            <p class="font-black text-purple-700 text-sm">{{ ccActiveReq().payment_method || 'efectivo' }}</p>
+                          </div>
+                        </div>
+
+                        <!-- Botones de acción rápida -->
+                        <div class="grid grid-cols-3 gap-2">
+                          <button (click)="ccChatOpen.set(true); ccLoadMessages(ccActiveReq().id)"
+                            class="flex flex-col items-center gap-1 py-3 rounded-2xl active:scale-95 transition-all"
+                            style="background:#f0f9ff;border:1.5px solid #bae6fd">
+                            <span class="material-symbols-outlined text-blue-500" style="font-size:24px;font-variation-settings:'FILL' 1">chat</span>
+                            <span class="text-xs font-black text-blue-600">Chat</span>
+                            @if (ccMessages().length > 0) {
+                              <span class="w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] font-black flex items-center justify-center">{{ ccMessages().length }}</span>
+                            }
+                          </button>
+                          <button (click)="ccShareLiveLocation()"
+                            class="flex flex-col items-center gap-1 py-3 rounded-2xl active:scale-95 transition-all"
+                            [style.background]="ccSharingLocation()?'#f0fdf4':'#f8fafc'"
+                            [style.border]="ccSharingLocation()?'1.5px solid #86efac':'1.5px solid #e2e8f0'">
+                            <span class="material-symbols-outlined" style="font-size:24px;font-variation-settings:'FILL' 1"
+                              [style.color]="ccSharingLocation()?'#16a34a':'#94a3b8'">location_on</span>
+                            <span class="text-xs font-black" [style.color]="ccSharingLocation()?'#15803d':'#64748b'">
+                              {{ ccSharingLocation() ? 'Compartiendo' : 'Ubicación' }}
+                            </span>
+                          </button>
+                          <button (click)="ccAddStopModal.set(true)"
+                            class="flex flex-col items-center gap-1 py-3 rounded-2xl active:scale-95 transition-all"
+                            style="background:#faf5ff;border:1.5px solid #d8b4fe">
+                            <span class="material-symbols-outlined text-purple-500" style="font-size:24px;font-variation-settings:'FILL' 1">add_location</span>
+                            <span class="text-xs font-black text-purple-600">+ Parada</span>
+                          </button>
+                        </div>
+
+                        <!-- Botón emergencia -->
+                        <button (click)="ccEmergency()"
+                          class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98]"
+                          style="background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 4px 16px rgba(239,68,68,0.4)">
+                          <span class="material-symbols-outlined" style="font-size:24px;font-variation-settings:'FILL' 1">emergency</span>
+                          Botón de emergencia
+                        </button>
+
+                        <!-- Completar viaje -->
+                        <button (click)="ccCompleteTrip()"
+                          class="w-full py-3.5 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98]"
+                          style="background:linear-gradient(135deg,#10b981,#059669)">
+                          <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">check_circle</span>
+                          Llegamos al destino
+                        </button>
+                      </div>
+                    }
+
+                    <!-- ══ COMPLETADO — Resumen + Rating ══ -->
+                    @else if (ccView() === 'completed' && ccActiveReq()) {
+                      <div class="flex flex-col px-4 pb-4 gap-3">
+                        <!-- Header -->
+                        <div class="flex flex-col items-center py-3">
+                          <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mb-2">
+                            <span class="material-symbols-outlined text-purple-500" style="font-size:36px;font-variation-settings:'FILL' 1">check_circle</span>
+                          </div>
+                          <p class="font-black text-slate-800 text-base">¡Viaje completado!</p>
+                          <p class="text-slate-500 text-xs mt-1">{{ ccActiveReq().origin_city }} → {{ ccActiveReq().dest_city }}</p>
+                        </div>
+
+                        <!-- Desglose de costos -->
+                        <div class="rounded-2xl overflow-hidden" style="border:1px solid #e9d5ff">
+                          <div class="px-3 py-2" style="background:#a855f7">
+                            <p class="text-white font-black text-xs uppercase tracking-wider">Desglose del viaje</p>
+                          </div>
+                          <div class="px-3 py-2 flex flex-col gap-1.5" style="background:#faf5ff">
+                            <div class="flex justify-between text-xs">
+                              <span class="text-slate-500">Tarifa base ({{ ccActiveReq().distance_km }} km)</span>
+                              <span class="font-bold text-slate-700">{{ formatCOP(ccBasePrice()) }}</span>
+                            </div>
+                            @if (ccActiveReq().passengers > 1) {
+                              <div class="flex justify-between text-xs">
+                                <span class="text-slate-500">Pasajeros adicionales ({{ ccActiveReq().passengers - 1 }})</span>
+                                <span class="font-bold text-slate-700">{{ formatCOP((ccActiveReq().passengers - 1) * 15000) }}</span>
+                              </div>
+                            }
+                            @if ((ccActiveReq().extra_stops_amount || 0) > 0) {
+                              <div class="flex justify-between text-xs">
+                                <span class="text-slate-500">Paradas adicionales</span>
+                                <span class="font-bold text-slate-700">{{ formatCOP(ccActiveReq().extra_stops_amount) }}</span>
+                              </div>
+                            }
+                            @if (ccRatingTip() > 0) {
+                              <div class="flex justify-between text-xs">
+                                <span class="text-slate-500">Propina</span>
+                                <span class="font-bold text-green-600">+ {{ formatCOP(ccRatingTip()) }}</span>
+                              </div>
+                            }
+                            <div class="border-t border-purple-200 pt-1.5 flex justify-between">
+                              <span class="font-black text-slate-700 text-sm">Total</span>
+                              <span class="font-black text-purple-700 text-sm">{{ formatCOP((ccActiveReq().accepted_price || 0) + ccRatingTip()) }}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400">Método: {{ ccActiveReq().payment_method || 'efectivo' }}</p>
+                          </div>
+                        </div>
+
+                        <!-- Ahorro vs taxi -->
+                        <div class="flex items-center gap-2 rounded-xl px-3 py-2.5" style="background:#f0fdf4;border:1px solid #86efac">
+                          <span class="text-xl">💚</span>
+                          <div>
+                            <p class="text-xs font-black text-green-700">Ahorraste ~{{ formatCOP(ccSavingsVsTaxi()) }} vs taxi</p>
+                            <p class="text-[10px] text-green-600">Comparado con taxi tradicional a $3.500/km</p>
+                          </div>
+                        </div>
+
+                        <!-- Propina -->
+                        <div>
+                          <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Agregar propina</p>
+                          <div class="grid grid-cols-5 gap-1.5">
+                            <button (click)="ccRatingTip.set(0); ccTipCustom.set(false)"
+                              class="py-2 rounded-xl text-xs font-black transition-all"
+                              [style.background]="ccRatingTip()===0&&!ccTipCustom()?'#a855f7':'#f1f5f9'"
+                              [style.color]="ccRatingTip()===0&&!ccTipCustom()?'white':'#64748b'">Sin</button>
+                            @for (pct of [10, 15, 20]; track pct) {
+                              <button (click)="ccSetTipPct(pct); ccTipCustom.set(false)"
+                                class="py-2 rounded-xl text-xs font-black transition-all"
+                                [style.background]="ccIsTipPct(pct)&&!ccTipCustom()?'#a855f7':'#f1f5f9'"
+                                [style.color]="ccIsTipPct(pct)&&!ccTipCustom()?'white':'#64748b'">
+                                {{ pct }}%
+                              </button>
+                            }
+                            <button (click)="ccTipCustom.set(true)"
+                              class="py-2 rounded-xl text-xs font-black transition-all"
+                              [style.background]="ccTipCustom()?'#a855f7':'#f1f5f9'"
+                              [style.color]="ccTipCustom()?'white':'#64748b'">✏️</button>
+                          </div>
+                          @if (ccTipCustom()) {
+                            <div class="flex items-center gap-2 mt-2 border border-purple-200 rounded-xl px-3 py-2" style="background:#faf5ff">
+                              <span class="text-slate-400">$</span>
+                              <input type="number" [value]="ccTipCustomAmount()"
+                                (input)="ccTipCustomAmount.set(+$any($event.target).value); ccRatingTip.set(+$any($event.target).value)"
+                                placeholder="Monto personalizado" min="0" step="5000"
+                                class="flex-1 text-lg font-black text-slate-800 outline-none bg-transparent"/>
+                            </div>
+                          }
+                          @if (ccRatingTip() > 0) {
+                            <p class="text-center text-purple-600 font-black text-sm mt-1">+{{ formatCOP(ccRatingTip()) }}</p>
+                          }
+                        </div>
+
+                        <!-- Calificación -->
+                        <p class="text-xs font-black text-slate-500 text-center uppercase tracking-wider">Califica tu conductor</p>
+                        <div class="flex justify-center gap-2">
+                          @for (star of [1,2,3,4,5]; track star) {
+                            <button (click)="ccRatingStars.set(star)" class="text-3xl active:scale-90 transition-transform">
+                              {{ star <= ccRatingStars() ? '⭐' : '☆' }}
+                            </button>
+                          }
+                        </div>
+
+                        <!-- Etiquetas -->
+                        <div class="flex flex-wrap gap-1.5">
+                          @for (tag of ccRatingTags; track tag) {
+                            <button (click)="ccToggleTag(tag)"
+                              class="px-2.5 py-1 rounded-full text-xs font-bold transition-all"
+                              [style.background]="ccHasTag(tag)?'#a855f7':'#f1f5f9'"
+                              [style.color]="ccHasTag(tag)?'white':'#64748b'">
+                              {{ tag }}
+                            </button>
+                          }
+                        </div>
+
+                        <textarea [(ngModel)]="ccRatingComment" placeholder="Escribe un comentario (opcional)..."
+                          rows="2" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none resize-none bg-white"></textarea>
+
+                        <button (click)="ccSubmitRating()" [disabled]="ccRatingSending()"
+                          class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                          style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                          @if (ccRatingSending()) {
+                            <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Enviando...
+                          } @else {
+                            ✓ Enviar calificación
+                          }
+                        </button>
+                        <!-- Factura -->
+                        <button (click)="ccShareReceipt()"
+                          class="w-full py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
+                          style="background:#faf5ff;border:1.5px solid #d8b4fe;color:#7c3aed">
+                          <span class="material-symbols-outlined" style="font-size:20px">receipt_long</span>
+                          Compartir factura
+                        </button>
+                        <button (click)="ccGoNew()" class="text-center text-slate-400 text-xs font-semibold py-1">Nuevo viaje</button>
+                      </div>
+                    }
+
+                    <!-- ══ MIS VIAJES ══ -->
+                    @else if (ccView() === 'my_trips') {
+                      <div class="px-4 pb-4">
+                        @if (ccMyTripsLoading()) {
+                          <div class="flex justify-center py-6">
+                            <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:32px">autorenew</span>
+                          </div>
+                        } @else if (ccMyTrips().length === 0) {
+                          <div class="flex flex-col items-center py-6 text-slate-400">
+                            <span class="material-symbols-outlined" style="font-size:48px">commute</span>
+                            <p class="font-bold mt-2 text-sm">Sin viajes intercity aún</p>
+                            <button (click)="ccGoNew()" class="mt-3 px-4 py-2 rounded-xl text-white text-sm font-black" style="background:#a855f7">
+                              + Nuevo viaje
+                            </button>
+                          </div>
+                        } @else {
+                          <!-- Resumen ahorro total -->
+                          <div class="flex items-center gap-2 p-3 rounded-2xl mb-3" style="background:#f0fdf4;border:1px solid #86efac">
+                            <span class="text-2xl">💚</span>
+                            <div>
+                              <p class="font-black text-green-700 text-sm">{{ formatCOP(ccTotalSavings()) }} ahorrados vs taxi</p>
+                              <p class="text-[10px] text-green-600">En {{ ccCompletedTripsCount() }} viajes completados</p>
+                            </div>
+                          </div>
+                          <div class="flex flex-col gap-2">
+                            @for (trip of ccMyTrips(); track trip.id) {
+                              <div class="flex flex-col p-3 rounded-2xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                                <button (click)="ccOpenTrip(trip)" class="flex flex-col text-left w-full">
+                                  <div class="flex items-start justify-between gap-2 mb-1.5">
+                                    <div class="flex items-center gap-2">
+                                      <span class="text-base">🚗</span>
+                                      <p class="font-black text-slate-800 text-sm">{{ trip.origin_city }} → {{ trip.dest_city }}</p>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black"
+                                      [style.background]="ccStatusBg(trip.status)"
+                                      [style.color]="ccStatusColor(trip.status)">
+                                      {{ ccStatusLabel(trip.status) }}
+                                    </span>
+                                  </div>
+                                  <div class="flex items-center justify-between">
+                                    <p class="text-xs text-slate-400">🗓️ {{ trip.scheduled_dt | date:'dd MMM yyyy HH:mm' }}</p>
+                                    <p class="text-sm font-black text-purple-600">{{ formatCOP(trip.accepted_price || trip.suggested_price) }}</p>
+                                  </div>
+                                </button>
+                                @if (trip.status === 'completed' && trip.driver_id) {
+                                  <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                                    <p class="text-xs text-slate-400">{{ trip.driver_name || 'Conductor' }}</p>
+                                    <button (click)="ccToggleFavorite(trip.driver_id)"
+                                      class="flex items-center gap-1 text-xs font-bold active:scale-90 transition-transform"
+                                      [style.color]="ccFavorites().includes(trip.driver_id)?'#dc2626':'#94a3b8'">
+                                      <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">favorite</span>
+                                      {{ ccFavorites().includes(trip.driver_id) ? 'Favorito' : 'Guardar' }}
+                                    </button>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <!-- ══ MODO CONDUCTOR INTERCITY ══ -->
+                    @else if (ccView() === 'driver') {
+                      <div class="px-4 pb-4">
+                        <div class="flex items-center justify-between mb-3">
+                          <p class="font-black text-slate-700 text-sm">Viajes disponibles</p>
+                          <button (click)="ccLoadDriverReqs()"
+                            class="flex items-center gap-1 text-purple-500 font-bold text-xs active:scale-90">
+                            <span class="material-symbols-outlined" style="font-size:16px">refresh</span>Actualizar
+                          </button>
+                        </div>
+                        @if (ccDriverLoading()) {
+                          <div class="flex justify-center py-6">
+                            <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:32px">autorenew</span>
+                          </div>
+                        } @else if (ccDriverReqs().length === 0) {
+                          <div class="flex flex-col items-center py-6 text-slate-400">
+                            <span class="material-symbols-outlined" style="font-size:48px">search_off</span>
+                            <p class="font-bold mt-2 text-sm">Sin viajes disponibles ahora</p>
+                          </div>
+                        } @else {
+                          <div class="flex flex-col gap-2">
+                            @for (req of ccDriverReqs(); track req.id) {
+                              <div class="p-3 rounded-2xl" style="background:#f8fafc;border:1px solid #e2e8f0">
+                                <div class="flex items-start justify-between gap-2 mb-2">
+                                  <div>
+                                    <p class="font-black text-slate-800 text-sm">{{ req.origin_city }} → {{ req.dest_city }}</p>
+                                    <p class="text-[10px] text-slate-400">🗓️ {{ req.scheduled_dt | date:'dd MMM yyyy HH:mm' }}</p>
+                                  </div>
+                                  <div class="text-right">
+                                    <p class="font-black text-purple-600">{{ formatCOP(req.suggested_price) }}</p>
+                                    <p class="text-[10px] text-slate-400">{{ req.offers_count }} oferta(s)</p>
+                                  </div>
+                                </div>
+                                <div class="flex items-center gap-3 text-xs text-slate-500 mb-2">
+                                  <span>👥 {{ req.passengers }} pas.</span>
+                                  <span>🧳 {{ req.luggage_large }} maletas</span>
+                                  @if (req.round_trip) { <span>🔄 Ida y vuelta</span> }
+                                  <span>📏 {{ req.distance_km | number:'1.0-0' }} km</span>
+                                </div>
+                                <!-- Ganancia estimada conductor -->
+                                <div class="flex items-center justify-between mb-2 rounded-xl px-3 py-2" style="background:#f0fdf4;border:1px solid #86efac">
+                                  <div>
+                                    <p class="text-xs font-black text-green-700">Tu ganancia neta: ~{{ formatCOP(ccDriverEarning(req)) }}</p>
+                                    <p class="text-[10px] text-green-600">88% del precio · comisión plataforma 12%{{ ccIsNocturno(req) ? ' · +20% bonus nocturno' : '' }}</p>
+                                  </div>
+                                  @if (ccIsNocturno(req)) {
+                                    <span class="text-lg">🌙</span>
+                                  }
+                                </div>
+                                <button (click)="ccOpenDriverOffer(req)"
+                                  class="w-full py-2.5 rounded-xl text-white text-sm font-black active:scale-[0.98]"
+                                  style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                                  Hacer oferta
+                                </button>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
                   </div>
                 } @else {
                 <button (click)="openTripSearch()"
@@ -7844,6 +9435,256 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ══ Modal: Chat Ciudad a Ciudad ══ -->
+  @if (ccChatOpen() && ccActiveReq()) {
+    <div class="fixed inset-0 z-[9680]" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(3px)"></div>
+    <div class="fixed bottom-0 left-0 right-0 z-[9681] rounded-t-3xl flex flex-col" style="background:#fff;max-height:80vh;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
+      <!-- Header chat -->
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+          <span class="material-symbols-outlined text-purple-500" style="font-size:18px;font-variation-settings:'FILL' 1">chat</span>
+        </div>
+        <div class="flex-1">
+          <p class="font-black text-slate-800 text-sm">Chat con {{ ccActiveReq().driver_name || 'conductor' }}</p>
+          <p class="text-xs text-slate-400">{{ ccActiveReq().origin_city }} → {{ ccActiveReq().dest_city }}</p>
+        </div>
+        <button (click)="ccChatOpen.set(false)" class="text-slate-400 active:scale-90">
+          <span class="material-symbols-outlined" style="font-size:24px">close</span>
+        </button>
+      </div>
+      <!-- Mensajes -->
+      <div class="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2" style="min-height:120px;max-height:280px">
+        @if (ccMessages().length === 0) {
+          <p class="text-center text-slate-400 text-xs py-4">Sin mensajes aún. Di hola 👋</p>
+        }
+        @for (msg of ccMessages(); track msg.id) {
+          <div class="flex" [class.justify-end]="ccIsMyMessage(msg)">
+            <div class="max-w-[75%] px-3 py-2 rounded-2xl text-sm"
+              [style.background]="ccIsMyMessage(msg)?'#a855f7':'#f1f5f9'"
+              [style.color]="ccIsMyMessage(msg)?'white':'#1e293b'">
+              <p>{{ msg.content }}</p>
+              <p class="text-[10px] mt-0.5 opacity-70">{{ msg.created_at | date:'HH:mm' }}</p>
+            </div>
+          </div>
+        }
+      </div>
+      <!-- Emojis rápidos -->
+      <div class="px-3 pt-2 border-t border-slate-100">
+        <div class="flex gap-2 mb-1.5">
+          @for (emoji of ccChatEmojis; track emoji) {
+            <button (mousedown)="$event.preventDefault(); ccSendQuick(emoji)"
+              class="text-xl active:scale-90 transition-transform">
+              {{ emoji }}
+            </button>
+          }
+        </div>
+      </div>
+      <!-- Mensajes predefinidos -->
+      <div class="px-3 pb-2">
+        <div class="flex gap-1.5 overflow-x-auto pb-1">
+          @for (qm of ccQuickMessages; track qm) {
+            <button (mousedown)="$event.preventDefault(); ccSendQuick(qm)"
+              class="flex-shrink-0 px-2.5 py-1.5 rounded-full text-xs font-bold active:scale-95 transition-all"
+              style="background:#faf5ff;border:1px solid #d8b4fe;color:#7c3aed;white-space:nowrap">
+              {{ qm }}
+            </button>
+          }
+        </div>
+      </div>
+      <!-- Input -->
+      <div class="flex gap-2 px-4 py-3 border-t border-slate-100" style="padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+        <input [(ngModel)]="ccChatInput" placeholder="Escribe un mensaje..."
+          (keydown.enter)="ccSendMessage()"
+          class="flex-1 px-3 py-2 rounded-2xl text-sm outline-none"
+          style="background:#f1f5f9;border:1px solid #e2e8f0"/>
+        <button (click)="ccSendMessage()" [disabled]="!ccChatInput.trim() || ccChatSending()"
+          class="w-10 h-10 rounded-2xl flex items-center justify-center disabled:opacity-40 flex-shrink-0"
+          style="background:#a855f7">
+          @if (ccChatSending()) {
+            <span class="material-symbols-outlined text-white animate-spin" style="font-size:18px">sync</span>
+          } @else {
+            <span class="material-symbols-outlined text-white" style="font-size:18px">send</span>
+          }
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ══ Modal: Añadir parada en vivo ══ -->
+  @if (ccAddStopModal()) {
+    <div (click)="ccAddStopModal.set(false)" class="fixed inset-0 z-[9670]"
+      style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
+    <div class="fixed bottom-0 left-0 right-0 z-[9671] rounded-t-3xl flex flex-col gap-3 px-5 pt-5 pb-8"
+      style="background:#fff;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
+      <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-1"></div>
+      <p class="font-black text-slate-800 text-base">➕ Añadir parada en ruta</p>
+      <p class="text-xs text-slate-500">El precio se ajustará automáticamente</p>
+      <div>
+        <p class="text-xs font-black text-slate-500 mb-1.5">Dirección de la parada</p>
+        <input [(ngModel)]="ccAddStopAddr" placeholder="Ej: Peaje sur, Estación de gasolina..."
+          class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-white"/>
+      </div>
+      <div>
+        <p class="text-xs font-black text-slate-500 mb-1.5">Cargo adicional (COP)</p>
+        <div class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5">
+          <span class="text-slate-400">$</span>
+          <input type="number" [value]="ccAddStopPrice()" (input)="ccAddStopPrice.set(+$any($event.target).value)"
+            class="flex-1 text-lg font-black text-slate-800 outline-none bg-transparent" min="0" step="5000"/>
+        </div>
+      </div>
+      <button (click)="ccSubmitAddStop()" [disabled]="ccAddStopSending() || !ccAddStopAddr.trim()"
+        class="w-full py-3.5 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+        style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+        @if (ccAddStopSending()) {
+          <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Agregando...
+        } @else {
+          + Agregar parada
+        }
+      </button>
+    </div>
+  }
+
+  <!-- ══ Modal: Oferta conductor intercity ══ -->
+  @if (ccDriverOfferModal() && ccDriverOfferTarget()) {
+    <div (click)="ccDriverOfferModal.set(false)" class="fixed inset-0 z-[9650]"
+      style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
+    <div class="fixed bottom-0 left-0 right-0 z-[9651] rounded-t-3xl flex flex-col gap-3 px-5 pt-5 pb-8"
+      style="background:#fff;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
+      <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-1"></div>
+      <p class="font-black text-slate-800 text-base">Tu oferta</p>
+      <div class="rounded-xl p-3" style="background:#faf5ff;border:1px solid #d8b4fe">
+        <p class="font-bold text-slate-700 text-sm">{{ ccDriverOfferTarget().origin_city }} → {{ ccDriverOfferTarget().dest_city }}</p>
+        <p class="text-xs text-slate-400">{{ ccDriverOfferTarget().passengers }} pas. · {{ ccDriverOfferTarget().luggage_large }} maletas · {{ ccDriverOfferTarget().distance_km | number:'1.0-0' }} km</p>
+      </div>
+      <div>
+        <p class="text-xs font-black text-slate-500 mb-1.5">Tu precio (COP)</p>
+        <div class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5">
+          <span class="text-slate-400 font-bold">$</span>
+          <input type="number" [value]="ccDriverOfferPrice()" (input)="ccDriverOfferPrice.set(+$any($event.target).value)"
+            class="flex-1 text-xl font-black text-slate-800 outline-none bg-transparent" min="0" step="10000"/>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <p class="text-xs font-black text-slate-500 mb-1">Vehículo</p>
+          <input [(ngModel)]="ccDriverVehicleDesc" placeholder="Ej: Mazda 3 gris 2022"
+            class="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-sm outline-none bg-white"/>
+        </div>
+        <div>
+          <p class="text-xs font-black text-slate-500 mb-1">Placa</p>
+          <input [(ngModel)]="ccDriverPlate" placeholder="Ej: ABC123"
+            class="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-sm outline-none bg-white" style="text-transform:uppercase"/>
+        </div>
+      </div>
+      <div>
+        <p class="text-xs font-black text-slate-500 mb-1">Mensaje al pasajero (opcional)</p>
+        <textarea [(ngModel)]="ccDriverMessage" placeholder="Cuéntale sobre ti y tu experiencia en rutas largas..."
+          rows="2" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none resize-none bg-white"></textarea>
+      </div>
+      <button (click)="ccSubmitDriverOffer()" [disabled]="ccDriverOfferSending() || ccDriverOfferPrice() < 50000"
+        class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+        style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+        @if (ccDriverOfferSending()) {
+          <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Enviando...
+        } @else {
+          🚗 Enviar oferta
+        }
+      </button>
+    </div>
+  }
+
+  <!-- ══ Modal: Oferta de flete ══ -->
+  @if (fleteOfferModal()) {
+    <div (click)="fleteOfferModal.set(false)" class="fixed inset-0 z-[9600]"
+      style="background:rgba(0,0,0,0.65);backdrop-filter:blur(3px)"></div>
+    <div class="fixed bottom-0 left-0 right-0 z-[9601] rounded-t-3xl flex flex-col gap-3 px-5 pt-5 pb-8"
+      style="background:#fff;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
+      <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-1"></div>
+      <p class="font-black text-slate-800 text-base">Enviar oferta</p>
+      @if (fleteOfferTarget()) {
+        <div class="rounded-xl p-3" style="background:#fffbeb;border:1px solid #fde68a">
+          <p class="text-xs font-bold text-slate-600 truncate">{{ fleteOfferTarget().origin_address }}</p>
+          <p class="text-xs text-slate-400 truncate">→ {{ fleteOfferTarget().dest_address }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tu precio (COP)</p>
+          <div class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5">
+            <span class="text-slate-400 font-bold">$</span>
+            <input type="number" [value]="fleteOfferPrice()" (input)="fleteOfferPrice.set(+$any($event.target).value)"
+              class="flex-1 text-xl font-black text-slate-800 outline-none bg-transparent" min="0" step="5000"/>
+          </div>
+        </div>
+        <div>
+          <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Auxiliares incluidos</p>
+          <div class="flex items-center gap-3">
+            <button (click)="decFleteOfferHelpers()"
+              class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-black text-lg">−</button>
+            <span class="font-black text-slate-800 text-lg w-8 text-center">{{ fleteOfferHelpers() }}</span>
+            <button (click)="incFleteOfferHelpers()"
+              class="w-9 h-9 rounded-full text-white flex items-center justify-center font-black text-lg" style="background:#f59e0b">+</button>
+          </div>
+        </div>
+        <div>
+          <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Mensaje (opcional)</p>
+          <textarea [(ngModel)]="fleteOfferText" placeholder="Cuéntale al cliente sobre tu experiencia..."
+            rows="2" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none resize-none"></textarea>
+        </div>
+        <button (click)="submitFleteOffer()" [disabled]="fleteOfferSending() || fleteOfferPrice() < 10000"
+          class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+          style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+          @if (fleteOfferSending()) {
+            <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Enviando...
+          } @else {
+            🚚 Enviar oferta
+          }
+        </button>
+      }
+    </div>
+  }
+
+  <!-- ══ Modal: Rating flete ══ -->
+  @if (fleteRatingModal() && fleteRatingData()) {
+    <div class="fixed inset-0 z-[9700]" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px)"></div>
+    <div class="fixed bottom-0 left-0 right-0 z-[9701] rounded-t-3xl flex flex-col gap-4 px-5 pt-5 pb-10 max-h-[90vh] overflow-y-auto"
+      style="background:#fff;box-shadow:0 -8px 40px rgba(0,0,0,0.3)">
+      <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-1"></div>
+      <p class="font-black text-slate-800 text-base text-center">⭐ Califica el servicio</p>
+      <div class="flex flex-col gap-3">
+        @for (item of fleteRatingItems; track item.key) {
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-bold text-slate-700">{{ item.label }}</p>
+            <div class="flex gap-1">
+              @for (star of [1,2,3,4,5]; track star) {
+                <button (click)="setFleteRating(item.key, star)"
+                  class="text-2xl active:scale-90 transition-transform">
+                  {{ star <= getFleteRating(item.key) ? '⭐' : '☆' }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      <div>
+        <p class="text-xs font-black text-slate-500 mb-1.5 uppercase tracking-wider">Comentario (opcional)</p>
+        <textarea [(ngModel)]="fleteRatingComment" placeholder="¿Cómo fue el servicio?"
+          rows="2" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none resize-none"></textarea>
+      </div>
+      <button (click)="submitFleteRating()" [disabled]="fleteRatingSending()"
+        class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+        style="background:linear-gradient(135deg,#10b981,#059669)">
+        @if (fleteRatingSending()) {
+          <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Enviando...
+        } @else {
+          ✓ Enviar calificación
+        }
+      </button>
+      <button (click)="fleteRatingModal.set(false); fleteViewMode.set('list')"
+        class="text-center text-slate-400 text-sm font-semibold py-1">
+        Omitir
+      </button>
+    </div>
+  }
+
 </div>
   `,
 })
@@ -8376,6 +10217,253 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { value: 'fragil',      icon: '🫙', label: 'Frágil' },
     { value: 'farmacia',    icon: '💊', label: 'Farmacia' },
     { value: 'otro',        icon: '🛍️', label: 'Otro' },
+  ];
+
+  // ── Fletes — signals ────────────────────────────────────────────────────────
+  fleteStep           = signal<number>(1);
+  fleteViewMode       = signal<'new'|'list'|'detail'|'transporter'>('new');
+  fleteServiceType    = signal<string>('trasteo');
+  fleteOrigin         = signal<{name:string;lat:number;lng:number}|null>(null);
+  fleteOriginQuery    = signal('');
+  fleteOriginSuggs    = signal<any[]>([]);
+  fleteOriginOpen     = signal(false);
+  fleteOriginLoading  = signal(false);
+  fleteOriginFloor    = signal(0);
+  fleteOriginElevator = signal(false);
+  fleteDest           = signal<{name:string;lat:number;lng:number}|null>(null);
+  fleteDestQuery      = signal('');
+  fleteDestSuggs      = signal<any[]>([]);
+  fleteDestOpen       = signal(false);
+  fleteDestLoading    = signal(false);
+  fleteDestFloor      = signal(0);
+  fleteDestElevator   = signal(false);
+  fleteDistKm         = signal(0);
+  fleteItems          = signal<Array<{id:string;name:string;category:string;quantity:number;is_fragile:boolean;est_weight_kg:number}>>([]);
+  fleteNewItemName    = '';
+  fleteNewItemCat     = 'mueble';
+  fleteDate           = signal('');
+  fleteTimeWindow     = signal('flexible');
+  fleteHelpers        = signal(0);
+  fleteVehicleReq     = signal('any');
+  fleteNeedsDisasm    = signal(false);
+  fleteNeedsAssm      = signal(false);
+  fleteNote           = signal('');
+  fleteSuggestedPrice = signal(0);
+  fleteInsurance      = signal<'none'|'basic'|'plus'|'premium'>('basic');
+  fleteSending        = signal(false);
+  fleteError          = signal<string|null>(null);
+  fleteMyRequests     = signal<any[]>([]);
+  fleteMyReqLoading   = signal(false);
+  fleteActiveReq      = signal<any|null>(null);
+  fleteActiveOffers   = signal<any[]>([]);
+  fleteActiveOffersLoading = signal(false);
+  fleteIsTransporter  = signal(false);
+  fleteTransporter    = signal<any|null>(null);
+  fleteNearbyReqs     = signal<any[]>([]);
+  fleteNearbyLoading  = signal(false);
+  fleteOfferModal     = signal(false);
+  fleteOfferTarget    = signal<any|null>(null);
+  fleteOfferPrice     = signal(0);
+  fleteOfferHelpers   = signal(0);
+  fleteOfferText      = '';
+  fleteOfferSending   = signal(false);
+  fleteRegModal       = signal(false);
+  fleteRegName        = '';
+  fleteRegPhone       = '';
+  fleteRegBio         = '';
+  fleteRegVehicles    : string[] = [];
+  fleteRegSending     = signal(false);
+  fleteMilestoneLoading = signal(false);
+  fleteRatingModal    = signal(false);
+  fleteRatingData     = signal<any|null>(null);
+  fleteRatingPunct    = signal(5);
+  fleteRatingCare     = signal(5);
+  fleteRatingProf     = signal(5);
+  fleteRatingComm     = signal(5);
+  fleteRatingValue    = signal(5);
+  fleteRatingComment  = '';
+  fleteRatingSending  = signal(false);
+
+  readonly fleteServiceTypes = [
+    { value: 'trasteo',   icon: '🏠', label: 'Trasteo',   desc: 'Mudanza residencial' },
+    { value: 'mudanza',   icon: '📦', label: 'Mudanza',   desc: 'Oficina o local' },
+    { value: 'flete',     icon: '🚚', label: 'Flete',     desc: 'Carga general' },
+    { value: 'comercial', icon: '🏗️', label: 'Comercial', desc: 'Carga pesada' },
+    { value: 'especial',  icon: '⭐', label: 'Especial',  desc: 'Piano, arte, etc.' },
+  ];
+
+  readonly fleteItemCategories = [
+    { value: 'mueble',       icon: '🛋️', label: 'Mueble' },
+    { value: 'electronico',  icon: '📺', label: 'Electrónico' },
+    { value: 'electrodomestico', icon: '🫙', label: 'Electrodoméstico' },
+    { value: 'caja',         icon: '📦', label: 'Caja' },
+    { value: 'fragil',       icon: '🪟', label: 'Frágil' },
+    { value: 'otro',         icon: '📋', label: 'Otro' },
+  ];
+
+  readonly fleteVehicleTypes = [
+    { value: 'any',        icon: '🔄', label: 'Cualquiera' },
+    { value: 'moto',       icon: '🛵', label: 'Moto' },
+    { value: 'pickup',     icon: '🛻', label: 'Pickup' },
+    { value: 'van',        icon: '🚐', label: 'Van/Furgón' },
+    { value: 'camion_35t', icon: '🚛', label: 'Camión 3.5T' },
+    { value: 'camion_7t',  icon: '🚚', label: 'Camión 7T' },
+  ];
+
+  readonly fleteTimeWindows = [
+    { value: 'manana',   label: '☀️ Mañana' },
+    { value: 'tarde',    label: '🌤️ Tarde' },
+    { value: 'flexible', label: '🕐 Flexible' },
+  ];
+
+  readonly fleteInsuranceTypes = [
+    { value: 'none',    icon: '🚫', label: 'Sin seguro',  desc: 'Sin cobertura',           coverage: 0 },
+    { value: 'basic',   icon: '🛡️', label: 'Básico',      desc: 'Daños leves',              coverage: 200000 },
+    { value: 'plus',    icon: '🛡️', label: 'Plus',        desc: 'Daños moderados',          coverage: 500000 },
+    { value: 'premium', icon: '🛡️', label: 'Premium',     desc: 'Cobertura amplia',         coverage: 2000000 },
+  ];
+
+  // ── Ciudad a Ciudad — signals ──────────────────────────────────────────────
+  ccView          = signal<'new'|'matching'|'assigned'|'active'|'completed'|'my_trips'|'driver'>('new');
+  ccStep          = signal<number>(1);
+  // Origen ciudad
+  ccOriginCity    = signal<{name:string;lat:number;lng:number}|null>(null);
+  ccOriginQuery   = signal('');
+  ccOriginSuggs   = signal<any[]>([]);
+  ccOriginOpen    = signal(false);
+  ccOriginLoading = signal(false);
+  // Destino ciudad
+  ccDestCity      = signal<{name:string;lat:number;lng:number}|null>(null);
+  ccDestQuery     = signal('');
+  ccDestSuggs     = signal<any[]>([]);
+  ccDestOpen      = signal(false);
+  ccDestLoading   = signal(false);
+  ccDistKm        = signal(0);
+  // Config viaje
+  ccVehicleCat    = signal<'eco'|'ejecutivo'|'premium'|'familiar'|'mascotas'>('eco');
+  ccScheduledDt   = signal('');
+  ccScheduledTime = signal('08:00');
+  ccRoundTrip     = signal(false);
+  ccReturnDt      = signal('');
+  ccReturnTime    = signal('18:00');
+  ccPassengers    = signal(1);
+  ccLuggage       = signal(0);
+  ccBabySeats     = signal(0);
+  ccNote          = signal('');
+  ccSuggestedPrice= signal(0);
+  // Paradas intermedias
+  ccStops         = signal<Array<{id:string;address:string;lat:number;lng:number;wait_min:number}>>([]);
+  ccNewStopAddr   = '';
+  // Estado
+  ccSending       = signal(false);
+  ccError         = signal<string|null>(null);
+  // Solicitud activa (matching/assigned/active)
+  ccActiveReqId   = signal<string|null>(null);
+  ccActiveReq     = signal<any|null>(null);
+  ccOffers        = signal<any[]>([]);
+  ccOffersLoading = signal(false);
+  ccMatchSeconds  = signal(300);
+  private _ccMatchTimer: ReturnType<typeof setInterval> | null = null;
+  private _ccOffersChannel: ReturnType<typeof this.getMoviClientChannel> | null = null;
+  // Código de verificación
+  ccCodeInput     = signal('');
+  ccCodeError     = signal('');
+  ccCodeVerifying = signal(false);
+  // Rating
+  ccRatingStars   = signal(5);
+  ccRatingComment = '';
+  ccRatingTip     = signal(0);
+  ccRatingSending = signal(false);
+  // Mis viajes
+  ccMyTrips       = signal<any[]>([]);
+  ccMyTripsLoading= signal(false);
+  // Modo conductor intercity
+  ccDriverReqs    = signal<any[]>([]);
+  ccDriverLoading = signal(false);
+  ccDriverOfferModal   = signal(false);
+  ccDriverOfferTarget  = signal<any|null>(null);
+  ccDriverOfferPrice   = signal(0);
+  ccDriverVehicleDesc  = '';
+  ccDriverPlate        = '';
+  ccDriverMessage      = '';
+  ccDriverOfferSending = signal(false);
+
+  readonly ccVehicleTypes = [
+    { value: 'eco',       icon: '🚗', label: 'Eco',       desc: 'Sedan económico',    ppm: 2500 },
+    { value: 'ejecutivo', icon: '🚙', label: 'Ejecutivo',  desc: 'Cómodo y moderno',   ppm: 3500 },
+    { value: 'premium',   icon: '🏎️', label: 'Premium',   desc: 'Lujo garantizado',   ppm: 5000 },
+    { value: 'familiar',  icon: '🚐', label: 'Familiar',   desc: 'SUV 7 pasajeros',    ppm: 3200 },
+    { value: 'mascotas',  icon: '🐾', label: 'Con mascotas', desc: 'Pet friendly',     ppm: 3000 },
+  ];
+
+  readonly ccRatingTags = ['Puntual','Conductor seguro','Muy amable','Auto limpio','Buen precio','Rutas largas experto'];
+
+  readonly ccColombiaCities = [
+    { name: 'Bogotá D.C.',   lat: 4.7110,   lng: -74.0721 },
+    { name: 'Medellín',      lat: 6.2442,   lng: -75.5812 },
+    { name: 'Cali',          lat: 3.4516,   lng: -76.5320 },
+    { name: 'Barranquilla',  lat: 10.9685,  lng: -74.7813 },
+    { name: 'Cartagena',     lat: 10.3910,  lng: -75.4794 },
+    { name: 'Bucaramanga',   lat: 7.1193,   lng: -73.1227 },
+    { name: 'Pereira',       lat: 4.8143,   lng: -75.6946 },
+    { name: 'Manizales',     lat: 5.0703,   lng: -75.5138 },
+    { name: 'Santa Marta',   lat: 11.2408,  lng: -74.2110 },
+    { name: 'Ibagué',        lat: 4.4389,   lng: -75.2322 },
+    { name: 'Pasto',         lat: 1.2136,   lng: -77.2811 },
+    { name: 'Villavicencio', lat: 4.1420,   lng: -73.6266 },
+    { name: 'Armenia',       lat: 4.5339,   lng: -75.6811 },
+    { name: 'Montería',      lat: 8.7575,   lng: -75.8942 },
+    { name: 'Cúcuta',        lat: 7.8939,   lng: -72.5078 },
+    { name: 'Neiva',         lat: 2.9273,   lng: -75.2820 },
+    { name: 'Popayán',       lat: 2.4448,   lng: -76.6147 },
+    { name: 'Valledupar',    lat: 10.4760,  lng: -73.2500 },
+    { name: 'Tunja',         lat: 5.5356,   lng: -73.3700 },
+    { name: 'Riohacha',      lat: 11.5442,  lng: -72.9073 },
+    { name: 'Sincelejo',     lat: 9.3047,   lng: -75.3978 },
+    { name: 'Quibdó',        lat: 5.6910,   lng: -76.6583 },
+    { name: 'Florencia',     lat: 1.6144,   lng: -75.6062 },
+    { name: 'Yopal',         lat: 5.3378,   lng: -72.3959 },
+    { name: 'Leticia',       lat: -4.2152,  lng: -69.9406 },
+  ];
+
+  // ── Ciudad a Ciudad — signals adicionales ──────────────────────
+  ccPaymentMethod    = signal<'efectivo'|'wallet'|'tarjeta'>('efectivo');
+  ccChatOpen         = signal(false);
+  ccMessages         = signal<any[]>([]);
+  ccChatInput        = '';
+  ccChatSending      = signal(false);
+  ccAddStopModal     = signal(false);
+  ccAddStopAddr      = '';
+  ccAddStopPrice     = signal(50000);
+  ccAddStopSending   = signal(false);
+  ccSharingLocation  = signal(false);
+  ccLocationInterval: ReturnType<typeof setInterval> | null = null;
+  private _ccMessagesChannel: any = null;
+  private _ccSelectedTags2: string[] = [];
+
+  // ── Ciudad a Ciudad — signals fase 3 ─────────────────────────
+  ccSalirAhora      = signal(false);          // "Ahora" vs "Agendar"
+  ccPriceDynamic    = signal(false);          // precio dinámico (InDrive) vs fijo
+  ccRoundTripSame   = signal(false);          // ida/vuelta mismo conductor (-15%)
+  ccNewStopWaitMin  = signal(15);             // minutos espera nueva parada
+  ccTipCustom       = signal(false);          // propina personalizada
+  ccTipCustomAmount = signal(0);              // monto propina manual
+  ccFavorites       = signal<string[]>([]);   // IDs conductores favoritos
+  ccCancelsLeft     = signal(3);             // cancelaciones restantes este mes
+  ccGeocercaError   = signal('');             // error geocerca
+  ccDriverNocturno  = signal(false);          // bonus nocturno conductor
+
+  readonly ccChatEmojis = ['👍','🙏','✅','⏰','🚗','😊','🙌','💯'];
+
+  readonly ccPaymentMethods = [
+    { value: 'efectivo', icon: '💵', label: 'Efectivo',   desc: 'Pago al conductor' },
+    { value: 'wallet',   icon: '👛', label: 'Wallet Movi', desc: 'Tu saldo disponible' },
+    { value: 'tarjeta',  icon: '💳', label: 'Tarjeta',    desc: 'Débito o crédito' },
+  ];
+
+  readonly ccQuickMessages = [
+    '¿Dónde estás?', 'Ya voy', 'Estoy en el punto', 'OK',
+    '5 minutos', '¿Cuánto tiempo falta?', 'Llegamos pronto', 'Esperando aquí',
   ];
 
   // ── Passenger menu sections ────────────────────────────────────
@@ -10663,6 +12751,1120 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domDescriptionValue = '';
     this.domRecipientNameValue = '';
     this.domRecipientPhoneValue = '';
+  }
+
+  // ── CIUDAD A CIUDAD — métodos ───────────────────────────────────────────────
+
+  private _ccSelectedTags: string[] = [];
+
+  ccTodayStr(): string { return new Date().toISOString().split('T')[0]; }
+
+  ccFilteredCities(query: string): {name:string;lat:number;lng:number}[] {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return this.ccColombiaCities;
+    return this.ccColombiaCities.filter(c => c.name.toLowerCase().includes(q));
+  }
+
+  ccSelectOrigin(c: {name:string;lat:number;lng:number}): void {
+    this.ccOriginCity.set(c);
+    this.ccOriginQuery.set(c.name);
+    this.ccOriginOpen.set(false);
+    this._ccCalcDist();
+    this.cdr.markForCheck();
+  }
+
+  ccSelectDest(c: {name:string;lat:number;lng:number}): void {
+    this.ccDestCity.set(c);
+    this.ccDestQuery.set(c.name);
+    this.ccDestOpen.set(false);
+    this._ccCalcDist();
+    this.cdr.markForCheck();
+  }
+
+  onCcOriginInput(val: string): void {
+    this.ccOriginQuery.set(val);
+    this.ccOriginOpen.set(true);
+    this.ccOriginCity.set(null);
+    this.ccDistKm.set(0);
+  }
+
+  onCcDestInput(val: string): void {
+    this.ccDestQuery.set(val);
+    this.ccDestOpen.set(true);
+    this.ccDestCity.set(null);
+    this.ccDistKm.set(0);
+  }
+
+  ccSwapCities(): void {
+    const o = this.ccOriginCity(); const d = this.ccDestCity();
+    const oq = this.ccOriginQuery(); const dq = this.ccDestQuery();
+    this.ccOriginCity.set(d); this.ccOriginQuery.set(dq);
+    this.ccDestCity.set(o);  this.ccDestQuery.set(oq);
+    this.cdr.markForCheck();
+  }
+
+  private _ccCalcDist(): void {
+    const o = this.ccOriginCity(); const d = this.ccDestCity();
+    if (!o || !d) return;
+    const R = 6371;
+    const dLat = (d.lat - o.lat) * Math.PI / 180;
+    const dLng = (d.lng - o.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(o.lat*Math.PI/180)*Math.cos(d.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+    const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    this.ccDistKm.set(Math.round(km));
+    this.ccCalcPrice();
+  }
+
+  ccSetVehicle(val: string): void {
+    this.ccVehicleCat.set(val as any);
+    this.ccCalcPrice();
+  }
+
+  ccCalcPrice(): void {
+    const km = this.ccDistKm();
+    if (!km) return;
+    const v = this.ccVehicleTypes.find(x => x.value === this.ccVehicleCat());
+    const ppm = v?.ppm ?? 2500;
+    const base = Math.max(100000, km * ppm);
+    const passBonus = (this.ccPassengers() - 1) * 15000;
+    const luggBonus = this.ccLuggage() * 10000;
+    const stopBonus = this.ccStops().length * 20000;
+    const h = new Date().getHours();
+    const night = (h >= 22 || h < 6) ? 1.2 : 1;
+    let total = Math.round((base + passBonus + luggBonus + stopBonus) * night / 10000) * 10000;
+    if (this.ccRoundTrip() && this.ccRoundTripSame()) {
+      total = Math.round(total * 0.85 / 10000) * 10000; // -15% mismo conductor
+    }
+    this.ccSuggestedPrice.set(total);
+  }
+
+  incCcPassengers(): void { if (this.ccPassengers() < 8) this.ccPassengers.update(n => n+1); this.ccCalcPrice(); }
+  decCcPassengers(): void { if (this.ccPassengers() > 1) this.ccPassengers.update(n => n-1); this.ccCalcPrice(); }
+  incCcLuggage():    void { if (this.ccLuggage() < 6)    this.ccLuggage.update(n => n+1);    this.ccCalcPrice(); }
+  decCcLuggage():    void { if (this.ccLuggage() > 0)    this.ccLuggage.update(n => n-1);    this.ccCalcPrice(); }
+  incCcBabySeats():  void { if (this.ccBabySeats() < 4)  this.ccBabySeats.update(n => n+1);  }
+  decCcBabySeats():  void { if (this.ccBabySeats() > 0)  this.ccBabySeats.update(n => n-1);  }
+
+  ccAddStop(): void {
+    const addr = this.ccNewStopAddr.trim();
+    if (!addr || this.ccStops().length >= 3) return;
+    this.ccStops.update(s => [...s, { id: Math.random().toString(36).slice(2), address: addr, lat: 0, lng: 0, wait_min: this.ccNewStopWaitMin() }]);
+    this.ccNewStopAddr = '';
+    this.ccCalcPrice();
+    this.cdr.markForCheck();
+  }
+
+  ccRemoveStop(id: string): void {
+    this.ccStops.update(s => s.filter(x => x.id !== id));
+    this.ccCalcPrice();
+  }
+
+  async ccPublish(): Promise<void> {
+    if (this.ccSending()) return;
+    const o = this.ccOriginCity(); const d = this.ccDestCity();
+    if (!o || !d) { this.ccError.set('Selecciona origen y destino'); return; }
+    if (!this.ccScheduledDt()) { this.ccError.set('Selecciona la fecha de salida'); return; }
+    this.ccSending.set(true); this.ccError.set(null);
+    try {
+      const sb = getMoviClient();
+      const dt = this.ccScheduledDt() + 'T' + this.ccScheduledTime() + ':00';
+      const retDt = this.ccRoundTrip() && this.ccReturnDt()
+        ? this.ccReturnDt() + 'T' + this.ccReturnTime() + ':00' : null;
+      const { data, error } = await sb.rpc('cc_create_request', { p_data: {
+        origin_city: o.name, origin_lat: o.lat, origin_lng: o.lng,
+        dest_city: d.name, dest_lat: d.lat, dest_lng: d.lng,
+        distance_km: this.ccDistKm(),
+        vehicle_cat: this.ccVehicleCat(), passengers: this.ccPassengers(),
+        luggage_large: this.ccLuggage(), baby_seats: this.ccBabySeats(),
+        round_trip: this.ccRoundTrip(), return_datetime: retDt,
+        passenger_note: this.ccNote(),
+        scheduled_dt: dt, suggested_price: this.ccSuggestedPrice(),
+        stops: this.ccStops().map((s, i) => ({ order: i+1, address: s.address, lat: s.lat, lng: s.lng, wait_min: s.wait_min }))
+      }});
+      if (error) throw error;
+      this.ccActiveReqId.set(data);
+      await this._ccLoadActiveReq(data);
+      this._ccStartMatchTimer();
+      this._ccSubscribeOffers(data);
+      this.ccView.set('matching');
+    } catch {
+      this.ccError.set('Error al publicar el viaje. Intenta de nuevo.');
+    } finally {
+      this.ccSending.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async _ccLoadActiveReq(id: string): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.from('cc_request_detail_v').select('*').eq('id', id).single();
+      this.ccActiveReq.set(data || null);
+    } catch {} finally { this.cdr.markForCheck(); }
+  }
+
+  private async _ccLoadOffers(reqId: string): Promise<void> {
+    this.ccOffersLoading.set(true);
+    try {
+      const sb = getMoviClient();
+      const prevCount = this.ccOffers().length;
+      const { data } = await sb.from('cc_offers_v').select('*')
+        .eq('request_id', reqId).eq('status', 'pending').order('offered_price', { ascending: true });
+      this.ccOffers.set(data || []);
+      // Vibración al recibir nueva oferta
+      if ((data?.length ?? 0) > prevCount && navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+      }
+    } catch {} finally {
+      this.ccOffersLoading.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  private _ccSubscribeOffers(reqId: string): void {
+    const sb = getMoviClient();
+    this._ccOffersChannel = sb.channel('cc_offers_' + reqId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cc_offers', filter: `request_id=eq.${reqId}` },
+        () => { this._ccLoadOffers(reqId); })
+      .subscribe() as any;
+  }
+
+  private _ccStartMatchTimer(): void {
+    this.ccMatchSeconds.set(300);
+    this._ccMatchTimer = setInterval(() => {
+      const s = this.ccMatchSeconds();
+      if (s <= 0) { this._ccStopMatchTimer(); return; }
+      this.ccMatchSeconds.set(s - 1);
+      this.cdr.markForCheck();
+    }, 1000);
+  }
+
+  private _ccStopMatchTimer(): void {
+    if (this._ccMatchTimer) { clearInterval(this._ccMatchTimer); this._ccMatchTimer = null; }
+  }
+
+  ccMatchProgress(): number { return ((300 - this.ccMatchSeconds()) / 300) * 100; }
+
+  ccMatchMinSec(): string {
+    const s = this.ccMatchSeconds();
+    return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+  }
+
+  async ccAcceptOffer(offerId: string): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { error } = await sb.rpc('cc_accept_offer', { p_offer_id: offerId });
+      if (error) throw error;
+      this._ccStopMatchTimer();
+      const reqId = this.ccActiveReqId();
+      if (reqId) await this._ccLoadActiveReq(reqId);
+      this.ccView.set('assigned');
+    } catch { alert('Error al aceptar la oferta'); }
+  }
+
+  async ccUpdatePrice(): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id) return;
+    try {
+      const sb = getMoviClient();
+      await sb.from('cc_requests').update({ suggested_price: this.ccSuggestedPrice() }).eq('id', id);
+    } catch {}
+  }
+
+  async ccVerifyCode(): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id || this.ccCodeVerifying()) return;
+    this.ccCodeVerifying.set(true); this.ccCodeError.set('');
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.rpc('cc_verify_code', { p_request_id: id, p_code: this.ccCodeInput() });
+      if (data) {
+        await this._ccLoadActiveReq(id);
+        this.cdr.markForCheck();
+      } else {
+        this.ccCodeError.set('Código incorrecto. Intenta de nuevo.');
+      }
+    } catch { this.ccCodeError.set('Error al verificar. Intenta de nuevo.'); }
+    finally { this.ccCodeVerifying.set(false); this.cdr.markForCheck(); }
+  }
+
+  async ccStartTrip(): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id) return;
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('cc_start_trip', { p_request_id: id });
+      await this._ccLoadActiveReq(id);
+      this.ccView.set('active');
+    } catch { alert('Error al iniciar el viaje'); }
+  }
+
+  async ccCompleteTrip(): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id) return;
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('cc_complete_trip', { p_request_id: id });
+      await this._ccLoadActiveReq(id);
+      this.ccView.set('completed');
+    } catch { alert('Error al completar el viaje'); }
+  }
+
+  async ccCancelRequest(): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id) return;
+    if (!confirm('¿Seguro que deseas cancelar este viaje?')) return;
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('cc_cancel_request', { p_request_id: id, p_reason: 'Cancelado por usuario' });
+      this._ccStopMatchTimer();
+      this.ccGoNew();
+    } catch { alert('Error al cancelar'); }
+  }
+
+  ccShareTrip(): void {
+    const req = this.ccActiveReq();
+    if (!req) return;
+    const msg = `🚗 Voy en un viaje Ciudad a Ciudad con Movi:\n${req.origin_city} → ${req.dest_city}\n📅 ${req.scheduled_dt}\n✅ Código: ${req.verification_code}`;
+    if (navigator.share) {
+      navigator.share({ title: 'Mi viaje Movi', text: msg }).catch(() => {});
+    } else {
+      const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    }
+  }
+
+  ccEmergency(): void {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const url = `https://wa.me/573734453649?text=${encodeURIComponent(`🚨 EMERGENCIA MOVI - Estoy en: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`)}`;
+        window.open(url, '_blank');
+      });
+    }
+  }
+
+  ccToggleTag(tag: string): void {
+    if (this._ccSelectedTags.includes(tag)) {
+      this._ccSelectedTags = this._ccSelectedTags.filter(t => t !== tag);
+    } else if (this._ccSelectedTags.length < 4) {
+      this._ccSelectedTags = [...this._ccSelectedTags, tag];
+    }
+    this.cdr.markForCheck();
+  }
+
+  ccHasTag(tag: string): boolean { return this._ccSelectedTags.includes(tag); }
+
+  ccTipOptions(): number[] {
+    const price = this.ccActiveReq()?.accepted_price ?? 0;
+    return [0, Math.round(price*0.1/5000)*5000, Math.round(price*0.15/5000)*5000, Math.round(price*0.2/5000)*5000];
+  }
+
+  async ccSubmitRating(): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id || this.ccRatingSending()) return;
+    this.ccRatingSending.set(true);
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('cc_submit_rating', {
+        p_request_id: id, p_stars: this.ccRatingStars(),
+        p_tags: this._ccSelectedTags, p_comment: this.ccRatingComment,
+        p_tip: this.ccRatingTip()
+      });
+      this._ccSelectedTags = [];
+      this.ccRatingComment = '';
+      this.ccRatingTip.set(0);
+      this.ccGoNew();
+    } catch { } finally { this.ccRatingSending.set(false); this.cdr.markForCheck(); }
+  }
+
+  async ccGoMyTrips(): Promise<void> {
+    this.ccView.set('my_trips');
+    this.ccMyTripsLoading.set(true);
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.from('cc_request_detail_v').select('*')
+        .order('created_at', { ascending: false }).limit(30);
+      this.ccMyTrips.set(data || []);
+      this.ccLoadFavorites();
+      this.ccLoadCancelsLeft();
+    } catch {} finally { this.ccMyTripsLoading.set(false); this.cdr.markForCheck(); }
+  }
+
+  ccOpenTrip(trip: any): void {
+    this.ccActiveReqId.set(trip.id);
+    this.ccActiveReq.set(trip);
+    const view = trip.status === 'searching' || trip.status === 'negotiating' ? 'matching'
+      : trip.status === 'accepted' ? 'assigned'
+      : trip.status === 'in_progress' ? 'active'
+      : trip.status === 'completed' ? 'completed'
+      : 'my_trips';
+    this.ccView.set(view as any);
+    if (view === 'matching') { this._ccLoadOffers(trip.id); this._ccSubscribeOffers(trip.id); }
+    this.cdr.markForCheck();
+  }
+
+  async ccGoDriver(): Promise<void> {
+    this.ccView.set('driver');
+    await this.ccLoadDriverReqs();
+  }
+
+  async ccLoadDriverReqs(): Promise<void> {
+    this.ccDriverLoading.set(true);
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.rpc('cc_driver_requests', { p_origin: null, p_limit: 30 });
+      this.ccDriverReqs.set(data || []);
+    } catch {} finally { this.ccDriverLoading.set(false); this.cdr.markForCheck(); }
+  }
+
+  ccOpenDriverOffer(req: any): void {
+    this.ccDriverOfferTarget.set(req);
+    this.ccDriverOfferPrice.set(req.suggested_price || 0);
+    this.ccDriverVehicleDesc = '';
+    this.ccDriverPlate = '';
+    this.ccDriverMessage = '';
+    this.ccDriverOfferModal.set(true);
+  }
+
+  async ccSubmitDriverOffer(): Promise<void> {
+    if (this.ccDriverOfferSending()) return;
+    const req = this.ccDriverOfferTarget();
+    if (!req) return;
+    this.ccDriverOfferSending.set(true);
+    try {
+      const sb = getMoviClient();
+      const { error } = await sb.rpc('cc_submit_offer', {
+        p_request_id: req.id, p_price: this.ccDriverOfferPrice(),
+        p_vehicle_desc: this.ccDriverVehicleDesc || null,
+        p_plate: this.ccDriverPlate.toUpperCase() || null,
+        p_message: this.ccDriverMessage || null
+      });
+      if (error) throw error;
+      this.ccDriverOfferModal.set(false);
+      await this.ccLoadDriverReqs();
+    } catch { alert('Error al enviar la oferta'); }
+    finally { this.ccDriverOfferSending.set(false); this.cdr.markForCheck(); }
+  }
+
+  ccGoNew(): void {
+    this._ccStopMatchTimer();
+    this.ccView.set('new');
+    this.ccStep.set(1);
+    this.ccActiveReqId.set(null);
+    this.ccActiveReq.set(null);
+    this.ccOffers.set([]);
+    this.ccStops.set([]);
+    this.ccNote.set('');
+    this.ccPassengers.set(1);
+    this.ccLuggage.set(0);
+    this.ccBabySeats.set(0);
+    this.ccRoundTrip.set(false);
+    this.ccError.set(null);
+    this._ccSelectedTags = [];
+  }
+
+  ccStatusLabel(s: string): string {
+    const m: Record<string,string> = { searching:'Buscando', negotiating:'Con ofertas', accepted:'Aceptado', in_progress:'En camino', completed:'Completado', cancelled:'Cancelado' };
+    return m[s] || s;
+  }
+
+  ccStatusBg(s: string): string {
+    if (s === 'searching' || s === 'negotiating') return '#faf5ff';
+    if (s === 'accepted' || s === 'in_progress') return '#dbeafe';
+    if (s === 'completed') return '#dcfce7';
+    if (s === 'cancelled') return '#fee2e2';
+    return '#f1f5f9';
+  }
+
+  ccStatusColor(s: string): string {
+    if (s === 'searching' || s === 'negotiating') return '#7c3aed';
+    if (s === 'accepted' || s === 'in_progress') return '#1d4ed8';
+    if (s === 'completed') return '#166534';
+    if (s === 'cancelled') return '#991b1b';
+    return '#475569';
+  }
+
+  private getMoviClientChannel = getMoviClient;
+
+  // ── Ciudad a Ciudad — métodos adicionales ───────────────────────────────────
+
+  setCcPaymentMethod(val: string): void { this.ccPaymentMethod.set(val as any); }
+
+  // ── Ciudad a Ciudad — nuevos métodos fase 3 ─────────────────────
+
+  ccSetAhora(): void {
+    this.ccSalirAhora.set(true);
+    const now = new Date();
+    this.ccScheduledDt.set(now.toISOString().split('T')[0]);
+    this.ccScheduledTime.set(`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`);
+  }
+
+  ccCo2Kg(): string {
+    const km = this.ccDistKm();
+    if (!km) return '0';
+    const kg = km * 0.21; // promedio auto: 210g CO2/km
+    return kg.toFixed(1);
+  }
+
+  ccCancelPenalty(): number {
+    const price = this.ccActiveReq()?.accepted_price ?? this.ccActiveReq()?.suggested_price ?? 0;
+    return Math.round(price * 0.3 / 1000) * 1000;
+  }
+
+  ccSavingsVsTaxi(): number {
+    const req = this.ccActiveReq();
+    if (!req?.distance_km) return 0;
+    const taxi = req.distance_km * 3500;
+    const paid = req.accepted_price || req.suggested_price || 0;
+    return Math.max(0, Math.round((taxi - paid) / 1000) * 1000);
+  }
+
+  ccCompletedTripsCount(): number {
+    return this.ccMyTrips().filter(t => t.status === 'completed').length;
+  }
+
+  ccTotalSavings(): number {
+    return this.ccMyTrips()
+      .filter(t => t.status === 'completed' && t.accepted_price && t.distance_km)
+      .reduce((sum, t) => {
+        const taxi = t.distance_km * 3500;
+        return sum + Math.max(0, taxi - t.accepted_price);
+      }, 0);
+  }
+
+  ccDriverEarning(req: any): number {
+    const price = req.suggested_price || 0;
+    const base = Math.round(price * 0.88 / 1000) * 1000;
+    return this.ccIsNocturno(req) ? Math.round(base * 1.2 / 1000) * 1000 : base;
+  }
+
+  ccIsNocturno(req: any): boolean {
+    if (!req?.scheduled_dt) return false;
+    const h = new Date(req.scheduled_dt).getHours();
+    return h >= 22 || h < 6;
+  }
+
+  async ccToggleFavorite(driverId: string): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.rpc('cc_toggle_favorite', { p_driver_id: driverId });
+      const favs = this.ccFavorites();
+      if (data) {
+        this.ccFavorites.set([...favs, driverId]);
+      } else {
+        this.ccFavorites.set(favs.filter(id => id !== driverId));
+      }
+      this.cdr.markForCheck();
+    } catch {}
+  }
+
+  async ccLoadFavorites(): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.from('cc_favorites').select('driver_id');
+      this.ccFavorites.set((data || []).map((f: any) => f.driver_id));
+    } catch {}
+  }
+
+  async ccLoadCancelsLeft(): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.rpc('cc_cancels_this_month');
+      this.ccCancelsLeft.set(3 - (data || 0));
+    } catch {}
+  }
+
+  ccShareReceipt(): void {
+    const req = this.ccActiveReq();
+    if (!req) return;
+    const text = [
+      '🚗 RECIBO DE VIAJE — MOVI Ciudad a Ciudad',
+      '─────────────────────────',
+      `📍 ${req.origin_city} → ${req.dest_city}`,
+      `📅 ${new Date(req.scheduled_dt).toLocaleString('es-CO')}`,
+      `📏 Distancia: ${req.distance_km} km`,
+      `💰 Total: ${this.formatCOP(req.accepted_price + this.ccRatingTip())} COP`,
+      `   • Tarifa: ${this.formatCOP(this.ccBasePrice())}`,
+      `   • Propina: ${this.formatCOP(this.ccRatingTip())}`,
+      `💳 Pago: ${req.payment_method || 'efectivo'}`,
+      `🌱 CO₂: ~${(req.distance_km * 0.21).toFixed(1)} kg`,
+      `💚 Ahorraste: ${this.formatCOP(this.ccSavingsVsTaxi())} vs taxi`,
+      '─────────────────────────',
+      'Generado por Movi · www.publihazclick.com',
+    ].join('\n');
+
+    if (navigator.share) {
+      navigator.share({ title: 'Recibo Movi', text }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(text).then(() => alert('Recibo copiado al portapapeles'));
+    }
+  }
+
+  ccEstimatedHours(): string {
+    const km = this.ccActiveReq()?.distance_km ?? 0;
+    if (!km) return '–';
+    const hrs = km / 80;
+    if (hrs < 1) return `${Math.round(hrs * 60)} min`;
+    const h = Math.floor(hrs);
+    const m = Math.round((hrs - h) * 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  ccBasePrice(): number {
+    const req = this.ccActiveReq();
+    if (!req) return 0;
+    const v = this.ccVehicleTypes.find(x => x.value === req.vehicle_cat);
+    const ppm = v?.ppm ?? 2500;
+    return Math.max(100000, (req.distance_km || 0) * ppm);
+  }
+
+  ccSetTipPct(pct: number): void {
+    const price = this.ccActiveReq()?.accepted_price ?? 0;
+    this.ccRatingTip.set(Math.round(price * pct / 100 / 5000) * 5000);
+  }
+
+  ccIsTipPct(pct: number): boolean {
+    const price = this.ccActiveReq()?.accepted_price ?? 0;
+    if (!price) return false;
+    return Math.round(this.ccRatingTip() / price * 100) === pct;
+  }
+
+  async ccLoadMessages(reqId: string): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.from('cc_messages_v')
+        .select('*').eq('request_id', reqId).order('created_at', { ascending: true }).limit(100);
+      this.ccMessages.set(data || []);
+      this._ccSubscribeMessages(reqId);
+    } catch {} finally { this.cdr.markForCheck(); }
+  }
+
+  private _ccSubscribeMessages(reqId: string): void {
+    if (this._ccMessagesChannel) return;
+    const sb = getMoviClient();
+    this._ccMessagesChannel = sb.channel('cc_msgs_' + reqId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cc_messages', filter: `request_id=eq.${reqId}` },
+        async () => { await this.ccLoadMessages(reqId); })
+      .subscribe();
+  }
+
+  async ccSendMessage(): Promise<void> {
+    const text = this.ccChatInput.trim();
+    const id = this.ccActiveReqId();
+    if (!text || !id || this.ccChatSending()) return;
+    this.ccChatSending.set(true);
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('cc_send_message', { p_request_id: id, p_content: text, p_predefined: false });
+      this.ccChatInput = '';
+      this.cdr.markForCheck();
+    } catch {} finally { this.ccChatSending.set(false); this.cdr.markForCheck(); }
+  }
+
+  async ccSendQuick(text: string): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id) return;
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('cc_send_message', { p_request_id: id, p_content: text, p_predefined: true });
+    } catch {} finally { this.cdr.markForCheck(); }
+  }
+
+  ccIsMyMessage(msg: any): boolean {
+    const req = this.ccActiveReq();
+    if (!req) return false;
+    return msg.sender_id !== req.driver_id || msg.sender_id === req.user_id;
+  }
+
+  ccShareLiveLocation(): void {
+    if (this.ccSharingLocation()) {
+      if (this.ccLocationInterval) { clearInterval(this.ccLocationInterval); this.ccLocationInterval = null; }
+      this.ccSharingLocation.set(false);
+      return;
+    }
+    const send = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const req = this.ccActiveReq();
+          if (!req?.driver_phone) return;
+          const url = `https://wa.me/${req.driver_phone}?text=${encodeURIComponent(`📍 Mi ubicación en vivo: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`)}`;
+          if (!this.ccSharingLocation()) window.open(url, '_blank');
+        }, () => {}, { enableHighAccuracy: true });
+      }
+    };
+    this.ccSharingLocation.set(true);
+    send();
+    this.ccLocationInterval = setInterval(send, 10000);
+    this.cdr.markForCheck();
+  }
+
+  async ccSubmitAddStop(): Promise<void> {
+    const id = this.ccActiveReqId();
+    const addr = this.ccAddStopAddr.trim();
+    if (!id || !addr || this.ccAddStopSending()) return;
+    this.ccAddStopSending.set(true);
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('cc_add_live_stop', {
+        p_request_id: id, p_address: addr, p_extra_price: this.ccAddStopPrice()
+      });
+      await this._ccLoadActiveReq(id);
+      this.ccAddStopAddr = '';
+      this.ccAddStopModal.set(false);
+    } catch { alert('Error al agregar la parada'); }
+    finally { this.ccAddStopSending.set(false); this.cdr.markForCheck(); }
+  }
+
+  // ── FLETES — métodos ────────────────────────────────────────────────────────
+
+  readonly fleteRatingItems = [
+    { key: 'punctuality',    label: 'Puntualidad' },
+    { key: 'item_care',      label: 'Cuidado de los objetos' },
+    { key: 'professionalism',label: 'Profesionalismo' },
+    { key: 'communication',  label: 'Comunicación' },
+    { key: 'value_for_money',label: 'Relación precio/calidad' },
+  ];
+
+  fleteToday(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  fleteServiceLabel(t: string): string {
+    const map: Record<string,string> = { trasteo:'Trasteo', mudanza:'Mudanza', flete:'Flete', comercial:'Comercial', especial:'Especial' };
+    return map[t] || t;
+  }
+
+  fleteServiceIcon(t: string): string {
+    const map: Record<string,string> = { trasteo:'🏠', mudanza:'📦', flete:'🚚', comercial:'🏗️', especial:'⭐' };
+    return map[t] || '📦';
+  }
+
+  fleteItemIcon(cat: string): string {
+    const map: Record<string,string> = { mueble:'🛋️', electronico:'📺', electrodomestico:'🫙', caja:'📦', fragil:'🪟', otro:'📋' };
+    return map[cat] || '📦';
+  }
+
+  fleteStatusLabel(status: string): string {
+    const map: Record<string,string> = {
+      draft:'Borrador', published:'Publicado', negotiating:'Con ofertas',
+      accepted:'Aceptado', in_progress:'En progreso',
+      completed:'Completado', cancelled:'Cancelado', disputed:'Disputa'
+    };
+    return map[status] || status;
+  }
+
+  fleteStatusBg(status: string): string {
+    if (status === 'published' || status === 'negotiating') return '#fef9c3';
+    if (status === 'accepted' || status === 'in_progress') return '#dbeafe';
+    if (status === 'completed') return '#dcfce7';
+    if (status === 'cancelled') return '#fee2e2';
+    return '#f1f5f9';
+  }
+
+  fleteStatusColor(status: string): string {
+    if (status === 'published' || status === 'negotiating') return '#854d0e';
+    if (status === 'accepted' || status === 'in_progress') return '#1d4ed8';
+    if (status === 'completed') return '#166534';
+    if (status === 'cancelled') return '#991b1b';
+    return '#475569';
+  }
+
+  fleteInsurancePremium(type: string): number {
+    const price = this.fleteSuggestedPrice();
+    switch(type) {
+      case 'basic':   return Math.round(price * 0.01 / 1000) * 1000;
+      case 'plus':    return Math.round(price * 0.025 / 1000) * 1000;
+      case 'premium': return Math.round(price * 0.05 / 1000) * 1000;
+      default: return 0;
+    }
+  }
+
+  getFleteRating(key: string): number {
+    const map: Record<string,any> = {
+      punctuality: this.fleteRatingPunct, item_care: this.fleteRatingCare,
+      professionalism: this.fleteRatingProf, communication: this.fleteRatingComm,
+      value_for_money: this.fleteRatingValue,
+    };
+    return map[key]?.() ?? 5;
+  }
+
+  setFleteRating(key: string, val: number): void {
+    const map: Record<string,any> = {
+      punctuality: this.fleteRatingPunct, item_care: this.fleteRatingCare,
+      professionalism: this.fleteRatingProf, communication: this.fleteRatingComm,
+      value_for_money: this.fleteRatingValue,
+    };
+    map[key]?.set(val);
+  }
+
+  incFleteOfferHelpers(): void { this.fleteOfferHelpers.update(h => Math.min(4, h + 1)); }
+  decFleteOfferHelpers(): void { this.fleteOfferHelpers.update(h => Math.max(0, h - 1)); }
+  incFleteHelpers(): void { this.fleteHelpers.update(h => Math.min(4, h + 1)); }
+  decFleteHelpers(): void { this.fleteHelpers.update(h => Math.max(0, h - 1)); }
+  setFleteInsurance(val: string): void { this.fleteInsurance.set(val as 'none'|'basic'|'plus'|'premium'); }
+
+  addFleteItem(): void {
+    const name = this.fleteNewItemName.trim();
+    if (!name) return;
+    this.fleteItems.update(items => [...items, {
+      id: Math.random().toString(36).slice(2),
+      name, category: this.fleteNewItemCat,
+      quantity: 1, is_fragile: false, est_weight_kg: 0
+    }]);
+    this.fleteNewItemName = '';
+    this.cdr.markForCheck();
+  }
+
+  removeFleteItem(id: string): void {
+    this.fleteItems.update(items => items.filter(i => i.id !== id));
+  }
+
+  toggleFleteItemFragil(id: string, val: boolean): void {
+    this.fleteItems.update(items => items.map(i => i.id === id ? { ...i, is_fragile: val } : i));
+  }
+
+  toggleFleteRegVehicle(val: string, checked: boolean): void {
+    if (checked) {
+      this.fleteRegVehicles = [...this.fleteRegVehicles, val];
+    } else {
+      this.fleteRegVehicles = this.fleteRegVehicles.filter(v => v !== val);
+    }
+    this.cdr.markForCheck();
+  }
+
+  calcFletePrice(): void {
+    const km = this.fleteDistKm();
+    if (!km) return;
+    const base = Math.max(50000, km * 3500);
+    const itemsBonus = this.fleteItems().length * 2000;
+    const helpersBonus = this.fleteHelpers() * 15000;
+    const surge = this.surgeMultiplier();
+    const total = Math.round((base + itemsBonus + helpersBonus) * surge / 1000) * 1000;
+    this.fleteSuggestedPrice.set(total);
+  }
+
+  onFleteOriginInput(val: string): void {
+    this.fleteOriginQuery.set(val);
+    if (!val.trim()) { this.fleteOriginSuggs.set([]); return; }
+    this.fleteOriginLoading.set(true);
+    this._loadGoogleMapsSDK().then(ok => {
+      if (!ok) { this.fleteOriginLoading.set(false); return; }
+      const gmaps = (window as any).google.maps;
+      const svc = this._autocompleteService ?? new gmaps.places.AutocompleteService();
+      const bounds = new gmaps.LatLngBounds(
+        new gmaps.LatLng(this._currentLat - 0.45, this._currentLng - 0.45),
+        new gmaps.LatLng(this._currentLat + 0.45, this._currentLng + 0.45)
+      );
+      svc.getPlacePredictions({
+        input: val, bounds, componentRestrictions: { country: 'co' },
+        sessionToken: new gmaps.places.AutocompleteSessionToken(),
+      }, (preds: any[], status: string) => {
+        this.fleteOriginLoading.set(false);
+        if (status !== 'OK' || !preds) { this.fleteOriginSuggs.set([]); return; }
+        this.fleteOriginSuggs.set(preds.map(p => ({
+          id: p.place_id, text: p.structured_formatting?.main_text ?? p.description,
+          place_name: p.structured_formatting?.secondary_text ?? '', place_id: p.place_id,
+        })));
+        this.cdr.markForCheck();
+      });
+    });
+  }
+
+  onFleteDestInput(val: string): void {
+    this.fleteDestQuery.set(val);
+    if (!val.trim()) { this.fleteDestSuggs.set([]); return; }
+    this.fleteDestLoading.set(true);
+    this._loadGoogleMapsSDK().then(ok => {
+      if (!ok) { this.fleteDestLoading.set(false); return; }
+      const gmaps = (window as any).google.maps;
+      const svc = this._autocompleteService ?? new gmaps.places.AutocompleteService();
+      const refLat = this.fleteOrigin()?.lat ?? this._currentLat;
+      const refLng = this.fleteOrigin()?.lng ?? this._currentLng;
+      const bounds = new gmaps.LatLngBounds(
+        new gmaps.LatLng(refLat - 0.45, refLng - 0.45),
+        new gmaps.LatLng(refLat + 0.45, refLng + 0.45)
+      );
+      svc.getPlacePredictions({
+        input: val, bounds, componentRestrictions: { country: 'co' },
+        sessionToken: new gmaps.places.AutocompleteSessionToken(),
+      }, (preds: any[], status: string) => {
+        this.fleteDestLoading.set(false);
+        if (status !== 'OK' || !preds) { this.fleteDestSuggs.set([]); return; }
+        this.fleteDestSuggs.set(preds.map(p => ({
+          id: p.place_id, text: p.structured_formatting?.main_text ?? p.description,
+          place_name: p.structured_formatting?.secondary_text ?? '', place_id: p.place_id,
+        })));
+        this.cdr.markForCheck();
+      });
+    });
+  }
+
+  selectFleteAddr(s: any, side: 'origin'|'dest'): void {
+    const gmaps = (window as any).google?.maps;
+    if (!gmaps) return;
+    const svc = new gmaps.places.PlacesService(document.createElement('div'));
+    svc.getDetails({ placeId: s.place_id, fields: ['geometry'] }, (place: any, st: string) => {
+      if (st !== 'OK' || !place?.geometry?.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const loc = { name: s.text, lat, lng };
+      if (side === 'origin') {
+        this.fleteOrigin.set(loc);
+        this.fleteOriginQuery.set(s.text);
+        this.fleteOriginSuggs.set([]);
+        this.fleteOriginOpen.set(false);
+      } else {
+        this.fleteDest.set(loc);
+        this.fleteDestQuery.set(s.text);
+        this.fleteDestSuggs.set([]);
+        this.fleteDestOpen.set(false);
+      }
+      const o = this.fleteOrigin();
+      const d = this.fleteDest();
+      if (o && d) {
+        const R = 6371;
+        const dLat = (d.lat - o.lat) * Math.PI / 180;
+        const dLng = (d.lng - o.lng) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(o.lat*Math.PI/180)*Math.cos(d.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+        const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        this.fleteDistKm.set(Math.round(km * 10) / 10);
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  async publishFlete(): Promise<void> {
+    if (this.fleteSending()) return;
+    const o = this.fleteOrigin();
+    const d = this.fleteDest();
+    if (!o || !d) { this.fleteError.set('Selecciona origen y destino'); return; }
+    if (!this.fleteDate()) { this.fleteError.set('Selecciona la fecha del servicio'); return; }
+    this.fleteSending.set(true);
+    this.fleteError.set(null);
+    try {
+      const sb = getMoviClient();
+      const items = this.fleteItems().map(i => ({
+        name: i.name, category: i.category, quantity: i.quantity,
+        is_fragile: i.is_fragile, est_weight_kg: i.est_weight_kg, est_volume_m3: 0
+      }));
+      const { error } = await sb.rpc('fl_publish_request', { p_data: {
+        service_type: this.fleteServiceType(),
+        origin_address: o.name, origin_lat: o.lat, origin_lng: o.lng,
+        origin_floor: this.fleteOriginFloor(), origin_elevator: this.fleteOriginElevator(),
+        dest_address: d.name, dest_lat: d.lat, dest_lng: d.lng,
+        dest_floor: this.fleteDestFloor(), dest_elevator: this.fleteDestElevator(),
+        distance_km: this.fleteDistKm(), total_items_count: items.length,
+        helpers_needed: this.fleteHelpers(), needs_disassembly: this.fleteNeedsDisasm(),
+        needs_assembly: this.fleteNeedsAssm(), fragile_items: this.fleteItems().some(i => i.is_fragile),
+        passenger_note: this.fleteNote(), vehicle_type_required: this.fleteVehicleReq(),
+        scheduled_date: this.fleteDate(), scheduled_time_window: this.fleteTimeWindow(),
+        suggested_price: this.fleteSuggestedPrice(),
+        insurance_type: this.fleteInsurance(),
+        insurance_premium: this.fleteInsurancePremium(this.fleteInsurance()),
+        insurance_coverage: this.fleteInsuranceTypes.find(i => i.value === this.fleteInsurance())?.coverage ?? 0,
+        deposit_amount: 0, items
+      }});
+      if (error) throw error;
+      this.resetFletes();
+      this.fleteViewMode.set('list');
+      await this.loadFleteRequests();
+    } catch {
+      this.fleteError.set('Error al publicar. Intenta de nuevo.');
+    } finally {
+      this.fleteSending.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  async loadFleteRequests(): Promise<void> {
+    this.fleteMyReqLoading.set(true);
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb
+        .from('fl_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      this.fleteMyRequests.set(data || []);
+    } catch {} finally {
+      this.fleteMyReqLoading.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  async openFleteDetail(req: any): Promise<void> {
+    this.fleteActiveReq.set(req);
+    this.fleteViewMode.set('detail');
+    this.fleteActiveOffersLoading.set(true);
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb
+        .from('fl_offers_v')
+        .select('*')
+        .eq('request_id', req.id)
+        .in('status', ['pending','accepted'])
+        .order('offered_price', { ascending: true });
+      this.fleteActiveOffers.set(data || []);
+    } catch {} finally {
+      this.fleteActiveOffersLoading.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  async acceptFleteOffer(offerId: string): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { error } = await sb.rpc('fl_accept_offer', { p_offer_id: offerId });
+      if (error) throw error;
+      await this.loadFleteRequests();
+      const updated = this.fleteMyRequests().find(r => r.id === this.fleteActiveReq()?.id);
+      if (updated) await this.openFleteDetail(updated);
+    } catch { alert('Error al aceptar la oferta'); }
+  }
+
+  async confirmFleteDelivery(): Promise<void> {
+    const req = this.fleteActiveReq();
+    if (!req) return;
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('fl_confirm_delivery', { p_request_id: req.id });
+      this.fleteRatingData.set(req);
+      this.fleteRatingModal.set(true);
+      await this.loadFleteRequests();
+    } catch { alert('Error al confirmar la entrega'); }
+  }
+
+  async submitFleteRating(): Promise<void> {
+    const req = this.fleteRatingData();
+    if (!req || this.fleteRatingSending()) return;
+    this.fleteRatingSending.set(true);
+    try {
+      const sb = getMoviClient();
+      await sb.rpc('fl_submit_rating', { p_data: {
+        request_id: req.id,
+        punctuality: this.fleteRatingPunct(), item_care: this.fleteRatingCare(),
+        professionalism: this.fleteRatingProf(), communication: this.fleteRatingComm(),
+        value_for_money: this.fleteRatingValue(),
+        comment: this.fleteRatingComment, tags: []
+      }});
+      this.fleteRatingModal.set(false);
+      this.fleteViewMode.set('list');
+    } catch {} finally {
+      this.fleteRatingSending.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  async onFleteTransporterTab(): Promise<void> {
+    this.fleteViewMode.set('transporter');
+    await this.checkFleteTransporter();
+    if (this.fleteIsTransporter()) await this.loadNearbyFletes();
+  }
+
+  async checkFleteTransporter(): Promise<void> {
+    try {
+      const sb = getMoviClient();
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return;
+      const { data } = await sb.from('fl_transporters').select('*').eq('user_id', user.id).single();
+      this.fleteTransporter.set(data || null);
+      this.fleteIsTransporter.set(!!data?.is_active);
+    } catch {} finally { this.cdr.markForCheck(); }
+  }
+
+  async loadNearbyFletes(): Promise<void> {
+    if (this.fleteNearbyLoading()) return;
+    this.fleteNearbyLoading.set(true);
+    try {
+      const sb = getMoviClient();
+      const { data } = await sb.rpc('fl_nearby_requests', {
+        p_lat: this._currentLat, p_lng: this._currentLng,
+        p_radius: 30, p_vehicle: 'any', p_limit: 20
+      });
+      this.fleteNearbyReqs.set(data || []);
+    } catch {} finally {
+      this.fleteNearbyLoading.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  openFleteOfferModal(req: any): void {
+    this.fleteOfferTarget.set(req);
+    this.fleteOfferPrice.set(req.suggested_price || 0);
+    this.fleteOfferHelpers.set(req.helpers_needed || 0);
+    this.fleteOfferText = '';
+    this.fleteOfferModal.set(true);
+  }
+
+  async submitFleteOffer(): Promise<void> {
+    if (this.fleteOfferSending()) return;
+    const req = this.fleteOfferTarget();
+    if (!req) return;
+    this.fleteOfferSending.set(true);
+    try {
+      const sb = getMoviClient();
+      const { error } = await sb.rpc('fl_submit_offer', {
+        p_request_id: req.id, p_price: this.fleteOfferPrice(),
+        p_helpers: this.fleteOfferHelpers(), p_vehicle_id: null,
+        p_presentation: this.fleteOfferText || null, p_availability: null, p_hours: null
+      });
+      if (error) throw error;
+      this.fleteOfferModal.set(false);
+      await this.loadNearbyFletes();
+    } catch { alert('Error al enviar la oferta'); } finally {
+      this.fleteOfferSending.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  async registerFleteTransporter(): Promise<void> {
+    if (this.fleteRegSending()) return;
+    this.fleteRegSending.set(true);
+    try {
+      const sb = getMoviClient();
+      const { error } = await sb.rpc('fl_register_transporter', { p_data: {
+        display_name: this.fleteRegName, phone: this.fleteRegPhone,
+        bio: this.fleteRegBio, available_vehicles: this.fleteRegVehicles
+      }});
+      if (error) throw error;
+      this.fleteRegModal.set(false);
+      await this.checkFleteTransporter();
+      if (this.fleteIsTransporter()) await this.loadNearbyFletes();
+    } catch { alert('Error al registrarse'); } finally {
+      this.fleteRegSending.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  resetFletes(): void {
+    this.fleteStep.set(1);
+    this.fleteServiceType.set('trasteo');
+    this.fleteOrigin.set(null);
+    this.fleteOriginQuery.set('');
+    this.fleteOriginSuggs.set([]);
+    this.fleteOriginOpen.set(false);
+    this.fleteOriginFloor.set(0);
+    this.fleteOriginElevator.set(false);
+    this.fleteDest.set(null);
+    this.fleteDestQuery.set('');
+    this.fleteDestSuggs.set([]);
+    this.fleteDestOpen.set(false);
+    this.fleteDestFloor.set(0);
+    this.fleteDestElevator.set(false);
+    this.fleteDistKm.set(0);
+    this.fleteItems.set([]);
+    this.fleteDate.set('');
+    this.fleteTimeWindow.set('flexible');
+    this.fleteHelpers.set(0);
+    this.fleteVehicleReq.set('any');
+    this.fleteNeedsDisasm.set(false);
+    this.fleteNeedsAssm.set(false);
+    this.fleteNote.set('');
+    this.fleteSuggestedPrice.set(0);
+    this.fleteInsurance.set('basic');
+    this.fleteSending.set(false);
+    this.fleteError.set(null);
+    this.fleteNewItemName = '';
   }
 
   // ── Verificación identidad pasajero ─────────────────────────────────────────
@@ -14692,6 +17894,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (action.startsWith('service:')) {
       const svc = action.replace('service:', '') as 'viaje' | 'moto' | 'ciudad' | 'fletes';
       this.tripService.set(svc);
+      if (svc === 'fletes') { this.resetFletes(); }
       return;
     }
     if (action === 'driver') {
