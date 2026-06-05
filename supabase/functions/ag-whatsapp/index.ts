@@ -92,6 +92,11 @@ async function forwardGeocode(text: string): Promise<{ lat: number; lng: number;
   return null;
 }
 
+// ─── Validación geoespacial Colombia ─────────────────────────────────────────
+function isInColombia(lat: number, lng: number): boolean {
+  return lat >= -4.5 && lat <= 13.5 && lng >= -79.0 && lng <= -66.5;
+}
+
 // ─── Haversine ────────────────────────────────────────────────────────────────
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -320,11 +325,19 @@ async function handleConversation(
 
     if (msgType === 'location' && msgLat != null && msgLng != null) {
       lat = msgLat; lng = msgLng;
+      if (!isInColombia(lat, lng)) {
+        await sendText(phone, `📍 Esa ubicación no parece estar en Colombia.\n\nEnvía tu ubicación actual o escribe tu dirección.`);
+        return;
+      }
       addr = await reverseGeocode(lat, lng);
     } else if (text.length > 4) {
       const geo = await forwardGeocode(text);
       if (!geo) {
         await sendText(phone, `No encontré esa dirección 🔍\n\nIntenta ser más específico o envía tu ubicación con el clip 📎.`);
+        return;
+      }
+      if (!isInColombia(geo.lat, geo.lng)) {
+        await sendText(phone, `📍 Esa dirección no está en Colombia. Escribe una dirección válida en Colombia.`);
         return;
       }
       lat = geo.lat; lng = geo.lng; addr = geo.address;
@@ -491,18 +504,27 @@ async function handleConversation(
     }
 
     // Verificar timeout (5 minutos)
-    const matchStart = session.matching_started_at ? new Date(session.matching_started_at) : new Date();
+    const matchStart = session.matching_started_at ? new Date(session.matching_started_at as string) : new Date();
     const elapsedMin = (Date.now() - matchStart.getTime()) / 60000;
     if (elapsedMin > 5) {
+      // Cancelar el viaje en DB si existe
+      const tripId = session.trip_request_id as string;
+      if (tripId) {
+        const supabase = db();
+        await supabase.from('ag_trip_requests')
+          .update({ status: 'cancelled' })
+          .eq('id', tripId);
+      }
       await resetSession(phone);
       await sendText(phone,
         `😔 No encontramos conductores disponibles en este momento.\n\n` +
-        `Por favor intenta en unos minutos.\n\n` + menuText()
+        `Puedes intentarlo de nuevo o en unos minutos.\n\n` + menuText()
       );
       return;
     }
 
-    await sendText(phone, `⏳ Aún buscando conductores... Espera un momento.\n\nEscribe *cancelar* para cancelar.`);
+    const minLeft = Math.ceil(5 - elapsedMin);
+    await sendText(phone, `⏳ Buscando conductores... (${minLeft} min restantes)\n\nEscribe *cancelar* para cancelar.`);
     return;
   }
 
@@ -523,14 +545,20 @@ async function handleConversation(
           return;
         }
         await upsertSession(phone, { state: 'in_trip' });
+        const oLat = session.origin_lat as number;
+        const oLng = session.origin_lng as number;
+        const mapsLink = oLat && oLng
+          ? `\n🗺️ Tu punto de recogida:\nhttps://maps.google.com/?q=${oLat},${oLng}`
+          : '';
         await sendText(phone,
           `🎉 ¡Conductor confirmado!\n\n` +
           `👤 *${session.driver_name}*\n` +
           (session.driver_vehicle ? `🚗 ${session.driver_vehicle}\n` : '') +
           (session.driver_plate   ? `🔢 Placa: ${session.driver_plate}\n` : '') +
           (session.driver_phone   ? `📱 Llamar: ${toE164(session.driver_phone as string)}\n` : '') +
-          `\n💰 Precio acordado: *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*\n\n` +
-          `El conductor está en camino. 🚗\nTe avisamos cuando llegue al punto de recogida.`
+          `\n💰 Precio acordado: *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*` +
+          mapsLink +
+          `\n\nEl conductor está en camino. 🚗\nTe avisamos cuando llegue al punto de recogida.`
         );
       }
     } else if (isNo(text)) {
