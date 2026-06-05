@@ -14597,6 +14597,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return order.indexOf(current) >= order.indexOf(target);
   }
 
+  private _sendWhatsApp(phone: string, event: string, data: Record<string, string>): void {
+    if (!phone) return;
+    fetch('https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/ag-whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, event, data }),
+    }).catch(() => {});
+  }
+
   async advanceStage(trip: any, stage: 'heading_to_pickup'|'arrived_at_pickup'|'picked_up'|'on_route'|'arrived_at_destination'|'completed'): Promise<void> {
     const tripReqId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripReqId) return;
@@ -14623,6 +14632,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       };
       const pd = pushMap[stage];
       if (pd) this.agService.sendPush({ userIds: [passengerAuthId], title: pd.title, body: pd.body, tag: `stage-${tripReqId}-${stage}`, urgent: stage === 'arrived_at_pickup' }).catch(() => {});
+    }
+    // WhatsApp al pasajero según etapa
+    const passengerPhone = req?.ag_users?.phone;
+    const driverName = this.agProfile()?.full_name ?? 'Tu conductor';
+    const dest = req?.dest_name ?? req?.destination ?? '';
+    if (passengerPhone) {
+      if (stage === 'arrived_at_pickup') {
+        this._sendWhatsApp(passengerPhone, 'driver_arrived', { driver_name: driverName });
+      } else if (stage === 'on_route') {
+        this._sendWhatsApp(passengerPhone, 'trip_started', { destination: dest });
+      } else if (stage === 'arrived_at_destination') {
+        this._sendWhatsApp(passengerPhone, 'trip_completed', { amount: String(req?.offered_price ?? '') });
+      }
     }
 
     // Conductor llegó al punto de recogida: cerrar fullscreen + abrir modal de espera
@@ -16243,6 +16265,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         }).catch((e) => console.error('[Movi] Push al conductor falló:', e));
       }
     } catch (e) { console.error('[Movi] sendPush error:', e); }
+    // WhatsApp al pasajero confirmando que el viaje fue aceptado
+    const passengerPhone = this.agProfile()?.phone;
+    if (passengerPhone) {
+      this._sendWhatsApp(passengerPhone, 'trip_accepted', {
+        driver_name: (offer as any).driver_name ?? 'Tu conductor',
+        vehicle: (offer as any).vehicle_brand ? `${(offer as any).vehicle_brand} ${(offer as any).vehicle_model ?? ''}`.trim() : 'Vehículo asignado',
+        plate: (offer as any).vehicle_plate ?? '',
+      });
+    }
+    // WhatsApp al conductor con la confirmación
+    const driverPhone = (offer as any)?.ag_drivers?.ag_users?.phone;
+    if (driverPhone) {
+      this._sendWhatsApp(driverPhone, 'offer_received', {
+        driver_name: (offer as any).driver_name ?? 'Conductor',
+        price: String((offer as any).offered_price ?? ''),
+        driver_rating: '',
+      });
+    }
     this.acceptingOfferId.set(null);
   }
 
