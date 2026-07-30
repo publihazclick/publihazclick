@@ -35,7 +35,6 @@ export interface AgUser {
   total_trips_as_passenger?: number;
   passenger_level?: string;
   passenger_wallet_balance?: number;
-  passenger_rating_avg?: number;
   passenger_verified?: boolean;
   id_front_url?: string;
   id_back_url?: string;
@@ -880,7 +879,7 @@ export class AndaGanaService {
     const cutoff = new Date(Date.now() - 240000).toISOString();
     let query = this.supabase
       .from('ag_trip_requests')
-      .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)')
+      .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level)')
       .eq('status', 'searching')
       .gte('created_at', cutoff)
       .order('created_at', { ascending: true })
@@ -901,7 +900,7 @@ export class AndaGanaService {
   async getTripRequestById(id: string): Promise<AgTripRequest | null> {
     const { data } = await this.supabase
       .from('ag_trip_requests')
-      .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)')
+      .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level)')
       .eq('id', id)
       .maybeSingle();
     return (data as AgTripRequest) ?? null;
@@ -933,7 +932,7 @@ export class AndaGanaService {
             if (this._haversine(lat, lng, row.origin_lat, row.origin_lng) > maxKm) return;
           }
           const { data } = await this.supabase
-            .from('ag_trip_requests').select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)').eq('id', row.id).single();
+            .from('ag_trip_requests').select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level)').eq('id', row.id).single();
           // Si el SELECT falla, usar datos básicos del payload para no perder el evento
           onNew((data ?? row) as AgTripRequest);
         },

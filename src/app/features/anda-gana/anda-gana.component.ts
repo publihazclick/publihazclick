@@ -557,9 +557,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="flex:1;min-width:0">
               <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'Pasajero' }}</p>
               <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-                @if (driverRequests()[0].ag_users?.passenger_rating_avg) {
-                  <span style="color:#fbbf24;font-size:11px;font-weight:700">★ {{ driverRequests()[0].ag_users!.passenger_rating_avg! | number:'1.1-1' }}</span>
-                }
                 <span style="color:rgba(255,255,255,0.4);font-size:10px">{{ driverRequests()[0].ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
                 <span style="color:rgba(255,255,255,0.25)">·</span>
                 <span style="color:rgba(255,255,255,0.45);font-size:10px">{{ driverRequests()[0].distance_km }} km</span>
