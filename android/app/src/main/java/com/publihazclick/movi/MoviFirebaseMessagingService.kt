@@ -4,8 +4,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.capacitorjs.plugins.pushnotifications.MessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -35,9 +37,12 @@ class MoviFirebaseMessagingService : MessagingService() {
         val title = data["title"] ?: "🚗 Nueva solicitud de viaje"
         val body = data["body"] ?: "Toca para ver los detalles"
         val price = data["price"]
+        val dist = data["dist"]
+        val origin = data["origin"]
+        val dest = data["dest"]
         val driverAuthUserId = data["driver_auth_user_id"]
 
-        showFullScreenTripNotification(tripId, title, body, price, driverAuthUserId)
+        showFullScreenTripNotification(tripId, title, body, price, dist, origin, dest, driverAuthUserId)
     }
 
     // Pedido explicito del usuario 2026-07-30 (version 2 -- primero se probo abriendo la app con
@@ -45,7 +50,10 @@ class MoviFirebaseMessagingService : MessagingService() {
     // ahora dispara AcceptTripReceiver.kt, que llama directo al servidor (ag-quick-accept) sin
     // abrir ninguna Activity. Solo si el servidor rechaza el accept (saldo insuficiente, etc.)
     // el receiver abre la app como respaldo para que el conductor vea el motivo real.
-    private fun showFullScreenTripNotification(tripId: String, title: String, body: String, price: String?, driverAuthUserId: String?) {
+    private fun showFullScreenTripNotification(
+        tripId: String, title: String, body: String, price: String?, dist: String?,
+        origin: String?, dest: String?, driverAuthUserId: String?
+    ) {
         val channelId = "movi_trips"
 
         // El canal ya lo crea MainActivity.createNotificationChannels() en un uso normal de la
@@ -103,17 +111,36 @@ class MoviFirebaseMessagingService : MessagingService() {
             }
             PendingIntent.getActivity(this, tripId.hashCode() + 1, fallbackIntent, pendingIntentFlags)
         }
+        val priceFmt = price?.toDoubleOrNull()?.let { "$" + "%,.0f".format(it).replace(",", ".") } ?: (price ?: "")
         val acceptLabel = if (price != null) "Aceptar \$$price" else "Aceptar"
 
+        // Diseño personalizado (RemoteViews) pedido explicito por el usuario 2026-07-30: "que se
+        // vea lo mas exacto posible al modal... con el logo de Movi... manual de marca" -- Android
+        // no permite recrear el modal real dentro de una notificacion, pero si permite un layout
+        // propio (fondo morado/azul de marca + logo + textos) para la vista expandida. Solo aplica
+        // cuando la notificacion se muestra en la bandeja/heads-up -- el escenario de pantalla
+        // completa (celular bloqueado) lanza la Activity real, no esta vista personalizada.
+        val bigView = RemoteViews(packageName, R.layout.notification_trip_request).apply {
+            setTextViewText(R.id.notif_price, if (dist != null) "$priceFmt · $dist km" else priceFmt)
+            setTextViewText(R.id.notif_origin, "Desde: ${origin ?: "Origen sin nombre"}")
+            setTextViewText(R.id.notif_dest, "Hasta: ${dest ?: "Destino sin nombre"}")
+            setTextViewText(R.id.notif_btn_accept, acceptLabel)
+            setOnClickPendingIntent(R.id.notif_btn_accept, acceptPendingIntent)
+            setOnClickPendingIntent(R.id.notif_btn_view, fullScreenPendingIntent)
+        }
+
         val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_menu_directions)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setColor(Color.parseColor("#7C3AED"))
             .setContentTitle(title)
             .setContentText(body)
             // Pedido explicito del usuario 2026-07-30: si se puede aceptar de una vez desde la
             // notificacion, el conductor necesita ver el resumen completo (origen/destino/precio)
             // ANTES de tocar "Aceptar" -- BigTextStyle expande el texto completo (con saltos de
-            // linea) en vez de cortarlo a una sola linea como setContentText() por si solo.
+            // linea) en vez de cortarlo a una sola linea como setContentText() por si solo. Sirve
+            // como respaldo en dispositivos/OEMs que no respetan customBigContentView.
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setCustomBigContentView(bigView)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)

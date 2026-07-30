@@ -102,6 +102,8 @@ Deno.serve(async (req) => {
     if (body?.trip_id) data.trip_id = String(body.trip_id);
     if (body?.price != null) data.price = String(body.price);
     if (body?.dist != null) data.dist = String(body.dist);
+    if (body?.origin != null) data.origin = String(body.origin);
+    if (body?.dest != null) data.dest = String(body.dest);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: subs } = await supabase.from('ag_push_subs').select('id, user_id, provider, endpoint, p256dh, auth, fcm_token').in('user_id', userIds);

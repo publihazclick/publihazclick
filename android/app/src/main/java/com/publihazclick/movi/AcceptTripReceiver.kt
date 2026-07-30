@@ -75,12 +75,32 @@ class AcceptTripReceiver : BroadcastReceiver() {
 
                     val resultNotification = if (success) {
                         val price = json.optInt("price", 0)
+                        // Pedido explicito del usuario 2026-07-30: una vez confirmado el accept en
+                        // el servidor, SI abrir la app -- el conductor necesita el mapa en vivo
+                        // para ir a recoger al pasajero, algo que una notificacion no puede
+                        // mostrar. La app ya detecta solicitudes aceptadas recientemente al abrir
+                        // (ver _initDriverHome/_handleNewAcceptedOffer en anda-gana.component.ts),
+                        // asi que no hace falta pasarle ningun flag especial, solo abrirla.
+                        val openMapIntent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            putExtra("trip_request_id", tripId)
+                            // Evita que la app vuelva a mostrar el modal de "¿aceptar?" para una
+                            // solicitud que el conductor YA acepto desde la notificacion -- ver
+                            // ngOnInit en anda-gana.component.ts.
+                            putExtra("already_accepted", true)
+                        }
+                        val openMapPending = android.app.PendingIntent.getActivity(
+                            context, tripId.hashCode(), openMapIntent,
+                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                        )
+                        context.startActivity(openMapIntent)
                         NotificationCompat.Builder(context, "movi_trips")
-                            .setSmallIcon(android.R.drawable.ic_menu_directions)
+                            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                             .setContentTitle("✓ Solicitud aceptada")
-                            .setContentText("Oferta enviada por $$price")
+                            .setContentText("Oferta enviada por $$price · abriendo el mapa...")
                             .setPriority(NotificationCompat.PRIORITY_HIGH)
                             .setAutoCancel(true)
+                            .setContentIntent(openMapPending)
                             .build()
                     } else {
                         val error = json.optString("error", "No se pudo aceptar")

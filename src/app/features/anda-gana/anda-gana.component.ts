@@ -10825,6 +10825,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Boton "Aceptar" de la notificacion (pedido explicito del usuario 2026-07-30): salta el
     // modal y acepta de una vez, sin pasos extra. Ver MoviFirebaseMessagingService.kt.
     const _autoAcceptParam = this.route.snapshot.queryParamMap.get('auto_accept') === '1';
+    // La app se abre DESPUES de que AcceptTripReceiver.kt ya confirmo el accept con el servidor
+    // (ag-quick-accept) -- no hay que volver a mostrar el modal ni volver a aceptar, la solicitud
+    // sigue en status='searching' hasta que el pasajero elija, asi que sin este flag se veria el
+    // modal de "¿aceptar?" de nuevo para algo que el conductor ya acepto.
+    const _alreadyAcceptedParam = this.route.snapshot.queryParamMap.get('already_accepted') === '1';
     if (this.route.snapshot.queryParamMap.get('wallet') === 'result') {
       this.walletPaymentResult.set('processing');
       // Limpiar URL para que el botón Atrás de Android no vuelva a disparar esto
@@ -10926,7 +10931,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
       await this._initDriverHome(mine);
-      if (_tripRequestIdParam) this._showIncomingTripById(_tripRequestIdParam, _autoAcceptParam).catch(() => {});
+      if (_tripRequestIdParam && !_alreadyAcceptedParam) this._showIncomingTripById(_tripRequestIdParam, _autoAcceptParam).catch(() => {});
     }
 
     if (!this._map) {
