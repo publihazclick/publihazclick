@@ -109,6 +109,11 @@ class MoviFirebaseMessagingService : MessagingService() {
             .setSmallIcon(android.R.drawable.ic_menu_directions)
             .setContentTitle(title)
             .setContentText(body)
+            // Pedido explicito del usuario 2026-07-30: si se puede aceptar de una vez desde la
+            // notificacion, el conductor necesita ver el resumen completo (origen/destino/precio)
+            // ANTES de tocar "Aceptar" -- BigTextStyle expande el texto completo (con saltos de
+            // linea) en vez de cortarlo a una sola linea como setContentText() por si solo.
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
