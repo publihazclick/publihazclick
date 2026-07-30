@@ -10822,6 +10822,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // MoviFirebaseMessagingService.kt, que abre MainActivity con esta URL. Se usa mas abajo,
     // despues de que el conductor termine de cargar.
     const _tripRequestIdParam = this.route.snapshot.queryParamMap.get('trip_request_id');
+    // Boton "Aceptar" de la notificacion (pedido explicito del usuario 2026-07-30): salta el
+    // modal y acepta de una vez, sin pasos extra. Ver MoviFirebaseMessagingService.kt.
+    const _autoAcceptParam = this.route.snapshot.queryParamMap.get('auto_accept') === '1';
     if (this.route.snapshot.queryParamMap.get('wallet') === 'result') {
       this.walletPaymentResult.set('processing');
       // Limpiar URL para que el botón Atrás de Android no vuelva a disparar esto
@@ -10923,7 +10926,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
       await this._initDriverHome(mine);
-      if (_tripRequestIdParam) this._showIncomingTripById(_tripRequestIdParam).catch(() => {});
+      if (_tripRequestIdParam) this._showIncomingTripById(_tripRequestIdParam, _autoAcceptParam).catch(() => {});
     }
 
     if (!this._map) {
@@ -15620,11 +15623,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   /** Trae y muestra una solicitud puntual por id -- usado cuando la app se abre desde la
    * notificación nativa de pantalla completa (app estaba cerrada) o desde el listener de push
    * (app en segundo plano), casos donde no se puede confiar en que driverRequests ya la tenga. */
-  private async _showIncomingTripById(tripId: string): Promise<void> {
+  private async _showIncomingTripById(tripId: string, autoAccept = false): Promise<void> {
     if (!tripId) return;
     const req = await this.agService.getTripRequestById(tripId).catch(() => null);
     if (!req || req.status !== 'searching') return;
     this.driverRequests.update(list => list.some(r => r.id === req.id) ? list : [...list, req]);
+    if (autoAccept) { await this.acceptDirectly(req); return; }
     this._showIncomingTripModal(req);
   }
 

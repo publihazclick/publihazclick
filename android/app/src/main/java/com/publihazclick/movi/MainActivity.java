@@ -36,8 +36,10 @@ public class MainActivity extends BridgeActivity {
         if (intent == null) return;
         String tripRequestId = intent.getStringExtra("trip_request_id");
         if (tripRequestId == null || tripRequestId.isEmpty()) return;
+        boolean autoAccept = intent.getBooleanExtra("auto_accept", false);
 
-        String url = "https://www.publihazclick.com/anda-gana?trip_request_id=" + tripRequestId;
+        String url = "https://www.publihazclick.com/anda-gana?trip_request_id=" + tripRequestId
+            + (autoAccept ? "&auto_accept=1" : "");
         long delayMs = coldStart ? 1500 : 0;
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (getBridge() != null && getBridge().getWebView() != null) {
