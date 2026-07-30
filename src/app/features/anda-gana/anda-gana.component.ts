@@ -15426,7 +15426,18 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _nativePushRegistered = false;
   private async _registerNativePush(): Promise<void> {
-    if (this._nativePushRegistered) return;
+    // BUG REAL encontrado 2026-07-30: este guard evitaba re-registrar el token (correcto, ya
+    // esta guardado) pero tambien evitaba actualizar pushDiagStatus/pushDiagLabel -- por eso al
+    // desconectarse (que los pone en 'off') y volver a conectarse, quedaban pegados en "en pausa"
+    // aunque el conductor ya estuviera en linea de nuevo. Ahora, si ya esta registrado, solo se
+    // refresca el estado visual a 'ok' sin repetir todo el registro nativo (innecesario, el token
+    // sigue siendo valido).
+    if (this._nativePushRegistered) {
+      this.pushDiagStatus.set('ok');
+      this.pushDiagLabel.set('✓ Activo — recibirás solicitudes aunque la app esté cerrada');
+      this.cdr.markForCheck();
+      return;
+    }
 
     const cap = (window as any)?.Capacitor;
     if (!cap?.isNativePlatform?.()) {
