@@ -123,59 +123,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
-  <!-- ═══════════ SOLICITUD DE VIAJE ENTRANTE (pantalla completa, 2026-07-30) ═══════════ -->
-  @if (incomingTripRequest(); as _req) {
-    <div class="fixed inset-0 z-[9999] flex flex-col items-center justify-center px-4"
-      style="background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)">
-      <div class="w-full max-w-sm rounded-3xl overflow-hidden"
-        style="background:#fff;box-shadow:0 24px 60px rgba(0,0,0,0.45)">
-        <!-- Header morado -->
-        <div class="flex flex-col items-center gap-2 py-6 px-4"
-          style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
-          <div class="w-16 h-16 rounded-full flex items-center justify-center animate-pulse"
-            style="background:rgba(255,255,255,0.2)">
-            <span class="material-symbols-outlined" style="font-size:38px;color:#fff;font-variation-settings:'FILL' 1">local_taxi</span>
-          </div>
-          <p class="font-black text-white" style="font-size:20px">¡Nueva solicitud de viaje!</p>
-        </div>
-        <!-- Detalle -->
-        <div class="flex flex-col gap-3 p-5">
-          <div class="flex items-center justify-between rounded-2xl p-4" style="background:#F8FAFC;border:1px solid #E2E8F0">
-            <span class="text-slate-500 text-xs font-bold">Te ofrecen</span>
-            <span class="font-black" style="font-size:24px;color:#7c3aed">{{ formatCOP(_req.offered_price) }}</span>
-          </div>
-          <div class="flex flex-col gap-2">
-            <div class="flex items-start gap-2">
-              <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px;color:#16a34a;margin-top:1px">trip_origin</span>
-              <p class="text-slate-700 text-sm flex-1">{{ _req.origin_name || 'Origen sin nombre' }}</p>
-            </div>
-            <div class="flex items-start gap-2">
-              <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px;color:#dc2626;margin-top:1px">location_on</span>
-              <p class="text-slate-700 text-sm flex-1">{{ _req.dest_name || 'Destino sin nombre' }}</p>
-            </div>
-            <div class="flex items-center gap-2 mt-1">
-              <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#64748b">social_distance</span>
-              <p class="text-slate-500 text-xs">{{ (_req.distance_km ?? 0).toFixed(1) }} km</p>
-            </div>
-          </div>
-          <!-- Botones -->
-          <div class="flex flex-col gap-2 mt-2">
-            <button (click)="acceptIncomingTrip()"
-              class="w-full py-3.5 rounded-2xl font-black text-sm"
-              style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
-              Aceptar por {{ formatCOP(_req.offered_price) }}
-            </button>
-            <button (click)="dismissIncomingTrip()"
-              class="w-full py-3.5 rounded-2xl font-black text-sm"
-              style="background:#F1F5F9;color:#64748b">
-              Ver más solicitudes
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  }
-
   <!-- ═══════════ ALERTA VIAJE ACEPTADO (inDrive style) ═══════════ -->
   @if (driverTripAlert()) {
     <div class="fixed inset-0 z-[9990] flex flex-col items-center justify-center px-4"
@@ -9838,14 +9785,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   offerSentFor         = signal<Set<string>>(new Set());
   inlineCounterOpen    = signal(false);
   inlineCounterValue   = signal(0);
-  // Modal de solicitud entrante (2026-07-30, pedido explicito del usuario): a diferencia de la
-  // lista pasiva de solicitudes, esto interrumpe al conductor con la solicitud en pantalla
-  // completa apenas llega -- se dispara desde 3 lugares: la suscripcion realtime (app en primer
-  // plano), el listener de push (app en segundo plano con el proceso vivo), y el query param
-  // trip_request_id al abrir la app (lanzada desde la notificacion nativa de pantalla completa
-  // con la app cerrada) -- ver _showIncomingTripModal.
-  incomingTripRequest  = signal<AgTripRequest | null>(null);
-  private _incomingTripTimer: ReturnType<typeof setTimeout> | null = null;
   // Commission + wallet — driver
   driverCommissionPct  = signal(0);
   driverWalletBalance  = signal(0);
@@ -15595,46 +15534,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
   }
 
-  /** Muestra el modal de solicitud entrante a pantalla completa. No interrumpe si el conductor
-   * ya tiene un viaje activo, ni si ya está viendo esta misma solicitud. Se auto-cierra a los 45s
-   * (mismo margen que la ventana de 4 min de la solicitud, pero mucho más corto para no tapar la
-   * pantalla indefinidamente si el conductor no reacciona). */
-  private _showIncomingTripModal(req: AgTripRequest): void {
-    if (this.driverActiveTrips().length > 0) return;
-    if (this.incomingTripRequest()?.id === req.id) return;
-    this.incomingTripRequest.set(req);
-    this.cdr.markForCheck();
-    if (this._incomingTripTimer) clearTimeout(this._incomingTripTimer);
-    this._incomingTripTimer = setTimeout(() => {
-      if (this.incomingTripRequest()?.id === req.id) this.dismissIncomingTrip();
-    }, 45000);
-  }
-
-  dismissIncomingTrip(): void {
-    this.incomingTripRequest.set(null);
-    if (this._incomingTripTimer) { clearTimeout(this._incomingTripTimer); this._incomingTripTimer = null; }
-    this.cdr.markForCheck();
-  }
-
-  /** Acepta la solicitud del modal al precio sugerido -- reusa acceptDirectly, que ya maneja
-   * saldo/estado del conductor y hace la oferta real. */
-  async acceptIncomingTrip(): Promise<void> {
-    const req = this.incomingTripRequest();
-    if (!req) return;
-    this.dismissIncomingTrip();
-    await this.acceptDirectly(req);
-  }
-
-  /** Trae y muestra una solicitud puntual por id -- usado cuando la app se abre desde la
-   * notificación nativa de pantalla completa (app estaba cerrada) o desde el listener de push
-   * (app en segundo plano), casos donde no se puede confiar en que driverRequests ya la tenga. */
+  /** Trae y agrega al listado en vivo una solicitud puntual por id -- usado cuando la app se abre
+   * desde la notificación nativa (app estaba cerrada) o desde el listener de push (app en segundo
+   * plano), casos donde no se puede confiar en que driverRequests ya la tenga. NO abre ningún
+   * modal propio -- el banner "Nueva solicitud" (con Aceptar/Contra-oferta) ya existente se
+   * muestra solo apenas la solicitud entra a driverRequests, no hace falta duplicarlo (bug real
+   * corregido 2026-07-30: un modal propio aparecía ENCIMA de ese banner). */
   private async _showIncomingTripById(tripId: string, autoAccept = false): Promise<void> {
     if (!tripId) return;
     const req = await this.agService.getTripRequestById(tripId).catch(() => null);
     if (!req || req.status !== 'searching') return;
     this.driverRequests.update(list => list.some(r => r.id === req.id) ? list : [...list, req]);
-    if (autoAccept) { await this.acceptDirectly(req); return; }
-    this._showIncomingTripModal(req);
+    if (autoAccept) await this.acceptDirectly(req);
+    this.cdr.markForCheck();
   }
 
   private async _autoRegisterWebPush(): Promise<void> {
@@ -16860,7 +16772,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           if (list.some(r => r.id === req.id)) return list;
           this.agService.logMetricEvent('offer_seen').catch(() => {});
           this._notifyNewTrip(req);
-          this._showIncomingTripModal(req);
           const updated = [...list, req];
           this._saveRequestsToCache(updated);
           return updated;
