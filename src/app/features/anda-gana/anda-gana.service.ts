@@ -895,6 +895,18 @@ export class AndaGanaService {
     });
   }
 
+  /** Trae una sola solicitud por id -- usada para mostrar el modal de solicitud entrante cuando
+   * la app se abre desde la notificacion push (full-screen intent con app cerrada, o dato del
+   * push mientras esta en segundo plano) y no se puede depender de la lista ya cargada. */
+  async getTripRequestById(id: string): Promise<AgTripRequest | null> {
+    const { data } = await this.supabase
+      .from('ag_trip_requests')
+      .select('*, ag_users!passenger_user_id(id, auth_user_id, full_name, total_trips_as_passenger, selfie_url, passenger_level, passenger_rating_avg)')
+      .eq('id', id)
+      .maybeSingle();
+    return (data as AgTripRequest) ?? null;
+  }
+
   async updateUserCity(agUserId: string, city: string): Promise<void> {
     await this.supabase.from('ag_users').update({ city }).eq('id', agUserId);
   }

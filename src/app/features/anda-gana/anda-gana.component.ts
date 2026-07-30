@@ -123,6 +123,59 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ SOLICITUD DE VIAJE ENTRANTE (pantalla completa, 2026-07-30) ═══════════ -->
+  @if (incomingTripRequest(); as _req) {
+    <div class="fixed inset-0 z-[9999] flex flex-col items-center justify-center px-4"
+      style="background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)">
+      <div class="w-full max-w-sm rounded-3xl overflow-hidden"
+        style="background:#fff;box-shadow:0 24px 60px rgba(0,0,0,0.45)">
+        <!-- Header morado -->
+        <div class="flex flex-col items-center gap-2 py-6 px-4"
+          style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center animate-pulse"
+            style="background:rgba(255,255,255,0.2)">
+            <span class="material-symbols-outlined" style="font-size:38px;color:#fff;font-variation-settings:'FILL' 1">local_taxi</span>
+          </div>
+          <p class="font-black text-white" style="font-size:20px">¡Nueva solicitud de viaje!</p>
+        </div>
+        <!-- Detalle -->
+        <div class="flex flex-col gap-3 p-5">
+          <div class="flex items-center justify-between rounded-2xl p-4" style="background:#F8FAFC;border:1px solid #E2E8F0">
+            <span class="text-slate-500 text-xs font-bold">Te ofrecen</span>
+            <span class="font-black" style="font-size:24px;color:#7c3aed">{{ formatCOP(_req.offered_price) }}</span>
+          </div>
+          <div class="flex flex-col gap-2">
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px;color:#16a34a;margin-top:1px">trip_origin</span>
+              <p class="text-slate-700 text-sm flex-1">{{ _req.origin_name || 'Origen sin nombre' }}</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px;color:#dc2626;margin-top:1px">location_on</span>
+              <p class="text-slate-700 text-sm flex-1">{{ _req.dest_name || 'Destino sin nombre' }}</p>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;color:#64748b">social_distance</span>
+              <p class="text-slate-500 text-xs">{{ (_req.distance_km ?? 0).toFixed(1) }} km</p>
+            </div>
+          </div>
+          <!-- Botones -->
+          <div class="flex flex-col gap-2 mt-2">
+            <button (click)="acceptIncomingTrip()"
+              class="w-full py-3.5 rounded-2xl font-black text-sm"
+              style="background:linear-gradient(135deg,#10b981,#059669);color:#fff">
+              Aceptar por {{ formatCOP(_req.offered_price) }}
+            </button>
+            <button (click)="dismissIncomingTrip()"
+              class="w-full py-3.5 rounded-2xl font-black text-sm"
+              style="background:#F1F5F9;color:#64748b">
+              Ver más solicitudes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- ═══════════ ALERTA VIAJE ACEPTADO (inDrive style) ═══════════ -->
   @if (driverTripAlert()) {
     <div class="fixed inset-0 z-[9990] flex flex-col items-center justify-center px-4"
@@ -9800,11 +9853,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   offerSentFor         = signal<Set<string>>(new Set());
   inlineCounterOpen    = signal(false);
   inlineCounterValue   = signal(0);
+  // Modal de solicitud entrante (2026-07-30, pedido explicito del usuario): a diferencia de la
+  // lista pasiva de solicitudes, esto interrumpe al conductor con la solicitud en pantalla
+  // completa apenas llega -- se dispara desde 3 lugares: la suscripcion realtime (app en primer
+  // plano), el listener de push (app en segundo plano con el proceso vivo), y el query param
+  // trip_request_id al abrir la app (lanzada desde la notificacion nativa de pantalla completa
+  // con la app cerrada) -- ver _showIncomingTripModal.
+  incomingTripRequest  = signal<AgTripRequest | null>(null);
+  private _incomingTripTimer: ReturnType<typeof setTimeout> | null = null;
   // Commission + wallet — driver
   driverCommissionPct  = signal(0);
   driverWalletBalance  = signal(0);
   // Push diagnosis
-  pushDiagStatus = signal<'checking'|'ok'|'error'|'denied'>('checking');
+  pushDiagStatus = signal<'checking'|'ok'|'error'|'denied'|'off'>('checking');
   pushDiagLabel  = signal('Verificando...');
   // Rating
   ratingModal      = signal(false);
@@ -10772,6 +10833,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     }
 
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');
+    // Lanzada desde la notificación nativa de pantalla completa (app estaba cerrada) -- ver
+    // MoviFirebaseMessagingService.kt, que abre MainActivity con esta URL. Se usa mas abajo,
+    // despues de que el conductor termine de cargar.
+    const _tripRequestIdParam = this.route.snapshot.queryParamMap.get('trip_request_id');
     if (this.route.snapshot.queryParamMap.get('wallet') === 'result') {
       this.walletPaymentResult.set('processing');
       // Limpiar URL para que el botón Atrás de Android no vuelva a disparar esto
@@ -10838,16 +10903,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!profile) { this.screen.set('home'); return; }
 
     // Operaciones no críticas diferidas
-    // BUG REAL encontrado 2026-07-30 (pedido explicito del usuario): _registerNativePush() solo
-    // se llamaba al conectarse ("En línea"), nunca al simplemente abrir la app -- por eso el
-    // estado de notificaciones se "apagaba" cada vez que se cerraba/reabria la app (quedaba
-    // offline por defecto en cada apertura, y las notificaciones nunca se re-registraban solas).
-    // Ahora se registra en cada apertura de la app, sin depender de conectarse.
-    setTimeout(() => {
-      this.checkPushSupport();
-      this.loadReferralData();
-      this._registerNativePush().catch(() => {});
-    }, 1500);
+    // (revertido 2026-07-30: _registerNativePush() NO va aquí -- este bloque corre para
+    // pasajero Y conductor por igual, y el registro de push del conductor ya vive en
+    // _initDriverHome/_setOnline, unificado con el estado "en linea" -- ver esos metodos.
+    // Ponerlo aca duplicaba la llamada y la disparaba tambien para pasajeros sin necesidad.)
+    setTimeout(() => { this.checkPushSupport(); this.loadReferralData(); }, 1500);
 
     if (profile.role === 'passenger') {
       localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: null }));
@@ -10878,6 +10938,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       this.driverRejectionReason.set(mine?.rejection_reason ?? null);
       this.screen.set('driver-home');
       await this._initDriverHome(mine);
+      if (_tripRequestIdParam) this._showIncomingTripById(_tripRequestIdParam).catch(() => {});
     }
 
     if (!this._map) {
@@ -14585,6 +14646,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (this._reqTimerInterval) { clearInterval(this._reqTimerInterval); this._reqTimerInterval = null; }
       if (this._cancelCheckInterval) { clearInterval(this._cancelCheckInterval); this._cancelCheckInterval = null; }
       this.driverRequests.set([]);
+      // Notificaciones "apagadas" a la vista (pedido explicito del usuario, unificado con el
+      // boton En linea): el backend YA deja de mandar push a conductores offline por su cuenta
+      // (filtra por ag_drivers.is_online=true en el trigger, ver migracion 151) -- esto solo
+      // refleja ese hecho en la UI para que no diga "Activo" mientras esta desconectado. El
+      // token FCM se deja guardado a proposito (no se borra) para reactivar instantaneo al
+      // volver a conectarse, sin pedir permiso de nuevo.
+      this.pushDiagStatus.set('off');
+      this.pushDiagLabel.set('Notificaciones en pausa — actívalas al ponerte en línea');
       this.cdr.markForCheck();
     }
 
@@ -15451,10 +15520,18 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       });
 
       PP.addListener('pushNotificationReceived', (n: any) => {
+        // Sonido/vibración inmediatos con lo que ya viene en el push (no esperar la consulta);
+        // el modal real se muestra con los datos completos apenas llegan (trip_id agregado al
+        // payload 2026-07-30 -- ver ag-send-push). Este listener solo dispara con la app en
+        // primer plano; segundo plano/cerrada las maneja el nativo (MoviFirebaseMessagingService).
         this._notifyNewTrip({ offered_price: n?.data?.price, distance_km: n?.data?.dist });
+        const tripId = n?.data?.trip_id;
+        if (tripId) this._showIncomingTripById(tripId).catch(() => {});
       });
 
       PP.addListener('pushNotificationActionPerformed', (ev: any) => {
+        const tripId = ev?.notification?.data?.trip_id;
+        if (tripId) { this._showIncomingTripById(tripId).catch(() => {}); return; }
         const url = ev?.notification?.data?.url;
         if (url) window.location.href = url;
       });
@@ -15520,6 +15597,47 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
+  }
+
+  /** Muestra el modal de solicitud entrante a pantalla completa. No interrumpe si el conductor
+   * ya tiene un viaje activo, ni si ya está viendo esta misma solicitud. Se auto-cierra a los 45s
+   * (mismo margen que la ventana de 4 min de la solicitud, pero mucho más corto para no tapar la
+   * pantalla indefinidamente si el conductor no reacciona). */
+  private _showIncomingTripModal(req: AgTripRequest): void {
+    if (this.driverActiveTrips().length > 0) return;
+    if (this.incomingTripRequest()?.id === req.id) return;
+    this.incomingTripRequest.set(req);
+    this.cdr.markForCheck();
+    if (this._incomingTripTimer) clearTimeout(this._incomingTripTimer);
+    this._incomingTripTimer = setTimeout(() => {
+      if (this.incomingTripRequest()?.id === req.id) this.dismissIncomingTrip();
+    }, 45000);
+  }
+
+  dismissIncomingTrip(): void {
+    this.incomingTripRequest.set(null);
+    if (this._incomingTripTimer) { clearTimeout(this._incomingTripTimer); this._incomingTripTimer = null; }
+    this.cdr.markForCheck();
+  }
+
+  /** Acepta la solicitud del modal al precio sugerido -- reusa acceptDirectly, que ya maneja
+   * saldo/estado del conductor y hace la oferta real. */
+  async acceptIncomingTrip(): Promise<void> {
+    const req = this.incomingTripRequest();
+    if (!req) return;
+    this.dismissIncomingTrip();
+    await this.acceptDirectly(req);
+  }
+
+  /** Trae y muestra una solicitud puntual por id -- usado cuando la app se abre desde la
+   * notificación nativa de pantalla completa (app estaba cerrada) o desde el listener de push
+   * (app en segundo plano), casos donde no se puede confiar en que driverRequests ya la tenga. */
+  private async _showIncomingTripById(tripId: string): Promise<void> {
+    if (!tripId) return;
+    const req = await this.agService.getTripRequestById(tripId).catch(() => null);
+    if (!req || req.status !== 'searching') return;
+    this.driverRequests.update(list => list.some(r => r.id === req.id) ? list : [...list, req]);
+    this._showIncomingTripModal(req);
   }
 
   private async _autoRegisterWebPush(): Promise<void> {
@@ -16745,6 +16863,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           if (list.some(r => r.id === req.id)) return list;
           this.agService.logMetricEvent('offer_seen').catch(() => {});
           this._notifyNewTrip(req);
+          this._showIncomingTripModal(req);
           const updated = [...list, req];
           this._saveRequestsToCache(updated);
           return updated;

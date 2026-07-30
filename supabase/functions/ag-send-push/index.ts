@@ -55,18 +55,23 @@ async function getFcmAccessToken(): Promise<string | null> {
 async function sendFcm(token: string, title: string, body: string, data: Record<string, string>): Promise<boolean> {
   const access = await getFcmAccessToken();
   if (!access || !FCM_PROJECT_ID) return false;
+  // CAMBIO 2026-07-30 (pedido explicito del usuario): mensaje 100% "data" (sin bloque
+  // `notification`) a proposito. Un FCM con `notification` deja que Android muestre la
+  // notificacion automaticamente pero SOLO invoca el codigo de la app (onMessageReceived) si la
+  // app esta en primer plano -- con la app minimizada o cerrada, Android jamas ejecuta nuestro
+  // codigo, asi que era imposible mostrarle al conductor el modal visual de la solicitud (solo
+  // sonaba la notificacion del sistema). Un mensaje solo-data SIEMPRE despierta
+  // onMessageReceived() en el MoviFirebaseMessagingService nativo, sea cual sea el estado de la
+  // app, permitiendo construir ahi una notificacion de pantalla completa (full-screen intent)
+  // que abre el modal real -- ver android/app/src/main/java/.../MoviFirebaseMessagingService.kt.
   const res = await fetch(`https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${access}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message: {
         token,
-        notification: { title, body },
-        data,
-        android: {
-          priority: 'HIGH',
-          notification: { sound: 'default', channel_id: 'movi_trips' },
-        },
+        data: { ...data, title, body },
+        android: { priority: 'HIGH' },
       },
     }),
   });
@@ -90,7 +95,13 @@ Deno.serve(async (req) => {
     const text  = body?.body ?? '';
     const url   = body?.url ?? '/anda-gana';
     const tag   = body?.tag ?? '';
-    const data  = { url, tag, urgent: body?.urgent ? '1' : '0' };
+    // trip_id/price/dist: pasados desde el trigger de la DB (migracion ag_notify_drivers_on_trip_request,
+    // 2026-07-30) para que el cliente pueda mostrar el modal real de la solicitud sin tener que
+    // adivinar/recargar toda la lista -- ver anda-gana.component.ts _showIncomingTripModal.
+    const data: Record<string, string> = { url, tag, urgent: body?.urgent ? '1' : '0' };
+    if (body?.trip_id) data.trip_id = String(body.trip_id);
+    if (body?.price != null) data.price = String(body.price);
+    if (body?.dist != null) data.dist = String(body.dist);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: subs } = await supabase.from('ag_push_subs').select('id, user_id, provider, endpoint, p256dh, auth, fcm_token').in('user_id', userIds);

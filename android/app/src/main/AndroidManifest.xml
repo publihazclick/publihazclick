@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -15,6 +16,8 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:exported="true">
 
             <intent-filter>
@@ -23,6 +26,23 @@
             </intent-filter>
 
         </activity>
+
+        <!-- Reemplaza al MessagingService por defecto de @capacitor/push-notifications para poder
+             armar la notificacion de pantalla completa de solicitudes de viaje. Ver
+             MoviFirebaseMessagingService.kt. Sin este tools:node="remove", Android tendria 2
+             servicios registrados para el mismo evento MESSAGING_EVENT (comportamiento no
+             confiable, solo uno terminaria recibiendo los mensajes). -->
+        <service
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
+            tools:node="remove" />
+
+        <service
+            android:name=".MoviFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -58,4 +78,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Requerida desde Android 14 (API 34) para que setFullScreenIntent() funcione. Sin esto,
+         la notificacion de solicitud de viaje se degrada a una notificacion normal en la bandeja
+         en vez de aparecer en pantalla completa con la app cerrada/celular bloqueado. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 </manifest>

@@ -2,8 +2,11 @@ package com.publihazclick.movi;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -11,6 +14,36 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         createNotificationChannels();
+        handleTripRequestIntent(getIntent(), true);
+    }
+
+    // launchMode="singleTask": si la app ya esta corriendo (primer o segundo plano), Android NO
+    // vuelve a llamar onCreate al tocar la notificacion de pantalla completa -- solo onNewIntent.
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleTripRequestIntent(intent, false);
+    }
+
+    /**
+     * Navega el WebView a la solicitud de viaje cuando la app se abre/reactiva desde la
+     * notificacion de pantalla completa de MoviFirebaseMessagingService.kt. En frio (coldStart)
+     * se espera a que Capacitor termine de cargar la app antes de navegar; ya corriendo, se
+     * navega de inmediato. Pedido explicito del usuario 2026-07-30.
+     */
+    private void handleTripRequestIntent(Intent intent, boolean coldStart) {
+        if (intent == null) return;
+        String tripRequestId = intent.getStringExtra("trip_request_id");
+        if (tripRequestId == null || tripRequestId.isEmpty()) return;
+
+        String url = "https://www.publihazclick.com/anda-gana?trip_request_id=" + tripRequestId;
+        long delayMs = coldStart ? 1500 : 0;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().loadUrl(url);
+            }
+        }, delayMs);
     }
 
     private void createNotificationChannels() {
