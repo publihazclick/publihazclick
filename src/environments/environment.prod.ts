@@ -28,8 +28,13 @@ export const environment = {
   },
   andaGana: {
     mapboxToken:      'pk.eyJ1IjoiYW5kYWdhbmEiLCJhIjoiY21uMGl2Z2p0MGl5MjJxcHpxbWJqbHk3ZCJ9.nkiJPIKUx4thRAXw_bum3w',
-    functionsBaseUrl: 'https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1',
+    functionsBaseUrl: 'https://hndhgtnjyjwrnzdcgcca.supabase.co/functions/v1',
     googlePlacesKey:  'AIzaSyDL7HAa3QYU8TvYwTnwNZgreNt3TxrUhs0',
   },
+  moviSupabase: {
+    url: 'https://hndhgtnjyjwrnzdcgcca.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZGhndG5qeWp3cm56ZGNnY2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMTQ5OTgsImV4cCI6MjA5ODc5MDk5OH0.Rg_3vQVTgn-0V7xpWILYVK32KHBRJTBUDX5K5bAvcq4',
+  },
   youtubeApiKey: 'AIzaSyCLn_rNDe8iOHzdDFeHw4pWHrV3RvWgoV8',
+  vapidPublicKey: 'BHnyzdVCWjJiPJ0PpD7mvqmfNk1-PLOMGfWrVdn6OHiGELV_igy2OP9jD4UEeeKmOUJ2SmOLixmX52mMGW2qAc8',
 };

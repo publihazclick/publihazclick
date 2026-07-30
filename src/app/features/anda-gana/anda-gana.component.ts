@@ -10759,7 +10759,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _gpsRealFix    = false;
   private _cityFromGps   = '';   // ciudad detectada por GPS — filtra sugerencias de búsqueda
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
-  private readonly SUPABASE_ANON = environment.supabase.anonKey;
+  private readonly SUPABASE_ANON = environment.moviSupabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
   private readonly DEFAULT_LNG  = -74.0817;
 
@@ -14010,7 +14010,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!profile || !target || !tripId) { this.ratingSkipped.set(true); return; }
     this.submittingRating.set(true);
     await this.agService.submitRating(
-      tripId, profile.id, target.userId, target.role,
+      tripId, profile.id, target.userId, 'passenger',
       this.ratingStars(), this.ratingCommentValue,
     );
     this.submittingRating.set(false);
@@ -14599,7 +14599,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _sendWhatsApp(phone: string, event: string, data: Record<string, string>): void {
     if (!phone) return;
-    fetch('https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/ag-whatsapp', {
+    fetch(`${environment.andaGana.functionsBaseUrl}/ag-whatsapp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, event, data }),
@@ -16921,6 +16921,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           urgent: true,
         }).catch(() => {});
       }
+    } else {
+      alert('No se pudo enviar la oferta: ' + (result.error ?? 'Error desconocido') + '. Intenta cerrar sesión y volver a entrar.');
     }
   }
 

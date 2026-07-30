@@ -1018,8 +1018,8 @@ export class AndaGanaService {
       const url = `${environment.andaGana.functionsBaseUrl}/ag-api?action=driver-wallet&driver_id=${encodeURIComponent(driverId)}`;
       const resp = await fetch(url, {
         headers: {
-          apikey: environment.supabase.anonKey,
-          Authorization: `Bearer ${environment.supabase.anonKey}`,
+          apikey: environment.moviSupabase.anonKey,
+          Authorization: `Bearer ${environment.moviSupabase.anonKey}`,
         },
       });
       if (!resp.ok) return null;
@@ -1035,8 +1035,8 @@ export class AndaGanaService {
       const url = `${environment.andaGana.functionsBaseUrl}/ag-api?action=driver-by-phone&phone=${encodeURIComponent(phone)}`;
       const resp = await fetch(url, {
         headers: {
-          apikey: environment.supabase.anonKey,
-          Authorization: `Bearer ${environment.supabase.anonKey}`,
+          apikey: environment.moviSupabase.anonKey,
+          Authorization: `Bearer ${environment.moviSupabase.anonKey}`,
         },
       });
       if (!resp.ok) return null;
@@ -1272,9 +1272,9 @@ export class AndaGanaService {
     const { data: sess } = await this.supabase.auth.getSession();
     const accessToken = sess?.session?.access_token;
     if (!accessToken) throw new Error('Sesión no iniciada');
-    const r = await fetch(`${environment.supabase.url}/functions/v1/ag-sos-trigger`, {
+    const r = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-sos-trigger`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: environment.supabase.anonKey, Authorization: `Bearer ${accessToken}` },
+      headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey, Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({
         trip_id: payload.tripId ?? null,
         lat: payload.lat ?? null, lng: payload.lng ?? null,
@@ -1396,9 +1396,9 @@ export class AndaGanaService {
     const accessToken = sess?.session?.access_token;
     if (!accessToken) return { ok: false, error: 'No autenticado' };
     try {
-      const r = await fetch(`${environment.supabase.url}/functions/v1/ag-masked-call`, {
+      const r = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-masked-call`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: environment.supabase.anonKey, Authorization: `Bearer ${accessToken}` },
+        headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey, Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ trip_request_id: tripRequestId }),
       });
       const out = await r.json();
@@ -1712,12 +1712,12 @@ export class AndaGanaService {
   async triggerDriverVerification(driverId: string): Promise<{ score: number; decision: string; flags: string[] } | null> {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
-      const token = session?.access_token ?? environment.supabase.anonKey;
-      const res = await fetch(`${environment.supabase.url}/functions/v1/ag-verify-driver-docs`, {
+      const token = session?.access_token ?? environment.moviSupabase.anonKey;
+      const res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-verify-driver-docs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: environment.supabase.anonKey,
+          apikey: environment.moviSupabase.anonKey,
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ driver_id: driverId }),
@@ -1740,9 +1740,9 @@ export class AndaGanaService {
 
   async sendPush(payload: { userIds: string[]; title: string; body?: string; url?: string; tag?: string; urgent?: boolean }): Promise<void> {
     try {
-      await fetch(`${environment.supabase.url}/functions/v1/ag-send-push`, {
+      await fetch(`${environment.moviSupabase.url}/functions/v1/ag-send-push`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: environment.supabase.anonKey },
+        headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey },
         body: JSON.stringify({
           user_ids: payload.userIds, title: payload.title, body: payload.body,
           url: payload.url ?? '/anda-gana', tag: payload.tag, urgent: payload.urgent,

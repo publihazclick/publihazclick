@@ -8,8 +8,8 @@ export function getMoviClient(): SupabaseClient {
   if (!moviClient) {
     const isBrowser = typeof window !== 'undefined';
     moviClient = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey,
+      environment.moviSupabase.url,
+      environment.moviSupabase.anonKey,
       {
         auth: {
           persistSession: isBrowser,
