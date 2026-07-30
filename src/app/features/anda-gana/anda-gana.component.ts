@@ -15434,7 +15434,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // sigue siendo valido).
     if (this._nativePushRegistered) {
       this.pushDiagStatus.set('ok');
-      this.pushDiagLabel.set('✓ Activo — recibirás solicitudes aunque la app esté cerrada');
+      this.pushDiagLabel.set('✓ Activo — recibirás solicitudes mientras tengas habilitado el botón En línea');
       this.cdr.markForCheck();
       return;
     }
@@ -15481,7 +15481,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         try {
           await this.agService.registerFcmToken(token.value);
           this.pushDiagStatus.set('ok');
-          this.pushDiagLabel.set('✓ Activo — recibirás solicitudes aunque la app esté cerrada');
+          this.pushDiagLabel.set('✓ Activo — recibirás solicitudes mientras tengas habilitado el botón En línea');
           this.cdr.markForCheck();
         } catch (e: any) {
           // Reintento unico: la falla mas comun es que la sesion de Supabase todavia no termino
@@ -15493,7 +15493,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
             try {
               await this.agService.registerFcmToken(token.value);
               this.pushDiagStatus.set('ok');
-              this.pushDiagLabel.set('✓ Activo — recibirás solicitudes aunque la app esté cerrada');
+              this.pushDiagLabel.set('✓ Activo — recibirás solicitudes mientras tengas habilitado el botón En línea');
             } catch (e2: any) {
               this.pushDiagStatus.set('error');
               this.pushDiagLabel.set('Error al guardar el token: ' + (e2?.message ?? e?.message ?? 'desconocido'));
