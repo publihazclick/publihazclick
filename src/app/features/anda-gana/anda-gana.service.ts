@@ -1703,10 +1703,16 @@ export class AndaGanaService {
 
   async registerFcmToken(token: string): Promise<void> {
     if (!token) return;
-    await this.supabase.rpc('ag_register_fcm_token', {
+    // BUG REAL encontrado 2026-07-30: el error de la RPC nunca se revisaba -- supabase-js NO
+    // lanza excepcion en fallos de .rpc(), devuelve {data, error}. Como este await no chequeaba
+    // `error`, un fallo silencioso (ej. auth.uid() null por sesion aun no restaurada, token con
+    // formato invalido, etc.) dejaba pasar el flujo como si hubiera funcionado -- la UI mostraba
+    // "✓ Activo" con la base de datos completamente vacia de suscripciones push reales.
+    const { error } = await this.supabase.rpc('ag_register_fcm_token', {
       p_token: token,
       p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
     });
+    if (error) throw error;
   }
 
   async triggerDriverVerification(driverId: string): Promise<{ score: number; decision: string; flags: string[] } | null> {

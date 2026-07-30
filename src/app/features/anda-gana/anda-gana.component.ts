@@ -10838,7 +10838,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!profile) { this.screen.set('home'); return; }
 
     // Operaciones no críticas diferidas
-    setTimeout(() => { this.checkPushSupport(); this.loadReferralData(); }, 1500);
+    // BUG REAL encontrado 2026-07-30 (pedido explicito del usuario): _registerNativePush() solo
+    // se llamaba al conectarse ("En línea"), nunca al simplemente abrir la app -- por eso el
+    // estado de notificaciones se "apagaba" cada vez que se cerraba/reabria la app (quedaba
+    // offline por defecto en cada apertura, y las notificaciones nunca se re-registraban solas).
+    // Ahora se registra en cada apertura de la app, sin depender de conectarse.
+    setTimeout(() => {
+      this.checkPushSupport();
+      this.loadReferralData();
+      this._registerNativePush().catch(() => {});
+    }, 1500);
 
     if (profile.role === 'passenger') {
       localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: null }));
@@ -15414,8 +15423,23 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.pushDiagStatus.set('ok');
           this.pushDiagLabel.set('✓ Activo — recibirás solicitudes aunque la app esté cerrada');
           this.cdr.markForCheck();
-        } catch {
-          setTimeout(() => this.agService.registerFcmToken(token.value).catch(() => {}), 5000);
+        } catch (e: any) {
+          // Reintento unico: la falla mas comun es que la sesion de Supabase todavia no termino
+          // de restaurarse desde storage cuando este listener dispara (auth.uid() null en el
+          // primer intento). Si el reintento TAMBIEN falla, ahora si se refleja en la UI en vez
+          // de quedar en silencio (ver bug real de registerFcmToken tragandose errores, corregido
+          // el mismo dia).
+          setTimeout(async () => {
+            try {
+              await this.agService.registerFcmToken(token.value);
+              this.pushDiagStatus.set('ok');
+              this.pushDiagLabel.set('✓ Activo — recibirás solicitudes aunque la app esté cerrada');
+            } catch (e2: any) {
+              this.pushDiagStatus.set('error');
+              this.pushDiagLabel.set('Error al guardar el token: ' + (e2?.message ?? e?.message ?? 'desconocido'));
+            }
+            this.cdr.markForCheck();
+          }, 5000);
         }
       });
 
