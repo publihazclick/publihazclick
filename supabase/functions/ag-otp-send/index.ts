@@ -29,16 +29,26 @@ async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function sendViaWhatsApp(phone: string, code: string, instance: string): Promise<boolean> {
-  const apiUrl = Deno.env.get('EVOLUTION_API_URL');
-  const apiKey = Deno.env.get('EVOLUTION_API_KEY');
-  if (!apiUrl || !apiKey || !instance) return false;
+// CAMBIO 2026-07-30 (pedido explicito del usuario): Evolution API en Railway ya no existe
+// (Application not found), asi que este fallback nunca funcionaba de verdad (siempre pasaba
+// directo a Telnyx en silencio). Reemplazado por OpenWA (C:/Users/MOINS/openwa), la instancia
+// de WhatsApp que si esta viva, corriendo local como servicio de Windows y expuesta a internet
+// via un tunel de Cloudflare (OPENWA_URL). El tunel actual es un "quick tunnel" (gratis, sin
+// cuenta) -- la URL cambia si el proceso de cloudflared se reinicia, hay que actualizar el
+// secret OPENWA_URL si eso pasa (ver [[openwa_shutdown_incident]] para el patron de servicio
+// NSSM ya usado para el propio OpenWA; el tunel deberia recibir el mismo tratamiento para
+// quedar realmente persistente, pendiente).
+async function sendViaWhatsApp(phone: string, code: string): Promise<boolean> {
+  const apiUrl = Deno.env.get('OPENWA_URL');
+  const apiKey = Deno.env.get('OPENWA_API_KEY');
+  const sessionId = Deno.env.get('OPENWA_SESSION_ID');
+  if (!apiUrl || !apiKey || !sessionId) return false;
 
-  const resp = await fetch(`${apiUrl}/message/sendText/${instance}`, {
+  const resp = await fetch(`${apiUrl}/api/sessions/${sessionId}/messages/send-text`, {
     method: 'POST',
-    headers: { apikey: apiKey, 'Content-Type': 'application/json' },
+    headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      number: toWaNumber(phone),
+      chatId: `${toWaNumber(phone)}@c.us`,
       text: `🔐 *Movi - Código de verificación*\n\nTu código es: *${code}*\n\nVálido por 10 minutos. No lo compartas con nadie.`,
     }),
   });
@@ -53,16 +63,16 @@ async function sendViaWhatsApp(phone: string, code: string, instance: string): P
 async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
   const apiKey    = Deno.env.get('TELNYX_API_KEY');
   const fromSender = Deno.env.get('TELNYX_SENDER_ID') ?? Deno.env.get('TELNYX_PHONE_NUMBER');
-  const profileId = Deno.env.get('TELNYX_MESSAGING_PROFILE_ID');
   if (!apiKey || !fromSender) return false;
 
+  // No incluir messaging_profile_id: el número ya está asignado a su perfil en Telnyx,
+  // y enviarlo explícito rompe la sustitución automática de remitente alfanumérico para CO.
   const payload: Record<string, string> = {
     from: fromSender,
     to: phone,
     text: `Tu código de verificación Movi es: ${code}. Válido por 10 minutos.`,
     type: 'SMS',
   };
-  if (profileId) payload.messaging_profile_id = profileId;
 
   const res = await fetch('https://api.telnyx.com/v2/messages', {
     method: 'POST',
@@ -120,8 +130,19 @@ Deno.serve(async (req) => {
       return json({ error: 'Demasiados intentos. Espera unos minutos.' }, 429);
     }
 
-    // Generar código de 6 dígitos
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    // TEST_PHONE_NUMBERS (2026-07-30, pedido explicito del usuario): el numero de pruebas real
+    // del usuario reinstala la app constantemente durante desarrollo, lo que borra la sesion
+    // guardada y dispara un SMS real cada vez (gasta saldo de Telnyx sin necesidad). Para estos
+    // numeros especificos se usa un codigo fijo y NO se manda ningun SMS/WhatsApp real -- el login
+    // sigue funcionando exactamente igual (mismo flujo de verificacion), solo que el codigo
+    // siempre es el mismo y no cuesta nada. NUNCA agregar aca un numero real de un usuario final.
+    const TEST_PHONE_NUMBERS: Record<string, string> = {
+      '+573134453649': '111111',
+    };
+    const isTestPhone = normalized in TEST_PHONE_NUMBERS;
+
+    // Generar código de 6 dígitos (o usar el fijo de prueba)
+    const code = isTestPhone ? TEST_PHONE_NUMBERS[normalized] : String(Math.floor(100000 + Math.random() * 900000));
     const hash = await sha256(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
@@ -139,21 +160,18 @@ Deno.serve(async (req) => {
       return json({ error: 'Error interno' }, 500);
     }
 
-    // Buscar automáticamente el primer WhatsApp conectado
-    const { data: session } = await sb
-      .from('wa_sessions')
-      .select('phone_number')
-      .eq('status', 'open')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-    const waInstance = session?.phone_number ?? '';
+    if (isTestPhone) return json({ ok: true });
 
-    // WhatsApp primero (gratis), SMS de pago como fallback
-    const sent =
-      (await sendViaWhatsApp(normalized, code, waInstance)) ||
-      (await sendViaTelnyx(normalized, code)) ||
-      (await sendViaTwilio(normalized, code));
+    // CAMBIO 2026-07-30 (pedido explicito del usuario): WhatsApp via OpenWA reportaba envio
+    // exitoso (201, messageId real) sin que el mensaje llegara de verdad en varios casos reales
+    // (sesion "vendedoreslocales" vieja Y la sesion "bod" nueva con un pasajero real) -- causa
+    // no confirmada del todo (posible desincronizacion de claves de cifrado tras reconexiones).
+    // El usuario pidio pausar WhatsApp por completo y dejar SOLO SMS (Telnyx, sender "Publihaz",
+    // confirmado funcionando para CO por soporte de Telnyx) como unico canal, priorizando
+    // confiabilidad sobre costo cero. sendViaWhatsApp queda sin usar pero no se borra, por si se
+    // retoma mas adelante (ver [[movi_otp_whatsapp_openwa]]).
+    let sent = await sendViaTelnyx(normalized, code);
+    if (!sent) sent = await sendViaTwilio(normalized, code);
 
     if (!sent) {
       return json({ error: 'No se pudo enviar el código. Intenta de nuevo.' }, 500);
