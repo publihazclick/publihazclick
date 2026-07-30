@@ -18986,6 +18986,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
 
   async _autoRegisterPush(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
+    // BUG REAL encontrado 2026-07-30: Web Push (este metodo) y FCM nativo (_registerNativePush)
+    // corrian los dos siempre, sin importar la plataforma. El WebView de Android de la app nativa
+    // NO soporta la API estandar de Web Push (limitacion real de la plataforma, no arreglable
+    // desde el codigo) -- asi que este metodo SIEMPRE terminaba pisando el "✓ Activo" que el
+    // nativo ya habia puesto, con un mensaje de error que en la app instalada no aplica ni
+    // importa (el conductor SI recibe notificaciones, por FCM nativo). Web Push solo tiene
+    // sentido para quien entra por un navegador normal, no para la app instalada.
+    const cap = (window as any)?.Capacitor;
+    if (cap?.isNativePlatform?.()) return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       this.pushDiagStatus.set('error');
       this.pushDiagLabel.set('Este navegador no soporta Web Push');
