@@ -5235,13 +5235,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 [style.color]="pushDiagStatus() === 'ok' ? '#34d399' : '#f87171'">
                 {{ pushDiagLabel() }}
               </p>
-              @if (pushDiagStatus() !== 'ok' && pushDiagStatus() !== 'checking') {
-                <button (click)="fixPushNotifications()"
-                  class="text-xs font-bold px-2 py-1 rounded-lg flex-shrink-0"
-                  style="background:rgba(124,58,237,0.2);color:#a78bfa">
-                  Activar
-                </button>
-              }
             </div>
           }
 
@@ -6203,19 +6196,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </p>
                 <p class="text-slate-600 text-xs">Puedes conectarte y desconectarte sin penalizaciones en cualquier momento.</p>
               </div>
-              <!-- Diagnóstico de notificaciones -->
+              <!-- Estado de notificaciones (2026-07-30, pedido explicito del usuario: un solo
+                   boton controla todo -- "En linea" de arriba. Este texto es solo informativo,
+                   ya NO tiene un boton propio de activar/desactivar por separado. -->
               <div class="w-full rounded-2xl p-3 flex flex-col gap-2" style="background:#fafafa;border:1px solid #e2e8f0">
                 <p class="font-bold text-xs text-slate-700">Estado de notificaciones</p>
                 <p class="text-xs" [style.color]="pushDiagStatus() === 'ok' ? '#10b981' : pushDiagStatus() === 'error' ? '#ef4444' : '#f59e0b'">
                   {{ pushDiagLabel() }}
                 </p>
-                @if (pushDiagStatus() !== 'ok') {
-                  <button (click)="fixPushNotifications()"
-                    class="w-full rounded-xl py-2 text-xs font-bold text-white"
-                    style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
-                    Activar notificaciones
-                  </button>
-                }
               </div>
             </div>
           }
@@ -15434,14 +15422,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._startBackgroundTracking(driverId).catch(() => {});
     // Web Push para navegadores (funciona con app cerrada)
     this._autoRegisterWebPush().catch(() => {});
-  }
-
-  async fixPushNotifications(): Promise<void> {
-    this.pushDiagStatus.set('checking');
-    this.pushDiagLabel.set('Activando...');
-    this.cdr.markForCheck();
-    this._nativePushRegistered = false;
-    await this._registerNativePush();
   }
 
   private _nativePushRegistered = false;
