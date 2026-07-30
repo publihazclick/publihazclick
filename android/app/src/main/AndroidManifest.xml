@@ -54,6 +54,13 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
+        <!-- Boton "Aceptar" de la notificacion de solicitud de viaje. Ver AcceptTripReceiver.kt
+             y MoviFirebaseMessagingService.kt. exported=false: solo el propio sistema (via el
+             PendingIntent) puede dispararlo, ninguna otra app. -->
+        <receiver
+            android:name=".AcceptTripReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".MoviDriverWidget"
             android:exported="true"

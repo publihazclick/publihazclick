@@ -35,17 +35,17 @@ class MoviFirebaseMessagingService : MessagingService() {
         val title = data["title"] ?: "🚗 Nueva solicitud de viaje"
         val body = data["body"] ?: "Toca para ver los detalles"
         val price = data["price"]
+        val driverAuthUserId = data["driver_auth_user_id"]
 
-        showFullScreenTripNotification(tripId, title, body, price)
+        showFullScreenTripNotification(tripId, title, body, price, driverAuthUserId)
     }
 
-    // Pedido explicito del usuario 2026-07-30: poder aceptar la solicitud directo desde la
-    // notificacion, sin tener que entrar primero a la app y tocar el modal. El boton "Aceptar"
-    // abre la app igual que el toque normal, pero con el extra auto_accept=1 -- la app hace el
-    // accept automaticamente apenas carga (ver ngOnInit/_showIncomingTripById en
-    // anda-gana.component.ts). La logica real de aceptar (saldo, comision, etc.) se queda del
-    // lado de la app a proposito, para no duplicar esas reglas de negocio en Kotlin.
-    private fun showFullScreenTripNotification(tripId: String, title: String, body: String, price: String?) {
+    // Pedido explicito del usuario 2026-07-30 (version 2 -- primero se probo abriendo la app con
+    // auto_accept, pero el usuario pidio que NO se vea la app en absoluto): el boton "Aceptar"
+    // ahora dispara AcceptTripReceiver.kt, que llama directo al servidor (ag-quick-accept) sin
+    // abrir ninguna Activity. Solo si el servidor rechaza el accept (saldo insuficiente, etc.)
+    // el receiver abre la app como respaldo para que el conductor vea el motivo real.
+    private fun showFullScreenTripNotification(tripId: String, title: String, body: String, price: String?, driverAuthUserId: String?) {
         val channelId = "movi_trips"
 
         // El canal ya lo crea MainActivity.createNotificationChannels() en un uso normal de la
@@ -83,20 +83,26 @@ class MoviFirebaseMessagingService : MessagingService() {
             this, tripId.hashCode(), fullScreenIntent, pendingIntentFlags
         )
 
-        // Boton "Aceptar": mismo intent, pero con auto_accept=1 -- distinto requestCode
-        // (tripId.hashCode()+1) para que Android no reutilice el mismo PendingIntent del tap normal.
-        val acceptIntent = Intent(this, MainActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
-            data = Uri.parse("https://www.publihazclick.com/anda-gana?trip_request_id=$tripId&auto_accept=1")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("trip_request_id", tripId)
-            putExtra("auto_accept", true)
+        // Boton "Aceptar": Broadcast directo a AcceptTripReceiver, SIN abrir ninguna Activity --
+        // si no hay driverAuthUserId (push viejo/formato distinto) cae al viejo comportamiento
+        // de abrir la app con auto_accept, por seguridad.
+        val acceptPendingIntent = if (driverAuthUserId != null) {
+            val acceptIntent = Intent(this, AcceptTripReceiver::class.java).apply {
+                putExtra("trip_request_id", tripId)
+                putExtra("driver_auth_user_id", driverAuthUserId)
+                putExtra("notification_id", tripId.hashCode())
+            }
+            PendingIntent.getBroadcast(this, tripId.hashCode() + 1, acceptIntent, pendingIntentFlags)
+        } else {
+            val fallbackIntent = Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = Uri.parse("https://www.publihazclick.com/anda-gana?trip_request_id=$tripId&auto_accept=1")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("trip_request_id", tripId)
+                putExtra("auto_accept", true)
+            }
+            PendingIntent.getActivity(this, tripId.hashCode() + 1, fallbackIntent, pendingIntentFlags)
         }
-        val acceptPendingIntent = PendingIntent.getActivity(
-            this, tripId.hashCode() + 1, acceptIntent, pendingIntentFlags
-        )
         val acceptLabel = if (price != null) "Aceptar \$$price" else "Aceptar"
 
         val notification = NotificationCompat.Builder(this, channelId)
