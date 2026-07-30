@@ -114,11 +114,7 @@ Deno.serve(async (req) => {
     // ── FCM nativos ──
     const fcmSubs = subs.filter((s: any) => s.provider === 'fcm' && s.fcm_token);
     for (const s of fcmSubs as any[]) {
-      // driver_auth_user_id: el destinatario de ESTE token especifico -- necesario para que el
-      // boton "Aceptar" de la notificacion (ver MoviFirebaseMessagingService.kt) pueda llamar a
-      // ag-quick-accept sin depender de que la app/WebView este abierta para sacar la sesion.
-      const perRecipientData = data.trip_id ? { ...data, driver_auth_user_id: s.user_id } : data;
-      const ok = await sendFcm(s.fcm_token, title, text, perRecipientData);
+      const ok = await sendFcm(s.fcm_token, title, text, data);
       if (ok) {
         sent++;
         supabase.from('ag_push_subs').update({ last_used_at: new Date().toISOString() }).eq('id', s.id).then(() => {});

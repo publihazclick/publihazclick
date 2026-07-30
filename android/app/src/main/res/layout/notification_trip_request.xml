@@ -3,10 +3,13 @@
   Notificacion personalizada de solicitud de viaje (RemoteViews). Pedido explicito del usuario
   2026-07-30: que se vea lo mas parecido posible al modal de la app (fondo morado/azul de marca,
   logo real de Movi), en vez del look generico de una notificacion estandar de Android.
+  Decision final del usuario (mismo dia): sin botones propios. Toda la notificacion es un solo
+  area de toque que abre la app y muestra el banner real (Aceptar/Contra-oferta).
   Solo se usa para la vista expandida (setCustomBigContentView); Android exige simple_view_types
   para RemoteViews (no soporta layouts arbitrarios de la app real).
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notif_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -47,7 +50,7 @@
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
         android:paddingTop="10dp"
-        android:paddingBottom="6dp">
+        android:paddingBottom="14dp">
 
         <TextView
             android:id="@+id/notif_price"
@@ -72,37 +75,14 @@
             android:layout_marginTop="2dp"
             android:textColor="#334155"
             android:textSize="13sp" />
-    </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:paddingBottom="10dp"
-        android:paddingTop="4dp">
-
-        <Button
-            android:id="@+id/notif_btn_view"
-            android:layout_width="0dp"
+        <TextView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:text="Ver detalles"
-            android:textColor="#7C3AED"
-            android:textAllCaps="false"
-            android:background="#F1F5F9" />
-
-        <Button
-            android:id="@+id/notif_btn_accept"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:text="Aceptar"
-            android:textColor="#FFFFFF"
-            android:textAllCaps="false"
-            android:background="@drawable/notification_trip_header_bg" />
+            android:layout_marginTop="8dp"
+            android:text="Toca para ver y responder"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:textStyle="italic" />
     </LinearLayout>
 </LinearLayout>
