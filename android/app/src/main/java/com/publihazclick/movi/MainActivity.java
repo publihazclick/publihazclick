@@ -25,16 +25,24 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * La pantalla negra "de mas" entre las splashes y la interfaz NO es ninguna de las
-     * splashes -- es el WebView de Capacitor mostrando su propio fondo antes de que la pagina
-     * remota (server.url apunta a Vercel) llegue a pintar algo. Por defecto el WebView usa
-     * blanco, pero Android 10+ puede oscurecerlo automaticamente (force-dark / dark theme del
-     * sistema) mostrando negro en vez de blanco mientras no hay contenido. Se fija el color de
-     * fondo del WebView directo al morado de marca y se apaga el force-dark explicitamente,
-     * asi no depende de que ningun script JS de la pagina llegue a tiempo (esa carrera contra
-     * la red era la causa real, no la config de SplashScreen -- launchAutoHide ya estaba bien).
+     * CAUSA REAL de la pantalla blanca/negra "de mas" (confirmado leyendo el codigo fuente de
+     * Capacitor, BridgeActivity.java): BridgeActivity.onCreate() -- que se ejecuta dentro de
+     * nuestro super.onCreate() -- hace getApplication().setTheme(...)/setTheme(...) con SU PROPIO
+     * tema interno (com.getcapacitor.android.R.style.AppTheme_NoActionBar, un
+     * Theme.AppCompat.NoActionBar liso SIN windowBackground) antes de inflar el layout del
+     * WebView. Esto pisa por completo el tema AppTheme.NoActionBarLaunch (windowBackground=
+     * splash_bg morado) declarado en AndroidManifest.xml para esta activity -- por eso el fondo
+     * de la ventana se queda en el default de AppCompat (blanco) durante todo el tiempo que el
+     * WebView tarda en cargar la pagina remota (server.url apunta a Vercel, no a archivos
+     * locales). El intento anterior (fijar solo el color del WebView) no alcanzaba porque el
+     * blanco viene de la VENTANA/layout contenedor, no solo del WebView.
+     *
+     * Fix: restaurar el fondo de la ventana explicitamente DESPUES de super.onCreate() (que es
+     * cuando Capacitor ya hizo su swap de tema) en vez de confiar en el tema declarado en el
+     * manifest. Se mantiene tambien el fix del WebView (color + force-dark off) como respaldo.
      */
     private void fixWebViewBlankBackground() {
+        getWindow().setBackgroundDrawableResource(R.drawable.splash_bg);
         if (getBridge() == null || getBridge().getWebView() == null) return;
         android.webkit.WebView webView = getBridge().getWebView();
         webView.setBackgroundColor(Color.parseColor("#7C3AED"));
