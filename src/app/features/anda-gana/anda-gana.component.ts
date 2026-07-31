@@ -8164,15 +8164,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:10px">
             <p style="color:#374151;font-size:13px;font-weight:700;margin:0">Datos del vehículo</p>
             <div style="display:flex;flex-direction:column;gap:8px">
-              <input [(ngModel)]="qrVehicleBrandVal" (ngModelChange)="qrVehicleBrand.set($event)"
+              <input [(ngModel)]="qrVehicleBrandVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleBrand.set($event)"
                 placeholder="Marca (ej: Yamaha, Toyota)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
                 [style.borderColor]="qrVehicleBrand() ? '#7C3AED' : '#D1D5DB'" />
-              <input [(ngModel)]="qrVehicleColorVal" (ngModelChange)="qrVehicleColor.set($event)"
+              <input [(ngModel)]="qrVehicleColorVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleColor.set($event)"
                 placeholder="Color (ej: Rojo, Negro)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
                 [style.borderColor]="qrVehicleColor() ? '#7C3AED' : '#D1D5DB'" />
-              <input [(ngModel)]="qrVehiclePlateVal" (ngModelChange)="qrVehiclePlate.set($event.toUpperCase())"
+              <input [(ngModel)]="qrVehiclePlateVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehiclePlate.set($event.toUpperCase())"
                 placeholder="Placa (ej: ABC123)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box;text-transform:uppercase"
                 [style.borderColor]="qrVehiclePlate() ? '#7C3AED' : '#D1D5DB'" />
