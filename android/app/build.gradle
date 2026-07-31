@@ -51,6 +51,10 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'androidx.core:core:1.13.1'
+    // Necesaria en MainActivity.java para apagar el force-dark del WebView (fondo negro
+    // mientras carga la pagina remota, 2026-07-31) -- mismo caso que firebase-messaging arriba,
+    // Capacitor la trae transitiva pero no la expone al modulo app.
+    implementation 'androidx.webkit:webkit:1.12.1'
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

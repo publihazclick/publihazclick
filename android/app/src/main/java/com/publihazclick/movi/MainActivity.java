@@ -3,10 +3,13 @@ package com.publihazclick.movi;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -16,8 +19,28 @@ public class MainActivity extends BridgeActivity {
         // al inicializar el Bridge, que ocurre dentro de super.onCreate().
         registerPlugin(MoviPermissionsPlugin.class);
         super.onCreate(savedInstanceState);
+        fixWebViewBlankBackground();
         createNotificationChannels();
         handleTripRequestIntent(getIntent(), true);
+    }
+
+    /**
+     * La pantalla negra "de mas" entre las splashes y la interfaz NO es ninguna de las
+     * splashes -- es el WebView de Capacitor mostrando su propio fondo antes de que la pagina
+     * remota (server.url apunta a Vercel) llegue a pintar algo. Por defecto el WebView usa
+     * blanco, pero Android 10+ puede oscurecerlo automaticamente (force-dark / dark theme del
+     * sistema) mostrando negro en vez de blanco mientras no hay contenido. Se fija el color de
+     * fondo del WebView directo al morado de marca y se apaga el force-dark explicitamente,
+     * asi no depende de que ningun script JS de la pagina llegue a tiempo (esa carrera contra
+     * la red era la causa real, no la config de SplashScreen -- launchAutoHide ya estaba bien).
+     */
+    private void fixWebViewBlankBackground() {
+        if (getBridge() == null || getBridge().getWebView() == null) return;
+        android.webkit.WebView webView = getBridge().getWebView();
+        webView.setBackgroundColor(Color.parseColor("#7C3AED"));
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+            WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
+        }
     }
 
     // launchMode="singleTask": si la app ya esta corriendo (primer o segundo plano), Android NO
