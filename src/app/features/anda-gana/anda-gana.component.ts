@@ -6411,11 +6411,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <option value="van">Van</option>
                       <option value="camion">Camión</option>
                     </select>
-                    <input [(ngModel)]="newVehicle.plate" placeholder="Placa" class="px-3 py-2 rounded-lg text-slate-900 text-sm uppercase" style="background:#FFFFFF;border:1px solid #D1D5DB" />
-                    <input [(ngModel)]="newVehicle.brand" placeholder="Marca" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
-                    <input [(ngModel)]="newVehicle.model" placeholder="Modelo" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
-                    <input [(ngModel)]="newVehicle.color" placeholder="Color" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
-                    <input [(ngModel)]="newVehicle.year" type="number" placeholder="Año" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
+                    <input [(ngModel)]="newVehicle.plate" [ngModelOptions]="{updateOn: 'blur'}" placeholder="Placa" class="px-3 py-2 rounded-lg text-slate-900 text-sm uppercase" style="background:#FFFFFF;border:1px solid #D1D5DB" />
+                    <input [(ngModel)]="newVehicle.brand" [ngModelOptions]="{updateOn: 'blur'}" placeholder="Marca" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
+                    <input [(ngModel)]="newVehicle.model" [ngModelOptions]="{updateOn: 'blur'}" placeholder="Modelo" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
+                    <input [(ngModel)]="newVehicle.color" [ngModelOptions]="{updateOn: 'blur'}" placeholder="Color" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
+                    <input [(ngModel)]="newVehicle.year" [ngModelOptions]="{updateOn: 'blur'}" type="number" placeholder="Año" class="px-3 py-2 rounded-lg text-slate-900 text-sm" style="background:#FFFFFF;border:1px solid #D1D5DB" />
                   </div>
                   <button (click)="saveNewVehicle()" class="py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg">Guardar</button>
                 </div>
@@ -8426,7 +8426,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Nombre completo *</label>
-              <input [(ngModel)]="pf.fullName" name="pfFullName"
+              <input [(ngModel)]="pf.fullName" [ngModelOptions]="{updateOn: 'blur'}" name="pfFullName"
                 placeholder="Ej: Juan Carlos Pérez"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -8461,7 +8461,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                 </select>
               } @else {
-                <input [(ngModel)]="pf.department" name="pfDepartment"
+                <input [(ngModel)]="pf.department" [ngModelOptions]="{updateOn: 'blur'}" name="pfDepartment"
                   placeholder="Tu departamento o estado"
                   autocomplete="off" spellcheck="false"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -8479,7 +8479,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                 </select>
               } @else {
-                <input [(ngModel)]="pf.city" name="pfCity"
+                <input [(ngModel)]="pf.city" [ngModelOptions]="{updateOn: 'blur'}" name="pfCity"
                   placeholder="Tu ciudad"
                   autocomplete="off" spellcheck="false"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -8487,7 +8487,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de cédula / documento *</label>
-              <input [(ngModel)]="pf.idNumber" name="pfIdNumber"
+              <input [(ngModel)]="pf.idNumber" [ngModelOptions]="{updateOn: 'blur'}" name="pfIdNumber"
                 placeholder="Número de identificación"
                 autocomplete="off" spellcheck="false" inputmode="numeric"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -8502,7 +8502,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de teléfono *</label>
               <div class="flex gap-2">
-                <input [(ngModel)]="pf.phone" name="pfPhone"
+                <input [(ngModel)]="pf.phone" [ngModelOptions]="{updateOn: 'blur'}" name="pfPhone"
                   type="tel" placeholder="+57 300 000 0000"
                   autocomplete="off" inputmode="tel"
                   class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -8510,14 +8510,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Correo electrónico *</label>
-              <input [(ngModel)]="pf.email" name="pfEmail"
+              <input [(ngModel)]="pf.email" [ngModelOptions]="{updateOn: 'blur'}" name="pfEmail"
                 type="email" placeholder="correo@ejemplo.com"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Contraseña *</label>
-              <input [(ngModel)]="pf.password" name="pfPassword"
+              <input [(ngModel)]="pf.password" [ngModelOptions]="{updateOn: 'blur'}" name="pfPassword"
                 type="password" placeholder="Mínimo 8 caracteres"
                 autocomplete="new-password"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -8565,14 +8565,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </h3>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Nombre del contacto *</label>
-              <input [(ngModel)]="pf.emergencyName" name="pfEmergencyName"
+              <input [(ngModel)]="pf.emergencyName" [ngModelOptions]="{updateOn: 'blur'}" name="pfEmergencyName"
                 placeholder="Nombre completo"
                 autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Teléfono del contacto *</label>
-              <input [(ngModel)]="pf.emergencyPhone" name="pfEmergencyPhone"
+              <input [(ngModel)]="pf.emergencyPhone" [ngModelOptions]="{updateOn: 'blur'}" name="pfEmergencyPhone"
                 type="tel" placeholder="+57 300 000 0000"
                 autocomplete="off" inputmode="tel"
                 class="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-colors w-full"/>
@@ -8979,7 +8979,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Placa *</label>
-                  <input [(ngModel)]="df.plate" name="d_plate" placeholder="ABC123"
+                  <input [(ngModel)]="df.plate" [ngModelOptions]="{updateOn: 'blur'}" name="d_plate" placeholder="ABC123"
                     class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all uppercase" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
@@ -8998,24 +8998,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Marca *</label>
-                  <input [(ngModel)]="df.vehicleBrand" name="d_vehicleBrand" placeholder="Toyota"
+                  <input [(ngModel)]="df.vehicleBrand" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleBrand" placeholder="Toyota"
                     class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Modelo *</label>
-                  <input [(ngModel)]="df.vehicleModel" name="d_vehicleModel" placeholder="Corolla"
+                  <input [(ngModel)]="df.vehicleModel" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleModel" placeholder="Corolla"
                     class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Año *</label>
-                  <input [(ngModel)]="df.vehicleYear" name="d_vehicleYear" type="number" placeholder="2020" min="2000"
+                  <input [(ngModel)]="df.vehicleYear" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleYear" type="number" placeholder="2020" min="2000"
                     class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Color *</label>
-                  <input [(ngModel)]="df.vehicleColor" name="d_vehicleColor" placeholder="Blanco"
+                  <input [(ngModel)]="df.vehicleColor" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleColor" placeholder="Blanco"
                     class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
