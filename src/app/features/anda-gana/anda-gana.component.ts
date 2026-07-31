@@ -36,9 +36,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       50%     { transform: translateY(-5px); }
     }
     .modal-float { animation: modalFloat 3s ease-in-out infinite; }
+    /* Sin entrada propia a proposito (2026-07-31): el splash estatico de index.html ya hizo
+       la animacion de entrada (moviEntrance identica) antes de que Angular pinte esto -- si
+       este tambien la reproduce, se ve como si el logo "apareciera dos veces" al arrancar.
+       Solo el flote continuo, que no se nota repetido porque es un loop sin punto de inicio. */
     .movi-logo-wrap {
-      animation: moviEntrance 0.85s cubic-bezier(0.34,1.56,0.64,1) forwards,
-                 moviFloat    2.8s  ease-in-out 0.85s infinite;
+      animation: moviFloat 2.8s ease-in-out infinite;
     }
     .dot1 { animation: dotPulse 1.4s ease-in-out 0.0s infinite; }
     .dot2 { animation: dotPulse 1.4s ease-in-out 0.2s infinite; }
