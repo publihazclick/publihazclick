@@ -9920,6 +9920,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // 2. Timer "Conductor llegó — sal ya" (pasajero)
   arrivedAtPickupTimer        = signal<number | null>(null);
   private _arrivalTimerInterval: any = null;
+  private _pickupAlertInterval: any = null;
   // 2b. Modal conductor esperando al pasajero en pickup
   driverArrivalTrip           = signal<any | null>(null);
   driverArrivalTimer          = signal<number | null>(null);
@@ -19569,6 +19570,35 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       this.arrivedAtPickupTimer.set(t - 1);
       this.cdr.markForCheck();
     }, 1000);
+    this._startPickupWaitingAlert();
+  }
+
+  /** Pedido explicito del usuario 2026-07-31: mientras el conductor espera en el punto de
+   * recogida, sonar/vibrar cada 20s para que el pasajero se percate aunque no este mirando
+   * la pantalla. Arranca junto con _startArrivalTimer y se detiene siempre desde
+   * _clearArrivalTimer (aborda, se cancela, o se acaban los 4 min), asi el ciclo de vida queda
+   * identico al del timer visual sin tener que tocar cada punto donde este se limpia. */
+  private _startPickupWaitingAlert(): void {
+    this._stopPickupWaitingAlert();
+    this._notifyDriverWaitingSound();
+    this._pickupAlertInterval = setInterval(() => this._notifyDriverWaitingSound(), 20000);
+  }
+
+  private _stopPickupWaitingAlert(): void {
+    if (this._pickupAlertInterval) {
+      clearInterval(this._pickupAlertInterval);
+      this._pickupAlertInterval = null;
+    }
+  }
+
+  private _notifyDriverWaitingSound(): void {
+    if (typeof window === 'undefined') return;
+    try { navigator.vibrate?.([300, 100, 300]); } catch {}
+    try {
+      const a = new Audio('/notification.wav');
+      a.volume = 1;
+      a.play().catch(() => {});
+    } catch {}
   }
 
   private _clearArrivalTimer(): void {
@@ -19576,6 +19606,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
       clearInterval(this._arrivalTimerInterval);
       this._arrivalTimerInterval = null;
     }
+    this._stopPickupWaitingAlert();
   }
 
   private _startDriverArrivalTimer(): void {
