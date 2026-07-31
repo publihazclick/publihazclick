@@ -5363,13 +5363,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <span class="material-symbols-outlined text-yellow-600" style="font-size:16px">hourglass_top</span>
                       <span class="text-yellow-700 text-xs font-bold">Esperando al pasajero...</span>
                     </div>
-                    <button (click)="advanceStage(trip, 'picked_up')"
+                    <!-- Va directo a on_route (2026-07-31): antes pasaba por 'picked_up' con un
+                         boton "Iniciar viaje" separado, inconsistente con el camino normal (modal
+                         de espera / "Ya estoy a bordo" del pasajero) que siempre salta directo a
+                         on_route. Se unifica para que "pasajero a bordo" siempre arranque el viaje
+                         de una vez, sin importar desde cual pantalla lo marque el conductor. -->
+                    <button (click)="advanceStage(trip, 'on_route')"
                       class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
                       style="background:linear-gradient(135deg,#0891b2,#06b6d4)">
                       <span class="material-symbols-outlined" style="font-size:18px">person_check</span>Pasajero a bordo
                     </button>
                   }
-                  <!-- Etapa 3: picked_up → iniciar ruta -->
+                  <!-- Etapa 3 (respaldo): algun viaje que haya quedado en 'picked_up' antes de
+                       este cambio -- ya no se genera este estado, solo se deja la salida. -->
                   @if (trip.ag_trip_requests?.driver_stage === 'picked_up') {
                     <button (click)="advanceStage(trip, 'on_route')"
                       class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
