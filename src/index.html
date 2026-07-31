@@ -167,8 +167,12 @@
       if (!location.pathname.startsWith('/anda-gana')) return;
       var el = document.getElementById('movi-boot-splash');
       if (el) el.style.display = 'flex';
-      // Oculta la splash nativa de Android apenas hay algo real pintado (este overlay),
-      // en vez de esperar a que Angular cargue y llame SplashScreen.hide() por su cuenta.
+      // Pedido explicito del usuario 2026-07-31: NO ocultar la splash nativa apenas el puente
+      // de Capacitor exista -- eso pasa demasiado rapido (antes de que este overlay realmente
+      // se haya pintado en pantalla), dejando ver un hueco negro entre la splash nativa y este
+      // div. Se espera un tiempo fijo (2s) para darle margen de sobra a que el navegador ya
+      // haya compuesto un frame real de este overlay antes de pedir el cierre. El techo de
+      // 5s de launchAutoHide en capacitor.config.ts sigue de respaldo si esto tardara mas.
       function hideNativeSplash() {
         try {
           if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SplashScreen) {
@@ -178,13 +182,15 @@
         } catch (e) {}
         return false;
       }
-      if (!hideNativeSplash()) {
-        var tries = 0;
-        var iv = setInterval(function () {
-          tries++;
-          if (hideNativeSplash() || tries > 100) clearInterval(iv);
-        }, 20);
-      }
+      setTimeout(function () {
+        if (!hideNativeSplash()) {
+          var tries = 0;
+          var iv = setInterval(function () {
+            tries++;
+            if (hideNativeSplash() || tries > 100) clearInterval(iv);
+          }, 20);
+        }
+      }, 2000);
     })();
   </script>
   <app-root></app-root>
