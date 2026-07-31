@@ -458,123 +458,113 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
-  <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top) ═══════════ -->
-  @if (driverOnline() && !driverTripAlert() && driverRequests().length > 0) {
-    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8000;pointer-events:none">
-      <div
-        (touchstart)="onRequestSwipeStart($event)"
-        (touchmove)="onRequestSwipeMove($event)"
-        (touchend)="onRequestSwipeEnd(driverRequests()[0].id)"
-        [style.transform]="'translateX(' + requestSwipeX() + 'px)'"
-        [style.transition]="requestSwiping() ? 'none' : 'transform 0.3s ease'"
-        [style.opacity]="1 - Math.min(0.7, Math.abs(requestSwipeX()) / 200)"
-        style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(0,229,255,0.08);overflow:hidden">
+  <!-- ═══════════ BANNER NUEVA SOLICITUD (flotante top, apiladas sin taparse) ═══════════ -->
+  @if (driverOnline() && !driverTripAlert() && visibleDriverRequests().length > 0) {
+    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8000;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 24px);overflow-y:auto;pointer-events:none">
+      @for (req of visibleDriverRequests(); track req.id) {
+        <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(0,229,255,0.08);overflow:hidden;flex-shrink:0">
 
-        <!-- Franja de alerta superior -->
-        <div style="background:linear-gradient(90deg,rgba(0,229,255,0.15) 0%,rgba(5,150,105,0.1) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00E5FF;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
-            <span style="color:#00E5FF;font-size:12px;font-weight:900;letter-spacing:0.07em;text-transform:uppercase">¡Solicitud de viaje!</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            @if (driverRequests().length > 1) {
-              <span style="background:rgba(0,229,255,0.18);border:1px solid rgba(0,229,255,0.4);color:#00E5FF;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px">{{ driverRequests().length }} disponibles</span>
-            }
-            <button (click)="openDismissConfirm(driverRequests()[0].id)"
+          <!-- Franja de alerta superior -->
+          <div style="background:linear-gradient(90deg,rgba(0,229,255,0.15) 0%,rgba(5,150,105,0.1) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00E5FF;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
+              <span style="color:#00E5FF;font-size:12px;font-weight:900;letter-spacing:0.07em;text-transform:uppercase">¡Solicitud de viaje!</span>
+            </div>
+            <button (click)="openDismissConfirm(req.id)"
               style="min-width:44px;min-height:44px;border-radius:50%;border:2px solid #ef4444;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px rgba(239,68,68,0.6),0 2px 8px rgba(0,0,0,0.4)"
               title="Descartar esta solicitud">
               <span class="material-symbols-outlined" style="font-size:22px;color:#fff;font-variation-settings:'FILL' 1">close</span>
             </button>
           </div>
-        </div>
 
-        <!-- Cuerpo del banner -->
-        <div style="padding:10px 16px 14px">
+          <!-- Cuerpo del banner -->
+          <div style="padding:10px 16px 14px">
 
-          <!-- Fila pasajero + precio -->
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-            <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,229,255,0.4);overflow:hidden;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center">
-              @if (driverRequests()[0].passenger_selfie_url ?? driverRequests()[0].ag_users?.selfie_url) {
-                <img [src]="driverRequests()[0].passenger_selfie_url ?? driverRequests()[0].ag_users?.selfie_url"
-                  style="width:100%;height:100%;object-fit:cover" alt="foto pasajero">
-              } @else {
-                <span style="font-weight:900;font-size:18px;color:#fff">{{ (driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'P')[0].toUpperCase() }}</span>
-              }
-            </div>
-            <div style="flex:1;min-width:0">
-              <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ driverRequests()[0].passenger_name ?? driverRequests()[0].ag_users?.full_name ?? 'Pasajero' }}</p>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-                <span style="color:rgba(255,255,255,0.4);font-size:10px">{{ driverRequests()[0].ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
-                <span style="color:rgba(255,255,255,0.25)">·</span>
-                <span style="color:rgba(255,255,255,0.45);font-size:10px">{{ driverRequests()[0].distance_km }} km</span>
+            <!-- Fila pasajero + precio -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+              <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,229,255,0.4);overflow:hidden;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center">
+                @if (req.passenger_selfie_url ?? req.ag_users?.selfie_url) {
+                  <img [src]="req.passenger_selfie_url ?? req.ag_users?.selfie_url"
+                    style="width:100%;height:100%;object-fit:cover" alt="foto pasajero">
+                } @else {
+                  <span style="font-weight:900;font-size:18px;color:#fff">{{ (req.passenger_name ?? req.ag_users?.full_name ?? 'P')[0].toUpperCase() }}</span>
+                }
               </div>
-            </div>
-            <div style="text-align:right;flex-shrink:0">
-              <p style="font-weight:900;font-size:clamp(18px,5vw,22px);margin:0;line-height:1"
-                [style.color]="reqRemainingPct(driverRequests()[0]) < 25 ? '#f87171' : '#34d399'">
-                {{ formatCOP(driverRequests()[0].offered_price) }}
-              </p>
-              <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0">precio cliente</p>
-            </div>
-          </div>
-
-          <!-- Ruta origen → destino -->
-          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:9px 12px;display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
-            <div style="display:flex;align-items:flex-start;gap:8px">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#38bdf8;flex-shrink:0;margin-top:1px">my_location</span>
-              <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ driverRequests()[0].origin_name ?? 'Punto de recogida' }}</p>
-            </div>
-            <div style="height:1px;background:rgba(255,255,255,0.07);margin-left:22px"></div>
-            <div style="display:flex;align-items:flex-start;gap:8px">
-              <span class="material-symbols-outlined" style="font-size:14px;color:#f87171;flex-shrink:0;margin-top:1px">location_on</span>
-              <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ driverRequests()[0].dest_name ?? 'Destino' }}</p>
-            </div>
-          </div>
-
-          <!-- Botones Aceptar / Contra-oferta -->
-          @if (offerSentFor().has(driverRequests()[0].id)) {
-            <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
-              <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
-              <span style="color:#34d399;font-size:13px;font-weight:900">Oferta enviada — esperando al pasajero</span>
-            </div>
-          } @else {
-            <div style="display:flex;gap:8px">
-              <button (click)="acceptDirectly(driverRequests()[0])" [disabled]="sendingOffer()"
-                style="flex:1;padding:10px 0;border-radius:12px;border:none;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 16px rgba(0,0,0,0.3);overflow:hidden;position:relative"
-                [style.background]="reqBtnGradient(driverRequests()[0])"
-                [style.opacity]="sendingOffer() ? '0.6' : '1'"
-                [class.animate-pulse]="reqRemainingPct(driverRequests()[0]) < 15">
-                <div style="display:flex;align-items:center;gap:5px;position:relative;z-index:1">
-                  <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1">check_circle</span>
-                  <span style="font-weight:900;font-size:13px">Aceptar</span>
+              <div style="flex:1;min-width:0">
+                <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ req.passenger_name ?? req.ag_users?.full_name ?? 'Pasajero' }}</p>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                  <span style="color:rgba(255,255,255,0.4);font-size:10px">{{ req.ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
+                  <span style="color:rgba(255,255,255,0.25)">·</span>
+                  <span style="color:rgba(255,255,255,0.45);font-size:10px">{{ req.distance_km }} km</span>
                 </div>
-                <span style="font-size:10px;font-weight:700;opacity:0.9;letter-spacing:0.03em;position:relative;z-index:1">{{ reqRemainingStr(driverRequests()[0]) }}</span>
-              </button>
-              <button (click)="toggleInlineCounter(driverRequests()[0])" [disabled]="sendingOffer()"
-                style="flex:1;padding:11px 0;border-radius:12px;border:1px solid rgba(245,158,11,0.5);cursor:pointer;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity 0.2s;background:rgba(245,158,11,0.12);color:#fbbf24"
-                [style.opacity]="sendingOffer() ? '0.6' : '1'">
-                <span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">swap_vert</span>
-                Contra-oferta
-              </button>
-            </div>
-            <!-- Inline counter-offer -->
-            @if (inlineCounterOpen()) {
-              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);margin-top:4px">
-                <span style="color:#94a3b8;font-size:11px;font-weight:700;white-space:nowrap">Tu oferta:</span>
-                <span style="color:#fbbf24;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
-                <button (click)="inlineCounterValue.set(inlineCounterValue() > 2500 ? inlineCounterValue() - 500 : 2000)"
-                  style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:rgba(255,255,255,0.1);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>
-                <button (click)="inlineCounterValue.set(inlineCounterValue() + 500)"
-                  style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
-                <button (click)="submitInlineCounter(driverRequests()[0])" [disabled]="sendingOffer()"
-                  style="padding:6px 12px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:900;flex-shrink:0;opacity:1"
-                  [style.opacity]="sendingOffer() ? '0.5' : '1'">Enviar</button>
               </div>
-            }
-          }
+              <div style="text-align:right;flex-shrink:0">
+                <p style="font-weight:900;font-size:clamp(18px,5vw,22px);margin:0;line-height:1"
+                  [style.color]="reqRemainingPct(req) < 25 ? '#f87171' : '#34d399'">
+                  {{ formatCOP(req.offered_price) }}
+                </p>
+                <p style="color:rgba(255,255,255,0.35);font-size:10px;margin:0">precio cliente</p>
+              </div>
+            </div>
 
+            <!-- Ruta origen → destino -->
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:9px 12px;display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span class="material-symbols-outlined" style="font-size:14px;color:#38bdf8;flex-shrink:0;margin-top:1px">my_location</span>
+                <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ req.origin_name ?? 'Punto de recogida' }}</p>
+              </div>
+              <div style="height:1px;background:rgba(255,255,255,0.07);margin-left:22px"></div>
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span class="material-symbols-outlined" style="font-size:14px;color:#f87171;flex-shrink:0;margin-top:1px">location_on</span>
+                <p style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;margin:0;line-height:1.35">{{ req.dest_name ?? 'Destino' }}</p>
+              </div>
+            </div>
+
+            <!-- Botones Aceptar / Contra-oferta -->
+            @if (offerSentFor().has(req.id)) {
+              <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
+                <span class="material-symbols-outlined" style="font-size:16px;color:#34d399;font-variation-settings:'FILL' 1">check_circle</span>
+                <span style="color:#34d399;font-size:13px;font-weight:900">Oferta enviada — esperando al pasajero</span>
+              </div>
+            } @else {
+              <div style="display:flex;gap:8px">
+                <button (click)="acceptDirectly(req)" [disabled]="sendingOffer()"
+                  style="flex:1;padding:10px 0;border-radius:12px;border:none;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 16px rgba(0,0,0,0.3);overflow:hidden;position:relative"
+                  [style.background]="reqBtnGradient(req)"
+                  [style.opacity]="sendingOffer() ? '0.6' : '1'"
+                  [class.animate-pulse]="reqRemainingPct(req) < 15">
+                  <div style="display:flex;align-items:center;gap:5px;position:relative;z-index:1">
+                    <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1">check_circle</span>
+                    <span style="font-weight:900;font-size:13px">Aceptar</span>
+                  </div>
+                  <span style="font-size:10px;font-weight:700;opacity:0.9;letter-spacing:0.03em;position:relative;z-index:1">{{ reqRemainingStr(req) }}</span>
+                </button>
+                <button (click)="toggleInlineCounter(req)" [disabled]="sendingOffer()"
+                  style="flex:1;padding:11px 0;border-radius:12px;border:1px solid rgba(245,158,11,0.5);cursor:pointer;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity 0.2s;background:rgba(245,158,11,0.12);color:#fbbf24"
+                  [style.opacity]="sendingOffer() ? '0.6' : '1'">
+                  <span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">swap_vert</span>
+                  Contra-oferta
+                </button>
+              </div>
+              <!-- Inline counter-offer -->
+              @if (inlineCounterOpenId() === req.id) {
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);margin-top:4px">
+                  <span style="color:#94a3b8;font-size:11px;font-weight:700;white-space:nowrap">Tu oferta:</span>
+                  <span style="color:#fbbf24;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
+                  <button (click)="inlineCounterValue.set(inlineCounterValue() > 2500 ? inlineCounterValue() - 500 : 2000)"
+                    style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:rgba(255,255,255,0.1);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>
+                  <button (click)="inlineCounterValue.set(inlineCounterValue() + 500)"
+                    style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
+                  <button (click)="submitInlineCounter(req)" [disabled]="sendingOffer()"
+                    style="padding:6px 12px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:900;flex-shrink:0;opacity:1"
+                    [style.opacity]="sendingOffer() ? '0.5' : '1'">Enviar</button>
+                </div>
+              }
+            }
+
+          </div>
         </div>
-      </div>
+      }
     </div>
   }
 
@@ -880,6 +870,52 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           </div>
         }
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ EXPLICACIÓN DE PERMISOS (una sola vez, antes de pedirlos) ═══════════ -->
+  @if (showPermissionsPrimer()) {
+    <div style="position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);padding:20px">
+      <div style="background:#0f172a;border-radius:20px;padding:28px 22px;max-width:360px;width:100%;border:1px solid rgba(255,255,255,0.08)">
+        <p style="color:#fff;font-size:17px;font-weight:900;margin:0 0 6px">Antes de empezar</p>
+        @if (permissionsPrimerIsPassenger()) {
+          <p style="color:#94a3b8;font-size:13px;margin:0 0 20px;line-height:1.5">Movi te va a pedir 2 permisos para que tu viaje salga bien:</p>
+          <div style="display:flex;gap:12px;margin-bottom:14px">
+            <span class="material-symbols-outlined" style="color:#38bdf8;font-size:22px">location_on</span>
+            <div>
+              <p style="color:#fff;font-weight:700;font-size:13px;margin:0">Ubicación</p>
+              <p style="color:#94a3b8;font-size:12px;margin:2px 0 0">Para pedir tu viaje desde donde estás y que el conductor te encuentre</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;margin-bottom:24px">
+            <span class="material-symbols-outlined" style="color:#38bdf8;font-size:22px">notifications</span>
+            <div>
+              <p style="color:#fff;font-weight:700;font-size:13px;margin:0">Notificaciones</p>
+              <p style="color:#94a3b8;font-size:12px;margin:2px 0 0">Para avisarte cuando un conductor te haga una oferta y cuando esté por llegar</p>
+            </div>
+          </div>
+        } @else {
+          <p style="color:#94a3b8;font-size:13px;margin:0 0 20px;line-height:1.5">Movi te va a pedir 2 permisos para funcionar bien como conductor:</p>
+          <div style="display:flex;gap:12px;margin-bottom:14px">
+            <span class="material-symbols-outlined" style="color:#38bdf8;font-size:22px">location_on</span>
+            <div>
+              <p style="color:#fff;font-weight:700;font-size:13px;margin:0">Ubicación</p>
+              <p style="color:#94a3b8;font-size:12px;margin:2px 0 0">Para mostrarte los viajes que hay cerca tuyo</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;margin-bottom:24px">
+            <span class="material-symbols-outlined" style="color:#38bdf8;font-size:22px">notifications</span>
+            <div>
+              <p style="color:#fff;font-weight:700;font-size:13px;margin:0">Notificaciones</p>
+              <p style="color:#94a3b8;font-size:12px;margin:2px 0 0">Para avisarte apenas llegue una solicitud nueva</p>
+            </div>
+          </div>
+        }
+        <button (click)="confirmPermissionsPrimer()"
+          style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;font-weight:900;font-size:14px;border:none;cursor:pointer">
+          Entendido, continuar
+        </button>
       </div>
     </div>
   }
@@ -5576,8 +5612,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div class="flex items-center justify-between px-1">
           <div class="flex items-center gap-2">
             <p class="text-slate-700 text-xs font-black uppercase tracking-widest">Solicitudes en vivo</p>
-            @if (driverRequests().length > 0) {
-              <span style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px">{{ driverRequests().length }}</span>
+            @if (visibleDriverRequests().length > 0) {
+              <span style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px">{{ visibleDriverRequests().length }}</span>
             }
           </div>
           <button (click)="refreshDriverRequests()"
@@ -9783,7 +9819,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverOfferPrice     = signal(0);
   sendingOffer         = signal(false);
   offerSentFor         = signal<Set<string>>(new Set());
-  inlineCounterOpen    = signal(false);
+  // Keyed por id de solicitud (no un solo boolean global) -- el banner ahora apila TODAS las
+  // solicitudes activas a la vez (ver template), así que abrir la contra-oferta de una no debe
+  // afectar a las demás tarjetas visibles.
+  inlineCounterOpenId  = signal<string | null>(null);
   inlineCounterValue   = signal(0);
   // Commission + wallet — driver
   driverCommissionPct  = signal(0);
@@ -9802,6 +9841,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ratingTripId     = signal<string | null>(null);
   // Driver active trips (accepted offers)
   driverActiveTrips  = signal<any[]>([]);
+  /** Explicacion de permisos, mostrada UNA sola vez antes de pedir ubicacion/notificaciones
+   * (pedido 2026-07-31: los cuadros del sistema salian sin aviso, se sentia tedioso). */
+  showPermissionsPrimer = signal(false);
+  private _pendingPermissionsDriverId: string | null = null;
+  /** Publico (no private) porque el template del primer de permisos lo lee para mostrar
+   * un mensaje distinto a pasajero vs conductor (pedido 2026-07-31). */
+  permissionsPrimerIsPassenger = signal(false);
   driverTripAlert    = signal<any | null>(null); // full-screen inDrive-style alert when offer accepted
   driverCancelAlert  = signal<string | null>(null); // aviso al conductor cuando pasajero cancela
   driverBenefits     = signal<any | null>(null); // tier + founder + commission data
@@ -10754,6 +10800,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       SplashScreen.hide({ fadeOutDuration: 0 }).catch(() => {});
+      // Splash estatico de arranque (index.html) ya cumplio su funcion -- el propio
+      // splash de Angular (screen()==='splash', identico visualmente) ya esta pintado.
+      document.getElementById('movi-boot-splash')?.remove();
     }
 
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');
@@ -10799,17 +10848,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           }
           _cacheUsed = true;
           // Iniciar GPS durante el splash para tener fix listo cuando el home aparezca
-          if (p.role === 'passenger') this._startPassengerWatch();
+          // (solo si ya se explico el permiso antes -- si no, lo dispara el bloque de abajo
+          // junto con la pantalla explicativa, ver showPermissionsPrimer).
+          if (p.role === 'passenger' && localStorage.getItem('movi-permissions-primed')) {
+            this._startPassengerWatch();
+          }
         }
       }
     } catch {}
 
-    // ── Splash mínimo 3 s + Supabase en paralelo ─────────────────────
+    // ── Splash mínimo 500 ms + Supabase en paralelo ──────────────────
     // Si hay caché esperamos AMBOS; si no, solo Supabase (el splash ya duró el tiempo natural)
     // Si el usuario viene de cerrar ePayco, saltar el splash para no parecer que fue expulsado
+    // (Reducido de 3000ms a 500ms el 2026-07-31 -- alcanza para evitar el salto brusco a la
+    // interfaz sin hacer esperar de mas al usuario que vuelve a abrir la app.)
     const _fromEpayco = this.walletPaymentResult() === 'processing';
     const _splashTimer = (_cacheUsed && !_fromEpayco)
-      ? new Promise<void>(r => setTimeout(r, 3000))
+      ? new Promise<void>(r => setTimeout(r, 500))
       : Promise.resolve();
 
     const _profilePromise = this.agService.getMyAgProfile().then(async p => {
@@ -10836,10 +10891,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (profile.role === 'passenger') {
       localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: null }));
       this.screen.set('passenger-home');
-      this._startPassengerWatch();
       this.agService.cancelStaleTrips().catch(() => {});
       this._subscribeToDriverLocations();
       this._restoreActiveTrip();
+      // Primera vez: explicar antes de pedir ubicación + notificaciones (ver showPermissionsPrimer).
+      // Ya explicado antes → seguir directo, sin cambiar nada del comportamiento previo.
+      if (isPlatformBrowser(this.platformId) && !localStorage.getItem('movi-permissions-primed')) {
+        this.permissionsPrimerIsPassenger.set(true);
+        this.showPermissionsPrimer.set(true);
+      } else {
+        this._grantPassengerPermissions();
+      }
     } else {
       let mine = await this.agService.getMyDriverProfile();
       if (!mine && isPlatformBrowser(this.platformId)) {
@@ -10922,14 +10984,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     });
     // GPS, timer y push se inician aquí (después de los awaits de comisión/wallet)
     if (status !== 'rejected') {
-      this.startGpsTracking(mine.id);
       this._startOnlineTimer();
       if (!this._onlineSessionId) {
         this.agService.startOnlineSession(mine.id).then(id => { this._onlineSessionId = id; }).catch(() => {});
       }
-      // Registrar push — FCM nativo inmediato (no depende del GPS), web push con delay
-      this._registerNativePush().catch(() => {});
-      setTimeout(() => this._autoRegisterPush(), 500);
+      // Primera vez: explicar los permisos antes de que salgan los cuadros del sistema.
+      // Ya explicado antes → seguir directo, sin cambiar nada del comportamiento previo.
+      if (isPlatformBrowser(this.platformId) && !localStorage.getItem('movi-permissions-primed')) {
+        this._pendingPermissionsDriverId = mine.id;
+        this.showPermissionsPrimer.set(true);
+      } else {
+        this._grantDriverPermissions(mine.id);
+      }
     }
     // Cargar viajes activos (ofertas aceptadas por el pasajero)
     const activeTrips = await this.agService.getDriverActiveTrips(mine.id).catch(() => []);
@@ -11380,6 +11446,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── GPS + mapa ─────────────────────────────────────────────────
   async initGpsAndMap(containerId: string) {
     if (!isPlatformBrowser(this.platformId)) return;
+
+    // Bug real encontrado 2026-07-31: esta funcion se llama por un setTimeout corto desde
+    // varios lugares (login, registro, etc.) y pide ubicacion de una, sin pasar por la
+    // pantalla explicativa de permisos -- se adelantaba al cuadro del sistema. Si todavia no
+    // se explico, esperar (con limite) a que el usuario confirme la pantalla antes de pedir GPS.
+    if (!localStorage.getItem('movi-permissions-primed')) {
+      await new Promise<void>(resolve => {
+        let waited = 0;
+        const check = () => {
+          waited += 200;
+          if (localStorage.getItem('movi-permissions-primed') || waited >= 15000) { resolve(); return; }
+          setTimeout(check, 200);
+        };
+        check();
+      });
+    }
 
     this.gpsStatus.set('requesting');
 
@@ -14536,8 +14618,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.driverOnline.set(next);
 
     if (next) {
-      // Iniciar tracking GPS + sesión online + cargar solicitudes
-      this.startGpsTracking(driver.id);
+      // Iniciar sesión online + cargar solicitudes (esto no pide ningún permiso)
       try {
         const sessionId = await this.agService.startOnlineSession(driver.id);
         this._onlineSessionId = sessionId;
@@ -14552,9 +14633,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         };
         document.addEventListener('visibilitychange', this._visibilityHandler);
       }
-      // Registrar notificaciones para recibir solicitudes aunque la app esté cerrada
-      this._registerNativePush().catch(() => {});
-      this._autoRegisterPush().catch(() => {});
+      // GPS + notificaciones: primera vez, explicar antes de pedirlos (ver showPermissionsPrimer).
+      // Ya explicado antes → seguir directo, sin cambiar nada del comportamiento previo.
+      if (isPlatformBrowser(this.platformId) && !localStorage.getItem('movi-permissions-primed')) {
+        this._pendingPermissionsDriverId = driver.id;
+        this.showPermissionsPrimer.set(true);
+      } else {
+        this._grantDriverPermissions(driver.id);
+      }
     } else {
       // Detener tracking, cerrar sesión y limpiar solicitudes
       this.stopGpsTracking();
@@ -15295,6 +15381,50 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _stopOnlineTimer() {
     if (this._onlineTimer) { clearInterval(this._onlineTimer); this._onlineTimer = null; }
+  }
+
+  /** Ubicación + push nativo — lo que realmente dispara los cuadros de permiso del sistema. */
+  private _grantDriverPermissions(driverId: string): void {
+    this.startGpsTracking(driverId);
+    // Registrar push — FCM nativo inmediato (no depende del GPS), web push con delay
+    this._registerNativePush().catch(() => {});
+    setTimeout(() => this._autoRegisterPush(), 500);
+  }
+
+  /** Ubicación (foreground) + push nativo del lado pasajero -- para avisarle cuando un
+   * conductor le hace/contra-oferta una oferta y cuando llega a recogerlo (pedido 2026-07-31;
+   * el codigo que MANDA esos 2 push ya existia, ver submitDriverOffer() y advanceStage(), pero
+   * nunca llegaban porque el pasajero jamas se registraba para recibir push). */
+  private _grantPassengerPermissions(): void {
+    this._startPassengerWatch();
+    this._registerNativePush().catch(() => {});
+  }
+
+  async confirmPermissionsPrimer(): Promise<void> {
+    if (isPlatformBrowser(this.platformId)) localStorage.setItem('movi-permissions-primed', '1');
+    this.showPermissionsPrimer.set(false);
+
+    // Pedido explicito 2026-07-31: ubicacion + notificaciones en UNA sola llamada nativa
+    // combinada (ver MoviPermissionsPlugin.kt) para que Android los muestre seguidos, sin la
+    // pausa propia que mete el sistema entre 2 llamadas de permiso separadas. Los flujos de
+    // abajo (_grantDriverPermissions/_grantPassengerPermissions) siguen igual: para cuando
+    // corren, el permiso ya quedo resuelto y no vuelven a disparar ningun cuadro.
+    try {
+      const cap = (window as any)?.Capacitor;
+      const MP = cap?.Plugins?.MoviPermissions;
+      if (cap?.isNativePlatform?.() && MP) {
+        await MP.requestCombined();
+      }
+    } catch {}
+
+    if (this.permissionsPrimerIsPassenger()) {
+      this.permissionsPrimerIsPassenger.set(false);
+      this._grantPassengerPermissions();
+      return;
+    }
+    const driverId = this._pendingPermissionsDriverId;
+    this._pendingPermissionsDriverId = null;
+    if (driverId) this._grantDriverPermissions(driverId);
   }
 
   private startGpsTracking(driverId: string): void {
@@ -16683,8 +16813,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Sin filtro de distancia: el conductor debe ver TODAS las solicitudes activas sin importar GPS
     // El refresh de 20s tampoco usa distancia para no excluir solicitudes válidas
     this.agService.getSearchingRequests(vt, undefined, undefined).then(reqs => {
-      this.driverRequests.set(reqs);
-      this._saveRequestsToCache(reqs);
+      // Merge (no .set() directo): esta carga inicial corre en paralelo a _showIncomingTripById
+      // (ver ngOnInit, cuando la app abre desde la notificación push) -- si esta consulta resuelve
+      // DESPUÉS de que esa solicitud puntual ya se agregó a driverRequests, un .set() la borraría
+      // de la pantalla justo cuando el conductor la estaba por ver (bug real encontrado 2026-07-30).
+      const now = Date.now();
+      this.driverRequests.update(current => {
+        const serverIds = new Set(reqs.map((r: AgTripRequest) => r.id));
+        const kept = current.filter(r =>
+          !serverIds.has(r.id) &&
+          !this._cancelledRequestIds.has(r.id) &&
+          now - new Date(r.created_at).getTime() <= 240000
+        );
+        const merged = [...reqs, ...kept].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        this._saveRequestsToCache(merged);
+        return merged;
+      });
       if (reqs.length > 0) this.agService.logMetricEvent('offer_seen').catch(() => {});
       this.cdr.markForCheck();
     }).catch(() => {});
@@ -16848,6 +16994,29 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
   }
 
+  /** Pedido explicito 2026-07-31: mientras el conductor tiene un viaje en curso, no
+   * mostrarle nuevas solicitudes hasta que este a <=5 min de dejar al pasajero en el
+   * destino final. Antes de recoger al pasajero (o mientras va camino a el) sigue
+   * bloqueado; solo se libera una vez en camino al destino ('on_route') y cerca de llegar. */
+  driverOkForNewRequests(): boolean {
+    const active = this.driverActiveTrips();
+    if (!active || active.length === 0) return true;
+    return active.every((t: any) => {
+      const req = t.ag_trip_requests;
+      if (req?.driver_stage !== 'on_route') return false;
+      const destLat = parseFloat(req?.dest_lat);
+      const destLng = parseFloat(req?.dest_lng);
+      if (!isFinite(destLat) || !isFinite(destLng)) return false;
+      const distKm = this._distMeters(this._currentLat, this._currentLng, destLat, destLng) / 1000;
+      const etaMin = distKm / 30 * 60; // misma formula de ETA usada en el resto de la app
+      return etaMin <= 5;
+    });
+  }
+  /** Lista de solicitudes que realmente se le muestran al conductor (ver driverOkForNewRequests). */
+  visibleDriverRequests(): AgTripRequest[] {
+    return this.driverOkForNewRequests() ? this.driverRequests() : [];
+  }
+
   reqRemainingMs(req: AgTripRequest): number {
     return Math.max(0, 240000 - (this.reqNowMs() - new Date(req.created_at).getTime()));
   }
@@ -16895,18 +17064,18 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   toggleInlineCounter(req: AgTripRequest) {
-    if (this.inlineCounterOpen()) {
-      this.inlineCounterOpen.set(false);
+    if (this.inlineCounterOpenId() === req.id) {
+      this.inlineCounterOpenId.set(null);
     } else {
       this.inlineCounterValue.set(req.offered_price + 500);
-      this.inlineCounterOpen.set(true);
+      this.inlineCounterOpenId.set(req.id);
     }
   }
 
   async submitInlineCounter(req: AgTripRequest) {
     this.makingOfferFor.set(req);
     this.driverOfferPrice.set(this.inlineCounterValue());
-    this.inlineCounterOpen.set(false);
+    this.inlineCounterOpenId.set(null);
     await this.submitDriverOffer();
   }
 
@@ -19275,8 +19444,13 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
     this.loadReferralData();
     this.screen.set('passenger-home');
-    this._startPassengerWatch();
     this._subscribeToDriverLocations();
+    if (isPlatformBrowser(this.platformId) && !localStorage.getItem('movi-permissions-primed')) {
+      this.permissionsPrimerIsPassenger.set(true);
+      this.showPermissionsPrimer.set(true);
+    } else {
+      this._grantPassengerPermissions();
+    }
     setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
     this.cdr.markForCheck();
   }
