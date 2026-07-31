@@ -39,15 +39,86 @@ class MoviFirebaseMessagingService : MessagingService() {
         super.onMessageReceived(remoteMessage)
 
         val data = remoteMessage.data
-        val tripId = data["trip_id"] ?: return // Solo actuamos en pushes de solicitud de viaje
-        val title = data["title"] ?: "🚗 Nueva solicitud de viaje"
-        val body = data["body"] ?: "Toca para ver los detalles"
-        val price = data["price"]
-        val dist = data["dist"]
-        val origin = data["origin"]
-        val dest = data["dest"]
+        val tripId = data["trip_id"]
+        if (tripId != null) {
+            // Push de solicitud de viaje para el CONDUCTOR (flujo ya existente).
+            val title = data["title"] ?: "🚗 Nueva solicitud de viaje"
+            val body = data["body"] ?: "Toca para ver los detalles"
+            showFullScreenTripNotification(tripId, title, body, data["price"], data["dist"], data["origin"], data["dest"])
+            return
+        }
 
-        showFullScreenTripNotification(tripId, title, body, price, dist, origin, dest)
+        // Pedido explicito del usuario 2026-07-31: que al PASAJERO tambien le suene/vibre el
+        // celular a pantalla completa (igual que al conductor) cuando el conductor llega al
+        // punto de recogida. ag-send-push YA mandaba este push con urgent=1 desde advanceStage()
+        // en anda-gana.component.ts, pero como no traia trip_id, onMessageReceived lo descartaba
+        // en silencio -- nunca se mostraba nada si la app del pasajero estaba cerrada/en segundo
+        // plano. bug real encontrado al implementar este pedido, no solo falta de feature.
+        if (data["urgent"] == "1") {
+            val title = data["title"] ?: "Movi"
+            val body = data["body"] ?: ""
+            val url = data["url"]?.let {
+                if (it.startsWith("http")) it else "https://www.publihazclick.com$it"
+            } ?: "https://www.publihazclick.com/anda-gana"
+            val notifId = (data["tag"]?.takeIf { it.isNotEmpty() } ?: url).hashCode()
+            showUrgentAlertNotification(notifId, title, body, url)
+        }
+    }
+
+    /**
+     * Notificacion de pantalla completa GENERICA para alertas urgentes que no son una solicitud
+     * de viaje (ej. "tu conductor llego"). A diferencia de showFullScreenTripNotification, no
+     * necesita un layout propio ni datos de precio/origen/destino -- el estado real (banner
+     * "Tu conductor llego!" con countdown) ya lo pinta la app sola via su suscripcion realtime
+     * en cuanto se abre, asi que tocar la notificacion solo necesita abrir la app normal.
+     */
+    private fun showUrgentAlertNotification(notifId: Int, title: String, body: String, url: String) {
+        val channelId = "movi_trips" // mismo canal de alta prioridad que ya crea MainActivity
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(NotificationManager::class.java)
+            if (manager.getNotificationChannel(channelId) == null) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Solicitudes de viaje",
+                    NotificationManager.IMPORTANCE_HIGH
+                )
+                channel.description = "Alertas urgentes de viajes Movi"
+                channel.enableVibration(true)
+                channel.vibrationPattern = longArrayOf(0, 300, 100, 300, 100, 300, 100, 600)
+                channel.enableLights(true)
+                manager.createNotificationChannel(channel)
+            }
+        }
+
+        val tapIntent = Intent(this, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = Uri.parse(url)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val tapPendingIntent = PendingIntent.getActivity(
+            this, notifId, tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setColor(Color.parseColor("#7C3AED"))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setAutoCancel(true)
+            .setContentIntent(tapPendingIntent)
+            // La linea clave: pantalla completa aunque el celular este bloqueado/la app cerrada.
+            .setFullScreenIntent(tapPendingIntent, true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+
+        getSystemService(NotificationManager::class.java).notify(notifId, notification)
     }
 
     private fun showFullScreenTripNotification(
