@@ -52,9 +52,10 @@ async function getFcmAccessToken(): Promise<string | null> {
   return access_token;
 }
 
+let _lastFcmDebug: string | null = null;
 async function sendFcm(token: string, title: string, body: string, data: Record<string, string>): Promise<boolean> {
   const access = await getFcmAccessToken();
-  if (!access || !FCM_PROJECT_ID) return false;
+  if (!access || !FCM_PROJECT_ID) { _lastFcmDebug = `no access token or project id (access=${!!access}, project=${FCM_PROJECT_ID})`; return false; }
   // CAMBIO 2026-07-30 (pedido explicito del usuario): mensaje 100% "data" (sin bloque
   // `notification`) a proposito. Un FCM con `notification` deja que Android muestre la
   // notificacion automaticamente pero SOLO invoca el codigo de la app (onMessageReceived) si la
@@ -78,6 +79,7 @@ async function sendFcm(token: string, title: string, body: string, data: Record<
   if (!res.ok) {
     const txt = await res.text();
     console.error('[fcm send]', res.status, txt);
+    _lastFcmDebug = `${res.status}: ${txt.slice(0, 300)}`;
     return false;
   }
   return true;
@@ -139,7 +141,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: wpSubs.length } });
+    return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: wpSubs.length }, debug: _lastFcmDebug });
   } catch (err) {
     return json({ error: 'Error interno', detail: String(err) }, 500);
   }

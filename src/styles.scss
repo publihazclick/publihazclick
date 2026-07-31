@@ -11,6 +11,15 @@ html, body {
   padding: 0;
 }
 
+// Movi (anda-gana) tiene su propio splash de marca (morado) -- evita el flash negro
+// del fondo oscuro de arriba mientras carga, antes de que Angular pinte su splash.
+html.movi-app,
+html.movi-app body {
+  background-color: #7C3AED !important;
+  margin: 0;
+  padding: 0;
+}
+
 @layer base {
   :root {
     --primary: #00E5FF;

@@ -3,6 +3,7 @@
   "outputDirectory": "dist/publihazclick/browser",
   "installCommand": "npm install",
   "rewrites": [
+    { "source": "/s/:code", "destination": "https://btkdmdhzouzvzgyuzgbh.supabase.co/functions/v1/sms-link-redirect/:code" },
     { "source": "/@:path*", "destination": "/index.csr.html" },
     { "source": "/(.*)", "destination": "/index.csr.html" }
   ],
@@ -49,6 +50,14 @@
       "source": "/(.*\\.(?:js|css|woff2?|ttf|ico|webp|png|jpg|svg))$",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/downloads/:file*.apk",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"movi-conductor.apk\"" },
+        { "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }
       ]
     }
   ]

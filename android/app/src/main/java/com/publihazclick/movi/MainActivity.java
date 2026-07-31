@@ -12,6 +12,9 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Debe registrarse ANTES de super.onCreate() -- Capacitor arma el listado de plugins
+        // al inicializar el Bridge, que ocurre dentro de super.onCreate().
+        registerPlugin(MoviPermissionsPlugin.class);
         super.onCreate(savedInstanceState);
         createNotificationChannels();
         handleTripRequestIntent(getIntent(), true);

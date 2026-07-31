@@ -1,8 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Revertido 2026-07-30 (primer intento): cambiar el parent a Theme.SplashScreen sin manejar
+         la animacion de salida agrego pantallas blanca y negra en vez de arreglarlas. Segundo
+         intento el mismo dia: se mantiene el tema simple (mismo parent que pre-31, sin
+         Theme.SplashScreen) pero se fija SOLO el color de fondo que Android 12+ usa para su
+         splash automatico obligatorio (windowSplashScreenBackground), sin tocar el icono ni la
+         animacion de salida: esos dos fueron los que causaron el problema la primera vez.
+         Tercer intento el mismo dia: la app seguia mostrando 2 pantallas: la splash
+         obligatoria de Android 12+ usaba el icono de la app (ic_launcher_foreground, que trae
+         el diseno completo con su propio fondo degradado) como icono central, chocando
+         visualmente contra la splash real de la app (pantalla Angular screen==='splash' en
+         anda-gana.component.ts, que se muestra justo despues). Se fija
+         windowSplashScreenAnimatedIcon a un drawable transparente para que la splash
+         obligatoria del sistema quede solo como fondo morado solido, sin icono en caja, y la
+         transicion hacia la splash real de la app se sienta continua en vez de 2 pantallas
+         distintas. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_bg</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowSplashScreenBackground">#7C3AED</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_empty</item>
     </style>
 </resources>
