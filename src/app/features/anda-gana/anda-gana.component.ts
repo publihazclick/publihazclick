@@ -10788,6 +10788,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _currentLng = -74.0817;
   /** true solo cuando tenemos una lectura GPS con precisión real (<300m). Evita usar coords por defecto (Bogotá) como origen de viaje. */
   private _gpsRealFix    = false;
+  /** true cuando initGpsAndMap tuvo que usar el fallback de Bogota (DEFAULT_LAT/LNG) porque el
+   * GPS no dio una lectura a tiempo -- comun en la PRIMERA instalacion (GPS en frio puede tardar
+   * mas de 30s). Mientras esto sea true, la direccion/mapa mostrados NO son reales; se corrige
+   * solos apenas _startPassengerWatch consiga la primera lectura real (ver ahi). */
+  private _usedFallbackLocation = false;
   private _cityFromGps   = '';   // ciudad detectada por GPS — filtra sugerencias de búsqueda
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
   private readonly SUPABASE_ANON = environment.moviSupabase.anonKey;
@@ -11257,8 +11262,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this._lastNotifiedLng = lng;
         this.gpsStatus.set('granted');
 
+        // Bug real 2026-07-31: en la primera instalacion el GPS en frio puede tardar mas de los
+        // 30s que espera initGpsAndMap, que mientras tanto deja al usuario viendo Bogota
+        // (DEFAULT_LAT/LNG) como si fuera su ubicacion real -- direccion mostrada y mapa
+        // incluidos. Esta es la primera lectura real despues de ese fallback: forzar la
+        // correccion (direccion + centrar mapa) sin importar si el usuario ya "navego" el mapa,
+        // porque esa navegacion previa fue sobre una posicion que nunca fue real.
+        const wasFallback = this._usedFallbackLocation;
+        if (wasFallback) {
+          this._usedFallbackLocation = false;
+          this._reverseGeocode(lat, lng);
+        }
+
         // Centrar mapa en nueva posición si el usuario no está navegando manualmente
-        if (pos.coords.accuracy <= 50 && this._map && this.passengerSection() === null && !this.passengerMapPanned()) {
+        if ((wasFallback || pos.coords.accuracy <= 50) && this._map && this.passengerSection() === null && (wasFallback || !this.passengerMapPanned())) {
           this._map.easeTo({ center: [lng, lat], duration: 800 });
           this._userMarker?.setLngLat([lng, lat]);
         } else {
@@ -11522,8 +11539,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       if (e?.code === 1 /* PERMISSION_DENIED */) {
         this.gpsStatus.set('denied');
       } else {
-        // Timeout sin lectura precisa — mostrar mapa igualmente para no bloquear al usuario
+        // Timeout sin lectura precisa — mostrar mapa igualmente para no bloquear al usuario,
+        // pero recordar que estas coords son el fallback de Bogota, no la ubicacion real (ver
+        // _usedFallbackLocation y la correccion automatica en _startPassengerWatch).
         this.gpsStatus.set('granted');
+        this._usedFallbackLocation = true;
       }
     }
 
@@ -15461,8 +15481,22 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         }
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
         this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined);
+
+        // Bug real 2026-07-31: este callback nunca actualizaba _currentLat/_currentLng (solo
+        // el marcador del mapa) -- si initGpsAndMap cayo en el fallback de Bogota (GPS en frio
+        // lento, comun en la primera instalacion), el conductor quedaba emparejando/viendo
+        // solicitudes como si estuviera en Bogota indefinidamente, aunque el mapa se veia bien.
+        const wasFallback = this._usedFallbackLocation;
+        this._currentLat = pos.coords.latitude;
+        this._currentLng = pos.coords.longitude;
+        this._gpsRealFix = true;
+        if (wasFallback) {
+          this._usedFallbackLocation = false;
+          this._reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        }
+
         // Auto-follow conductor cuando está online pero sin navegación activa
-        if (!this.navActive() && !this.driverMapPanned() && this._map) {
+        if (!this.navActive() && (wasFallback || !this.driverMapPanned()) && this._map) {
           this._map.easeTo({
             center:   [pos.coords.longitude, pos.coords.latitude],
             bearing:  0,
