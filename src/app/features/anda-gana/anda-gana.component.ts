@@ -10808,9 +10808,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       SplashScreen.hide({ fadeOutDuration: 0 }).catch(() => {});
-      // Splash estatico de arranque (index.html) ya cumplio su funcion -- el propio
-      // splash de Angular (screen()==='splash', identico visualmente) ya esta pintado.
-      document.getElementById('movi-boot-splash')?.remove();
     }
 
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');
