@@ -4,6 +4,8 @@ import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/co
 import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
 import { AgPhoneAuthService } from './ag-phone-auth.service';
+import { distMeters } from './geo.utils';
+import { BOARDING_TARGET_STAGE, isStageReached } from './trip-stage.utils';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { getMoviClient } from './movi.client';
@@ -5443,7 +5445,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                          de espera / "Ya estoy a bordo" del pasajero) que siempre salta directo a
                          on_route. Se unifica para que "pasajero a bordo" siempre arranque el viaje
                          de una vez, sin importar desde cual pantalla lo marque el conductor. -->
-                    <button (click)="advanceStage(trip, 'on_route')"
+                    <button (click)="advanceStage(trip, BOARDING_TARGET_STAGE)"
                       class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
                       style="background:linear-gradient(135deg,#0891b2,#06b6d4)">
                       <span class="material-symbols-outlined" style="font-size:18px">person_check</span>Pasajero a bordo
@@ -10709,14 +10711,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _lastNotifiedLng:     number        = 0;      // última lng que causó update de búsqueda
 
   /** Distancia Haversine simplificada en metros */
+  /** Extraida a geo.utils.ts (con prueba propia) -- se deja este metodo como delgado envoltorio
+   * para no tener que tocar las decenas de sitios que ya lo llaman como this._distMeters(...). */
   private _distMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2
-            + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
-            * Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return distMeters(lat1, lng1, lat2, lng2);
   }
   private _destMarker:      any = null;
   private _currentLat = 4.6097;
@@ -14650,10 +14648,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     { key: 'arrived_at_destination', label: 'Llegó destino' },
   ];
 
+  // Delegado a trip-stage.utils.ts (con prueba propia) -- ver BOARDING_TARGET_STAGE ahi para el
+  // contexto del bug real que esto ayuda a prevenir.
+  readonly BOARDING_TARGET_STAGE = BOARDING_TARGET_STAGE;
+
   isStageReached(current: string | null | undefined, target: string): boolean {
-    if (!current) return false;
-    const order = ['heading_to_pickup', 'arrived_at_pickup', 'picked_up', 'on_route', 'arrived_at_destination', 'completed'];
-    return order.indexOf(current) >= order.indexOf(target);
+    return isStageReached(current, target);
   }
 
   private _sendWhatsApp(phone: string, event: string, data: Record<string, string>): void {
@@ -19818,7 +19818,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     // Notificar al conductor por los dos canales para garantizar entrega
     if (driverId) this.agService.broadcastPassengerBoarded(driverId, tripId);
     this.agService.broadcastTripBoarding(tripId);
-    await this.agService.updateTripStage(tripId, 'on_route');
+    await this.agService.updateTripStage(tripId, BOARDING_TARGET_STAGE);
     this.cdr.markForCheck();
   }
 
@@ -19836,7 +19836,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const dLng = parseFloat(req?.dest_lng);
     if (!isFinite(dLat) || !isFinite(dLng)) {
       console.error('[Movi] dest coords missing on boarding', req);
-      this.advanceStage(trip, 'on_route');
+      this.advanceStage(trip, BOARDING_TARGET_STAGE);
       return;
     }
 
@@ -19854,7 +19854,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     });
 
     // Actualizar DB en segundo plano
-    this.advanceStage(trip, 'on_route');
+    this.advanceStage(trip, BOARDING_TARGET_STAGE);
   }
 
   async driverPassengerBoarded(): Promise<void> {
