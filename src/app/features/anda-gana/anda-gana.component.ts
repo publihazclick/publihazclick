@@ -8,6 +8,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { getMoviClient } from './movi.client';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { Room, RoomEvent, Track, RemoteTrack } from 'livekit-client';
 
 type AgScreen = 'splash' | 'loading' | 'home' | 'quick-register' | 'passenger-form' | 'driver-form' | 'passenger-home' | 'driver-home';
 type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
@@ -61,6 +62,66 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   [style.background]="screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'"
   [style.padding]="screen() === 'quick-register' || screen() === 'passenger-home' ? '0' : screen() === 'driver-home' ? '0 16px' : '24px 16px'"
   style="min-height:100dvh">
+
+  <!-- ═══════════ LLAMADA ENTRANTE (LiveKit) ═══════════ -->
+  @if (callState() === 'incoming') {
+    <div class="fixed inset-0 flex flex-col items-center justify-center px-6"
+      style="z-index:9999;background:rgba(5,10,25,0.96);backdrop-filter:blur(6px)">
+      <div class="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+        style="background:rgba(34,197,94,0.15);border:2px solid rgba(34,197,94,0.4);animation:pulse 1.2s ease-in-out infinite">
+        <span class="material-symbols-outlined text-emerald-400" style="font-size:36px;font-variation-settings:'FILL' 1">call</span>
+      </div>
+      <p style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 6px">Llamada entrante</p>
+      <p style="color:#fff;font-size:22px;font-weight:900;margin:0 0 40px;text-align:center">{{ callPeerName() }}</p>
+      <div class="flex items-center gap-8">
+        <button (click)="declineCall()" class="flex flex-col items-center gap-2">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+            style="background:linear-gradient(135deg,#dc2626,#ef4444)">
+            <span class="material-symbols-outlined text-white" style="font-size:28px">call_end</span>
+          </div>
+          <span style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:700">Rechazar</span>
+        </button>
+        <button (click)="answerCall()" class="flex flex-col items-center gap-2">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+            style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+            <span class="material-symbols-outlined text-white" style="font-size:28px;font-variation-settings:'FILL' 1">call</span>
+          </div>
+          <span style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:700">Contestar</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════ BARRA DE LLAMADA EN CURSO (saliente/conectada) ═══════════ -->
+  @if (callState() === 'outgoing' || callState() === 'connected') {
+    <div class="fixed left-3 right-3 flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl"
+      style="z-index:9998;top:max(12px,env(safe-area-inset-top));background:linear-gradient(135deg,#16a34a,#15803d);box-shadow:0 8px 32px rgba(22,163,74,0.4)">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+        style="background:rgba(255,255,255,0.15)">
+        <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">call</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white font-black text-sm truncate">{{ callPeerName() }}</p>
+        <p class="text-emerald-100 text-xs">
+          {{ callState() === 'outgoing' ? 'Llamando...' : formatCallDuration() }}
+        </p>
+      </div>
+      @if (callState() === 'connected') {
+        <button (click)="toggleCallMute()"
+          class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
+          [style.background]="callMuted() ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)'">
+          <span class="material-symbols-outlined" style="font-size:18px" [style.color]="callMuted() ? '#16a34a' : '#fff'">
+            {{ callMuted() ? 'mic_off' : 'mic' }}
+          </span>
+        </button>
+      }
+      <button (click)="hangUpCall()"
+        class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
+        style="background:#dc2626">
+        <span class="material-symbols-outlined text-white" style="font-size:18px">call_end</span>
+      </button>
+    </div>
+  }
 
   <!-- ═══════════ TOAST DIRECCIÓN GUARDADA ═══════════ -->
   @if (addrSavedToast()) {
@@ -9793,8 +9854,24 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   counterOfferValue      = signal(0);
   submittingCounter      = signal(false);
 
-  // Llamadas enmascaradas
+  // Llamadas enmascaradas (Twilio, respaldo -- ver ag-masked-call, ya no se usa por defecto)
   callingDriver      = signal(false);
+
+  // ── Llamadas de voz LiveKit (conductor<->pasajero, sin costo de PSTN) ──
+  callState      = signal<'idle' | 'outgoing' | 'incoming' | 'connected'>('idle');
+  callPeerName   = signal('');
+  callMuted      = signal(false);
+  callDuration   = signal(0);
+  private _callRoom: Room | null = null;
+  private _callTripId: string | null = null;
+  // Identidad del OTRO lado de la llamada, para saber a que canal avisar al colgar/rechazar --
+  // se llena directo si YO llamo, o se copia del payload de "incoming_call" si me llaman a mi.
+  private _callPeerRole: 'driver' | 'passenger' | null = null;
+  private _callPeerReplyId: string | null = null;
+  private _callTimeoutTimer: any = null;
+  private _callDurationInterval: any = null;
+  private _driverCallsChannel: RealtimeChannel | null = null;
+  private _passengerCallsChannel: RealtimeChannel | null = null;
 
   // Driver analytics
   analyticsPeriodDriver = signal(30);
@@ -10954,6 +11031,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         }
         this.cdr.markForCheck();
       },
+    );
+    // Llamadas de voz LiveKit: escuchar si el pasajero llama
+    if (this._driverCallsChannel) { try { this._driverCallsChannel.unsubscribe(); } catch {} }
+    this._driverCallsChannel = this.agService.subscribeToDriverCalls(
+      driverId,
+      (p) => this._onIncomingCall(p),
+      (p) => this._onCallEnded(p),
     );
     // Fallback: polling cada 2.5s para detectar viajes aceptados si el realtime falla (RLS, red, etc.)
     if (this._activeTripsInterval) clearInterval(this._activeTripsInterval);
@@ -15192,14 +15276,141 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   async callPassengerFromTrip(trip: any): Promise<void> {
+    if (this.callState() !== 'idle') return;
     const tripReqId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
-    if (!tripReqId) return;
-    const r = await this.agService.startMaskedCall(tripReqId);
-    if (r.ok) {
-      alert('📞 Te estamos llamando. Al contestar conectaremos con el pasajero.');
-    } else {
-      alert('Error: ' + (r.error ?? 'No se pudo llamar'));
+    const req = trip.ag_trip_requests ?? trip;
+    const passengerAuthId = req?.ag_users?.auth_user_id;
+    const myId = this.agProfile()?.id;
+    if (!tripReqId || !passengerAuthId || !myId) {
+      alert('No se pudo identificar al pasajero para llamar.');
+      return;
     }
+    this._callTripId = tripReqId;
+    this._callPeerRole = 'passenger';
+    this._callPeerReplyId = passengerAuthId;
+    this.callPeerName.set(req?.ag_users?.full_name ?? 'Pasajero');
+    this.callState.set('outgoing');
+    try {
+      await this._connectCallRoom(tripReqId, myId);
+      this.agService.broadcastCallToPassenger(passengerAuthId, {
+        tripRequestId: tripReqId,
+        callerName: this.agProfile()?.full_name ?? 'Conductor',
+        callerRole: 'driver',
+        callerReplyId: this.driverData()?.id ?? '',
+      });
+      this._callTimeoutTimer = setTimeout(() => {
+        if (this.callState() === 'outgoing') this.hangUpCall();
+      }, 30000);
+    } catch (e: any) {
+      this._resetCallState();
+      alert('No se pudo iniciar la llamada: ' + (e?.message ?? 'Error desconocido'));
+    }
+  }
+
+  // ═══════════ Llamadas de voz LiveKit (conductor<->pasajero) ═══════════
+  private async _connectCallRoom(tripId: string, myAgUserId: string): Promise<void> {
+    const res = await this.agService.getCallToken(tripId, myAgUserId);
+    const room = new Room({ adaptiveStream: true });
+    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+      if (track.kind === Track.Kind.Audio) {
+        const el = track.attach();
+        el.setAttribute('data-movi-call-audio', '1');
+        el.style.display = 'none';
+        document.body.appendChild(el);
+      }
+    });
+    room.on(RoomEvent.Disconnected, () => {
+      // El otro lado colgó o se cayó la conexión -- limpiar sin volver a mandar broadcast
+      this._resetCallState();
+    });
+    await room.connect(res.url, res.token);
+    await room.localParticipant.setMicrophoneEnabled(true);
+    this._callRoom = room;
+  }
+
+  private _startCallDurationTimer(): void {
+    this.callDuration.set(0);
+    this._callDurationInterval = setInterval(() => {
+      this.callDuration.update(s => s + 1);
+      this.cdr.markForCheck();
+    }, 1000);
+  }
+
+  private _resetCallState(): void {
+    if (this._callTimeoutTimer) { clearTimeout(this._callTimeoutTimer); this._callTimeoutTimer = null; }
+    if (this._callDurationInterval) { clearInterval(this._callDurationInterval); this._callDurationInterval = null; }
+    if (this._callRoom) { try { this._callRoom.disconnect(); } catch {} this._callRoom = null; }
+    document.querySelectorAll('[data-movi-call-audio]').forEach(el => el.remove());
+    this.callState.set('idle');
+    this.callPeerName.set('');
+    this.callMuted.set(false);
+    this.callDuration.set(0);
+    this._callTripId = null;
+    this._callPeerRole = null;
+    this._callPeerReplyId = null;
+    this.cdr.markForCheck();
+  }
+
+  /** Cuelga una llamada en curso (saliente esperando, o ya conectada) y avisa al otro lado. */
+  hangUpCall(): void {
+    if (this._callPeerRole === 'driver' && this._callPeerReplyId && this._callTripId) {
+      this.agService.broadcastCallEndedToDriver(this._callPeerReplyId, this._callTripId);
+    } else if (this._callPeerRole === 'passenger' && this._callPeerReplyId && this._callTripId) {
+      this.agService.broadcastCallEndedToPassenger(this._callPeerReplyId, this._callTripId);
+    }
+    this._resetCallState();
+  }
+
+  /** Llamada entrante rechazada sin contestar. */
+  declineCall(): void {
+    this.hangUpCall();
+  }
+
+  /** Acepta una llamada entrante -- se conecta a la misma sala que ya armó quien llama. */
+  async answerCall(): Promise<void> {
+    const tripId = this._callTripId;
+    const myId = this.agProfile()?.id;
+    if (!tripId || !myId) return;
+    try {
+      await this._connectCallRoom(tripId, myId);
+      this.callState.set('connected');
+      this._startCallDurationTimer();
+    } catch (e: any) {
+      alert('No se pudo conectar la llamada: ' + (e?.message ?? 'Error desconocido'));
+      this._resetCallState();
+    }
+  }
+
+  toggleCallMute(): void {
+    if (!this._callRoom) return;
+    const next = !this.callMuted();
+    this._callRoom.localParticipant.setMicrophoneEnabled(!next);
+    this.callMuted.set(next);
+  }
+
+  formatCallDuration(): string {
+    const s = this.callDuration();
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${r.toString().padStart(2, '0')}`;
+  }
+
+  /** Se llama cuando llega un broadcast "incoming_call" (desde cualquiera de los dos lados). */
+  private _onIncomingCall(payload: { tripRequestId: string; callerName: string; callerRole: 'driver' | 'passenger'; callerReplyId: string }): void {
+    if (this.callState() !== 'idle') return; // ya en otra llamada -- se ignora (simplificacion, sin "llamada en espera")
+    this._callTripId = payload.tripRequestId;
+    this._callPeerRole = payload.callerRole;
+    this._callPeerReplyId = payload.callerReplyId;
+    this.callPeerName.set(payload.callerName);
+    this.callState.set('incoming');
+    try { navigator.vibrate?.([400, 200, 400, 200, 400]); } catch {}
+    this.cdr.markForCheck();
+  }
+
+  /** Se llama cuando el otro lado colgó/rechazó/se cayó antes de que yo colgara. */
+  private _onCallEnded(payload: { tripRequestId: string }): void {
+    if (this._callTripId !== payload.tripRequestId) return;
+    this._resetCallState();
   }
 
   driverLevelColor(): string {
@@ -16302,6 +16513,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           }
         },
       );
+      // Llamadas de voz LiveKit: escuchar si el conductor llama
+      if (this._passengerCallsChannel) { try { this._passengerCallsChannel.unsubscribe(); } catch {} }
+      this._passengerCallsChannel = this.agService.subscribeToPassengerCalls(
+        myAuthId,
+        (p) => this._onIncomingCall(p),
+        (p) => this._onCallEnded(p),
+      );
     }
     if (tripId && offer.driver_id) {
       this.startDriverTracking(offer.driver_id, tripId);
@@ -16412,6 +16630,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this._startTrackingAssignedDriver(saved.driverId!);
         this.startDriverTracking(saved.driverId!, saved.tripId);
         this.startPassengerChatBackground(saved.tripId);
+        const myAuthIdRestore = this.agProfile()?.auth_user_id;
+        if (myAuthIdRestore) {
+          if (this._passengerCallsChannel) { try { this._passengerCallsChannel.unsubscribe(); } catch {} }
+          this._passengerCallsChannel = this.agService.subscribeToPassengerCalls(
+            myAuthIdRestore,
+            (p) => this._onIncomingCall(p),
+            (p) => this._onCallEnded(p),
+          );
+        }
         this.cdr.markForCheck();
       }
     } catch { localStorage.removeItem('movi_active_trip'); }
@@ -19043,17 +19270,35 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   async callDriver(): Promise<void> {
+    if (this.callState() !== 'idle') return;
     const tripId = this.currentTripRequestId();
-    if (!tripId || this.callingDriver()) return;
-    this.callingDriver.set(true);
+    const offer = this.tripAccepted();
+    const driverId = offer?.driver_id;
+    const myId = this.agProfile()?.id;
+    if (!tripId || !driverId || !myId) {
+      alert('No se pudo identificar al conductor para llamar.');
+      return;
+    }
+    this._callTripId = tripId;
+    this._callPeerRole = 'driver';
+    this._callPeerReplyId = driverId;
+    this.callPeerName.set(offer?.ag_drivers?.ag_users?.full_name ?? 'Conductor');
+    this.callState.set('outgoing');
     try {
-      const r = await this.agService.startMaskedCall(tripId);
-      if (r.ok) {
-        alert('📞 Te estamos llamando. Contesta y serás conectado con el conductor.');
-      } else {
-        alert('Error: ' + (r.error ?? 'No se pudo iniciar llamada'));
-      }
-    } finally { this.callingDriver.set(false); }
+      await this._connectCallRoom(tripId, myId);
+      this.agService.broadcastCallToDriver(driverId, {
+        tripRequestId: tripId,
+        callerName: this.agProfile()?.full_name ?? 'Pasajero',
+        callerRole: 'passenger',
+        callerReplyId: this.agProfile()?.auth_user_id ?? '',
+      });
+      this._callTimeoutTimer = setTimeout(() => {
+        if (this.callState() === 'outgoing') this.hangUpCall();
+      }, 30000);
+    } catch (e: any) {
+      this._resetCallState();
+      alert('No se pudo iniciar la llamada: ' + (e?.message ?? 'Error desconocido'));
+    }
   }
 
   // ═══════════ Cupones ═══════════

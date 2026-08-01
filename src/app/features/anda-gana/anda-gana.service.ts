@@ -1769,6 +1769,79 @@ export class AndaGanaService {
   }
 
   // ═══════════════════════════════════════════════════
+  // LLAMADAS DE VOZ (LiveKit) — conductor<->pasajero, sin costo de PSTN
+  // ═══════════════════════════════════════════════════
+  async getCallToken(tripRequestId: string, agUserId: string): Promise<{ token: string; url: string; room: string; peer_name: string }> {
+    const r = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-livekit-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey },
+      body: JSON.stringify({ trip_request_id: tripRequestId, ag_user_id: agUserId }),
+    });
+    const out = await r.json();
+    if (!r.ok) throw new Error(out?.error ?? 'No se pudo iniciar la llamada');
+    return out;
+  }
+
+  /** Notifica al conductor que le esta entrando una llamada del pasajero. callerReplyId/callerRole
+   * identifican a quien llama para que el conductor sepa a que canal responder al colgar/rechazar. */
+  broadcastCallToDriver(driverId: string, payload: { tripRequestId: string; callerName: string; callerRole: 'driver' | 'passenger'; callerReplyId: string }): void {
+    const ch = this.supabase.channel(`driver-calls-${driverId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'incoming_call', payload }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
+  /** Notifica al pasajero que le esta entrando una llamada del conductor */
+  broadcastCallToPassenger(passengerAuthId: string, payload: { tripRequestId: string; callerName: string; callerRole: 'driver' | 'passenger'; callerReplyId: string }): void {
+    const ch = this.supabase.channel(`passenger-calls-${passengerAuthId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'incoming_call', payload }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
+  /** Avisa que la llamada termino (colgada o rechazada) al otro lado */
+  broadcastCallEndedToDriver(driverId: string, tripRequestId: string): void {
+    const ch = this.supabase.channel(`driver-calls-${driverId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'call_ended', payload: { tripRequestId } }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+  broadcastCallEndedToPassenger(passengerAuthId: string, tripRequestId: string): void {
+    const ch = this.supabase.channel(`passenger-calls-${passengerAuthId}`);
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        ch.send({ type: 'broadcast', event: 'call_ended', payload: { tripRequestId } }).catch(() => {});
+        setTimeout(() => { try { ch.unsubscribe(); } catch {} }, 3000);
+      }
+    });
+  }
+
+  subscribeToDriverCalls(driverId: string, onIncoming: (p: { tripRequestId: string; callerName: string; callerRole: 'driver' | 'passenger'; callerReplyId: string }) => void, onEnded: (p: { tripRequestId: string }) => void): RealtimeChannel {
+    return this.supabase
+      .channel(`driver-calls-${driverId}`)
+      .on('broadcast', { event: 'incoming_call' }, ({ payload }) => onIncoming(payload as any))
+      .on('broadcast', { event: 'call_ended' }, ({ payload }) => onEnded(payload as any))
+      .subscribe();
+  }
+
+  subscribeToPassengerCalls(passengerAuthId: string, onIncoming: (p: { tripRequestId: string; callerName: string; callerRole: 'driver' | 'passenger'; callerReplyId: string }) => void, onEnded: (p: { tripRequestId: string }) => void): RealtimeChannel {
+    return this.supabase
+      .channel(`passenger-calls-${passengerAuthId}`)
+      .on('broadcast', { event: 'incoming_call' }, ({ payload }) => onIncoming(payload as any))
+      .on('broadcast', { event: 'call_ended' }, ({ payload }) => onEnded(payload as any))
+      .subscribe();
+  }
+
+  // ═══════════════════════════════════════════════════
   // DRIVER: documentos
   // ═══════════════════════════════════════════════════
   async listDriverDocuments(driverId: string): Promise<any[]> {
