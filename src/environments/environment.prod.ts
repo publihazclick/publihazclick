@@ -37,4 +37,6 @@ export const environment = {
   },
   youtubeApiKey: 'AIzaSyCLn_rNDe8iOHzdDFeHw4pWHrV3RvWgoV8',
   vapidPublicKey: 'BHnyzdVCWjJiPJ0PpD7mvqmfNk1-PLOMGfWrVdn6OHiGELV_igy2OP9jD4UEeeKmOUJ2SmOLixmX52mMGW2qAc8',
+  // Ver environment.ts -- vacio hasta crear la cuenta gratis en sentry.io
+  sentryDsn: '',
 };

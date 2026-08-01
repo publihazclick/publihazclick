@@ -52,6 +52,10 @@ export const environment = {
   // YouTube Data API v3 key — get from console.cloud.google.com
   youtubeApiKey: 'AIzaSyCLn_rNDe8iOHzdDFeHw4pWHrV3RvWgoV8',
   vapidPublicKey: 'BHnyzdVCWjJiPJ0PpD7mvqmfNk1-PLOMGfWrVdn6OHiGELV_igy2OP9jD4UEeeKmOUJ2SmOLixmX52mMGW2qAc8',
+  // Monitoreo de errores (Sentry) -- vacio a proposito hasta que se cree la cuenta gratis en
+  // sentry.io y se pegue el DSN real aca. Con el string vacio, Sentry simplemente no se
+  // inicializa (ver app.config.ts) -- no rompe nada mientras tanto.
+  sentryDsn: '',
 };
 
 /**
