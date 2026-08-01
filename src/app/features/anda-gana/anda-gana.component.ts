@@ -15603,6 +15603,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
             duration: 600,
           });
         }
+
+        // Pedido explicito del usuario 2026-07-31: finalizar el viaje solo con GPS, sin que el
+        // conductor tenga que tocar "Finalizar".
+        this._checkAutoFinishTrip(pos.coords.latitude, pos.coords.longitude);
       },
       (err) => {
         console.error('GPS tracking error:', err.message);
@@ -15620,6 +15624,38 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._startBackgroundTracking(driverId).catch(() => {});
     // Web Push para navegadores (funciona con app cerrada)
     this._autoRegisterWebPush().catch(() => {});
+  }
+
+  // ── Finalizar viaje automatico por GPS (pedido explicito del usuario 2026-07-31) ──
+  // Radio de deteccion: 30m. Aviso honesto (dado al usuario antes de construir esto): el GPS de
+  // un celular normal en ciudad tiene un margen de error real de 5-20m (peor entre edificios
+  // altos/tuneles), asi que "exactamente en el punto" no es algo que ninguna app pueda garantizar
+  // al 100% -- este radio es un balance entre disparar apenas se acerca (lo pedido) y no disparar
+  // por un salto de GPS a media cuadra de distancia.
+  private readonly AUTO_FINISH_RADIUS_M = 30;
+  private _autoFinishedTripIds = new Set<string>();
+
+  private _checkAutoFinishTrip(lat: number, lng: number): void {
+    const trips = this.driverActiveTrips();
+    if (!trips?.length) return;
+    for (const trip of trips as any[]) {
+      const req = trip.ag_trip_requests ?? trip;
+      if (req?.driver_stage !== 'on_route') continue;
+      const tripId: string | undefined = trip.trip_request_id ?? req?.id;
+      if (!tripId || this._autoFinishedTripIds.has(tripId)) continue;
+      const destLat = parseFloat(req?.dest_lat);
+      const destLng = parseFloat(req?.dest_lng);
+      if (!isFinite(destLat) || !isFinite(destLng)) continue;
+      const distM = this._distMeters(lat, lng, destLat, destLng);
+      if (distM <= this.AUTO_FINISH_RADIUS_M) {
+        this._autoFinishedTripIds.add(tripId);
+        this.finishDriverTrip(trip).catch(() => {
+          // Si algo falla, permitir reintentar en la siguiente lectura de GPS en vez de
+          // quedar bloqueado para siempre por este trip.
+          this._autoFinishedTripIds.delete(tripId);
+        });
+      }
+    }
   }
 
   private _nativePushRegistered = false;
