@@ -10747,6 +10747,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // MoviFirebaseMessagingService.kt, que abre MainActivity con esta URL. Se usa mas abajo,
     // despues de que el conductor termine de cargar.
     const _tripRequestIdParam = this.route.snapshot.queryParamMap.get('trip_request_id');
+    // Abierta desde la notificacion nativa de una llamada entrante (app cerrada/en segundo
+    // plano cuando llamaron) -- el broadcast realtime que normalmente muestra esto se pierde si
+    // la app no estaba corriendo, asi que estos datos van codificados en la URL en su lugar (ver
+    // _pushIncomingCallNotification + handleDeepLinkIntent en MainActivity.java).
+    const _incomingCallTrip = this.route.snapshot.queryParamMap.get('incoming_call_trip');
+    if (_incomingCallTrip && this.callState() === 'idle') {
+      this._callTripId = _incomingCallTrip;
+      this._callPeerRole = (this.route.snapshot.queryParamMap.get('incoming_call_role') as 'driver' | 'passenger') ?? 'passenger';
+      this._callPeerReplyId = this.route.snapshot.queryParamMap.get('incoming_call_reply') ?? '';
+      this.callPeerName.set(this.route.snapshot.queryParamMap.get('incoming_call_name') ?? 'Alguien');
+      this.callState.set('incoming');
+    }
     if (this.route.snapshot.queryParamMap.get('wallet') === 'result') {
       this.walletPaymentResult.set('processing');
       // Limpiar URL para que el botón Atrás de Android no vuelva a disparar esto
@@ -15292,12 +15304,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.callState.set('outgoing');
     try {
       await this._connectCallRoom(tripReqId, myId);
+      const myName = this.agProfile()?.full_name ?? 'Conductor';
+      const myReplyId = this.driverData()?.id ?? '';
       this.agService.broadcastCallToPassenger(passengerAuthId, {
-        tripRequestId: tripReqId,
-        callerName: this.agProfile()?.full_name ?? 'Conductor',
-        callerRole: 'driver',
-        callerReplyId: this.driverData()?.id ?? '',
+        tripRequestId: tripReqId, callerName: myName, callerRole: 'driver', callerReplyId: myReplyId,
       });
+      this._pushIncomingCallNotification(passengerAuthId, tripReqId, myName, 'driver', myReplyId);
       this._callTimeoutTimer = setTimeout(() => {
         if (this.callState() === 'outgoing') this.hangUpCall();
       }, 30000);
@@ -15305,6 +15317,26 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._resetCallState();
       alert('No se pudo iniciar la llamada: ' + (e?.message ?? 'Error desconocido'));
     }
+  }
+
+  /** Pedido explicito del usuario 2026-07-31: que la llamada tambien suene/despierte el celular
+   * del otro lado con notificacion nativa de pantalla completa (igual que "tu conductor llego"),
+   * no solo el broadcast realtime -- ese se pierde si la app esta cerrada/en segundo plano
+   * cuando llega. Los datos de la llamada van codificados en la URL (query params) para que
+   * MainActivity los abra directo ahi al tocar la notificacion (ver handleDeepLinkIntent). */
+  private _pushIncomingCallNotification(targetAuthId: string, tripId: string, callerName: string, callerRole: 'driver' | 'passenger', callerReplyId: string): void {
+    const url = `/anda-gana?incoming_call_trip=${encodeURIComponent(tripId)}`
+      + `&incoming_call_name=${encodeURIComponent(callerName)}`
+      + `&incoming_call_role=${callerRole}`
+      + `&incoming_call_reply=${encodeURIComponent(callerReplyId)}`;
+    this.agService.sendPush({
+      userIds: [targetAuthId],
+      title: '📞 Llamada de ' + callerName,
+      body: 'Toca para contestar',
+      url,
+      tag: `call-${tripId}`,
+      urgent: true,
+    }).catch(() => {});
   }
 
   // ═══════════ Llamadas de voz LiveKit (conductor<->pasajero) ═══════════
@@ -19286,12 +19318,13 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.callState.set('outgoing');
     try {
       await this._connectCallRoom(tripId, myId);
+      const myName = this.agProfile()?.full_name ?? 'Pasajero';
+      const myReplyId = this.agProfile()?.auth_user_id ?? '';
       this.agService.broadcastCallToDriver(driverId, {
-        tripRequestId: tripId,
-        callerName: this.agProfile()?.full_name ?? 'Pasajero',
-        callerRole: 'passenger',
-        callerReplyId: this.agProfile()?.auth_user_id ?? '',
+        tripRequestId: tripId, callerName: myName, callerRole: 'passenger', callerReplyId: myReplyId,
       });
+      const driverAuthId = offer?.ag_drivers?.ag_users?.auth_user_id;
+      if (driverAuthId) this._pushIncomingCallNotification(driverAuthId, tripId, myName, 'passenger', myReplyId);
       this._callTimeoutTimer = setTimeout(() => {
         if (this.callState() === 'outgoing') this.hangUpCall();
       }, 30000);

@@ -22,6 +22,7 @@ public class MainActivity extends BridgeActivity {
         fixWebViewBlankBackground();
         createNotificationChannels();
         handleTripRequestIntent(getIntent(), true);
+        handleDeepLinkIntent(getIntent(), true);
     }
 
     /**
@@ -58,6 +59,7 @@ public class MainActivity extends BridgeActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleTripRequestIntent(intent, false);
+        handleDeepLinkIntent(intent, false);
     }
 
     /**
@@ -72,6 +74,31 @@ public class MainActivity extends BridgeActivity {
         if (tripRequestId == null || tripRequestId.isEmpty()) return;
 
         String url = "https://www.publihazclick.com/anda-gana?trip_request_id=" + tripRequestId;
+        long delayMs = coldStart ? 1500 : 0;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().loadUrl(url);
+            }
+        }, delayMs);
+    }
+
+    /**
+     * Pedido explicito del usuario 2026-07-31 (llamadas de voz con notificacion nativa): las
+     * notificaciones urgentes genericas (showUrgentAlertNotification en
+     * MoviFirebaseMessagingService.kt, ej. "tu conductor llego") YA ponian la URL completa en
+     * intent.setData(), pero nada la leia -- esta activity solo miraba el extra
+     * "trip_request_id" (handleTripRequestIntent). Se agrega este manejo generico para
+     * CUALQUIER notificacion con URL: si trae query params (como los de una llamada entrante,
+     * incoming_call_trip=...), la app abre directo ahi. No pisa el flujo de trip_request_id
+     * (ese ya se maneja arriba); si ambos vienen en el mismo intent, cargar la misma URL dos
+     * veces es inofensivo.
+     */
+    private void handleDeepLinkIntent(Intent intent, boolean coldStart) {
+        if (intent == null || intent.getData() == null) return;
+        if (intent.getStringExtra("trip_request_id") != null) return; // ya lo maneja handleTripRequestIntent
+        String url = intent.getData().toString();
+        if (!url.startsWith("http")) return;
+
         long delayMs = coldStart ? 1500 : 0;
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (getBridge() != null && getBridge().getWebView() != null) {
