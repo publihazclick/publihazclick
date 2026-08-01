@@ -1452,6 +1452,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <p class="text-emerald-400 text-[10px] font-bold">min</p>
                 </div>
               }
+              <!-- Pedido explicito del usuario 2026-07-31: el chat con el conductor no tenia
+                   ningun boton de acceso mientras viene en camino (antes del arribo) -- se
+                   quedo sin punto de entrada al borrar el panel grande que lo tenia. Boton
+                   chiquito temporal aca mientras se decide donde va definitivamente. -->
+              @if (arrivedAtPickupTimer() === null && !passengerMapFullscreen()) {
+                <button (click)="openPassengerChat()"
+                  class="flex-shrink-0 flex items-center justify-center relative"
+                  style="width:40px;height:40px;border-radius:12px;background:rgba(37,99,235,0.85);border:1px solid rgba(59,130,246,0.4);pointer-events:auto">
+                  <span class="material-symbols-outlined text-white" style="font-size:18px">chat</span>
+                  @if (chatUnread() > 0) {
+                    <span class="absolute" style="top:-4px;right:-4px;min-width:16px;height:16px;background:#ef4444;border-radius:50%;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px">{{ chatUnread() }}</span>
+                  }
+                </button>
+              }
             </div>
           </div>
         }
