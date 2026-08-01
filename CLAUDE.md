@@ -251,6 +251,29 @@ ng test                               # Vitest
 
 ---
 
+## Flujo de Git / Deploy (staging antes de producción)
+
+Agregado 2026-08-01 tras varios incidentes de deploys directos a producción sin probar antes.
+
+- **`develop`**: rama de trabajo. Todo cambio nuevo (feature, fix) se hace aquí primero.
+  Cada `git push origin develop` genera automáticamente una URL de preview en Vercel
+  (`publihazclick-git-develop-*.vercel.app`) **sin tocar producción**.
+- **`main`**: producción real (`www.publihazclick.com`). Solo se mergea `develop → main`
+  después de probar en la URL de preview. El deploy a producción sigue siendo manual
+  (`vercel --prod --yes`) — mergear a `main` NO despliega solo.
+- **Movi (APK nativo)**: si el cambio es nativo (Kotlin/Java/build.gradle) y necesita
+  probarse junto con el cambio web antes de mergear, apuntar temporalmente
+  `capacitor.config.ts` → `server.url` a la URL de preview de Vercel en vez del dominio
+  de producción, compilar el APK de prueba, y volver a apuntar a producción antes de
+  mergear a `main`.
+- **Regla de oro**: nunca más de ~2-3 commits seguidos sin desplegar y verificar — los
+  pushes rápidos en cadena hacen que Vercel cancele deploys anteriores en silencio (ver
+  memoria `feedback_vercel_rapid_push_cancels_deploy`). Después de una sesión de fixes
+  rápidos en `develop`, terminar con un `vercel --prod --yes` manual (apuntando a la URL
+  de preview, o ya en `main`) y verificar por hash MD5 antes de dar algo por desplegado.
+
+---
+
 ## Configuración de Entorno
 
 `src/environments/environment.ts`:
