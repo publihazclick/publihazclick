@@ -37,6 +37,6 @@ export const environment = {
   },
   youtubeApiKey: 'AIzaSyCLn_rNDe8iOHzdDFeHw4pWHrV3RvWgoV8',
   vapidPublicKey: 'BHnyzdVCWjJiPJ0PpD7mvqmfNk1-PLOMGfWrVdn6OHiGELV_igy2OP9jD4UEeeKmOUJ2SmOLixmX52mMGW2qAc8',
-  // Ver environment.ts -- vacio hasta crear la cuenta gratis en sentry.io
-  sentryDsn: '',
+  // Ver environment.ts -- cuenta creada 2026-08-02, proyecto Angular "movi-e9"
+  sentryDsn: 'https://11a03ca1775fa5f2a5d154098aa0ec4b@o4511842016624640.ingest.us.sentry.io/4511842074886144',
 };

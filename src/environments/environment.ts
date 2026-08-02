@@ -52,10 +52,8 @@ export const environment = {
   // YouTube Data API v3 key — get from console.cloud.google.com
   youtubeApiKey: 'AIzaSyCLn_rNDe8iOHzdDFeHw4pWHrV3RvWgoV8',
   vapidPublicKey: 'BHnyzdVCWjJiPJ0PpD7mvqmfNk1-PLOMGfWrVdn6OHiGELV_igy2OP9jD4UEeeKmOUJ2SmOLixmX52mMGW2qAc8',
-  // Monitoreo de errores (Sentry) -- vacio a proposito hasta que se cree la cuenta gratis en
-  // sentry.io y se pegue el DSN real aca. Con el string vacio, Sentry simplemente no se
-  // inicializa (ver app.config.ts) -- no rompe nada mientras tanto.
-  sentryDsn: '',
+  // Monitoreo de errores (Sentry) -- cuenta creada 2026-08-02, proyecto Angular "movi-e9".
+  sentryDsn: 'https://11a03ca1775fa5f2a5d154098aa0ec4b@o4511842016624640.ingest.us.sentry.io/4511842074886144',
 };
 
 /**
