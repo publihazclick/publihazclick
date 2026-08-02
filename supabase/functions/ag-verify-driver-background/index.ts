@@ -1,19 +1,26 @@
 // Edge Function: ag-verify-driver-background
-// Verifica antecedentes (Policía Nacional) + licencia de conducción (RUNT) via Verifik.co
-// cuando un conductor se registra. Complementa (no reemplaza) a ag-verify-driver-docs
-// (GPT-4o Vision) -- son dos sistemas independientes que escriben en tablas distintas.
+// Verifica antecedentes judiciales + licencia de conducción (RUNT) via Verifik.co cuando un
+// conductor se registra. Complementa (no reemplaza) a ag-verify-driver-docs (GPT-4o Vision)
+// -- son dos sistemas independientes que escriben en tablas distintas.
 //
-// Pedido explicito del usuario 2026-08-02: si la verificacion falla (antecedentes reales o
-// licencia invalida), el conductor queda RECHAZADO de forma automatica, sin revision humana
+// Pedido explicito del usuario 2026-08-02: si la verificacion falla (expediente judicial real
+// o licencia invalida), el conductor queda RECHAZADO de forma automatica, sin revision humana
 // (ver ag_apply_background_check en la migracion 180 -- ese rechazo aplica sin importar el
 // status actual, incluso si ag-verify-driver-docs ya habia aprobado).
 //
-// IMPORTANTE -- pendiente de confirmar antes de pasar a produccion real:
-// Verifik no publica el JSON exacto de respuesta en su documentacion publica. Los nombres
-// de campo usados abajo (parsePoliceResponse/parseLicenseResponse) son la mejor lectura
-// posible de su documentacion en prosa, pero DEBEN confirmarse haciendo una llamada real de
-// prueba desde el "Cartero" (su Postman-like) en modo Sandbox antes de activar esto con
-// conductores reales -- si el shape real no calza, el parser cae al lado seguro (ver abajo).
+// Antecedentes judiciales -- endpoint y shape CONFIRMADOS 2026-08-02 leyendo la documentacion
+// real de Verifik directo en su "Cartero" (su Postman-like) en modo Sandbox:
+//   GET /co/rama/juzgado/expedientes?documentType=CC&documentNumber=...&city=...
+//   Auth: header "Authorization: Bearer <token>" (con el prefijo "Bearer ", a diferencia de
+//   otros ejemplos de Verifik vistos antes en fuentes de terceros que lo omitian).
+//   200 + data.filingNumber presente => SI tiene expediente judicial (posible antecedente).
+//   404                              => NO tiene expediente (limpio) -- el "buen" resultado
+//                                        es literalmente un 404, no un 200.
+//   409 o cualquier otro status      => resultado ambiguo, no se usa para decidir.
+//
+// Licencia RUNT -- SIN CONFIRMAR todavia (pendiente repetir el mismo proceso de verificacion
+// en el Cartero para el endpoint de licencia). Mientras tanto queda deshabilitada a proposito
+// (ver checkLicense) para no arriesgar un rechazo basado en una suposicion no verificada.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -22,11 +29,27 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const VERIFIK_API_TOKEN    = Deno.env.get('VERIFIK_API_TOKEN') ?? '';
 
 const VERIFIK_BASE = 'https://api.verifik.co/v2';
-// Rutas confirmadas por documentacion/npm package de Verifik. La de RUNT es la menos
-// segura de las dos (no se encontro el path final exacto en fuentes publicas) -- confirmar
-// con Cartero antes de produccion.
-const POLICE_PATH  = '/co/policia/consultar';
-const RUNT_PATH     = '/co/runt';
+const JUDICIAL_PATH = '/co/rama/juzgado/expedientes';
+
+// Ciudades/circuitos judiciales aceptados por el endpoint, segun su propia documentacion.
+// Se normaliza (mayusculas, sin tildes) para comparar contra la ciudad registrada del
+// conductor y solo se envia el parametro "city" cuando hay una coincidencia exacta --
+// si no coincide con ninguna, se omite el parametro y la consulta corre sin filtro de ciudad
+// en vez de adivinar/forzar un valor incorrecto.
+const JUDICIAL_CITIES: Record<string, string> = {
+  'BOGOTA': 'BOGOTÁ', 'VILLAVICENCIO': 'VILLAVICENCIO', 'TUNJA': 'TUNJA', 'QUIBDO': 'QUIBDO',
+  'CALIFORNIA': 'CALIFORNIA', 'POPAYAN': 'POPAYÁN', 'PASTO': 'PASTO', 'PALMIRA': 'PALMIRA',
+  'NEIVA': 'NEIVA', 'MEDELLIN': 'MEDELLÍN', 'MANIZALES': 'MANIZALES', 'IBAGUE': 'IBAGUE',
+  'FLORENCIA': 'FLORENCIA', 'BUGA': 'BUGA', 'BUCARAMANGA': 'BUCARAMANGA',
+  'BARRANQUILLA': 'BARRANQUILLA', 'ARMENIA': 'ARMENIA',
+};
+function normalizeCity(city: string | null | undefined): string | null {
+  if (!city) return null;
+  // NFD separa letra + tilde en dos code points; ̀-ͯ son los diacriticos
+  // combinables (incluye la tilde), se eliminan para poder comparar "BOGOTÁ" == "bogota".
+  const key = city.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+  return JUDICIAL_CITIES[key] ?? null;
+}
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -34,49 +57,28 @@ const cors = {
 };
 function json(d: unknown, s = 200) { return new Response(JSON.stringify(d), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } }); }
 
-async function callVerifik(path: string, documentType: string, documentNumber: string): Promise<{ ok: boolean; status: number; data: any }> {
-  const url = `${VERIFIK_BASE}${path}?documentType=${encodeURIComponent(documentType)}&documentNumber=${encodeURIComponent(documentNumber)}`;
+/** hasRecord=true solo cuando Verifik confirmo un expediente real (200 + filingNumber).
+ * confident=true solo en 200-con-expediente o 404 (los dos casos documentados) -- cualquier
+ * otro status (409, 5xx, error de red) deja confident=false y por lo tanto NO rechaza a nadie
+ * (fail-open, ver el uso mas abajo). */
+async function checkJudicialRecords(documentNumber: string, city: string | null): Promise<{ hasRecord: boolean; confident: boolean; status: number; raw: any }> {
+  const params = new URLSearchParams({ documentType: 'CC', documentNumber });
+  if (city) params.set('city', city);
+  const url = `${VERIFIK_BASE}${JUDICIAL_PATH}?${params.toString()}`;
+
   const res = await fetch(url, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json', Authorization: VERIFIK_API_TOKEN },
+    headers: { Accept: 'application/json', Authorization: `Bearer ${VERIFIK_API_TOKEN}` },
   });
   const data = await res.json().catch(() => null);
-  return { ok: res.ok, status: res.status, data };
-}
 
-/** Lado seguro: si la respuesta no se puede interpretar con confianza, NO se rechaza al
- * conductor (fail-open) -- solo se rechaza cuando el campo de estado legal es explicitamente
- * negativo. Un error de red/parseo nunca debe bloquear a alguien inocente. */
-function parsePoliceResponse(data: any): { hasRecord: boolean; confident: boolean } {
-  if (!data) return { hasRecord: false, confident: false };
-  const raw = JSON.stringify(data).toLowerCase();
-  // Campos candidatos vistos en distintas paginas de documentacion de Verifik para este
-  // tipo de consulta -- se revisan varios nombres posibles por la falta de spec exacta.
-  const status = data.status ?? data.legalStatus ?? data.estado ?? data.result?.status ?? null;
-  if (typeof status === 'string') {
-    const s = status.toLowerCase();
-    if (s.includes('sin') || s.includes('no registra') || s.includes('clean') || s.includes('none')) {
-      return { hasRecord: false, confident: true };
-    }
-    if (s.includes('asuntos pendientes') || s.includes('pending') || s.includes('con antecedentes')) {
-      return { hasRecord: true, confident: true };
-    }
+  if (res.status === 200 && data?.data?.filingNumber) {
+    return { hasRecord: true, confident: true, status: res.status, raw: data };
   }
-  // Heurística de respaldo sobre el JSON completo si no se encontró un campo reconocible.
-  if (raw.includes('sin antecedentes') || raw.includes('no registra')) return { hasRecord: false, confident: true };
-  if (raw.includes('con antecedentes') || raw.includes('asuntos judiciales pendientes')) return { hasRecord: true, confident: true };
-  return { hasRecord: false, confident: false };
-}
-
-function parseLicenseResponse(data: any): { valid: boolean; confident: boolean } {
-  if (!data) return { valid: false, confident: false };
-  const status = data.status ?? data.licenseStatus ?? data.estado ?? data.result?.status ?? null;
-  if (typeof status === 'string') {
-    const s = status.toLowerCase();
-    if (s.includes('vigente') || s.includes('active') || s.includes('valid')) return { valid: true, confident: true };
-    if (s.includes('vencid') || s.includes('suspend') || s.includes('cancelad') || s.includes('expired')) return { valid: false, confident: true };
+  if (res.status === 404) {
+    return { hasRecord: false, confident: true, status: res.status, raw: data };
   }
-  return { valid: false, confident: false };
+  return { hasRecord: false, confident: false, status: res.status, raw: data };
 }
 
 Deno.serve(async (req) => {
@@ -101,53 +103,41 @@ Deno.serve(async (req) => {
 
     const { data: drv, error } = await supabase
       .from('ag_drivers')
-      .select('id, status, id_number')
+      .select('id, status, id_number, city')
       .eq('id', driverId)
       .maybeSingle();
 
     if (error || !drv) return json({ error: 'Conductor no encontrado' }, 404);
     if (!drv.id_number) return json({ ok: true, skipped: true, reason: 'Sin número de documento registrado' });
 
-    const documentType = 'CC'; // Colombia -- ampliar a CE si Movi llega a aceptar extranjeros
+    const city = normalizeCity((drv as any).city);
+    const judicial = await checkJudicialRecords(drv.id_number, city).catch(e => ({
+      hasRecord: false, confident: false, status: 0, raw: { error: String(e) },
+    }));
 
-    const [policeRes, licenseRes] = await Promise.all([
-      callVerifik(POLICE_PATH, documentType, drv.id_number).catch(e => ({ ok: false, status: 0, data: { error: String(e) } })),
-      callVerifik(RUNT_PATH, documentType, drv.id_number).catch(e => ({ ok: false, status: 0, data: { error: String(e) } })),
-    ]);
-
-    const police = parsePoliceResponse(policeRes.data);
-    const license = parseLicenseResponse(licenseRes.data);
-
-    // Solo se rechaza cuando AMBAS consultas respondieron con confianza Y alguna dio
-    // resultado negativo. Cualquier duda (respuesta sin interpretar, error de red, timeout)
-    // deja al conductor en su status actual -- no se auto-rechaza sobre una suposición.
-    let passed = true;
-    const reasons: string[] = [];
-    if (police.confident && police.hasRecord) { passed = false; reasons.push('Antecedentes judiciales registrados ante la Policía Nacional'); }
-    if (license.confident && !license.valid) { passed = false; reasons.push('Licencia de conducción no vigente según el RUNT'); }
-
-    const bothInconclusive = !police.confident && !license.confident;
-    if (bothInconclusive) {
-      // No se pudo confirmar nada -- se guarda el intento pero no se toca ag_drivers.
+    if (!judicial.confident) {
+      // Respuesta ambigua (409, error de red, etc.) -- se guarda el intento pero NO se
+      // toca ag_drivers. Requiere revisión manual eventual, no un rechazo automático.
       await supabase.rpc('ag_apply_background_check', {
         p_driver_id: driverId,
         p_passed: true,
-        p_reason: 'Verificación no concluyente (respuesta de Verifik no interpretada) -- requiere revisión manual',
-        p_police: policeRes.data,
-        p_license: licenseRes.data,
+        p_reason: 'Verificación de antecedentes no concluyente (Verifik respondió ' + judicial.status + ') -- requiere revisión manual',
+        p_police: judicial.raw,
+        p_license: null,
       });
-      return json({ ok: true, inconclusive: true, police_status: policeRes.status, license_status: licenseRes.status });
+      return json({ ok: true, inconclusive: true, status: judicial.status });
     }
 
+    const passed = !judicial.hasRecord;
     await supabase.rpc('ag_apply_background_check', {
       p_driver_id: driverId,
       p_passed: passed,
-      p_reason: passed ? null : reasons.join('; '),
-      p_police: policeRes.data,
-      p_license: licenseRes.data,
+      p_reason: passed ? null : 'Registra expediente judicial ante la Rama Judicial de Colombia',
+      p_police: judicial.raw,
+      p_license: null,
     });
 
-    return json({ ok: true, passed, reasons });
+    return json({ ok: true, passed, has_judicial_record: judicial.hasRecord });
   } catch (err) {
     console.error('ag-verify-driver-background:', err);
     return json({ error: 'Error interno', detail: String(err) }, 500);
