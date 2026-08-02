@@ -409,6 +409,7 @@ export class AndaGanaService {
       // Disparar verificación automática con GPT-4o Vision (no bloquea el registro)
       if (driverRow?.id) {
         this.triggerDriverVerification(driverRow.id).catch(() => {});
+        this.triggerBackgroundCheck(driverRow.id).catch(() => {});
       }
       return { success: true };
     } catch (e: any) {
@@ -473,6 +474,7 @@ export class AndaGanaService {
     if (driverError) return { success: false, error: driverError.message };
 
     this.triggerDriverVerification(driverId).catch(() => {});
+    this.triggerBackgroundCheck(driverId).catch(() => {});
     return { success: true };
   }
 
@@ -1748,6 +1750,39 @@ export class AndaGanaService {
     const { data } = await this.supabase
       .from('ag_driver_verifications')
       .select('score, auto_decision, flags, extracted, created_at')
+      .eq('driver_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data as any;
+  }
+
+  /** Verificación de antecedentes (Policía Nacional) + licencia RUNT via Verifik -- sistema
+   * independiente de triggerDriverVerification (GPT-4o Vision, ver arriba). Mientras no haya
+   * VERIFIK_API_TOKEN configurado en el servidor, la funcion se auto-omite sin bloquear el
+   * registro (ver ag-verify-driver-background/index.ts). */
+  async triggerBackgroundCheck(driverId: string): Promise<{ ok: boolean; passed?: boolean; reasons?: string[] } | null> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      const token = session?.access_token ?? environment.moviSupabase.anonKey;
+      const res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-verify-driver-background`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: environment.moviSupabase.anonKey,
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ driver_id: driverId }),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  async getLatestBackgroundCheck(driverId: string): Promise<{ passed: boolean; reason: string | null; created_at: string } | null> {
+    const { data } = await this.supabase
+      .from('ag_driver_background_checks')
+      .select('passed, reason, created_at')
       .eq('driver_id', driverId)
       .order('created_at', { ascending: false })
       .limit(1)
