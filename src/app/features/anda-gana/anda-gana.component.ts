@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed, inject, effect, untracked, OnInit, OnDestroy, PLATFORM_ID, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe } from '@angular/common';
+import { isPlatformBrowser, SlicePipe, DatePipe, DecimalPipe, LowerCasePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AndaGanaService, AgUser, AgTripOffer, AgTripRequest, AgPaymentMethod } from './anda-gana.service';
 import { AgPhoneAuthService } from './ag-phone-auth.service';
@@ -18,7 +18,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 @Component({
   selector: 'app-anda-gana',
   standalone: true,
-  imports: [FormsModule, SlicePipe, DatePipe, DecimalPipe],
+  imports: [FormsModule, SlicePipe, DatePipe, DecimalPipe, LowerCasePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     @keyframes moviEntrance {
@@ -483,6 +483,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             }
             <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
+                <span class="material-symbols-outlined" style="font-size:15px;color:#00E5FF;font-variation-settings:'FILL' 1">{{ vehicleIcon(offer.ag_drivers?.vehicle_type) }}</span>
+                <span style="color:#00E5FF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.04em">{{ vehicleLabel(offer.ag_drivers?.vehicle_type) }}</span>
+              </div>
               <p style="font-weight:900;font-size:14px;color:#fff;margin:0;line-height:1.2">{{ offer.ag_drivers?.ag_users?.full_name ?? 'Conductor' }}</p>
               <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap">
                 <span style="color:#fbbf24;font-size:13px">★</span>
@@ -690,14 +694,21 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Foto + nombre + rating + viajes -->
           <div style="display:flex;align-items:center;gap:12px">
-            @if (tripAccepted()!.ag_drivers?.ag_users?.selfie_url) {
-              <img [src]="tripAccepted()!.ag_drivers!.ag_users!.selfie_url"
-                style="width:52px;height:52px;border-radius:14px;object-fit:cover;flex-shrink:0;border:2px solid rgba(0,229,255,0.4)" />
-            } @else {
-              <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;font-weight:900;color:#fff;border:2px solid rgba(0,229,255,0.4)">
-                {{ (tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'C')[0].toUpperCase() }}
+            <div style="position:relative;flex-shrink:0">
+              @if (tripAccepted()!.ag_drivers?.ag_users?.selfie_url) {
+                <img [src]="tripAccepted()!.ag_drivers!.ag_users!.selfie_url"
+                  style="width:52px;height:52px;border-radius:14px;object-fit:cover;border:2px solid rgba(0,229,255,0.4)" />
+              } @else {
+                <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;border:2px solid rgba(0,229,255,0.4)">
+                  {{ (tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'C')[0].toUpperCase() }}
+                </div>
+              }
+              <!-- Insignia de tipo de vehículo -- pedido explicito del usuario 2026-08-03 para que
+                   no se confunda de un vistazo si viene carro/moto/camión. -->
+              <div style="position:absolute;bottom:-5px;right:-5px;width:22px;height:22px;border-radius:50%;background:#0891b2;border:2px solid #0a1628;display:flex;align-items:center;justify-content:center">
+                <span class="material-symbols-outlined" style="font-size:13px;color:#fff;font-variation-settings:'FILL' 1">{{ vehicleIcon(tripAccepted()!.ag_drivers?.vehicle_type) }}</span>
               </div>
-            }
+            </div>
             <div style="flex:1;min-width:0">
               <p style="color:#fff;font-weight:900;font-size:15px;margin:0;line-height:1.2">{{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}</p>
               <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
@@ -732,9 +743,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <p style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 2px">Marca</p>
               <p style="color:#fff;font-weight:900;font-size:13px;margin:0;text-transform:capitalize">{{ tripAccepted()!.ag_drivers?.vehicle_brand ?? '—' }}</p>
             </div>
-            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:8px 12px">
+            <div style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.25);border-radius:10px;padding:8px 12px">
               <p style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 2px">Tipo</p>
-              <p style="color:#fff;font-weight:900;font-size:13px;margin:0">{{ tripAccepted()!.ag_drivers?.vehicle_type === 'moto' ? 'Moto' : tripAccepted()!.ag_drivers?.vehicle_type === 'camion' ? 'Camión' : 'Carro' }}</p>
+              <p style="color:#fff;font-weight:900;font-size:13px;margin:0;display:flex;align-items:center;gap:4px">
+                <span class="material-symbols-outlined" style="font-size:16px;color:#00E5FF">{{ vehicleIcon(tripAccepted()!.ag_drivers?.vehicle_type) }}</span>
+                {{ vehicleLabel(tripAccepted()!.ag_drivers?.vehicle_type) }}
+              </p>
             </div>
           </div>
 
@@ -1520,16 +1534,20 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="flex items-start gap-3 mb-3">
               <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                 style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">person_pin</span>
+                <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'FILL' 1">{{ vehicleIcon(tripAccepted()!.ag_drivers?.vehicle_type) }}</span>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="font-black text-[11px] uppercase tracking-widest mb-0.5" style="color:#22d3ee">
-                  Tu conductor viene por ti
+                  Tu conductor viene por ti en {{ vehicleLabel(tripAccepted()!.ag_drivers?.vehicle_type) | lowercase }}
                 </p>
                 <p class="text-white font-black text-sm truncate">
                   {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}
                 </p>
                 <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span class="px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1" style="background:rgba(0,229,255,0.15);color:#67e8f9;border:1px solid rgba(0,229,255,0.35)">
+                    <span class="material-symbols-outlined" style="font-size:13px">{{ vehicleIcon(tripAccepted()!.ag_drivers?.vehicle_type) }}</span>
+                    {{ vehicleLabel(tripAccepted()!.ag_drivers?.vehicle_type) }}
+                  </span>
                   @if (tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate) {
                     <span class="px-2 py-1 rounded-lg text-[11px] font-black" style="background:rgba(0,229,255,0.15);color:#67e8f9;border:1px solid rgba(0,229,255,0.35);letter-spacing:0.04em">
                       {{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate }}
@@ -17457,6 +17475,21 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   /** Lista de solicitudes que realmente se le muestran al conductor (ver driverOkForNewRequests). */
   visibleDriverRequests(): AgTripRequest[] {
     return this.driverOkForNewRequests() ? this.driverRequests() : [];
+  }
+
+  /** Pedido explicito del usuario 2026-08-03: que en los modales del pasajero (oferta recibida,
+   * conductor en camino, conductor llegó) quede claro con un ícono si el vehículo que viene es
+   * carro, moto o camión -- para que no le llegue un vehículo distinto al que esperaba sin darse
+   * cuenta del tipo. */
+  vehicleIcon(type: string | null | undefined): string {
+    if (type === 'moto') return 'two_wheeler';
+    if (type === 'camion') return 'local_shipping';
+    return 'directions_car';
+  }
+  vehicleLabel(type: string | null | undefined): string {
+    if (type === 'moto') return 'Moto';
+    if (type === 'camion') return 'Camión';
+    return 'Carro';
   }
 
   reqRemainingMs(req: AgTripRequest): number {
