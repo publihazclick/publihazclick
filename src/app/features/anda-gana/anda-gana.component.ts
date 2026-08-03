@@ -11085,6 +11085,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private _handleNewAcceptedOffer(offer: any): void {
+    this._notifyOfferAccepted();
     // Mostrar alerta inDrive full-screen
     this.driverTripAlert.set(offer);
     // Agregar a viajes activos si no está ya
@@ -15950,6 +15951,46 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
+  }
+
+  /** Sonido + vibración para el conductor cuando el pasajero acepta su oferta. Mismo patrón
+   * robusto (AudioContext + fallback HTML Audio) que _notifyNewTrip para que también suene con
+   * la app en segundo plano, pero con pitidos ascendentes -- distinguible de la alerta de
+   * "nueva solicitud" (descendente), esto es una buena noticia para el conductor. */
+  private _notifyOfferAccepted(): void {
+    if (typeof window === 'undefined') return;
+
+    try { navigator.vibrate?.([300, 100, 300, 100, 500]); } catch {}
+
+    try {
+      const ctx = this._getAudioCtx();
+      if (ctx) {
+        const play = () => {
+          [[660, 0], [880, 0.15], [1046, 0.3]].forEach(([freq, when]) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.8, ctx.currentTime + when);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + 0.22);
+            osc.start(ctx.currentTime + when);
+            osc.stop(ctx.currentTime + when + 0.25);
+          });
+        };
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(play).catch(() => {});
+        } else {
+          play();
+        }
+      }
+    } catch {}
+
+    try {
+      const a = new Audio('/notification.wav');
+      a.volume = 1;
+      a.play().catch(() => {});
+    } catch {}
   }
 
   /** Trae y agrega al listado en vivo una solicitud puntual por id -- usado cuando la app se abre
