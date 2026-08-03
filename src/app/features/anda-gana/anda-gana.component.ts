@@ -1490,35 +1490,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
 
-        <!-- Overlay ruta pasajero — aparece cuando el conductor acepta el viaje -->
-        @if (tripAccepted()) {
-          <div class="absolute top-3 left-3 right-3 z-30 pointer-events-none">
-            <div class="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl shadow-black/60"
-              style="background:rgba(10,22,40,0.95);backdrop-filter:blur(10px);border:1.5px solid rgba(16,185,129,0.4)">
-              <span class="material-symbols-outlined text-emerald-400 animate-pulse" style="font-size:22px;font-variation-settings:'FILL' 1">directions_car</span>
-              <div class="flex-1 min-w-0">
-                <p class="text-white font-black text-sm truncate">
-                  {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }} en camino
-                </p>
-                @if (approachRouteInfo()) {
-                  <p class="text-emerald-300 text-xs font-bold">
-                    {{ approachRouteInfo()!.distKm }} km · {{ approachRouteInfo()!.durationMin }} min para llegar
-                  </p>
-                } @else {
-                  <p class="text-slate-400 text-xs">Calculando ruta...</p>
-                }
-              </div>
-              @if (approachRouteInfo()) {
-                <div class="flex flex-col items-center justify-center flex-shrink-0 rounded-xl px-3 py-2"
-                  style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.35)">
-                  <p class="text-emerald-300 font-black leading-none" style="font-size:22px">{{ approachRouteInfo()!.durationMin }}</p>
-                  <p class="text-emerald-400 text-[10px] font-bold">min</p>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
         <!-- ═══════════ MODAL PASAJERO: CONDUCTOR EN CAMINO A RECOGERLO (abajo) ═══════════
              Espejo del modal que ve el conductor mientras va camino al punto de recogida
              (ver "Tarjeta flotante inferior" del conductor en driverMapFullscreen). -->
@@ -1538,11 +1509,22 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <p class="text-white font-black text-sm truncate">
                   {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}
                 </p>
-                <div class="flex items-start gap-1.5 mt-1">
-                  <span class="material-symbols-outlined flex-shrink-0" style="font-size:12px;margin-top:1px;color:#38bdf8">directions_car</span>
-                  <p class="text-slate-300 text-xs leading-tight">
-                    {{ tripAccepted()!.ag_drivers?.vehicle_color ?? '' }} {{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate ?? '' }}
-                  </p>
+                <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  @if (tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate) {
+                    <span class="px-2 py-1 rounded-lg text-[11px] font-black" style="background:rgba(124,58,237,0.22);color:#c4b5fd;border:1px solid rgba(124,58,237,0.4);letter-spacing:0.04em">
+                      {{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate }}
+                    </span>
+                  }
+                  @if (tripAccepted()!.ag_drivers?.vehicle_brand) {
+                    <span class="px-2 py-1 rounded-lg text-[11px] font-bold capitalize" style="background:rgba(255,255,255,0.08);color:#e2e8f0;border:1px solid rgba(255,255,255,0.14)">
+                      {{ tripAccepted()!.ag_drivers?.vehicle_brand }}
+                    </span>
+                  }
+                  @if (tripAccepted()!.ag_drivers?.vehicle_color) {
+                    <span class="px-2 py-1 rounded-lg text-[11px] font-bold capitalize" style="background:rgba(255,255,255,0.08);color:#e2e8f0;border:1px solid rgba(255,255,255,0.14)">
+                      {{ tripAccepted()!.ag_drivers?.vehicle_color }}
+                    </span>
+                  }
                 </div>
               </div>
               <div class="text-right flex-shrink-0">
