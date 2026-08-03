@@ -72,6 +72,15 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Causa real confirmada del "permission denied" al iniciar una llamada LiveKit
+         (2026-08-02): BridgeWebChromeClient.onPermissionRequest (codigo propio de Capacitor,
+         ver node_modules/@capacitor/android) SI intercepta el getUserMedia({audio:true}) del
+         WebView y dispara el pedido de permiso nativo en runtime, pero solo puede pedir
+         permisos que la app tenga DECLARADOS aca. Sin esta linea, Android niega el permiso en
+         silencio antes de mostrar cualquier cuadro, y el JS recibe exactamente
+         "NotAllowedError: Permission denied". Aplica igual a conductor y pasajero, mismo APK. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
