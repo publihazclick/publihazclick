@@ -194,7 +194,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div class="fixed inset-0 z-[9990] flex flex-col items-center justify-center px-4"
       style="background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)">
       <div class="w-full max-w-sm rounded-3xl overflow-hidden"
-        style="background:#fff;box-shadow:0 24px 60px rgba(0,0,0,0.45)">
+        style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border:1.5px solid rgba(16,185,129,0.3);box-shadow:0 24px 60px rgba(0,0,0,0.6)">
         <!-- Header verde -->
         <div class="flex flex-col items-center gap-2 py-6 px-4"
           style="background:linear-gradient(135deg,#059669,#10b981)">
@@ -210,34 +210,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Pasajero -->
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-              style="background:#f0fdf4;border:1px solid #bbf7d0">
-              <span class="material-symbols-outlined text-emerald-600" style="font-size:20px;font-variation-settings:'FILL' 1">person</span>
+              style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
+              <span class="material-symbols-outlined text-emerald-400" style="font-size:20px;font-variation-settings:'FILL' 1">person</span>
             </div>
             <div>
-              <p class="font-black text-slate-800" style="font-size:15px;margin:0">
+              <p class="font-black text-white" style="font-size:15px;margin:0">
                 {{ driverTripAlert()!.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}
               </p>
             </div>
           </div>
           <!-- Ruta -->
-          <div class="rounded-2xl p-3 flex flex-col gap-2" style="background:#f8fafc;border:1px solid #e2e8f0">
+          <div class="rounded-2xl p-3 flex flex-col gap-2" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09)">
             <div class="flex items-start gap-2">
-              <span class="material-symbols-outlined text-blue-500 flex-shrink-0" style="font-size:16px;margin-top:1px">my_location</span>
-              <p class="text-slate-700 text-xs font-semibold" style="margin:0;line-height:1.4">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;margin-top:1px;color:#38bdf8">my_location</span>
+              <p class="text-slate-300 text-xs font-semibold" style="margin:0;line-height:1.4">
                 {{ driverTripAlert()!.ag_trip_requests?.origin_name ?? 'Punto de recogida' }}
               </p>
             </div>
             <div class="flex items-start gap-2">
-              <span class="material-symbols-outlined text-red-500 flex-shrink-0" style="font-size:16px;margin-top:1px">location_on</span>
-              <p class="text-slate-700 text-xs font-semibold" style="margin:0;line-height:1.4">
+              <span class="material-symbols-outlined flex-shrink-0" style="font-size:16px;margin-top:1px;color:#f87171">location_on</span>
+              <p class="text-slate-300 text-xs font-semibold" style="margin:0;line-height:1.4">
                 {{ driverTripAlert()!.ag_trip_requests?.dest_name ?? 'Destino' }}
               </p>
             </div>
           </div>
           <!-- Precio -->
           <div class="flex items-center justify-between px-1">
-            <span class="text-slate-500 text-sm">Tu oferta</span>
-            <span class="font-black text-emerald-600" style="font-size:20px">
+            <span class="text-slate-400 text-sm">Tu oferta</span>
+            <span class="font-black text-emerald-400" style="font-size:20px">
               {{ formatCOP(driverTripAlert()!.offered_price) }}
             </span>
           </div>
