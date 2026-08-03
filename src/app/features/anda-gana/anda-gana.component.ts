@@ -355,9 +355,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
-  <!-- ═══════════ BANNER PASAJERO: BUSCANDO / OFERTAS (flotante top) ═══════════ -->
+  <!-- ═══════════ BANNER PASAJERO: BUSCANDO / OFERTAS (flotante abajo) ═══════════ -->
   @if (tripSent() && !tripAccepted()) {
-    <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8100;pointer-events:none;max-height:88dvh;display:flex;flex-direction:column;gap:10px;overflow-y:auto">
+    <div class="modal-float" style="position:fixed;bottom:max(12px,env(safe-area-inset-bottom));left:12px;right:12px;z-index:8100;pointer-events:none;max-height:88dvh;display:flex;flex-direction:column-reverse;gap:10px;overflow-y:auto">
 
       <!-- Tarjeta principal: estado + controles -->
       <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(249,115,22,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.75);overflow:hidden">
@@ -1345,7 +1345,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <button (click)="recenterPassengerMap()"
             class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
             [style.z-index]="passengerMapFullscreen() ? '9860' : '40'"
-            [style.bottom]="(tripAccepted() && arrivedAtPickupTimer() === null) ? 'calc(env(safe-area-inset-bottom,0px) + 200px)' : 'calc(env(safe-area-inset-bottom,0px) + 16px)'"
+            [style.bottom]="(tripAccepted() && arrivedAtPickupTimer() === null) || (tripSent() && !tripAccepted()) ? 'calc(env(safe-area-inset-bottom,0px) + 210px)' : 'calc(env(safe-area-inset-bottom,0px) + 16px)'"
             style="right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s,bottom 0.3s"
             [style.background]="passengerMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
             [style.border]="passengerMapPanned() ? '2px solid #f97316' : '2px solid rgba(255,255,255,0.15)'"
