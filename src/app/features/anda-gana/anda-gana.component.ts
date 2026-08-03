@@ -439,13 +439,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- Tarjetas de ofertas de conductores -->
       @for (offer of receivedOffers(); track offer.id) {
-        <div style="pointer-events:auto;border-radius:20px;overflow:hidden;background:#fff;border:2px solid #16a34a;box-shadow:0 12px 40px rgba(22,163,74,0.22),0 4px 16px rgba(0,0,0,0.15)">
+        <div style="pointer-events:auto;border-radius:20px;overflow:hidden;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 40px rgba(0,0,0,0.6)">
 
-          <!-- Cabecera verde precio -->
-          <div style="background:linear-gradient(135deg,#16a34a,#059669);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <!-- Cabecera cian: nueva oferta, pendiente de tu decisión -->
+          <div style="background:linear-gradient(90deg,rgba(0,229,255,0.18) 0%,rgba(0,229,255,0.05) 100%);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
             <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;margin-right:8px">
-              <span class="material-symbols-outlined" style="font-size:17px;color:#fff;flex-shrink:0;font-variation-settings:'FILL' 1">local_offer</span>
-              <span style="color:#fff;font-size:10px;font-weight:900;line-height:1.2">
+              <span class="material-symbols-outlined" style="font-size:17px;color:#00E5FF;flex-shrink:0;font-variation-settings:'FILL' 1">local_offer</span>
+              <span style="color:#00E5FF;font-size:10px;font-weight:900;line-height:1.2">
                 @if (offer.offered_price === tripPrice()) {
                   {{ offer.ag_drivers?.ag_users?.full_name ?? 'El conductor' }} aceptó tu oferta
                 } @else {
@@ -456,34 +456,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="text-align:right">
               <p style="color:#fff;font-weight:900;font-size:clamp(18px,5vw,22px);margin:0;line-height:1">{{ formatCOP(offer.offered_price) }}</p>
               @if (offer.offered_price < tripPrice()) {
-                <p style="color:#bbf7d0;font-size:10px;font-weight:700;margin:0">↓ Más barato que tu precio</p>
+                <p style="color:#34d399;font-size:10px;font-weight:700;margin:0">↓ Más barato que tu precio</p>
               } @else if (offer.offered_price > tripPrice()) {
-                <p style="color:#fef08a;font-size:10px;font-weight:700;margin:0">↑ Más caro que tu precio</p>
+                <p style="color:#fbbf24;font-size:10px;font-weight:700;margin:0">↑ Más caro que tu precio</p>
               } @else {
-                <p style="color:#dcfce7;font-size:10px;margin:0">Igual a tu precio</p>
+                <p style="color:rgba(255,255,255,0.6);font-size:10px;margin:0">Igual a tu precio</p>
               }
             </div>
           </div>
 
           <!-- Info conductor -->
-          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f0fdf4">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08)">
             @if (offer.ag_drivers?.ag_users?.selfie_url) {
               <img [src]="offer.ag_drivers!.ag_users!.selfie_url"
-                style="width:48px;height:48px;border-radius:12px;object-fit:cover;flex-shrink:0;border:2px solid #16a34a" />
+                style="width:48px;height:48px;border-radius:12px;object-fit:cover;flex-shrink:0;border:2px solid rgba(0,229,255,0.4)" />
             } @else {
-              <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff">
+              <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#1e293b,#0f172a);border:2px solid rgba(0,229,255,0.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff">
                 {{ (offer.ag_drivers?.ag_users?.full_name ?? 'C')[0].toUpperCase() }}
               </div>
             }
             <div style="flex:1;min-width:0">
-              <p style="font-weight:900;font-size:14px;color:#0f172a;margin:0;line-height:1.2">{{ offer.ag_drivers?.ag_users?.full_name ?? 'Conductor' }}</p>
+              <p style="font-weight:900;font-size:14px;color:#fff;margin:0;line-height:1.2">{{ offer.ag_drivers?.ag_users?.full_name ?? 'Conductor' }}</p>
               <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap">
                 <span style="color:#fbbf24;font-size:13px">★</span>
-                <span style="font-size:12px;font-weight:800;color:#0f172a">{{ offer.ag_drivers?.rating_avg ?? '—' }}</span>
-                <span style="color:#94a3b8;font-size:11px">·</span>
-                <span style="color:#475569;font-size:11px;font-weight:600">{{ offer.ag_drivers?.trips_completed ?? 0 }} viajes</span>
+                <span style="font-size:12px;font-weight:800;color:#fff">{{ offer.ag_drivers?.rating_avg ?? '—' }}</span>
+                <span style="color:rgba(255,255,255,0.3);font-size:11px">·</span>
+                <span style="color:rgba(255,255,255,0.55);font-size:11px;font-weight:600">{{ offer.ag_drivers?.trips_completed ?? 0 }} viajes</span>
                 @if (driverEtaMin()[offer.id]) {
-                  <span style="background:rgba(8,145,178,0.1);color:#0369a1;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px">~{{ driverEtaMin()[offer.id] }} min</span>
+                  <span style="background:rgba(0,229,255,0.12);color:#22d3ee;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px">~{{ driverEtaMin()[offer.id] }} min</span>
                 }
               </div>
             </div>
@@ -493,7 +493,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <button (click)="rejectOfferCard(offer)"
-                style="padding:11px 0;border-radius:14px;border:2px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+                style="padding:11px 0;border-radius:14px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:#f87171;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
                 <span class="material-symbols-outlined" style="font-size:16px">close</span> Rechazar
               </button>
               <button (click)="acceptOfferCard(offer)" [disabled]="acceptingOfferId() === offer.id"
@@ -512,16 +512,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Barra timer -->
           <div style="padding:0 14px 12px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-              <span style="color:#94a3b8;font-size:10px;font-weight:600">Oferta válida por</span>
+              <span style="color:rgba(255,255,255,0.4);font-size:10px;font-weight:600">Oferta válida por</span>
               <span style="font-size:11px;font-weight:900"
-                [style.color]="offerRemainingPct(offer) < 25 ? '#dc2626' : offerRemainingPct(offer) < 50 ? '#d97706' : '#16a34a'">
+                [style.color]="offerRemainingPct(offer) < 25 ? '#f87171' : offerRemainingPct(offer) < 50 ? '#fbbf24' : '#34d399'">
                 {{ offerRemainingStr(offer) }}
               </span>
             </div>
-            <div style="width:100%;height:5px;border-radius:999px;background:#f0fdf4;overflow:hidden">
+            <div style="width:100%;height:5px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden">
               <div style="height:100%;border-radius:999px;transition:width 1s linear"
                 [style.width]="offerRemainingPct(offer) + '%'"
-                [style.background]="offerRemainingPct(offer) < 25 ? '#dc2626' : offerRemainingPct(offer) < 50 ? '#f59e0b' : '#16a34a'">
+                [style.background]="offerRemainingPct(offer) < 25 ? '#ef4444' : offerRemainingPct(offer) < 50 ? '#f59e0b' : '#16a34a'">
               </div>
             </div>
           </div>
