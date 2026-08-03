@@ -12282,7 +12282,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         path,
         segIdx,
         t:       0,
-        speed:   isMoto ? 0.00055 : 0.00040,
+        speed:   isMoto ? 0.00275 : 0.00200, // 5x mas rapido (pedido 2026-08-03)
         forward: true,
         marker,
         heading: h0,
@@ -12453,7 +12453,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Se anima el mismo tramo con requestAnimationFrame para que el auto se deslice.
   private _markerAnimState = new WeakMap<any, { raf: number | null }>();
 
-  private _animateMarkerTo(marker: any, toLng: number, toLat: number, toHeading?: number, durationMs = 1000): void {
+  private _animateMarkerTo(marker: any, toLng: number, toLat: number, toHeading?: number, durationMs = 200): void {
     const from = marker.getLngLat();
     const fromLng = from.lng, fromLat = from.lat;
 
