@@ -10791,6 +10791,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _usedFallbackLocation = false;
   private _cityFromGps   = '';   // ciudad detectada por GPS — filtra sugerencias de búsqueda
   private readonly MAPBOX_TOKEN = environment.andaGana.mapboxToken;
+  // Estilos propios de marca (creados vía Mapbox Styles API 2026-08-03, tinte cian #0891b2 en agua):
+  // oscuro para el conductor (maneja de noche, ahorra batería) y claro para el pasajero (combina
+  // con las tarjetas blancas, más fácil de leer nombres de calles de día).
+  private readonly MAP_STYLE_DRIVER    = 'mapbox://styles/andagana/cmsdvhcs4005c01s90to2ge3k';
+  private readonly MAP_STYLE_PASSENGER = 'mapbox://styles/andagana/cmsdvhf0w005d01s9efz265jp';
   private readonly SUPABASE_ANON = environment.moviSupabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
   private readonly DEFAULT_LNG  = -74.0817;
@@ -12084,10 +12089,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     this._destroyMap();
 
+    const isDriverMap = this.driverOnline();
     mapboxgl.accessToken = this.MAPBOX_TOKEN;
     this._map = new mapboxgl.Map({
       container,
-      style:   'mapbox://styles/mapbox/dark-v11',
+      style:   isDriverMap ? this.MAP_STYLE_DRIVER : this.MAP_STYLE_PASSENGER,
       center:  [lng, lat],
       zoom:    15,
       attributionControl: false,
@@ -12126,8 +12132,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Saturación reducida al 40% (−60%) para no competir con UI
-    container.style.filter = 'saturate(0.4)';
+    // Saturación reducida al 40% solo en modo conductor (oscuro) para no competir con la UI;
+    // el mapa claro del pasajero se deja a saturación completa para que se vea limpio de día.
+    container.style.filter = isDriverMap ? 'saturate(0.4)' : 'saturate(0.85)';
 
     // Ocultar logo de Mapbox
     const logoEl = container.querySelector?.('.mapboxgl-ctrl-logo') as HTMLElement | null;
@@ -14715,6 +14722,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.togglingOnline.set(true);
     await this.agService.setDriverOnline(driver.id, next);
     this.driverOnline.set(next);
+    // Recrea el mapa con el estilo de marca correcto (oscuro conductor / claro pasajero) --
+    // el estilo se elige en _createMap() leyendo driverOnline() al momento de crear la instancia.
+    this._resetMapToInitialState();
 
     if (next) {
       // Iniciar sesión online + cargar solicitudes (esto no pide ningún permiso)
