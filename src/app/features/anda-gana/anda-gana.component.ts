@@ -5576,7 +5576,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <span style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px">{{ visibleDriverRequests().length }}</span>
             }
           </div>
-          <button (click)="refreshDriverRequests()"
+          <button (click)="reloadFullPage()"
             class="flex items-center gap-1 text-xs text-cyan-600 font-bold active:scale-95 transition-all">
             <span class="material-symbols-outlined" style="font-size:14px">refresh</span> Actualizar
           </button>
@@ -17406,6 +17406,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   refreshDriverRequests() {
     this._loadDriverRequests(this.driverData()?.vehicle_type, this._currentLat, this._currentLng);
+  }
+
+  /** Pedido explicito del usuario 2026-08-03: el botón "Actualizar" recargaba solo la lista de
+   * solicitudes en vivo -- ahora recarga la página completa. */
+  reloadFullPage(): void {
+    if (isPlatformBrowser(this.platformId)) window.location.reload();
   }
 
   async debugLoadRequests() {
