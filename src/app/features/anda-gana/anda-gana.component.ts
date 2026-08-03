@@ -14859,8 +14859,45 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._sayIt(text);
   }
 
+  private _ttsNativeLang: string | null = null;
+
+  /** Busca el primer idioma español soportado por el motor TTS nativo del dispositivo
+   * (varía según fabricante/idiomas instalados) y lo cachea para no repetir la consulta. */
+  private async _resolveTtsLang(nativeTts: any): Promise<string> {
+    if (this._ttsNativeLang) return this._ttsNativeLang;
+    for (const lang of ['es-CO', 'es-419', 'es-ES', 'es-US', 'es']) {
+      try {
+        const { supported } = await nativeTts.isLanguageSupported({ lang });
+        if (supported) { this._ttsNativeLang = lang; return lang; }
+      } catch {}
+    }
+    this._ttsNativeLang = 'es-ES';
+    return 'es-ES';
+  }
+
+  /** BUG REAL 2026-08-03: el conductor reportó que nunca escuchaba la guía de voz (ni yendo a
+   * recoger ni yendo al destino) -- causa: dentro del WebView nativo de Android (a diferencia de
+   * Chrome de escritorio/Android), `window.speechSynthesis` normalmente no tiene voces disponibles
+   * (`getVoices()` vacío) y `speak()` falla en silencio, sin lanzar error. Se cambia a usar el
+   * motor TTS nativo de Android vía @capacitor-community/text-to-speech (misma libreria usada por
+   * otras apps de navegación), que sí funciona de forma confiable dentro de un WebView Capacitor.
+   * El fallback a speechSynthesis queda solo para cuando se prueba la app en un navegador normal. */
   private _sayIt(text: string): void {
     if (!isPlatformBrowser(this.platformId)) return;
+    const cap = (window as any)?.Capacitor;
+    const nativeTts = cap?.isNativePlatform?.() ? cap.Plugins?.TextToSpeech : null;
+
+    if (nativeTts) {
+      this.ttsStatus.set('playing');
+      this.cdr.markForCheck();
+      this._resolveTtsLang(nativeTts)
+        .then(lang => nativeTts.speak({ text, lang, rate: 0.95, pitch: 1, volume: 1, category: 'playback', queueStrategy: 0 }))
+        .catch(() => {})
+        .finally(() => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); });
+      return;
+    }
+
+    // Fallback — solo aplica probando la app en un navegador normal, no dentro del APK
     try {
       const synth = window.speechSynthesis;
       if (!synth) return;
@@ -14869,7 +14906,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       utt.volume   = 1;
       utt.rate     = 0.95;
       utt.pitch    = 1;
-      // Sin especificar lang — usa el idioma del sistema Android (es por defecto en Colombia)
       this.ttsStatus.set('playing');
       this.cdr.markForCheck();
       utt.onend  = () => { this.ttsStatus.set('idle'); this.cdr.markForCheck(); };
@@ -14896,6 +14932,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._voiceReady = true;
       this._sayIt('Voz activada');
     } else {
+      const cap = (window as any)?.Capacitor;
+      const nativeTts = cap?.isNativePlatform?.() ? cap.Plugins?.TextToSpeech : null;
+      if (nativeTts) { nativeTts.stop().catch(() => {}); }
       try { window.speechSynthesis?.cancel(); } catch {}
       this.ttsStatus.set('idle');
       this.cdr.markForCheck();
