@@ -1,10 +1,16 @@
 package com.publihazclick.movi
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.activity.result.ActivityResult
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
@@ -39,6 +45,39 @@ class MoviPermissionsPlugin : Plugin() {
         val result = JSObject()
         result.put("location", getPermissionState("location")?.toString() == "granted")
         result.put("notifications", getPermissionState("notifications")?.toString() == "granted")
+        call.resolve(result)
+    }
+
+    /**
+     * Pide excluir a Movi de la optimizacion de bateria del sistema -- causa mas probable de
+     * "a veces llega la notificacion de una solicitud, a veces no" (pedido explicito del usuario
+     * 2026-08-03). Con la app cerrada o sin abrirse un rato, Doze/App Standby (agravado por los
+     * administradores de bateria propios de MIUI/Xiaomi, Samsung, Huawei, etc.) retrasa o
+     * descarta los mensajes FCM en background de forma NO determinista -- coincide exacto con el
+     * sintoma reportado (intermitente, no constante). Si el usuario YA la tiene excluida (algunos
+     * fabricantes ya la excluyen sola tras cierto uso), no se muestra ningun dialogo.
+     */
+    @PluginMethod
+    fun requestIgnoreBatteryOptimizations(call: PluginCall) {
+        val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+        if (pm.isIgnoringBatteryOptimizations(context.packageName)) {
+            val result = JSObject()
+            result.put("alreadyIgnoring", true)
+            call.resolve(result)
+            return
+        }
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:" + context.packageName)
+        }
+        startActivityForResult(call, intent, "batteryOptResult")
+    }
+
+    @ActivityCallback
+    private fun batteryOptResult(call: PluginCall?, activityResult: ActivityResult) {
+        if (call == null) return
+        val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+        val result = JSObject()
+        result.put("alreadyIgnoring", pm.isIgnoringBatteryOptimizations(context.packageName))
         call.resolve(result)
     }
 }

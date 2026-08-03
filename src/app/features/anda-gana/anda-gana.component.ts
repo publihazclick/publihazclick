@@ -426,6 +426,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               style="flex:1;padding:12px 0;border-radius:10px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:#f87171;font-size:13px;font-weight:900;cursor:pointer">Cancelar</button>
           </div>
 
+          <!-- Confirmación de ajuste de precio en vivo -->
+          @if (priceUpdateToast()) {
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(16,185,129,0.15);border:1px solid rgba(52,211,153,0.35);border-radius:10px;padding:7px 10px">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#34d399;flex-shrink:0">sync</span>
+              <p style="color:#6ee7b7;font-size:11px;font-weight:700;margin:0">{{ priceUpdateToast() }}</p>
+            </div>
+          }
+
         </div>
       </div>
 
@@ -1170,15 +1178,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
           <!-- Precio sugerido -->
           @if (tripPrice() > 0) {
-            <div class="flex items-center justify-between px-3 py-2.5" style="border-top:1px solid #fed7aa;background:linear-gradient(135deg,#fff7ed,#ffedd5);border-radius:0 0 16px 16px">
-              <div>
-                <p style="color:#c2410c;font-size:9px;font-weight:800;margin:0;letter-spacing:0.07em;text-transform:uppercase">Precio sugerido</p>
-                <p style="color:#ea580c;font-size:20px;font-weight:900;margin:0;line-height:1.2">{{ formatCOP(tripPrice()) }}</p>
+            <div class="px-3 py-2.5" style="border-top:1px solid #fed7aa;background:linear-gradient(135deg,#fff7ed,#ffedd5);border-radius:0 0 16px 16px">
+              <p style="color:#c2410c;font-size:9px;font-weight:800;margin:0 0 6px;letter-spacing:0.07em;text-transform:uppercase">Precio sugerido</p>
+              <div class="flex items-center gap-2.5">
+                <button (click)="adjustTripPrice(-500)"
+                  style="width:34px;height:34px;border-radius:10px;border:1px solid #fdba74;background:#fff;color:#c2410c;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">−</button>
+                <p style="color:#ea580c;font-size:20px;font-weight:900;margin:0;line-height:1.2;flex:1;text-align:center">{{ formatCOP(tripPrice()) }}</p>
+                <button (click)="adjustTripPrice(500)"
+                  style="width:34px;height:34px;border-radius:10px;border:none;background:#f97316;color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer">+</button>
               </div>
-              <div class="text-right">
-                <p style="color:#9a3412;font-size:10px;font-weight:600;margin:0;line-height:1.4">Mayor precio =</p>
-                <p style="color:#ea580c;font-size:10px;font-weight:800;margin:0;line-height:1.4">conductores más rápido ⚡</p>
-              </div>
+              <p style="color:#9a3412;font-size:9px;font-weight:600;margin:6px 0 0;text-align:center">Mayor precio = conductores más rápido ⚡</p>
             </div>
           }
         </div>
@@ -15620,6 +15629,25 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Registrar push — FCM nativo inmediato (no depende del GPS), web push con delay
     this._registerNativePush().catch(() => {});
     setTimeout(() => this._autoRegisterPush(), 500);
+    this._requestBatteryOptimizationExemption();
+  }
+
+  /** Pedido explicito del usuario 2026-08-03: "a veces llega la notificacion de una solicitud
+   * mientras la app esta cerrada, a veces no" -- causa mas probable: Doze/App Standby de Android
+   * (agravado por administradores de bateria propios de MIUI/Xiaomi, Samsung, Huawei, etc.)
+   * retrasa o descarta mensajes FCM en background de forma NO determinista mientras la app no
+   * este excluida de la optimizacion de bateria -- coincide exacto con el sintoma (intermitente,
+   * no constante). Solo se pide UNA vez (localStorage) para no ser repetitivo si el conductor ya
+   * lo rechazo antes; si el sistema ya la trae excluida de fabrica, el nativo resuelve sin
+   * mostrar ningun dialogo. Ver MoviPermissionsPlugin.kt (requestIgnoreBatteryOptimizations). */
+  private _requestBatteryOptimizationExemption(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (localStorage.getItem('movi-battery-opt-asked')) return;
+    const cap = (window as any)?.Capacitor;
+    const MP = cap?.Plugins?.MoviPermissions;
+    if (!cap?.isNativePlatform?.() || !MP) return;
+    localStorage.setItem('movi-battery-opt-asked', '1');
+    MP.requestIgnoreBatteryOptimizations().catch(() => {});
   }
 
   /** Ubicación (foreground) + push nativo del lado pasajero -- para avisarle cuando un
@@ -16504,12 +16532,29 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.tripPrice.set(this._calcPrice(this.tripDistKm(), type));
   }
 
+  // Toast "se envió tu ajuste de precio" -- solo tiene sentido mientras el viaje YA fue enviado
+  // (currentTripRequestId existe) y el cambio de verdad viaja en vivo a los conductores. Antes de
+  // enviar (pantalla de "Precio sugerido"/personalizar precio), adjustTripPrice solo ajusta el
+  // signal local sin persistir nada, por eso no muestra ningún mensaje ahí.
+  priceUpdateToast = signal<string | null>(null);
+  private _priceToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private _showPriceUpdateToast(increased: boolean): void {
+    this.priceUpdateToast.set(increased ? 'Se envió el aumento de tu oferta a los conductores' : 'Se envió la disminución de tu oferta a los conductores');
+    if (this._priceToastTimer) clearTimeout(this._priceToastTimer);
+    this._priceToastTimer = setTimeout(() => { this.priceUpdateToast.set(null); this.cdr.markForCheck(); }, 2500);
+    this.cdr.markForCheck();
+  }
+
   adjustTripPrice(delta: number) {
     const newPrice = Math.max(2000, this.tripPrice() + delta);
     this.tripPrice.set(newPrice);
     // Persistir en BD para que los conductores vean el precio actualizado
     const tripId = this.currentTripRequestId();
-    if (tripId) this.agService.updateTripOfferedPrice(tripId, newPrice).catch(() => {});
+    if (tripId) {
+      this.agService.updateTripOfferedPrice(tripId, newPrice).catch(() => {});
+      this._showPriceUpdateToast(delta > 0);
+    }
   }
 
   adjustTripPriceSmart(dir: 1 | -1) {

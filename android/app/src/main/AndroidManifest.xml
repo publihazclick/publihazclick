@@ -91,4 +91,13 @@
          la notificacion de solicitud de viaje se degrada a una notificacion normal en la bandeja
          en vez de aparecer en pantalla completa con la app cerrada/celular bloqueado. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Causa real mas probable de "a veces llega la notificacion, a veces no" (2026-08-03):
+         con la app cerrada/en segundo plano por un rato, Doze/App Standby de Android (agravado
+         por los administradores de bateria propios de MIUI/Xiaomi, Samsung, Huawei, etc.)
+         retrasa o descarta por completo los mensajes FCM en background de forma NO determinista,
+         coincide exacto con el sintoma reportado (intermitente, no un fallo constante). Ver
+         MoviPermissionsPlugin.kt (requestIgnoreBatteryOptimizations) y _grantDriverPermissions en
+         anda-gana.component.ts, que ahora piden al conductor excluir la app de la optimizacion de
+         bateria al ponerse en linea por primera vez. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>
