@@ -11314,8 +11314,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         // Buscar marcador existente o crear uno nuevo
         const existingIdx = this._vehicleMarkers.findIndex((m: any) => m._agDriverId === record.driver_id);
         if (existingIdx >= 0) {
-          // Actualizar posición del marcador existente
-          this._vehicleMarkers[existingIdx].setLngLat([record.lng, record.lat]);
+          // Actualizar posición del marcador existente — deslizando, no en salto instantáneo
+          this._animateMarkerTo(this._vehicleMarkers[existingIdx], record.lng, record.lat, record.heading);
         } else {
           // Crear nuevo marcador
           const el = this._carElement(record.heading ?? 0, '#10b981');
@@ -12230,13 +12230,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const realVehicles = await this.agService.getNearbyVehicles(lat, lng);
 
     if (realVehicles.length > 0) {
-      // Conductores reales — marcadores estáticos
+      // Conductores reales — posición inicial; el movimiento en vivo lo aplica
+      // _subscribeToDriverLocations() por _agDriverId (BUG REAL 2026-08-03: sin esta
+      // etiqueta, esa suscripción nunca encontraba el marcador existente y creaba uno
+      // duplicado en cada actualización, dejando el original congelado para siempre —
+      // por eso se veían autos "pegados" que nunca se movían).
       realVehicles.forEach((v: any) => {
         const isMoto = v.vehicle_type?.toLowerCase().includes('moto');
         const color  = v.color ?? (isMoto ? '#06B6D4' : '#F59E0B');
         const el     = isMoto ? this._motoElement(v.heading, color) : this._carElement(v.heading, color);
         const m = new mapboxgl.Marker({ element: el, anchor: 'center' })
           .setLngLat([v.lng, v.lat]).addTo(this._map);
+        (m as any)._agDriverId = v.id;
         this._vehicleMarkers.push(m);
       });
       return;
@@ -12439,6 +12444,46 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._animFrame !== null) { cancelAnimationFrame(this._animFrame); this._animFrame = null; }
     this._lastTs       = null;
     this._vehicleStates = [];
+  }
+
+  // ── Movimiento suave de marcadores de conductores reales ────────
+  // Antes, cada actualización de posición hacía setLngLat() directo -- un salto instantáneo
+  // cada vez que llegaba un ping de GPS (cada pocos segundos), lo que se veía "tosco"/poco
+  // profesional comparado con los autos demo (que sí usan _startAnimation con interpolación).
+  // Se anima el mismo tramo con requestAnimationFrame para que el auto se deslice.
+  private _markerAnimState = new WeakMap<any, { raf: number | null }>();
+
+  private _animateMarkerTo(marker: any, toLng: number, toLat: number, toHeading?: number, durationMs = 1000): void {
+    const from = marker.getLngLat();
+    const fromLng = from.lng, fromLat = from.lat;
+
+    const rotEl = marker.getElement()?.firstElementChild as HTMLElement | null;
+    let fromHeading = toHeading ?? 0;
+    let deltaHeading = 0;
+    if (rotEl && toHeading != null) {
+      const match = /rotate\(([-\d.]+)deg\)/.exec(rotEl.style.transform);
+      fromHeading = match ? parseFloat(match[1]) : toHeading;
+      deltaHeading = ((toHeading - fromHeading + 540) % 360) - 180; // giro más corto
+    }
+
+    const prev = this._markerAnimState.get(marker);
+    if (prev?.raf != null) cancelAnimationFrame(prev.raf);
+    const state = { raf: null as number | null };
+    this._markerAnimState.set(marker, state);
+
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cúbico
+      marker.setLngLat([fromLng + (toLng - fromLng) * eased, fromLat + (toLat - fromLat) * eased]);
+      if (rotEl && toHeading != null) rotEl.style.transform = `rotate(${fromHeading + deltaHeading * eased}deg)`;
+      if (t < 1) {
+        state.raf = requestAnimationFrame(step);
+      } else {
+        state.raf = null;
+      }
+    };
+    state.raf = requestAnimationFrame(step);
   }
 
   // ── Íconos estilo inDrive — vista superior (top-down) ────────────────────
@@ -16905,12 +16950,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const mapboxgl = (window as any).mapboxgl;
     if (!mapboxgl) return;
 
-    // Actualizar rotación del marcador en tiempo real
+    // Deslizar suavemente a la nueva posición + rotación, en vez de saltar de golpe
     if (this._assignedDriverMarker) {
-      this._assignedDriverMarker.setLngLat([lng, lat]);
-      const el = this._assignedDriverMarker.getElement();
-      const rotEl = el?.querySelector('[style*="rotate"]') as HTMLElement | null;
-      if (rotEl) rotEl.style.transform = `rotate(${heading}deg)`;
+      this._animateMarkerTo(this._assignedDriverMarker, lng, lat, heading);
     } else {
       const el = this._carElement(heading, '#10b981');
       el.style.filter = 'drop-shadow(0 0 12px rgba(16,185,129,0.8))';
