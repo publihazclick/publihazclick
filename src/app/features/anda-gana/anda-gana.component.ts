@@ -9044,7 +9044,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <p class="text-slate-500 text-sm">Gracias por usar Movi</p>
             <button (click)="closeRatingModal()"
               class="mt-2 px-8 py-3 rounded-xl text-white font-black text-sm"
-              style="background:linear-gradient(135deg,#f97316,#fb923c)">
+              style="background:linear-gradient(135deg,#f59e0b,#d97706)">
               Cerrar
             </button>
           </div>
@@ -9148,7 +9148,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             </div>
             <div class="flex items-start gap-3 px-4 py-3">
-              <span class="material-symbols-outlined text-emerald-400 flex-shrink-0 mt-0.5" style="font-size:16px">location_on</span>
+              <span class="material-symbols-outlined text-red-400 flex-shrink-0 mt-0.5" style="font-size:16px">location_on</span>
               <div>
                 <p class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Destino</p>
                 <p class="text-white text-xs font-semibold">{{ tripReceiptData()!.dest_name ?? 'Destino' }}</p>
@@ -9263,47 +9263,47 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div (click)="closePassengerChat()" class="fixed inset-0"
       style="z-index:9993;background:rgba(0,0,0,0.5)"></div>
     <div class="fixed bottom-0 left-0 right-0 rounded-t-3xl flex flex-col"
-      style="z-index:9994;background:#fff;border-top:3px solid #f97316;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:min(72dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 40px));display:flex;flex-direction:column">
+      style="z-index:9994;background:#0f1421;border-top:3px solid #f97316;box-shadow:0 -8px 32px rgba(0,0,0,0.5);height:min(72dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 40px));display:flex;flex-direction:column">
       <!-- Header -->
-      <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid #f1f5f9">
-        <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:#e2e8f0"></div>
+      <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:rgba(255,255,255,0.15)"></div>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <div class="w-9 h-9 rounded-xl flex items-center justify-center"
-              style="background:#fff7ed;border:1.5px solid #fed7aa">
+              style="background:rgba(249,115,22,0.12);border:1.5px solid rgba(249,115,22,0.3)">
               <span class="material-symbols-outlined" style="font-size:20px;color:#f97316">chat</span>
             </div>
             <div>
-              <p class="font-black text-sm" style="color:#1e293b">Chat con conductor</p>
-              <p class="text-xs" style="color:#94a3b8">Mensajes en tiempo real</p>
+              <p class="font-black text-sm text-white">Chat con conductor</p>
+              <p class="text-xs" style="color:rgba(255,255,255,0.4)">Mensajes en tiempo real</p>
             </div>
           </div>
           <button (click)="closePassengerChat()"
             class="w-8 h-8 rounded-full flex items-center justify-center"
-            style="background:#f1f5f9">
-            <span class="material-symbols-outlined" style="font-size:18px;color:#64748b">close</span>
+            style="background:rgba(255,255,255,0.08)">
+            <span class="material-symbols-outlined" style="font-size:18px;color:rgba(255,255,255,0.6)">close</span>
           </button>
         </div>
       </div>
       <!-- Mensajes -->
-      <div id="passenger-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-3" style="min-height:0;background:#f8fafc">
+      <div id="passenger-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-3" style="min-height:0">
         @if (chatMessages().length === 0) {
           <div class="flex flex-col items-center justify-center h-full text-center gap-3">
-            <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:#fff7ed;border:2px solid #fed7aa">
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:rgba(249,115,22,0.1);border:2px solid rgba(249,115,22,0.25)">
               <span class="material-symbols-outlined" style="font-size:32px;color:#f97316">chat_bubble_outline</span>
             </div>
-            <p class="font-bold text-sm" style="color:#475569">Sin mensajes aún</p>
-            <p class="text-xs" style="color:#94a3b8">Envía un mensaje para hablar con el conductor</p>
+            <p class="font-bold text-sm" style="color:rgba(255,255,255,0.6)">Sin mensajes aún</p>
+            <p class="text-xs" style="color:rgba(255,255,255,0.35)">Envía un mensaje para hablar con el conductor</p>
           </div>
         }
         @for (m of chatMessages(); track m.id) {
           <div class="flex" [class]="m.sender_ag_user_id === agProfile()?.id ? 'justify-end' : 'justify-start'">
             <div class="max-w-[78%] px-3 py-2 shadow-sm"
-              [style.background]="m.sender_ag_user_id === agProfile()?.id ? '#f97316' : '#ffffff'"
+              [style.background]="m.sender_ag_user_id === agProfile()?.id ? '#f97316' : 'rgba(255,255,255,0.08)'"
               [style.borderRadius]="m.sender_ag_user_id === agProfile()?.id ? '18px 18px 4px 18px' : '18px 18px 18px 4px'"
-              [style.border]="m.sender_ag_user_id === agProfile()?.id ? 'none' : '1px solid #e2e8f0'">
-              <p class="text-sm leading-snug" [style.color]="m.sender_ag_user_id === agProfile()?.id ? '#fff' : '#1e293b'">{{ m.message }}</p>
-              <p class="text-[10px] mt-1" [style.color]="m.sender_ag_user_id === agProfile()?.id ? 'rgba(255,255,255,0.7)' : '#94a3b8'"
+              [style.border]="m.sender_ag_user_id === agProfile()?.id ? 'none' : '1px solid rgba(255,255,255,0.1)'">
+              <p class="text-sm leading-snug" [style.color]="m.sender_ag_user_id === agProfile()?.id ? '#fff' : '#fff'">{{ m.message }}</p>
+              <p class="text-[10px] mt-1" [style.color]="m.sender_ag_user_id === agProfile()?.id ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)'"
                 [style.textAlign]="m.sender_ag_user_id === agProfile()?.id ? 'right' : 'left'">
                 {{ m.created_at | date:'HH:mm' }}
               </p>
@@ -9312,11 +9312,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
       </div>
       <!-- Input -->
-      <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid #f1f5f9;background:#fff;padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+      <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid rgba(255,255,255,0.08);padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
         <input type="text" [(ngModel)]="chatInput" (keyup.enter)="sendPassengerChat()"
           placeholder="Escribe un mensaje..."
           class="flex-1 px-4 py-2.5 rounded-2xl text-sm focus:outline-none"
-          style="background:#f1f5f9;border:1.5px solid #e2e8f0;color:#1e293b;font-size:14px" />
+          style="background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:#fff;font-size:14px" />
         <button (click)="sendPassengerChat()" [disabled]="sendingChat() || !chatInput.trim()"
           class="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 flex-shrink-0"
           style="background:#f97316">
@@ -9335,48 +9335,48 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div (click)="closeChatModal()" class="fixed inset-0"
       style="z-index:9993;background:rgba(0,0,0,0.5)"></div>
     <div class="fixed bottom-0 left-0 right-0 rounded-t-3xl flex flex-col"
-      style="z-index:9994;background:#fff;border-top:3px solid #2563eb;box-shadow:0 -8px 32px rgba(0,0,0,0.2);height:min(72dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 40px));display:flex;flex-direction:column">
+      style="z-index:9994;background:#0f1421;border-top:3px solid #2563eb;box-shadow:0 -8px 32px rgba(0,0,0,0.5);height:min(72dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 40px));display:flex;flex-direction:column">
       <!-- Header -->
-      <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid #f1f5f9">
-        <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:#e2e8f0"></div>
+      <div class="flex-shrink-0 px-5 pt-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <div class="mx-auto w-10 h-1 rounded-full mb-3" style="background:rgba(255,255,255,0.15)"></div>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <div class="w-9 h-9 rounded-xl flex items-center justify-center"
-              style="background:#eff6ff;border:1.5px solid #bfdbfe">
-              <span class="material-symbols-outlined" style="font-size:20px;color:#2563eb">chat</span>
+              style="background:rgba(37,99,235,0.12);border:1.5px solid rgba(37,99,235,0.3)">
+              <span class="material-symbols-outlined" style="font-size:20px;color:#3b82f6">chat</span>
             </div>
             <div>
-              <p class="font-black text-sm" style="color:#1e293b">Chat con pasajero</p>
-              <p class="text-xs" style="color:#94a3b8">Mensajes en tiempo real</p>
+              <p class="font-black text-sm text-white">Chat con pasajero</p>
+              <p class="text-xs" style="color:rgba(255,255,255,0.4)">Mensajes en tiempo real</p>
             </div>
           </div>
           <button (click)="closeChatModal()"
             class="w-8 h-8 rounded-full flex items-center justify-center"
-            style="background:#f1f5f9">
-            <span class="material-symbols-outlined" style="font-size:18px;color:#64748b">close</span>
+            style="background:rgba(255,255,255,0.08)">
+            <span class="material-symbols-outlined" style="font-size:18px;color:rgba(255,255,255,0.6)">close</span>
           </button>
         </div>
       </div>
       <!-- Mensajes -->
-      <div id="driver-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-3" style="min-height:0;background:#f8fafc">
+      <div id="driver-chat-messages" class="flex-1 overflow-y-auto flex flex-col gap-3 px-4 py-3" style="min-height:0">
         @if (chatMessages().length === 0) {
           <div class="flex flex-col items-center justify-center h-full text-center gap-3">
-            <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:#eff6ff;border:2px solid #bfdbfe">
-              <span class="material-symbols-outlined" style="font-size:32px;color:#2563eb">chat_bubble_outline</span>
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:rgba(37,99,235,0.1);border:2px solid rgba(37,99,235,0.25)">
+              <span class="material-symbols-outlined" style="font-size:32px;color:#3b82f6">chat_bubble_outline</span>
             </div>
-            <p class="font-bold text-sm" style="color:#475569">Sin mensajes aún</p>
-            <p class="text-xs" style="color:#94a3b8">Envía un mensaje para hablar con el pasajero</p>
+            <p class="font-bold text-sm" style="color:rgba(255,255,255,0.6)">Sin mensajes aún</p>
+            <p class="text-xs" style="color:rgba(255,255,255,0.35)">Envía un mensaje para hablar con el pasajero</p>
           </div>
         }
         @for (msg of chatMessages(); track msg.id) {
           <div class="flex" [class]="isMyChatMessage(msg) ? 'justify-end' : 'justify-start'">
             <div class="max-w-[78%] px-3 py-2 shadow-sm"
-              [style.background]="isMyChatMessage(msg) ? '#2563eb' : '#ffffff'"
+              [style.background]="isMyChatMessage(msg) ? '#2563eb' : 'rgba(255,255,255,0.08)'"
               [style.borderRadius]="isMyChatMessage(msg) ? '18px 18px 4px 18px' : '18px 18px 18px 4px'"
-              [style.border]="isMyChatMessage(msg) ? 'none' : '1px solid #e2e8f0'">
-              <p class="text-sm leading-snug" [style.color]="isMyChatMessage(msg) ? '#fff' : '#1e293b'">{{ msg.message }}</p>
+              [style.border]="isMyChatMessage(msg) ? 'none' : '1px solid rgba(255,255,255,0.1)'">
+              <p class="text-sm leading-snug" style="color:#fff">{{ msg.message }}</p>
               <p class="text-[10px] mt-1"
-                [style.color]="isMyChatMessage(msg) ? 'rgba(255,255,255,0.7)' : '#94a3b8'"
+                [style.color]="isMyChatMessage(msg) ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)'"
                 [style.textAlign]="isMyChatMessage(msg) ? 'right' : 'left'">
                 {{ formatChatTime(msg.created_at) }}
               </p>
@@ -9385,12 +9385,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
       </div>
       <!-- Input -->
-      <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid #f1f5f9;background:#fff;padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
+      <div class="flex-shrink-0 flex gap-2 px-4 py-3" style="border-top:1px solid rgba(255,255,255,0.08);padding-bottom:max(12px,env(safe-area-inset-bottom,12px))">
         <input [(ngModel)]="chatInput" name="chatInput"
           placeholder="Escribe un mensaje..."
           (keydown.enter)="sendChatMsg()"
           class="flex-1 px-4 py-2.5 rounded-2xl text-sm focus:outline-none"
-          style="background:#f1f5f9;border:1.5px solid #e2e8f0;color:#1e293b;font-size:14px" />
+          style="background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:#fff;font-size:14px" />
         <button (click)="sendChatMsg()" [disabled]="!chatInput.trim() || chatSending()"
           class="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40 flex-shrink-0"
           style="background:#2563eb">
