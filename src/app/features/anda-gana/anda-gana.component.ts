@@ -1156,6 +1156,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <p style="color:rgba(148,163,184,0.7);font-size:10px;margin:4px 0 0">Dáselo al repartidor al recibir tu pedido</p>
           </div>
         }
+      } @else if (tripSent()) {
+        <!-- Buscando conductor: origen, destino y precio sugerido ya se muestran en el banner
+             flotante de abajo (ver "BANNER PASAJERO: BUSCANDO / OFERTAS") -- pedido explicito del
+             usuario 2026-08-03 para no duplicar esa info arriba y dejar el espacio libre para los
+             modales que siguen del flujo (conductor llegó, en camino, etc). -->
       } @else if (tripDest()) {
         <!-- Destino elegido, viaje no enviado aún: origen + destino fondo blanco -->
         <div class="px-4 pb-1 flex-shrink-0 w-full">
