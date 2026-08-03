@@ -15892,6 +15892,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     } catch {}
   }
 
+  /** Sonido + vibración doble para el pasajero cuando un conductor acepta al precio pedido o
+   * manda una contraoferta -- ambos casos son una nueva oferta en ag_trip_offers, requieren
+   * acción del pasajero (elegir/aceptar), por eso un patrón distinto al ding simple del chat. */
+  private _notifyNewOffer(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try { navigator.vibrate?.([300, 100, 300]); } catch {}
+    try {
+      const a = new Audio('/notification.wav');
+      a.volume = 1;
+      a.play().catch(() => {});
+    } catch {}
+  }
+
   private _notifyNewTrip(req: any): void {
     if (typeof window === 'undefined') return;
 
@@ -16608,11 +16621,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this.driverEtaMin.update(m => ({ ...m, [offer.id]: etaMin }));
         }
       } catch {}
+      const isNewOffer = !this.receivedOffers().some(o => o.id === offer.id);
       this.receivedOffers.update(list => {
         const idx = list.findIndex(o => o.id === offer.id);
         if (idx >= 0) { const nl = [...list]; nl[idx] = offer; return nl; }
         return [...list, offer];
       });
+      // Cubre tanto un conductor aceptando al precio pedido como una contraoferta con otro
+      // precio -- ambas llegan como INSERT en ag_trip_offers, sin distinción en este punto.
+      if (isNewOffer) this._notifyNewOffer();
       this.cdr.markForCheck();
     });
     // Timer 1s para la barra de progreso y auto-expirar ofertas > 4 min
