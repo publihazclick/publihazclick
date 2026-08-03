@@ -1336,7 +1336,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <button (click)="recenterPassengerMap()"
             class="absolute flex flex-col items-center justify-center gap-0.5 active:scale-90 transition"
             [style.z-index]="passengerMapFullscreen() ? '9860' : '40'"
-            [style.bottom]="(passengerMapFullscreen() && tripAccepted()) ? 'calc(env(safe-area-inset-bottom,0px) + 200px)' : 'calc(env(safe-area-inset-bottom,0px) + 16px)'"
+            [style.bottom]="(tripAccepted() && arrivedAtPickupTimer() === null) ? 'calc(env(safe-area-inset-bottom,0px) + 200px)' : 'calc(env(safe-area-inset-bottom,0px) + 16px)'"
             style="right:12px;width:52px;height:52px;border-radius:14px;transition:border-color 0.2s,box-shadow 0.2s,bottom 0.3s"
             [style.background]="passengerMapPanned() ? 'rgba(10,15,35,0.95)' : 'rgba(10,15,35,0.75)'"
             [style.border]="passengerMapPanned() ? '2px solid #f97316' : '2px solid rgba(255,255,255,0.15)'"
@@ -1515,20 +1515,58 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <p class="text-emerald-400 text-[10px] font-bold">min</p>
                 </div>
               }
-              <!-- Pedido explicito del usuario 2026-07-31: el chat con el conductor no tenia
-                   ningun boton de acceso mientras viene en camino (antes del arribo) -- se
-                   quedo sin punto de entrada al borrar el panel grande que lo tenia. Boton
-                   chiquito temporal aca mientras se decide donde va definitivamente. -->
-              @if (arrivedAtPickupTimer() === null && !passengerMapFullscreen()) {
-                <button (click)="openPassengerChat()"
-                  class="flex-shrink-0 flex items-center justify-center relative"
-                  style="width:40px;height:40px;border-radius:12px;background:rgba(37,99,235,0.85);border:1px solid rgba(59,130,246,0.4);pointer-events:auto">
-                  <span class="material-symbols-outlined text-white" style="font-size:18px">chat</span>
-                  @if (chatUnread() > 0) {
-                    <span class="absolute" style="top:-4px;right:-4px;min-width:16px;height:16px;background:#ef4444;border-radius:50%;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px">{{ chatUnread() }}</span>
-                  }
-                </button>
-              }
+            </div>
+          </div>
+        }
+
+        <!-- ═══════════ MODAL PASAJERO: CONDUCTOR EN CAMINO A RECOGERLO (abajo) ═══════════
+             Espejo del modal que ve el conductor mientras va camino al punto de recogida
+             (ver "Tarjeta flotante inferior" del conductor en driverMapFullscreen). -->
+        @if (tripAccepted() && arrivedAtPickupTimer() === null && !passengerMapFullscreen()) {
+          <div class="absolute bottom-0 left-0 right-0 z-40"
+            style="background:linear-gradient(0deg,rgba(10,12,25,1) 0%,rgba(10,12,25,0.97) 80%,transparent 100%);padding:16px 16px calc(env(safe-area-inset-bottom,16px) + 12px);max-height:48dvh;overflow-y:auto">
+
+            <div class="flex items-start gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+                <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">person_pin</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-black text-[11px] uppercase tracking-widest mb-0.5" style="color:#a78bfa">
+                  Tu conductor viene por ti
+                </p>
+                <p class="text-white font-black text-sm truncate">
+                  {{ tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'Tu conductor' }}
+                </p>
+                <div class="flex items-start gap-1.5 mt-1">
+                  <span class="material-symbols-outlined flex-shrink-0" style="font-size:12px;margin-top:1px;color:#38bdf8">directions_car</span>
+                  <p class="text-slate-300 text-xs leading-tight">
+                    {{ tripAccepted()!.ag_drivers?.vehicle_color ?? '' }} {{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate ?? '' }}
+                  </p>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-emerald-400 font-black text-lg leading-none">{{ formatCOP(tripAccepted()!.offered_price) }}</p>
+                @if (approachRouteInfo()) {
+                  <p class="text-slate-400 text-[10px] mt-0.5">{{ approachRouteInfo()!.durationMin }} min · {{ approachRouteInfo()!.distKm }} km</p>
+                }
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <button (click)="openPassengerChat()"
+                class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                style="background:rgba(37,99,235,0.85);border:1px solid rgba(59,130,246,0.4);position:relative">
+                <span class="material-symbols-outlined" style="font-size:16px">chat</span>Chat
+                @if (chatUnread() > 0) {
+                  <span style="position:absolute;top:3px;right:5px;min-width:15px;height:15px;background:#ef4444;border-radius:50%;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px">{{ chatUnread() }}</span>
+                }
+              </button>
+              <button (click)="callDriver()" [disabled]="callingDriver()"
+                class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50"
+                style="background:rgba(22,163,74,0.85);border:1px solid rgba(34,197,94,0.4)">
+                <span class="material-symbols-outlined" style="font-size:16px">{{ callingDriver() ? 'hourglass_empty' : 'call' }}</span>Llamar
+              </button>
             </div>
           </div>
         }
@@ -1536,7 +1574,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Panel de viaje (flotante abajo) -->
         @if (gpsStatus() !== 'requesting') {
           <div class="absolute bottom-0 left-0 right-0 z-20 rounded-t-3xl"
-            [style.display]="(tripSent() && !tripAccepted()) || passengerMapFullscreen() || arrivedAtPickupTimer() !== null ? 'none' : ''"
+            [style.display]="(tripSent() && !tripAccepted()) || tripAccepted() || passengerMapFullscreen() || arrivedAtPickupTimer() !== null ? 'none' : ''"
             [style.maxHeight]="(tripSent() || tripAccepted()) ? 'min(62%,480px)' : (tripService()==='domicilio' ? 'min(72dvh,560px)' : '')"
             [style.overflowY]="'auto'"
             style="background:#f1f5f9;border-top:1px solid #cbd5e1;overflow-x:hidden">
@@ -15777,6 +15815,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return this._ensureAudioCtx();
   }
 
+  /** Sonido + vibración corta al recibir un mensaje de chat del otro rol (conductor/pasajero). */
+  private _playChatSound(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try { navigator.vibrate?.(200); } catch {}
+    try {
+      const a = new Audio('/notification.wav');
+      a.volume = 1;
+      a.play().catch(() => {});
+    } catch {}
+  }
+
   private _notifyNewTrip(req: any): void {
     if (typeof window === 'undefined') return;
 
@@ -17747,6 +17796,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Suscribirse a nuevos mensajes
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(requestId, (msg) => {
+      if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       this.chatMessages.update(list => [...list, msg]);
     });
   }
@@ -17763,6 +17813,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(requestId, (msg) => {
+      if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       this.chatMessages.update(list => [...list, msg]);
       this.cdr.markForCheck();
       this._scrollChatToBottom('driver-chat-messages');
@@ -17777,6 +17828,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     // Mantener suscripción en fondo para badge de no leídos
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
+      if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       if (!this.showChatModal()) {
         this.chatUnread.update(n => n + 1);
         this.cdr.markForCheck();
@@ -17822,6 +17874,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._unsubscribeChat();
     this.chatRequestId.set(tripRequestId);
     this._chatChannel = this.agService.subscribeToChatMessages(tripRequestId, (msg: any) => {
+      if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       if (!this.showChatModal() || this.chatRequestId() !== tripRequestId) {
         this.chatUnread.update(n => n + 1);
         this.cdr.markForCheck();
@@ -18855,6 +18908,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.chatOpen.set(true);
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
+      if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       this.chatMessages.update(list => [...list, msg]);
       this.cdr.markForCheck();
       this._scrollChatToBottom('passenger-chat-messages');
@@ -18873,6 +18927,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     // Mantener suscripción en fondo para seguir contando mensajes no leídos
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
+      if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       if (!this.chatOpen()) {
         this.chatUnread.update(n => n + 1);
         this.cdr.markForCheck();
@@ -18902,6 +18957,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.chatRequestId.set(tripId);
     this._unsubscribeChat();
     this._chatChannel = this.agService.subscribeToChatMessages(tripId, (msg: any) => {
+      if (msg.sender_ag_user_id !== this.agProfile()?.id) this._playChatSound();
       if (!this.chatOpen()) {
         this.chatUnread.update(n => n + 1);
         this.cdr.markForCheck();
