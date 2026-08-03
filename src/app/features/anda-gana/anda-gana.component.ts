@@ -7383,10 +7383,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <span class="text-white text-sm font-bold">Total al pasajero</span>
                 <span class="text-white text-sm font-black">{{ '$' + (d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO') }}</span>
               </div>
+              @if (d.commission_amount != null && d.commission_amount > 0) {
+                <div class="flex items-center justify-between">
+                  <span class="text-red-400 text-xs">Comisión Movi ({{ d.commission_pct ?? 0 }}%)</span>
+                  <span class="text-red-400 text-xs font-bold">−{{ '$' + d.commission_amount.toLocaleString('es-CO') }}</span>
+                </div>
+              }
               <div class="flex items-center justify-between rounded-xl p-3"
                 style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.05))">
-                <span class="text-emerald-300 text-sm font-bold">Total al pasajero</span>
-                <span class="text-emerald-300 text-lg font-black">{{ '$' + (d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO') }}</span>
+                <span class="text-emerald-300 text-sm font-bold">Tu ganancia neta</span>
+                <span class="text-emerald-300 text-lg font-black">{{ '$' + (d.driver_net ?? d.final_price ?? d.offered_price ?? 0).toLocaleString('es-CO') }}</span>
               </div>
             </div>
 
@@ -11122,6 +11128,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (reqId) this.driverRequests.update(list => list.filter(r => r.id !== reqId));
     // Iniciar suscripción de fondo al chat para recibir mensajes del pasajero
     if (reqId) this.startDriverChatBackground(reqId);
+    // BUG REAL 2026-08-03: el trigger ag_on_offer_accepted YA descuenta la comisión de
+    // wallet_balance de forma sincrona e instantanea en la BD apenas se acepta la oferta -- el
+    // "retraso" que reportaba el usuario no era del descuento en si, sino que driverWalletBalance
+    // solo se cargaba UNA vez al abrir la app (_initDriverHome) y nunca se volvia a leer, asi que
+    // el conductor seguia viendo el saldo viejo hasta cerrar y reabrir la app. Se refresca aqui,
+    // el unico punto donde convergen los 3 caminos que detectan una oferta aceptada (realtime,
+    // broadcast directo, y el polling de respaldo).
+    const driverId = this.driverData()?.id;
+    if (driverId) {
+      this.agService.getDriverWalletBalance(driverId).then(balance => {
+        if (balance !== null) { this.driverWalletBalance.set(balance); this.cdr.markForCheck(); }
+      }).catch(() => {});
+    }
     this.cdr.markForCheck();
   }
 
