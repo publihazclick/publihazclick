@@ -10758,6 +10758,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       SplashScreen.hide({ fadeOutDuration: 0 }).catch(() => {});
+      // Puente para MainActivity.java (handleTripRequestIntent): con la app YA corriendo (warm),
+      // el nativo llama esto via evaluateJavascript en vez de recargar el WebView entero -- pedido
+      // explicito del usuario 2026-08-03 para que tocar la notificacion muestre la solicitud/oferta
+      // de inmediato, sin repetir splash/GPS/pantallas de arranque. En frio (coldStart) el nativo
+      // sigue usando loadUrl con ?trip_request_id=... porque en ese caso la app aun no existe.
+      (window as any).__moviHandleTripPush = (tripId: string) => {
+        this._showIncomingTripById(tripId).catch(() => {});
+      };
     }
 
     this.referredBy = this.route.snapshot.queryParamMap.get('ref');

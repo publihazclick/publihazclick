@@ -11,6 +11,7 @@ import android.os.Looper;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 import com.getcapacitor.BridgeActivity;
+import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -63,48 +64,75 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Navega el WebView a la solicitud de viaje cuando la app se abre/reactiva desde la
-     * notificacion de pantalla completa de MoviFirebaseMessagingService.kt. En frio (coldStart)
-     * se espera a que Capacitor termine de cargar la app antes de navegar; ya corriendo, se
-     * navega de inmediato. Pedido explicito del usuario 2026-07-30.
+     * Muestra la solicitud de viaje cuando la app se abre/reactiva desde la notificacion de
+     * pantalla completa de MoviFirebaseMessagingService.kt.
+     *
+     * CAMBIO 2026-08-03 (pedido explicito del usuario): con la app YA corriendo (coldStart=false),
+     * antes esto hacia loadUrl() -- una recarga COMPLETA del WebView que reiniciaba Angular desde
+     * cero (splash, chequeo de sesion, GPS, "Cargando tu perfil...", etc.), aunque la app ya
+     * estuviera mostrando todo en vivo. El usuario reporto que tocar la notificacion lo hacia
+     * esperar esas pantallas en vez de ver la solicitud/oferta de inmediato. Con la app corriendo
+     * NO hace falta recargar nada: Android ya trae la Activity al frente sola por el intent
+     * (launchMode singleTask), asi que basta con inyectar el tripId via evaluateJavascript al
+     * puente que anda-gana.component.ts registra en ngOnInit (window.__moviHandleTripPush) -- la
+     * misma funcion que ya usaba _showIncomingTripById para agregar la solicitud a driverRequests
+     * sin pantallas de por medio. Solo en frio (coldStart=true, la app ni siquiera existe todavia)
+     * sigue haciendo falta el loadUrl con ?trip_request_id=... porque ese es el primer arranque.
      */
     private void handleTripRequestIntent(Intent intent, boolean coldStart) {
         if (intent == null) return;
         String tripRequestId = intent.getStringExtra("trip_request_id");
         if (tripRequestId == null || tripRequestId.isEmpty()) return;
 
-        String url = "https://www.publihazclick.com/anda-gana?trip_request_id=" + tripRequestId;
-        long delayMs = coldStart ? 1500 : 0;
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (getBridge() != null && getBridge().getWebView() != null) {
-                getBridge().getWebView().loadUrl(url);
-            }
-        }, delayMs);
+        if (coldStart) {
+            String url = "https://www.publihazclick.com/anda-gana?trip_request_id=" + tripRequestId;
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    getBridge().getWebView().loadUrl(url);
+                }
+            }, 1500);
+            return;
+        }
+
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            String js = "window.__moviHandleTripPush && window.__moviHandleTripPush("
+                + JSONObject.quote(tripRequestId) + ");";
+            getBridge().getWebView().evaluateJavascript(js, null);
+        }
     }
 
     /**
      * Pedido explicito del usuario 2026-07-31 (llamadas de voz con notificacion nativa): las
      * notificaciones urgentes genericas (showUrgentAlertNotification en
-     * MoviFirebaseMessagingService.kt, ej. "tu conductor llego") YA ponian la URL completa en
-     * intent.setData(), pero nada la leia -- esta activity solo miraba el extra
-     * "trip_request_id" (handleTripRequestIntent). Se agrega este manejo generico para
-     * CUALQUIER notificacion con URL: si trae query params (como los de una llamada entrante,
-     * incoming_call_trip=...), la app abre directo ahi. No pisa el flujo de trip_request_id
-     * (ese ya se maneja arriba); si ambos vienen en el mismo intent, cargar la misma URL dos
-     * veces es inofensivo.
+     * MoviFirebaseMessagingService.kt -- ofertas de conductores, oferta aceptada, "tu conductor
+     * llego", llamadas entrantes) YA ponian la URL completa en intent.setData(), pero nada la
+     * leia -- esta activity solo miraba el extra "trip_request_id" (handleTripRequestIntent). Se
+     * agrega este manejo generico para CUALQUIER notificacion con URL.
+     *
+     * CAMBIO 2026-08-03 (pedido explicito del usuario): con la app YA corriendo (coldStart=false)
+     * esto hacia loadUrl() SIEMPRE, incluso cuando la URL de destino era la misma pagina que ya
+     * estaba abierta (ej. el push de "te hicieron una oferta" apunta solo a /anda-gana, sin
+     * parametros) -- eso reiniciaba Angular desde cero (splash, GPS, "Cargando...") solo para
+     * volver a mostrar la MISMA pantalla, y el usuario reporto exactamente este retraso al tocar
+     * la notificacion de una oferta/aceptacion. Ya no hace falta: todos estos eventos (ofertas
+     * recibidas, oferta aceptada, conductor llego, llamada entrante) ya llegan en vivo por
+     * suscripciones realtime mientras la app esta corriendo -- lo unico que hacia falta era traer
+     * la Activity al frente, y eso Android ya lo hace solo por el intent (launchMode singleTask),
+     * sin tocar el WebView. En frio (coldStart=true, la app aun no existe) se mantiene el loadUrl,
+     * es el unico caso donde de verdad hace falta cargar esa URL por primera vez.
      */
     private void handleDeepLinkIntent(Intent intent, boolean coldStart) {
+        if (!coldStart) return; // app ya corriendo -- no recargar, ver comentario arriba
         if (intent == null || intent.getData() == null) return;
         if (intent.getStringExtra("trip_request_id") != null) return; // ya lo maneja handleTripRequestIntent
         String url = intent.getData().toString();
         if (!url.startsWith("http")) return;
 
-        long delayMs = coldStart ? 1500 : 0;
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (getBridge() != null && getBridge().getWebView() != null) {
                 getBridge().getWebView().loadUrl(url);
             }
-        }, delayMs);
+        }, 1500);
     }
 
     private void createNotificationChannels() {
