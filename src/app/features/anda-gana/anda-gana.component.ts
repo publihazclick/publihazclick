@@ -539,7 +539,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div style="pointer-events:auto;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border-radius:20px;border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(0,229,255,0.08);overflow:hidden;flex-shrink:0">
 
           <!-- Franja de alerta superior -->
-          <div style="background:linear-gradient(90deg,rgba(0,229,255,0.15) 0%,rgba(5,150,105,0.1) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="background:linear-gradient(90deg,rgba(0,229,255,0.18) 0%,rgba(0,229,255,0.05) 100%);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00E5FF;animation:pulse 1.2s ease-in-out infinite;flex-shrink:0"></span>
               <span style="color:#00E5FF;font-size:12px;font-weight:900;letter-spacing:0.07em;text-transform:uppercase">¡Solicitud de viaje!</span>
@@ -556,7 +556,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <!-- Fila pasajero + precio -->
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-              <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,229,255,0.4);overflow:hidden;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center">
+              <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;border:2px solid rgba(0,229,255,0.4);overflow:hidden;background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center">
                 @if (req.passenger_selfie_url ?? req.ag_users?.selfie_url) {
                   <img [src]="req.passenger_selfie_url ?? req.ag_users?.selfie_url"
                     style="width:100%;height:100%;object-fit:cover" alt="foto pasajero">
@@ -614,7 +614,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <span style="font-size:10px;font-weight:700;opacity:0.9;letter-spacing:0.03em;position:relative;z-index:1">{{ reqRemainingStr(req) }}</span>
                 </button>
                 <button (click)="toggleInlineCounter(req)" [disabled]="sendingOffer()"
-                  style="flex:1;padding:11px 0;border-radius:12px;border:1px solid rgba(245,158,11,0.5);cursor:pointer;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity 0.2s;background:rgba(245,158,11,0.12);color:#fbbf24"
+                  style="flex:1;padding:11px 0;border-radius:12px;border:1px solid rgba(0,229,255,0.4);cursor:pointer;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity 0.2s;background:rgba(0,229,255,0.09);color:#22d3ee"
                   [style.opacity]="sendingOffer() ? '0.6' : '1'">
                   <span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">swap_vert</span>
                   Contra-oferta
@@ -622,15 +622,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <!-- Inline counter-offer -->
               @if (inlineCounterOpenId() === req.id) {
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);margin-top:4px">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.25);margin-top:4px">
                   <span style="color:#94a3b8;font-size:11px;font-weight:700;white-space:nowrap">Tu oferta:</span>
-                  <span style="color:#fbbf24;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
+                  <span style="color:#22d3ee;font-size:15px;font-weight:900;flex:1;text-align:center">{{ formatCOP(inlineCounterValue()) }}</span>
                   <button (click)="inlineCounterValue.set(inlineCounterValue() > 2500 ? inlineCounterValue() - 500 : 2000)"
                     style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:rgba(255,255,255,0.1);color:#94a3b8;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>
                   <button (click)="inlineCounterValue.set(inlineCounterValue() + 500)"
-                    style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:#f97316;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
+                    style="min-width:44px;min-height:44px;border-radius:10px;border:none;cursor:pointer;background:#0891b2;color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>
                   <button (click)="submitInlineCounter(req)" [disabled]="sendingOffer()"
-                    style="padding:6px 12px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:900;flex-shrink:0;opacity:1"
+                    style="padding:6px 12px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:12px;font-weight:900;flex-shrink:0;opacity:1"
                     [style.opacity]="sendingOffer() ? '0.5' : '1'">Enviar</button>
                 </div>
               }
