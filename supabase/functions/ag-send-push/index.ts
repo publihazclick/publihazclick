@@ -53,9 +53,15 @@ async function getFcmAccessToken(): Promise<string | null> {
 }
 
 let _lastFcmDebug: string | null = null;
-async function sendFcm(token: string, title: string, body: string, data: Record<string, string>): Promise<boolean> {
+// Bug real encontrado 2026-07-31: los tokens invalidos (UNREGISTERED/404, dispositivo
+// reinstalo la app o el token roto) nunca se borraban de ag_push_subs -- el token de FCM SI
+// rota con cada reinstalo/rebuild del APK, asi que en una sesion de pruebas con varios installs
+// (como esta) se acumulan decenas de filas muertas por usuario, desperdiciando envios y
+// arriesgando que el "debug" final oculte el error real de un token que si importaba. Ahora
+// sendFcm devuelve si el fallo fue por token no registrado para que el caller lo borre.
+async function sendFcm(token: string, title: string, body: string, data: Record<string, string>): Promise<'ok' | 'unregistered' | 'error'> {
   const access = await getFcmAccessToken();
-  if (!access || !FCM_PROJECT_ID) { _lastFcmDebug = `no access token or project id (access=${!!access}, project=${FCM_PROJECT_ID})`; return false; }
+  if (!access || !FCM_PROJECT_ID) { _lastFcmDebug = `no access token or project id (access=${!!access}, project=${FCM_PROJECT_ID})`; return 'error'; }
   // CAMBIO 2026-07-30 (pedido explicito del usuario): mensaje 100% "data" (sin bloque
   // `notification`) a proposito. Un FCM con `notification` deja que Android muestre la
   // notificacion automaticamente pero SOLO invoca el codigo de la app (onMessageReceived) si la
@@ -80,9 +86,13 @@ async function sendFcm(token: string, title: string, body: string, data: Record<
     const txt = await res.text();
     console.error('[fcm send]', res.status, txt);
     _lastFcmDebug = `${res.status}: ${txt.slice(0, 300)}`;
-    return false;
+    // 404 UNREGISTERED (o 400 INVALID_ARGUMENT por token con formato invalido) = el token ya no
+    // sirve y nunca va a servir de nuevo -- son los unicos casos seguros de borrar sin riesgo de
+    // perder un token bueno por un error temporal (ej. 500/503 de FCM).
+    const unregistered = res.status === 404 || (res.status === 400 && txt.includes('INVALID_ARGUMENT'));
+    return unregistered ? 'unregistered' : 'error';
   }
-  return true;
+  return 'ok';
 }
 
 Deno.serve(async (req) => {
@@ -93,6 +103,33 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const userIds: string[] = Array.isArray(body?.user_ids) ? body.user_ids : (body?.user_id ? [body.user_id] : []);
     if (userIds.length === 0) return json({ error: 'user_id(s) requerido' }, 400);
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const { data: subs } = await supabase.from('ag_push_subs').select('id, user_id, provider, endpoint, p256dh, auth, fcm_token').in('user_id', userIds);
+    if (!subs?.length) return json({ ok: true, sent: 0 });
+
+    // ── Modo cancelar (2026-08-03): pedido explicito del usuario -- quitar de la bandeja la
+    // notificacion de una solicitud que ya no esta disponible (cancelada por el pasajero, o
+    // aceptada por otro conductor). No muestra nada nuevo: viaja solo con `cancel_tag` en el data
+    // payload de FCM, y MoviFirebaseMessagingService.kt (nativo) reconoce ese campo y llama
+    // NotificationManager.cancel() sobre el mismo tag con el que se mostro la notificacion
+    // original, en vez de construir una notificacion. Solo aplica a FCM (no hay forma definida
+    // de cerrar una notificacion Web Push ya mostrada sin un service worker propio para eso).
+    if (body?.cancel_tag) {
+      const cancelTag = String(body.cancel_tag);
+      const fcmSubs = (subs as any[]).filter((s) => s.provider === 'fcm' && s.fcm_token);
+      let sent = 0;
+      for (const s of fcmSubs) {
+        const result = await sendFcm(s.fcm_token, '', '', { cancel_tag: cancelTag });
+        if (result === 'ok') {
+          sent++;
+        } else if (result === 'unregistered') {
+          supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
+        }
+      }
+      return json({ ok: true, sent, channels: { fcm: fcmSubs.length, webpush: 0 } });
+    }
+
     const title = body?.title ?? 'Movi';
     const text  = body?.body ?? '';
     const url   = body?.url ?? '/anda-gana';
@@ -107,19 +144,17 @@ Deno.serve(async (req) => {
     if (body?.origin != null) data.origin = String(body.origin);
     if (body?.dest != null) data.dest = String(body.dest);
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const { data: subs } = await supabase.from('ag_push_subs').select('id, user_id, provider, endpoint, p256dh, auth, fcm_token').in('user_id', userIds);
-    if (!subs?.length) return json({ ok: true, sent: 0 });
-
     let sent = 0;
 
     // ── FCM nativos ──
     const fcmSubs = subs.filter((s: any) => s.provider === 'fcm' && s.fcm_token);
     for (const s of fcmSubs as any[]) {
-      const ok = await sendFcm(s.fcm_token, title, text, data);
-      if (ok) {
+      const result = await sendFcm(s.fcm_token, title, text, data);
+      if (result === 'ok') {
         sent++;
         supabase.from('ag_push_subs').update({ last_used_at: new Date().toISOString() }).eq('id', s.id).then(() => {});
+      } else if (result === 'unregistered') {
+        supabase.from('ag_push_subs').delete().eq('id', s.id).then(() => {});
       }
     }
 

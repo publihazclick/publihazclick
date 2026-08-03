@@ -17932,11 +17932,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (driverIds.length > 0) {
         const authIds = await this.agService.getDriverAuthUserIds(driverIds);
         if (authIds.length > 0) {
+          // Mismo prefijo "trip-" que usa el trigger de BD ag_notify_drivers_on_trip_request
+          // (migracion 163) para esta misma solicitud -- necesario para que el push de cancelar
+          // (migracion 181, cuando el viaje deja de estar disponible) calcule el ID correcto de
+          // notificacion y la quite de la bandeja sin importar cual de los dos push la mostro.
           this.agService.sendPush({
             userIds: authIds,
             title: '🔔 Nueva solicitud cerca de ti',
             body: `Hay un viaje por ${this.formatCOP(price)}. ¡Abre Movi para aceptarlo!`,
-            tag: `new-trip-${tripId}`,
+            tag: `trip-${tripId}`,
             urgent: true,
           }).catch(() => {});
         }

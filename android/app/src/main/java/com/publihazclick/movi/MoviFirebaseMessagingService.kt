@@ -39,6 +39,22 @@ class MoviFirebaseMessagingService : MessagingService() {
         super.onMessageReceived(remoteMessage)
 
         val data = remoteMessage.data
+
+        // Pedido explicito del usuario 2026-08-03: quitar de la bandeja la notificacion de una
+        // solicitud que ya no esta disponible (el pasajero la cancelo, o otro conductor ya la
+        // acepto) -- ver ag_notify_drivers_trip_no_longer_available (migracion 181) y
+        // ag-send-push/index.ts. Este mensaje NO muestra nada, solo cancela; se reconoce por
+        // traer `cancel_tag` en vez de las llaves normales (title/body/trip_id/urgent).
+        val cancelTag = data["cancel_tag"]
+        if (cancelTag != null) {
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.cancel(cancelTag.hashCode())
+            // Respaldo: por si alguna vez se mostro via showFullScreenTripNotification (notifId =
+            // tripId.hashCode(), sin el prefijo "trip-"), tambien se intenta cancelar con esa forma.
+            cancelTag.removePrefix("trip-").let { if (it != cancelTag) manager.cancel(it.hashCode()) }
+            return
+        }
+
         val tripId = data["trip_id"]
         if (tripId != null) {
             // Push de solicitud de viaje para el CONDUCTOR (flujo ya existente).
