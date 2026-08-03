@@ -298,13 +298,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div class="fixed inset-0 z-[9900] flex items-end justify-center px-4"
       style="background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);padding-bottom:max(1.5rem,env(safe-area-inset-bottom))">
       <div class="w-full max-w-lg rounded-2xl overflow-hidden"
-        style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border:1.5px solid rgba(124,58,237,0.45);box-shadow:0 24px 64px rgba(0,0,0,0.8)">
+        style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 24px 64px rgba(0,0,0,0.8)">
 
-        <!-- Header púrpura -->
-        <div style="background:linear-gradient(90deg,rgba(124,58,237,0.25) 0%,rgba(99,102,241,0.15) 100%);padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
+        <!-- Header -->
+        <div style="background:linear-gradient(90deg,rgba(0,229,255,0.18) 0%,rgba(0,229,255,0.05) 100%);padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#a78bfa;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
-            <span style="color:#a78bfa;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">Llegaste al punto de recogida</span>
+            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#00E5FF;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
+            <span style="color:#00E5FF;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">Llegaste al punto de recogida</span>
           </div>
           <span style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700">Esperando al pasajero</span>
         </div>
@@ -314,7 +314,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Info pasajero -->
           <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:clamp(44px,13vw,50px);height:clamp(44px,13vw,50px);border-radius:14px;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff;border:2px solid rgba(124,58,237,0.4)">
+            <div style="width:clamp(44px,13vw,50px);height:clamp(44px,13vw,50px);border-radius:14px;background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:#fff;border:2px solid rgba(0,229,255,0.4)">
               {{ (driverArrivalTrip()?.ag_trip_requests?.ag_users?.full_name ?? 'P')[0].toUpperCase() }}
             </div>
             <div style="flex:1;min-width:0">
@@ -324,19 +324,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- Timer de espera -->
-          <div style="background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px">
-            <span class="material-symbols-outlined" style="font-size:26px;color:#a78bfa;font-variation-settings:'FILL' 1">timer</span>
+          <div style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.28);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+            <span class="material-symbols-outlined" style="font-size:26px;color:#22d3ee;font-variation-settings:'FILL' 1">timer</span>
             <div style="flex:1">
               <p style="color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 3px">Tiempo de espera gratuito</p>
               <div style="display:flex;align-items:center;gap:10px">
                 <span style="font-size:clamp(22px,7vw,28px);font-weight:900;line-height:1;transition:color 0.5s"
-                  [style.color]="driverArrivalTimer()! < 60 ? '#f87171' : driverArrivalTimer()! < 120 ? '#fbbf24' : '#a78bfa'">
+                  [style.color]="driverArrivalTimer()! < 60 ? '#f87171' : driverArrivalTimer()! < 120 ? '#fbbf24' : '#22d3ee'">
                   {{ padTime(driverArrivalTimer()!) }}
                 </span>
                 <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden">
                   <div style="height:100%;border-radius:999px;transition:width 1s linear,background 0.5s"
                     [style.width]="(driverArrivalTimer()! / 240 * 100) + '%'"
-                    [style.background]="driverArrivalTimer()! < 60 ? '#ef4444' : driverArrivalTimer()! < 120 ? '#f59e0b' : '#a78bfa'">
+                    [style.background]="driverArrivalTimer()! < 60 ? '#ef4444' : driverArrivalTimer()! < 120 ? '#f59e0b' : '#00E5FF'">
                   </div>
                 </div>
               </div>
@@ -345,7 +345,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Botón Pasajero a Bordo -->
           <button (click)="driverPassengerBoarded()"
-            style="width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 6px 24px rgba(124,58,237,0.5)">
+            style="width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 6px 24px rgba(0,229,255,0.3)">
             <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">person_check</span>
             Pasajero a Bordo — Iniciar Ruta
           </button>
@@ -668,13 +668,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   <!-- ═══════════ BANNER PASAJERO: CONDUCTOR LLEGÓ (flotante top) ═══════════ -->
   @if (arrivedAtPickupTimer() !== null && tripAccepted()) {
     <div class="modal-float" style="position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;z-index:8500;max-height:90dvh;overflow-y:auto">
-      <div style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:20px;border:1.5px solid rgba(52,211,153,0.4);box-shadow:0 12px 48px rgba(0,0,0,0.8),0 0 0 1px rgba(52,211,153,0.1);overflow:hidden">
+      <div style="background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);border-radius:20px;border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 48px rgba(0,0,0,0.8),0 0 0 1px rgba(0,229,255,0.08);overflow:hidden">
 
-        <!-- Franja superior verde -->
-        <div style="background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,rgba(5,150,105,0.1) 100%);padding:9px 16px;display:flex;align-items:center;justify-content:space-between">
+        <!-- Franja superior -->
+        <div style="background:linear-gradient(90deg,rgba(0,229,255,0.18) 0%,rgba(0,229,255,0.05) 100%);padding:9px 16px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#34d399;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
-            <span style="color:#34d399;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡Tu conductor llegó!</span>
+            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#00E5FF;animation:pulse 1s ease-in-out infinite;flex-shrink:0"></span>
+            <span style="color:#00E5FF;font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase">¡Tu conductor llegó!</span>
           </div>
           <span style="color:rgba(255,255,255,0.35);font-size:10px;font-weight:700">Sal a recibirlo</span>
         </div>
@@ -686,9 +686,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;align-items:center;gap:12px">
             @if (tripAccepted()!.ag_drivers?.ag_users?.selfie_url) {
               <img [src]="tripAccepted()!.ag_drivers!.ag_users!.selfie_url"
-                style="width:52px;height:52px;border-radius:14px;object-fit:cover;flex-shrink:0;border:2px solid rgba(52,211,153,0.4)" />
+                style="width:52px;height:52px;border-radius:14px;object-fit:cover;flex-shrink:0;border:2px solid rgba(0,229,255,0.4)" />
             } @else {
-              <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#059669,#0891b2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;font-weight:900;color:#fff;border:2px solid rgba(52,211,153,0.35)">
+              <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;font-weight:900;color:#fff;border:2px solid rgba(0,229,255,0.4)">
                 {{ (tripAccepted()!.ag_drivers?.ag_users?.full_name ?? 'C')[0].toUpperCase() }}
               </div>
             }
@@ -770,19 +770,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- Timer de espera -->
-          <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px">
-            <span class="material-symbols-outlined" style="font-size:22px;color:#34d399;font-variation-settings:'FILL' 1">timer</span>
+          <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px">
+            <span class="material-symbols-outlined" style="font-size:22px;color:#22d3ee;font-variation-settings:'FILL' 1">timer</span>
             <div style="flex:1">
               <p style="color:rgba(255,255,255,0.55);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 1px">Tiempo de espera</p>
               <div style="display:flex;align-items:center;gap:8px">
                 <span style="font-size:22px;font-weight:900;line-height:1;transition:color 0.5s"
-                  [style.color]="arrivedAtPickupTimer()! < 60 ? '#f87171' : arrivedAtPickupTimer()! < 120 ? '#fbbf24' : '#34d399'">
+                  [style.color]="arrivedAtPickupTimer()! < 60 ? '#f87171' : arrivedAtPickupTimer()! < 120 ? '#fbbf24' : '#22d3ee'">
                   {{ padTime(arrivedAtPickupTimer()!) }}
                 </span>
                 <div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden">
                   <div style="height:100%;border-radius:999px;transition:width 1s linear,background 0.5s"
                     [style.width]="(arrivedAtPickupTimer()! / 240 * 100) + '%'"
-                    [style.background]="arrivedAtPickupTimer()! < 60 ? '#ef4444' : arrivedAtPickupTimer()! < 120 ? '#f59e0b' : '#34d399'">
+                    [style.background]="arrivedAtPickupTimer()! < 60 ? '#ef4444' : arrivedAtPickupTimer()! < 120 ? '#f59e0b' : '#00E5FF'">
                   </div>
                 </div>
               </div>
@@ -810,7 +810,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Botón A bordo -->
           <button (click)="passengerConfirmBoarding()"
-            style="width:100%;padding:14px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(16,185,129,0.4)">
+            style="width:100%;padding:14px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#fff;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(0,229,255,0.3)">
             <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">person_check</span>
             ¡Ya estoy a bordo!
           </button>
@@ -1508,11 +1508,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <div class="flex items-start gap-3 mb-3">
               <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+                style="background:linear-gradient(135deg,#0891b2,#0e7490)">
                 <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">person_pin</span>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-black text-[11px] uppercase tracking-widest mb-0.5" style="color:#a78bfa">
+                <p class="font-black text-[11px] uppercase tracking-widest mb-0.5" style="color:#22d3ee">
                   Tu conductor viene por ti
                 </p>
                 <p class="text-white font-black text-sm truncate">
@@ -1520,7 +1520,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </p>
                 <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   @if (tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate) {
-                    <span class="px-2 py-1 rounded-lg text-[11px] font-black" style="background:rgba(124,58,237,0.22);color:#c4b5fd;border:1px solid rgba(124,58,237,0.4);letter-spacing:0.04em">
+                    <span class="px-2 py-1 rounded-lg text-[11px] font-black" style="background:rgba(0,229,255,0.15);color:#67e8f9;border:1px solid rgba(0,229,255,0.35);letter-spacing:0.04em">
                       {{ tripAccepted()!.ag_drivers?.plate ?? tripAccepted()!.ag_drivers?.vehicle_plate }}
                     </span>
                   }
