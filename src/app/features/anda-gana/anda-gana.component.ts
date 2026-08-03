@@ -436,8 +436,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         </div>
       </div>
+    </div>
+  }
 
-      <!-- Tarjetas de ofertas de conductores -->
+  <!-- ═══════════ TARJETAS DE OFERTA/CONTRAOFERTA DEL CONDUCTOR (flotante arriba) ═══════════
+       Pedido explicito del usuario 2026-08-03: separadas del banner "Buscando conductor" (que
+       esta abajo) para que se note que es un evento distinto -- aparecen arriba, debajo del
+       header "Modo Pasajero", justo donde empieza el mapa. -->
+  @if (tripSent() && !tripAccepted() && receivedOffers().length > 0) {
+    <div class="modal-float" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 68px);left:12px;right:12px;z-index:8150;pointer-events:none;max-height:60dvh;display:flex;flex-direction:column;gap:10px;overflow-y:auto">
       @for (offer of receivedOffers(); track offer.id) {
         <div style="pointer-events:auto;border-radius:20px;overflow:hidden;background:linear-gradient(180deg,#0c1a2e 0%,#0f2540 100%);border:1.5px solid rgba(0,229,255,0.3);box-shadow:0 12px 40px rgba(0,0,0,0.6)">
 
@@ -528,7 +535,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         </div>
       }
-
     </div>
   }
 
