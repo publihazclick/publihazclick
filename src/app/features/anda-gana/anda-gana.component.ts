@@ -5865,14 +5865,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <!-- Fase: to_pickup → dirección recogida / on_route → destino -->
               <div class="flex items-start gap-3 mb-3">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                  [style.background]="navPhase() === 'to_pickup' ? 'linear-gradient(135deg,#7c3aed,#6d28d9)' : 'linear-gradient(135deg,#0891b2,#0e7490)'">
+                  style="background:linear-gradient(135deg,#0891b2,#0e7490)">
                   <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">
                     {{ navPhase() === 'to_pickup' ? 'person_pin' : 'flag' }}
                   </span>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="font-black text-[11px] uppercase tracking-widest mb-0.5"
-                    [style.color]="navPhase() === 'to_pickup' ? '#a78bfa' : '#34d399'">
+                  <p class="font-black text-[11px] uppercase tracking-widest mb-0.5" style="color:#22d3ee">
                     {{ navPhase() === 'to_pickup' ? 'Recogiendo a' : 'Llevando a' }}
                   </p>
                   <p class="text-white font-black text-sm truncate">
@@ -5916,7 +5915,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 @if (navPhase() === 'to_pickup') {
                   <button (click)="advanceStage(driverFullscreenTrip(), 'arrived_at_pickup')"
                     class="flex-1 py-3 rounded-2xl text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                    style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+                    style="background:linear-gradient(135deg,#0891b2,#0e7490)">
                     <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 1">where_to_vote</span>Llegué
                   </button>
                 } @else if (driverFullscreenTrip()?.ag_trip_requests?.service_type === 'domicilio') {
