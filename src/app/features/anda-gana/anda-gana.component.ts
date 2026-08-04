@@ -17202,7 +17202,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       } else {
         this._map.addSource('approach-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry }, lineMetrics: true });
         this._map.addLayer({ id: 'approach-route-bg',   type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
-        this._map.addLayer({ id: 'approach-route-line', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#065f46', 1, '#10b981'], 'line-width': 5,  'line-opacity': 0.92 } });
+        // Tramo "recorrido" pastel (no oscuro): este mapa SIEMPRE es el claro del pasajero
+        // -- un degradado que arranca casi negro se veia como un tache sucio sobre fondo
+        // blanco, no como "atenuado". El extremo vivo (destino) se queda igual.
+        this._map.addLayer({ id: 'approach-route-line', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#a7e8cf', 1, '#10b981'], 'line-width': 5,  'line-opacity': 0.92 } });
         this._map.addLayer({ id: 'approach-route-dash', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } });
         // "Marching ants" hacia el punto de recogida.
         this._startRouteFlow(['approach-route-dash']);
@@ -17823,7 +17826,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
       this._map.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry }, lineMetrics: true });
       this._map.addLayer({ id: 'trip-route-bg',   type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
-      this._map.addLayer({ id: 'trip-route-line', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#312e81', 1, '#4f46e5'], 'line-width': 5,  'line-opacity': 0.92 } });
+      // Mismo criterio que approach-route: mapa del pasajero siempre claro, degradado pastel.
+      this._map.addLayer({ id: 'trip-route-line', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#c7c5f0', 1, '#4f46e5'], 'line-width': 5,  'line-opacity': 0.92 } });
       this._map.addLayer({ id: 'trip-route-dash', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } });
       // "Marching ants" hacia el destino.
       this._startRouteFlow(['trip-route-dash']);
@@ -19500,11 +19504,14 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         } catch (e) { console.error('[Movi Passenger] source error:', e); return; }
 
         // 3 capas estilo naranja (colores del pasajero, diferente al azul del conductor) +
-        // degradado hacia el destino y overlay de "marching ants".
+        // degradado hacia el destino y overlay de "marching ants". Este mapa SIEMPRE es el
+        // claro del pasajero (nunca el oscuro) -- el halo se deja como sombra negra suave en
+        // vez de un halo marrón oscuro (que sobre fondo blanco se veía como una mancha sucia,
+        // no como un brillo), y el degradado arranca en un durazno pastel, no casi-negro.
         const layerDefs = [
-          { id: 'nav-route-halo', dash: false, paint: { 'line-color': '#7c2d12', 'line-width': 16, 'line-opacity': 0.45 } },
-          { id: 'nav-route-bg',   dash: false, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#7c2d12', 1, '#f97316'], 'line-width': 9,  'line-opacity': 1.0 } },
-          { id: 'nav-route-line', dash: false, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#f97316', 1, '#fed7aa'], 'line-width': 3,  'line-opacity': 0.85 } },
+          { id: 'nav-route-halo', dash: false, paint: { 'line-color': '#000', 'line-width': 16, 'line-opacity': 0.14 } },
+          { id: 'nav-route-bg',   dash: false, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#fed7aa', 1, '#f97316'], 'line-width': 9,  'line-opacity': 1.0 } },
+          { id: 'nav-route-line', dash: false, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#f97316', 1, '#ffedd5'], 'line-width': 3,  'line-opacity': 0.85 } },
           { id: 'nav-route-arr',  dash: true,  paint: { 'line-color': '#fff', 'line-width': 1.8, 'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } },
         ];
         for (const def of layerDefs) {
