@@ -12096,7 +12096,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       style:   isDriverMap ? this.MAP_STYLE_DRIVER : this.MAP_STYLE_PASSENGER,
       center:  [lng, lat],
       zoom:    15,
-      attributionControl: false,
+      // Atribución compacta (icono "i") en vez de apagarla del todo: los términos de Mapbox
+      // exigen mantenerla visible salvo plan Enterprise con acuerdo firmado -- ocultarla por
+      // completo es un riesgo de suspensión de cuenta a esta escala de tráfico.
+      attributionControl: { compact: true },
       logoPosition:       'bottom-left',
       failIfMajorPerformanceCaveat: false,
       dragRotate:  false,
@@ -12135,10 +12138,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Saturación reducida al 40% solo en modo conductor (oscuro) para no competir con la UI;
     // el mapa claro del pasajero se deja a saturación completa para que se vea limpio de día.
     container.style.filter = isDriverMap ? 'saturate(0.4)' : 'saturate(0.85)';
-
-    // Ocultar logo de Mapbox
-    const logoEl = container.querySelector?.('.mapboxgl-ctrl-logo') as HTMLElement | null;
-    if (logoEl) logoEl.style.display = 'none';
 
     // Controles custom minimalistas (zoom) — esquina inferior derecha del contenedor
     if (!container.querySelector('.ag-zoom-ctrl')) {
@@ -12256,8 +12255,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             0%,100% { transform:scale(1); }
             50%      { transform:scale(1.4); }
           }
-          .mapboxgl-ctrl-logo { display:none !important; }
-          .mapboxgl-ctrl-attrib { display:none !important; }
+          /* Atribución discreta pero visible (requisito de Mapbox, ver _createMap) */
+          .mapboxgl-ctrl-attrib { background:transparent !important; opacity:0.55; font-size:9px !important; }
+          .mapboxgl-ctrl-attrib a { color:inherit !important; }
+          .mapboxgl-ctrl-attrib-button { opacity:0.6; }
         `;
         document.head.appendChild(s);
       }
