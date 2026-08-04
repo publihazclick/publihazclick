@@ -15431,7 +15431,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   private async _recalcRoute(): Promise<void> {
     if (this._navRecalcCooldown || !this.navActive()) return;
     this._navRecalcCooldown = true;
-    this._speak('Recalculando ruta.');
+    // BUG REAL 2026-08-04 (misma familia que los otros): "Recalculando ruta." se pisaba con la
+    // instrucción del primer paso de la ruta nueva que startInAppNav() habla más abajo -- se
+    // quita, igual que los demás avisos genéricos que competían por el mismo audio.
     // Pausa de 5 s para no recalcular en spam
     setTimeout(() => { this._navRecalcCooldown = false; }, 5000);
 
@@ -15494,12 +15496,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.navManeuverIcon.set(this._maneuverIconFromStep(step));
 
     // Hablar el primer voiceInstruction del step (el más lejano = contexto completo)
-    const firstVoice = step.voiceInstructions?.[step.voiceInstructions.length - 1]?.announcement
-                    ?? step.voiceInstructions?.[0]?.announcement
-                    ?? instruction;
+    const firstVoiceEntry = step.voiceInstructions?.[step.voiceInstructions.length - 1]
+                          ?? step.voiceInstructions?.[0];
+    const firstVoice = firstVoiceEntry?.announcement ?? instruction;
     const key = `step-${idx}`;
     if (!this._navSpokenKeys.has(key)) {
       this._navSpokenKeys.add(key);
+      // BUG REAL 2026-08-04: esta voz se marcaba como "dicha" solo bajo la llave `step-${idx}`,
+      // pero _checkVoiceInstructions() usa llaves `vi-${idx}-${trigDist}` para decidir qué
+      // anunciar en cada lectura de GPS -- son namespaces distintos. El GPS ya viene corriendo
+      // desde que el conductor se puso en línea, así que la SIGUIENTE lectura podía llegar
+      // casi de inmediato (a veces con la posición en caché) y, si su distancia ya cumplía el
+      // umbral de esta misma frase, _checkVoiceInstructions la volvía a anunciar -- cortando en
+      // seco la que _applyNavStep() recién había empezado a decir. Se marca también la llave
+      // `vi-` de esta frase para que _checkVoiceInstructions() sepa que ya se dijo.
+      if (firstVoiceEntry) {
+        const viKey = `vi-${idx}-${Math.round(firstVoiceEntry.distanceAlongGeometry ?? 0)}`;
+        this._navSpokenKeys.add(viKey);
+      }
       if (firstVoice) this._speak(firstVoice);
     }
   }
