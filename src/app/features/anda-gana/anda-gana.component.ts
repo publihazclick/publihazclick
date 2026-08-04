@@ -12714,44 +12714,39 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   private _motoElement(heading: number, color: string, offline = false): HTMLElement {
+    // Rediseño 2026-08-03: el original (muchas curvas/capas superpuestas) se veía borroso y
+    // "caricaturesco" a 14x32px reales en pantalla (confirmado con captura del usuario). Se
+    // simplifica a formas planas y sólidas -- misma filosofía que usan Uber/Google Maps para
+    // íconos de vehículo a este tamaño: menos detalle, más contraste, se lee mejor de lejos.
     const c = offline ? '#666666' : color;
     const outer = document.createElement('div');
-    outer.style.cssText = `width:14px;height:32px;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));opacity:${offline ? '0.65' : '1'};`;
+    outer.style.cssText = `width:20px;height:40px;filter:drop-shadow(0 6px 16px rgba(0,0,0,0.5));opacity:${offline ? '0.65' : '1'};`;
     const wrap = document.createElement('div');
-    wrap.style.cssText = `width:14px;height:32px;transform:rotate(${heading}deg);will-change:transform;`;
-    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 36" width="14" height="32">
+    wrap.style.cssText = `width:20px;height:40px;transform:rotate(${heading}deg);will-change:transform;`;
+    wrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 40" width="20" height="40">
       <!-- Sombra base -->
-      <ellipse cx="7" cy="35" rx="5" ry="1.5" fill="rgba(0,0,0,0.35)"/>
+      <ellipse cx="10" cy="38.5" rx="6" ry="1.6" fill="rgba(0,0,0,0.35)"/>
       <!-- Rueda trasera -->
-      <ellipse cx="7" cy="30.5" rx="3.5" ry="3.5" fill="#0f172a"/>
-      <ellipse cx="7" cy="30.5" rx="2.2" ry="2.2" fill="#1e293b"/>
-      <ellipse cx="7" cy="30.5" rx="0.9" ry="0.9" fill="#475569"/>
-      <!-- Borde carrocería -->
-      <path d="M4,8 C4,5 5,3.5 7,3.5 C9,3.5 10,5 10,8 L10,26 C10,28.5 9,30 7,30 C5,30 4,28.5 4,26 Z"
-            fill="rgba(0,0,0,0.5)"/>
-      <!-- Carrocería principal -- mismo borde blanco "sticker" que el carro -->
-      <path d="M4.8,9 C4.8,6 5.8,4.5 7,4.5 C8.2,4.5 9.2,6 9.2,9 L9.2,25 C9.2,27.5 8.2,29 7,29 C5.8,29 4.8,27.5 4.8,25 Z"
-            fill="${c}" stroke="#fff" stroke-width="0.7" stroke-opacity="0.92"/>
-      <!-- Highlight lateral -->
-      <path d="M4.8,10 L5.5,4.8 L5.5,28 L4.8,27 Z" fill="rgba(255,255,255,0.1)"/>
-      <!-- Casco piloto -->
-      <ellipse cx="7" cy="18.5" rx="2.4" ry="3" fill="#0f172a"/>
-      <ellipse cx="7" cy="17.5" rx="1.3" ry="1" fill="rgba(255,255,255,0.18)"/>
-      <!-- Manillar -->
-      <rect x="1" y="12" width="12" height="1.6" rx="0.8" fill="#334155"/>
-      <rect x="1" y="12" width="2.5" height="1.6" rx="0.8" fill="#1e293b"/>
-      <rect x="10.5" y="12" width="2.5" height="1.6" rx="0.8" fill="#1e293b"/>
+      <circle cx="10" cy="32" r="4.2" fill="#0f172a"/>
+      <circle cx="10" cy="32" r="2.4" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
       <!-- Rueda delantera -->
-      <ellipse cx="7" cy="5.5" rx="3.5" ry="3.5" fill="#0f172a"/>
-      <ellipse cx="7" cy="5.5" rx="2.2" ry="2.2" fill="#1e293b"/>
-      <ellipse cx="7" cy="5.5" rx="0.9" ry="0.9" fill="#475569"/>
-      <!-- Faro LED -->
-      <ellipse cx="7" cy="2.5" rx="2.2" ry="1.4" fill="#FFFDE7" opacity="0.9"/>
-      <ellipse cx="7" cy="2.5" rx="1.2" ry="0.8" fill="#FDD835"/>
-      <!-- Indicador frente -->
-      <path d="M7,0.8 L5.2,3.5 L7,2.7 L8.8,3.5 Z" fill="rgba(255,255,255,0.9)"/>
+      <circle cx="10" cy="8" r="4.2" fill="#0f172a"/>
+      <circle cx="10" cy="8" r="2.4" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <!-- Cuerpo -- una sola forma limpia, mismo borde blanco "sticker" que el carro -->
+      <path d="M10,9 C14,9 15,13 14,18 C13.3,21 13.3,25 14,28 C14.6,31 13,33 10,33 C7,33 5.4,31 6,28 C6.7,25 6.7,21 6,18 C5,13 6,9 10,9 Z"
+            fill="${c}" stroke="#fff" stroke-width="1" stroke-opacity="0.92"/>
+      <!-- Casco del piloto -->
+      <ellipse cx="10" cy="19" rx="3" ry="3.4" fill="#0f172a"/>
+      <ellipse cx="9" cy="17.8" rx="1.1" ry="0.9" fill="rgba(255,255,255,0.22)"/>
+      <!-- Manillar -->
+      <rect x="3.5" y="10.5" width="13" height="1.5" rx="0.75" fill="rgba(0,0,0,0.55)"/>
+      <!-- Faro -->
+      <circle cx="10" cy="6" r="1.8" fill="#FFFDE7"/>
+      <circle cx="10" cy="6" r="1" fill="#FDD835"/>
+      <!-- Indicador de frente -->
+      <path d="M10,3.2 L8.2,5.5 L10,4.7 L11.8,5.5 Z" fill="rgba(255,255,255,0.9)"/>
       <!-- Luz trasera -->
-      <rect x="5" y="31.5" width="4" height="2" rx="1" fill="#FF1744" opacity="0.85"/>
+      <circle cx="10" cy="34.5" r="1.4" fill="#FF1744" opacity="0.9"/>
     </svg>`;
     outer.appendChild(wrap);
     return outer;
