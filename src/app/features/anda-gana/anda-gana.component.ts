@@ -63,6 +63,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       background-size: 200% 100%;
       animation: ag-map-shimmer 1.6s ease-in-out infinite;
     }
+    /* Viñeta sutil: enmarca el mapa (que si no, es un rectángulo plano) y ayuda a que los
+       botones/banners superpuestos arriba y abajo se lean mejor sobre cualquier estilo. */
+    #ag-map-user::after {
+      content:'';
+      position:absolute; inset:0; pointer-events:none;
+      background:linear-gradient(180deg,rgba(0,0,0,0.26) 0%,transparent 16%,transparent 80%,rgba(0,0,0,0.3) 100%);
+    }
   `],
   host: {
     '[style.background]': "screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'",
@@ -5866,7 +5873,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           @if (driverData() && driverOnline() && !driverMapFullscreen()) {
             <button (click)="toggleHeatmap()" title="Zonas con demanda"
-              class="absolute top-2 right-2 w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition"
+              class="absolute w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition"
+              style="top:12px;right:12px"
               [style]="heatmapVisible() ? 'background:linear-gradient(135deg,#f97316,#ef4444);color:#fff' : 'background:rgba(0,0,0,0.7);color:#fb923c'">
               <span class="material-symbols-outlined" style="font-size:22px">local_fire_department</span>
             </button>
@@ -10807,10 +10815,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // con las tarjetas blancas, más fácil de leer nombres de calles de día).
   private readonly MAP_STYLE_DRIVER    = 'mapbox://styles/andagana/cmsdvhcs4005c01s90to2ge3k';
   private readonly MAP_STYLE_PASSENGER = 'mapbox://styles/andagana/cmsdvhf0w005d01s9efz265jp';
-  // Pitch "de reposo": sutil a propósito (dragRotate está deshabilitado, así que el usuario
-  // nunca lo controla manualmente) -- solo para que los edificios 3D y el cielo se vean incluso
-  // fuera de navegación, sin llegar a la inclinación fuerte (35°/50°) que sí usa el modo viaje.
-  private readonly IDLE_PITCH = 18;
+  // Pitch "de reposo" (dragRotate está deshabilitado, así que el usuario nunca lo controla
+  // manualmente) -- lo suficiente para que los edificios 3D y el cielo se noten incluso fuera
+  // de navegación, sin llegar a la inclinación fuerte (35°/50°) que sí usa el modo viaje.
+  // Subido de 18°→24° el 2026-08-03: a 18° el efecto 3D era casi imperceptible en la tarjeta
+  // de mapa (no a pantalla completa).
+  private readonly IDLE_PITCH = 24;
   private readonly SUPABASE_ANON = environment.moviSupabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
   private readonly DEFAULT_LNG  = -74.0817;
@@ -12276,10 +12286,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
             0%,100% { transform:scale(1); }
             50%      { transform:scale(1.4); }
           }
-          /* Atribución discreta pero visible (requisito de Mapbox, ver _createMap) */
+          /* Atribución + logo discretos pero visibles (requisito de Mapbox, ver _createMap) --
+             el logo se deja igual de tamaño (sus reglas exigen legibilidad minima) pero se
+             atenua para que no compita con la UI de marca, en vez de verse "de fabrica". */
           .mapboxgl-ctrl-attrib { background:transparent !important; opacity:0.55; font-size:9px !important; }
           .mapboxgl-ctrl-attrib a { color:inherit !important; }
           .mapboxgl-ctrl-attrib-button { opacity:0.6; }
+          .mapboxgl-ctrl-logo { opacity:0.45 !important; filter:grayscale(1) brightness(1.8); }
         `;
         document.head.appendChild(s);
       }
