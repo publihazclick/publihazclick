@@ -10796,6 +10796,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // con las tarjetas blancas, más fácil de leer nombres de calles de día).
   private readonly MAP_STYLE_DRIVER    = 'mapbox://styles/andagana/cmsdvhcs4005c01s90to2ge3k';
   private readonly MAP_STYLE_PASSENGER = 'mapbox://styles/andagana/cmsdvhf0w005d01s9efz265jp';
+  // Pitch "de reposo": sutil a propósito (dragRotate está deshabilitado, así que el usuario
+  // nunca lo controla manualmente) -- solo para que los edificios 3D y el cielo se vean incluso
+  // fuera de navegación, sin llegar a la inclinación fuerte (35°/50°) que sí usa el modo viaje.
+  private readonly IDLE_PITCH = 18;
   private readonly SUPABASE_ANON = environment.moviSupabase.anonKey;
   private readonly DEFAULT_LAT  = 4.6097;
   private readonly DEFAULT_LNG  = -74.0817;
@@ -12096,6 +12100,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       style:   isDriverMap ? this.MAP_STYLE_DRIVER : this.MAP_STYLE_PASSENGER,
       center:  [lng, lat],
       zoom:    15,
+      // Inclinación sutil por defecto (no solo en navegación) para que los edificios 3D y el
+      // cielo de marca se noten tambien en la vista de reserva/inicio, no solo durante el viaje.
+      pitch:   this.IDLE_PITCH,
       // Atribución compacta (icono "i") en vez de apagarla del todo: los términos de Mapbox
       // exigen mantenerla visible salvo plan Enterprise con acuerdo firmado -- ocultarla por
       // completo es un riesgo de suspensión de cuenta a esta escala de tráfico.
@@ -15195,7 +15202,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       return;
     }
     // Etapa 1/3: centrar en el pasajero
-    this._map.easeTo({ center: [this._currentLng, this._currentLat], bearing: 0, pitch: 0, zoom: 15, duration: 600 });
+    this._map.easeTo({ center: [this._currentLng, this._currentLat], bearing: 0, pitch: this.IDLE_PITCH, zoom: 15, duration: 600 });
   }
 
   recenterDriverMap(): void {
@@ -15204,7 +15211,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._map.easeTo({
       center:   [this._currentLng, this._currentLat],
       bearing:  this.navActive() ? this._currentHeading : 0,
-      pitch:    this.navActive() ? 50 : 0,
+      pitch:    this.navActive() ? 50 : this.IDLE_PITCH,
       zoom:     15,
       duration: 600,
     });
@@ -15223,7 +15230,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._clearNavRoute();
     // Restablecer cámara a vista normal sin cambiar estilo
     if (this._map) {
-      this._map.easeTo({ pitch: 0, bearing: 0, zoom: 14, duration: 600 });
+      this._map.easeTo({ pitch: this.IDLE_PITCH, bearing: 0, zoom: 14, duration: 600 });
     }
   }
 
@@ -15797,7 +15804,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this._map.easeTo({
             center:   [pos.coords.longitude, pos.coords.latitude],
             bearing:  0,
-            pitch:    0,
+            pitch:    this.IDLE_PITCH,
             zoom:     15,
             duration: 600,
           });
@@ -19254,7 +19261,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         this.acceptedDriverEta.set(0);
         this.passengerMapPanned.set(false);
         setTimeout(() => {
-          this._map?.easeTo({ center: [this._currentLng, this._currentLat], zoom: 17.5, bearing: 0, pitch: 0, duration: 900 });
+          this._map?.easeTo({ center: [this._currentLng, this._currentLat], zoom: 17.5, bearing: 0, pitch: this.IDLE_PITCH, duration: 900 });
         }, 300);
       }
 
@@ -19282,7 +19289,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
           this._map?.resize();
           const dest = this.tripDest();
           if (dest && this._map) {
-            this._map.flyTo({ center: [dest.lng, dest.lat], zoom: 16, bearing: 0, pitch: 0, duration: 1200 });
+            this._map.flyTo({ center: [dest.lng, dest.lat], zoom: 16, bearing: 0, pitch: this.IDLE_PITCH, duration: 1200 });
           }
         }, 300);
       }
