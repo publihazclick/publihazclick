@@ -12676,9 +12676,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       <!-- Borde contraste oscuro -->
       <path d="M5,9 C5,4 8,2 14,2 C20,2 23,4 23,9 L23,37 C23,42 20,44 14,44 C8,44 5,42 5,37 Z"
             fill="rgba(0,0,0,0.6)" stroke="rgba(0,0,0,0.4)" stroke-width="0.5"/>
-      <!-- Carrocería principal -->
+      <!-- Carrocería principal -- borde blanco tipo "sticker" para que se lea nítido sobre
+           cualquier fondo (mapa oscuro o claro), sobre todo a este tamaño pequeño en pantalla -->
       <path d="M6,10 C6,5 9,3 14,3 C19,3 22,5 22,10 L22,36 C22,41 19,43 14,43 C9,43 6,41 6,36 Z"
-            fill="${c}"/>
+            fill="${c}" stroke="#fff" stroke-width="1.1" stroke-opacity="0.92"/>
       <!-- Highlight lateral izquierdo -->
       <path d="M6,12 C6,8 8,6 10,5.5 L10,40 C8,39.5 6,38 6,34 Z"
             fill="rgba(255,255,255,0.07)"/>
@@ -12728,9 +12729,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       <!-- Borde carrocería -->
       <path d="M4,8 C4,5 5,3.5 7,3.5 C9,3.5 10,5 10,8 L10,26 C10,28.5 9,30 7,30 C5,30 4,28.5 4,26 Z"
             fill="rgba(0,0,0,0.5)"/>
-      <!-- Carrocería principal -->
+      <!-- Carrocería principal -- mismo borde blanco "sticker" que el carro -->
       <path d="M4.8,9 C4.8,6 5.8,4.5 7,4.5 C8.2,4.5 9.2,6 9.2,9 L9.2,25 C9.2,27.5 8.2,29 7,29 C5.8,29 4.8,27.5 4.8,25 Z"
-            fill="${c}"/>
+            fill="${c}" stroke="#fff" stroke-width="0.7" stroke-opacity="0.92"/>
       <!-- Highlight lateral -->
       <path d="M4.8,10 L5.5,4.8 L5.5,28 L4.8,27 Z" fill="rgba(255,255,255,0.1)"/>
       <!-- Casco piloto -->
