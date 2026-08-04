@@ -4374,6 +4374,60 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
             </div>
+
+            <!-- Cambiar número de celular -->
+            <div class="rounded-2xl p-4 flex items-center gap-3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+              <span class="material-symbols-outlined text-blue-400" style="font-size:20px">smartphone</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-white font-bold text-sm">Cambiar número de celular</p>
+                <p class="text-slate-400 text-xs">Actual: {{ agProfile()?.phone }}</p>
+              </div>
+              <button (click)="startPhoneChange()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-white flex-shrink-0"
+                style="background:rgba(59,130,246,0.25);border:1px solid rgba(59,130,246,0.4)">Cambiar</button>
+            </div>
+            @if (phoneChangeStep() > 0) {
+              <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25)">
+                @if (phoneChangeStep() === 1) {
+                  <p class="text-white font-black text-sm">Nuevo número de celular</p>
+                  <input [(ngModel)]="phoneChangeNewNum" placeholder="3XXXXXXXXX" type="tel"
+                    class="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                    style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15)"/>
+                  @if (phoneChangeError()) { <p class="text-red-400 text-xs">{{ phoneChangeError() }}</p> }
+                  <div class="flex gap-2">
+                    <button (click)="cancelPhoneChange()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-300" style="background:rgba(255,255,255,0.06)">Cancelar</button>
+                    <button (click)="sendPhoneChangeOtp()" [disabled]="phoneChangeSending()"
+                      class="flex-1 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-60" style="background:#3b82f6">
+                      {{ phoneChangeSending() ? 'Enviando...' : 'Enviar código' }}
+                    </button>
+                  </div>
+                }
+                @if (phoneChangeStep() === 2) {
+                  <p class="text-white font-black text-sm">Ingresa el código que te llegó al {{ phoneChangeNewNum }}</p>
+                  <input [(ngModel)]="phoneChangeCode" placeholder="123456" type="tel" maxlength="6"
+                    class="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none text-center tracking-widest font-black"
+                    style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15)"/>
+                  @if (phoneChangeError()) { <p class="text-red-400 text-xs">{{ phoneChangeError() }}</p> }
+                  <div class="flex gap-2">
+                    <button (click)="cancelPhoneChange()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-300" style="background:rgba(255,255,255,0.06)">Cancelar</button>
+                    <button (click)="submitPhoneChangeCode()" [disabled]="phoneChangeSending()"
+                      class="flex-1 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-60" style="background:#3b82f6">
+                      {{ phoneChangeSending() ? 'Confirmando...' : 'Confirmar' }}
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Dar de baja la cuenta -->
+            <div class="rounded-2xl p-4 flex items-center gap-3" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2)">
+              <span class="material-symbols-outlined text-red-400" style="font-size:20px">person_off</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-white font-bold text-sm">Dar de baja mi cuenta</p>
+                <p class="text-slate-400 text-xs">Ya no podrás iniciar sesión. Tu historial se conserva.</p>
+              </div>
+              <button (click)="deactivateConfirmOpen.set(true)" class="px-3 py-1.5 rounded-lg text-xs font-bold text-red-300 flex-shrink-0"
+                style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3)">Dar de baja</button>
+            </div>
           </div>
         }
 
@@ -6564,6 +6618,57 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
                   Enviar reporte
                 </button>
+              </div>
+
+              <!-- Cambiar número de celular -->
+              <div class="rounded-2xl p-4 flex items-center gap-3" style="background:#F9FAFB;border:1px solid #E2E8F0">
+                <span class="material-symbols-outlined text-cyan-600" style="font-size:20px">smartphone</span>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-sm" style="color:#0f172a">Cambiar número de celular</p>
+                  <p class="text-slate-500 text-xs">Actual: {{ agProfile()?.phone }}</p>
+                </div>
+                <button (click)="startPhoneChange()" class="px-3 py-1.5 rounded-lg text-xs font-black text-white flex-shrink-0" style="background:#0891b2">Cambiar</button>
+              </div>
+              @if (phoneChangeStep() > 0) {
+                <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.25)">
+                  @if (phoneChangeStep() === 1) {
+                    <p class="font-black text-sm" style="color:#0f172a">Nuevo número de celular</p>
+                    <input [(ngModel)]="phoneChangeNewNum" placeholder="3XXXXXXXXX" type="tel"
+                      class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style="background:#fff;border:1px solid #D1D5DB;color:#0f172a"/>
+                    @if (phoneChangeError()) { <p class="text-red-600 text-xs">{{ phoneChangeError() }}</p> }
+                    <div class="flex gap-2">
+                      <button (click)="cancelPhoneChange()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600" style="background:#F1F5F9">Cancelar</button>
+                      <button (click)="sendPhoneChangeOtp()" [disabled]="phoneChangeSending()"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-60" style="background:#0891b2">
+                        {{ phoneChangeSending() ? 'Enviando...' : 'Enviar código' }}
+                      </button>
+                    </div>
+                  }
+                  @if (phoneChangeStep() === 2) {
+                    <p class="font-black text-sm" style="color:#0f172a">Ingresa el código que te llegó al {{ phoneChangeNewNum }}</p>
+                    <input [(ngModel)]="phoneChangeCode" placeholder="123456" type="tel" maxlength="6"
+                      class="w-full px-3 py-2.5 rounded-xl text-sm outline-none text-center tracking-widest font-black" style="background:#fff;border:1px solid #D1D5DB;color:#0f172a"/>
+                    @if (phoneChangeError()) { <p class="text-red-600 text-xs">{{ phoneChangeError() }}</p> }
+                    <div class="flex gap-2">
+                      <button (click)="cancelPhoneChange()" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-600" style="background:#F1F5F9">Cancelar</button>
+                      <button (click)="submitPhoneChangeCode()" [disabled]="phoneChangeSending()"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-60" style="background:#0891b2">
+                        {{ phoneChangeSending() ? 'Confirmando...' : 'Confirmar' }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Dar de baja la cuenta -->
+              <div class="rounded-2xl p-4 flex items-center gap-3" style="background:#FFF7F7;border:1px solid rgba(239,68,68,0.2)">
+                <span class="material-symbols-outlined text-red-500" style="font-size:20px">person_off</span>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-sm" style="color:#0f172a">Dar de baja mi cuenta</p>
+                  <p class="text-slate-500 text-xs">Ya no podrás iniciar sesión. Tu historial se conserva.</p>
+                </div>
+                <button (click)="deactivateConfirmOpen.set(true)" class="px-3 py-1.5 rounded-lg text-xs font-black text-red-600 flex-shrink-0"
+                  style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3)">Dar de baja</button>
               </div>
             </div>
           }
@@ -9712,6 +9817,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ══ Modal: confirmar baja de cuenta (conductor/pasajero) ══ -->
+  @if (deactivateConfirmOpen()) {
+    <div class="fixed inset-0 z-[9990] flex items-center justify-center px-6" style="background:rgba(0,0,0,0.7)">
+      <div class="rounded-2xl p-5 w-full max-w-sm flex flex-col gap-3" style="background:#111827;border:1px solid rgba(239,68,68,0.3)">
+        <span class="material-symbols-outlined text-red-400" style="font-size:32px">warning</span>
+        <p class="text-white font-black text-base">¿Dar de baja tu cuenta?</p>
+        <p class="text-slate-400 text-sm leading-relaxed">No podrás volver a iniciar sesión con este número. Tu historial de viajes se conserva, pero tu cuenta queda inactiva. Si tienes saldo o comisiones pendientes, contacta soporte antes de continuar.</p>
+        @if (deactivateError()) { <p class="text-red-400 text-xs">{{ deactivateError() }}</p> }
+        <div class="flex gap-2 mt-1">
+          <button (click)="deactivateConfirmOpen.set(false)" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-300" style="background:rgba(255,255,255,0.08)">Cancelar</button>
+          <button (click)="deactivateAccountNow()" [disabled]="deactivateSending()"
+            class="flex-1 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-60" style="background:#dc2626">
+            {{ deactivateSending() ? 'Procesando...' : 'Sí, dar de baja' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>
   `,
 })
@@ -10543,6 +10667,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   passengerSecurityContacts = signal<{ name: string; phone: string }[]>([]);
   passengerNewContactName  = '';
   passengerNewContactPhone = '';
+
+  // ── Cambio de número de celular + baja de cuenta (compartido conductor/pasajero,
+  //    solo una de las dos pantallas de Seguridad está visible a la vez) ──────────
+  phoneChangeStep    = signal<0 | 1 | 2>(0); // 0=cerrado, 1=pedir numero nuevo, 2=pedir codigo
+  phoneChangeNewNum  = '';
+  phoneChangeCode    = '';
+  phoneChangeSending = signal(false);
+  phoneChangeError   = signal('');
+  deactivateConfirmOpen = signal(false);
+  deactivateSending     = signal(false);
+  deactivateError       = signal('');
   savingPassengerSettings  = signal(false);
   openPassengerFaq         = signal<string | null>(null);
 
@@ -19748,6 +19883,65 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.savingPassengerSettings.set(true);
     await new Promise(r => setTimeout(r, 400));
     this.savingPassengerSettings.set(false);
+  }
+
+  // ── Cambio de número de celular ───────────────────────────────────────
+  startPhoneChange(): void {
+    this.phoneChangeNewNum = '';
+    this.phoneChangeCode = '';
+    this.phoneChangeError.set('');
+    this.phoneChangeStep.set(1);
+  }
+
+  cancelPhoneChange(): void {
+    this.phoneChangeStep.set(0);
+    this.phoneChangeError.set('');
+  }
+
+  async sendPhoneChangeOtp(): Promise<void> {
+    const digits = this.phoneChangeNewNum.replace(/\D/g, '');
+    if (digits.length < 10) {
+      this.phoneChangeError.set('Ingresa un número de celular válido');
+      return;
+    }
+    this.phoneChangeSending.set(true);
+    this.phoneChangeError.set('');
+    const res = await this.agService.requestPhoneChangeOtp(this.phoneChangeNewNum);
+    this.phoneChangeSending.set(false);
+    if (!res.ok) { this.phoneChangeError.set(res.error ?? 'No se pudo enviar el código'); return; }
+    this.phoneChangeStep.set(2);
+  }
+
+  async submitPhoneChangeCode(): Promise<void> {
+    if (this.phoneChangeCode.trim().length < 4) {
+      this.phoneChangeError.set('Ingresa el código que te llegó por SMS');
+      return;
+    }
+    this.phoneChangeSending.set(true);
+    this.phoneChangeError.set('');
+    const res = await this.agService.confirmPhoneChange(this.phoneChangeNewNum, this.phoneChangeCode.trim());
+    this.phoneChangeSending.set(false);
+    if (!res.ok) { this.phoneChangeError.set(res.error ?? 'No se pudo cambiar el número'); return; }
+    if (res.profile) this.agProfile.set(res.profile);
+    this.phoneChangeStep.set(0);
+    this.cdr.markForCheck();
+  }
+
+  // ── Baja de cuenta ─────────────────────────────────────────────────────
+  async deactivateAccountNow(): Promise<void> {
+    const userId = this.agProfile()?.id;
+    if (!userId) return;
+    this.deactivateSending.set(true);
+    this.deactivateError.set('');
+    const res = await this.agService.deactivateAccount(userId);
+    this.deactivateSending.set(false);
+    if (!res.ok) { this.deactivateError.set(res.error ?? 'No se pudo dar de baja la cuenta'); return; }
+    this.deactivateConfirmOpen.set(false);
+    await this.phoneAuth.signOut();
+    this.agProfile.set(null);
+    this.driverData.set(null);
+    this.screen.set('home');
+    this.cdr.markForCheck();
   }
 
   // ═════════════ Push notifications ═════════════

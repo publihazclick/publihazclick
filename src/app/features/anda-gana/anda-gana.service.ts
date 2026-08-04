@@ -1009,6 +1009,29 @@ export class AndaGanaService {
     return !error;
   }
 
+  // ── Cambio de número de celular + baja de cuenta (menú Seguridad) ────────
+
+  /** Manda el OTP al número NUEVO (reusa ag-otp-send, mismo endpoint que login) */
+  async requestPhoneChangeOtp(newPhone: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await this.supabase.functions.invoke('ag-otp-send', { body: { phone: newPhone } });
+    if (error || data?.error) return { ok: false, error: data?.error ?? error?.message ?? 'Error enviando SMS' };
+    return { ok: true };
+  }
+
+  /** Verifica el código y aplica el cambio de número (requiere sesión activa) */
+  async confirmPhoneChange(newPhone: string, code: string): Promise<{ ok: boolean; error?: string; profile?: any }> {
+    const { data, error } = await this.supabase.functions.invoke('ag-change-phone', { body: { new_phone: newPhone, code } });
+    if (error || !data?.ok) return { ok: false, error: data?.error ?? error?.message ?? 'No se pudo cambiar el número' };
+    return { ok: true, profile: data.profile };
+  }
+
+  /** Da de baja la cuenta propia (bloquea login, no borra historial) */
+  async deactivateAccount(userId: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await this.supabase.rpc('ag_deactivate_account', { p_user_id: userId });
+    if (error || !data?.ok) return { ok: false, error: data?.error ?? error?.message ?? 'No se pudo dar de baja la cuenta' };
+    return { ok: true };
+  }
+
   async getDistanceFilter(): Promise<number> {
     const { data } = await this.supabase
       .from('platform_settings')

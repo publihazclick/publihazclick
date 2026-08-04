@@ -117,6 +117,10 @@ Deno.serve(async (req) => {
       ? (phoneArr.find((u: any) => u.role === 'driver') ?? phoneArr[0])
       : null;
 
+    if (existingByPhone?.is_deleted) {
+      return json({ ok: false, error: 'Esta cuenta fue dada de baja. Contacta soporte si quieres reactivarla.' });
+    }
+
     const existingAuthId: string | null = existingByPhone?.auth_user_id ?? null;
 
     // Get or create auth session — with full retry logic
