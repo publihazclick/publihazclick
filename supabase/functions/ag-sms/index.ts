@@ -25,16 +25,17 @@ function toE164(phone: string): string {
 async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
   const apiKey     = Deno.env.get('TELNYX_API_KEY');
   const fromNumber = Deno.env.get('TELNYX_PHONE_NUMBER');
-  const profileId  = Deno.env.get('TELNYX_MESSAGING_PROFILE_ID');
 
   if (!apiKey || !fromNumber) return false;
 
+  // BUG REAL (ver memoria telnyx_messaging_profile_bug): mandar messaging_profile_id
+  // junto con from rompe la sustitución automática de remitente alfanumérico para
+  // Colombia -- el número ya resuelve su perfil solo, no hace falta mandarlo explícito.
   const payload: Record<string, string> = {
     from: fromNumber,
     to: phone,
     text: `Tu código de verificación Anda y Gana es: ${code}. Válido por 10 minutos.`,
   };
-  if (profileId) payload.messaging_profile_id = profileId;
 
   const resp = await fetch('https://api.telnyx.com/v2/messages', {
     method: 'POST',

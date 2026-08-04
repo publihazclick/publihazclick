@@ -11,7 +11,6 @@ const TWILIO_TOKEN         = Deno.env.get('TWILIO_AUTH_TOKEN') ?? '';
 const TWILIO_PHONE         = Deno.env.get('TWILIO_PHONE_NUMBER') ?? '';
 const TELNYX_API_KEY       = Deno.env.get('TELNYX_API_KEY') ?? '';
 const TELNYX_FROM          = Deno.env.get('TELNYX_PHONE_NUMBER') ?? '';
-const TELNYX_PROFILE       = Deno.env.get('TELNYX_MESSAGING_PROFILE_ID') ?? '';
 const APP_URL              = Deno.env.get('APP_URL') ?? 'https://publihazclick.com';
 
 const cors = {
@@ -26,13 +25,16 @@ async function sendSms(to: string, text: string): Promise<boolean> {
   // Telnyx primario (proveedor actual), Twilio fallback
   if (TELNYX_API_KEY && TELNYX_FROM) {
     try {
+      // BUG REAL (ver memoria telnyx_messaging_profile_bug, diagnosticado 2026-07-05,
+      // arreglado en ag-otp-send pero se quedó sin corregir aquí): mandar
+      // messaging_profile_id JUNTO con from rompe la sustitución automática de
+      // remitente alfanumérico para Colombia (error 40306 "Alpha sender not
+      // configured"), aunque el número ya esté asignado a ese perfil. El número ya
+      // resuelve su perfil solo -- no hace falta mandarlo explícito.
       const r = await fetch('https://api.telnyx.com/v2/messages', {
         method: 'POST',
         headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: TELNYX_FROM, to, text,
-          ...(TELNYX_PROFILE ? { messaging_profile_id: TELNYX_PROFILE } : {}),
-        }),
+        body: JSON.stringify({ from: TELNYX_FROM, to, text }),
       });
       if (r.ok) return true;
       console.error('[telnyx]', r.status, await r.text());
