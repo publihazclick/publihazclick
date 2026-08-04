@@ -989,10 +989,11 @@ export class AndaGanaService {
     return parseInt(data?.value ?? '0', 10);
   }
 
-  /** Beneficios completos del conductor: tier, comisión, fundador, progreso */
+  /** Beneficios completos del conductor: comisión fija, bonos por hitos de viajes, fundador */
   async getDriverBenefits(driverId: string): Promise<{
     monthly_trips: number; total_trips: number; commission_pct: number;
-    tier_label: string; next_tier_trips: number; next_tier_pct: number;
+    next_milestone_trips: number | null; next_milestone_bonus: number | null;
+    lifetime_bonus_earned: number;
     is_founder: boolean; founder_number: number | null; founders_left: number;
   } | null> {
     const { data, error } = await this.supabase.rpc('ag_get_driver_benefits', { p_driver_id: driverId });

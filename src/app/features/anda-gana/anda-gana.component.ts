@@ -6772,74 +6772,78 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (!loadingSection() && driverSection() === 'benefits') {
             <div class="flex flex-col gap-4">
 
-              <!-- Comisión escalonada — tarjeta principal -->
+              <!-- Próximo bono — tarjeta principal -->
               <div class="rounded-2xl overflow-hidden"
-                style="background:#fff;border:1px solid #E2E8F0;box-shadow:0 2px 8px rgba(0,0,0,0.05)">
+                style="background:linear-gradient(135deg,#0891b2,#0e7490);box-shadow:0 4px 16px rgba(8,145,178,0.25)">
                 <div class="px-5 pt-5 pb-3">
-                  <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Tu comisión este mes</p>
+                  <p class="text-xs font-bold uppercase tracking-widest" style="color:rgba(255,255,255,0.75)">Tu próximo bono</p>
                   <div class="flex items-end gap-2 mt-1">
-                    <span class="font-black" style="font-size:42px;color:#0f172a;line-height:1">{{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}</span>
-                    <span class="font-black text-lg text-slate-400 mb-1.5">%</span>
-                    <span class="mb-1.5 px-2 py-0.5 rounded-full text-xs font-black"
-                      [style.background]="driverBenefits()?.tier_label === 'Leyenda' ? 'rgba(234,179,8,0.12)' : driverBenefits()?.tier_label === 'Pro' ? 'rgba(8,145,178,0.10)' : driverBenefits()?.tier_label === 'Activo' ? 'rgba(16,185,129,0.10)' : 'rgba(148,163,184,0.12)'"
-                      [style.color]="driverBenefits()?.tier_label === 'Leyenda' ? '#a16207' : driverBenefits()?.tier_label === 'Pro' ? '#0369a1' : driverBenefits()?.tier_label === 'Activo' ? '#047857' : '#64748b'">
-                      {{ driverBenefits()?.tier_label ?? 'Nuevo' }}
-                    </span>
+                    <span class="font-black text-white" style="font-size:38px;line-height:1">{{ formatCOP(driverBenefits()?.next_milestone_bonus ?? 0) }}</span>
                   </div>
-                  <p class="text-slate-500 text-xs mt-1">Pagas solo el {{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}% sobre el valor de cada servicio o viaje finalizado. Nada más.</p>
+                  <p class="text-xs mt-1" style="color:rgba(255,255,255,0.85)">Al llegar a <span class="font-bold text-white">{{ driverBenefits()?.next_milestone_trips ?? 0 }} viajes</span>, este bono cae directo a tu saldo de recarga.</p>
                 </div>
 
-                <!-- Barra de progreso hacia el siguiente nivel -->
-                @if (driverBenefits()?.next_tier_trips > 0) {
-                  <div class="px-5 pb-4">
-                    <div class="flex items-center justify-between mb-1.5">
-                      <span class="text-xs text-slate-500 font-medium">{{ driverBenefits()?.monthly_trips }} viajes este mes</span>
-                      <span class="text-xs font-bold" style="color:#0f172a">Meta: {{ driverBenefits()?.next_tier_trips }} → {{ driverBenefits()?.next_tier_pct }}%</span>
-                    </div>
-                    <div class="w-full h-2.5 rounded-full overflow-hidden" style="background:#F1F5F9">
-                      <div class="h-full rounded-full transition-all duration-500"
-                        style="background:linear-gradient(90deg,#10b981,#0891b2)"
-                        [style.width]="(((driverBenefits()?.monthly_trips ?? 0) / (driverBenefits()?.next_tier_trips ?? 1)) * 100 | number:'1.0-0') + '%'"></div>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-1.5">Te faltan <span class="font-bold text-slate-600">{{ (driverBenefits()?.next_tier_trips ?? 0) - (driverBenefits()?.monthly_trips ?? 0) }} viajes</span> para bajar tu comisión a {{ driverBenefits()?.next_tier_pct }}%</p>
+                <div class="px-5 pb-4">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-medium" style="color:rgba(255,255,255,0.75)">{{ driverBenefits()?.total_trips ?? 0 }} viajes de por vida</span>
+                    <span class="text-xs font-bold text-white">Meta: {{ driverBenefits()?.next_milestone_trips ?? 0 }}</span>
                   </div>
-                } @else {
-                  <div class="px-5 pb-4">
-                    <div class="flex items-center gap-2 px-3 py-2 rounded-xl"
-                      style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25)">
-                      <span class="material-symbols-outlined text-amber-500" style="font-size:16px;font-variation-settings:'FILL' 1">emoji_events</span>
-                      <span class="text-amber-700 text-xs font-bold">¡Nivel máximo! Tienes la comisión más baja posible.</span>
-                    </div>
+                  <div class="w-full h-2.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.2)">
+                    <div class="h-full rounded-full transition-all duration-500"
+                      style="background:#fff"
+                      [style.width]="(((driverBenefits()?.total_trips ?? 0) / (driverBenefits()?.next_milestone_trips ?? 1)) * 100 | number:'1.0-0') + '%'"></div>
                   </div>
-                }
+                  <p class="text-[10px] mt-1.5" style="color:rgba(255,255,255,0.75)">Te faltan <span class="font-bold text-white">{{ (driverBenefits()?.next_milestone_trips ?? 0) - (driverBenefits()?.total_trips ?? 0) }} viajes</span> para tu próximo bono</p>
+                </div>
               </div>
 
-              <!-- Tabla completa de niveles -->
+              <!-- Comisión fija + bonos ya ganados -->
+              <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-2xl p-4 flex flex-col gap-1"
+                  style="background:#F9FAFB;border:1px solid #E2E8F0">
+                  <span class="material-symbols-outlined text-slate-400" style="font-size:20px">percent</span>
+                  <p class="font-black text-xl" style="color:#0f172a">{{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}%</p>
+                  <p class="text-slate-500 text-[11px] leading-tight">Comisión fija por viaje, siempre igual</p>
+                </div>
+                <div class="rounded-2xl p-4 flex flex-col gap-1"
+                  style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25)">
+                  <span class="material-symbols-outlined text-emerald-600" style="font-size:20px;font-variation-settings:'FILL' 1">savings</span>
+                  <p class="font-black text-xl" style="color:#047857">{{ formatCOP(driverBenefits()?.lifetime_bonus_earned ?? 0) }}</p>
+                  <p class="text-slate-500 text-[11px] leading-tight">Ya ganado en bonos, de por vida</p>
+                </div>
+              </div>
+
+              <!-- Tabla completa de hitos -->
               <div class="rounded-2xl overflow-hidden" style="background:#fff;border:1px solid #E2E8F0">
                 <div class="px-4 pt-4 pb-2">
-                  <p class="font-black text-sm" style="color:#0f172a">Cómo funciona la escala</p>
-                  <p class="text-slate-500 text-xs mt-0.5">Tu comisión baja según los viajes completados cada mes. Se reinicia el 1° de cada mes.</p>
+                  <p class="font-black text-sm" style="color:#0f172a">Cómo funciona</p>
+                  <p class="text-slate-500 text-xs mt-0.5">Pagas siempre el {{ driverBenefits()?.commission_pct ?? driverCommissionPct() }}% por viaje. Cada hito de viajes completados de por vida (no se reinicia nunca) te da un bono en dinero directo a tu saldo de recarga.</p>
                 </div>
                 <div class="divide-y divide-slate-100">
-                  @for (tier of [
-                    { label: 'Nuevo',   range: '0 – 30 viajes',   pct: 12, color: '#64748b', bg: 'rgba(148,163,184,0.08)', icon: 'directions_car' },
-                    { label: 'Activo',  range: '31 – 70 viajes',  pct: 10, color: '#047857', bg: 'rgba(16,185,129,0.06)',  icon: 'trending_up' },
-                    { label: 'Pro',     range: '71 – 120 viajes', pct: 8,  color: '#0369a1', bg: 'rgba(8,145,178,0.06)',   icon: 'star' },
-                    { label: 'Leyenda', range: '121+ viajes',     pct: 6,  color: '#a16207', bg: 'rgba(234,179,8,0.08)',   icon: 'emoji_events' }
-                  ]; track tier.label) {
+                  @for (m of [
+                    { trips: 10,  bonus: 2000,  icon: 'directions_car' },
+                    { trips: 25,  bonus: 3500,  icon: 'trending_up' },
+                    { trips: 50,  bonus: 6000,  icon: 'star' },
+                    { trips: 100, bonus: 24000, icon: 'emoji_events' },
+                    { trips: 200, bonus: 24000, icon: 'workspace_premium' }
+                  ]; track m.trips) {
                     <div class="flex items-center gap-3 px-4 py-3"
-                      [style.background]="driverBenefits()?.tier_label === tier.label ? tier.bg : 'transparent'">
+                      [style.background]="(driverBenefits()?.total_trips ?? 0) >= m.trips ? 'rgba(16,185,129,0.05)' : 'transparent'">
                       <span class="material-symbols-outlined flex-shrink-0" style="font-size:18px"
-                        [style.color]="driverBenefits()?.tier_label === tier.label ? tier.color : '#94a3b8'">{{ tier.icon }}</span>
+                        [style.color]="(driverBenefits()?.total_trips ?? 0) >= m.trips ? '#059669' : '#94a3b8'">
+                        {{ (driverBenefits()?.total_trips ?? 0) >= m.trips ? 'check_circle' : m.icon }}
+                      </span>
                       <div class="flex-1">
                         <p class="font-bold text-sm"
-                          [style.color]="driverBenefits()?.tier_label === tier.label ? '#0f172a' : '#64748b'">{{ tier.label }}</p>
-                        <p class="text-xs" style="color:#94a3b8">{{ tier.range }}</p>
+                          [style.color]="(driverBenefits()?.total_trips ?? 0) >= m.trips ? '#0f172a' : '#64748b'">{{ m.trips }} viajes</p>
+                        @if (m.trips === 200) {
+                          <p class="text-xs" style="color:#94a3b8">Y cada 100 desde acá (300, 400...)</p>
+                        }
                       </div>
                       <div class="text-right">
-                        <span class="font-black text-base" [style.color]="tier.color">{{ tier.pct }}%</span>
-                        @if (driverBenefits()?.tier_label === tier.label) {
-                          <p class="text-[9px] font-bold uppercase tracking-wide" [style.color]="tier.color">Tu nivel</p>
+                        <span class="font-black text-base" [style.color]="(driverBenefits()?.total_trips ?? 0) >= m.trips ? '#059669' : '#0f172a'">{{ formatCOP(m.bonus) }}</span>
+                        @if ((driverBenefits()?.total_trips ?? 0) >= m.trips) {
+                          <p class="text-[9px] font-bold uppercase tracking-wide text-emerald-600">Ganado</p>
                         }
                       </div>
                     </div>
