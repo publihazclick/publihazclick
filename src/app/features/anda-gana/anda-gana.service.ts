@@ -1230,7 +1230,7 @@ export class AndaGanaService {
     return data ?? [];
   }
 
-  // ── Billetera de retiro por referidos ───────────────────────────
+  // ── Billetera de retiro por invitados ───────────────────────────
   async getReferralWallet(agUserId: string): Promise<{ balance: number; total_earned: number } | null> {
     const { data } = await this.supabase
       .from('ag_referral_wallet')

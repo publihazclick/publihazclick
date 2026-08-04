@@ -1246,7 +1246,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
             <div class="flex-1 min-w-0 text-left">
               <p style="color:#fff;font-weight:700;font-size:13px;margin:0;line-height:1.3">Gana por invitar</p>
-              <p style="color:rgba(255,255,255,0.75);font-size:11px;margin:0">Gana 2% por cada referido</p>
+              <p style="color:rgba(255,255,255,0.75);font-size:11px;margin:0">Gana 2% por cada invitado</p>
             </div>
             <span class="material-symbols-outlined" style="font-size:16px;color:#fff">arrow_forward</span>
           </button>
@@ -4495,7 +4495,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <div class="rounded-2xl p-4 flex flex-col gap-3"
               style="background:linear-gradient(135deg,rgba(108,58,237,0.15),rgba(37,99,235,0.15));border:1px solid rgba(108,58,237,0.3)">
-              <p class="text-white font-black text-base">Gana el 2% por referido</p>
+              <p class="text-white font-black text-base">Gana el 2% por invitado</p>
               <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
                 Cada vez que alguien se registre en <span class="text-white font-bold">Movi</span> con tu link y use nuestro servicio,
                 tú ganas el <span class="text-amber-400 font-black">2% del valor de cada servicio</span>.
@@ -4503,7 +4503,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </p>
             </div>
 
-            <!-- Link de referido -->
+            <!-- Link de invitado -->
             <div class="rounded-2xl p-4 flex flex-col gap-3"
               style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1)">
               <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Tu link de invitación</p>
@@ -5245,7 +5245,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
-      <!-- ══ Tarjetas rápidas: Beneficios + Referidos ══ -->
+      <!-- ══ Tarjetas rápidas: Beneficios + Invitados ══ -->
       <div class="grid grid-cols-2 gap-2">
         <!-- Mis Beneficios -->
         <button (click)="openDriverSection('benefits')"
@@ -5272,7 +5272,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
           <div class="text-left">
             <p style="color:#fff;font-weight:700;font-size:12px;margin:0;line-height:1.3">Gana Invitando</p>
-            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">Gana 2% por cada referido</p>
+            <p style="color:rgba(255,255,255,0.8);font-size:10px;margin:0;line-height:1.3">Gana 2% por cada invitado</p>
           </div>
         </button>
       </div>
@@ -6031,7 +6031,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               {{ driverSection() === 'profile' ? 'Mi Perfil' :
                  driverSection() === 'status' ? 'Estado' :
                  driverSection() === 'wallet' ? 'Mi Wallet · Recarga' :
-                 driverSection() === 'earnings' ? 'Comisión/Referidos' :
+                 driverSection() === 'earnings' ? 'Comisión/Invitados' :
                  driverSection() === 'trips' ? 'Mis Viajes' :
                  driverSection() === 'referrals' ? 'Recomienda y Gana' :
                  driverSection() === 'analytics' ? 'Analytics' :
@@ -6184,12 +6184,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           }
 
-          <!-- ── COMISIÓN/REFERIDOS ── -->
+          <!-- ── COMISIÓN/INVITADOS ── -->
           @if (!loadingSection() && driverSection() === 'earnings') {
             <!-- Tarjeta billetera de comisiones -->
             <div class="rounded-2xl p-5 flex flex-col gap-3"
               style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.15)">
-              <p class="text-white/60 text-xs font-bold uppercase tracking-widest">Comisiones por referidos</p>
+              <p class="text-white/60 text-xs font-bold uppercase tracking-widest">Comisiones por invitados</p>
               <p class="text-white font-black text-4xl">{{ '$' + referralBalance().toLocaleString() }}</p>
               <p class="text-white/60 text-[10px]">Disponible para retirar</p>
               <div class="flex items-center gap-4 pt-1 border-t border-white/15">
@@ -6199,7 +6199,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
                 <div class="flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-amber-300" style="font-size:14px">group</span>
-                  <span class="text-amber-300 text-xs font-bold">{{ referralCount() }} referidos</span>
+                  <span class="text-amber-300 text-xs font-bold">{{ referralCount() }} invitados</span>
                 </div>
               </div>
             </div>
@@ -6701,14 +6701,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <div class="rounded-2xl p-4 flex flex-col gap-3"
                 style="background:linear-gradient(135deg,rgba(108,58,237,0.10),rgba(37,99,235,0.08));border:1px solid rgba(108,58,237,0.25)">
-                <p class="font-black text-base" style="color:#0f172a">Gana el 2% por referido</p>
+                <p class="font-black text-base" style="color:#0f172a">Gana el 2% por invitado</p>
                 <p class="text-slate-700 text-xs sm:text-sm leading-relaxed">
                   Cada vez que alguien se registre en <span class="font-bold" style="color:#0f172a">Movi</span> con tu link y use nuestro servicio,
                   tú ganas el <span class="text-amber-600 font-black">2% del valor de cada servicio</span>.
                 </p>
               </div>
 
-              <!-- Link de referido -->
+              <!-- Link de invitado -->
               <div class="rounded-2xl p-4 flex flex-col gap-3"
                 style="background:#F9FAFB;border:1px solid #E2E8F0">
                 <p class="text-slate-600 text-xs font-bold uppercase tracking-widest">Tu link de invitación</p>
@@ -6851,7 +6851,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
 
-              <!-- Beneficio de referidos -->
+              <!-- Beneficio de invitados -->
               <div class="rounded-2xl p-4 flex items-start gap-3"
                 style="background:linear-gradient(135deg,rgba(108,58,237,0.07),rgba(37,99,235,0.05));border:1px solid rgba(108,58,237,0.18)">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -6859,12 +6859,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <span class="material-symbols-outlined" style="font-size:20px;color:#7c3aed;font-variation-settings:'FILL' 1">group_add</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="font-black text-sm" style="color:#0f172a">Gana el 2% por cada referido</p>
+                  <p class="font-black text-sm" style="color:#0f172a">Gana el 2% por cada invitado</p>
                   <p class="text-slate-600 text-xs mt-0.5 leading-relaxed">Cada conductor o pasajero que se registre con tu link y complete servicios, te genera el <span class="font-bold text-purple-700">2% de cada servicio</span>.</p>
                   <button (click)="openDriverSection('referrals')"
                     class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black active:scale-95 transition-all"
                     style="background:rgba(108,58,237,0.12);border:1px solid rgba(108,58,237,0.25);color:#7c3aed">
-                    <span class="material-symbols-outlined" style="font-size:14px">share</span> Ver mi link de referido
+                    <span class="material-symbols-outlined" style="font-size:14px">share</span> Ver mi link de invitado
                   </button>
                 </div>
               </div>
@@ -9753,7 +9753,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverStatus          = signal<string>('');
   driverRejectionReason = signal<string | null>(null);
 
-  // Referidos
+  // Invitados
   referralCopied     = signal(false);
   agReferralLink     = signal('');
   referralBalance    = signal(0);
@@ -10724,7 +10724,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'person',          label: 'Mi Perfil',            action: 'profile',      sectionLabel: 'Principal',     danger: false, divider: false },
     { icon: 'wifi_tethering',  label: 'Estado / En Línea',    action: 'status',       sectionLabel: '',              danger: false, divider: false },
     { icon: 'account_balance_wallet', label: 'Mi Wallet · Recarga', action: 'wallet-panel', sectionLabel: '',           danger: false, divider: false },
-    { icon: 'payments',        label: 'Comisión/Referidos',   action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
+    { icon: 'payments',        label: 'Comisión/Invitados',   action: 'earnings',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'route',           label: 'Mis Viajes',           action: 'trips',        sectionLabel: '',              danger: false, divider: false },
     { icon: 'schedule',        label: 'Viajes programados',   action: 'scheduled',    sectionLabel: '',              danger: false, divider: false },
     { icon: 'analytics',       label: 'Analytics',            action: 'analytics',    sectionLabel: '',              danger: false, divider: false },
