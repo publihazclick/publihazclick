@@ -14977,7 +14977,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     // Cuando inicia el viaje: activar fullscreen + navegar al destino
     if (stage === 'on_route') {
-      this._speak('Iniciando ruta al destino.');
+      // BUG REAL 2026-08-04: este "Iniciando ruta al destino." y el/los _speak() que dispara
+      // startInAppNav() 200ms despues se pisaban entre si -- el motor TTS nativo corta en seco
+      // el audio anterior cada vez que se le pide uno nuevo (queueStrategy:0 = FLUSH), asi que
+      // el conductor solo alcanzaba a oir fragmentos cortados de 2-3 frases en cadena. Se quita
+      // este aviso intermedio: la primera instruccion real de giro que da startInAppNav ya deja
+      // claro que la navegacion arrancó, sin pelear por el mismo audio.
       this.driverFullscreenTrip.set(trip);
       this.driverMapFullscreen.set(true);
       setTimeout(() => {
@@ -14991,10 +14996,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   // Botón "Iniciar recogida" desde la alerta inDrive full-screen
   async acceptTripAndGo(alert: any): Promise<void> {
-    // Activar voz en el gesto del usuario y desbloquear SpeechSynthesis con frase inmediata
+    // Activar voz en el gesto del usuario (mantiene el audio "desbloqueado" en el navegador de
+    // prueba). BUG REAL 2026-08-04: aquí también se hablaba "Viaje aceptado. Calculando ruta."
+    // -- pero como el tiempo hasta que startInAppNav() dispara su propia voz (espera del mapa +
+    // 450ms + la llamada de red a Directions) es variable, casi siempre alcanzaba a cortar esta
+    // frase a la mitad en vez de dejarla terminar. Se quita: la transición a pantalla completa
+    // ya es una confirmación visual inmediata, y así solo suena la instrucción de giro real,
+    // completa, sin competir por el mismo audio.
     this.navVoiceEnabled.set(true);
     this._ensureAudioCtx();
-    this._sayIt('Viaje aceptado. Calculando ruta.');
     // Activar fullscreen ANTES de limpiar el alert para evitar flash de "Viajes en curso"
     const req = alert.ag_trip_requests ?? alert;
     const oLat = parseFloat(req?.origin_lat);
@@ -15239,12 +15249,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._prefetchTts(prefetchTexts);
 
       // BUG REAL 2026-08-04: el TTS nativo usa queueStrategy:0 (FLUSH) -- cada _speak() nuevo
-      // corta en seco el que esté sonando. _applyNavStep(0) ya dispara la voz del primer giro;
-      // si "Ruta calculada..." se habla DESPUÉS, la corta antes de terminar y el conductor
-      // nunca llega a escuchar la primera instrucción real. Se invierte el orden: primero el
-      // aviso corto de contexto, y que sea _applyNavStep(0) quien hable de último (y se quede).
-      const dest = toPickup ? 'el punto de recogida' : 'tu destino';
-      this._speak(`Ruta calculada. ${this.navEtaMin()} minutos a ${dest}.`);
+      // corta en seco el que esté sonando. Antes esto hablaba "Ruta calculada..." Y DESPUÉS
+      // _applyNavStep(0) hablaba la primera instrucción real -- sin importar el orden, las dos
+      // se disparaban con cero espera entre sí y siempre una cortaba a la otra a la mitad
+      // (sonaba "se corta horrible", reportado por el conductor). Se quita el aviso genérico:
+      // el ETA/distancia ya se ve en pantalla (navEtaMin/navTotalKm), y _applyNavStep(0) es la
+      // única voz que suena, completa, con la instrucción que de verdad importa.
       this._applyNavStep(0);
     } catch (e) {
       this.navInstruction.set('Error al calcular ruta');
