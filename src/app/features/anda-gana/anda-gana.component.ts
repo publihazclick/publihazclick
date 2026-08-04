@@ -52,6 +52,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .qr-input::placeholder { color: #6B7280; }
     .qr-input { border-width: 1px !important; border-color: #D1D5DB !important; outline: none; }
     .qr-input:focus { border-width: 1.5px !important; border-color: #7C3AED !important; outline: none; }
+    /* Skeleton del mapa mientras cargan Mapbox GL + los tiles (ver _createMap) -- reemplaza
+       el flash de div vacío por un shimmer, se tapa solo apenas Mapbox pinta su canvas encima. */
+    @keyframes ag-map-shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .ag-map-skeleton {
+      background-image: linear-gradient(100deg, #0d111a 30%, #1a2333 50%, #0d111a 70%);
+      background-size: 200% 100%;
+      animation: ag-map-shimmer 1.6s ease-in-out infinite;
+    }
   `],
   host: {
     '[style.background]': "screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'",
@@ -1363,7 +1374,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         }
 
         <!-- Mapa -->
-        <div id="ag-map-user" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
+        <div id="ag-map-user" class="ag-map-skeleton" style="position:absolute;top:0;left:0;width:100%;height:100%"></div>
 
         <!-- Botón centrar pasajero: solo visible desde buscando conductor en adelante -->
         @if (!driverOnline() && gpsStatus() !== 'requesting' && (tripSent() || tripAccepted())) {
@@ -5746,7 +5757,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </button>
           }
 
-          <div id="ag-map-user"
+          <div id="ag-map-user" class="ag-map-skeleton"
             [style.height]="driverMapFullscreen() ? '100dvh' : navActive() ? 'clamp(340px,52dvh,460px)' : 'clamp(260px,42dvh,340px)'"
             [style.border-radius]="driverMapFullscreen() ? '0' : '16px'"
             [style.border]="driverMapFullscreen() ? 'none' : '1px solid #E2E8F0'"
@@ -12078,6 +12089,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _createMap(containerId: string, lat: number, lng: number) {
     const container = document.getElementById(containerId);
     if (!container) return;
+    // Reponer el shimmer (se quita en 'load') -- se recrea el mapa en cada reset/cambio de rol.
+    container.classList.add('ag-map-skeleton');
 
     const mapboxgl = (window as any).mapboxgl;
     if (!mapboxgl) return;
@@ -12184,6 +12197,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
     this._map.once('load', () => {
       const m = this._map!;
+      // Ya pintó el canvas real -- quitar el shimmer de carga.
+      container.classList.remove('ag-map-skeleton');
 
       // ── Paleta premium ──────────────────────────────────────────
       const safeSet = (id: string, prop: string, val: any) => {
