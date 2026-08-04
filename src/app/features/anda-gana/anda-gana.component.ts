@@ -9900,6 +9900,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   navVoiceEnabled    = signal(false); // empieza en OFF — primer toque del botón activa
   private _navSteps:      any[]    = [];
   private _navStepIdx:    number   = 0;
+  // Índice del punto más cercano en _navRouteCoords a la última posición GPS -- usado para la
+  // detección de desvío (ver _updateNavFromGps). Independiente de _navStepIdx (arreglo distinto).
+  private _navCoordIdx:   number   = 0;
   private _navSpokenKeys: Set<string> = new Set();
 
   // ── Mapa fullscreen durante el viaje ─────────────────────────
@@ -15187,6 +15190,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.navInstruction.set('Calculando ruta...');
     this._navSteps      = [];
     this._navStepIdx    = 0;
+    this._navCoordIdx   = 0;
     this._navSpokenKeys = new Set();
     this._navRouteCoords = [];
 
@@ -15234,9 +15238,14 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       );
       this._prefetchTts(prefetchTexts);
 
-      this._applyNavStep(0);
+      // BUG REAL 2026-08-04: el TTS nativo usa queueStrategy:0 (FLUSH) -- cada _speak() nuevo
+      // corta en seco el que esté sonando. _applyNavStep(0) ya dispara la voz del primer giro;
+      // si "Ruta calculada..." se habla DESPUÉS, la corta antes de terminar y el conductor
+      // nunca llega a escuchar la primera instrucción real. Se invierte el orden: primero el
+      // aviso corto de contexto, y que sea _applyNavStep(0) quien hable de último (y se quede).
       const dest = toPickup ? 'el punto de recogida' : 'tu destino';
       this._speak(`Ruta calculada. ${this.navEtaMin()} minutos a ${dest}.`);
+      this._applyNavStep(0);
     } catch (e) {
       this.navInstruction.set('Error al calcular ruta');
       this.navActive.set(false);
@@ -15315,6 +15324,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     clearTimeout(this._navFollowTimer);
     this._navSteps      = [];
     this._navStepIdx    = 0;
+    this._navCoordIdx   = 0;
     this._navSpokenKeys = new Set();
     this._navRouteCoords = [];
     try { const el = document.getElementById('movi-nav-audio') as HTMLAudioElement; if (el) { el.pause(); el.src = ''; } } catch {}
@@ -15428,16 +15438,35 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   private _checkVoiceInstructions(distToManeuver: number, step: any): void {
     const allVoice: { distanceAlongGeometry: number; announcement: string }[] =
       step.voiceInstructions ?? [];
-    // Los voiceInstructions de Mapbox usan `distanceAlongGeometry` como
-    // "metros desde el punto de maniobra donde hay que anunciar"
+    // Los voiceInstructions de Mapbox usan `distanceAlongGeometry` como "metros restantes hasta
+    // la maniobra en los que se debe anunciar" (mismo marco de referencia que distToManeuver).
+    //
+    // BUG REAL 2026-08-04: si el GPS salta (señal débil, primer fix tras el fallback, etc.) y
+    // distToManeuver cae de golpe por debajo de varios umbrales a la vez, el `for` recorría el
+    // arreglo en el orden en que vino de la API y anunciaba el PRIMERO que calzara -- si ese
+    // orden no queda de mayor a menor (no está garantizado por la API), o si ya se saltó varios
+    // umbrales, el conductor podía escuchar "en 500 metros" estando a 30 metros del giro. Se
+    // busca explícitamente el umbral MÁS CERCANO (menor trigDist) que aún no se haya anunciado,
+    // y se marcan como "ya dichos" los umbrales más lejanos que quedaron obsoletos por el salto,
+    // para que nunca se anuncie una instrucción vieja/irrelevante en los siguientes ticks.
+    let best: { vi: typeof allVoice[number]; key: string; trigDist: number } | null = null;
+    const staleKeys: string[] = [];
     for (const vi of allVoice) {
       const trigDist = vi.distanceAlongGeometry ?? 0;
       const key = `vi-${this._navStepIdx}-${Math.round(trigDist)}`;
-      if (!this._navSpokenKeys.has(key) && distToManeuver <= trigDist + 25) {
-        this._navSpokenKeys.add(key);
-        this._speak(vi.announcement);
-        break; // solo uno a la vez
+      if (this._navSpokenKeys.has(key)) continue;
+      if (distToManeuver > trigDist + 25) continue; // todavía no toca
+      if (!best || trigDist < best.trigDist) {
+        if (best) staleKeys.push(best.key); // el anterior "mejor" era más lejano -> obsoleto
+        best = { vi, key, trigDist };
+      } else {
+        staleKeys.push(key); // este es más lejano que el mejor encontrado -> obsoleto
       }
+    }
+    if (best) {
+      this._navSpokenKeys.add(best.key);
+      for (const k of staleKeys) this._navSpokenKeys.add(k);
+      this._speak(best.vi.announcement);
     }
   }
 
@@ -15496,13 +15525,27 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       .reduce((s: number, st: any) => s + (st.duration ?? 0), 0);
     this.navEtaMin.set(Math.max(1, Math.round(remaining / 60)));
 
-    // Detección de desvío: si está >65 m de cualquier punto de la ruta
+    // Detección de desvío: si está >65 m de cualquier punto de la ruta.
+    // BUG REAL 2026-08-04: esto usaba _navStepIdx (índice de maniobra, 0-15 típico) como si
+    // fuera un índice dentro de _navRouteCoords (TODOS los puntos de la ruta, puede tener
+    // cientos) -- dos arreglos con escalas completamente distintas. En cualquier viaje más
+    // largo que los primeros ~60-80 puntos de geometría, la ventana revisada quedaba pegada
+    // cerca del INICIO de la ruta (porque _navStepIdx rara vez pasa de 15), así que apenas el
+    // conductor avanzaba, la distancia al "punto más cercano" crecía sin parar aunque fuera
+    // perfectamente por la ruta -- disparando recálculos falsos de ruta en cualquier viaje
+    // medio/largo. Se reemplaza por un índice propio (_navCoordIdx) que sigue el progreso real
+    // del conductor sobre _navRouteCoords, buscando solo en una ventana alrededor de la última
+    // posición encontrada (conserva la optimización de no escanear toda la ruta cada vez).
     if (!this._navRecalcCooldown && this._navRouteCoords.length > 0) {
-      // Optimización: solo revisar los próximos 60 puntos (no toda la ruta)
-      const startIdx = Math.max(0, this._navStepIdx - 5);
-      const slice    = this._navRouteCoords.slice(startIdx, startIdx + 60);
-      const minDist  = slice.reduce((m, [cLng, cLat]) =>
-        Math.min(m, this._distMeters(lat, lng, cLat, cLng)), Infinity);
+      const searchStart = Math.max(0, this._navCoordIdx - 10);
+      const searchEnd    = Math.min(this._navRouteCoords.length, this._navCoordIdx + 80);
+      let minDist = Infinity, nearestIdx = this._navCoordIdx;
+      for (let i = searchStart; i < searchEnd; i++) {
+        const [cLng, cLat] = this._navRouteCoords[i];
+        const d = this._distMeters(lat, lng, cLat, cLng);
+        if (d < minDist) { minDist = d; nearestIdx = i; }
+      }
+      this._navCoordIdx = nearestIdx;
       if (minDist > 65) {
         this._recalcRoute();
         return; // no mover cámara hasta que llegue la nueva ruta
@@ -15886,16 +15929,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           this._currentHeading = pos.coords.heading;
         }
         this.agService.updateDriverLocation(driverId, pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
-        this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined);
 
         // Bug real 2026-07-31: este callback nunca actualizaba _currentLat/_currentLng (solo
         // el marcador del mapa) -- si initGpsAndMap cayo en el fallback de Bogota (GPS en frio
         // lento, comun en la primera instalacion), el conductor quedaba emparejando/viendo
         // solicitudes como si estuviera en Bogota indefinidamente, aunque el mapa se veia bien.
+        //
+        // BUG REAL 2026-08-04: _currentLat/_currentLng se actualizaban DESPUÉS de llamar a
+        // _updateNavFromGps() -- si esa llamada detectaba desvío y disparaba un recálculo de
+        // ruta, _recalcRoute() usaba this._currentLat/Lng, que en ese momento todavía eran la
+        // posición del tick GPS ANTERIOR, no la actual. La ruta recalculada arrancaba desde un
+        // punto viejo. Se mueve la actualización de posición ANTES de _updateNavFromGps().
         const wasFallback = this._usedFallbackLocation;
         this._currentLat = pos.coords.latitude;
         this._currentLng = pos.coords.longitude;
         this._gpsRealFix = true;
+
+        this._updateNavFromGps(pos.coords.latitude, pos.coords.longitude, pos.coords.heading ?? undefined);
+
         if (wasFallback) {
           this._usedFallbackLocation = false;
           this._reverseGeocode(pos.coords.latitude, pos.coords.longitude);
