@@ -11866,9 +11866,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const mapboxgl = (window as any).mapboxgl;
     if (this._pinDropMarker) { try { this._pinDropMarker.remove(); } catch {} }
     if (mapboxgl) {
-      const el = document.createElement('div');
-      el.innerHTML = `<div style="width:32px;height:32px;background:#4f46e5;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 12px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center"><span class='material-symbols-outlined' style='color:#fff;font-size:16px'>place</span></div>`;
-      this._pinDropMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+      const el = this._createDropPin('#4f46e5');
+      this._pinDropMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([lng, lat]).addTo(this._map);
     }
 
@@ -12564,6 +12563,75 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       }
     };
     state.raf = requestAnimationFrame(step);
+  }
+
+  // ── Pin de ubicación (origen/destino) con sombra de contacto y animación de aterrizaje ──
+  private _createDropPin(color: string): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;width:34px;height:46px;';
+    wrap.innerHTML = `
+      <div style="position:absolute;bottom:0;left:50%;width:14px;height:5px;border-radius:50%;
+                  background:radial-gradient(ellipse,rgba(0,0,0,0.42) 0%,transparent 72%);
+                  transform-origin:50% 50%;transform:translateX(-50%) scale(0.3);opacity:0;
+                  animation:ag-pin-shadow 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.05s both;"></div>
+      <svg viewBox="0 0 32 42" width="34" height="44" style="position:absolute;bottom:2px;left:0;
+           filter:drop-shadow(0 3px 6px rgba(0,0,0,0.4));transform-origin:50% 100%;
+           animation:ag-pin-drop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;">
+        <path d="M16 1C8.8 1 3 6.8 3 14c0 10 13 27 13 27s13-17 13-27C29 6.8 23.2 1 16 1z"
+              fill="${color}" stroke="#fff" stroke-width="2"/>
+        <circle cx="16" cy="14" r="5.5" fill="#fff"/>
+      </svg>
+    `;
+    if (!document.getElementById('ag-pin-styles')) {
+      const s = document.createElement('style');
+      s.id = 'ag-pin-styles';
+      s.textContent = `
+        @keyframes ag-pin-drop {
+          0%   { transform:translateY(-28px) scale(0.4); opacity:0; }
+          60%  { transform:translateY(3px)   scale(1.08); opacity:1; }
+          80%  { transform:translateY(-2px)  scale(0.97); }
+          100% { transform:translateY(0)     scale(1); }
+        }
+        @keyframes ag-pin-shadow {
+          0%   { transform:translateX(-50%) scale(0.2); opacity:0; }
+          60%  { transform:translateX(-50%) scale(1.2); opacity:0.55; }
+          100% { transform:translateX(-50%) scale(1);   opacity:0.85; }
+        }
+      `;
+      document.head.appendChild(s);
+    }
+    return wrap;
+  }
+
+  // ── Animación "marching ants" de la línea de overlay blanca sobre una ruta activa ──
+  private _routeFlowRaf: number | null = null;
+  private readonly _dashSeq: number[][] = [
+    [0, 4, 3, 0], [0.5, 4, 2.5, 0], [1, 4, 2, 0], [1.5, 4, 1.5, 0],
+    [2, 4, 1, 0], [2.5, 4, 0.5, 0], [3, 4, 0, 0],
+    [0, 0.5, 3, 3.5], [0, 1, 3, 3], [0, 1.5, 3, 2.5], [0, 2, 3, 2],
+    [0, 2.5, 3, 1.5], [0, 3, 3, 1], [0, 3.5, 3, 0.5],
+  ];
+
+  private _startRouteFlow(layerIds: string[]): void {
+    this._stopRouteFlow();
+    let step = 0;
+    let lastTs = 0;
+    const frame = (ts: number) => {
+      if (!this._map) return;
+      if (ts - lastTs > 70) {
+        lastTs = ts;
+        step = (step + 1) % this._dashSeq.length;
+        for (const id of layerIds) {
+          try { if (this._map.getLayer(id)) this._map.setPaintProperty(id, 'line-dasharray', this._dashSeq[step]); } catch {}
+        }
+      }
+      this._routeFlowRaf = requestAnimationFrame(frame);
+    };
+    this._routeFlowRaf = requestAnimationFrame(frame);
+  }
+
+  private _stopRouteFlow(): void {
+    if (this._routeFlowRaf != null) { cancelAnimationFrame(this._routeFlowRaf); this._routeFlowRaf = null; }
   }
 
   // ── Íconos estilo inDrive — vista superior (top-down) ────────────────────
@@ -15245,23 +15313,30 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         if (existing) {
           existing.setData(geoData);
         } else {
-          this._map.addSource('nav-route', { type: 'geojson', data: geoData });
+          // lineMetrics habilita line-gradient (progreso de la ruta, ver layerDefs)
+          this._map.addSource('nav-route', { type: 'geojson', data: geoData, lineMetrics: true });
         }
       } catch (e) {
         console.error('[Movi Nav] source error:', e);
         return;
       }
 
+      // Degradado: tramo inicial apagado → tramo hacia el destino más vivo, misma paleta azul
+      // de navegación (convención universal, no se toca por marca -- el conductor necesita
+      // reconocer la ruta de un vistazo, no admirar branding).
+      const bgGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#1e3a5f', 1, '#3b82f6'] as any;
+      const lineGradient = ['interpolate', ['linear'], ['line-progress'], 0, '#3b82f6', 1, '#93c5fd'] as any;
+
       // Agregar layers solo si no existen
       const layerDefs = [
         { id: 'nav-route-halo', cap: 'round', join: 'round',
           paint: { 'line-color': '#1e3a5f', 'line-width': 18, 'line-opacity': 0.55 } },
         { id: 'nav-route-bg',   cap: 'round', join: 'round',
-          paint: { 'line-color': '#3b82f6', 'line-width': 10, 'line-opacity': 1.0 } },
+          paint: { 'line-gradient': bgGradient, 'line-width': 10, 'line-opacity': 1.0 } },
         { id: 'nav-route-line', cap: 'round', join: 'round',
-          paint: { 'line-color': '#93c5fd', 'line-width': 3.5, 'line-opacity': 0.8 } },
+          paint: { 'line-gradient': lineGradient, 'line-width': 3.5, 'line-opacity': 0.8 } },
         { id: 'nav-route-arr',  cap: 'butt',  join: 'round',
-          paint: { 'line-color': '#fff',    'line-width': 2,   'line-opacity': 0.45, 'line-dasharray': [0, 6] } },
+          paint: { 'line-color': '#fff',    'line-width': 2,   'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } },
       ];
       for (const def of layerDefs) {
         try {
@@ -15276,6 +15351,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           console.error(`[Movi Nav] layer ${def.id} error:`, e);
         }
       }
+      // "Marching ants" -- refuerza visualmente la dirección de avance sobre la ruta activa.
+      this._startRouteFlow(['nav-route-arr']);
     };
 
     if (this._map.isStyleLoaded()) {
@@ -15286,6 +15363,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _clearNavRoute(): void {
+    this._stopRouteFlow();
     if (!this._map) return;
     ['nav-route-arr','nav-route-line','nav-route-bg','nav-route-halo'].forEach(id => {
       try { if (this._map.getLayer(id)) this._map.removeLayer(id); } catch {}
@@ -17098,10 +17176,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       if (src) {
         src.setData({ type: 'Feature', properties: {}, geometry: route.geometry });
       } else {
-        this._map.addSource('approach-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+        this._map.addSource('approach-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry }, lineMetrics: true });
         this._map.addLayer({ id: 'approach-route-bg',   type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
-        this._map.addLayer({ id: 'approach-route-line', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#10b981', 'line-width': 5,  'line-opacity': 0.92 } });
-        this._map.addLayer({ id: 'approach-route-dash', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.5, 'line-dasharray': [0, 4] } });
+        this._map.addLayer({ id: 'approach-route-line', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#065f46', 1, '#10b981'], 'line-width': 5,  'line-opacity': 0.92 } });
+        this._map.addLayer({ id: 'approach-route-dash', type: 'line', source: 'approach-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } });
+        // "Marching ants" hacia el punto de recogida.
+        this._startRouteFlow(['approach-route-dash']);
       }
       this._approachRouteDrawn = true;
       // Solo en el primer dibujo ajustar cámara para mostrar conductor + pickup
@@ -17114,6 +17194,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _clearApproachRoute(): void {
+    this._stopRouteFlow();
     if (!this._map) return;
     ['approach-route-dash', 'approach-route-line', 'approach-route-bg'].forEach(id => {
       try { if (this._map.getLayer(id)) this._map.removeLayer(id); } catch {}
@@ -17716,14 +17797,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.tripSuggestions.set([]);
       this.tripPrice.set(this._calcPrice(km, this.tripVehicle()));
 
-      this._map.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry } });
+      this._map.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry }, lineMetrics: true });
       this._map.addLayer({ id: 'trip-route-bg',   type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
-      this._map.addLayer({ id: 'trip-route-line', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#4f46e5', 'line-width': 5,  'line-opacity': 0.92 } });
-      this._map.addLayer({ id: 'trip-route-dash', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.5, 'line-dasharray': [0, 4] } });
+      this._map.addLayer({ id: 'trip-route-line', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#312e81', 1, '#4f46e5'], 'line-width': 5,  'line-opacity': 0.92 } });
+      this._map.addLayer({ id: 'trip-route-dash', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } });
+      // "Marching ants" hacia el destino.
+      this._startRouteFlow(['trip-route-dash']);
 
       // Marcador de destino
-      const pin = document.createElement('div');
-      pin.innerHTML = `<div style="position:relative;width:32px;height:44px"><div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:32px;height:40px;background:#4f46e5;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center"><span class='material-symbols-outlined' style='color:#fff;font-size:16px'>place</span></div><div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:6px;height:6px;background:#4f46e5;border-radius:50%;margin-bottom:-3px"></div></div>`;
+      const pin = this._createDropPin('#4f46e5');
       this._destMarker = new mapboxgl.Marker({ element: pin, anchor: 'bottom' }).setLngLat([destLng, destLat]).addTo(this._map);
 
       // Ajustar vista para mostrar toda la ruta
@@ -17734,6 +17816,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _clearRoute() {
+    this._stopRouteFlow();
     if (this._map) {
       ['trip-route-dash','trip-route-line','trip-route-bg'].forEach(id => {
         try { if (this._map.getLayer(id)) this._map.removeLayer(id); } catch { /**/ }
@@ -19388,25 +19471,28 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
           if (existing) {
             existing.setData(geoData);
           } else {
-            this._map.addSource('nav-route', { type: 'geojson', data: geoData });
+            this._map.addSource('nav-route', { type: 'geojson', data: geoData, lineMetrics: true });
           }
         } catch (e) { console.error('[Movi Passenger] source error:', e); return; }
 
-        // 3 capas estilo naranja (colores del pasajero, diferente al azul del conductor)
+        // 3 capas estilo naranja (colores del pasajero, diferente al azul del conductor) +
+        // degradado hacia el destino y overlay de "marching ants".
         const layerDefs = [
-          { id: 'nav-route-halo', paint: { 'line-color': '#7c2d12', 'line-width': 16, 'line-opacity': 0.45 } },
-          { id: 'nav-route-bg',   paint: { 'line-color': '#f97316', 'line-width': 9,  'line-opacity': 1.0 } },
-          { id: 'nav-route-line', paint: { 'line-color': '#fed7aa', 'line-width': 3,  'line-opacity': 0.85 } },
+          { id: 'nav-route-halo', dash: false, paint: { 'line-color': '#7c2d12', 'line-width': 16, 'line-opacity': 0.45 } },
+          { id: 'nav-route-bg',   dash: false, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#7c2d12', 1, '#f97316'], 'line-width': 9,  'line-opacity': 1.0 } },
+          { id: 'nav-route-line', dash: false, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#f97316', 1, '#fed7aa'], 'line-width': 3,  'line-opacity': 0.85 } },
+          { id: 'nav-route-arr',  dash: true,  paint: { 'line-color': '#fff', 'line-width': 1.8, 'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } },
         ];
         for (const def of layerDefs) {
           try {
             if (!this._map.getLayer(def.id)) {
               this._map.addLayer({ id: def.id, type: 'line', source: 'nav-route',
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                layout: { 'line-cap': def.dash ? 'butt' : 'round', 'line-join': 'round' },
                 paint: def.paint as any });
             }
           } catch (e) { console.error(`[Movi Passenger] layer ${def.id}:`, e); }
         }
+        this._startRouteFlow(['nav-route-arr']);
 
         // Centrar mapa en la ruta completa
         const coords   = route.geometry.coordinates as [number, number][];
