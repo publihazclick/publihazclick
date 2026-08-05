@@ -18861,7 +18861,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const currentYear = new Date().getFullYear();
     if (year > currentYear + 1) return 'El año del vehículo no puede ser futuro.';
     const isMoto = (vehicleType || '').toLowerCase().includes('moto');
-    const cap = isMoto ? 15 : 20;
+    const cap = isMoto ? 17 : 23;
     const age = currentYear - year;
     if (age > cap) {
       return `${isMoto ? 'Tu moto' : 'Tu vehículo'} tiene ${age} años. Por seguridad, el máximo permitido es ${cap} años.`;
