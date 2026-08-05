@@ -9103,7 +9103,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
-                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Placa colombiana *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Placa *</label>
                   <input [(ngModel)]="df.plate" [ngModelOptions]="{updateOn: 'blur'}" name="d_plate" placeholder="ABC123"
                     class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all uppercase" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
@@ -10292,7 +10292,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!d || !this.newVehicle.plate.trim()) return;
     const ageError = this._vehicleAgeError(this.newVehicle.vehicle_type, this.newVehicle.year);
     if (ageError) { alert(ageError); return; }
-    const plateError = this._colombianPlateError(this.newVehicle.plate, this.newVehicle.vehicle_type);
+    const plateError = this._plateFormatError(this.newVehicle.plate);
     if (plateError) { alert(plateError); return; }
     try {
       await this.agService.addVehicle(d.id, {
@@ -18896,23 +18896,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return null;
   }
 
-  // Solo se aceptan conductores con cédula colombiana y vehículos con placa
-  // colombiana -- pedido explícito del usuario 2026-08-05.
+  // Solo se aceptan conductores con cédula colombiana (documento colombiano),
+  // pero los vehículos sí pueden ser colombianos o venezolanos -- confirmado
+  // por el usuario 2026-08-05. La placa solo se valida de forma genérica
+  // (no se restringe a un formato de país específico).
   private _isColombianCedula(idNumber: string): boolean {
     return /^[0-9]{6,10}$/.test((idNumber || '').trim());
   }
 
-  private _colombianPlateError(plate: string, vehicleType: string): string | null {
+  private _plateFormatError(plate: string): string | null {
     const p = (plate || '').trim().toUpperCase().replace(/[\s-]/g, '');
     if (!p) return null; // otras validaciones ya cubren "vacío"
-    const isMoto = (vehicleType || '').toLowerCase().includes('moto');
-    const okCar  = /^[A-Z]{3}\d{3}$/.test(p);
-    const okMoto = /^[A-Z]{3}\d{2}[A-Z]$/.test(p);
-    const ok = isMoto ? (okMoto || okCar) : okCar;
-    if (!ok) {
-      return isMoto
-        ? 'La placa debe tener formato colombiano de moto (ej: ABC12D).'
-        : 'La placa debe tener formato colombiano de vehículo (ej: ABC123).';
+    if (!/^[A-Z0-9]{5,8}$/.test(p)) {
+      return 'La placa no tiene un formato válido.';
     }
     return null;
   }
@@ -18926,7 +18922,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
     const ageError = this._vehicleAgeError(this.df.vehicleType, this.df.vehicleYear);
     if (ageError) { this.driverError.set(ageError); return; }
-    const plateError = this._colombianPlateError(this.df.plate, this.df.vehicleType);
+    const plateError = this._plateFormatError(this.df.plate);
     if (plateError) { this.driverError.set(plateError); return; }
     if (!this._isColombianCedula(this.df.idNumber)) {
       this.driverError.set('El número de cédula debe ser un documento colombiano válido (solo números, entre 6 y 10 dígitos).');
@@ -20289,7 +20285,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (!vehicle) return;
     const ageError = this._vehicleAgeError(vehicle, this.qrVehicleYear());
     if (ageError) { this.qrOtpError.set(ageError); this.cdr.markForCheck(); return; }
-    const plateError = this._colombianPlateError(this.qrVehiclePlate(), vehicle);
+    const plateError = this._plateFormatError(this.qrVehiclePlate());
     if (plateError) { this.qrOtpError.set(plateError); this.cdr.markForCheck(); return; }
     this.qrOtpVerifying.set(true);
     this.qrOtpError.set('');
