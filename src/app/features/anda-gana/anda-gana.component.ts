@@ -14732,6 +14732,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       // la lista local para que el banner desaparezca si ya quedó todo al día.
       this.driverDocAlerts.set(await this.agService.getDriverDocumentAlerts(d.id));
       this.cdr.markForCheck();
+      if (res.extractedExpiry) {
+        alert(`Fecha de vencimiento leída automáticamente del documento: ${res.extractedExpiry}.`);
+      } else if (res.extractionFailed) {
+        alert('No se pudo leer la fecha automáticamente del documento -- se guardó la fecha que escribiste. Verifica que sea correcta.');
+      }
     } else {
       alert('Error subiendo: ' + (res.error ?? 'desconocido'));
     }

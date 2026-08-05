@@ -1962,12 +1962,14 @@ export class AndaGanaService {
     return data ?? [];
   }
 
+  private static readonly DOC_TYPES_WITH_EXPIRY = new Set(['license', 'soat', 'tecnomecanica', 'insurance']);
+
   async uploadDriverDocument(
     driverId: string,
     docType: 'license' | 'soat' | 'tecnomecanica' | 'cedula' | 'vehicle_front' | 'vehicle_back' | 'insurance',
     file: File,
     meta: { number?: string; expires_at?: string | null } = {},
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; extractedExpiry?: string | null; extractionFailed?: boolean }> {
     const userId = (await this.supabase.auth.getUser()).data.user?.id;
     if (!userId) return { success: false, error: 'No session' };
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -1986,7 +1988,26 @@ export class AndaGanaService {
       status: 'pending',
       rejection_reason: null,
     }, { onConflict: 'driver_id,doc_type' });
-    return error ? { success: false, error: error.message } : { success: true };
+    if (error) return { success: false, error: error.message };
+
+    // Lectura automática de la fecha de vencimiento con GPT-4o Vision -- reemplaza lo que el
+    // conductor escribió a mano si la IA logra leerla (decisión del usuario 2026-08-05). Si
+    // falla o no aplica al tipo de documento, se conserva la fecha manual sin bloquear la subida.
+    if (!AndaGanaService.DOC_TYPES_WITH_EXPIRY.has(docType)) return { success: true };
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      const token = session?.access_token ?? environment.moviSupabase.anonKey;
+      const res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-extract-doc-date`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey, Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ driver_id: driverId, doc_type: docType, file_url: fileUrl }),
+      });
+      const r = res.ok ? await res.json() : null;
+      if (r?.readable && r?.expiry_date) return { success: true, extractedExpiry: r.expiry_date };
+      return { success: true, extractionFailed: true };
+    } catch {
+      return { success: true, extractionFailed: true };
+    }
   }
 
   async refreshDocumentUrl(filePath: string): Promise<string | null> {
