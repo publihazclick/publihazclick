@@ -557,17 +557,29 @@ const TABS: TabDef[] = [
           <div class="text-center py-16 text-slate-600 text-sm">Sin historial disponible.</div>
         }
         @for (t of tripHistory(); track t.id) {
-          <div class="rounded-2xl p-4" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05)">
+          <div class="rounded-2xl p-4" [style]="t.gps_integrity_flagged ? 'background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25)' : 'background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05)'">
             <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
               <p class="text-slate-300 font-semibold text-sm">{{ t.dest_name ?? 'Sin destino' }}</p>
-              <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase"
-                [style]="t.status === 'completed' ? 'background:rgba(16,185,129,0.15);color:#34d399' : 'background:rgba(239,68,68,0.15);color:#f87171'">{{ t.status }}</span>
+              <div class="flex items-center gap-1.5">
+                @if (t.gps_integrity_flagged) {
+                  <span class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style="background:rgba(239,68,68,0.15);color:#f87171"
+                    [title]="t.gps_integrity_detail?.reason">
+                    <span class="material-symbols-outlined" style="font-size:11px">gps_off</span>
+                    GPS sospechoso
+                  </span>
+                }
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase"
+                  [style]="t.status === 'completed' ? 'background:rgba(16,185,129,0.15);color:#34d399' : 'background:rgba(239,68,68,0.15);color:#f87171'">{{ t.status }}</span>
+              </div>
             </div>
             <div class="flex items-center gap-4 flex-wrap">
               <span class="text-slate-200 font-black">{{ formatCOP(t.offered_price) }}</span>
               @if (t.distance_km) { <span class="text-slate-500 text-xs">{{ t.distance_km }} km</span> }
               <span class="text-slate-600 text-xs">{{ t.created_at | date:'dd/MM/yy HH:mm' }}</span>
             </div>
+            @if (t.gps_integrity_flagged) {
+              <p class="text-[10px] text-red-400/80 mt-1.5">{{ t.gps_integrity_detail?.reason }}</p>
+            }
           </div>
         }
       }
