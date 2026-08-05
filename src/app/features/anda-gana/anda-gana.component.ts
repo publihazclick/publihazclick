@@ -5200,6 +5200,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       </div>
 
+      <!-- Vehículo fuera del límite de antigüedad (lo marca el barrido mensual, migración 185) -->
+      @if (driverData()?.vehicle_needs_update) {
+        <div class="rounded-2xl p-4 flex items-center gap-3" style="background:#FFF7ED;border:1px solid #FDBA74">
+          <span class="material-symbols-outlined text-orange-500" style="font-size:22px">directions_car</span>
+          <div class="flex-1 min-w-0">
+            <p class="font-black text-sm" style="color:#0f172a">Actualiza tu vehículo</p>
+            <p class="text-slate-600 text-xs">Tu vehículo registrado ya superó el límite de antigüedad permitido. Actualiza los datos en "Mis vehículos" para volver a conectarte.</p>
+          </div>
+          <button (click)="openDriverSection('vehicles')" class="px-3 py-1.5 rounded-lg text-xs font-black text-white flex-shrink-0" style="background:#f97316">Ir</button>
+        </div>
+      }
+
       <!-- Drawer menú conductor -->
       @if (driverMenuOpen()) {
         <div (click)="driverMenuOpen.set(false)"
@@ -8284,6 +8296,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 placeholder="Placa (ej: ABC123)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box;text-transform:uppercase"
                 [style.borderColor]="qrVehiclePlate() ? '#7C3AED' : '#D1D5DB'" />
+              <input [(ngModel)]="qrVehicleYearVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleYear.set($event)"
+                placeholder="Año (ej: 2020)" type="number" min="1970"
+                style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
+                [style.borderColor]="qrVehicleYear() ? '#7C3AED' : '#D1D5DB'" />
             </div>
           </div>
 
@@ -8296,7 +8312,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- CTA -->
           <button (click)="qrSaveVehicleAndEnter()"
-            [disabled]="!qrVehicleType() || !qrVehicleBrand() || !qrVehicleColor() || !qrVehiclePlate() || qrOtpVerifying()"
+            [disabled]="!qrVehicleType() || !qrVehicleBrand() || !qrVehicleColor() || !qrVehiclePlate() || !qrVehicleYear() || qrOtpVerifying()"
             style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
             [style.opacity]="!qrVehicleType() || qrOtpVerifying() ? '0.9' : '1'">
             @if (qrOtpVerifying()) {
@@ -10276,6 +10292,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async saveNewVehicle(): Promise<void> {
     const d = this.driverData();
     if (!d || !this.newVehicle.plate.trim()) return;
+    const ageError = this._vehicleAgeError(this.newVehicle.vehicle_type, this.newVehicle.year);
+    if (ageError) { alert(ageError); return; }
     try {
       await this.agService.addVehicle(d.id, {
         vehicle_type: this.newVehicle.vehicle_type,
@@ -18220,9 +18238,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrVehicleBrand      = signal('');
   qrVehicleColor      = signal('');
   qrVehiclePlate      = signal('');
+  qrVehicleYear       = signal('');
   qrVehicleBrandVal   = '';
   qrVehicleColorVal   = '';
   qrVehiclePlateVal   = '';
+  qrVehicleYearVal    = '';
   qrStep              = signal<1 | 2 | 3>(1);
   qrName              = signal('');
   qrPhone             = signal('');
@@ -18830,6 +18850,25 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
   }
 
+  // Topes de antigüedad -- espejo de platform_settings (ag_max_vehicle_age_car/moto) en
+  // la base de datos, que es quien realmente lo hace cumplir (trigger ag_validate_vehicle_age,
+  // migración 185). Esto es solo para dar el error al toque, sin esperar el viaje de ida y
+  // vuelta al servidor -- si alguien cambia el tope desde admin, este número queda desfasado
+  // hasta el próximo deploy, pero la base de datos igual lo va a rechazar bien.
+  private _vehicleAgeError(vehicleType: string, vehicleYear: string | number): string | null {
+    const year = parseInt(String(vehicleYear), 10);
+    if (!year || !isFinite(year)) return null; // otras validaciones ya cubren "vacío"
+    const currentYear = new Date().getFullYear();
+    if (year > currentYear + 1) return 'El año del vehículo no puede ser futuro.';
+    const isMoto = (vehicleType || '').toLowerCase().includes('moto');
+    const cap = isMoto ? 15 : 20;
+    const age = currentYear - year;
+    if (age > cap) {
+      return `${isMoto ? 'Tu moto' : 'Tu vehículo'} tiene ${age} años. Por seguridad, el máximo permitido es ${cap} años.`;
+    }
+    return null;
+  }
+
   async submitDriver() {
     this.driverError.set('');
     if (!this.df.plate || !this.df.vehicleType || !this.df.vehicleBrand ||
@@ -18837,6 +18876,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.driverError.set('Completa todos los datos del vehículo.');
       return;
     }
+    const ageError = this._vehicleAgeError(this.df.vehicleType, this.df.vehicleYear);
+    if (ageError) { this.driverError.set(ageError); return; }
     if (!this.df.terms) {
       this.driverError.set('Debes aceptar los términos y condiciones.');
       return;
@@ -20192,6 +20233,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   async qrSaveVehicleAndEnter() {
     const vehicle = this.qrVehicleType();
     if (!vehicle) return;
+    const ageError = this._vehicleAgeError(vehicle, this.qrVehicleYear());
+    if (ageError) { this.qrOtpError.set(ageError); this.cdr.markForCheck(); return; }
     this.qrOtpVerifying.set(true);
     this.qrOtpError.set('');
     this.cdr.markForCheck();
@@ -20208,6 +20251,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
         vehicle_type: vehicle,
         vehicle_brand: this.qrVehicleBrand() || '',
         vehicle_color: this.qrVehicleColor() || '',
+        vehicle_year: this.qrVehicleYear() || null,
         plate: this.qrVehiclePlate() || '',
       },
     });

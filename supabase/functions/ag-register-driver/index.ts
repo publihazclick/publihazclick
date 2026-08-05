@@ -11,6 +11,14 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+// Traduce el error del trigger ag_validate_vehicle_age (migración 185) a un mensaje claro
+// en vez del texto técnico crudo de Postgres.
+function friendlyVehicleError(msg: string): string {
+  if (msg.includes('VEHICULO_MUY_ANTIGUO:')) return msg.split('VEHICULO_MUY_ANTIGUO:')[1].trim();
+  if (msg.includes('AÑO_INVALIDO:')) return msg.split('AÑO_INVALIDO:')[1].trim();
+  return 'No se pudo guardar el vehículo. Intenta de nuevo.';
+}
+
 function toE164(phone: string): string {
   const digits = phone.replace(/\D/g, '');
   if (phone.startsWith('+')) return `+${digits}`;
@@ -56,7 +64,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { phone, name, vehicle_type, vehicle_brand, vehicle_color, plate, ag_user_id } = body;
+    const { phone, name, vehicle_type, vehicle_brand, vehicle_color, vehicle_year, plate, ag_user_id } = body;
     if (!phone && !ag_user_id) return json({ ok: false, error: 'phone o ag_user_id requerido' }, 400);
 
     const sb = createClient(
@@ -144,10 +152,15 @@ Deno.serve(async (req) => {
       if (vehicle_type) upd.vehicle_type = vehicle_type;
       if (vehicle_brand) upd.vehicle_brand = vehicle_brand;
       if (vehicle_color) upd.vehicle_color = vehicle_color;
+      if (vehicle_year) upd.vehicle_year = vehicle_year;
       if (plate) { upd.plate = plate; upd.vehicle_plate = plate; }
       if ((existingDriver.metric_trips_completed ?? 0) === 0) upd.status = 'quick';
       if (Object.keys(upd).length > 0) {
-        await sb.from('ag_drivers').update(upd).eq('id', existingDriver.id);
+        const { error: updErr } = await sb.from('ag_drivers').update(upd).eq('id', existingDriver.id);
+        if (updErr) {
+          console.error('[ag-register-driver] update ag_drivers:', JSON.stringify(updErr));
+          return json({ ok: false, error: friendlyVehicleError(updErr.message ?? '') });
+        }
       }
     } else {
       const { error: driverErr } = await sb.from('ag_drivers').insert({
@@ -155,6 +168,7 @@ Deno.serve(async (req) => {
         vehicle_type: vehicle_type ?? 'car',
         vehicle_brand: vehicle_brand ?? '',
         vehicle_color: vehicle_color ?? '',
+        vehicle_year: vehicle_year ?? null,
         plate: plate ?? 'PENDIENTE',
         vehicle_plate: plate ?? 'PENDIENTE',
         status: 'quick',
@@ -163,7 +177,7 @@ Deno.serve(async (req) => {
       });
       if (driverErr) {
         console.error('[ag-register-driver] insert ag_drivers:', JSON.stringify(driverErr));
-        return json({ ok: false, error: 'No se pudo guardar el vehículo. Intenta de nuevo.' });
+        return json({ ok: false, error: friendlyVehicleError(driverErr.message ?? '') });
       }
     }
 

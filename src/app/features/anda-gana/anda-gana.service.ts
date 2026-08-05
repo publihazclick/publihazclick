@@ -318,6 +318,18 @@ export class AndaGanaService {
     }
   }
 
+  /** Traduce errores crudos de Postgres (ej. del trigger ag_validate_vehicle_age, migración
+   * 185) a mensajes que el conductor entiende -- por defecto (validación ya cubierta en el
+   * frontend, esto es la red de seguridad) cae a un mensaje genérico en vez de mostrar el
+   * texto técnico de Postgres. Ver [[feedback_no_english_errors]]: nunca mostrar errores
+   * técnicos de librerías al usuario. */
+  private _friendlyDriverError(error: { message?: string } | null): string {
+    const msg = error?.message ?? '';
+    if (msg.includes('VEHICULO_MUY_ANTIGUO:')) return msg.split('VEHICULO_MUY_ANTIGUO:')[1].trim();
+    if (msg.includes('AÑO_INVALIDO:')) return msg.split('AÑO_INVALIDO:')[1].trim();
+    return 'No se pudo guardar los documentos. Intenta de nuevo.';
+  }
+
   async registerDriver(form: DriverFormData): Promise<AgRegistrationResult> {
     try {
       const uid = await this.currentUserId();
@@ -403,7 +415,7 @@ export class AndaGanaService {
 
       if (driverError) {
         console.error('[registerDriver] ag_drivers insert:', driverError);
-        return { success: false, error: 'No se pudo guardar los documentos. Intenta de nuevo.' };
+        return { success: false, error: this._friendlyDriverError(driverError) };
       }
 
       // Disparar verificación automática con GPT-4o Vision (no bloquea el registro)
@@ -471,7 +483,7 @@ export class AndaGanaService {
       documents,
       status: 'pending',
     }).eq('id', driverId);
-    if (driverError) return { success: false, error: driverError.message };
+    if (driverError) return { success: false, error: this._friendlyDriverError(driverError) };
 
     this.triggerDriverVerification(driverId).catch(() => {});
     this.triggerBackgroundCheck(driverId).catch(() => {});
@@ -1645,7 +1657,12 @@ export class AndaGanaService {
   }
 
   async addVehicle(driverId: string, payload: { vehicle_type: string; brand: string; model: string; year: number; color: string; plate: string; photo_url?: string }): Promise<void> {
-    await this.supabase.from('ag_driver_vehicles').insert({ driver_id: driverId, ...payload });
+    // BUG REAL evitado antes de desplegar: este insert nunca chequeaba `error` -- si el
+    // trigger de antigüedad (migración 186) lo rechazaba, el conductor no veía ningún mensaje,
+    // solo no pasaba nada (silencioso). supabase-js no lanza excepción por su cuenta en
+    // errores de query, hay que revisar `error` y lanzarlo explícito.
+    const { error } = await this.supabase.from('ag_driver_vehicles').insert({ driver_id: driverId, ...payload });
+    if (error) throw new Error(this._friendlyDriverError(error));
   }
 
   async setCurrentVehicle(driverId: string, vehicleId: string): Promise<void> {
