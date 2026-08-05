@@ -92,11 +92,14 @@ Deno.serve(async (req) => {
     const jwt = authHeader.slice('Bearer '.length);
 
     const body = await req.json().catch(() => null);
-    const driverId = body?.driver_id;
-    const docType  = body?.doc_type;
-    const fileUrl  = body?.file_url;
+    const driverId  = body?.driver_id;
+    const docType   = body?.doc_type;
+    const fileUrl   = body?.file_url;
+    const vehicleId = body?.vehicle_id ?? null;
     if (!driverId || !docType || !fileUrl) return json({ error: 'driver_id, doc_type y file_url son requeridos' }, 400);
     if (!DOC_LABELS[docType]) return json({ error: 'doc_type no soportado' }, 400);
+    const VEHICLE_SCOPED = new Set(['soat', 'tecnomecanica', 'insurance', 'vehicle_front', 'vehicle_back']);
+    if (VEHICLE_SCOPED.has(docType) && !vehicleId) return json({ error: 'vehicle_id requerido para este tipo de documento' }, 400);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -115,15 +118,29 @@ Deno.serve(async (req) => {
       return json({ error: 'No autorizado para este conductor' }, 403);
     }
 
+    if (vehicleId) {
+      const { data: veh } = await supabase.from('ag_driver_vehicles').select('id').eq('id', vehicleId).eq('driver_id', driverId).maybeSingle();
+      if (!veh) return json({ error: 'Vehículo no pertenece a este conductor' }, 403);
+    }
+
     const result = await extractExpiry(fileUrl, docType);
 
     // Solo se escribe si la IA pudo leer el documento -- si no, se conserva lo que el
     // conductor haya escrito a mano (fail-open, no bloquear la subida por esto).
+    // soat/tecnomecanica/insurance/vehicle_front/vehicle_back son por vehículo
+    // (ag_vehicle_documents); license/cedula/etc. son por conductor (ag_driver_documents).
     if (result.readable && result.expiry_date) {
-      await supabase.from('ag_driver_documents')
-        .update({ expires_at: result.expiry_date })
-        .eq('driver_id', driverId)
-        .eq('doc_type', docType);
+      if (VEHICLE_SCOPED.has(docType)) {
+        await supabase.from('ag_vehicle_documents')
+          .update({ expires_at: result.expiry_date })
+          .eq('vehicle_id', vehicleId)
+          .eq('doc_type', docType);
+      } else {
+        await supabase.from('ag_driver_documents')
+          .update({ expires_at: result.expiry_date })
+          .eq('driver_id', driverId)
+          .eq('doc_type', docType);
+      }
     }
 
     return json({ ok: true, ...result });

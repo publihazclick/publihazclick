@@ -1956,17 +1956,30 @@ export class AndaGanaService {
   // ═══════════════════════════════════════════════════
   // DRIVER: documentos
   // ═══════════════════════════════════════════════════
-  async listDriverDocuments(driverId: string): Promise<any[]> {
-    const { data } = await this.supabase
-      .from('ag_driver_documents')
-      .select('*')
-      .eq('driver_id', driverId)
-      .order('doc_type')
-      .limit(20);
-    return data ?? [];
+  // license/cedula/selfie/etc. son del conductor como persona; soat/tecnomecanica/insurance/
+  // vehicle_front/vehicle_back son del vehículo -- un conductor con carro y moto guardados puede
+  // tener un SOAT distinto para cada uno (migración 195, pedido explícito del usuario 2026-08-05).
+  private static readonly VEHICLE_SCOPED_DOC_TYPES = new Set(['soat', 'tecnomecanica', 'insurance', 'vehicle_front', 'vehicle_back']);
+  private static readonly DOC_TYPES_WITH_EXPIRY = new Set(['license', 'soat', 'tecnomecanica', 'insurance']);
+
+  private async _getCurrentVehicleId(driverId: string): Promise<string | null> {
+    const { data } = await this.supabase.from('ag_driver_vehicles')
+      .select('id').eq('driver_id', driverId).eq('is_current', true).maybeSingle();
+    return data?.id ?? null;
   }
 
-  private static readonly DOC_TYPES_WITH_EXPIRY = new Set(['license', 'soat', 'tecnomecanica', 'insurance']);
+  async listDriverDocuments(driverId: string): Promise<any[]> {
+    const [driverDocsRes, vehicleId] = await Promise.all([
+      this.supabase.from('ag_driver_documents').select('*').eq('driver_id', driverId).order('doc_type').limit(20),
+      this._getCurrentVehicleId(driverId),
+    ]);
+    let vehicleDocs: any[] = [];
+    if (vehicleId) {
+      const { data } = await this.supabase.from('ag_vehicle_documents').select('*').eq('vehicle_id', vehicleId).order('doc_type').limit(20);
+      vehicleDocs = data ?? [];
+    }
+    return [...(driverDocsRes.data ?? []), ...vehicleDocs];
+  }
 
   async uploadDriverDocument(
     driverId: string,
@@ -1976,22 +1989,30 @@ export class AndaGanaService {
   ): Promise<{ success: boolean; error?: string; extractedExpiry?: string | null; extractionFailed?: boolean }> {
     const userId = (await this.supabase.auth.getUser()).data.user?.id;
     if (!userId) return { success: false, error: 'No session' };
+    const isVehicleScoped = AndaGanaService.VEHICLE_SCOPED_DOC_TYPES.has(docType);
+    let vehicleId: string | null = null;
+    if (isVehicleScoped) {
+      vehicleId = await this._getCurrentVehicleId(driverId);
+      if (!vehicleId) return { success: false, error: 'No tienes un vehículo activo registrado. Registra tu vehículo primero.' };
+    }
+
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const path = `${userId}/${docType}-${Date.now()}.${ext}`;
     const up = await this.supabase.storage.from('movi-driver-docs').upload(path, file, { upsert: true });
     if (up.error) return { success: false, error: up.error.message };
     const { data: signed } = await this.supabase.storage.from('movi-driver-docs').createSignedUrl(path, 60 * 60 * 24 * 30);
     const fileUrl = signed?.signedUrl ?? '';
-    const { error } = await this.supabase.from('ag_driver_documents').upsert({
-      driver_id: driverId,
-      doc_type: docType,
-      file_url: fileUrl,
-      file_path: path,
-      number: meta.number ?? null,
-      expires_at: meta.expires_at ?? null,
-      status: 'pending',
-      rejection_reason: null,
-    }, { onConflict: 'driver_id,doc_type' });
+
+    const row = {
+      doc_type: docType, file_url: fileUrl, file_path: path,
+      number: meta.number ?? null, expires_at: meta.expires_at ?? null,
+      status: 'pending', rejection_reason: null,
+    };
+    const { error } = isVehicleScoped
+      ? await this.supabase.from('ag_vehicle_documents')
+          .upsert({ ...row, vehicle_id: vehicleId, driver_id: driverId }, { onConflict: 'vehicle_id,doc_type' })
+      : await this.supabase.from('ag_driver_documents')
+          .upsert({ ...row, driver_id: driverId }, { onConflict: 'driver_id,doc_type' });
     if (error) return { success: false, error: error.message };
 
     // Lectura automática de la fecha de vencimiento con GPT-4o Vision -- reemplaza lo que el
@@ -2004,7 +2025,7 @@ export class AndaGanaService {
       const res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-extract-doc-date`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey, Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ driver_id: driverId, doc_type: docType, file_url: fileUrl }),
+        body: JSON.stringify({ driver_id: driverId, doc_type: docType, file_url: fileUrl, vehicle_id: vehicleId }),
       });
       const r = res.ok ? await res.json() : null;
       if (r?.readable && r?.expiry_date) return { success: true, extractedExpiry: r.expiry_date };
