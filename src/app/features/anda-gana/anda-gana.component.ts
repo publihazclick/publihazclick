@@ -10335,8 +10335,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async switchVehicle(vehicleId: string): Promise<void> {
     const d = this.driverData();
     if (!d) return;
-    await this.agService.setCurrentVehicle(d.id, vehicleId);
+    const res = await this.agService.setCurrentVehicle(d.id, vehicleId);
+    if (!res.ok) {
+      alert(res.error ?? 'No se pudo cambiar de vehículo.');
+      return;
+    }
     await this.loadVehicles();
+    // El vehículo actual ahora sí quedó copiado a ag_drivers (placa, tipo, marca, etc.) --
+    // refrescar driverData para que el resto de la app (solicitudes, banners) lo refleje.
+    const updated = await this.agService.getMyDriverProfile();
+    if (updated) this.driverData.set(updated);
+    if (this.driverOnline()) this.refreshDriverRequests();
+    this.cdr.markForCheck();
   }
 
   // Blacklist

@@ -1692,9 +1692,13 @@ export class AndaGanaService {
     if (error) throw new Error(this._friendlyDriverError(error));
   }
 
-  async setCurrentVehicle(driverId: string, vehicleId: string): Promise<void> {
-    await this.supabase.from('ag_driver_vehicles').update({ is_current: false }).eq('driver_id', driverId);
-    await this.supabase.from('ag_driver_vehicles').update({ is_current: true }).eq('id', vehicleId);
+  async setCurrentVehicle(driverId: string, vehicleId: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await this.supabase.rpc('ag_set_current_vehicle', {
+      p_driver_id: driverId, p_vehicle_id: vehicleId,
+    });
+    if (error) return { ok: false, error: this._friendlyDriverError(error) };
+    if (!data?.ok) return { ok: false, error: data?.error ?? 'No se pudo cambiar de vehículo.' };
+    return { ok: true };
   }
 
   async removeVehicle(id: string): Promise<void> {
