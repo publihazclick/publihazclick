@@ -1695,13 +1695,18 @@ export class AndaGanaService {
   // ═══════════════════════════════════════════════════
   // DRIVER: estados viaje + paradas
   // ═══════════════════════════════════════════════════
-  async updateTripStage(tripRequestId: string, stage: 'heading_to_pickup'|'arrived_at_pickup'|'picked_up'|'on_route'|'arrived_at_destination'|'completed'): Promise<void> {
-    const patch: any = { driver_stage: stage };
-    if (stage === 'heading_to_pickup') patch['driver_started_at'] = new Date().toISOString();
-    if (stage === 'picked_up') patch['passenger_picked_at'] = new Date().toISOString();
-    if (stage === 'on_route') patch['trip_started_at'] = new Date().toISOString();
-    if (stage === 'arrived_at_destination') patch['arrived_at'] = new Date().toISOString();
-    await this.supabase.from('ag_trip_requests').update(patch).eq('id', tripRequestId);
+  /** BUG REAL evitado 2026-08-04: esto era un UPDATE crudo desde el cliente -- cualquier
+   * conductor podía marcar "llegué"/"pasajero a bordo" sin estar cerca de verdad, lo que además
+   * de ser injusto para el pasajero podía inflar metric_trips_completed de forma falsa y ganar
+   * los bonos por hitos de viajes (migración 182) sin haber llevado a nadie. Ahora pasa por un
+   * RPC (migración 188) que valida el GPS real del conductor contra el punto de recogida/destino
+   * antes de aceptar el cambio de etapa -- rechaza con un mensaje claro si no está cerca. */
+  async updateTripStage(tripRequestId: string, stage: 'heading_to_pickup'|'arrived_at_pickup'|'picked_up'|'on_route'|'arrived_at_destination'|'completed'): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await this.supabase.rpc('ag_advance_trip_stage', {
+      p_trip_request_id: tripRequestId, p_stage: stage,
+    });
+    if (error || !data?.ok) return { ok: false, error: data?.error ?? error?.message ?? 'No se pudo actualizar el viaje' };
+    return { ok: true };
   }
 
   async updateTripOfferedPrice(tripId: string, price: number): Promise<void> {

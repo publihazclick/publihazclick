@@ -15070,7 +15070,11 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!tripReqId) return;
     // Desbloquear AudioContext ANTES del await (requiere estar en gesto del usuario)
     this._ensureAudioCtx();
-    await this.agService.updateTripStage(tripReqId, stage);
+    const res = await this.agService.updateTripStage(tripReqId, stage);
+    if (!res.ok) {
+      alert(res.error ?? 'No se pudo actualizar el viaje. Intenta de nuevo.');
+      return;
+    }
     // Actualizar el signal con un nuevo objeto para que Angular OnPush detecte el cambio
     this.driverActiveTrips.update(list =>
       list.map(t => {
@@ -20568,11 +20572,15 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const tripId = this.currentTripRequestId();
     const driverId = this.tripAccepted()?.driver_id;
     if (!tripId) return;
+    const res = await this.agService.updateTripStage(tripId, BOARDING_TARGET_STAGE);
+    if (!res.ok) {
+      alert(res.error ?? 'No se pudo confirmar el abordaje. Intenta de nuevo.');
+      return;
+    }
     this._applyPassengerBoarding();
     // Notificar al conductor por los dos canales para garantizar entrega
     if (driverId) this.agService.broadcastPassengerBoarded(driverId, tripId);
     this.agService.broadcastTripBoarding(tripId);
-    await this.agService.updateTripStage(tripId, BOARDING_TARGET_STAGE);
     this.cdr.markForCheck();
   }
 
