@@ -10898,6 +10898,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'settings',         label: 'Configuración',            action: 'settings',          divider: false, section: '' },
     { icon: 'school',           label: 'Tutorial',                 action: 'tutorial',          divider: false, section: '' },
     { icon: 'gavel',            label: 'Términos y condiciones',   action: 'terms',             divider: false, section: '' },
+    { icon: 'privacy_tip',      label: 'Política de privacidad',   action: 'privacy',           divider: false, section: '' },
     { icon: 'help',             label: 'Ayuda',                    action: 'support',           divider: false, section: '' },
     { divider: true,  section: '', icon: '', label: '', action: '' },
     { icon: 'drive_eta',        label: 'Conductor',                action: 'driver',            divider: false, section: '' },
@@ -10934,6 +10935,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { icon: 'support_agent',   label: 'Soporte',              action: 'support',      sectionLabel: '',              danger: false, divider: false },
     { icon: 'school',          label: 'Tutorial',             action: 'tutorial',     sectionLabel: '',              danger: false, divider: false },
     { icon: 'gavel',           label: 'Términos y condiciones', action: 'terms',      sectionLabel: '',              danger: false, divider: false },
+    { icon: 'privacy_tip',     label: 'Política de privacidad', action: 'privacy',    sectionLabel: '',              danger: false, divider: false },
     { icon: '',                label: '',                     action: '',             sectionLabel: 'Soporte directo', danger: false, divider: true },
     { icon: 'whatsapp',        label: 'Soporte por WhatsApp', action: 'whatsapp_support', sectionLabel: '',           danger: false, divider: false },
   ];
@@ -14603,6 +14605,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!action) return;
     if (action === 'whatsapp_support') { window.open('https://wa.me/573734453649', '_blank'); return; }
     if (action === 'terms') { window.open('/anda-gana/terminos', '_blank'); return; }
+    if (action === 'privacy') { window.open('/anda-gana/privacidad', '_blank'); return; }
     if (action === 'wallet-panel') { this.walletPanelOpen.set(true); return; }
     this.driverSection.set(action);
     const driver = this.driverData();
@@ -19133,6 +19136,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.agMenuOpen.set(false);
     if (action === 'whatsapp_support') { window.open('https://wa.me/573734453649', '_blank'); return; }
     if (action === 'terms') { window.open('/anda-gana/terminos', '_blank'); return; }
+    if (action === 'privacy') { window.open('/anda-gana/privacidad', '_blank'); return; }
     if (action.startsWith('service:')) {
       const svc = action.replace('service:', '') as 'viaje' | 'moto' | 'ciudad' | 'fletes';
       this.tripService.set(svc);

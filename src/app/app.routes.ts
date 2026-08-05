@@ -487,11 +487,15 @@ export const routes: Routes = [
     path: 'anda-gana',
     loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent),
   },
-  // Términos y condiciones de Movi -- página independiente, sin layout ni contenido de
-  // Publihazclick, para que se pueda enlazar directo desde el menú de la app.
+  // Términos y condiciones / privacidad de Movi -- páginas independientes, sin layout ni
+  // contenido de Publihazclick, para enlazar directo desde el menú de la app.
   {
     path: 'anda-gana/terminos',
     loadComponent: () => import('./features/anda-gana/movi-terminos.component').then(m => m.MoviTerminosComponent),
+  },
+  {
+    path: 'anda-gana/privacidad',
+    loadComponent: () => import('./features/anda-gana/movi-privacidad.component').then(m => m.MoviPrivacidadComponent),
   },
   // Páginas públicas
   {

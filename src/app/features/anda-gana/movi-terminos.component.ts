@@ -190,7 +190,10 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
       </p>
     </div>
 
-    <a href="/anda-gana" style="display:block;text-align:center;margin-top:32px;color:#64748b;font-size:12px;text-decoration:none">
+    <a href="/anda-gana/privacidad" style="display:block;text-align:center;margin-top:24px;color:#64748b;font-size:12px;text-decoration:none">
+      Ver Política de Privacidad
+    </a>
+    <a href="/anda-gana" style="display:block;text-align:center;margin-top:10px;color:#64748b;font-size:12px;text-decoration:none">
       ← Volver a Movi
     </a>
   </div>
