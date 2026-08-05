@@ -5212,6 +5212,28 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
 
+      <!-- Documentos vencidos o por vencer en los próximos 5 días (migración 193) -->
+      @if (driverDocAlerts().length > 0) {
+        <div class="rounded-2xl p-4 flex items-center gap-3"
+          [style]="docAlertsHaveExpired() ? 'background:#FEF2F2;border:1px solid #FCA5A5' : 'background:#FFFBEB;border:1px solid #FDE68A'">
+          <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px"
+            [style.color]="docAlertsHaveExpired() ? '#ef4444' : '#d97706'">assignment_late</span>
+          <div class="flex-1 min-w-0">
+            <p class="font-black text-sm" style="color:#0f172a">
+              {{ docAlertsHaveExpired() ? 'Tienes documentos vencidos' : 'Documentos por vencer' }}
+            </p>
+            <p class="text-slate-600 text-xs">
+              @for (a of driverDocAlerts(); track a.doc_type; let last = $last) {
+                {{ docTypeLabel(a.doc_type) }}{{ a.is_expired ? ' (vencido)' : ' (vence en ' + a.days_left + (a.days_left === 1 ? ' día)' : ' días)') }}{{ !last ? ', ' : '.' }}
+              }
+              @if (docAlertsHaveExpired()) { No podrás conectarte hasta renovarlos. }
+            </p>
+          </div>
+          <button (click)="openDriverSection('documents')" class="px-3 py-1.5 rounded-lg text-xs font-black text-white flex-shrink-0"
+            [style.background]="docAlertsHaveExpired() ? '#ef4444' : '#d97706'">Renovar</button>
+        </div>
+      }
+
       <!-- Drawer menú conductor -->
       @if (driverMenuOpen()) {
         <div (click)="driverMenuOpen.set(false)"
@@ -10001,6 +10023,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   driverOnline       = signal(false);
   togglingOnline     = signal(false);
   offlineConfirmOpen = signal(false);
+  driverDocAlerts    = signal<Array<{ doc_type: string; expires_at: string; days_left: number; is_expired: boolean }>>([]);
   driverStats        = signal<{ avgRating: number; completedTrips: number } | null>(null);
   driverCompletedTrips = signal<any[]>([]);
   driverEarnings     = signal<{ total: number; walletHistory: any[] }>({ total: 0, walletHistory: [] });
@@ -11148,7 +11171,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (shouldLoad) {
       // Poner online y cargar solicitudes ANTES de cualquier await para que no falle si algo lanza error
       this.driverOnline.set(true);
-      this.agService.setDriverOnline(mine.id, true).catch(() => {});
+      this.agService.setDriverOnline(mine.id, true).then(res => {
+        // El servidor puede rechazar esto (documentos/vehículo vencidos) aunque la UI ya haya
+        // asumido que sí -- si pasa, corregir el estado apenas se sepa. El motivo concreto ya
+        // queda explicado en el banner de vehículo/documentos que se carga en paralelo.
+        if (!res.ok) {
+          this.driverOnline.set(false);
+          this.cdr.markForCheck();
+        }
+      }).catch(() => {});
+      this.agService.getDriverDocumentAlerts(mine.id).then(alerts => {
+        this.driverDocAlerts.set(alerts);
+        this.cdr.markForCheck();
+      }).catch(() => {});
       this._loadDriverRequests(mine.vehicle_type);
       // Cuando el conductor vuelve a la app desde background, refrescar solicitudes inmediatamente
       if (isPlatformBrowser(this.platformId) && !this._visibilityHandler) {
@@ -14649,6 +14684,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this.driverDocs().find(doc => doc.doc_type === type) ?? null;
   }
 
+  docTypeLabel(type: string): string {
+    return this.docTypes.find(d => d.key === type)?.label ?? type;
+  }
+
+  docAlertsHaveExpired(): boolean {
+    return this.docAlertsHaveExpired();
+  }
+
   docStatusLabel(status: string): string {
     const map: Record<string, string> = {
       pending: 'En revisión', approved: 'Aprobado', rejected: 'Rechazado', expired: 'Vencido',
@@ -14685,6 +14728,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     input.value = '';
     if (res.success) {
       await this.loadDriverDocs();
+      // El trigger de la base ya recalculó el bloqueo -- solo hace falta refrescar
+      // la lista local para que el banner desaparezca si ya quedó todo al día.
+      this.driverDocAlerts.set(await this.agService.getDriverDocumentAlerts(d.id));
+      this.cdr.markForCheck();
     } else {
       alert('Error subiendo: ' + (res.error ?? 'desconocido'));
     }
@@ -14989,7 +15036,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const driver = this.driverData();
     if (!driver) return;
     this.togglingOnline.set(true);
-    await this.agService.setDriverOnline(driver.id, next);
+    const res = await this.agService.setDriverOnline(driver.id, next);
+    if (!res.ok) {
+      this.togglingOnline.set(false);
+      alert(res.error ?? 'No se pudo cambiar tu estado. Intenta de nuevo.');
+      this.cdr.markForCheck();
+      return;
+    }
     this.driverOnline.set(next);
     // Recrea el mapa con el estilo de marca correcto (oscuro conductor / claro pasajero) --
     // el estilo se elige en _createMap() leyendo driverOnline() al momento de crear la instancia.

@@ -329,6 +329,8 @@ export class AndaGanaService {
     if (msg.includes('AÑO_INVALIDO:')) return msg.split('AÑO_INVALIDO:')[1].trim();
     if (msg.includes('PAIS_NO_PERMITIDO:')) return msg.split('PAIS_NO_PERMITIDO:')[1].trim();
     if (msg.includes('CEDULA_INVALIDA:')) return msg.split('CEDULA_INVALIDA:')[1].trim();
+    if (msg.includes('DOCUMENTOS_VENCIDOS:')) return msg.split('DOCUMENTOS_VENCIDOS:')[1].trim();
+    if (msg.includes('VEHICULO_DEBE_ACTUALIZARSE:')) return msg.split('VEHICULO_DEBE_ACTUALIZARSE:')[1].trim();
     return 'No se pudo guardar los documentos. Intenta de nuevo.';
   }
 
@@ -1195,8 +1197,18 @@ export class AndaGanaService {
     return error ? { success: false, error: error.message } : { success: true };
   }
 
-  async setDriverOnline(driverId: string, online: boolean): Promise<void> {
-    await this.supabase.from('ag_drivers').update({ is_online: online, updated_at: new Date().toISOString() }).eq('id', driverId);
+  async setDriverOnline(driverId: string, online: boolean): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await this.supabase.from('ag_drivers')
+      .update({ is_online: online, updated_at: new Date().toISOString() }).eq('id', driverId);
+    if (error) return { ok: false, error: this._friendlyDriverError(error) };
+    return { ok: true };
+  }
+
+  /** Documentos por vencer o vencidos (últimos 5 días) para el banner de aviso en driver-home. */
+  async getDriverDocumentAlerts(driverId: string): Promise<Array<{ doc_type: string; expires_at: string; days_left: number; is_expired: boolean }>> {
+    const { data, error } = await this.supabase.rpc('ag_get_driver_document_alerts', { p_driver_id: driverId });
+    if (error || !data) return [];
+    return data as Array<{ doc_type: string; expires_at: string; days_left: number; is_expired: boolean }>;
   }
 
   async updateDriverPreferences(driverId: string, prefs: {
