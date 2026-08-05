@@ -8847,16 +8847,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   type="date"
                   class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark"/>
               </div>
-              <!-- País → Departamento → Ciudad -->
+              <!-- País (fijo: solo se aceptan conductores con cédula colombiana) → Departamento → Ciudad -->
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">País *</label>
-                <select (change)="df.country = $any($event.target).value; df.department = ''; df.city = ''; cdr.markForCheck()"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark">
-                  <option value="" style="background:#1e1e28">— Selecciona tu país —</option>
-                  @for (c of agCountries; track c) {
-                    <option [value]="c" [selected]="df.country === c" style="background:#1e1e28">{{ c }}</option>
-                  }
-                </select>
+                <div class="w-full rounded-xl px-4 py-3 flex items-center gap-2" style="background:rgba(255,255,255,0.03);border:1.5px solid rgba(255,255,255,0.08)">
+                  <span style="font-size:16px">🇨🇴</span>
+                  <span class="text-white text-sm font-bold">Colombia</span>
+                </div>
+                <p class="text-[10px]" style="color:rgba(255,255,255,0.35)">Por ahora Movi solo acepta conductores con cédula de ciudadanía colombiana.</p>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Departamento / Estado *</label>
@@ -8895,10 +8893,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de cédula *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Cédula de ciudadanía colombiana *</label>
                 <input [(ngModel)]="df.idNumber" name="dfIdNumber"
-                  placeholder="Número de identificación"
-                  autocomplete="off" spellcheck="false" inputmode="numeric"
+                  placeholder="Solo números, sin puntos ni espacios"
+                  autocomplete="off" spellcheck="false" inputmode="numeric" maxlength="10"
                   class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
@@ -9105,7 +9103,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
-                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Placa *</label>
+                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Placa colombiana *</label>
                   <input [(ngModel)]="df.plate" [ngModelOptions]="{updateOn: 'blur'}" name="d_plate" placeholder="ABC123"
                     class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all uppercase" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
@@ -10294,6 +10292,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!d || !this.newVehicle.plate.trim()) return;
     const ageError = this._vehicleAgeError(this.newVehicle.vehicle_type, this.newVehicle.year);
     if (ageError) { alert(ageError); return; }
+    const plateError = this._colombianPlateError(this.newVehicle.plate, this.newVehicle.vehicle_type);
+    if (plateError) { alert(plateError); return; }
     try {
       await this.agService.addVehicle(d.id, {
         vehicle_type: this.newVehicle.vehicle_type,
@@ -18896,6 +18896,27 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return null;
   }
 
+  // Solo se aceptan conductores con cédula colombiana y vehículos con placa
+  // colombiana -- pedido explícito del usuario 2026-08-05.
+  private _isColombianCedula(idNumber: string): boolean {
+    return /^[0-9]{6,10}$/.test((idNumber || '').trim());
+  }
+
+  private _colombianPlateError(plate: string, vehicleType: string): string | null {
+    const p = (plate || '').trim().toUpperCase().replace(/[\s-]/g, '');
+    if (!p) return null; // otras validaciones ya cubren "vacío"
+    const isMoto = (vehicleType || '').toLowerCase().includes('moto');
+    const okCar  = /^[A-Z]{3}\d{3}$/.test(p);
+    const okMoto = /^[A-Z]{3}\d{2}[A-Z]$/.test(p);
+    const ok = isMoto ? (okMoto || okCar) : okCar;
+    if (!ok) {
+      return isMoto
+        ? 'La placa debe tener formato colombiano de moto (ej: ABC12D).'
+        : 'La placa debe tener formato colombiano de vehículo (ej: ABC123).';
+    }
+    return null;
+  }
+
   async submitDriver() {
     this.driverError.set('');
     if (!this.df.plate || !this.df.vehicleType || !this.df.vehicleBrand ||
@@ -18905,6 +18926,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
     const ageError = this._vehicleAgeError(this.df.vehicleType, this.df.vehicleYear);
     if (ageError) { this.driverError.set(ageError); return; }
+    const plateError = this._colombianPlateError(this.df.plate, this.df.vehicleType);
+    if (plateError) { this.driverError.set(plateError); return; }
+    if (!this._isColombianCedula(this.df.idNumber)) {
+      this.driverError.set('El número de cédula debe ser un documento colombiano válido (solo números, entre 6 y 10 dígitos).');
+      return;
+    }
     if (!this.df.terms) {
       this.driverError.set('Debes aceptar los términos y condiciones.');
       return;
@@ -20262,6 +20289,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     if (!vehicle) return;
     const ageError = this._vehicleAgeError(vehicle, this.qrVehicleYear());
     if (ageError) { this.qrOtpError.set(ageError); this.cdr.markForCheck(); return; }
+    const plateError = this._colombianPlateError(this.qrVehiclePlate(), vehicle);
+    if (plateError) { this.qrOtpError.set(plateError); this.cdr.markForCheck(); return; }
     this.qrOtpVerifying.set(true);
     this.qrOtpError.set('');
     this.cdr.markForCheck();

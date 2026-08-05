@@ -327,6 +327,9 @@ export class AndaGanaService {
     const msg = error?.message ?? '';
     if (msg.includes('VEHICULO_MUY_ANTIGUO:')) return msg.split('VEHICULO_MUY_ANTIGUO:')[1].trim();
     if (msg.includes('AÑO_INVALIDO:')) return msg.split('AÑO_INVALIDO:')[1].trim();
+    if (msg.includes('PLACA_NO_COLOMBIANA:')) return msg.split('PLACA_NO_COLOMBIANA:')[1].trim();
+    if (msg.includes('PAIS_NO_PERMITIDO:')) return msg.split('PAIS_NO_PERMITIDO:')[1].trim();
+    if (msg.includes('CEDULA_INVALIDA:')) return msg.split('CEDULA_INVALIDA:')[1].trim();
     return 'No se pudo guardar los documentos. Intenta de nuevo.';
   }
 
