@@ -561,6 +561,19 @@ export class AndaGanaService {
       .eq('driver_id', driverId);
   }
 
+  /** Registra un punto del recorrido (conductor o pasajero) durante un viaje activo -- para
+   * poder validar más adelante que ambos de verdad viajaron juntos (migración 189), no solo
+   * confiar en los botones de "llegué"/"pasajero a bordo". Pasa por un RPC que valida que
+   * quien llama sea de verdad el conductor o el pasajero de ESE viaje -- si no, no guarda nada
+   * silenciosamente, sin lanzar error (es un ping de fondo, no debe interrumpir el flujo). */
+  async logTripLocation(tripRequestId: string, role: 'driver' | 'passenger', lat: number, lng: number): Promise<void> {
+    try {
+      await this.supabase.rpc('ag_log_trip_location', {
+        p_trip_request_id: tripRequestId, p_role: role, p_lat: lat, p_lng: lng,
+      });
+    } catch { /* ping de fondo, no debe interrumpir el flujo */ }
+  }
+
   // ── Mapa — vehículos cercanos ─────────────────────────────────
   async getNearbyVehicles(lat: number, lng: number): Promise<
     { id: string; lat: number; lng: number; heading: number; vehicle_type: string }[]

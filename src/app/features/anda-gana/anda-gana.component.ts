@@ -11511,6 +11511,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
         setTimeout(() => { this.locationUpdating.set(false); this.cdr.markForCheck(); }, 1000);
 
+        // Registrar el recorrido mientras haya un viaje aceptado en curso -- para poder
+        // validar más adelante que conductor y pasajero de verdad viajaron juntos (migración
+        // 189). Reusa el mismo throttle de arriba (5s + 20m movidos), no dispara nada aparte.
+        const tripId = this.currentTripRequestId();
+        if (tripId && this.tripAccepted()) {
+          this.agService.logTripLocation(tripId, 'passenger', lat, lng);
+        }
+
       },
       (err) => {
         // GPS desactivado/denegado — mantener última ubicación, no interrumpir
@@ -14952,6 +14960,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   }
 
   private _gpsWatchId: number | null = null;
+  private _lastDriverTripLocLogAt = 0;
 
   async toggleOnline() {
     const driver = this.driverData();
@@ -16151,6 +16160,20 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         // Pedido explicito del usuario 2026-07-31: finalizar el viaje solo con GPS, sin que el
         // conductor tenga que tocar "Finalizar".
         this._checkAutoFinishTrip(pos.coords.latitude, pos.coords.longitude);
+
+        // Registrar el recorrido mientras haya un viaje activo -- para poder validar más
+        // adelante que conductor y pasajero de verdad viajaron juntos (migración 189).
+        // Throttle propio de 15s (este watch no tiene uno general como el del pasajero, y
+        // aquí sí puede disparar cada pocos segundos).
+        const activeTrip = this.driverActiveTrips()[0];
+        const activeTripId = activeTrip ? (activeTrip.trip_request_id ?? activeTrip.ag_trip_requests?.id) : null;
+        if (activeTripId) {
+          const nowTs = Date.now();
+          if (nowTs - this._lastDriverTripLocLogAt >= 15000) {
+            this._lastDriverTripLocLogAt = nowTs;
+            this.agService.logTripLocation(activeTripId, 'driver', pos.coords.latitude, pos.coords.longitude);
+          }
+        }
       },
       (err) => {
         console.error('GPS tracking error:', err.message);
