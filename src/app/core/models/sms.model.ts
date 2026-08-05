@@ -58,6 +58,18 @@ export interface SmsCampaign {
   total_cost: number;
   created_at: string;
   updated_at: string;
+  /** Clics registrados en los links acortados de la campaña (calculado en el cliente, no viene de la tabla) */
+  clicks_count?: number;
+}
+
+/** Link acortado de una campaña SMS, con su conteo de clics */
+export interface SmsShortLink {
+  id: string;
+  campaign_id: string | null;
+  code: string;
+  destination_url: string;
+  click_count: number;
+  created_at: string;
 }
 
 /** Destinatario individual de una campaña SMS */

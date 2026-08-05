@@ -7,6 +7,7 @@ import type {
   SmsCampaign,
   SmsCampaignRecipient,
   SmsDashboardStats,
+  SmsShortLink,
 } from '../models/sms.model';
 
 @Injectable({ providedIn: 'root' })
@@ -159,6 +160,33 @@ export class SmsService {
     return data as SmsCampaign[];
   }
 
+  /** Total de clics por campaña (suma de todos los links acortados de cada una) */
+  async getCampaignClickCounts(userId: string): Promise<Map<string, number>> {
+    const { data, error } = await this.supabase
+      .from('sms_short_links')
+      .select('campaign_id, click_count')
+      .eq('user_id', userId)
+      .not('campaign_id', 'is', null);
+    if (error) throw error;
+
+    const totals = new Map<string, number>();
+    for (const row of (data ?? []) as { campaign_id: string; click_count: number }[]) {
+      totals.set(row.campaign_id, (totals.get(row.campaign_id) ?? 0) + row.click_count);
+    }
+    return totals;
+  }
+
+  /** Links acortados de una campaña, con su conteo individual de clics */
+  async getCampaignShortLinks(campaignId: string): Promise<SmsShortLink[]> {
+    const { data, error } = await this.supabase
+      .from('sms_short_links')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('click_count', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as SmsShortLink[];
+  }
+
   async createCampaign(data: Partial<SmsCampaign>) {
     const { data: created, error } = await this.supabase
       .from('sms_campaigns')
@@ -178,6 +206,15 @@ export class SmsService {
       .single();
     if (error) throw error;
     return updated as SmsCampaign;
+  }
+
+  /** Elimina la campaña (cascada borra sus destinatarios y links cortos) */
+  async deleteCampaign(id: string) {
+    const { error } = await this.supabase
+      .from('sms_campaigns')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   }
 
   async cancelCampaign(id: string) {
@@ -213,16 +250,16 @@ export class SmsService {
 
   // ── Wallet ───────────────────────────────────────────────────
 
-  async getWalletBalance(userId: string): Promise<number> {
+  async getWalletBalance(userId: string): Promise<{ balance: number; unlimited: boolean }> {
     // Ensure wallet exists
     await this.supabase.rpc('sms_ensure_wallet', { p_user_id: userId });
     const { data, error } = await this.supabase
       .from('sms_wallets')
-      .select('balance')
+      .select('balance, unlimited')
       .eq('user_id', userId)
       .single();
     if (error) throw error;
-    return data?.balance ?? 0;
+    return { balance: data?.balance ?? 0, unlimited: data?.unlimited ?? false };
   }
 
   async getRechargeHistory(userId: string) {

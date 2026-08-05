@@ -141,7 +141,7 @@
           </div>
           <div class="text-left">
             <p class="text-[10px] text-white/70 font-bold uppercase tracking-wider">Billetera Recargable</p>
-            <p class="text-xl font-black text-white">{{ formatCOP(walletBalance()) }}</p>
+            <p class="text-xl font-black text-white">{{ walletUnlimited() ? 'Ilimitado' : formatCOP(walletBalance()) }}</p>
           </div>
         </button>
 
@@ -262,7 +262,9 @@
           } @else {
             <div class="space-y-2">
               @for (c of recentCampaigns(); track c.id) {
-                <div class="bg-gray-50 rounded-xl px-4 py-3 hover:bg-gray-100 transition-colors">
+                <div
+                  (click)="openCampaignDetail(c)"
+                  class="bg-gray-50 rounded-xl px-4 py-3 hover:bg-gray-100 transition-colors cursor-pointer">
                   <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-3 min-w-0">
                       <span class="material-symbols-outlined text-gray-300 shrink-0">mail</span>
@@ -503,7 +505,7 @@
               @if (excelPhones().length === 0) {
                 <span class="material-symbols-outlined text-4xl text-gray-300 mb-2">upload_file</span>
                 <p class="text-gray-500 text-sm mb-3">Arrastra tu archivo aquí o haz clic para seleccionar</p>
-                <p class="text-gray-400 text-xs mb-4">Formatos aceptados: .csv, .xls, .xlsx — Los números deben estar en la primera columna</p>
+                <p class="text-gray-400 text-xs mb-4">Formatos aceptados: .csv, .xls, .xlsx — detecta automáticamente la columna de teléfono y corrige el indicativo (57), espacios y guiones</p>
                 <label class="inline-flex items-center gap-2 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-xl px-5 py-2.5 text-sm cursor-pointer transition-colors shadow-lg shadow-violet-200">
                   <span class="material-symbols-outlined text-lg">folder_open</span>
                   Seleccionar archivo
@@ -565,8 +567,80 @@
             </div>
           </div>
 
+          <!-- Escribir números a mano ─ guía súper simple -->
+          <div class="mb-4">
+            <label class="block text-sm text-gray-500 font-semibold mb-2">O escribe los números a mano</label>
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
+              <!-- Guía paso a paso, bien simple -->
+              <div class="flex flex-wrap items-center gap-3 mb-4 text-sm">
+                <div class="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 border border-amber-200">
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-white font-black text-xs flex items-center justify-center shrink-0">1</span>
+                  <span class="text-gray-700 font-semibold">Escribe el número</span>
+                </div>
+                <span class="material-symbols-outlined text-amber-300 text-lg">arrow_forward</span>
+                <div class="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 border border-amber-200">
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-white font-black text-xs flex items-center justify-center shrink-0">2</span>
+                  <span class="text-gray-700 font-semibold">Aprieta "Agregar"</span>
+                </div>
+                <span class="material-symbols-outlined text-amber-300 text-lg">arrow_forward</span>
+                <div class="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 border border-amber-200">
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-white font-black text-xs flex items-center justify-center shrink-0">3</span>
+                  <span class="text-gray-700 font-semibold">Repite con cada número</span>
+                </div>
+              </div>
+
+              <!-- Input grande + botón grande -->
+              <div class="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="tel"
+                  inputmode="tel"
+                  [(ngModel)]="manualPhoneInput"
+                  (keydown.enter)="addManualPhone()"
+                  placeholder="Ej: 3001234567"
+                  class="flex-1 bg-white border-2 border-amber-300 rounded-xl px-4 py-3 text-lg text-gray-900 placeholder-gray-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-center sm:text-left" />
+                <button
+                  (click)="addManualPhone()"
+                  class="bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl px-6 py-3 text-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-200">
+                  <span class="material-symbols-outlined">add_circle</span>
+                  Agregar
+                </button>
+              </div>
+
+              @if (manualPhoneError()) {
+                <p class="text-red-500 text-sm font-semibold mt-2 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-base">error</span>
+                  {{ manualPhoneError() }}
+                </p>
+              } @else {
+                <p class="text-amber-600/70 text-xs mt-2">No importa si le pones el 57 o no, ni espacios ni guiones — el sistema lo arregla solo 👍</p>
+              }
+
+              <!-- Lista de números agregados (chips removibles) -->
+              @if (manualPhones().length > 0) {
+                <div class="mt-4 pt-4 border-t border-amber-200">
+                  <div class="flex items-center justify-between mb-2">
+                    <p class="text-sm font-bold text-gray-700">{{ manualPhones().length }} número(s) agregado(s)</p>
+                    <button (click)="clearManualPhones()" class="text-xs text-red-500 hover:text-red-600 font-semibold">
+                      Borrar todos
+                    </button>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    @for (phone of manualPhones(); track phone) {
+                      <span class="inline-flex items-center gap-1.5 bg-white border border-amber-300 rounded-full pl-3 pr-1.5 py-1 text-sm font-semibold text-gray-700">
+                        {{ phone }}
+                        <button (click)="removeManualPhone(phone)" class="w-5 h-5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
+                          <span class="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
           <!-- Modo de distribución -->
-          @if (excelPhones().length > 0) {
+          @if (allRecipients().length > 0) {
             <div class="mb-4">
               <label class="block text-sm text-gray-500 font-semibold mb-2">Modo de envío</label>
               <div class="flex flex-col sm:flex-row gap-3 mb-4">
@@ -576,7 +650,7 @@
                   <input type="radio" name="distMode" value="all" [(ngModel)]="distributionMode" class="accent-violet-500" />
                   <div>
                     <span class="text-sm font-semibold text-gray-900">Enviar todo de un golpe</span>
-                    <p class="text-xs text-gray-400">Los {{ excelPhones().length }} números recibirán el mensaje al mismo tiempo</p>
+                    <p class="text-xs text-gray-400">Los {{ allRecipients().length }} números recibirán el mensaje al mismo tiempo</p>
                   </div>
                 </label>
                 <label class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors flex-1"
@@ -602,7 +676,7 @@
                         (ngModelChange)="onSplitPartsChange($event)"
                         min="2" max="10"
                         class="w-20 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm text-center focus:border-violet-400 focus:ring-1 focus:ring-violet-300 outline-none" />
-                      <span class="text-sm text-gray-400">partes ({{ excelPhones().length }} números en total)</span>
+                      <span class="text-sm text-gray-400">partes ({{ allRecipients().length }} números en total)</span>
                     </div>
                   </div>
 
@@ -633,7 +707,7 @@
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-100">
             <p class="text-xs text-gray-400 flex items-center gap-1">
               <span class="material-symbols-outlined text-sm">info</span>
-              Costo estimado: {{ formatCOP(recipientCount() * COST_PER_SMS) }} ({{ recipientCount() }} x {{ formatCOP(COST_PER_SMS) }}) — Saldo: {{ formatCOP(walletBalance()) }}
+              Costo estimado: {{ formatCOP(recipientCount() * COST_PER_SMS) }} ({{ recipientCount() }} x {{ formatCOP(COST_PER_SMS) }}) — Saldo: {{ walletUnlimited() ? 'Ilimitado' : formatCOP(walletBalance()) }}
             </p>
             <button
               (click)="requestSend()"
@@ -724,7 +798,9 @@
         } @else {
           <div class="space-y-3">
             @for (c of campaigns(); track c.id) {
-              <div class="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 hover:bg-gray-50 transition-colors shadow-sm">
+              <div
+                (click)="openCampaignDetail(c)"
+                class="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 hover:bg-gray-50 hover:border-violet-300 transition-colors shadow-sm cursor-pointer">
                 <!-- Nombre y estado -->
                 <div class="flex items-center gap-2 mb-2 flex-wrap">
                   <h4 class="font-bold text-sm text-gray-900 truncate">{{ c.name }}</h4>
@@ -734,11 +810,23 @@
                     [class.animate-pulse]="c.status === 'sending'">
                     {{ getStatusLabel(c.status) }}
                   </span>
+                  <span class="ml-auto flex items-center gap-1">
+                    <button
+                      (click)="requestDeleteCampaign(c, $event)"
+                      class="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                      title="Eliminar campaña">
+                      <span class="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                    <span class="text-violet-400 text-xs font-semibold flex items-center gap-1">
+                      Ver detalle
+                      <span class="material-symbols-outlined text-sm">chevron_right</span>
+                    </span>
+                  </span>
                 </div>
                 <p class="text-gray-400 text-xs mb-3">{{ c.created_at | date:'dd MMM yyyy, HH:mm' }}</p>
 
                 <!-- Estadísticas en grid responsive -->
-                <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 text-xs">
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
                   <div class="bg-gray-50 rounded-lg p-2 text-center">
                     <p class="text-gray-400 text-[10px]">Destinatarios</p>
                     <p class="font-bold text-gray-900">{{ c.total_recipients }}</p>
@@ -754,6 +842,10 @@
                   <div class="bg-gray-50 rounded-lg p-2 text-center">
                     <p class="text-gray-400 text-[10px]">Fallidos</p>
                     <p class="font-bold text-red-500">{{ c.failed_count }}</p>
+                  </div>
+                  <div class="bg-violet-50 rounded-lg p-2 text-center">
+                    <p class="text-gray-400 text-[10px]">Clics</p>
+                    <p class="font-bold text-violet-600">{{ c.clicks_count ?? 0 }}</p>
                   </div>
                   <div class="bg-amber-50 rounded-lg p-2 text-center">
                     <p class="text-gray-400 text-[10px]">Costo</p>
@@ -1238,7 +1330,7 @@
             </div>
             <div>
               <p class="text-white/70 text-xs font-bold uppercase tracking-wider">Billetera Recargable</p>
-              <p class="text-2xl font-black text-white">{{ formatCOP(walletBalance()) }}</p>
+              <p class="text-2xl font-black text-white">{{ walletUnlimited() ? 'Ilimitado' : formatCOP(walletBalance()) }}</p>
             </div>
           </div>
         </div>
@@ -1466,6 +1558,185 @@
             class="shrink-0 px-3 py-2 rounded-lg text-xs font-bold text-white transition-all"
             [class]="referralCopied() ? 'bg-emerald-500' : 'bg-violet-500 hover:bg-violet-600'">
             {{ referralCopied() ? 'Copiado!' : 'Copiar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── Modal de Detalle de Campaña ────────────────────────────── -->
+  @if (showCampaignDetailModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" (click)="closeCampaignDetail()"></div>
+      <div class="relative bg-white border border-gray-200 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl">
+        @if (selectedCampaign(); as c) {
+          <!-- Encabezado -->
+          <div class="sticky top-0 bg-white flex items-start justify-between px-6 py-4 border-b border-gray-100 z-10">
+            <div>
+              <h3 class="font-bold text-lg flex items-center gap-2 text-gray-900">
+                <span class="material-symbols-outlined text-violet-500">campaign</span>
+                {{ c.name }}
+                <span
+                  class="text-[10px] sm:text-xs font-bold rounded-full px-2 py-0.5 border shrink-0"
+                  [class]="getStatusColor(c.status)"
+                  [class.animate-pulse]="c.status === 'sending'">
+                  {{ getStatusLabel(c.status) }}
+                </span>
+              </h3>
+              <p class="text-gray-400 text-xs mt-1">{{ c.created_at | date:'dd MMM yyyy, HH:mm' }}</p>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button (click)="requestDeleteCampaign(c)" class="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar campaña">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+              <button (click)="closeCampaignDetail()" class="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Cuerpo -->
+          <div class="p-6 space-y-5">
+            <!-- Mensaje -->
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p class="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-1">Mensaje enviado</p>
+              <p class="text-gray-800 text-sm whitespace-pre-wrap">{{ c.message_body }}</p>
+            </div>
+
+            <!-- Estadísticas -->
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
+              <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <p class="text-gray-400 text-[10px]">Destinatarios</p>
+                <p class="font-bold text-gray-900">{{ c.total_recipients }}</p>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <p class="text-gray-400 text-[10px]">Enviados</p>
+                <p class="font-bold text-blue-500">{{ c.sent_count }}</p>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <p class="text-gray-400 text-[10px]">Entregados</p>
+                <p class="font-bold text-emerald-500">{{ c.delivered_count }}</p>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-2 text-center">
+                <p class="text-gray-400 text-[10px]">Fallidos</p>
+                <p class="font-bold text-red-500">{{ c.failed_count }}</p>
+              </div>
+              <div class="bg-violet-50 rounded-lg p-2 text-center">
+                <p class="text-gray-400 text-[10px]">Clics</p>
+                <p class="font-bold text-violet-600">{{ c.clicks_count ?? 0 }}</p>
+              </div>
+              <div class="bg-amber-50 rounded-lg p-2 text-center">
+                <p class="text-gray-400 text-[10px]">Costo</p>
+                <p class="font-bold text-amber-600">${{ c.total_cost | number:'1.2-2' }}</p>
+              </div>
+            </div>
+
+            @if (campaignDetailLoading()) {
+              <div class="flex items-center justify-center py-10 text-gray-400 text-sm gap-2">
+                <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                Cargando detalle...
+              </div>
+            } @else {
+              <!-- Links acortados -->
+              @if (campaignShortLinks().length > 0) {
+                <div>
+                  <p class="text-gray-500 font-semibold text-sm mb-2 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base text-violet-500">link</span>
+                    Links acortados
+                  </p>
+                  <div class="space-y-2">
+                    @for (link of campaignShortLinks(); track link.id) {
+                      <div class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
+                        <p class="text-gray-600 text-xs font-mono truncate">{{ link.destination_url }}</p>
+                        <span class="shrink-0 text-xs font-bold text-violet-600 bg-violet-50 border border-violet-200 rounded-full px-2 py-0.5">
+                          {{ link.click_count }} clics
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Destinatarios -->
+              <div>
+                <p class="text-gray-500 font-semibold text-sm mb-2 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-base text-violet-500">group</span>
+                  Destinatarios
+                  <span class="text-gray-400 font-normal">({{ campaignRecipients().length }})</span>
+                </p>
+                @if (campaignRecipients().length === 0) {
+                  <div class="bg-white border border-gray-200 rounded-2xl p-8 text-center">
+                    <p class="text-gray-400 text-sm">No hay destinatarios registrados para esta campaña</p>
+                  </div>
+                } @else {
+                  <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                    <table class="w-full text-sm">
+                      <thead>
+                        <tr class="border-b border-gray-100">
+                          <th class="text-left text-xs text-gray-400 font-semibold px-4 py-2.5 uppercase tracking-wider">Destinatario</th>
+                          <th class="text-left text-xs text-gray-400 font-semibold px-4 py-2.5 uppercase tracking-wider">Estado</th>
+                          <th class="text-left text-xs text-gray-400 font-semibold px-4 py-2.5 uppercase tracking-wider hidden sm:table-cell">Enviado</th>
+                          <th class="text-left text-xs text-gray-400 font-semibold px-4 py-2.5 uppercase tracking-wider hidden sm:table-cell">Entregado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of campaignRecipients(); track r.id) {
+                          <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-2.5">
+                              <p class="font-semibold text-gray-900">{{ r.contact_name || 'Sin nombre' }}</p>
+                              <p class="text-gray-400 text-xs font-mono">{{ r.phone_number }}</p>
+                            </td>
+                            <td class="px-4 py-2.5">
+                              <span class="text-xs font-bold rounded-full px-2 py-0.5 border" [class]="getRecipientStatusColor(r.status)">
+                                {{ getRecipientStatusLabel(r.status) }}
+                              </span>
+                              @if (r.status === 'failed' && r.error_message) {
+                                <p class="text-red-400 text-[10px] mt-1 truncate max-w-[160px]">{{ r.error_message }}</p>
+                              }
+                            </td>
+                            <td class="px-4 py-2.5 text-gray-400 text-xs hidden sm:table-cell">{{ r.sent_at ? (r.sent_at | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+                            <td class="px-4 py-2.5 text-gray-400 text-xs hidden sm:table-cell">{{ r.delivered_at ? (r.delivered_at | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ── Modal de confirmación: eliminar campaña ────────────────── -->
+  @if (campaignToDelete(); as toDelete) {
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-4" (click)="cancelDeleteCampaign()">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div class="relative bg-white border border-gray-200 rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center" (click)="$event.stopPropagation()">
+        <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+          <span class="material-symbols-outlined text-red-500" style="font-size:28px">delete</span>
+        </div>
+        <h3 class="font-bold text-gray-900 text-base">¿Eliminar esta campaña?</h3>
+        <p class="text-gray-500 text-sm mt-1">
+          "{{ toDelete.name }}" y sus {{ toDelete.total_recipients }} destinatarios se borrarán permanentemente. No se puede deshacer.
+        </p>
+        <div class="flex gap-2 mt-5">
+          <button
+            (click)="cancelDeleteCampaign()"
+            [disabled]="deletingCampaign()"
+            class="flex-1 border border-gray-200 text-gray-600 font-bold rounded-xl px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            (click)="confirmDeleteCampaign()"
+            [disabled]="deletingCampaign()"
+            class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl px-4 py-2.5 text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            @if (deletingCampaign()) {
+              <span class="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+            }
+            Eliminar
           </button>
         </div>
       </div>

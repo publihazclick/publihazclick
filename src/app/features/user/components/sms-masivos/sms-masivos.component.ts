@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import * as XLSX from 'xlsx';
 import { SmsService, calculateSmsSegments } from '../../../../core/services/sms.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { CurrencyService } from '../../../../core/services/currency.service';
@@ -18,6 +19,8 @@ import type {
   SmsCampaign,
   SmsTemplate,
   SmsDashboardStats,
+  SmsCampaignRecipient,
+  SmsShortLink,
 } from '../../../../core/models/sms.model';
 
 type TabId = 'dashboard' | 'compose' | 'templates' | 'contacts' | 'saved-lists' | 'campaigns' | 'sent-messages' | 'recharge-history';
@@ -78,6 +81,11 @@ export class SmsMasivosComponent implements OnInit {
   readonly excelTotalRows = signal(0);
   readonly excelInvalid = signal<{ row: number; value: string; reason: string }[]>([]);
 
+  // ── Números escritos a mano ──────────────────────────────────
+  readonly manualPhones = signal<string[]>([]);
+  manualPhoneInput = '';
+  readonly manualPhoneError = signal<string | null>(null);
+
   // ── Distribution mode ───────────────────────────────────────
   distributionMode: 'all' | 'split' = 'all';
   splitParts = 2;
@@ -85,6 +93,17 @@ export class SmsMasivosComponent implements OnInit {
 
   // ── Confirm modal ──────────────────────────────────────────
   readonly showConfirmModal = signal(false);
+
+  // ── Detalle de campaña ──────────────────────────────────────
+  readonly showCampaignDetailModal = signal(false);
+  readonly selectedCampaign = signal<SmsCampaign | null>(null);
+  readonly campaignDetailLoading = signal(false);
+  readonly campaignRecipients = signal<SmsCampaignRecipient[]>([]);
+  readonly campaignShortLinks = signal<SmsShortLink[]>([]);
+
+  // ── Eliminar campaña ─────────────────────────────────────────
+  readonly campaignToDelete = signal<SmsCampaign | null>(null);
+  readonly deletingCampaign = signal(false);
 
   // ── Billetera & Referral modals ─────────────────────────────
   readonly showRecargaModal = signal(false);
@@ -98,6 +117,7 @@ export class SmsMasivosComponent implements OnInit {
 
   // ── Wallet balance ─────────────────────────────────────────
   readonly walletBalance = signal(0);
+  readonly walletUnlimited = signal(false);
 
   // ── Recharge history & Sent messages ───────────────────────
   readonly rechargeHistory = signal<any[]>([]);
@@ -149,7 +169,10 @@ export class SmsMasivosComponent implements OnInit {
   // ── Computed ────────────────────────────────────────────────
   readonly smsInfo = computed(() => calculateSmsSegments(this.composeMessage));
 
-  readonly recipientCount = computed(() => this.excelPhones().length);
+  /** Unión sin duplicados de los números del Excel y los escritos a mano */
+  readonly allRecipients = computed(() => Array.from(new Set([...this.excelPhones(), ...this.manualPhones()])));
+
+  readonly recipientCount = computed(() => this.allRecipients().length);
 
   // ── Country codes ───────────────────────────────────────────
   readonly countryCodes = [
@@ -186,7 +209,7 @@ export class SmsMasivosComponent implements OnInit {
 
     this.loading.set(true);
     try {
-      const [contacts, campaigns, templates, stats, balance, recharges, sent] = await Promise.all([
+      const [contacts, campaigns, templates, stats, balance, recharges, sent, clickCounts] = await Promise.all([
         this.smsService.getContacts(profile.id),
         this.smsService.getCampaigns(profile.id),
         this.smsService.getTemplates(profile.id),
@@ -194,12 +217,14 @@ export class SmsMasivosComponent implements OnInit {
         this.smsService.getWalletBalance(profile.id),
         this.smsService.getRechargeHistory(profile.id),
         this.smsService.getAllSentMessages(profile.id),
+        this.smsService.getCampaignClickCounts(profile.id),
       ]);
       this.contacts.set(contacts);
-      this.campaigns.set(campaigns);
+      this.campaigns.set(campaigns.map(c => ({ ...c, clicks_count: clickCounts.get(c.id) ?? 0 })));
       this.templates.set(templates);
       this.stats.set(stats);
-      this.walletBalance.set(balance);
+      this.walletBalance.set(balance.balance);
+      this.walletUnlimited.set(balance.unlimited);
       this.rechargeHistory.set(recharges);
       this.sentMessages.set(sent);
     } catch (err: any) {
@@ -414,8 +439,8 @@ export class SmsMasivosComponent implements OnInit {
     this.error.set(null);
 
     try {
-      // Determine recipients from Excel upload
-      const phones = [...this.excelPhones()];
+      // Determine recipients from Excel upload + números escritos a mano
+      const phones = [...this.allRecipients()];
 
       if (phones.length === 0) {
         this.error.set('No hay destinatarios seleccionados');
@@ -427,7 +452,7 @@ export class SmsMasivosComponent implements OnInit {
       const balance = this.walletBalance();
       const totalCost = phones.length * this.COST_PER_SMS;
 
-      if (balance < totalCost) {
+      if (!this.walletUnlimited() && balance < totalCost) {
         this.sending.set(false);
         this.showNoBalanceModal.set(true);
         return;
@@ -448,14 +473,17 @@ export class SmsMasivosComponent implements OnInit {
       });
 
       // Add recipients
-      const recipients = phones.map((phone) => ({
-        campaign_id: campaign.id,
-        phone_number: phone,
-        contact_name:
-          this.contacts().find((c) => c.phone_number === phone)?.full_name ?? undefined,
-        status: 'pending' as const,
-        cost: this.COST_PER_SMS,
-      }));
+      const recipients = phones.map((phone) => {
+        const phoneDigits = phone.replace(/\D/g, '').slice(-10);
+        return {
+          campaign_id: campaign.id,
+          phone_number: phone,
+          contact_name:
+            this.contacts().find((c) => c.phone_number.replace(/\D/g, '').slice(-10) === phoneDigits)?.full_name ?? undefined,
+          status: 'pending' as const,
+          cost: this.COST_PER_SMS,
+        };
+      });
 
       await this.smsService.addCampaignRecipients(recipients);
 
@@ -466,15 +494,17 @@ export class SmsMasivosComponent implements OnInit {
       const sendResult = await this.smsService.sendCampaignSms(campaign.id);
 
       // Refresh all data including balance
-      const [campaignsData, statsData, newBalance, sentData] = await Promise.all([
+      const [campaignsData, statsData, newBalance, sentData, clickCounts] = await Promise.all([
         this.smsService.getCampaigns(profile.id),
         this.smsService.getDashboardStats(profile.id),
         this.smsService.getWalletBalance(profile.id),
         this.smsService.getAllSentMessages(profile.id),
+        this.smsService.getCampaignClickCounts(profile.id),
       ]);
-      this.campaigns.set(campaignsData);
+      this.campaigns.set(campaignsData.map(c => ({ ...c, clicks_count: clickCounts.get(c.id) ?? 0 })));
       this.stats.set(statsData);
-      this.walletBalance.set(newBalance);
+      this.walletBalance.set(newBalance.balance);
+      this.walletUnlimited.set(newBalance.unlimited);
       this.sentMessages.set(sentData);
 
       // Reset compose
@@ -484,6 +514,7 @@ export class SmsMasivosComponent implements OnInit {
       this.excelFileName.set('');
       this.excelTotalRows.set(0);
       this.excelInvalid.set([]);
+      this.manualPhones.set([]);
       this.distributionMode = 'all';
       this.splitParts = 2;
       this.splitSchedules = ['', ''];
@@ -499,6 +530,86 @@ export class SmsMasivosComponent implements OnInit {
     } finally {
       this.sending.set(false);
     }
+  }
+
+  // ── Detalle de campaña ──────────────────────────────────────
+
+  async openCampaignDetail(c: SmsCampaign): Promise<void> {
+    this.selectedCampaign.set(c);
+    this.showCampaignDetailModal.set(true);
+    this.campaignDetailLoading.set(true);
+    this.campaignRecipients.set([]);
+    this.campaignShortLinks.set([]);
+    try {
+      const [recipients, shortLinks] = await Promise.all([
+        this.smsService.getCampaignRecipients(c.id),
+        this.smsService.getCampaignShortLinks(c.id),
+      ]);
+      this.campaignRecipients.set(recipients);
+      this.campaignShortLinks.set(shortLinks);
+    } catch (err: any) {
+      this.error.set(err.message ?? 'Error cargando el detalle de la campaña');
+    } finally {
+      this.campaignDetailLoading.set(false);
+    }
+  }
+
+  closeCampaignDetail(): void {
+    this.showCampaignDetailModal.set(false);
+    this.selectedCampaign.set(null);
+  }
+
+  requestDeleteCampaign(c: SmsCampaign, event?: Event): void {
+    event?.stopPropagation();
+    this.campaignToDelete.set(c);
+  }
+
+  cancelDeleteCampaign(): void {
+    this.campaignToDelete.set(null);
+  }
+
+  async confirmDeleteCampaign(): Promise<void> {
+    const campaign = this.campaignToDelete();
+    const profile = this.profileService.profile();
+    if (!campaign || !profile) return;
+
+    this.deletingCampaign.set(true);
+    try {
+      await this.smsService.deleteCampaign(campaign.id);
+      this.campaigns.set(this.campaigns().filter((c) => c.id !== campaign.id));
+      this.stats.set(await this.smsService.getDashboardStats(profile.id));
+      this.campaignToDelete.set(null);
+      if (this.selectedCampaign()?.id === campaign.id) {
+        this.closeCampaignDetail();
+      }
+      this.showSuccess('Campaña eliminada');
+    } catch (err: any) {
+      this.error.set(err.message ?? 'Error eliminando la campaña');
+    } finally {
+      this.deletingCampaign.set(false);
+    }
+  }
+
+  getRecipientStatusColor(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'bg-amber-50 border-amber-200 text-amber-600',
+      sent: 'bg-blue-50 border-blue-200 text-blue-600',
+      delivered: 'bg-emerald-50 border-emerald-200 text-emerald-600',
+      failed: 'bg-red-50 border-red-200 text-red-600',
+      rejected: 'bg-red-50 border-red-200 text-red-600',
+    };
+    return map[status] ?? map['pending'];
+  }
+
+  getRecipientStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'Pendiente',
+      sent: 'Enviado',
+      delivered: 'Entregado',
+      failed: 'Fallido',
+      rejected: 'Rechazado',
+    };
+    return map[status] ?? status;
   }
 
   /** Opens recharge modal from the no-balance modal */
@@ -604,7 +715,8 @@ export class SmsMasivosComponent implements OnInit {
         this.smsService.getWalletBalance(profile.id),
         this.smsService.getRechargeHistory(profile.id),
       ]);
-      this.walletBalance.set(balance);
+      this.walletBalance.set(balance.balance);
+      this.walletUnlimited.set(balance.unlimited);
       this.rechargeHistory.set(recharges);
     } catch {}
   }
@@ -625,53 +737,129 @@ export class SmsMasivosComponent implements OnInit {
 
   // ── Excel upload ────────────────────────────────────────────
 
+  /**
+   * Convierte cualquier valor de celda Excel/CSV a texto seguro sin pasar
+   * por notación científica. Un número grande (573001234567) guardado como
+   * celda "Número" en Excel puede llegar como 573001234567 (float) y
+   * String() lo vuelve "5.73001234567e+11" si es enorme; toFixed(0) evita
+   * esa serialización y conserva todos los dígitos.
+   */
+  private cellToString(raw: unknown): string {
+    if (raw === null || raw === undefined) return '';
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw.toFixed(0) : '';
+    return String(raw).trim();
+  }
+
+  /**
+   * Normaliza cualquier formato de teléfono a E.164 (+<código país><número>).
+   * Corrige automáticamente los casos más comunes de un Excel real:
+   * - Espacios, guiones, paréntesis, puntos.
+   * - Números colombianos de 10 dígitos sin el indicativo 57 (celulares
+   *   empiezan por 3, o por 6 desde la ampliación de rangos de la CRC).
+   * - El 57 ya incluido, con o sin "+" adelante.
+   * - Un 0 o 00 de marcado internacional antes del indicativo.
+   * Devuelve null solo si, después de corregir, no queda un número viable.
+   */
+  private normalizePhone(raw: unknown): string | null {
+    const str = this.cellToString(raw);
+    if (!str) return null;
+
+    let digits = str.replace(/[^\d]/g, '');
+    if (!digits) return null;
+
+    digits = digits.replace(/^0+(?=\d)/, '');
+
+    if (digits.length === 10 && /^(3|6)/.test(digits)) {
+      digits = '57' + digits;
+    }
+
+    if (digits.length < 8 || digits.length > 15) return null;
+
+    return '+' + digits;
+  }
+
   onExcelFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
 
     this.excelFileName.set(file.name);
+    this.error.set(null);
     const reader = new FileReader();
     reader.onload = () => {
-      const text = reader.result as string;
-      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-      const hasHeader = lines.length > 0 && !/^[\+\d]/.test(lines[0]);
-      const start = hasHeader ? 1 : 0;
-      const dataRows = lines.length - start;
-      this.excelTotalRows.set(dataRows);
-
-      const phones: string[] = [];
-      const invalid: { row: number; value: string; reason: string }[] = [];
-      const seen = new Set<string>();
-
-      for (let i = start; i < lines.length; i++) {
-        const rowNum = i + 1;
-        const cols = lines[i].split(/[,;\t]/);
-        const raw = cols[0].trim();
-        const phone = raw.replace(/[^+\d]/g, '');
-
-        if (!raw || raw.length === 0) {
-          invalid.push({ row: rowNum, value: raw, reason: 'Celda vacía' });
-        } else if (!/\d/.test(raw)) {
-          invalid.push({ row: rowNum, value: raw, reason: 'No contiene números' });
-        } else if (phone.length < 7) {
-          invalid.push({ row: rowNum, value: raw, reason: 'Número muy corto (mínimo 7 dígitos)' });
-        } else if (phone.length > 15) {
-          invalid.push({ row: rowNum, value: raw, reason: 'Número muy largo (máximo 15 dígitos)' });
-        } else if (!/^\+?\d+$/.test(phone)) {
-          invalid.push({ row: rowNum, value: raw, reason: 'Formato inválido' });
-        } else if (seen.has(phone)) {
-          invalid.push({ row: rowNum, value: raw, reason: 'Número duplicado' });
-        } else {
-          seen.add(phone);
-          phones.push(phone);
+      try {
+        const buf = reader.result as ArrayBuffer;
+        const wb = XLSX.read(buf, { type: 'array' });
+        const firstSheet = wb.Sheets[wb.SheetNames[0]];
+        if (!firstSheet) {
+          this.error.set('El archivo no tiene hojas de datos');
+          return;
         }
-      }
 
-      this.excelPhones.set(phones);
-      this.excelInvalid.set(invalid);
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
+          header: 1,
+          defval: '',
+          raw: true,
+          blankrows: false,
+        });
+
+        if (!rows.length) {
+          this.error.set('El archivo está vacío');
+          return;
+        }
+
+        // Detectar si la primera fila es encabezado o ya es un dato (heurística: ¿la primera celda normaliza a teléfono?)
+        const firstRow = rows[0] ?? [];
+        const firstCellLooksLikePhone = !!this.normalizePhone(firstRow[0]);
+        let phoneCol = 0;
+        const startIdx = firstCellLooksLikePhone ? 0 : 1;
+
+        if (!firstCellLooksLikePhone) {
+          const headerRow = (firstRow as unknown[]).map((c) => String(c).toLowerCase().trim());
+          headerRow.forEach((h, idx) => {
+            if (/tel|phone|celular|movil|número|numero|whatsapp|wa\b/.test(h)) phoneCol = idx;
+          });
+        }
+
+        const dataRows = rows.length - startIdx;
+        this.excelTotalRows.set(dataRows);
+
+        const phones: string[] = [];
+        const invalid: { row: number; value: string; reason: string }[] = [];
+        const seen = new Set<string>();
+
+        for (let i = startIdx; i < rows.length; i++) {
+          const rowNum = i + 1;
+          const row = rows[i] ?? [];
+          const raw = this.cellToString(row[phoneCol]);
+          const phone = this.normalizePhone(row[phoneCol]);
+
+          if (!raw) {
+            invalid.push({ row: rowNum, value: raw, reason: 'Celda vacía' });
+          } else if (!phone) {
+            invalid.push({ row: rowNum, value: raw, reason: 'No se pudo reconocer como teléfono' });
+          } else if (seen.has(phone)) {
+            invalid.push({ row: rowNum, value: raw, reason: 'Número duplicado' });
+          } else {
+            seen.add(phone);
+            phones.push(phone);
+          }
+        }
+
+        this.excelPhones.set(phones);
+        this.excelInvalid.set(invalid);
+
+        if (phones.length === 0) {
+          this.error.set('No se encontraron números de teléfono válidos en el archivo. Verifica que sea un Excel (.xlsx), .xls o .csv válido.');
+        }
+      } catch (e) {
+        this.error.set('Error al leer el archivo. Verifica que sea un Excel (.xlsx), .xls o .csv válido.');
+      }
     };
-    reader.readAsText(file);
+    reader.onerror = () => {
+      this.error.set('No se pudo leer el archivo');
+    };
+    reader.readAsArrayBuffer(file);
     input.value = '';
   }
 
@@ -682,6 +870,33 @@ export class SmsMasivosComponent implements OnInit {
     this.excelInvalid.set([]);
   }
 
+  // ── Números escritos a mano ──────────────────────────────────
+
+  addManualPhone(): void {
+    const phone = this.normalizePhone(this.manualPhoneInput);
+    if (!phone) {
+      this.manualPhoneError.set('Ese número no parece válido. Ejemplo: 3001234567');
+      return;
+    }
+    if (this.allRecipients().includes(phone)) {
+      this.manualPhoneError.set('Ese número ya está en la lista');
+      return;
+    }
+    this.manualPhones.update((list) => [...list, phone]);
+    this.manualPhoneInput = '';
+    this.manualPhoneError.set(null);
+  }
+
+  removeManualPhone(phone: string): void {
+    this.manualPhones.update((list) => list.filter((p) => p !== phone));
+  }
+
+  clearManualPhones(): void {
+    this.manualPhones.set([]);
+    this.manualPhoneInput = '';
+    this.manualPhoneError.set(null);
+  }
+
   // ── Distribution ───────────────────────────────────────────
 
   onSplitPartsChange(value: number): void {
@@ -690,7 +905,7 @@ export class SmsMasivosComponent implements OnInit {
   }
 
   getPartSize(partIndex: number): number {
-    const total = this.excelPhones().length;
+    const total = this.allRecipients().length;
     const base = Math.floor(total / this.splitParts);
     const remainder = total % this.splitParts;
     return base + (partIndex < remainder ? 1 : 0);
