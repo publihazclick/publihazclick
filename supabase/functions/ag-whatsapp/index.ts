@@ -10,6 +10,8 @@ const SERVICE_ROLE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const PRICE_PER_KM = 1500;
 const MIN_PRICE    = 5000;
+// Número de soporte de Movi (el mismo ya usado en la app para wa.me/573734453649)
+const SUPPORT_PHONE = '573734453649';
 
 const SERVICE_LABELS: Record<string, string> = {
   carro:     '🚗 Carro',
@@ -322,6 +324,47 @@ function isNo(t: string): boolean {
 function isCancel(t: string): boolean {
   return /^(cancelar|cancel|salir|exit|menu|menú|inicio|start|hola|hi|hello|comenzar)$/i.test(t.trim());
 }
+function isSos(t: string): boolean {
+  return /^(sos|s\.o\.s\.?|ayuda|emergencia|auxilio|help)$/i.test(t.trim());
+}
+
+// ─── Disparar alerta SOS para un usuario de WhatsApp ──────────────────────────
+// ag-sos-trigger (el mecanismo normal de la app) exige un JWT real de Supabase
+// Auth y un user_id en auth.users -- los invitados de WhatsApp no tienen ninguno
+// de los dos (son ag_users con is_wa_guest=true, sin cuenta de Auth). En vez de
+// forzar esa tabla, se manda de una vez un aviso por WhatsApp a soporte (mismo
+// número ya usado en la app) con la ubicación conocida, más un registro best-
+// effort en ag_admin_notifications para que quede trazado.
+async function triggerWaSos(phone: string, contactName: string, session: Record<string, unknown>): Promise<void> {
+  const lat = session.origin_lat as number | null;
+  const lng = session.origin_lng as number | null;
+  const mapsLink = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : 'sin ubicación registrada';
+  const tripId = session.trip_request_id as string | null;
+
+  await sendText(toE164(SUPPORT_PHONE),
+    `🆘 *ALERTA SOS — Pasajero por WhatsApp*\n\n` +
+    `👤 ${contactName || 'Usuario'}\n` +
+    `📱 ${toE164(phone)}\n` +
+    `📍 ${mapsLink}\n` +
+    (tripId ? `🚗 Viaje: ${tripId}\n` : '') +
+    `Estado: ${session.state ?? 'idle'}`
+  );
+
+  try {
+    const supabase = db();
+    await supabase.from('ag_admin_notifications').insert({
+      type:  'sos_whatsapp',
+      ref_id: tripId ?? null,
+      title: `SOS WhatsApp: ${contactName || toE164(phone)}`,
+      body:  mapsLink,
+    });
+  } catch (e) { console.error('[WA] SOS notification insert error:', e); }
+
+  await sendText(phone,
+    `🆘 *Alerta enviada.*\n\nUn agente de Movi se pondrá en contacto contigo lo antes posible.\n\n` +
+    `Si es una emergencia real, llama ya al *123*.`
+  );
+}
 
 // ─── Máquina de estados ───────────────────────────────────────────────────────
 async function handleConversation(
@@ -343,6 +386,13 @@ async function handleConversation(
 
   const state = session.state ?? 'idle';
   const text  = msgText.trim();
+
+  // SOS reconocible en cualquier estado de la conversación, sin depender de
+  // tener la app abierta ni de haber navegado ningún menú.
+  if (isSos(text)) {
+    await triggerWaSos(phone, contactName, session);
+    return;
+  }
 
   // Cancelar en cualquier estado
   if (isCancel(text) && state !== 'idle') {
@@ -700,6 +750,44 @@ async function handleConversation(
     return;
   }
 
+  // ── AWAITING_RATING ─────────────────────────────────────────────────────────
+  if (state === 'awaiting_rating') {
+    if (/^(omitir|saltar|no|skip)$/i.test(text)) {
+      await resetSession(phone);
+      await sendText(phone, `Sin problema 👍\n\n¿Necesitas otro servicio? Escribe *hola*.`);
+      return;
+    }
+
+    const stars = parseInt(text, 10);
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5 || !/^\d+$/.test(text)) {
+      await sendText(phone, `Por favor responde con un número del *1* al *5*, o escribe *omitir* para saltar.`);
+      return;
+    }
+
+    const tripId       = session.trip_request_id as string | null;
+    const raterUserId  = session.ag_user_id as string | null;
+    if (tripId && raterUserId) {
+      const supabase = db();
+      const { data: trip } = await supabase.from('ag_trip_requests').select('driver_id').eq('id', tripId).maybeSingle();
+      if (trip?.driver_id) {
+        const { data: driver } = await supabase.from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle();
+        if (driver?.ag_user_id) {
+          await supabase.from('ag_trip_ratings').upsert({
+            trip_request_id: tripId,
+            rated_by_role:   'passenger',
+            rater_user_id:   raterUserId,
+            rated_user_id:   driver.ag_user_id,
+            stars,
+          }, { onConflict: 'trip_request_id,rated_by_role' });
+        }
+      }
+    }
+
+    await resetSession(phone);
+    await sendText(phone, `¡Gracias por calificar! ${'⭐'.repeat(stars)}\n\n¿Necesitas otro servicio? Escribe *hola*.`);
+    return;
+  }
+
   // ── ESTADO DESCONOCIDO → reset ───────────────────────────────────────────────
   await resetSession(phone);
   await sendText(phone, menuText());
@@ -747,12 +835,32 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
 
   if (event === 'trip_completed') {
     const amount = payload.amount as number ?? 0;
-    await resetSession(phone);
+    // No resetear todavía -- primero se pide la calificación del conductor,
+    // manteniendo trip_request_id/ag_user_id en sesión para poder insertarla.
+    await upsertSession(phone, { state: 'awaiting_rating' });
     await sendText(phone,
       `🏁 *¡Viaje completado!*\n\n` +
       `💰 Total: $${Number(amount).toLocaleString('es-CO')}\n\n` +
       `Gracias por viajar con *Movi* 🚗💚\n\n` +
-      `¿Necesitas otro servicio? Escribe *hola*.`
+      `⭐ *¿Cómo calificarías a tu conductor?*\nResponde con un número del *1* al *5*.\n` +
+      `_(o escribe *omitir* para saltar)_`
+    );
+  }
+
+  if (event === 'live_location') {
+    const lat   = payload.lat as number | null;
+    const lng   = payload.lng as number | null;
+    const stage = payload.driver_stage as string ?? '';
+    if (lat == null || lng == null) return;
+
+    const label = stage === 'heading_to_pickup'
+      ? 'tu conductor va en camino a recogerte'
+      : stage === 'arrived_at_pickup'
+        ? 'tu conductor llegó al punto de recogida'
+        : 'tu conductor va en camino';
+
+    await sendText(phone,
+      `📍 Ubicación en vivo — ${label}\nhttps://maps.google.com/?q=${lat},${lng}`
     );
   }
 }

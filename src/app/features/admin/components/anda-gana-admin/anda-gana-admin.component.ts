@@ -451,6 +451,31 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         </div>
       </div>
 
+      <!-- Canal WhatsApp -->
+      <div class="bg-emerald-500/[0.04] border border-emerald-500/20 rounded-2xl p-4 mb-4">
+        <p class="text-[10px] text-emerald-400 uppercase tracking-wider font-black mb-3 flex items-center gap-1.5">
+          <span class="material-symbols-outlined" style="font-size:14px">chat</span> Canal WhatsApp
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Sesiones iniciadas</p>
+            <p class="text-xl font-black text-white mt-1">{{ a.wa_sessions }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Viajes creados</p>
+            <p class="text-xl font-black text-white mt-1">{{ a.wa_trip_requests }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Completados</p>
+            <p class="text-xl font-black text-emerald-400 mt-1">{{ a.wa_completed_trips }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Conversión</p>
+            <p class="text-xl font-black text-emerald-400 mt-1">{{ a.wa_conversion_rate }}%</p>
+          </div>
+        </div>
+      </div>
+
       @if (dailySeries().length > 0) {
         <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
           <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Viajes completados por día</p>
