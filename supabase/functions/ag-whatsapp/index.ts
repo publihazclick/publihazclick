@@ -185,7 +185,7 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
   const originAddr = session.origin_address as string ?? '';
 
   const tripData: Record<string, unknown> = {
-    passenger_id:  userId,
+    passenger_user_id: userId,
     service_type:  serviceType,
     origin:        originAddr,
     origin_lat:    session.origin_lat,
@@ -210,6 +210,94 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
 
   if (error) { console.error('[WA] createWaTrip error:', error); return null; }
   return data?.id ?? null;
+}
+
+// ─── Buscar la siguiente oferta pendiente de un viaje ────────────────────────
+// Usado para no perder ofertas que llegaron mientras el pasajero ya estaba
+// respondiendo a otra (el trigger de DB las descarta en silencio en ese caso,
+// pero quedan en 'pending' en ag_trip_offers — esto las recupera).
+async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unknown> | null> {
+  const supabase = db();
+
+  const { data: offer } = await supabase
+    .from('ag_trip_offers')
+    .select('id, driver_id, offered_price')
+    .eq('trip_request_id', tripId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!offer) return null;
+
+  let driverName = 'Conductor';
+  let driverPhone = '';
+  let driverVeh = '';
+  let driverPlate = '';
+  let driverRating = 0;
+
+  const { data: driver } = await supabase
+    .from('ag_drivers')
+    .select('vehicle_brand, vehicle_model, plate, ag_user_id')
+    .eq('id', offer.driver_id as string)
+    .maybeSingle();
+
+  if (driver) {
+    driverVeh   = [driver.vehicle_brand, driver.vehicle_model].filter(Boolean).join(' ');
+    driverPlate = driver.plate ?? '';
+
+    const { data: user } = await supabase
+      .from('ag_users')
+      .select('full_name, phone')
+      .eq('id', driver.ag_user_id as string)
+      .maybeSingle();
+    if (user) {
+      driverName  = user.full_name ?? driverName;
+      driverPhone = user.phone ?? '';
+    }
+
+    const { data: ratings } = await supabase
+      .from('ag_trip_ratings')
+      .select('stars')
+      .eq('rated_user_id', driver.ag_user_id as string)
+      .eq('rated_by_role', 'passenger');
+    if (ratings?.length) {
+      driverRating = ratings.reduce((s, r) => s + ((r.stars as number) ?? 0), 0) / ratings.length;
+    }
+  }
+
+  return {
+    offer_id:       offer.id as string,
+    driver_name:    driverName,
+    driver_price:   offer.offered_price as number,
+    driver_phone:   driverPhone,
+    driver_vehicle: driverVeh,
+    driver_plate:   driverPlate,
+    driver_rating:  driverRating,
+  };
+}
+
+// ─── Mostrar una oferta al pasajero por WhatsApp ──────────────────────────────
+async function presentOffer(phone: string, o: Record<string, unknown>, prefix = ''): Promise<void> {
+  await upsertSession(phone, {
+    state:           'awaiting_offer_response',
+    active_offer_id: o.offer_id,
+    driver_name:     o.driver_name,
+    driver_price:    o.driver_price,
+    driver_phone:    o.driver_phone,
+    driver_vehicle:  o.driver_vehicle,
+    driver_plate:    o.driver_plate,
+  });
+
+  const rating = o.driver_rating as number;
+  await sendText(phone,
+    `${prefix}🚗 ¡Conductor disponible!\n\n` +
+    `👤 *${o.driver_name}*\n` +
+    (rating > 0 ? `⭐ ${rating.toFixed(1)}\n` : '') +
+    (o.driver_vehicle ? `🚗 ${o.driver_vehicle}\n` : '') +
+    (o.driver_plate   ? `🔢 Placa: ${o.driver_plate}\n` : '') +
+    `💰 Precio ofertado: *$${(o.driver_price as number).toLocaleString('es-CO')}*\n\n` +
+    `¿Aceptas?\n*1* ✅ Aceptar\n*2* ❌ Buscar otro conductor`
+  );
 }
 
 // ─── Menú de servicios ────────────────────────────────────────────────────────
@@ -501,6 +589,15 @@ async function handleConversation(
         await sendText(phone, `Ya tienes un conductor asignado 🚗\nEscribe *cancelar* si necesitas cancelar el viaje.`);
         return;
       }
+
+      // Chequeo oportunista: puede haber una oferta pendiente que llegó
+      // mientras el pasajero estaba ocupado respondiendo otra (o que el
+      // aviso push no alcanzó a llegar) — no debe perderse.
+      const nextOffer = await fetchNextPendingOffer(tripId);
+      if (nextOffer) {
+        await presentOffer(phone, nextOffer);
+        return;
+      }
     }
 
     // Verificar timeout (5 minutos)
@@ -569,6 +666,16 @@ async function handleConversation(
           .update({ status: 'rejected' })
           .eq('id', offerId);
       }
+
+      // Antes de volver a esperar, ¿ya hay otra oferta pendiente (de otro
+      // conductor) esperando en la cola? Si sí, mostrarla de una vez en vez
+      // de perderla / esperar a que llegue un nuevo aviso.
+      const nextOffer = tripId ? await fetchNextPendingOffer(tripId) : null;
+      if (nextOffer) {
+        await presentOffer(phone, nextOffer, 'Oferta rechazada ❌\n\n');
+        return;
+      }
+
       await upsertSession(phone, {
         state: 'matching',
         active_offer_id: null,
