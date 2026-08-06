@@ -153,7 +153,7 @@ async function resetSession(phone: string) {
     trip_request_id: null, active_offer_id: null,
     driver_name: null, driver_price: null, driver_phone: null,
     driver_vehicle: null, driver_plate: null,
-    matching_started_at: null,
+    matching_started_at: null, pending_dest_text: null,
     last_message_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
   }, { onConflict: 'wa_phone' });
@@ -302,6 +302,183 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
   );
 }
 
+// ─── Transcribir nota de voz (Meta media → OpenAI Whisper) ────────────────────
+async function transcribeAudio(mediaId: string): Promise<string | null> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) return null;
+  try {
+    const metaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${WA_TOKEN}` },
+    });
+    if (!metaRes.ok) return null;
+    const meta = await metaRes.json();
+    const mediaUrl = meta?.url as string | undefined;
+    if (!mediaUrl) return null;
+
+    const audioRes = await fetch(mediaUrl, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+    if (!audioRes.ok) return null;
+    const audioBlob = await audioRes.blob();
+
+    const form = new FormData();
+    form.append('file', audioBlob, 'audio.ogg');
+    form.append('model', 'whisper-1');
+    form.append('language', 'es');
+
+    const trRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+    if (!trRes.ok) { console.error('[AI] transcribe error', trRes.status, await trRes.text()); return null; }
+    const trJson = await trRes.json();
+    return (trJson?.text as string)?.trim() || null;
+  } catch (e) { console.error('[AI] transcribeAudio error:', e); return null; }
+}
+
+// ─── Interpretar una solicitud en lenguaje natural (texto libre o transcrito) ─
+// Capa opcional sobre el menú de botones -- si el pasajero escribe (o dicta)
+// todo de una vez ("necesito un carro del centro al aeropuerto, pago 20 mil"),
+// esto evita forzarlo a navegar las 5 preguntas del menú clásico. Si no se
+// puede interpretar con confianza, se cae de vuelta al menú de siempre.
+interface ParsedRequest {
+  service_type: 'carro' | 'moto' | 'domicilio' | 'ciudad' | 'flete' | null;
+  origin_text:  string | null;
+  dest_text:    string | null;
+  package_desc: string | null;
+}
+async function parseFreeTextRequest(text: string): Promise<ParsedRequest | null> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) return null;
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        temperature: 0,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Extraes datos de una solicitud de viaje/domicilio en Colombia escrita o dictada por ' +
+              'WhatsApp. Responde SOLO un objeto JSON con estas claves:\n' +
+              '- service_type: uno de "carro","moto","domicilio","ciudad","flete", o null si no está claro.\n' +
+              '- origin_text: string con el lugar/dirección de origen mencionado, o null si no se menciona.\n' +
+              '- dest_text: string con el lugar/dirección de destino mencionado, o null si no se menciona.\n' +
+              '- package_desc: string describiendo qué se envía (solo si service_type es domicilio o flete), o null.\n' +
+              'Si el mensaje no es claramente una solicitud de viaje/domicilio, responde con todas las claves en null.',
+          },
+          { role: 'user', content: text },
+        ],
+      }),
+    });
+    if (!r.ok) { console.error('[AI] parse error', r.status, await r.text()); return null; }
+    const j = await r.json();
+    const raw = j?.choices?.[0]?.message?.content as string | undefined;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const validServices = ['carro', 'moto', 'domicilio', 'ciudad', 'flete'];
+    return {
+      service_type: validServices.includes(parsed.service_type) ? parsed.service_type : null,
+      origin_text:  typeof parsed.origin_text === 'string' ? parsed.origin_text : null,
+      dest_text:    typeof parsed.dest_text === 'string' ? parsed.dest_text : null,
+      package_desc: typeof parsed.package_desc === 'string' ? parsed.package_desc : null,
+    };
+  } catch (e) { console.error('[AI] parseFreeTextRequest error:', e); return null; }
+}
+
+// ─── Confirmar origen (reusado por el flujo clásico y el flujo inteligente) ───
+async function presentOriginConfirm(phone: string, addr: string, lat: number, lng: number): Promise<void> {
+  await upsertSession(phone, {
+    state: 'awaiting_origin_confirm',
+    origin_lat: lat, origin_lng: lng, origin_address: addr,
+  });
+  await sendText(phone,
+    `📍 ¿Estás en:\n*${addr}*?\n\nResponde:\n✅ *si* — correcto\n❌ *no* — cambiar dirección`
+  );
+}
+
+// ─── Confirmar destino + precio sugerido (reusado por ambos flujos) ───────────
+async function presentDestConfirm(phone: string, addr: string, lat: number | null, lng: number | null, session: Record<string, unknown>): Promise<void> {
+  const oLat = session.origin_lat as number;
+  const oLng = session.origin_lng as number;
+  let distKm = 0;
+  let suggested = MIN_PRICE;
+  if (lat != null && lng != null && oLat && oLng) {
+    distKm = haversineKm(oLat, oLng, lat, lng);
+    suggested = suggestPrice(distKm, session.service_type as string ?? 'carro');
+  }
+
+  await upsertSession(phone, {
+    state: 'awaiting_dest_confirm',
+    dest_name: addr, dest_lat: lat ?? null, dest_lng: lng ?? null,
+    offered_price: suggested, pending_dest_text: null,
+  });
+
+  const distText = distKm > 0 ? `📏 Distancia aprox: ${distKm.toFixed(1)} km\n` : '';
+  await sendText(phone,
+    `📍 ¿Vas a:\n*${addr}*?\n\n` + distText +
+    `💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
+    `Responde:\n✅ *si* — confirmar destino\n❌ *no* — cambiar destino`
+  );
+}
+
+// ─── Arrancar el flujo a partir de una solicitud interpretada por IA ──────────
+async function startSmartFlow(phone: string, parsed: ParsedRequest): Promise<void> {
+  const svc = parsed.service_type as string;
+  const needsPackage = svc === 'domicilio' || svc === 'flete';
+
+  if (needsPackage && !parsed.package_desc) {
+    await upsertSession(phone, { state: 'awaiting_package_desc', service_type: svc, pending_dest_text: parsed.dest_text });
+    await sendText(phone,
+      `${SERVICE_LABELS[svc]} detectado ✨\n\nDescríbeme qué necesitas enviar/recoger:\n_(ej: "Ropa, bolsa pequeña")_`
+    );
+    return;
+  }
+
+  await upsertSession(phone, {
+    service_type: svc,
+    package_desc: parsed.package_desc ?? null,
+    pending_dest_text: parsed.dest_text,
+  });
+
+  if (parsed.origin_text) {
+    const geo = await forwardGeocode(parsed.origin_text);
+    if (geo && isInColombia(geo.lat, geo.lng)) {
+      await presentOriginConfirm(phone, geo.address, geo.lat, geo.lng);
+      return;
+    }
+  }
+
+  await upsertSession(phone, { state: 'awaiting_origin' });
+  await sendText(phone,
+    `${SERVICE_LABELS[svc]} detectado ✨\n\n📍 *¿Dónde estás?*\n\n` +
+    `Envía tu ubicación:\n• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
+    `O escribe tu dirección completa.`
+  );
+}
+
+// ─── Invitar a instalar la app real tras un par de viajes por WhatsApp ────────
+async function maybeOfferAppDownload(phone: string): Promise<void> {
+  try {
+    const supabase = db();
+    const { count } = await supabase
+      .from('ag_trip_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('wa_phone', toE164(phone))
+      .eq('source', 'whatsapp')
+      .eq('status', 'completed');
+    if (count === 2) {
+      await sendText(phone,
+        `🚀 *Psst...* ya llevas 2 viajes con Movi por WhatsApp.\n\n` +
+        `Con la app puedes ver el mapa en vivo, pagar más fácil y pedir en un toque:\n` +
+        `https://hndhgtnjyjwrnzdcgcca.supabase.co/storage/v1/object/public/movi-apk/movi-conductor.apk`
+      );
+    }
+  } catch (e) { console.error('[WA] maybeOfferAppDownload error:', e); }
+}
+
 // ─── Menú de servicios ────────────────────────────────────────────────────────
 function menuText(): string {
   return `¡Hola! Soy *Movi* 🚗\n\n¿Qué servicio necesitas?\n\n` +
@@ -403,6 +580,15 @@ async function handleConversation(
 
   // ── IDLE / WELCOME ──────────────────────────────────────────────────────────
   if (state === 'idle') {
+    // Si ya escribió/dictó una solicitud completa desde el primer mensaje
+    // ("hola necesito un carro para el aeropuerto"), no obligarlo a repetirla.
+    if (text.length >= 8) {
+      const parsed = await parseFreeTextRequest(text);
+      if (parsed?.service_type) {
+        await startSmartFlow(phone, parsed);
+        return;
+      }
+    }
     await upsertSession(phone, { state: 'awaiting_service', expires_at: new Date(Date.now() + 2*60*60*1000).toISOString() });
     await sendText(phone, menuText());
     return;
@@ -417,6 +603,15 @@ async function handleConversation(
     };
     const svc = map[text.toLowerCase()];
     if (!svc) {
+      // Capa de lenguaje natural: intentar interpretar la frase completa antes
+      // de rendirse con "no entendí".
+      if (text.length >= 8) {
+        const parsed = await parseFreeTextRequest(text);
+        if (parsed?.service_type) {
+          await startSmartFlow(phone, parsed);
+          return;
+        }
+      }
       await sendText(phone, `No entendí tu respuesta 🤔\n\n${menuText()}`);
       return;
     }
@@ -484,19 +679,25 @@ async function handleConversation(
       return;
     }
 
-    await upsertSession(phone, {
-      state: 'awaiting_origin_confirm',
-      origin_lat: lat, origin_lng: lng, origin_address: addr,
-    });
-    await sendText(phone,
-      `📍 ¿Estás en:\n*${addr}*?\n\nResponde:\n✅ *si* — correcto\n❌ *no* — cambiar dirección`
-    );
+    await presentOriginConfirm(phone, addr, lat, lng);
     return;
   }
 
   // ── AWAITING_ORIGIN_CONFIRM ─────────────────────────────────────────────────
   if (state === 'awaiting_origin_confirm') {
     if (isYes(text)) {
+      // Flujo inteligente: si ya sabíamos el destino desde el mensaje original
+      // en lenguaje natural, saltar directo a confirmarlo en vez de preguntar.
+      const pendingDest = session.pending_dest_text as string | null;
+      if (pendingDest) {
+        const geo = await forwardGeocode(pendingDest);
+        if (geo && isInColombia(geo.lat, geo.lng)) {
+          await presentDestConfirm(phone, geo.address, geo.lat, geo.lng, session);
+          return;
+        }
+        await upsertSession(phone, { pending_dest_text: null });
+      }
+
       await upsertSession(phone, { state: 'awaiting_dest' });
       await sendText(phone,
         `¡Perfecto! 🎯\n\n` +
@@ -532,31 +733,7 @@ async function handleConversation(
       return;
     }
 
-    // Calcular distancia y precio sugerido
-    const oLat = session.origin_lat as number;
-    const oLng = session.origin_lng as number;
-    let distKm = 0;
-    let suggested = MIN_PRICE;
-    if (lat != null && lng != null && oLat && oLng) {
-      distKm = haversineKm(oLat, oLng, lat, lng);
-      suggested = suggestPrice(distKm, session.service_type as string ?? 'carro');
-    }
-
-    await upsertSession(phone, {
-      state: 'awaiting_dest_confirm',
-      dest_name: addr,
-      dest_lat: lat ?? null,
-      dest_lng: lng ?? null,
-      offered_price: suggested,
-    });
-
-    const distText = distKm > 0 ? `📏 Distancia aprox: ${distKm.toFixed(1)} km\n` : '';
-    await sendText(phone,
-      `📍 ¿Vas a:\n*${addr}*?\n\n` +
-      distText +
-      `💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
-      `Responde:\n✅ *si* — confirmar destino\n❌ *no* — cambiar destino`
-    );
+    await presentDestConfirm(phone, addr, lat ?? null, lng ?? null, session);
     return;
   }
 
@@ -755,6 +932,7 @@ async function handleConversation(
     if (/^(omitir|saltar|no|skip)$/i.test(text)) {
       await resetSession(phone);
       await sendText(phone, `Sin problema 👍\n\n¿Necesitas otro servicio? Escribe *hola*.`);
+      await maybeOfferAppDownload(phone);
       return;
     }
 
@@ -785,6 +963,7 @@ async function handleConversation(
 
     await resetSession(phone);
     await sendText(phone, `¡Gracias por calificar! ${'⭐'.repeat(stars)}\n\n¿Necesitas otro servicio? Escribe *hola*.`);
+    await maybeOfferAppDownload(phone);
     return;
   }
 
@@ -943,7 +1122,7 @@ serve(async (req) => {
       if (messages?.length) {
         const msg         = messages[0] as Record<string, unknown>;
         const fromPhone   = msg.from as string;
-        const msgType     = msg.type as string;
+        let   msgType     = msg.type as string;
         const contactName = ((value?.contacts as unknown[])?.[0] as Record<string, unknown>)?.profile as Record<string, unknown>;
         const name        = (contactName?.name as string) ?? 'Usuario';
 
@@ -963,6 +1142,19 @@ serve(async (req) => {
           msgText = ((interactive?.button_reply as Record<string, unknown>)?.title as string)
             ?? ((interactive?.list_reply as Record<string, unknown>)?.title as string)
             ?? '';
+        } else if (msgType === 'audio') {
+          // Nota de voz: transcribir con Whisper y tratarla como si fuera texto
+          // normal -- así funciona en cualquier punto de la conversación sin
+          // duplicar la máquina de estados.
+          const audioId = (msg.audio as Record<string, unknown>)?.id as string | undefined;
+          const transcribed = audioId ? await transcribeAudio(audioId) : null;
+          if (transcribed) {
+            msgText = transcribed;
+            msgType = 'text';
+          } else {
+            await sendText(fromPhone, `No pude escuchar tu audio 😔\n\n¿Puedes escribirlo o intentar de nuevo?`);
+            return new Response('ok', { status: 200 });
+          }
         }
 
         await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng);
