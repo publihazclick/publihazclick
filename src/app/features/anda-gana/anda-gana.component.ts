@@ -3625,7 +3625,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                    mapa, ver "Destino elegido, viaje no enviado aún") -- pedido explicito del
                    usuario 2026-08-09 para no duplicar esa info acá abajo. Solo quedan las
                    acciones que no viven en esa tarjeta: cambiar el origen y cancelar. -->
-              <div class="mx-4 mt-3 mb-1 flex items-center gap-2">
+              <div class="mx-4 mt-8 mb-1 flex items-center gap-2">
                 @if (!originEditOpen()) {
                   <button (click)="openOriginEdit()"
                     class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition-all"
