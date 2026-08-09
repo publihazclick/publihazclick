@@ -1232,6 +1232,27 @@ serve(async (req) => {
 
       if (messages?.length) {
         const msg         = messages[0] as Record<string, unknown>;
+        const msgId       = msg.id as string | undefined;
+
+        // Meta entrega los webhooks "al menos una vez", no "exactamente una
+        // vez" -- si tardamos en responder o hay cualquier hipo de red, Meta
+        // reintenta el MISMO mensaje. Sin esto, handleConversation() corría
+        // dos veces y el saludo/menú de Movi le llegaba duplicado al usuario
+        // (bug real 2026-08-09). Se registra el id del mensaje antes de
+        // procesarlo; si el insert choca con la clave primaria, ya se procesó.
+        if (msgId) {
+          const { error: dupError } = await db()
+            .from('ag_wa_processed_messages')
+            .insert({ message_id: msgId });
+          if (dupError) {
+            // 23505 = unique_violation -- mensaje repetido, no reprocesar.
+            if ((dupError as { code?: string }).code === '23505') {
+              return new Response('ok', { status: 200 });
+            }
+            console.error('[WA] dedupe insert error:', dupError);
+          }
+        }
+
         const fromPhone   = msg.from as string;
         let   msgType     = msg.type as string;
         const contactName = ((value?.contacts as unknown[])?.[0] as Record<string, unknown>)?.profile as Record<string, unknown>;
