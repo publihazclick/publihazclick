@@ -14691,6 +14691,15 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (!driver) return;
     // Si está en línea, pedir confirmación antes de desconectar
     if (this.driverOnline()) {
+      // BUG REAL encontrado en producción 2026-08-08: nada impedía desconectarse con un viaje
+      // aceptado en curso -- al salir de línea se borraba ag_driver_locations y se dejaba de
+      // recibir/emitir todo, y el viaje quedaba huérfano en 'accepted'/driver_stage null para
+      // siempre (el pasajero nunca se enteraba y no había forma de recuperarlo salvo cancelar
+      // a mano). Bloquear la desconexión mientras haya un viaje activo.
+      if (this.driverActiveTrips().length > 0) {
+        alert('No puedes salir de línea con un viaje en curso. Finaliza o cancela el viaje primero.');
+        return;
+      }
       this.offlineConfirmOpen.set(true);
       this.cdr.markForCheck();
       return;
