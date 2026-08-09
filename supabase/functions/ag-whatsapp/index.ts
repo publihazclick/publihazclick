@@ -248,7 +248,15 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
     offered_price: session.offered_price,
     status:        'searching',
     source:        'whatsapp',
-    wa_phone:      toE164(session.wa_phone as string),
+    // OJO: se guarda tal cual (sin toE164) porque ag_wa_sessions.wa_phone -- la
+    // clave que usan getSession()/upsertSession() -- se guarda SIN "+" (el
+    // formato que manda Meta en el campo "from" del webhook). Si aca se guardaba
+    // con "+" (bug real 2026-08-09), getSession(payload.wa_phone) en
+    // handleInternalEvent('offer_received') nunca encontraba la sesion y el
+    // aviso de "conductor disponible" se perdia en silencio -- el pasajero solo
+    // se enteraba si volvia a escribir algo (recuperacion oportunista en el
+    // estado 'matching'). sendText() ya funciona igual con o sin "+".
+    wa_phone:      session.wa_phone as string,
     passenger_note: session.package_desc
       ? `[WA] ${serviceType === 'domicilio' ? 'Domicilio' : 'Flete'}: ${session.package_desc}`
       : '[Pedido vía WhatsApp]',
