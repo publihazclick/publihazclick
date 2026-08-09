@@ -3621,28 +3621,21 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             } @else if (tripAccepted()) {
               <!-- Pedido explicito del usuario 2026-07-31: panel del conductor eliminado de aca -->
             } @else if (!tripSent()) {
-              <!-- ── Tarjeta de ruta: origen → destino ── -->
-              <div class="mx-4 mt-3 mb-1 rounded-2xl overflow-hidden"
-                style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
-
-                <!-- Fila origen — clicable para cambiar -->
+              <!-- Origen, destino y precio ya se muestran en la tarjeta de arriba (encima del
+                   mapa, ver "Destino elegido, viaje no enviado aún") -- pedido explicito del
+                   usuario 2026-08-09 para no duplicar esa info acá abajo. Solo quedan las
+                   acciones que no viven en esa tarjeta: cambiar el origen y cancelar. -->
+              <div class="mx-4 mt-3 mb-1 flex items-center gap-2">
                 @if (!originEditOpen()) {
                   <button (click)="openOriginEdit()"
-                    class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-orange-50 active:bg-orange-50 transition-colors"
-                    style="border-bottom:1px solid #f1f5f9">
-                    <div class="flex flex-col items-center gap-0 flex-shrink-0" style="width:20px">
-                      <div class="w-3 h-3 rounded-full border-2 border-orange-400 bg-orange-100"></div>
-                      <div class="w-px bg-slate-200" style="height:14px;margin:1px 0"></div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="font-bold uppercase tracking-wider text-orange-400" style="font-size:9px">Saldrás desde aquí · Toca para cambiar</p>
-                      <p class="text-slate-700 text-xs font-semibold truncate">{{ currentAddress() || 'Tu ubicación actual' }}</p>
-                    </div>
-                    <span class="material-symbols-outlined text-orange-300 flex-shrink-0" style="font-size:15px">edit</span>
+                    class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition-all"
+                    style="background:#fff;border:1px solid #e2e8f0">
+                    <span class="material-symbols-outlined text-orange-400 flex-shrink-0" style="font-size:16px">edit_location_alt</span>
+                    <span class="text-slate-600 text-xs font-semibold flex-1 truncate">Cambiar punto de partida</span>
                   </button>
                 } @else {
-                  <!-- Búsqueda inline dentro de la tarjeta -->
-                  <div style="border-bottom:1px solid #fed7aa;background:#fff7ed">
+                  <!-- Búsqueda inline de origen -->
+                  <div class="flex-1 rounded-xl overflow-hidden" style="border:1px solid #fed7aa;background:#fff7ed">
                     <div class="flex items-center gap-2.5 px-3 py-2.5">
                       <div class="w-3 h-3 rounded-full border-2 border-orange-500 bg-orange-100 flex-shrink-0"></div>
                       <input id="origin-edit-input"
@@ -3665,59 +3658,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     </div>
                   </div>
                 }
-
-                <!-- Fila destino -->
-                <div class="flex items-center gap-3 px-3 py-2.5">
-                  <div class="flex flex-col items-center flex-shrink-0" style="width:20px">
-                    <div class="w-3 h-3 rounded-full border-2 border-slate-700 bg-slate-800"></div>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-bold uppercase tracking-wider text-slate-400" style="font-size:9px">Tu destino · {{ tripDistKm() }} km</p>
-                    <p class="text-slate-800 text-sm font-black truncate">{{ tripDest()!.name }}</p>
-                  </div>
-                  <button (click)="cancelTrip()"
-                    class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-all"
-                    style="background:#f1f5f9;border:1px solid #e2e8f0">
-                    <span class="material-symbols-outlined text-slate-400" style="font-size:16px">close</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- ── Precio propuesto ─────────────────────────────── -->
-              <div class="px-4 py-3 border-b border-slate-200">
-                <p class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-2.5">Tu precio propuesto</p>
-
-                <!-- Monto + botones ±500 -->
-                <div class="flex items-center gap-3 mb-3">
-                  <button (click)="adjustTripPrice(-500)"
-                    class="w-12 h-12 rounded-2xl border text-slate-700 font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
-                    style="background:#f1f5f9;border-color:#e2e8f0">−</button>
-                  <div class="text-center flex-1">
-                    <p class="text-slate-800 font-black leading-none" style="font-size:30px">{{ formatCOP(tripPrice()) }}</p>
-                    @if (surgeMultiplier() > 1) {
-                      <p class="text-orange-600 text-[10px] font-black mt-1">⚡ Alta demanda ×{{ surgeMultiplier() }}</p>
-                    }
-                    <button (click)="setTripPricePreset(0)"
-                      class="mt-1.5 px-3 py-0.5 rounded-full text-[10px] font-black active:scale-95 transition-all"
-                      style="background:#fff7ed;border:1px solid #fed7aa;color:#ea580c">Sugerido</button>
-                  </div>
-                  <button (click)="adjustTripPrice(500)"
-                    class="w-12 h-12 rounded-2xl text-white font-black text-2xl flex items-center justify-center active:scale-95 transition-all flex-shrink-0"
-                    style="background:#f97316">+</button>
-                </div>
-
-                <!-- Slider -->
-                <input type="range"
-                  [min]="2000"
-                  [max]="tripSliderMax()"
-                  step="500"
-                  [value]="tripPrice()"
-                  (input)="tripPrice.set(+$any($event.target).value)"
-                  class="w-full mb-2 cursor-pointer"
-                  style="accent-color:#f97316" />
-
-                <!-- Hint -->
-                <p class="text-slate-400 text-[10px] text-center">💡 Precio más alto = conductores más rápido</p>
+                <button (click)="cancelTrip()"
+                  class="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all"
+                  style="background:#fef2f2;border:1px solid #fecaca">
+                  <span class="material-symbols-outlined text-red-500" style="font-size:16px">close</span>
+                </button>
               </div>
 
               <!-- ── Campos Domicilio ─────────────────────────────────── -->
