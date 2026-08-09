@@ -227,9 +227,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div class="px-5 py-4 flex flex-col gap-3">
           <!-- Pasajero -->
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            <div class="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center"
               style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
-              <span class="material-symbols-outlined text-emerald-400" style="font-size:20px;font-variation-settings:'FILL' 1">person</span>
+              @if (driverTripAlert()!.ag_trip_requests?.ag_users?.selfie_url) {
+                <img [src]="driverTripAlert()!.ag_trip_requests!.ag_users!.selfie_url"
+                  style="width:100%;height:100%;object-fit:cover" alt="foto pasajero">
+              } @else {
+                <span class="font-black text-emerald-400" style="font-size:16px">{{ (driverTripAlert()!.ag_trip_requests?.ag_users?.full_name ?? 'P')[0].toUpperCase() }}</span>
+              }
             </div>
             <div>
               <p class="font-black text-white" style="font-size:15px;margin:0">
@@ -1550,9 +1555,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             style="background:linear-gradient(0deg,rgba(10,12,25,1) 0%,rgba(10,12,25,0.97) 80%,transparent 100%);padding:16px 16px calc(env(safe-area-inset-bottom,16px) + 12px);max-height:48dvh;overflow-y:auto">
 
             <div class="flex items-start gap-3 mb-3">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+              <div class="w-10 h-10 rounded-xl flex-shrink-0 mt-0.5 overflow-hidden flex items-center justify-center"
                 style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'FILL' 1">{{ vehicleIcon(tripAccepted()!.ag_drivers?.vehicle_type) }}</span>
+                @if (tripAccepted()!.ag_drivers?.ag_users?.selfie_url) {
+                  <img [src]="tripAccepted()!.ag_drivers!.ag_users!.selfie_url"
+                    style="width:100%;height:100%;object-fit:cover" alt="foto conductor">
+                } @else {
+                  <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'FILL' 1">{{ vehicleIcon(tripAccepted()!.ag_drivers?.vehicle_type) }}</span>
+                }
               </div>
               <div class="flex-1 min-w-0">
                 <p class="font-black text-[11px] uppercase tracking-widest mb-0.5" style="color:#22d3ee">
@@ -5479,9 +5489,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             @for (trip of driverActiveTrips(); track trip.id) {
               <div class="rounded-2xl overflow-hidden" style="background:#FFFFFF;border:1px solid rgba(16,185,129,0.35);box-shadow:0 2px 8px rgba(0,0,0,0.06)">
                 <div class="flex items-center gap-3 px-4 py-3">
-                  <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  <div class="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
                     style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2)">
-                    <span class="material-symbols-outlined text-emerald-500" style="font-size:18px">directions_car</span>
+                    @if (trip.ag_trip_requests?.ag_users?.selfie_url) {
+                      <img [src]="trip.ag_trip_requests.ag_users.selfie_url" style="width:100%;height:100%;object-fit:cover" alt="foto pasajero">
+                    } @else {
+                      <span class="material-symbols-outlined text-emerald-500" style="font-size:18px">directions_car</span>
+                    }
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="font-bold text-sm truncate" style="color:#0f172a">{{ trip.ag_trip_requests?.ag_users?.full_name ?? 'Pasajero' }}</p>
@@ -5945,11 +5959,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- Fase: to_pickup → dirección recogida / on_route → destino -->
               <div class="flex items-start gap-3 mb-3">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                <div class="w-10 h-10 rounded-xl flex-shrink-0 mt-0.5 overflow-hidden flex items-center justify-center"
                   style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-                  <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">
-                    {{ navPhase() === 'to_pickup' ? 'person_pin' : 'flag' }}
-                  </span>
+                  @if (driverFullscreenTrip()!.ag_trip_requests?.ag_users?.selfie_url) {
+                    <img [src]="driverFullscreenTrip()!.ag_trip_requests!.ag_users!.selfie_url"
+                      style="width:100%;height:100%;object-fit:cover" alt="foto pasajero">
+                  } @else {
+                    <span class="material-symbols-outlined text-white" style="font-size:20px;font-variation-settings:'FILL' 1">
+                      {{ navPhase() === 'to_pickup' ? 'person_pin' : 'flag' }}
+                    </span>
+                  }
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="font-black text-[11px] uppercase tracking-widest mb-0.5" style="color:#22d3ee">
