@@ -675,7 +675,19 @@ async function handleConversation(
       'carro': 'carro', 'moto': 'moto', 'domicilio': 'domicilio',
       'ciudad': 'ciudad', 'flete': 'flete',
     };
-    const svc = map[text.toLowerCase()];
+    const normalized = text.toLowerCase();
+    // Coincidencia flexible: el número emoji (1️⃣) trae bytes invisibles pegados
+    // al dígito, y algunos clientes de WhatsApp reenvían la línea completa del
+    // menú ("1️⃣ 🚗 Carro") en vez de solo "1" al tocar una sugerencia rapida --
+    // el match exacto original fallaba en ambos casos y mandaba "no entendí"
+    // de vuelta con el mismo menú (bug real reportado 2026-08-09: el pasajero
+    // respondía "1" y le llegaba el menú otra vez). Se prueba match exacto,
+    // luego el primer dígito 1-5 en cualquier parte del texto, luego la
+    // palabra clave del servicio en cualquier parte del texto.
+    const digitMatch = normalized.match(/[1-5]/)?.[0];
+    const svc = map[normalized]
+      ?? (digitMatch ? map[digitMatch] : undefined)
+      ?? Object.keys(SERVICE_LABELS).find(k => normalized.includes(k));
     if (!svc) {
       // Capa de lenguaje natural: intentar interpretar la frase completa antes
       // de rendirse con "no entendí".
