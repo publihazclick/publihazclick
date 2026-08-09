@@ -225,18 +225,28 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
 
   const serviceType = session.service_type as string;
   const originAddr = session.origin_address as string ?? '';
+  const oLat = session.origin_lat as number;
+  const oLng = session.origin_lng as number;
+  const dLat = session.dest_lat as number;
+  const dLng = session.dest_lng as number;
+  // vehicle_type es NOT NULL con CHECK IN ('carro','moto') -- domicilio usa moto por
+  // ser el vehiculo tipico de mensajeria en Colombia (el pasajero no elige vehiculo
+  // aparte para domicilios en el flujo de WhatsApp, a diferencia de la app).
+  const vehicleType = serviceType === 'moto' ? 'moto' : serviceType === 'carro' ? 'carro' : 'moto';
 
   const tripData: Record<string, unknown> = {
     passenger_user_id: userId,
     service_type:  serviceType,
-    origin:        originAddr,
-    origin_lat:    session.origin_lat,
-    origin_lng:    session.origin_lng,
+    vehicle_type:  vehicleType,
+    origin_name:   originAddr,
+    origin_lat:    oLat,
+    origin_lng:    oLng,
     dest_name:     session.dest_name,
-    dest_lat:      session.dest_lat,
-    dest_lng:      session.dest_lng,
+    dest_lat:      dLat,
+    dest_lng:      dLng,
+    distance_km:   haversineKm(oLat, oLng, dLat, dLng),
     offered_price: session.offered_price,
-    status:        'pending',
+    status:        'searching',
     source:        'whatsapp',
     wa_phone:      toE164(session.wa_phone as string),
     passenger_note: session.package_desc
@@ -464,9 +474,25 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
   );
 }
 
+// ─── Servicios que aun no se pueden pedir por WhatsApp ────────────────────────
+// "Ciudad a Ciudad" y "Flete" viven en tablas y flujos de precio totalmente
+// distintos (cc_/fl_) que createWaTrip() no llena -- en vez de dejar la
+// solicitud rota en silencio (nunca le llegaba nada al conductor), se avisa
+// claro y se manda a la app, que si soporta esos dos completos.
+const APK_LINK = 'https://hndhgtnjyjwrnzdcgcca.supabase.co/storage/v1/object/public/movi-apk/movi-conductor.apk';
+async function sendUnsupportedServiceMessage(phone: string, svc: string): Promise<void> {
+  await resetSession(phone);
+  await sendText(phone,
+    `${SERVICE_LABELS[svc] ?? svc} todavía no está disponible por este chat 😔\n\n` +
+    `Por ahora ese servicio solo se puede pedir desde la app de Movi:\n${APK_LINK}\n\n` +
+    `Escribe *hola* si quieres pedir un Carro, Moto o Domicilio por aquí.`
+  );
+}
+
 // ─── Arrancar el flujo a partir de una solicitud interpretada por IA ──────────
 async function startSmartFlow(phone: string, parsed: ParsedRequest): Promise<void> {
   const svc = parsed.service_type as string;
+  if (svc === 'ciudad' || svc === 'flete') { await sendUnsupportedServiceMessage(phone, svc); return; }
   const needsPackage = svc === 'domicilio' || svc === 'flete';
 
   if (needsPackage && !parsed.package_desc) {
@@ -656,6 +682,8 @@ async function handleConversation(
       return;
     }
 
+    if (svc === 'ciudad' || svc === 'flete') { await sendUnsupportedServiceMessage(phone, svc); return; }
+
     await upsertSession(phone, { state: 'awaiting_origin', service_type: svc });
 
     const needsPackage = svc === 'domicilio' || svc === 'flete';
@@ -766,8 +794,15 @@ async function handleConversation(
       addr = await reverseGeocode(lat, lng);
     } else if (text.length > 4) {
       const geo = await forwardGeocode(text);
-      if (geo) { lat = geo.lat; lng = geo.lng; addr = geo.address; }
-      else { addr = text; } // Guardar tal como está si no geocodifica
+      if (!geo) {
+        // dest_lat/dest_lng son NOT NULL en ag_trip_requests -- antes esto dejaba
+        // pasar la direccion en texto plano sin coordenadas y la solicitud nunca
+        // se creaba (fallaba en silencio al final del flujo). Se exige coordenadas
+        // igual que ya se exige en el origen.
+        await sendText(phone, `No encontré esa dirección 🔍\n\nIntenta ser más específico o envía tu ubicación con el clip 📎.`);
+        return;
+      }
+      lat = geo.lat; lng = geo.lng; addr = geo.address;
     } else {
       await sendText(phone, `Escribe la dirección de destino o envía la ubicación con el clip 📎.`);
       return;
