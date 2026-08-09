@@ -1074,9 +1074,13 @@ serve(async (req) => {
   try { body = await req.json(); } catch { return new Response('Bad Request', { status: 400 }); }
 
   // Envío manual desde código Angular (no de Meta ni de trigger)
-  if (!body._internal_event && !body.entry && body.phone) {
-    const { phone, event, data, message } = body as Record<string, unknown>;
-    if (!phone) return new Response(JSON.stringify({ error: 'phone required' }), { status: 400 });
+  if (!body._internal_event && !body.entry && (body.phone || body.to === 'admin')) {
+    const { phone, to, event, data, message } = body as Record<string, unknown>;
+    // to:'admin' manda al número de soporte (SUPPORT_PHONE, server-side) en vez de
+    // exigir un phone del frontend -- así el número de soporte no queda expuesto
+    // en el bundle del cliente. Usado por reportTripError() en anda-gana.service.ts.
+    const targetPhone = to === 'admin' ? SUPPORT_PHONE : (phone as string | undefined);
+    if (!targetPhone) return new Response(JSON.stringify({ error: 'phone required' }), { status: 400 });
 
     const msgData = (data as Record<string, string>) ?? {};
     let text = (message as string) ?? '';
@@ -1092,12 +1096,24 @@ serve(async (req) => {
         trip_cancelled: d => `❌ *Movi* — Viaje cancelado\n\nMotivo: ${d.reason}`,
         withdrawal_approved: d => `💸 *Movi* — Retiro aprobado\n\n$${d.amount} en proceso (máx 24 hrs hábiles).`,
         sos_alert: d => `🆘 *ALERTA SOS*\n\nUsuario: ${d.user_name}\nUbicación: ${d.location}\nViaje: ${d.trip_id}`,
+        error_alert: d => `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${d.context}\n⚠️ ${d.message}`,
       };
       text = eventMap[event as string]?.(msgData) ?? (msgData.message ?? '');
     }
 
     if (text) {
-      await sendText(toE164(phone as string), text);
+      await sendText(toE164(targetPhone), text);
+      // Registro best-effort para trazabilidad, igual que hace triggerWaSos con SOS.
+      if (event === 'error_alert') {
+        try {
+          const supabase = db();
+          await supabase.from('ag_admin_notifications').insert({
+            type:  'trip_error',
+            title: `Error en flujo de viaje: ${msgData.context ?? 'desconocido'}`,
+            body:  msgData.message ?? '',
+          });
+        } catch (e) { console.error('[WA] error_alert notification insert error:', e); }
+      }
       return new Response(JSON.stringify({ sent: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

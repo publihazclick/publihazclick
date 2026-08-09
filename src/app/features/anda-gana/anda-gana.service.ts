@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/angular';
 import { getMoviClient } from './movi.client';
 import { environment } from '../../../environments/environment';
 
@@ -128,6 +129,26 @@ export class AndaGanaService {
         setTimeout(() => reject(new Error('Tiempo de espera agotado. Verifica tu conexión.')), ms)
       ),
     ]);
+  }
+
+  /**
+   * Reporta un fallo real del flujo de viaje: siempre a Sentry, y si es
+   * `critical` además por WhatsApp al número de soporte (mismo canal que
+   * ya usa triggerWaSos en ag-whatsapp). Supabase no lanza excepciones en
+   * queries fallidas, solo devuelve {data, error}, así que sin esto los
+   * fallos quedaban invisibles para todos (plan "Alertas de error en el
+   * flujo de viaje", 2026-08-09).
+   */
+  private reportTripError(context: string, error: unknown, opts?: { critical?: boolean; extra?: Record<string, unknown> }): void {
+    const err = error instanceof Error ? error : new Error(typeof error === 'string' ? error : JSON.stringify(error));
+    Sentry.captureException(err, { tags: { flow: 'anda-gana', context }, extra: opts?.extra });
+    if (opts?.critical) {
+      fetch(`${environment.andaGana.functionsBaseUrl}/ag-whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: 'admin', event: 'error_alert', data: { context, message: err.message } }),
+      }).catch(() => {});
+    }
   }
 
   // ── Auth ──────────────────────────────────────────────────────
@@ -678,7 +699,10 @@ export class AndaGanaService {
       })
       .select('id')
       .single();
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      this.reportTripError('requestTrip', error, { critical: true, extra: { passengerUserId: data.passengerUserId } });
+      return { success: false, error: error.message };
+    }
     return { success: true, tripId: row.id };
   }
 
@@ -693,10 +717,11 @@ export class AndaGanaService {
   }
 
   async cancelTripRequest(tripRequestId: string, reason?: string): Promise<void> {
-    await this.supabase
+    const { error } = await this.supabase
       .from('ag_trip_requests')
       .update({ status: 'cancelled', updated_at: new Date().toISOString(), cancel_reason: reason ?? null })
       .eq('id', tripRequestId);
+    if (error) this.reportTripError('cancelTripRequest', error, { critical: true, extra: { tripRequestId } });
   }
 
   async checkRequestsStatus(ids: string[]): Promise<{ id: string; status: string }[]> {
@@ -738,6 +763,7 @@ export class AndaGanaService {
         if (match) return { success: false, error: `El conductor no tiene saldo suficiente. Necesita $${Number(match[1]).toLocaleString('es-CO')} pero tiene $${Number(match[2]).toLocaleString('es-CO')} en su wallet.` };
         return { success: false, error: 'El conductor no tiene saldo suficiente en su wallet para aceptar este viaje.' };
       }
+      this.reportTripError('acceptOffer', offerErr, { critical: true, extra: { offerId } });
       return { success: false, error: offerErr.message };
     }
     return { success: true };
@@ -873,7 +899,11 @@ export class AndaGanaService {
       .from('ag_trip_offers')
       .update({ status: 'rejected', updated_at: new Date().toISOString() })
       .eq('id', offerId);
-    return error ? { success: false, error: error.message } : { success: true };
+    if (error) {
+      this.reportTripError('rejectOffer', error, { critical: true, extra: { offerId } });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   }
 
   /** Escucha nuevas ofertas en tiempo real para un viaje activo */
@@ -994,7 +1024,11 @@ export class AndaGanaService {
     const { error } = await this.supabase
       .from('ag_trip_offers')
       .insert({ trip_request_id: tripRequestId, driver_id: driverId, offered_price: offeredPrice });
-    return error ? { success: false, error: error.message } : { success: true };
+    if (error) {
+      this.reportTripError('makeOffer', error, { critical: true, extra: { tripRequestId, driverId } });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   }
 
   // ── Passenger trip history ────────────────────────────────────
@@ -1244,7 +1278,11 @@ export class AndaGanaService {
 
   async completeTrip(tripRequestId: string): Promise<{ success: boolean; error?: string }> {
     const { error } = await this.supabase.rpc('ag_complete_trip', { p_trip_request_id: tripRequestId });
-    return error ? { success: false, error: error.message } : { success: true };
+    if (error) {
+      this.reportTripError('completeTrip', error, { critical: true, extra: { tripRequestId } });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   }
 
   async graduateQuickDriver(): Promise<void> {
@@ -1736,6 +1774,9 @@ export class AndaGanaService {
     const { data, error } = await this.supabase.rpc('ag_advance_trip_stage', {
       p_trip_request_id: tripRequestId, p_stage: stage,
     });
+    // Solo se reporta `error` (fallo real de RPC/conexión) -- data?.ok === false
+    // con GPS todavía no válido es un rechazo de negocio esperado, no un bug.
+    if (error) this.reportTripError('updateTripStage', error, { critical: true, extra: { tripRequestId, stage } });
     if (error || !data?.ok) return { ok: false, error: data?.error ?? error?.message ?? 'No se pudo actualizar el viaje' };
     return { ok: true };
   }
@@ -2062,7 +2103,11 @@ export class AndaGanaService {
     const { error } = await this.supabase.rpc('ag_driver_cancel_trip', {
       p_trip_request_id: tripRequestId, p_reason: reason ?? null,
     });
-    return error ? { success: false, error: error.message } : { success: true };
+    if (error) {
+      this.reportTripError('driverCancelTrip', error, { critical: true, extra: { tripRequestId } });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   }
 
   // ═══════════════════════════════════════════════════
