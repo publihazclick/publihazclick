@@ -55,6 +55,34 @@ async function sendText(to: string, text: string): Promise<{ ok: boolean; status
   }
 }
 
+// ─── Mensaje de plantilla aprobada (no depende de la ventana de 24h) ─────────
+async function sendTemplate(to: string, templateName: string, langCode: string, bodyParams: string[]): Promise<{ ok: boolean; status?: number; body?: string }> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: langCode },
+          components: [
+            { type: 'body', parameters: bodyParams.map(t => ({ type: 'text', text: t })) },
+          ],
+        },
+      }),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) console.error('[WA] sendTemplate Meta API error:', res.status, bodyText);
+    return { ok: res.ok, status: res.status, body: bodyText };
+  } catch (e) {
+    console.error('[WA] sendTemplate fetch error:', e);
+    return { ok: false, body: String(e) };
+  }
+}
+
 // ─── Normalizar número a E.164 ────────────────────────────────────────────────
 function toE164(phone: string): string {
   const digits = phone.replace(/\D/g, '');
@@ -1097,6 +1125,30 @@ serve(async (req) => {
     const msgData = (data as Record<string, string>) ?? {};
     let text = (message as string) ?? '';
 
+    // error_alert usa la plantilla aprobada "trip_error_alert" (categoria Utilidad)
+    // para no depender de la ventana de 24h de conversacion -- si la plantilla
+    // todavia no fue aprobada por Meta (o falla por cualquier motivo), cae de
+    // vuelta al texto libre de siempre como respaldo.
+    if (event === 'error_alert') {
+      const contexto = msgData.context ?? 'desconocido';
+      const detalle  = msgData.message ?? '';
+      let waResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle]);
+      if (!waResult.ok) {
+        waResult = await sendText(toE164(targetPhone), `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${contexto}\n⚠️ ${detalle}`);
+      }
+      try {
+        const supabase = db();
+        await supabase.from('ag_admin_notifications').insert({
+          type:  'trip_error',
+          title: `Error en flujo de viaje: ${contexto}`,
+          body:  detalle,
+        });
+      } catch (e) { console.error('[WA] error_alert notification insert error:', e); }
+      return new Response(JSON.stringify({ sent: waResult.ok }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!text && event) {
       const eventMap: Record<string, (d: Record<string, string>) => string> = {
         trip_request: d => `🚗 *Movi* — Nueva solicitud de viaje\n\n📍 Desde: ${d.origin}\n📍 Hasta: ${d.destination}\n💰 Oferta: $${d.price}\n\nAbre la app para ofertar.`,
@@ -1108,24 +1160,12 @@ serve(async (req) => {
         trip_cancelled: d => `❌ *Movi* — Viaje cancelado\n\nMotivo: ${d.reason}`,
         withdrawal_approved: d => `💸 *Movi* — Retiro aprobado\n\n$${d.amount} en proceso (máx 24 hrs hábiles).`,
         sos_alert: d => `🆘 *ALERTA SOS*\n\nUsuario: ${d.user_name}\nUbicación: ${d.location}\nViaje: ${d.trip_id}`,
-        error_alert: d => `🔴 *Movi* — Error en el flujo de viaje\n\n📍 Contexto: ${d.context}\n⚠️ ${d.message}`,
       };
       text = eventMap[event as string]?.(msgData) ?? (msgData.message ?? '');
     }
 
     if (text) {
       const waResult = await sendText(toE164(targetPhone), text);
-      // Registro best-effort para trazabilidad, igual que hace triggerWaSos con SOS.
-      if (event === 'error_alert') {
-        try {
-          const supabase = db();
-          await supabase.from('ag_admin_notifications').insert({
-            type:  'trip_error',
-            title: `Error en flujo de viaje: ${msgData.context ?? 'desconocido'}`,
-            body:  msgData.message ?? '',
-          });
-        } catch (e) { console.error('[WA] error_alert notification insert error:', e); }
-      }
       return new Response(JSON.stringify({ sent: waResult.ok }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
