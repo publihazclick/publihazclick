@@ -13500,7 +13500,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   ccEmergency(): void {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
-        const url = `https://wa.me/573734453649?text=${encodeURIComponent(`🚨 EMERGENCIA MOVI - Estoy en: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`)}`;
+        const url = `https://wa.me/573134453649?text=${encodeURIComponent(`🚨 EMERGENCIA MOVI - Estoy en: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`)}`;
         window.open(url, '_blank');
       });
     }
@@ -14567,7 +14567,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   async openDriverSection(action: string) {
     this.driverMenuOpen.set(false);
     if (!action) return;
-    if (action === 'whatsapp_support') { window.open('https://wa.me/573734453649', '_blank'); return; }
+    if (action === 'whatsapp_support') { window.open('https://wa.me/573134453649', '_blank'); return; }
     if (action === 'terms') { window.open('/anda-gana/terminos', '_blank'); return; }
     if (action === 'privacy') { window.open('/anda-gana/privacidad', '_blank'); return; }
     if (action === 'wallet-panel') { this.walletPanelOpen.set(true); return; }
@@ -19107,7 +19107,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   openPassengerSection(action: string) {
     this.agMenuOpen.set(false);
-    if (action === 'whatsapp_support') { window.open('https://wa.me/573734453649', '_blank'); return; }
+    if (action === 'whatsapp_support') { window.open('https://wa.me/573134453649', '_blank'); return; }
     if (action === 'terms') { window.open('/anda-gana/terminos', '_blank'); return; }
     if (action === 'privacy') { window.open('/anda-gana/privacidad', '_blank'); return; }
     if (action.startsWith('service:')) {

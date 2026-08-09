@@ -10,8 +10,8 @@ const SERVICE_ROLE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const PRICE_PER_KM = 1500;
 const MIN_PRICE    = 5000;
-// Número de soporte de Movi (el mismo ya usado en la app para wa.me/573734453649)
-const SUPPORT_PHONE = '573734453649';
+// Número de soporte de Movi (el mismo ya usado en la app para wa.me/573134453649)
+const SUPPORT_PHONE = '573134453649';
 
 const SERVICE_LABELS: Record<string, string> = {
   carro:     '🚗 Carro',
