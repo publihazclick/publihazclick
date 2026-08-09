@@ -29,18 +29,30 @@ function db() {
 }
 
 // ─── WhatsApp API helpers ─────────────────────────────────────────────────────
-async function sendText(to: string, text: string): Promise<void> {
-  await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to,
-      type: 'text',
-      text: { preview_url: false, body: text },
-    }),
-  }).catch(e => console.error('[WA] sendText error:', e));
+async function sendText(to: string, text: string): Promise<{ ok: boolean; status?: number; body?: string }> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'text',
+        text: { preview_url: false, body: text },
+      }),
+    });
+    const bodyText = await res.text();
+    // Antes esto no revisaba res.ok -- un rechazo de la API de Meta (token vencido,
+    // numero no registrado, fuera de ventana de 24h) quedaba invisible: el fetch "exitoso"
+    // (sin lanzar excepcion) hacia parecer que el mensaje se habia enviado cuando en
+    // realidad Meta lo rechazo. Se loguea siempre para poder diagnosticar sin adivinar.
+    if (!res.ok) console.error('[WA] sendText Meta API error:', res.status, bodyText);
+    return { ok: res.ok, status: res.status, body: bodyText };
+  } catch (e) {
+    console.error('[WA] sendText fetch error:', e);
+    return { ok: false, body: String(e) };
+  }
 }
 
 // ─── Normalizar número a E.164 ────────────────────────────────────────────────
@@ -1102,7 +1114,7 @@ serve(async (req) => {
     }
 
     if (text) {
-      await sendText(toE164(targetPhone), text);
+      const waResult = await sendText(toE164(targetPhone), text);
       // Registro best-effort para trazabilidad, igual que hace triggerWaSos con SOS.
       if (event === 'error_alert') {
         try {
@@ -1114,7 +1126,7 @@ serve(async (req) => {
           });
         } catch (e) { console.error('[WA] error_alert notification insert error:', e); }
       }
-      return new Response(JSON.stringify({ sent: true }), {
+      return new Response(JSON.stringify({ sent: waResult.ok }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
