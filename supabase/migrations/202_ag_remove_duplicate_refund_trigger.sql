@@ -1,0 +1,34 @@
+-- =============================================================================
+-- Migration 202: elimina el trigger de reembolso duplicado y desactualizado
+-- -- encontrado en auditoría 2026-08-09 pedida por el usuario tras el
+-- incidente del viaje huérfano.
+--
+-- Había DOS triggers AFTER UPDATE en ag_trip_requests que reembolsan comisión
+-- al cancelar:
+--   1. trg_ag_refund_on_cancel (función ag_refund_commission_on_cancel,
+--      preexistente antes de la migración 188) -- reembolsa SIEMPRE que se
+--      cancela desde 'accepted'/'in_progress', SIN mirar driver_stage. Es
+--      decir, reembolsaba comisión incluso si el pasajero ya había abordado
+--      y el viaje casi había terminado -- plata devuelta por un servicio que
+--      sí se prestó.
+--   2. trg_ag_trip_cancellation (función ag_handle_trip_cancellation,
+--      migración 188) -- la versión correcta: solo reembolsa si
+--      driver_stage es null/heading_to_pickup/arrived_at_pickup (el pasajero
+--      nunca llegó a abordar), con guarda contra doble reembolso.
+--
+-- La migración 188 nunca desactivó la (1) al agregar la (2) -- ambas
+-- convivían. Por el orden alfabético de ejecución de triggers AFTER en
+-- Postgres ('trg_ag_refund_on_cancel' antes que 'trg_ag_trip_cancellation'),
+-- la vieja disparaba primero y la nueva se auto-anulaba por su guarda
+-- anti-doble-reembolso -- así que en la práctica la regla de negocio nunca
+-- se aplicó desde que se creó, y toda cancelación con comisión reembolsaba
+-- el 100% sin importar si el viaje ya se había hecho.
+--
+-- Verificado con datos reales: no hay ninguna cancelación post-abordaje
+-- (driver_stage picked_up/on_route/arrived_at_destination) desde el
+-- 2026-08-04 -- no hace falta reconciliar plata, solo cerrar el hueco antes
+-- de que ocurra con un usuario real.
+-- =============================================================================
+
+DROP TRIGGER IF EXISTS trg_ag_refund_on_cancel ON public.ag_trip_requests;
+DROP FUNCTION IF EXISTS public.ag_refund_commission_on_cancel();
