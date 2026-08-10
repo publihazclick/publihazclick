@@ -1202,6 +1202,52 @@ async function handleConversation(
 
   // ── IN_TRIP ──────────────────────────────────────────────────────────────────
   if (state === 'in_trip') {
+    // Confirmación de "ya estoy a bordo" -- botón que sale junto al aviso de
+    // llegada del conductor (ver evento driver_arrived). Le avisa al
+    // conductor por push nativo (mismo canal que las solicitudes nuevas, ya
+    // llega con la app cerrada) que el pasajero ya subió, para que arranque
+    // con confianza. Match por texto (no por id de botón) porque el resto del
+    // bot ya sigue ese mismo patrón (ver isYes/isNo) y así también funciona
+    // si el pasajero lo escribe a mano en vez de tocar el botón.
+    if (/a bordo/i.test(text)) {
+      const tripId = session.trip_request_id as string | null;
+      if (tripId) {
+        const supabase = db();
+        const { data: trip } = await supabase
+          .from('ag_trip_requests')
+          .select('driver_id, passenger_boarded_at')
+          .eq('id', tripId)
+          .maybeSingle();
+        if (trip?.driver_id && !trip.passenger_boarded_at) {
+          await supabase.from('ag_trip_requests')
+            .update({ passenger_boarded_at: new Date().toISOString() })
+            .eq('id', tripId);
+
+          const { data: driver } = await supabase
+            .from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle();
+          if (driver?.ag_user_id) {
+            const { data: driverUser } = await supabase
+              .from('ag_users').select('auth_user_id').eq('id', driver.ag_user_id as string).maybeSingle();
+            if (driverUser?.auth_user_id) {
+              fetch(`${SUPABASE_URL}/functions/v1/ag-send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+                body: JSON.stringify({
+                  user_ids: [driverUser.auth_user_id],
+                  title: '🚗 Tu pasajero ya está a bordo',
+                  body:  'Puedes arrancar hacia el destino.',
+                  url:   `/anda-gana?trip_request_id=${tripId}`,
+                  tag:   `board-${tripId}`,
+                }),
+              }).catch((e) => console.error('[WA] push aviso a bordo error:', e));
+            }
+          }
+        }
+        await sendText(phone, `¡Buen viaje! 🚗💨 Ya le avisamos a tu conductor.`);
+        return;
+      }
+    }
+
     // Antes cualquier mensaje en este estado recibía la misma respuesta
     // genérica -- si el pasajero pregunta por su conductor en lenguaje
     // natural ("dónde está", "cuánto falta", "ya casi llega?"), se le
@@ -1326,6 +1372,14 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       await sendText(phone, `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
     }
     if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');
+
+    // Boton para que el pasajero confirme que ya subio -- mensaje interactivo
+    // normal (no plantilla), la ventana de 24h esta abierta de sobra en este
+    // punto (el pasajero acaba de interactuar hace minutos). Se le avisa al
+    // conductor por push cuando lo toque, ver AWAITING_OFFER... en_trip abajo.
+    await sendButtons(phone, `¿Ya subiste al vehículo?`, [
+      { id: `board_confirm`, title: '✅ Ya estoy a bordo' },
+    ]);
   }
 
   if (event === 'trip_completed') {
