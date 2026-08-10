@@ -1196,8 +1196,13 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const lng = payload.origin_lng as number | null;
     // Antes esto solo se enteraba por el ping de ubicacion en vivo del cron
     // (cada 4 min) -- ahora es instantaneo, disparado por el trigger apenas
-    // el conductor marca "llegue al punto de recogida" en la app.
-    await sendText(phone, `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
+    // el conductor marca "llegue al punto de recogida" en la app. Usa la
+    // plantilla aprobada "conductor_llego" para no depender de la ventana de
+    // 24h de conversacion -- si aun no esta aprobada o falla, cae al texto libre.
+    let waResult = await sendTemplate(phone, 'conductor_llego', 'es_CO', [driverName]);
+    if (!waResult.ok) {
+      await sendText(phone, `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
+    }
     if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');
   }
 
@@ -1223,13 +1228,23 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // No resetear todavía -- primero se pide la calificación del conductor,
     // manteniendo trip_request_id/ag_user_id en sesión para poder insertarla.
     await upsertSession(phone, { state: 'awaiting_rating' });
-    await sendText(phone,
-      `🏁 Llegaste${passengerName ? ', ' + passengerName : ''} — gracias por viajar con Movi 💚\n\n` +
-      (receiptLines ? `${receiptLines}\n` : '') +
-      `💰 *Total: ${cop(amount)}*\n\n` +
-      `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n` +
-      `_(o escribe *omitir* para saltar)_`
-    );
+
+    // Plantilla aprobada "viaje_completado" para no depender de la ventana de
+    // 24h -- si aun no esta aprobada o falla, cae al texto libre de siempre
+    // (que ademas incluye la propina cuando aplica, cosa que la plantilla
+    // rigida no puede mostrar condicionalmente).
+    let waResult = await sendTemplate(phone, 'viaje_completado', 'es_CO', [
+      distanceKm.toFixed(1), cop(amount), driverName,
+    ]);
+    if (!waResult.ok) {
+      await sendText(phone,
+        `🏁 Llegaste${passengerName ? ', ' + passengerName : ''} — gracias por viajar con Movi 💚\n\n` +
+        (receiptLines ? `${receiptLines}\n` : '') +
+        `💰 *Total: ${cop(amount)}*\n\n` +
+        `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n` +
+        `_(o escribe *omitir* para saltar)_`
+      );
+    }
   }
 
   if (event === 'live_location') {
