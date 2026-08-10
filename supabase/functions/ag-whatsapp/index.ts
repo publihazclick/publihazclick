@@ -712,19 +712,6 @@ async function maybeOfferAppDownload(phone: string): Promise<void> {
 }
 
 // ─── Menú de servicios ────────────────────────────────────────────────────────
-// Texto plano de respaldo -- se usa solo en los 2 caminos secundarios
-// (cancelar, estado desconocido) donde no vale la pena repetir los botones.
-function menuText(): string {
-  return `¡Hola! Soy *Movi* 🚗\n\n¿Qué servicio necesitas?\n\n` +
-    `1️⃣ 🚗 Carro\n` +
-    `2️⃣ 🏍️ Moto\n` +
-    `3️⃣ 📦 Domicilio\n` +
-    `4️⃣ 🌆 Ciudad a Ciudad\n` +
-    `5️⃣ 🚛 Flete\n\n` +
-    `Responde con el número de tu opción.\n` +
-    `Escribe *cancelar* en cualquier momento para reiniciar.`;
-}
-
 // Botones nativos con los 3 servicios que hoy se pueden pedir completos por
 // WhatsApp (carro/moto/domicilio comparten tabla y flujo). Ciudad a Ciudad y
 // Flete siguen accesibles escribiéndolos -- viven en otro sistema, ver
@@ -735,6 +722,22 @@ async function sendServiceButtons(phone: string, bodyText: string): Promise<void
     { id: 'svc_moto', title: '🏍️ Moto' },
     { id: 'svc_domicilio', title: '📦 Domicilio' },
   ]);
+}
+
+// Punto único para mostrar el menú de servicios y dejar la sesión lista para
+// recibirlo -- antes había 4 lugares que mandaban el menú, y 3 de ellos
+// dejaban el estado en 'idle' en vez de 'awaiting_service'. El bloque idle
+// ignora respuestas cortas (un dígito como "2"), así que el pasajero
+// respondía el número que el bot le acababa de pedir y el bot lo descartaba
+// en silencio, mandando el saludo de nuevo desde cero (bug real reportado
+// 2026-08-11: "las opciones 2,3,4,5 no son coherentes").
+async function presentServiceMenu(phone: string, bodyText: string, extraPatch: Record<string, unknown> = {}): Promise<void> {
+  await upsertSession(phone, {
+    state: 'awaiting_service',
+    expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    ...extraPatch,
+  });
+  await sendServiceButtons(phone, bodyText);
 }
 
 // ─── Normalizar respuestas sí/no ──────────────────────────────────────────────
@@ -856,7 +859,7 @@ async function handleConversation(
   // Cancelar en cualquier estado
   if (isCancel(text) && state !== 'idle') {
     await resetSession(phone);
-    await sendText(phone, `Solicitud cancelada. ${menuText()}`);
+    await presentServiceMenu(phone, `Solicitud cancelada. ¿En qué te ayudo ahora?`);
     return;
   }
 
@@ -879,14 +882,14 @@ async function handleConversation(
         return;
       }
     }
-    await upsertSession(phone, { state: 'awaiting_service', contact_name: contactName, expires_at: new Date(Date.now() + 2*60*60*1000).toISOString() });
     // No se usa el nombre de perfil de WhatsApp para saludar -- muchos
     // pasajeros tienen apodos o nombres que no son el suyo real como nombre
     // de contacto, y se veía poco profesional/impreciso (pedido explícito del
     // usuario 2026-08-10).
-    await sendServiceButtons(phone,
+    await presentServiceMenu(phone,
       `¡Hola! 👋 Soy Movi.\n\n¿En qué te ayudo hoy?\n\n` +
-      `_¿Necesitas viaje entre ciudades o un flete? Escríbeme cuál._`
+      `_¿Necesitas viaje entre ciudades o un flete? Escríbeme cuál._`,
+      { contact_name: contactName }
     );
     return;
   }
@@ -1158,9 +1161,9 @@ async function handleConversation(
           .eq('id', tripId);
       }
       await resetSession(phone);
-      await sendText(phone,
+      await presentServiceMenu(phone,
         `😔 No encontramos conductores disponibles en este momento.\n\n` +
-        `Puedes intentarlo de nuevo o en unos minutos.\n\n` + menuText()
+        `Puedes intentarlo de nuevo ya mismo o en unos minutos.`
       );
       return;
     }
@@ -1369,7 +1372,7 @@ async function handleConversation(
 
   // ── ESTADO DESCONOCIDO → reset ───────────────────────────────────────────────
   await resetSession(phone);
-  await sendText(phone, menuText());
+  await presentServiceMenu(phone, `Uy, no logré entender eso 🤔 ¿en qué te ayudo?`);
 }
 
 // ─── Manejar eventos internos (DB triggers) ───────────────────────────────────
