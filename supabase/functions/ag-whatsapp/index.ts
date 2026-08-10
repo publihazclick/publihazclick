@@ -1190,17 +1190,43 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     }, '', session.contact_name as string | undefined);
   }
 
+  if (event === 'driver_arrived') {
+    const driverName = payload.driver_name as string ?? 'Tu conductor';
+    const lat = payload.origin_lat as number | null;
+    const lng = payload.origin_lng as number | null;
+    // Antes esto solo se enteraba por el ping de ubicacion en vivo del cron
+    // (cada 4 min) -- ahora es instantaneo, disparado por el trigger apenas
+    // el conductor marca "llegue al punto de recogida" en la app.
+    await sendText(phone, `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
+    if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');
+  }
+
   if (event === 'trip_completed') {
-    const amount = payload.amount as number ?? 0;
-    const session = await getSession(phone);
+    const amount       = payload.amount as number ?? 0;
+    const tipAmount    = payload.tip_amount as number ?? 0;
+    const distanceKm   = payload.distance_km as number ?? 0;
+    const driverName   = payload.driver_name as string ?? 'tu conductor';
+    const session       = await getSession(phone);
     const passengerName = firstNameOf(session?.contact_name as string | undefined);
-    const driverName = (session?.driver_name as string | undefined) ?? 'tu conductor';
+    const cop = (n: number) => `$${Number(n).toLocaleString('es-CO')}`;
+
+    // Los viajes de WhatsApp negocian un precio único (no hay tarifa base +
+    // distancia por separado como en la app) -- base_fare/distance_fare
+    // siempre quedan vacíos aquí, así que el "desglose" real y honesto es
+    // la distancia recorrida (sí se guarda, ver createWaTrip) más la propina
+    // si hubo, no una tarifa inventada.
+    const receiptLines = [
+      distanceKm > 0 ? `📏 ${distanceKm.toFixed(1)} km recorridos` : null,
+      tipAmount > 0  ? `🙌 Propina: ${cop(tipAmount)}` : null,
+    ].filter(Boolean).join('\n');
+
     // No resetear todavía -- primero se pide la calificación del conductor,
     // manteniendo trip_request_id/ag_user_id en sesión para poder insertarla.
     await upsertSession(phone, { state: 'awaiting_rating' });
     await sendText(phone,
       `🏁 Llegaste${passengerName ? ', ' + passengerName : ''} — gracias por viajar con Movi 💚\n\n` +
-      `💰 Total: $${Number(amount).toLocaleString('es-CO')}\n\n` +
+      (receiptLines ? `${receiptLines}\n` : '') +
+      `💰 *Total: ${cop(amount)}*\n\n` +
       `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n` +
       `_(o escribe *omitir* para saltar)_`
     );
