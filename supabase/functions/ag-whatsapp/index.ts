@@ -808,6 +808,25 @@ async function handleConversation(
     session = { wa_phone: phone, state: 'idle' };
   }
 
+  // Si el viaje asociado a la sesión ya terminó (completado o cancelado por
+  // cualquier vía, no solo las que el bot ya sabe reconocer), la conversación
+  // no debe seguir atada a él -- se trata como un mensaje nuevo desde cero en
+  // vez de arrastrar un estado de un viaje que ya no existe. awaiting_rating
+  // se deja fuera de este chequeo porque tiene su propia lógica equivalente
+  // más abajo (sigue pudiendo capturar la calificación si es justo eso lo
+  // que responde el pasajero).
+  if (session.trip_request_id && session.state && session.state !== 'idle' && session.state !== 'awaiting_rating') {
+    const { data: tripCheck } = await db()
+      .from('ag_trip_requests')
+      .select('status')
+      .eq('id', session.trip_request_id as string)
+      .maybeSingle();
+    if (tripCheck && (tripCheck.status === 'completed' || tripCheck.status === 'cancelled')) {
+      await resetSession(phone);
+      session = { wa_phone: phone, state: 'idle' };
+    }
+  }
+
   const state = session.state ?? 'idle';
   const text  = msgText.trim();
 
@@ -1296,7 +1315,12 @@ async function handleConversation(
 
     const stars = parseInt(text, 10);
     if (!Number.isInteger(stars) || stars < 1 || stars > 5 || !/^\d+$/.test(text)) {
-      await sendText(phone, `Por favor responde con un número del *1* al *5*, o escribe *omitir* para saltar.`);
+      // El viaje ya terminó -- si lo que responde no es una calificación (ej.
+      // ya está pidiendo un viaje nuevo), no lo dejamos atascado insistiendo
+      // con "responde un número": se reprocesa como un mensaje nuevo desde
+      // cero, igual que si la sesión ya estuviera en idle.
+      await resetSession(phone);
+      await handleConversation(phone, contactName, msgType, msgText, msgLat, msgLng);
       return;
     }
 
