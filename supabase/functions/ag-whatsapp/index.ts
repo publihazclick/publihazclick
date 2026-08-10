@@ -178,6 +178,40 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
 }
 
 async function forwardGeocode(text: string): Promise<{ lat: number; lng: number; address: string } | null> {
+  // Google Places (Text Search) como fuente principal -- la misma API key que
+  // ya usa el buscador de la app (ver memoria buscador_google_places), con
+  // Maps JavaScript API + Places API habilitadas. Entiende direcciones
+  // informales/colombianas ("cra 5 con calle 10", nombres de barrios, lugares
+  // conocidos) muchisimo mejor que Nominatim/OSM, que casi siempre devolvia
+  // "no encontré esa dirección" con el texto tal cual lo escribe un pasajero
+  // real por WhatsApp (bug reportado 2026-08-10). Nominatim se deja como
+  // ultimo respaldo si Google falla (cuota, red, o sin resultados).
+  const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+  if (googleKey) {
+    try {
+      const q = encodeURIComponent(text + ', Colombia');
+      const r = await fetch(
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${q}&region=co&language=es&key=${googleKey}`
+      );
+      const j = await r.json();
+      if (j.status === 'OK' && j.results?.length) {
+        const item = j.results[0];
+        const loc = item.geometry?.location;
+        if (loc?.lat != null && loc?.lng != null) {
+          return {
+            lat: loc.lat,
+            lng: loc.lng,
+            address: (item.name && item.formatted_address && !item.formatted_address.startsWith(item.name))
+              ? `${item.name}, ${item.formatted_address}`
+              : (item.formatted_address ?? item.name ?? text),
+          };
+        }
+      } else if (j.status !== 'ZERO_RESULTS') {
+        console.error('[Geo] Google Places error:', j.status, j.error_message);
+      }
+    } catch (e) { console.error('[Geo] Google Places fetch error:', e); }
+  }
+
   try {
     const q = encodeURIComponent(text + ', Colombia');
     const r = await fetch(
@@ -193,7 +227,7 @@ async function forwardGeocode(text: string): Promise<{ lat: number; lng: number;
         address: item.display_name.split(',').slice(0, 3).join(',').trim(),
       };
     }
-  } catch (e) { console.error('[Geo] forwardGeocode error:', e); }
+  } catch (e) { console.error('[Geo] Nominatim fallback error:', e); }
   return null;
 }
 
@@ -702,7 +736,17 @@ function isNo(t: string): boolean {
   return n.includes('buscar otro') || n.includes('cambiar');
 }
 function isCancel(t: string): boolean {
-  return /^(cancelar|cancel|salir|exit|menu|menú|inicio|start|hola|hi|hello|comenzar)$/i.test(t.trim());
+  return /^(cancelar|cancel|salir|exit)$/i.test(t.trim());
+}
+
+// Saludos/reinicio -- antes vivían mezclados con isCancel() y borraban TODO el
+// pedido en curso (incluido el servicio ya elegido) si el pasajero simplemente
+// volvía a saludar a mitad de la conversación (ej: después de que fallaba la
+// búsqueda de una dirección) -- bug real reportado 2026-08-10, se sentía como
+// "le digo que quiero un carro y me lo vuelve a preguntar". Un saludo a mitad
+// de flujo ya no cancela nada, solo recuerda en qué se quedó.
+function isGreeting(t: string): boolean {
+  return /^(menu|menú|inicio|start|hola|hi|hello|comenzar)$/i.test(t.trim());
 }
 function isSos(t: string): boolean {
   return /^(sos|s\.o\.s\.?|ayuda|emergencia|auxilio|help)$/i.test(t.trim());
@@ -778,6 +822,14 @@ async function handleConversation(
   if (isCancel(text) && state !== 'idle') {
     await resetSession(phone);
     await sendText(phone, `Solicitud cancelada. ${menuText()}`);
+    return;
+  }
+
+  // Saludo/reinicio a mitad de un pedido ya en curso -- ya NO cancela nada
+  // (ver isGreeting arriba). Solo se le recuerda que sigue esperando su
+  // respuesta anterior, sin perder el servicio/origen/destino ya elegidos.
+  if (isGreeting(text) && state !== 'idle') {
+    await sendText(phone, `¡Hola de nuevo! 👋 Sigo aquí, esperando tu respuesta anterior.\n\nEscribe *cancelar* si prefieres empezar de nuevo.`);
     return;
   }
 
