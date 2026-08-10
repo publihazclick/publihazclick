@@ -157,6 +157,32 @@ function toE164(phone: string): string {
 
 // ─── Geocoding via Nominatim OSM ──────────────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  // Mapbox como fuente principal -- el mismo token publico que ya usa el mapa
+  // de la app (environment.ts, andaGana.mapboxToken). Nominatim/OSM devolvia
+  // direcciones que no concordaban con la ubicacion real del pasajero (bug
+  // reportado 2026-08-10, mismo tipo de problema que ya se corrigio para
+  // direcciones en texto -- ver forwardGeocode). No se usa Google aca porque
+  // la API key del proyecto solo tiene Places API habilitada, no Geocoding
+  // API (el endpoint de reverse geocoding "clasico" de Google) -- probado y
+  // confirmado con REQUEST_DENIED antes de elegir Mapbox.
+  const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN');
+  if (mapboxToken) {
+    try {
+      const r = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&language=es&types=address,poi`
+      );
+      const j = await r.json();
+      const feature = j?.features?.[0];
+      if (feature?.place_name) {
+        // "Calle 1B 2 15, 540001 San José de Cúcuta, Norte de Santander, Colombia"
+        // -> se recorta a los primeros 2-3 segmentos (calle + ciudad), igual
+        // que se hacia antes con Nominatim, para no mandar el pais/codigo
+        // postal en cada mensaje.
+        return feature.place_name.split(',').slice(0, 3).join(',').trim();
+      }
+    } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
+  }
+
   try {
     const r = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`,
@@ -164,7 +190,6 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
     );
     const j = await r.json();
     if (j?.display_name) {
-      // Simplificar la dirección: calle + barrio + ciudad
       const a = j.address ?? {};
       const parts = [
         a.road ?? a.pedestrian ?? a.path,
@@ -173,7 +198,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
       ].filter(Boolean);
       return parts.length ? parts.join(', ') : j.display_name.split(',').slice(0, 3).join(',');
     }
-  } catch (e) { console.error('[Geo] reverseGeocode error:', e); }
+  } catch (e) { console.error('[Geo] Nominatim fallback error:', e); }
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
@@ -444,7 +469,7 @@ async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unk
 // Con foto real del conductor como header de la tarjeta cuando existe (casi
 // siempre, se verifica en el registro) -- antes era puro texto plano, la
 // primera cara que veía el pasajero era la de su conductor en persona.
-async function presentOffer(phone: string, o: Record<string, unknown>, prefix = '', contactName?: string): Promise<void> {
+async function presentOffer(phone: string, o: Record<string, unknown>, prefix = ''): Promise<void> {
   await upsertSession(phone, {
     state:           'awaiting_offer_response',
     active_offer_id: o.offer_id,
@@ -457,7 +482,6 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
 
   const rating  = o.driver_rating as number;
   const trips   = o.driver_trips as number ?? 0;
-  const name    = firstNameOf(contactName);
   const price   = (o.driver_price as number).toLocaleString('es-CO');
   const details = [
     o.driver_vehicle ? `🚗 ${o.driver_vehicle}` : null,
@@ -475,7 +499,7 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
   ].filter(Boolean).join(' · ');
 
   const body =
-    `${prefix}${o.driver_name} quiere llevarte${name ? ', ' + name : ''} 🚗\n\n` +
+    `${prefix}${o.driver_name} quiere llevarte 🚗\n\n` +
     (trustParts ? `${trustParts}` + (details ? ` · ${details}` : '') + `\n` : (details ? `${details}\n` : '')) +
     `💰 Te cobra *$${price}*`;
 
@@ -701,14 +725,6 @@ function menuText(): string {
     `Escribe *cancelar* en cualquier momento para reiniciar.`;
 }
 
-// Primer nombre limpio, o cadena vacía si no hay uno usable (WhatsApp a veces
-// manda el numero de telefono como "nombre" cuando el contacto no tiene uno).
-function firstNameOf(contactName: string | null | undefined): string {
-  const n = (contactName ?? '').trim();
-  if (!n || /^\+?\d[\d\s()-]*$/.test(n) || n.toLowerCase() === 'usuario') return '';
-  return n.split(/\s+/)[0];
-}
-
 // Botones nativos con los 3 servicios que hoy se pueden pedir completos por
 // WhatsApp (carro/moto/domicilio comparten tabla y flujo). Ciudad a Ciudad y
 // Flete siguen accesibles escribiéndolos -- viven en otro sistema, ver
@@ -864,9 +880,12 @@ async function handleConversation(
       }
     }
     await upsertSession(phone, { state: 'awaiting_service', contact_name: contactName, expires_at: new Date(Date.now() + 2*60*60*1000).toISOString() });
-    const greetName = firstNameOf(contactName);
+    // No se usa el nombre de perfil de WhatsApp para saludar -- muchos
+    // pasajeros tienen apodos o nombres que no son el suyo real como nombre
+    // de contacto, y se veía poco profesional/impreciso (pedido explícito del
+    // usuario 2026-08-10).
     await sendServiceButtons(phone,
-      `¡Hola${greetName ? ', ' + greetName : ''}! 👋 Soy Movi.\n\n¿En qué te ayudo hoy?\n\n` +
+      `¡Hola! 👋 Soy Movi.\n\n¿En qué te ayudo hoy?\n\n` +
       `_¿Necesitas viaje entre ciudades o un flete? Escríbeme cuál._`
     );
     return;
@@ -1121,7 +1140,7 @@ async function handleConversation(
       // aviso push no alcanzó a llegar) — no debe perderse.
       const nextOffer = await fetchNextPendingOffer(tripId);
       if (nextOffer) {
-        await presentOffer(phone, nextOffer, '', session.contact_name as string | undefined);
+        await presentOffer(phone, nextOffer);
         return;
       }
     }
@@ -1168,11 +1187,10 @@ async function handleConversation(
           return;
         }
         await upsertSession(phone, { state: 'in_trip' });
-        const passengerName = firstNameOf(session.contact_name as string | undefined);
         const oLat = session.origin_lat as number;
         const oLng = session.origin_lng as number;
         await sendText(phone,
-          `🎉 ¡Listo${passengerName ? ', ' + passengerName : ''}! *${session.driver_name}* va para allá.\n\n` +
+          `🎉 ¡Listo! *${session.driver_name}* va para allá.\n\n` +
           (session.driver_vehicle ? `🚗 ${session.driver_vehicle}` : '') +
           (session.driver_plate   ? ` · ${session.driver_plate}` : '') +
           `\n💰 Acordaron *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*` +
@@ -1197,7 +1215,7 @@ async function handleConversation(
       // de perderla / esperar a que llegue un nuevo aviso.
       const nextOffer = tripId ? await fetchNextPendingOffer(tripId) : null;
       if (nextOffer) {
-        await presentOffer(phone, nextOffer, 'Oferta rechazada ❌\n\n', session.contact_name as string | undefined);
+        await presentOffer(phone, nextOffer, 'Oferta rechazada ❌\n\n');
         return;
       }
 
@@ -1379,7 +1397,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       driver_photo:   payload.driver_photo as string ?? '',
       driver_rating:  payload.driver_rating as number ?? 0,
       driver_trips:   payload.driver_trips as number ?? 0,
-    }, '', session.contact_name as string | undefined);
+    });
   }
 
   if (event === 'driver_arrived') {
@@ -1420,8 +1438,6 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const tipAmount    = payload.tip_amount as number ?? 0;
     const distanceKm   = payload.distance_km as number ?? 0;
     const driverName   = payload.driver_name as string ?? 'tu conductor';
-    const session       = await getSession(phone);
-    const passengerName = firstNameOf(session?.contact_name as string | undefined);
     const cop = (n: number) => `$${Number(n).toLocaleString('es-CO')}`;
 
     // Los viajes de WhatsApp negocian un precio único (no hay tarifa base +
@@ -1447,7 +1463,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     ]);
     if (!waResult.ok) {
       await sendText(phone,
-        `🏁 Llegaste${passengerName ? ', ' + passengerName : ''} — gracias por viajar con Movi 💚\n\n` +
+        `🏁 Llegaste — gracias por viajar con Movi 💚\n\n` +
         (receiptLines ? `${receiptLines}\n` : '') +
         `💰 *Total: ${cop(amount)}*\n\n` +
         `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n` +
