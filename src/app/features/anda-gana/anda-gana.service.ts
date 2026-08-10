@@ -395,6 +395,9 @@ export class AndaGanaService {
         emergency_contact_name: form.emergencyName,
         emergency_contact_phone: form.emergencyPhone,
       };
+      // Selfie de rostro (sin cédula) — foto pública que ve el pasajero, distinta de la
+      // selfie con cédula (KYC) que va a ag_drivers.selfie_with_id_url.
+      if (documents['selfie']) driverInsert.selfie_url = documents['selfie'];
       if (form.referredBy) driverInsert.referred_by = form.referredBy;
 
       const { data: agUser, error: userError } = await this.supabase
@@ -466,7 +469,7 @@ export class AndaGanaService {
     const documents: Record<string, string> = {};
     for (const [key, url] of results) { if (url) documents[key] = url; }
 
-    const { error: userError } = await this.supabase.from('ag_users').update({
+    const userUpdate: any = {
       full_name: form.fullName,
       birth_date: form.birthDate,
       country: form.country ?? 'Colombia',
@@ -477,7 +480,12 @@ export class AndaGanaService {
       email: form.email,
       emergency_contact_name: form.emergencyName,
       emergency_contact_phone: form.emergencyPhone,
-    }).eq('id', agUserId);
+    };
+    // Solo pisa selfie_url si efectivamente se subió una selfie nueva en este registro
+    // (el paso puede ser opcional para conductores 'quick' completando sus datos).
+    if (documents['selfie']) userUpdate.selfie_url = documents['selfie'];
+
+    const { error: userError } = await this.supabase.from('ag_users').update(userUpdate).eq('id', agUserId);
     if (userError) return { success: false, error: userError.message };
 
     const { error: driverError } = await this.supabase.from('ag_drivers').update({

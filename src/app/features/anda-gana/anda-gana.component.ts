@@ -8986,6 +8986,40 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
             </div>
 
+            <!-- Selfie de rostro (sin cédula) — foto pública para que el pasajero reconozca al conductor -->
+            <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#34d399">face</span>
+                </div>
+                <h3 style="color:#6ee7b7;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Selfie de tu Rostro</h3>
+              </div>
+              <p class="text-slate-300 text-[11px] leading-relaxed" style="margin:0">
+                Tómate una selfie de tu rostro, <span class="text-white font-bold">sin la cédula</span>, para que los pasajeros te reconozcan cuando llegues por ellos. Esta foto es distinta a la selfie con cédula del paso anterior.
+              </p>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Selfie de rostro *</label>
+                <button type="button" (click)="openDocCamera('selfie', true)"
+                  class="w-full flex items-center gap-3 rounded-xl px-4 py-3 active:scale-95 transition-transform"
+                  style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25)">
+                  @if (df.selfie) {
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">check_circle</span>
+                    <div class="text-left min-w-0">
+                      <p class="text-emerald-400 text-xs font-black">Foto cargada</p>
+                      <p class="text-slate-500 text-[10px] truncate">{{ df.selfie }}</p>
+                    </div>
+                  } @else {
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">photo_camera</span>
+                    <div class="text-left">
+                      <p class="text-white text-xs font-bold">Tomar selfie</p>
+                      <p class="text-slate-500 text-[10px]">Rostro descubierto · buena iluminación</p>
+                    </div>
+                  }
+                </button>
+                <input id="doc-file-d-selfie" type="file" accept="image/*" capture="user" class="hidden" (change)="onDriverFileChange($event, 'selfie')"/>
+              </div>
+            </div>
+
             <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
               <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25)">
@@ -18583,7 +18617,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      // Selfies necesitan la cámara frontal -- todo lo demás (cédula, placa,
+      // vehículo) necesita la trasera. Antes siempre pedía la trasera, así que
+      // tomarse una selfie con esta cámara personalizada mostraba la cara de
+      // quien sostenía el teléfono al revés (o el fondo detrás de la persona).
+      const facingMode = field === 'selfie' || field === 'selfieWithId' ? 'user' : 'environment';
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
     } catch {
       this._triggerFallback(field, isDriver);
       return;
@@ -18741,7 +18780,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     fullName: '', birthDate: '', country: 'Colombia', department: '', city: '', idNumber: '',
     phone: '', email: '', password: '',
     emergencyName: '', emergencyPhone: '',
-    idFront: '', idBack: '', selfieWithId: '', criminalRecord: '',
+    idFront: '', idBack: '', selfieWithId: '', selfie: '', criminalRecord: '',
     licenseNumber: '', licenseCategory: '', licenseExpiry: '', licensePhoto: '', licenseBack: '',
     plate: '', vehicleType: '', vehicleBrand: '', vehicleModel: '', vehicleYear: '', vehicleColor: '',
     vehiclePhoto: '', vehicleSidePhoto: '',
@@ -18802,7 +18841,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       }
     }
     if (current === 2) {
-      if (!this.df.idFront || !this.df.idBack || !this.df.selfieWithId || !this.df.criminalRecord) {
+      if (!this.df.idFront || !this.df.idBack || !this.df.selfieWithId || !this.df.selfie || !this.df.criminalRecord) {
         this.driverError.set('Debes subir todos los documentos de identidad requeridos.');
         return;
       }
