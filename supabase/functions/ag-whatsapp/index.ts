@@ -83,6 +83,48 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
   }
 }
 
+type WaResult = { ok: boolean; status?: number; body?: string };
+
+async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', ...payload }),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) console.error('[WA] sendGraph Meta API error:', res.status, bodyText);
+    return { ok: res.ok, status: res.status, body: bodyText };
+  } catch (e) {
+    console.error('[WA] sendGraph fetch error:', e);
+    return { ok: false, body: String(e) };
+  }
+}
+
+// ─── Botones nativos (reemplaza "responde 1, 2 o 3" por algo que se toca) ────
+// Maximo 3 botones (limite real de la API), titulo <=20 caracteres. Si se pasa
+// headerImageUrl, el boton aparece como una tarjeta con foto arriba -- usado
+// para mostrar la cara real del conductor junto con "Aceptar"/"Buscar otro".
+async function sendButtons(to: string, bodyText: string, buttons: { id: string; title: string }[], headerImageUrl?: string): Promise<WaResult> {
+  const interactive: Record<string, unknown> = {
+    type: 'button',
+    body: { text: bodyText },
+    action: { buttons: buttons.slice(0, 3).map(b => ({ type: 'reply', reply: { id: b.id, title: b.title.slice(0, 20) } })) },
+  };
+  if (headerImageUrl) interactive.header = { type: 'image', image: { link: headerImageUrl } };
+  return sendGraph({ to, type: 'interactive', interactive });
+}
+
+// ─── Foto real (conductor, comprobantes) como imagen del chat ────────────────
+async function sendImage(to: string, imageUrl: string, caption?: string): Promise<WaResult> {
+  return sendGraph({ to, type: 'image', image: { link: imageUrl, caption } });
+}
+
+// ─── Ubicación como mapa nativo dentro del chat, no un link de texto ─────────
+async function sendLocation(to: string, lat: number, lng: number, name?: string, address?: string): Promise<WaResult> {
+  return sendGraph({ to, type: 'location', location: { latitude: lat, longitude: lng, name, address } });
+}
+
 // ─── Normalizar número a E.164 ────────────────────────────────────────────────
 function toE164(phone: string): string {
   const digits = phone.replace(/\D/g, '');
@@ -293,6 +335,7 @@ async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unk
   let driverPhone = '';
   let driverVeh = '';
   let driverPlate = '';
+  let driverPhoto = '';
   let driverRating = 0;
 
   const { data: driver } = await supabase
@@ -307,12 +350,13 @@ async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unk
 
     const { data: user } = await supabase
       .from('ag_users')
-      .select('full_name, phone')
+      .select('full_name, phone, selfie_url')
       .eq('id', driver.ag_user_id as string)
       .maybeSingle();
     if (user) {
       driverName  = user.full_name ?? driverName;
       driverPhone = user.phone ?? '';
+      driverPhoto = user.selfie_url ?? '';
     }
 
     const { data: ratings } = await supabase
@@ -332,12 +376,16 @@ async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unk
     driver_phone:   driverPhone,
     driver_vehicle: driverVeh,
     driver_plate:   driverPlate,
+    driver_photo:   driverPhoto,
     driver_rating:  driverRating,
   };
 }
 
 // ─── Mostrar una oferta al pasajero por WhatsApp ──────────────────────────────
-async function presentOffer(phone: string, o: Record<string, unknown>, prefix = ''): Promise<void> {
+// Con foto real del conductor como header de la tarjeta cuando existe (casi
+// siempre, se verifica en el registro) -- antes era puro texto plano, la
+// primera cara que veía el pasajero era la de su conductor en persona.
+async function presentOffer(phone: string, o: Record<string, unknown>, prefix = '', contactName?: string): Promise<void> {
   await upsertSession(phone, {
     state:           'awaiting_offer_response',
     active_offer_id: o.offer_id,
@@ -348,16 +396,29 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
     driver_plate:    o.driver_plate,
   });
 
-  const rating = o.driver_rating as number;
-  await sendText(phone,
-    `${prefix}🚗 ¡Conductor disponible!\n\n` +
-    `👤 *${o.driver_name}*\n` +
-    (rating > 0 ? `⭐ ${rating.toFixed(1)}\n` : '') +
-    (o.driver_vehicle ? `🚗 ${o.driver_vehicle}\n` : '') +
-    (o.driver_plate   ? `🔢 Placa: ${o.driver_plate}\n` : '') +
-    `💰 Precio ofertado: *$${(o.driver_price as number).toLocaleString('es-CO')}*\n\n` +
-    `¿Aceptas?\n*1* ✅ Aceptar\n*2* ❌ Buscar otro conductor`
-  );
+  const rating  = o.driver_rating as number;
+  const name    = firstNameOf(contactName);
+  const price   = (o.driver_price as number).toLocaleString('es-CO');
+  const details = [
+    o.driver_vehicle ? `🚗 ${o.driver_vehicle}` : null,
+    o.driver_plate   ? `Placa ${o.driver_plate}` : null,
+  ].filter(Boolean).join(' · ');
+
+  const body =
+    `${prefix}${o.driver_name} quiere llevarte${name ? ', ' + name : ''} 🚗\n\n` +
+    (rating > 0 ? `⭐ ${rating.toFixed(1)}` + (details ? ` · ${details}` : '') + `\n` : (details ? `${details}\n` : '')) +
+    `💰 Te cobra *$${price}*`;
+
+  const buttons = [
+    { id: `accept_offer_${o.offer_id}`, title: '✅ Aceptar' },
+    { id: `reject_offer_${o.offer_id}`, title: '🔄 Buscar otro' },
+  ];
+
+  if (o.driver_photo) {
+    await sendButtons(phone, body, buttons, o.driver_photo as string);
+  } else {
+    await sendButtons(phone, body, buttons);
+  }
 }
 
 // ─── Transcribir nota de voz (Meta media → OpenAI Whisper) ────────────────────
@@ -452,9 +513,10 @@ async function presentOriginConfirm(phone: string, addr: string, lat: number, ln
     state: 'awaiting_origin_confirm',
     origin_lat: lat, origin_lng: lng, origin_address: addr,
   });
-  await sendText(phone,
-    `📍 ¿Estás en:\n*${addr}*?\n\nResponde:\n✅ *si* — correcto\n❌ *no* — cambiar dirección`
-  );
+  await sendButtons(phone, `📍 ¿Estás en *${addr}*?`, [
+    { id: 'origin_yes', title: '✅ Sí, confirmar' },
+    { id: 'origin_no', title: '❌ Cambiar' },
+  ]);
 }
 
 // ─── Confirmar destino + precio sugerido (reusado por ambos flujos) ───────────
@@ -474,11 +536,13 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
     offered_price: suggested, pending_dest_text: null,
   });
 
-  const distText = distKm > 0 ? `📏 Distancia aprox: ${distKm.toFixed(1)} km\n` : '';
-  await sendText(phone,
-    `📍 ¿Vas a:\n*${addr}*?\n\n` + distText +
-    `💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
-    `Responde:\n✅ *si* — confirmar destino\n❌ *no* — cambiar destino`
+  const distText = distKm > 0 ? ` (${distKm.toFixed(1)} km)` : '';
+  await sendButtons(phone,
+    `📍 ¿Vas a *${addr}*?${distText}\n\n💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*`,
+    [
+      { id: 'dest_yes', title: '✅ Sí, confirmar' },
+      { id: 'dest_no', title: '❌ Cambiar' },
+    ]
   );
 }
 
@@ -554,6 +618,8 @@ async function maybeOfferAppDownload(phone: string): Promise<void> {
 }
 
 // ─── Menú de servicios ────────────────────────────────────────────────────────
+// Texto plano de respaldo -- se usa solo en los 2 caminos secundarios
+// (cancelar, estado desconocido) donde no vale la pena repetir los botones.
 function menuText(): string {
   return `¡Hola! Soy *Movi* 🚗\n\n¿Qué servicio necesitas?\n\n` +
     `1️⃣ 🚗 Carro\n` +
@@ -565,12 +631,39 @@ function menuText(): string {
     `Escribe *cancelar* en cualquier momento para reiniciar.`;
 }
 
+// Primer nombre limpio, o cadena vacía si no hay uno usable (WhatsApp a veces
+// manda el numero de telefono como "nombre" cuando el contacto no tiene uno).
+function firstNameOf(contactName: string | null | undefined): string {
+  const n = (contactName ?? '').trim();
+  if (!n || /^\+?\d[\d\s()-]*$/.test(n) || n.toLowerCase() === 'usuario') return '';
+  return n.split(/\s+/)[0];
+}
+
+// Botones nativos con los 3 servicios que hoy se pueden pedir completos por
+// WhatsApp (carro/moto/domicilio comparten tabla y flujo). Ciudad a Ciudad y
+// Flete siguen accesibles escribiéndolos -- viven en otro sistema, ver
+// sendUnsupportedServiceMessage().
+async function sendServiceButtons(phone: string, bodyText: string): Promise<void> {
+  await sendButtons(phone, bodyText, [
+    { id: 'svc_carro', title: '🚗 Carro' },
+    { id: 'svc_moto', title: '🏍️ Moto' },
+    { id: 'svc_domicilio', title: '📦 Domicilio' },
+  ]);
+}
+
 // ─── Normalizar respuestas sí/no ──────────────────────────────────────────────
+// Ademas del match exacto de siempre, reconoce el titulo de los botones nativos
+// ("✅ Aceptar a Mateo", "🔄 Buscar otro") que ahora reemplazan "responde 1/2"
+// -- el titulo trae el nombre del conductor pegado y nunca calzaria exacto.
 function isYes(t: string): boolean {
-  return /^(si|sí|yes|ok|okay|1|✅|👍|dale|acepto|confirmo|listo|bueno|claro)$/i.test(t.trim());
+  const n = t.trim().toLowerCase();
+  if (/^(si|sí|yes|ok|okay|1|✅|👍|dale|acepto|confirmo|listo|bueno|claro)$/i.test(n)) return true;
+  return n.includes('aceptar') || n.includes('confirmar');
 }
 function isNo(t: string): boolean {
-  return /^(no|nope|2|❌|👎|cambiar|otro|incorrecta|mal)$/i.test(t.trim());
+  const n = t.trim().toLowerCase();
+  if (/^(no|nope|2|❌|👎|cambiar|otro|incorrecta|mal)$/i.test(n)) return true;
+  return n.includes('buscar otro') || n.includes('cambiar');
 }
 function isCancel(t: string): boolean {
   return /^(cancelar|cancel|salir|exit|menu|menú|inicio|start|hola|hi|hello|comenzar)$/i.test(t.trim());
@@ -663,8 +756,12 @@ async function handleConversation(
         return;
       }
     }
-    await upsertSession(phone, { state: 'awaiting_service', expires_at: new Date(Date.now() + 2*60*60*1000).toISOString() });
-    await sendText(phone, menuText());
+    await upsertSession(phone, { state: 'awaiting_service', contact_name: contactName, expires_at: new Date(Date.now() + 2*60*60*1000).toISOString() });
+    const greetName = firstNameOf(contactName);
+    await sendServiceButtons(phone,
+      `¡Hola${greetName ? ', ' + greetName : ''}! 👋 Soy Movi.\n\n¿En qué te ayudo hoy?\n\n` +
+      `_¿Necesitas viaje entre ciudades o un flete? Escríbeme cuál._`
+    );
     return;
   }
 
@@ -698,7 +795,7 @@ async function handleConversation(
           return;
         }
       }
-      await sendText(phone, `No entendí tu respuesta 🤔\n\n${menuText()}`);
+      await sendServiceButtons(phone, `Creo que no te entendí bien 🤔 ¿cuál de estas necesitas?`);
       return;
     }
 
@@ -917,7 +1014,7 @@ async function handleConversation(
       // aviso push no alcanzó a llegar) — no debe perderse.
       const nextOffer = await fetchNextPendingOffer(tripId);
       if (nextOffer) {
-        await presentOffer(phone, nextOffer);
+        await presentOffer(phone, nextOffer, '', session.contact_name as string | undefined);
         return;
       }
     }
@@ -960,25 +1057,24 @@ async function handleConversation(
           p_trip_request_id: tripId,
         });
         if (error) {
-          await sendText(phone, `Error al confirmar la oferta 😔\nIntenta escribir *1* de nuevo.`);
+          await sendText(phone, `Uy, no pude confirmar la oferta 😔 ¿me confirmas de nuevo tocando "Aceptar"?`);
           return;
         }
         await upsertSession(phone, { state: 'in_trip' });
+        const passengerName = firstNameOf(session.contact_name as string | undefined);
         const oLat = session.origin_lat as number;
         const oLng = session.origin_lng as number;
-        const mapsLink = oLat && oLng
-          ? `\n🗺️ Tu punto de recogida:\nhttps://maps.google.com/?q=${oLat},${oLng}`
-          : '';
         await sendText(phone,
-          `🎉 ¡Conductor confirmado!\n\n` +
-          `👤 *${session.driver_name}*\n` +
-          (session.driver_vehicle ? `🚗 ${session.driver_vehicle}\n` : '') +
-          (session.driver_plate   ? `🔢 Placa: ${session.driver_plate}\n` : '') +
-          (session.driver_phone   ? `📱 Llamar: ${toE164(session.driver_phone as string)}\n` : '') +
-          `\n💰 Precio acordado: *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*` +
-          mapsLink +
-          `\n\nEl conductor está en camino. 🚗\nTe avisamos cuando llegue al punto de recogida.`
+          `🎉 ¡Listo${passengerName ? ', ' + passengerName : ''}! *${session.driver_name}* va para allá.\n\n` +
+          (session.driver_vehicle ? `🚗 ${session.driver_vehicle}` : '') +
+          (session.driver_plate   ? ` · ${session.driver_plate}` : '') +
+          `\n💰 Acordaron *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*` +
+          (session.driver_phone   ? `\n📱 Si necesitas llamarlo: ${toE164(session.driver_phone as string)}` : '') +
+          `\n\nTe aviso apenas llegue.`
         );
+        // Ubicación nativa del punto de recogida -- mismo motivo que el
+        // seguimiento en vivo: un mapa real en el chat, no un link.
+        if (oLat && oLng) await sendLocation(phone, oLat, oLng, 'Tu punto de recogida');
       }
     } else if (isNo(text)) {
       // Rechazar esta oferta y seguir buscando
@@ -994,7 +1090,7 @@ async function handleConversation(
       // de perderla / esperar a que llegue un nuevo aviso.
       const nextOffer = tripId ? await fetchNextPendingOffer(tripId) : null;
       if (nextOffer) {
-        await presentOffer(phone, nextOffer, 'Oferta rechazada ❌\n\n');
+        await presentOffer(phone, nextOffer, 'Oferta rechazada ❌\n\n', session.contact_name as string | undefined);
         return;
       }
 
@@ -1078,45 +1174,34 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const session = await getSession(phone);
     if (!session || session.state !== 'matching') return;
 
-    const driverName  = payload.driver_name as string ?? 'Conductor';
-    const driverPrice = payload.offered_price as number ?? 0;
-    const driverPhone = payload.driver_phone as string ?? '';
-    const driverVeh   = payload.driver_vehicle as string ?? '';
-    const driverPlate = payload.driver_plate as string ?? '';
-    const driverRating = payload.driver_rating as number ?? 0;
-    const offerId     = payload.offer_id as string;
-
-    await upsertSession(phone, {
-      state: 'awaiting_offer_response',
-      active_offer_id: offerId,
-      driver_name:     driverName,
-      driver_price:    driverPrice,
-      driver_phone:    driverPhone,
-      driver_vehicle:  driverVeh,
-      driver_plate:    driverPlate,
-    });
-
-    await sendText(phone,
-      `🚗 ¡Conductor disponible!\n\n` +
-      `👤 *${driverName}*\n` +
-      (driverRating > 0 ? `⭐ ${driverRating.toFixed(1)}\n` : '') +
-      (driverVeh         ? `🚗 ${driverVeh}\n` : '') +
-      (driverPlate       ? `🔢 Placa: ${driverPlate}\n` : '') +
-      `💰 Precio ofertado: *$${driverPrice.toLocaleString('es-CO')}*\n\n` +
-      `¿Aceptas?\n*1* ✅ Aceptar\n*2* ❌ Buscar otro conductor`
-    );
+    // Misma tarjeta (foto + botones) que usa el chequeo oportunista en
+    // fetchNextPendingOffer/presentOffer -- una sola forma de mostrar una
+    // oferta, sin importar si llegó por el aviso instantáneo del trigger o
+    // por recuperación al siguiente mensaje del pasajero.
+    await presentOffer(phone, {
+      offer_id:       payload.offer_id as string,
+      driver_name:    payload.driver_name as string ?? 'Conductor',
+      driver_price:   payload.offered_price as number ?? 0,
+      driver_phone:   payload.driver_phone as string ?? '',
+      driver_vehicle: payload.driver_vehicle as string ?? '',
+      driver_plate:   payload.driver_plate as string ?? '',
+      driver_photo:   payload.driver_photo as string ?? '',
+      driver_rating:  payload.driver_rating as number ?? 0,
+    }, '', session.contact_name as string | undefined);
   }
 
   if (event === 'trip_completed') {
     const amount = payload.amount as number ?? 0;
+    const session = await getSession(phone);
+    const passengerName = firstNameOf(session?.contact_name as string | undefined);
+    const driverName = (session?.driver_name as string | undefined) ?? 'tu conductor';
     // No resetear todavía -- primero se pide la calificación del conductor,
     // manteniendo trip_request_id/ag_user_id en sesión para poder insertarla.
     await upsertSession(phone, { state: 'awaiting_rating' });
     await sendText(phone,
-      `🏁 *¡Viaje completado!*\n\n` +
+      `🏁 Llegaste${passengerName ? ', ' + passengerName : ''} — gracias por viajar con Movi 💚\n\n` +
       `💰 Total: $${Number(amount).toLocaleString('es-CO')}\n\n` +
-      `Gracias por viajar con *Movi* 🚗💚\n\n` +
-      `⭐ *¿Cómo calificarías a tu conductor?*\nResponde con un número del *1* al *5*.\n` +
+      `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n` +
       `_(o escribe *omitir* para saltar)_`
     );
   }
@@ -1128,14 +1213,15 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     if (lat == null || lng == null) return;
 
     const label = stage === 'heading_to_pickup'
-      ? 'tu conductor va en camino a recogerte'
+      ? 'Va en camino a recogerte'
       : stage === 'arrived_at_pickup'
-        ? 'tu conductor llegó al punto de recogida'
-        : 'tu conductor va en camino';
+        ? 'Llegó al punto de recogida'
+        : 'Va en camino';
 
-    await sendText(phone,
-      `📍 Ubicación en vivo — ${label}\nhttps://maps.google.com/?q=${lat},${lng}`
-    );
+    // Mensaje de ubicación nativo de WhatsApp -- se ve como un mapa real
+    // dentro del chat, no como un link de texto que hay que tocar y esperar
+    // a que abra otra app.
+    await sendLocation(phone, lat, lng, 'Tu conductor', label);
   }
 }
 
