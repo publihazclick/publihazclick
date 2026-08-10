@@ -1511,7 +1511,9 @@ export class AndaGanaService {
   }
 
   // ═══════════════════════════════════════════════════
-  // Llamada enmascarada (Twilio)
+  // Llamada enmascarada por PSTN (Telnyx) -- respaldo real para cuando el otro lado del
+  // viaje no tiene cuenta de Auth (pasajero invitado de WhatsApp) y LiveKit no puede
+  // conectarlo. Ver callPassengerFromTrip() en anda-gana.component.ts.
   // ═══════════════════════════════════════════════════
   async startMaskedCall(tripRequestId: string): Promise<{ ok: boolean; callSid?: string; error?: string }> {
     const { data: sess } = await this.supabase.auth.getSession();

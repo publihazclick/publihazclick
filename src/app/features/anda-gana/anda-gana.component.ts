@@ -15908,10 +15908,24 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     const req = trip.ag_trip_requests ?? trip;
     const passengerAuthId = req?.ag_users?.auth_user_id;
     const myId = this.agProfile()?.id;
-    if (!tripReqId || !passengerAuthId || !myId) {
+    if (!tripReqId || !myId) {
       alert('No se pudo identificar al pasajero para llamar.');
       return;
     }
+
+    // Pasajero invitado de WhatsApp: no tiene cuenta de Auth (auth_user_id null), así que
+    // LiveKit -- que exige un participante autenticado del otro lado -- nunca puede
+    // conectarlo. Antes esto se topaba directo con el alert de "no se pudo identificar" de
+    // arriba sin intentar nada más, dejando el botón "Llamar" completamente muerto para
+    // cualquier viaje pedido por WhatsApp. Se cae a la llamada enmascarada por PSTN
+    // (ag-masked-call, vía Telnyx) como respaldo real -- pedido explícito del usuario
+    // 2026-08-11.
+    if (!passengerAuthId) {
+      const res = await this.agService.startMaskedCall(tripReqId);
+      if (!res.ok) alert('No se pudo llamar al pasajero: ' + (res.error ?? 'Error desconocido'));
+      return;
+    }
+
     this._callTripId = tripReqId;
     this._callPeerRole = 'passenger';
     this._callPeerReplyId = passengerAuthId;

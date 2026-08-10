@@ -13,6 +13,16 @@ const MIN_PRICE    = 5000;
 // Número de soporte de Movi (el mismo ya usado en la app para wa.me/573134453649)
 const SUPPORT_PHONE = '573134453649';
 
+// Llamada enmascarada por PSTN (Telnyx) -- mismo proveedor/patrón que usa ag-masked-call
+// para conductor->pasajero desde la app. Acá cubre el sentido contrario: pasajero de
+// WhatsApp -> conductor. No se puede reusar la función ag-masked-call tal cual porque esa
+// exige un JWT real de Supabase Auth, y los pasajeros invitados de WhatsApp no tienen
+// cuenta de Auth (mismo motivo documentado en triggerWaSos y en el estado in_trip para "a
+// bordo"). Se replica la misma llamada a la API de Telnyx con el cliente de service role.
+const TELNYX_API_KEY        = Deno.env.get('TELNYX_API_KEY') ?? '';
+const TELNYX_APPLICATION_ID = Deno.env.get('TELNYX_TEXML_APPLICATION_SID') ?? '';
+const TELNYX_MASKING_PHONE  = Deno.env.get('TELNYX_MASKING_PHONE_NUMBER') ?? '';
+
 const SERVICE_LABELS: Record<string, string> = {
   carro:     '🚗 Carro',
   moto:      '🏍️ Moto',
@@ -174,6 +184,37 @@ function toE164(phone: string): string {
   if (digits.length === 10) return `+57${digits}`;
   if (digits.length === 12 && digits.startsWith('57')) return `+${digits}`;
   return `+${digits}`;
+}
+
+// ─── Llamada enmascarada por PSTN (Telnyx) ────────────────────────────────────
+// Marca primero a `from` y, cuando contesta, el propio <Dial> del TeXML marca a `to` --
+// ambos lados ven TELNYX_MASKING_PHONE, nunca el número real del otro. Mismo endpoint y
+// mismo patrón que usa ag-masked-call/index.ts (la función que ya usa la app para
+// conductor->pasajero) -- ver ese archivo para el detalle de por qué este endpoint
+// especifico (no exige account_sid) y por qué no hay "sid" en la respuesta.
+async function startMaskedCall(from: string, to: string): Promise<{ ok: boolean; error?: string }> {
+  if (!TELNYX_API_KEY || !TELNYX_APPLICATION_ID || !TELNYX_MASKING_PHONE) {
+    console.error('[WA] startMaskedCall: Telnyx no configurado');
+    return { ok: false, error: 'not_configured' };
+  }
+  try {
+    const texml = `<Response><Dial callerId="${TELNYX_MASKING_PHONE}" timeLimit="600">${to}</Dial></Response>`;
+    const params = new URLSearchParams({ To: from, From: TELNYX_MASKING_PHONE, Texml: texml });
+    const res = await fetch(`https://api.telnyx.com/v2/texml/calls/${TELNYX_APPLICATION_ID}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('[WA] startMaskedCall Telnyx error:', res.status, err);
+      return { ok: false, error: err };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[WA] startMaskedCall fetch error:', e);
+    return { ok: false, error: String(e) };
+  }
 }
 
 // ─── Geocoding via Nominatim OSM ──────────────────────────────────────────────
@@ -1414,6 +1455,42 @@ async function handleConversation(
     const delivery    = isDeliveryService(session.service_type as string);
     const driverNoun  = svcCopy(session.service_type as string).driverNoun;
 
+    // Llamada enmascarada: el pasajero escribe "llamar"/"llámame" y Telnyx lo llama
+    // primero a él, y cuando contesta lo conecta con el conductor -- ninguno de los
+    // dos ve el número real del otro. Simetría con el botón "Llamar" del conductor en
+    // la app (callPassengerFromTrip -> ag-masked-call), que para este mismo caso
+    // (pasajero invitado de WhatsApp, sin auth_user_id) cae al mismo mecanismo de
+    // Telnyx -- pedido explícito del usuario 2026-08-11. Se revisa ANTES que el
+    // puente de chat de más abajo para que "llamar" no se reenvíe como si fuera un
+    // mensaje de texto normal.
+    if (/^llam/i.test(text.trim())) {
+      const tripId = session.trip_request_id as string | null;
+      if (tripId) {
+        const supabase = db();
+        const { data: trip } = await supabase
+          .from('ag_trip_requests')
+          .select('driver_id')
+          .eq('id', tripId)
+          .maybeSingle();
+        const { data: driver } = trip?.driver_id
+          ? await supabase.from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle()
+          : { data: null };
+        const { data: driverUser } = driver?.ag_user_id
+          ? await supabase.from('ag_users').select('phone').eq('id', driver.ag_user_id as string).maybeSingle()
+          : { data: null };
+
+        if (driverUser?.phone) {
+          const result = await startMaskedCall(toE164(phone), toE164(driverUser.phone as string));
+          await sendText(phone, result.ok
+            ? `📞 Te estamos llamando... contesta y te conectamos con tu ${driverNoun}.`
+            : `No pudimos iniciar la llamada 😔 Intenta de nuevo en unos segundos.`);
+        } else {
+          await sendText(phone, `No encontramos el número de tu ${driverNoun} 😔`);
+        }
+        return;
+      }
+    }
+
     // Confirmación de "ya estoy a bordo" (pasajero) / "ya se lo entregué"
     // (domicilio) -- botón que sale junto al aviso de llegada del conductor
     // (ver evento driver_arrived). Le avisa al conductor por push nativo
@@ -1600,8 +1677,8 @@ async function handleConversation(
     }
 
     await sendText(phone, delivery
-      ? `Tu envío está en curso 📦\n\nEscribe *cancelar* si tienes algún problema.`
-      : `Tu viaje está en curso 🚗\n\nEscribe *cancelar* si tienes algún problema.`);
+      ? `Tu envío está en curso 📦\n\nEscribe *llamar* para hablar con tu ${driverNoun}, o *cancelar* si tienes algún problema.`
+      : `Tu viaje está en curso 🚗\n\nEscribe *llamar* para hablar con tu ${driverNoun}, o *cancelar* si tienes algún problema.`);
     return;
   }
 
