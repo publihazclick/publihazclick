@@ -893,6 +893,8 @@ async function handleConversation(
   // de mostrar el falso "Solicitud cancelada" de un viaje ya completado.
   if (isCancel(text) && state !== 'idle' && state !== 'awaiting_rating') {
     const tripId = session.trip_request_id as string | null;
+    let assignedDriverId: string | null = null;
+
     if (tripId) {
       // Marca el viaje real como cancelado -- antes esto SOLO reseteaba la
       // sesión de WhatsApp sin tocar ag_trip_requests, así que un conductor
@@ -905,8 +907,13 @@ async function handleConversation(
       // suscripción y que dispara solo el reembolso ya existente
       // (trg_ag_trip_cancellation, migración 188). El filtro por status
       // evita pisar un viaje que ya haya llegado a completed/cancelled por
-      // otro camino mientras el mensaje viajaba.
-      await db().from('ag_trip_requests')
+      // otro camino mientras el mensaje viajaba. .select() devuelve la fila
+      // solo si el UPDATE de verdad afectó algo, sirve para saber si ya
+      // había un conductor asignado (driver_id solo se llena al aceptar la
+      // oferta -- ag_on_offer_accepted -- así que si viene null es porque
+      // todavía nadie había aceptado, sin importar si ya se había mostrado
+      // una oferta pendiente).
+      const { data: cancelledTrip } = await db().from('ag_trip_requests')
         .update({
           status:        'cancelled',
           cancelled_at:  new Date().toISOString(),
@@ -914,10 +921,49 @@ async function handleConversation(
           cancel_reason: 'Cancelado por el pasajero vía WhatsApp',
         })
         .eq('id', tripId)
-        .in('status', ['searching', 'accepted']);
+        .in('status', ['searching', 'accepted'])
+        .select('driver_id')
+        .maybeSingle();
+      assignedDriverId = cancelledTrip?.driver_id as string | null ?? null;
     }
+
+    // Si ya había un conductor asignado y en camino, el trigger de "viaje ya
+    // no disponible" (migración 181, ag_notify_drivers_trip_no_longer_available)
+    // NO lo cubre -- ese solo reacciona cuando el viaje SEGUÍA buscando
+    // (OLD.status = 'searching'), no cuando ya estaba 'accepted'. Sin este
+    // aviso directo, el único mecanismo que le llegaba era la suscripción en
+    // tiempo real de su propia app -- si la tenía cerrada o en segundo plano
+    // seguía manejando hacia el punto de recogida sin enterarse nunca (mismo
+    // tipo de hueco de "app cerrada" ya corregido antes para otros eventos
+    // de este canal, ver movi_push_closed_app_drift_bug).
+    const copy = svcCopy(session.service_type as string);
+    if (assignedDriverId) {
+      const supabase = db();
+      const { data: driver } = await supabase.from('ag_drivers').select('ag_user_id').eq('id', assignedDriverId).maybeSingle();
+      if (driver?.ag_user_id) {
+        const { data: driverUser } = await supabase.from('ag_users').select('auth_user_id').eq('id', driver.ag_user_id as string).maybeSingle();
+        if (driverUser?.auth_user_id) {
+          fetch(`${SUPABASE_URL}/functions/v1/ag-send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+            body: JSON.stringify({
+              user_ids: [driverUser.auth_user_id],
+              title: '❌ El pasajero canceló',
+              body:  copy.delivery ? 'Ya no necesitas recoger el paquete.' : 'Ya no necesitas ir a recogerlo.',
+              url:   `/anda-gana`,
+              tag:   `trip-${tripId}`,
+              urgent: true,
+            }),
+          }).catch((e) => console.error('[WA] push aviso cancelacion a conductor error:', e));
+        }
+      }
+    }
+
     await resetSession(phone);
-    await presentServiceMenu(phone, `Solicitud cancelada. ¿En qué te ayudo ahora?`);
+    const driverName = session.driver_name as string | null;
+    await presentServiceMenu(phone, assignedDriverId
+      ? `Solicitud cancelada ❌\n\nLe avisamos a tu ${copy.driverNoun}${driverName ? ` (*${driverName}*)` : ''} que ya no necesitas el servicio.\n\n¿En qué más te ayudo?`
+      : `Solicitud cancelada. ¿En qué te ayudo ahora?`);
     return;
   }
 
