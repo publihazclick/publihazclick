@@ -1427,13 +1427,61 @@ async function handleConversation(
         const supabase = db();
         const { data: trip } = await supabase
           .from('ag_trip_requests')
-          .select('driver_id, passenger_boarded_at')
+          .select('driver_id, driver_stage, status, origin_lat, origin_lng')
           .eq('id', tripId)
           .maybeSingle();
-        if (trip?.driver_id && !trip.passenger_boarded_at) {
+
+        // driver_stage YA en on_route (o más adelante) -- esta confirmación
+        // ya se procesó antes (por WhatsApp o por la app), no repetir el
+        // aviso ni la validación de GPS.
+        const alreadyStarted = trip?.driver_stage && ['on_route', 'picked_up', 'arrived_at_destination', 'completed'].includes(trip.driver_stage as string);
+
+        if (trip?.driver_id && trip.status === 'accepted' && !alreadyStarted) {
+          // Antes esto SOLO guardaba passenger_boarded_at -- nunca tocaba
+          // driver_stage, así que el viaje se quedaba atascado en
+          // heading_to_pickup/arrived_at_pickup para siempre: la app del
+          // conductor nunca activaba la navegación al destino, y el viaje
+          // jamás podía llegar a completarse de verdad (bug real reportado
+          // 2026-08-11 -- "que inicie el viaje de ambos lados, igual que en
+          // la app"). En la app, CUALQUIERA de los dos lados (pasajero o
+          // conductor) dispara la misma transición llamando al RPC
+          // ag_advance_trip_stage(trip_id, 'on_route') -- verificado en
+          // 200_ag_fix_advance_trip_stage_columns.sql. No se puede invocar
+          // ese RPC tal cual desde acá porque valida auth.uid() contra
+          // ag_users.auth_user_id, y los pasajeros invitados de WhatsApp no
+          // tienen cuenta de Auth (mismo motivo por el que SOS tampoco usa
+          // el RPC normal, ver triggerWaSos). Se replica su misma lógica con
+          // el cliente de service role: misma tolerancia GPS (300m contra la
+          // ubicación real del conductor, igual que reverseGeocode/
+          // asksLocation ya usan en este archivo) y mismo WHERE
+          // status='accepted', para que el resultado en la base de datos sea
+          // idéntico sin importar por cuál canal se confirmó.
+          let gpsBlocked = false;
+          if (trip.origin_lat != null && trip.origin_lng != null) {
+            const { data: loc } = await supabase
+              .from('ag_driver_locations')
+              .select('lat, lng')
+              .eq('driver_id', trip.driver_id as string)
+              .maybeSingle();
+            if (loc?.lat != null && loc?.lng != null) {
+              const distKm = haversineKm(loc.lat as number, loc.lng as number, trip.origin_lat as number, trip.origin_lng as number);
+              if (distKm > 0.3) gpsBlocked = true;
+            }
+          }
+
+          if (gpsBlocked) {
+            await sendText(phone, `Todavía no detectamos a tu ${driverNoun} cerca del punto de recogida 📍\n\nEsperen a que esté más cerca y vuelve a intentarlo.`);
+            return;
+          }
+
           await supabase.from('ag_trip_requests')
-            .update({ passenger_boarded_at: new Date().toISOString() })
-            .eq('id', tripId);
+            .update({
+              driver_stage: 'on_route',
+              passenger_boarded_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', tripId)
+            .eq('status', 'accepted');
 
           const { data: driver } = await supabase
             .from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle();
@@ -1624,6 +1672,23 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       }
     }
     if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');
+  }
+
+  if (event === 'trip_started') {
+    // driver_stage pasó a 'on_route' -- el viaje arrancó de verdad hacia el
+    // destino. Dispara sin importar si lo confirmó el pasajero por WhatsApp
+    // (ver estado in_trip más arriba, que ahora también avanza driver_stage)
+    // o el conductor desde la app (RPC ag_advance_trip_stage) -- migración
+    // 211, pedido explícito del usuario 2026-08-11 para que ambos caminos
+    // queden en paridad. Cuando lo confirma el propio pasajero por WhatsApp
+    // ya recibió un "¡Buen viaje!" inmediato en el mismo mensaje -- este es
+    // el aviso equivalente para cuando quien confirmó fue el conductor.
+    const session    = await getSession(phone);
+    const delivery   = isDeliveryService(session?.service_type as string | undefined);
+    const driverName = payload.driver_name as string ?? (delivery ? 'Tu mensajero' : 'Tu conductor');
+    await sendText(phone, delivery
+      ? `🚀 *${driverName}* ya va en camino a entregar tu paquete.`
+      : `🚀 ¡Vamos en camino! *${driverName}* ya arrancó hacia tu destino.`);
   }
 
   if (event === 'trip_completed') {
