@@ -887,8 +887,35 @@ async function handleConversation(
     return;
   }
 
-  // Cancelar en cualquier estado
-  if (isCancel(text) && state !== 'idle') {
+  // Cancelar en cualquier estado -- awaiting_rating queda afuera a propósito:
+  // ahí el viaje YA terminó, no hay nada que cancelar, y "cancelar" en ese
+  // punto se reprocesa como mensaje nuevo (ver bloque awaiting_rating) en vez
+  // de mostrar el falso "Solicitud cancelada" de un viaje ya completado.
+  if (isCancel(text) && state !== 'idle' && state !== 'awaiting_rating') {
+    const tripId = session.trip_request_id as string | null;
+    if (tripId) {
+      // Marca el viaje real como cancelado -- antes esto SOLO reseteaba la
+      // sesión de WhatsApp sin tocar ag_trip_requests, así que un conductor
+      // ya buscando o YA ASIGNADO nunca se enteraba de la cancelación (el
+      // viaje quedaba vivo en la base de datos indefinidamente, sin
+      // reembolso de comisión, mientras el pasajero veía "cancelada") --
+      // bug real reportado 2026-08-11. Mismo camino que usa la app
+      // (cancelTripRequest() en anda-gana.service.ts): un UPDATE simple del
+      // status, que el conductor recibe en tiempo real por su propia
+      // suscripción y que dispara solo el reembolso ya existente
+      // (trg_ag_trip_cancellation, migración 188). El filtro por status
+      // evita pisar un viaje que ya haya llegado a completed/cancelled por
+      // otro camino mientras el mensaje viajaba.
+      await db().from('ag_trip_requests')
+        .update({
+          status:        'cancelled',
+          cancelled_at:  new Date().toISOString(),
+          updated_at:    new Date().toISOString(),
+          cancel_reason: 'Cancelado por el pasajero vía WhatsApp',
+        })
+        .eq('id', tripId)
+        .in('status', ['searching', 'accepted']);
+    }
     await resetSession(phone);
     await presentServiceMenu(phone, `Solicitud cancelada. ¿En qué te ayudo ahora?`);
     return;
@@ -1195,8 +1222,14 @@ async function handleConversation(
       if (tripId) {
         const supabase = db();
         await supabase.from('ag_trip_requests')
-          .update({ status: 'cancelled' })
-          .eq('id', tripId);
+          .update({
+            status:        'cancelled',
+            cancelled_at:  new Date().toISOString(),
+            updated_at:    new Date().toISOString(),
+            cancel_reason: 'Cancelado automáticamente — nadie aceptó en 5 minutos',
+          })
+          .eq('id', tripId)
+          .eq('status', 'searching');
       }
       await resetSession(phone);
       await presentServiceMenu(phone,
