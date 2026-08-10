@@ -1245,7 +1245,55 @@ async function handleConversation(
         .eq('id', tripId)
         .single();
       if (trip?.status === 'accepted') {
-        await sendText(phone, `Ya tienes un conductor asignado 🚗\nEscribe *cancelar* si necesitas cancelar el viaje.`);
+        // Self-heal: la sesión se quedó en 'matching' aunque el viaje ya fue
+        // aceptado -- normalmente presentOffer() la pasa a 'awaiting_offer_response'
+        // y luego a 'in_trip', pero si el evento offer_received nunca llegó (ej. el
+        // webhook estuvo devolviendo 401 durante el incidente de verify_jwt de esta
+        // misma sesión) esta sesión se queda huérfana. Antes esto mandaba el mismo
+        // texto genérico para SIEMPRE en cada mensaje, sin dejar nunca llegar al
+        // bloque IN_TRIP -- así que el pasajero no podía pedir ubicación en vivo ni
+        // usar "a bordo"/"ya lo entregué" (bug real reportado 2026-08-11). Se
+        // reconstruye la sesión con los datos reales del conductor y se avanza a
+        // in_trip de una vez, igual que hace la aceptación normal.
+        const { data: fullTrip } = await supabase
+          .from('ag_trip_requests')
+          .select('driver_id, final_price, offered_price')
+          .eq('id', tripId)
+          .maybeSingle();
+
+        let driverName: string | null = null;
+        let driverPhone: string | null = null;
+        let driverVeh = '';
+        let driverPlate: string | null = null;
+        if (fullTrip?.driver_id) {
+          const { data: driver } = await supabase.from('ag_drivers')
+            .select('vehicle_brand, vehicle_model, plate, ag_user_id')
+            .eq('id', fullTrip.driver_id as string).maybeSingle();
+          if (driver) {
+            driverVeh   = [driver.vehicle_brand, driver.vehicle_model].filter(Boolean).join(' ');
+            driverPlate = driver.plate as string ?? null;
+            const { data: user } = await supabase.from('ag_users')
+              .select('full_name, phone').eq('id', driver.ag_user_id as string).maybeSingle();
+            driverName  = user?.full_name as string ?? null;
+            driverPhone = user?.phone as string ?? null;
+          }
+        }
+
+        await upsertSession(phone, {
+          state: 'in_trip',
+          driver_name: driverName, driver_phone: driverPhone,
+          driver_vehicle: driverVeh || null, driver_plate: driverPlate,
+          driver_price: (fullTrip?.final_price as number) ?? (fullTrip?.offered_price as number) ?? null,
+        });
+
+        const emoji = svcCopy(session.service_type as string).vehicleEmoji;
+        await sendText(phone,
+          `🎉 ¡Ya tienes conductor asignado!\n\n` +
+          (driverName ? `*${driverName}*\n` : '') +
+          (driverVeh   ? `${emoji} ${driverVeh}` : '') +
+          (driverPlate ? ` · ${driverPlate}` : '') +
+          `\n\nEscribe *cancelar* si necesitas cancelar el viaje.`
+        );
         return;
       }
 
@@ -1278,15 +1326,17 @@ async function handleConversation(
           .eq('status', 'searching');
       }
       await resetSession(phone);
+      const noneFoundNoun = isDeliveryService(session.service_type as string) ? 'mensajero disponible' : 'conductores disponibles';
       await presentServiceMenu(phone,
-        `😔 No encontramos conductores disponibles en este momento.\n\n` +
+        `😔 No encontramos ${noneFoundNoun} en este momento.\n\n` +
         `Puedes intentarlo de nuevo ya mismo o en unos minutos.`
       );
       return;
     }
 
     const minLeft = Math.ceil(5 - elapsedMin);
-    await sendText(phone, `⏳ Buscando conductores... (${minLeft} min restantes)\n\nEscribe *cancelar* para cancelar.`);
+    const waitingNoun = isDeliveryService(session.service_type as string) ? 'mensajero' : 'conductores';
+    await sendText(phone, `⏳ Buscando ${waitingNoun}... (${minLeft} min restantes)\n\nEscribe *cancelar* para cancelar.`);
     return;
   }
 
@@ -1348,7 +1398,7 @@ async function handleConversation(
         matching_started_at: new Date().toISOString(),
       });
       await sendText(phone,
-        `Oferta rechazada ❌\n\nSiguiendo la búsqueda...\nTe avisamos cuando haya un nuevo conductor disponible.`
+        `Oferta rechazada ❌\n\nSiguiendo la búsqueda...\nTe avisamos cuando haya un nuevo ${svcCopy(session.service_type as string).driverNoun} disponible.`
       );
     } else {
       const driverNoun = svcCopy(session.service_type as string).driverNoun;
@@ -1625,8 +1675,10 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const stage = payload.driver_stage as string ?? '';
     if (lat == null || lng == null) return;
 
+    const session  = await getSession(phone);
+    const delivery = isDeliveryService(session?.service_type as string | undefined);
     const label = stage === 'heading_to_pickup'
-      ? 'Va en camino a recogerte'
+      ? (delivery ? 'Va en camino a recoger tu paquete' : 'Va en camino a recogerte')
       : stage === 'arrived_at_pickup'
         ? 'Llegó al punto de recogida'
         : 'Va en camino';
@@ -1634,7 +1686,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // Mensaje de ubicación nativo de WhatsApp -- se ve como un mapa real
     // dentro del chat, no como un link de texto que hay que tocar y esperar
     // a que abra otra app.
-    await sendLocation(phone, lat, lng, 'Tu conductor', label);
+    await sendLocation(phone, lat, lng, `Tu ${delivery ? 'mensajero' : 'conductor'}`, label);
   }
 }
 
