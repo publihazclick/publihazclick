@@ -15186,11 +15186,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       const pd = pushMap[stage];
       if (pd) this.agService.sendPush({ userIds: [passengerAuthId], title: pd.title, body: pd.body, tag: `stage-${tripReqId}-${stage}`, urgent: stage === 'arrived_at_pickup' }).catch(() => {});
     }
-    // WhatsApp al pasajero según etapa
+    // WhatsApp al pasajero según etapa -- para viajes de WhatsApp (source='whatsapp')
+    // esto NO se manda: el trigger de base de datos (ag_wa_driver_arrived_fn /
+    // ag_wa_trip_completed_fn) ya le manda al pasajero una version mas completa
+    // (foto, boton, ubicacion nativa, recibo) por el mismo canal. Mandar ambas
+    // generaba mensajes duplicados y en orden impredecible (dos sistemas
+    // independientes compitiendo por el mismo envio, sin garantia de orden entre
+    // un fetch del navegador y un net.http_post async desde Postgres) -- bug real
+    // reportado 2026-08-10.
+    const isWaTrip = req?.source === 'whatsapp';
     const passengerPhone = req?.ag_users?.phone;
     const driverName = this.agProfile()?.full_name ?? 'Tu conductor';
     const dest = req?.dest_name ?? req?.destination ?? '';
-    if (passengerPhone) {
+    if (passengerPhone && !isWaTrip) {
       if (stage === 'arrived_at_pickup') {
         this._sendWhatsApp(passengerPhone, 'driver_arrived', { driver_name: driverName });
       } else if (stage === 'on_route') {

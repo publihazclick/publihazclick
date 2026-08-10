@@ -1388,22 +1388,31 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const lng = payload.origin_lng as number | null;
     // Antes esto solo se enteraba por el ping de ubicacion en vivo del cron
     // (cada 4 min) -- ahora es instantaneo, disparado por el trigger apenas
-    // el conductor marca "llegue al punto de recogida" en la app. Usa la
-    // plantilla aprobada "conductor_llego" para no depender de la ventana de
-    // 24h de conversacion -- si aun no esta aprobada o falla, cae al texto libre.
-    let waResult = await sendTemplate(phone, 'conductor_llego', 'es_CO', [driverName]);
+    // el conductor marca "llegue al punto de recogida" en la app.
+    //
+    // El aviso de llegada y el boton "Ya estoy a bordo" van en UN SOLO mensaje
+    // interactivo -- antes eran 2 mensajes separados (plantilla + botones) y
+    // llegaban en orden impredecible: una plantilla de WhatsApp pasa por un
+    // pipeline de renderizado propio en los servidores de Meta que puede tardar
+    // mas que un mensaje interactivo normal, aunque el mensaje interactivo se
+    // haya mandado DESPUES en nuestro codigo -- el pasajero terminaba viendo el
+    // boton "a bordo" antes que el aviso de llegada (bug real reportado
+    // 2026-08-10). Un solo mensaje elimina la carrera por construccion. La
+    // plantilla aprobada "conductor_llego" (sin boton, no se le agrego uno al
+    // crearla) se deja solo como ultimo respaldo por si el pasajero ya salio de
+    // la ventana de 24h de conversacion -- caso raro en este punto del flujo,
+    // el pasajero acaba de interactuar hace minutos.
+    let waResult = await sendButtons(phone,
+      `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗\n\n¿Ya subiste al vehículo?`,
+      [{ id: 'board_confirm', title: '✅ Ya estoy a bordo' }],
+    );
     if (!waResult.ok) {
-      await sendText(phone, `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
+      const tplResult = await sendTemplate(phone, 'conductor_llego', 'es_CO', [driverName]);
+      if (!tplResult.ok) {
+        await sendText(phone, `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
+      }
     }
     if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');
-
-    // Boton para que el pasajero confirme que ya subio -- mensaje interactivo
-    // normal (no plantilla), la ventana de 24h esta abierta de sobra en este
-    // punto (el pasajero acaba de interactuar hace minutos). Se le avisa al
-    // conductor por push cuando lo toque, ver AWAITING_OFFER... en_trip abajo.
-    await sendButtons(phone, `¿Ya subiste al vehículo?`, [
-      { id: `board_confirm`, title: '✅ Ya estoy a bordo' },
-    ]);
   }
 
   if (event === 'trip_completed') {
