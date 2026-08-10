@@ -21,6 +21,27 @@ const SERVICE_LABELS: Record<string, string> = {
   flete:     '🚛 Flete',
 };
 
+// ─── Textos que cambian según si el servicio mueve una PERSONA o un PAQUETE ──
+// Todo el copy de destino en adelante (confirmar destino, precio, "a bordo",
+// en curso, completado) estaba escrito solo pensando en pasajero -- "¿a dónde
+// VAS?", "¿ya SUBISTE al vehículo?", "LLEGASTE" -- y se reutilizaba tal cual
+// para Domicilio, donde quien "viaja" es el paquete, no el usuario (bug real
+// reportado 2026-08-11: "las respuestas no están acordes al flujo de cada
+// servicio"). flete queda incluido a futuro por si algún día se habilita por
+// este canal -- es el mismo caso que domicilio (se envía un bulto, no una
+// persona).
+function isDeliveryService(svc: string | null | undefined): boolean {
+  return svc === 'domicilio' || svc === 'flete';
+}
+function svcCopy(svc: string | null | undefined) {
+  const delivery = isDeliveryService(svc);
+  return {
+    delivery,
+    driverNoun:    delivery ? 'mensajero' : 'conductor',
+    vehicleEmoji:  svc === 'moto' ? '🏍️' : svc === 'domicilio' ? '📦' : svc === 'flete' ? '🚛' : '🚗',
+  };
+}
+
 // ─── Supabase client (service role) ──────────────────────────────────────────
 function db() {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -272,9 +293,14 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 // ─── Calcular precio sugerido ─────────────────────────────────────────────────
+// Domicilio siempre se despacha en moto (ver vehicleType en createWaTrip -- el
+// pasajero de WhatsApp no elige vehículo aparte para domicilios), así que debe
+// cobrar la tarifa de moto, no la de carro -- antes caía al default (tarifa de
+// carro, $1500/km) por no tener rama propia, sugiriendo ~50% más de lo que
+// corresponde a su propio vehículo asignado (bug real reportado 2026-08-11).
 function suggestPrice(distKm: number, service: string): number {
   let rate = PRICE_PER_KM;
-  if (service === 'moto') rate = 1000;
+  if (service === 'moto' || service === 'domicilio') rate = 1000;
   if (service === 'flete') rate = 2500;
   if (service === 'ciudad') rate = 1800;
   const raw = Math.round(distKm * rate / 500) * 500;
@@ -483,8 +509,9 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
   const rating  = o.driver_rating as number;
   const trips   = o.driver_trips as number ?? 0;
   const price   = (o.driver_price as number).toLocaleString('es-CO');
+  const copy    = svcCopy(o.service_type as string | undefined);
   const details = [
-    o.driver_vehicle ? `🚗 ${o.driver_vehicle}` : null,
+    o.driver_vehicle ? `${copy.vehicleEmoji} ${o.driver_vehicle}` : null,
     o.driver_plate   ? `Placa ${o.driver_plate}` : null,
   ].filter(Boolean).join(' · ');
 
@@ -498,8 +525,9 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
     trips  > 0 ? `${trips} viaje${trips === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ');
 
+  const action = copy.delivery ? 'quiere recoger tu paquete 📦' : 'quiere llevarte 🚗';
   const body =
-    `${prefix}${o.driver_name} quiere llevarte 🚗\n\n` +
+    `${prefix}${o.driver_name} ${action}\n\n` +
     (trustParts ? `${trustParts}` + (details ? ` · ${details}` : '') + `\n` : (details ? `${details}\n` : '')) +
     `💰 Te cobra *$${price}*`;
 
@@ -631,8 +659,11 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
   });
 
   const distText = distKm > 0 ? ` (${distKm.toFixed(1)} km)` : '';
+  const question = isDeliveryService(session.service_type as string)
+    ? `📍 ¿Ahí se debe entregar el paquete: *${addr}*?${distText}`
+    : `📍 ¿Vas a *${addr}*?${distText}`;
   await sendButtons(phone,
-    `📍 ¿Vas a *${addr}*?${distText}\n\n💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*`,
+    `${question}\n\n💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*`,
     [
       { id: 'dest_yes', title: '✅ Sí, confirmar' },
       { id: 'dest_no', title: '❌ Cambiar' },
@@ -1015,7 +1046,9 @@ async function handleConversation(
       await upsertSession(phone, { state: 'awaiting_dest' });
       await sendText(phone,
         `¡Perfecto! 🎯\n\n` +
-        `📍 *¿A dónde vas?*\n\n` +
+        (isDeliveryService(session.service_type as string)
+          ? `📍 *¿A dónde debe llegar el paquete?*\n\n`
+          : `📍 *¿A dónde vas?*\n\n`) +
         `Envía la ubicación de destino o escribe la dirección.`
       );
     } else if (isNo(text)) {
@@ -1062,10 +1095,11 @@ async function handleConversation(
   if (state === 'awaiting_dest_confirm') {
     if (isYes(text)) {
       const suggested = session.offered_price as number ?? MIN_PRICE;
+      const delivery = isDeliveryService(session.service_type as string);
       await upsertSession(phone, { state: 'awaiting_price' });
       await sendText(phone,
         `Destino confirmado ✅\n\n` +
-        `💰 *¿Cuánto ofreces por este viaje?*\n\n` +
+        (delivery ? `💰 *¿Cuánto ofreces por este envío?*\n\n` : `💰 *¿Cuánto ofreces por este viaje?*\n\n`) +
         `Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
         `• Escribe un monto (ej: *12000*)\n` +
         `• O escribe *ok* para usar el precio sugerido\n\n` +
@@ -1073,7 +1107,10 @@ async function handleConversation(
       );
     } else if (isNo(text)) {
       await upsertSession(phone, { state: 'awaiting_dest', dest_name: null, dest_lat: null, dest_lng: null });
-      await sendText(phone, `Entendido. ¿A dónde vas? Escribe la dirección o envía tu ubicación de destino.`);
+      const delivery = isDeliveryService(session.service_type as string);
+      await sendText(phone, delivery
+        ? `Entendido. ¿A dónde debe llegar el paquete? Escribe la dirección o envía la ubicación de destino.`
+        : `Entendido. ¿A dónde vas? Escribe la dirección o envía tu ubicación de destino.`);
     } else {
       await sendText(phone, `Responde *si* para confirmar el destino o *no* para cambiarlo.`);
     }
@@ -1109,13 +1146,14 @@ async function handleConversation(
     await upsertSession(phone, { trip_request_id: tripId });
 
     const svc = SERVICE_LABELS[session.service_type as string] ?? 'Servicio';
+    const delivery = isDeliveryService(session.service_type as string);
     await sendText(phone,
       `✅ ¡Solicitud enviada!\n\n` +
       `${svc}\n` +
       `📍 Desde: ${session.origin_address}\n` +
       `📍 Hasta: ${session.dest_name}\n` +
       `💰 Tu oferta: *$${price.toLocaleString('es-CO')}*\n\n` +
-      `🔍 Buscando conductores cerca de ti...\n\n` +
+      (delivery ? `🔍 Buscando mensajero disponible...\n\n` : `🔍 Buscando conductores cerca de ti...\n\n`) +
       `Te avisamos cuando alguien acepte. Máx 5 minutos.\n` +
       `Escribe *cancelar* si deseas cancelar la solicitud.`
     );
@@ -1143,7 +1181,7 @@ async function handleConversation(
       // aviso push no alcanzó a llegar) — no debe perderse.
       const nextOffer = await fetchNextPendingOffer(tripId);
       if (nextOffer) {
-        await presentOffer(phone, nextOffer);
+        await presentOffer(phone, { ...nextOffer, service_type: session.service_type });
         return;
       }
     }
@@ -1192,9 +1230,10 @@ async function handleConversation(
         await upsertSession(phone, { state: 'in_trip' });
         const oLat = session.origin_lat as number;
         const oLng = session.origin_lng as number;
+        const emoji = svcCopy(session.service_type as string).vehicleEmoji;
         await sendText(phone,
           `🎉 ¡Listo! *${session.driver_name}* va para allá.\n\n` +
-          (session.driver_vehicle ? `🚗 ${session.driver_vehicle}` : '') +
+          (session.driver_vehicle ? `${emoji} ${session.driver_vehicle}` : '') +
           (session.driver_plate   ? ` · ${session.driver_plate}` : '') +
           `\n💰 Acordaron *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*` +
           (session.driver_phone   ? `\n📱 Si necesitas llamarlo: ${toE164(session.driver_phone as string)}` : '') +
@@ -1218,7 +1257,7 @@ async function handleConversation(
       // de perderla / esperar a que llegue un nuevo aviso.
       const nextOffer = tripId ? await fetchNextPendingOffer(tripId) : null;
       if (nextOffer) {
-        await presentOffer(phone, nextOffer, 'Oferta rechazada ❌\n\n');
+        await presentOffer(phone, { ...nextOffer, service_type: session.service_type }, 'Oferta rechazada ❌\n\n');
         return;
       }
 
@@ -1233,8 +1272,9 @@ async function handleConversation(
         `Oferta rechazada ❌\n\nSiguiendo la búsqueda...\nTe avisamos cuando haya un nuevo conductor disponible.`
       );
     } else {
+      const driverNoun = svcCopy(session.service_type as string).driverNoun;
       await sendText(phone,
-        `Responde:\n*1* o *si* — aceptar al conductor ${session.driver_name}\n*2* o *no* — buscar otro conductor`
+        `Responde:\n*1* o *si* — aceptar al ${driverNoun} ${session.driver_name}\n*2* o *no* — buscar otro ${driverNoun}`
       );
     }
     return;
@@ -1242,14 +1282,17 @@ async function handleConversation(
 
   // ── IN_TRIP ──────────────────────────────────────────────────────────────────
   if (state === 'in_trip') {
-    // Confirmación de "ya estoy a bordo" -- botón que sale junto al aviso de
-    // llegada del conductor (ver evento driver_arrived). Le avisa al
-    // conductor por push nativo (mismo canal que las solicitudes nuevas, ya
-    // llega con la app cerrada) que el pasajero ya subió, para que arranque
-    // con confianza. Match por texto (no por id de botón) porque el resto del
-    // bot ya sigue ese mismo patrón (ver isYes/isNo) y así también funciona
-    // si el pasajero lo escribe a mano en vez de tocar el botón.
-    if (/a bordo/i.test(text)) {
+    const delivery    = isDeliveryService(session.service_type as string);
+    const driverNoun  = svcCopy(session.service_type as string).driverNoun;
+
+    // Confirmación de "ya estoy a bordo" (pasajero) / "ya se lo entregué"
+    // (domicilio) -- botón que sale junto al aviso de llegada del conductor
+    // (ver evento driver_arrived). Le avisa al conductor por push nativo
+    // (mismo canal que las solicitudes nuevas, ya llega con la app cerrada)
+    // que ya puede arrancar. Match por texto (no por id de botón) porque el
+    // resto del bot ya sigue ese mismo patrón (ver isYes/isNo) y así también
+    // funciona si el pasajero lo escribe a mano en vez de tocar el botón.
+    if (/a bordo|entregu[eé]/i.test(text)) {
       const tripId = session.trip_request_id as string | null;
       if (tripId) {
         const supabase = db();
@@ -1274,7 +1317,7 @@ async function handleConversation(
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
                 body: JSON.stringify({
                   user_ids: [driverUser.auth_user_id],
-                  title: '🚗 Tu pasajero ya está a bordo',
+                  title: delivery ? '📦 Ya te entregaron el paquete' : '🚗 Tu pasajero ya está a bordo',
                   body:  'Puedes arrancar hacia el destino.',
                   url:   `/anda-gana?trip_request_id=${tripId}`,
                   tag:   `board-${tripId}`,
@@ -1283,7 +1326,9 @@ async function handleConversation(
             }
           }
         }
-        await sendText(phone, `¡Buen viaje! 🚗💨 Ya le avisamos a tu conductor.`);
+        await sendText(phone, delivery
+          ? `¡Listo! 📦 Ya le avisamos a tu mensajero que puede salir.`
+          : `¡Buen viaje! 🚗💨 Ya le avisamos a tu conductor.`);
         return;
       }
     }
@@ -1311,17 +1356,19 @@ async function handleConversation(
           if (loc?.lat != null && loc?.lng != null) {
             const stage = trip.driver_stage as string ?? '';
             const label = stage === 'heading_to_pickup'
-              ? 'Va en camino a recogerte'
+              ? (delivery ? 'Va en camino a recoger tu paquete' : 'Va en camino a recogerte')
               : stage === 'arrived_at_pickup'
                 ? 'Llegó al punto de recogida'
                 : 'Va en camino';
-            await sendLocation(phone, loc.lat as number, loc.lng as number, 'Tu conductor', label);
+            await sendLocation(phone, loc.lat as number, loc.lng as number, `Tu ${driverNoun}`, label);
             return;
           }
         }
       }
     }
-    await sendText(phone, `Tu viaje está en curso 🚗\n\nEscribe *cancelar* si tienes algún problema.`);
+    await sendText(phone, delivery
+      ? `Tu envío está en curso 📦\n\nEscribe *cancelar* si tienes algún problema.`
+      : `Tu viaje está en curso 🚗\n\nEscribe *cancelar* si tienes algún problema.`);
     return;
   }
 
@@ -1400,11 +1447,14 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       driver_photo:   payload.driver_photo as string ?? '',
       driver_rating:  payload.driver_rating as number ?? 0,
       driver_trips:   payload.driver_trips as number ?? 0,
+      service_type:   session.service_type,
     });
   }
 
   if (event === 'driver_arrived') {
-    const driverName = payload.driver_name as string ?? 'Tu conductor';
+    const session     = await getSession(phone);
+    const delivery    = isDeliveryService(session?.service_type as string | undefined);
+    const driverName  = payload.driver_name as string ?? (delivery ? 'Tu mensajero' : 'Tu conductor');
     const lat = payload.origin_lat as number | null;
     const lng = payload.origin_lng as number | null;
     // Antes esto solo se enteraba por el ping de ubicacion en vivo del cron
@@ -1422,25 +1472,38 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // plantilla aprobada "conductor_llego" (sin boton, no se le agrego uno al
     // crearla) se deja solo como ultimo respaldo por si el pasajero ya salio de
     // la ventana de 24h de conversacion -- caso raro en este punto del flujo,
-    // el pasajero acaba de interactuar hace minutos.
-    let waResult = await sendButtons(phone,
-      `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗\n\n¿Ya subiste al vehículo?`,
-      [{ id: 'board_confirm', title: '✅ Ya estoy a bordo' }],
-    );
+    // el pasajero acaba de interactuar hace minutos. La plantilla es texto fijo
+    // aprobado por Meta -- no se puede variar por tipo de servicio sin crear y
+    // aprobar una plantilla nueva, así que ese respaldo se queda con el
+    // wording de pasajero en los dos casos (mejor un mensaje aprobado genérico
+    // que ninguno).
+    let waResult = delivery
+      ? await sendButtons(phone,
+          `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦\n\n¿Ya se lo entregaste?`,
+          [{ id: 'board_confirm', title: '✅ Ya se lo entregué' }],
+        )
+      : await sendButtons(phone,
+          `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗\n\n¿Ya subiste al vehículo?`,
+          [{ id: 'board_confirm', title: '✅ Ya estoy a bordo' }],
+        );
     if (!waResult.ok) {
       const tplResult = await sendTemplate(phone, 'conductor_llego', 'es_CO', [driverName]);
       if (!tplResult.ok) {
-        await sendText(phone, `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
+        await sendText(phone, delivery
+          ? `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦`
+          : `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
       }
     }
     if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');
   }
 
   if (event === 'trip_completed') {
+    const session      = await getSession(phone);
+    const delivery     = isDeliveryService(session?.service_type as string | undefined);
     const amount       = payload.amount as number ?? 0;
     const tipAmount    = payload.tip_amount as number ?? 0;
     const distanceKm   = payload.distance_km as number ?? 0;
-    const driverName   = payload.driver_name as string ?? 'tu conductor';
+    const driverName   = payload.driver_name as string ?? (delivery ? 'tu mensajero' : 'tu conductor');
     const cop = (n: number) => `$${Number(n).toLocaleString('es-CO')}`;
 
     // Los viajes de WhatsApp negocian un precio único (no hay tarifa base +
@@ -1460,13 +1523,15 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // Plantilla aprobada "viaje_completado" para no depender de la ventana de
     // 24h -- si aun no esta aprobada o falla, cae al texto libre de siempre
     // (que ademas incluye la propina cuando aplica, cosa que la plantilla
-    // rigida no puede mostrar condicionalmente).
+    // rigida no puede mostrar condicionalmente). Es texto fijo aprobado por
+    // Meta -- igual que conductor_llego, no se puede variar por servicio sin
+    // aprobar una plantilla nueva.
     let waResult = await sendTemplate(phone, 'viaje_completado', 'es_CO', [
       distanceKm.toFixed(1), cop(amount), driverName,
     ]);
     if (!waResult.ok) {
       await sendText(phone,
-        `🏁 Llegaste — gracias por viajar con Movi 💚\n\n` +
+        (delivery ? `🏁 Tu paquete fue entregado 💚\n\n` : `🏁 Llegaste — gracias por viajar con Movi 💚\n\n`) +
         (receiptLines ? `${receiptLines}\n` : '') +
         `💰 *Total: ${cop(amount)}*\n\n` +
         `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n` +
