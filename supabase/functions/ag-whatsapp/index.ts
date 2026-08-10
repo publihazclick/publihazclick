@@ -1543,6 +1543,62 @@ async function handleConversation(
         }
       }
     }
+    // Chat: cualquier texto libre que llega hasta acá (no era "a bordo", no
+    // era una pregunta de ubicación) se trata como un mensaje real para el
+    // conductor -- antes se perdía en el mismo texto genérico de abajo.
+    // Se inserta en ag_chat_messages, la MISMA tabla que ya usa el chat de la
+    // app, así aparece en la conversación real del conductor y no como un
+    // canal aparte (pedido explícito del usuario 2026-08-11: puente de chat
+    // completo en ambos sentidos). El sentido contrario, conductor -> WA, lo
+    // resuelve el trigger de la migración 212 (ag_wa_chat_relay_to_passenger_fn).
+    if (msgType === 'text' && text.length > 0) {
+      const tripId         = session.trip_request_id as string | null;
+      const senderAgUserId = session.ag_user_id as string | null;
+      if (tripId && senderAgUserId) {
+        const supabase = db();
+        const { data: trip } = await supabase
+          .from('ag_trip_requests')
+          .select('driver_id')
+          .eq('id', tripId)
+          .maybeSingle();
+
+        if (trip?.driver_id) {
+          await supabase.from('ag_chat_messages').insert({
+            request_id: tripId,
+            sender_ag_user_id: senderAgUserId,
+            message: text,
+          });
+
+          // Push directo -- el chat de la app solo tiene suscripción en
+          // tiempo real (sirve solo con la app abierta), igual que ya se
+          // hace para "a bordo" y para avisar cancelaciones -- para que le
+          // llegue al conductor aunque tenga la app cerrada.
+          const { data: driver } = await supabase
+            .from('ag_drivers').select('ag_user_id').eq('id', trip.driver_id as string).maybeSingle();
+          if (driver?.ag_user_id) {
+            const { data: driverUser } = await supabase
+              .from('ag_users').select('auth_user_id').eq('id', driver.ag_user_id as string).maybeSingle();
+            if (driverUser?.auth_user_id) {
+              fetch(`${SUPABASE_URL}/functions/v1/ag-send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+                body: JSON.stringify({
+                  user_ids: [driverUser.auth_user_id],
+                  title: delivery ? '💬 Mensaje sobre tu domicilio' : '💬 Mensaje de tu pasajero',
+                  body:  text.slice(0, 150),
+                  url:   `/anda-gana?trip_request_id=${tripId}`,
+                  tag:   `chat-${tripId}`,
+                }),
+              }).catch((e) => console.error('[WA] push chat a conductor error:', e));
+            }
+          }
+
+          await sendText(phone, `✅ Le avisamos a tu ${driverNoun}.`);
+          return;
+        }
+      }
+    }
+
     await sendText(phone, delivery
       ? `Tu envío está en curso 📦\n\nEscribe *cancelar* si tienes algún problema.`
       : `Tu viaje está en curso 🚗\n\nEscribe *cancelar* si tienes algún problema.`);
@@ -1689,6 +1745,20 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     await sendText(phone, delivery
       ? `🚀 *${driverName}* ya va en camino a entregar tu paquete.`
       : `🚀 ¡Vamos en camino! *${driverName}* ya arrancó hacia tu destino.`);
+  }
+
+  // Puente de chat: el conductor escribió desde el chat de la app en un
+  // viaje pedido por WhatsApp (migración 212, ag_wa_chat_relay_to_passenger_fn
+  // -- solo dispara si quien escribió es el conductor asignado, nunca el
+  // propio mensaje del pasajero, ver nota de prevención de loop en esa
+  // migración). Se reenvía tal cual, sin traducir ni resumir -- es una
+  // conversación real entre dos personas, no una notificación del sistema.
+  if (event === 'chat_message') {
+    const driverName = payload.driver_name as string ?? 'Tu conductor';
+    const message     = (payload.message as string ?? '').trim();
+    if (message) {
+      await sendText(phone, `💬 *${driverName}:*\n${message}`);
+    }
   }
 
   if (event === 'trip_completed') {
