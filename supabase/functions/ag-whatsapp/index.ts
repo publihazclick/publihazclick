@@ -85,6 +85,27 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
 
 type WaResult = { ok: boolean; status?: number; body?: string };
 
+// ─── Marcar leído + mostrar "escribiendo..." mientras el bot procesa ─────────
+// Antes las respuestas llegaban instantáneas incluso después de geocodificar
+// una dirección o llamar a OpenAI (varios segundos), lo que se siente robótico
+// -- "un bot no debería tardar pero tampoco debería ser instantáneo". Meta
+// muestra el indicador nativo hasta 25s o hasta que se envíe el siguiente
+// mensaje, lo que ocurra primero -- no hace falta apagarlo a mano.
+async function markReadWithTyping(messageId: string): Promise<void> {
+  try {
+    await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+        typing_indicator: { type: 'text' },
+      }),
+    });
+  } catch (e) { console.error('[WA] markReadWithTyping error:', e); }
+}
+
 async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
   try {
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
@@ -338,15 +359,18 @@ async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unk
   let driverPhoto = '';
   let driverRating = 0;
 
+  let driverTrips = 0;
+
   const { data: driver } = await supabase
     .from('ag_drivers')
-    .select('vehicle_brand, vehicle_model, plate, ag_user_id')
+    .select('vehicle_brand, vehicle_model, plate, ag_user_id, metric_trips_completed')
     .eq('id', offer.driver_id as string)
     .maybeSingle();
 
   if (driver) {
     driverVeh   = [driver.vehicle_brand, driver.vehicle_model].filter(Boolean).join(' ');
     driverPlate = driver.plate ?? '';
+    driverTrips = (driver.metric_trips_completed as number) ?? 0;
 
     const { data: user } = await supabase
       .from('ag_users')
@@ -378,6 +402,7 @@ async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unk
     driver_plate:   driverPlate,
     driver_photo:   driverPhoto,
     driver_rating:  driverRating,
+    driver_trips:   driverTrips,
   };
 }
 
@@ -397,6 +422,7 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
   });
 
   const rating  = o.driver_rating as number;
+  const trips   = o.driver_trips as number ?? 0;
   const name    = firstNameOf(contactName);
   const price   = (o.driver_price as number).toLocaleString('es-CO');
   const details = [
@@ -404,9 +430,19 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
     o.driver_plate   ? `Placa ${o.driver_plate}` : null,
   ].filter(Boolean).join(' · ');
 
+  // Señal de confianza: rating + viajes completados si hay historial, o solo
+  // el conteo de viajes si aún no tiene calificaciones -- un conductor con
+  // "32 viajes" ya dice algo aunque nadie lo haya calificado todavía. Si es
+  // nuevo (0 viajes) se omite la línea entera en vez de mostrar "0 viajes",
+  // que restaría confianza en vez de darla.
+  const trustParts = [
+    rating > 0 ? `⭐ ${rating.toFixed(1)}` : null,
+    trips  > 0 ? `${trips} viaje${trips === 1 ? '' : 's'}` : null,
+  ].filter(Boolean).join(' · ');
+
   const body =
     `${prefix}${o.driver_name} quiere llevarte${name ? ', ' + name : ''} 🚗\n\n` +
-    (rating > 0 ? `⭐ ${rating.toFixed(1)}` + (details ? ` · ${details}` : '') + `\n` : (details ? `${details}\n` : '')) +
+    (trustParts ? `${trustParts}` + (details ? ` · ${details}` : '') + `\n` : (details ? `${details}\n` : '')) +
     `💰 Te cobra *$${price}*`;
 
   const buttons = [
@@ -1114,6 +1150,39 @@ async function handleConversation(
 
   // ── IN_TRIP ──────────────────────────────────────────────────────────────────
   if (state === 'in_trip') {
+    // Antes cualquier mensaje en este estado recibía la misma respuesta
+    // genérica -- si el pasajero pregunta por su conductor en lenguaje
+    // natural ("dónde está", "cuánto falta", "ya casi llega?"), se le
+    // reenvía la ubicación en vivo real en vez de "tu viaje está en curso".
+    const asksLocation = /d[oó]nde|ubicaci[oó]n|cu[aá]nto falta|ya lleg|falta mucho|est[aá] cerca|cuanto (se )?demora/i.test(text);
+    if (asksLocation) {
+      const tripId = session.trip_request_id as string | null;
+      if (tripId) {
+        const supabase = db();
+        const { data: trip } = await supabase
+          .from('ag_trip_requests')
+          .select('driver_id, driver_stage')
+          .eq('id', tripId)
+          .maybeSingle();
+        if (trip?.driver_id) {
+          const { data: loc } = await supabase
+            .from('ag_driver_locations')
+            .select('lat, lng')
+            .eq('driver_id', trip.driver_id as string)
+            .maybeSingle();
+          if (loc?.lat != null && loc?.lng != null) {
+            const stage = trip.driver_stage as string ?? '';
+            const label = stage === 'heading_to_pickup'
+              ? 'Va en camino a recogerte'
+              : stage === 'arrived_at_pickup'
+                ? 'Llegó al punto de recogida'
+                : 'Va en camino';
+            await sendLocation(phone, loc.lat as number, loc.lng as number, 'Tu conductor', label);
+            return;
+          }
+        }
+      }
+    }
     await sendText(phone, `Tu viaje está en curso 🚗\n\nEscribe *cancelar* si tienes algún problema.`);
     return;
   }
@@ -1187,6 +1256,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       driver_plate:   payload.driver_plate as string ?? '',
       driver_photo:   payload.driver_photo as string ?? '',
       driver_rating:  payload.driver_rating as number ?? 0,
+      driver_trips:   payload.driver_trips as number ?? 0,
     }, '', session.contact_name as string | undefined);
   }
 
@@ -1391,6 +1461,10 @@ serve(async (req) => {
             console.error('[WA] dedupe insert error:', dupError);
           }
         }
+
+        // No bloquea el procesamiento (no se espera) -- solo enciende el
+        // indicador nativo de "escribiendo..." mientras corre todo lo de abajo.
+        if (msgId) markReadWithTyping(msgId);
 
         const fromPhone   = msg.from as string;
         let   msgType     = msg.type as string;
