@@ -280,19 +280,28 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         {}, 3000
       );
       const j = await r.json();
-      const feature = j?.features?.[0];
-      const center = feature?.center as [number, number] | undefined;
-      // Sanity check: si el punto que devuelve Mapbox queda lejos del punto
-      // real que mandó el pasajero, es un match de baja confianza (zona con
-      // poca cobertura de datos) -- mejor no mostrar con seguridad una
-      // dirección que en realidad no es la suya (bug real reportado
-      // 2026-08-11: "la dirección no concuerda con la ubicación real del
-      // pasajero").
-      if (feature?.place_name && center && haversineKm(lat, lng, center[1], center[0]) <= 3) {
+      // Se piden dos "types" (address,poi) -- Mapbox devuelve el mejor match
+      // de CADA tipo por separado, no solo el más relevante en general. Antes
+      // se tomaba siempre features[0] (el primero, no necesariamente el más
+      // cercano) y se aceptaba con hasta 3km de margen -- eso alcanzaba para
+      // no mostrar una dirección de otra ciudad, pero no era suficiente para
+      // que la dirección mostrada describiera de verdad el punto exacto que
+      // mandó el pasajero (bug real reportado 2026-08-11: "no devuelves
+      // precisa la ubicación"). Ahora se compara la distancia real de CADA
+      // candidato y se usa el más cercano, con un margen mucho más ajustado
+      // (150m -- precisión de "misma cuadra", no "misma zona").
+      const features = (j?.features ?? []) as Array<{ place_name?: string; center?: [number, number] }>;
+      let best: { name: string; dist: number } | null = null;
+      for (const f of features) {
+        if (!f?.place_name || !f?.center) continue;
+        const dist = haversineKm(lat, lng, f.center[1], f.center[0]);
+        if (!best || dist < best.dist) best = { name: f.place_name, dist };
+      }
+      if (best && best.dist <= 0.15) {
         // "Calle 1B 2 15, 540001 San José de Cúcuta, Norte de Santander,
         // Colombia" -> se recorta a los primeros 2-3 segmentos (calle +
         // ciudad) para no mandar el pais/codigo postal en cada mensaje.
-        return feature.place_name.split(',').slice(0, 3).join(',').trim();
+        return best.name.split(',').slice(0, 3).join(',').trim();
       }
     } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
   }
