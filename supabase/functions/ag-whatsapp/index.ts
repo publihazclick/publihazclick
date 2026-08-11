@@ -1683,7 +1683,7 @@ async function handleConversation(
         }
         await sendText(phone, delivery
           ? `¡Listo! 📦 Ya le avisamos a tu mensajero que puede salir.`
-          : `¡Buen viaje! 🚗💨 Ya le avisamos a tu conductor.`);
+          : `¡Buen viaje! 🚗 Esperamos que este viaje sea de tu agrado 😊`);
         return;
       }
     }
@@ -1787,7 +1787,11 @@ async function handleConversation(
   if (state === 'awaiting_rating') {
     if (/^(omitir|saltar|no|skip)$/i.test(text)) {
       await resetSession(phone);
-      await sendText(phone, `Sin problema 👍\n\n¿Necesitas otro servicio? Escribe *hola*.`);
+      await sendText(phone,
+        `Sin problema 👍\n\n` +
+        `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
+        `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
+      );
       await maybeOfferAppDownload(phone);
       return;
     }
