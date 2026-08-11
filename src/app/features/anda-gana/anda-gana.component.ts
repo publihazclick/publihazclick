@@ -9308,6 +9308,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ OVERLAY "FINALIZANDO VIAJE" (conductor) ═══════════
+       Cubre TODO (incluida la pantalla de inicio con Saldo/Beneficios/Viajes en curso) desde el
+       instante en que se toca "Finalizar viaje" hasta que el recibo está listo. "Finalizar viaje"
+       se puede tocar tanto desde la navegación en pantalla completa como directo desde la tarjeta
+       del home (ver el template de "Viajes en curso") -- en este segundo caso NO había pantalla
+       completa activa, así que un fix anterior que solo retrasaba la SALIDA de fullscreen no hacía
+       nada ahí: el dashboard entero seguía siendo lo único visible durante toda la espera de red
+       (bug real reportado 2026-08-11 varias veces, "esta pantalla... interrumpe muy feo"). Este
+       overlay no depende de si había fullscreen o no -- siempre se muestra. -->
+  @if (driverFinishingTrip()) {
+    <div class="fixed inset-0 z-[9996] flex flex-col items-center justify-center gap-4"
+      style="background:#0f1421">
+      <span class="material-symbols-outlined animate-spin" style="font-size:48px;color:#10b981">autorenew</span>
+      <p class="text-white text-base font-bold">Finalizando viaje...</p>
+    </div>
+  }
+
   <!-- ═══════════ MODAL RECIBO DE VIAJE ═══════════ -->
   @if (tripReceiptModal() && tripReceiptData()) {
     <div class="fixed inset-0 z-[9995] flex items-end justify-center pb-0"
@@ -10073,6 +10090,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _passengerRecenterTimer: any = null;
   // Trip activo referencia para el conductor en fullscreen
   driverFullscreenTrip   = signal<any | null>(null);
+  // Overlay que cubre TODO mientras se finaliza el viaje, sin importar si había
+  // pantalla completa activa o no -- ver finishDriverTrip().
+  driverFinishingTrip    = signal(false);
 
   // ── inDrive parity features ───────────────────────────────────
   // 1. ETA en vivo mientras conductor se acerca
@@ -13051,20 +13071,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const tripRequestId = trip.trip_request_id ?? trip.ag_trip_requests?.id;
     if (!tripRequestId) return;
     const wasQuick = this.driverStatus() === 'quick';
-    // BUG REAL 2026-08-11 ("antes de salirle el recibo... esta saliendo esta pantalla"): antes se
-    // salía de pantalla completa YA MISMO, y recién después se esperaba completeTrip() (red, puede
-    // tardar); el conductor quedaba viendo de vuelta la pantalla de inicio con la tarjeta "Viajes
-    // en curso" (el viaje todavía no se había quitado de driverActiveTrips) durante ese hueco,
-    // hasta que el recibo aparecía encima. Ahora solo se detiene la navegación (para no seguir
-    // gastando llamadas a Directions) pero se permanece en pantalla completa durante toda la
-    // espera de red, y recién se sale de pantalla completa en el mismo instante en que el recibo
-    // (o el rating, si no hay datos de recibo) ya está listo para mostrarse -- nunca se alcanza a
-    // ver la pantalla de inicio de por medio.
+    // BUG REAL 2026-08-11 ("esta pantalla... interrumpe muy feo", reportado varias veces): un
+    // primer intento solo retrasaba la SALIDA de pantalla completa, asumiendo que el conductor
+    // siempre finaliza desde ahí -- pero "Finalizar viaje" también se puede tocar directo desde
+    // la tarjeta de "Viajes en curso" en el home (sin pasar nunca por fullscreen), y en ese caso
+    // el dashboard completo (Saldo, Mis Beneficios, etc) seguía siendo lo único visible durante
+    // toda la espera de red, sin importar el fix anterior. Ahora se cubre TODO con un overlay
+    // propio (driverFinishingTrip) desde el instante en que se toca el botón, sin importar de
+    // dónde se tocó ni si había pantalla completa activa o no -- se quita recién cuando el
+    // siguiente paso (recibo o rating) ya está listo para mostrarse.
+    this.driverFinishingTrip.set(true);
+    this.cdr.markForCheck();
     const wasFullscreen = this.driverMapFullscreen();
-    if (wasFullscreen && this.navActive()) this.stopInAppNav();
+    if (this.navActive()) this.stopInAppNav();
     try {
       await this._withTimeout(this.agService.completeTrip(tripRequestId));
     } catch (e: any) {
+      this.driverFinishingTrip.set(false);
       alert(e?.message ?? 'Error al finalizar el viaje.'); return;
     }
     // Notificar al pasajero para que también muestre recibo y rating
@@ -13082,14 +13105,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         })
       );
     }
-    // Salir de pantalla completa en el mismo ciclo en que se muestra el siguiente paso (recibo o
-    // rating), no antes -- así nunca queda expuesta la pantalla de inicio de por medio.
     if (wasFullscreen) {
       this.driverMapFullscreen.set(false);
       this.driverFullscreenTrip.set(null);
       setTimeout(() => this._map?.resize(), 150);
     }
-    // Mostrar recibo del viaje al conductor
+    // Mostrar recibo del viaje al conductor -- recién acá se quita el overlay, en el mismo ciclo
+    // en que aparece el recibo (o el rating), nunca antes.
+    this.driverFinishingTrip.set(false);
     if (tripDetails) {
       this.tripReceiptData.set({ ...tripDetails, _role: 'driver' });
       this.tripReceiptTrip.set(trip);
