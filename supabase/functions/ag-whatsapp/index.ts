@@ -2035,9 +2035,18 @@ serve(async (req) => {
           }
         }
 
-        // No bloquea el procesamiento (no se espera) -- solo enciende el
-        // indicador nativo de "escribiendo..." mientras corre todo lo de abajo.
-        if (msgId) markReadWithTyping(msgId);
+        // Se espera (aunque sea rápido) -- antes era fire-and-forget para no
+        // bloquear el procesamiento, pero eso deja 2 fetch() corriendo en
+        // paralelo justo en el arranque en frío de la instancia (recién
+        // "booted"), que es exactamente cuando se reprodujo en logs reales un
+        // bug real y grave: el siguiente envío (sendButtons/sendGraph) salía
+        // con el campo "to" ausente del JSON pese a que `fromPhone` sí estaba
+        // bien seteado -- el pasajero se quedaba viendo "escribiendo..." para
+        // siempre. Nunca se reprodujo en una instancia ya tibia, solo en frío
+        // con dos fetch simultáneos al mismo host -- awaitear esto los separa
+        // en secuencia y elimina la carrera (pedido explícito del usuario
+        // 2026-08-11, reportado con un iPhone real pero no es un bug de iOS).
+        if (msgId) await markReadWithTyping(msgId);
 
         const fromPhone   = msg.from as string;
         let   msgType     = msg.type as string;
