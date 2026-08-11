@@ -155,16 +155,15 @@ async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
 }
 
 // ─── Botones nativos (reemplaza "responde 1, 2 o 3" por algo que se toca) ────
-// Maximo 3 botones (limite real de la API), titulo <=20 caracteres. Si se pasa
-// headerImageUrl, el boton aparece como una tarjeta con foto arriba -- usado
-// para mostrar la cara real del conductor junto con "Aceptar"/"Buscar otro".
-async function sendButtons(to: string, bodyText: string, buttons: { id: string; title: string }[], headerImageUrl?: string): Promise<WaResult> {
+// Maximo 3 botones (limite real de la API), titulo <=20 caracteres. Nunca
+// llevan header de imagen -- ver nota en presentOffer() sobre por qué ese
+// combo falla en silencio en WhatsApp para iOS.
+async function sendButtons(to: string, bodyText: string, buttons: { id: string; title: string }[]): Promise<WaResult> {
   const interactive: Record<string, unknown> = {
     type: 'button',
     body: { text: bodyText },
     action: { buttons: buttons.slice(0, 3).map(b => ({ type: 'reply', reply: { id: b.id, title: b.title.slice(0, 20) } })) },
   };
-  if (headerImageUrl) interactive.header = { type: 'image', image: { link: headerImageUrl } };
   return sendGraph({ to, type: 'interactive', interactive });
 }
 
@@ -578,11 +577,18 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
     { id: `reject_offer_${o.offer_id}`, title: '🔄 Buscar otro' },
   ];
 
+  // La foto va como mensaje de imagen aparte, NUNCA como header de un mensaje
+  // interactivo -- WhatsApp para iOS falla en silencio al renderizar un
+  // "interactive button" con "header: {type: image}" (Meta acepta el envío,
+  // pasajero nunca ve nada, sin error visible en ningún log); en Android
+  // el mismo payload sí se ve bien. Separarlos usa dos tipos de mensaje
+  // simples y bien soportados en todos los clientes en vez de la combinación
+  // problemática -- pedido explícito del usuario 2026-08-11 ("necesito que
+  // sirva a todo tipo de dispositivo").
   if (o.driver_photo) {
-    await sendButtons(phone, body, buttons, o.driver_photo as string);
-  } else {
-    await sendButtons(phone, body, buttons);
+    await sendImage(phone, o.driver_photo as string);
   }
+  await sendButtons(phone, body, buttons);
 }
 
 // ─── Transcribir nota de voz (Meta media → OpenAI Whisper) ────────────────────
