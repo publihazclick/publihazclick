@@ -801,13 +801,18 @@ async function parseFreeTextRequest(text: string): Promise<ParsedRequest | null>
 
 // ─── Confirmar origen (reusado por el flujo clásico y el flujo inteligente) ───
 async function presentOriginConfirm(phone: string, addr: string, lat: number, lng: number): Promise<void> {
-  await upsertSession(phone, {
-    state: 'awaiting_origin_confirm',
-    origin_lat: lat, origin_lng: lng, origin_address: addr,
-  });
-  await sendButtons(phone, `📍 ¿Estás en *${addr}*?`, [
-    { id: 'origin_yes', title: '✅ Sí, confirmar' },
-    { id: 'origin_no', title: '✏️ Editar' },
+  // Guardar la sesión y enviar el mensaje son operaciones independientes (ninguna
+  // necesita el resultado de la otra) -- en paralelo en vez de en serie ahorra
+  // un round-trip completo, parte del mismo fix de lentitud de 2026-08-11.
+  await Promise.all([
+    upsertSession(phone, {
+      state: 'awaiting_origin_confirm',
+      origin_lat: lat, origin_lng: lng, origin_address: addr,
+    }),
+    sendButtons(phone, `📍 ¿Estás en *${addr}*?`, [
+      { id: 'origin_yes', title: '✅ Sí, confirmar' },
+      { id: 'origin_no', title: '✏️ Editar' },
+    ]),
   ]);
 }
 
@@ -822,23 +827,27 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
     suggested = await suggestPrice(distKm, session.service_type as string ?? 'carro');
   }
 
-  await upsertSession(phone, {
-    state: 'awaiting_dest_confirm',
-    dest_name: addr, dest_lat: lat ?? null, dest_lng: lng ?? null,
-    offered_price: suggested, pending_dest_text: null,
-  });
-
   const distText = distKm > 0 ? ` (${distKm.toFixed(1)} km)` : '';
   const question = isDeliveryService(session.service_type as string)
     ? `📍 ¿Ahí se debe entregar el paquete: *${addr}*?${distText}`
     : `📍 ¿Vas a *${addr}*?${distText}`;
-  await sendButtons(phone,
-    question,
-    [
-      { id: 'dest_yes', title: '✅ Sí, confirmar' },
-      { id: 'dest_no', title: '✏️ Editar' },
-    ]
-  );
+
+  // Guardar sesión + enviar mensaje en paralelo -- ver misma nota en
+  // presentOriginConfirm.
+  await Promise.all([
+    upsertSession(phone, {
+      state: 'awaiting_dest_confirm',
+      dest_name: addr, dest_lat: lat ?? null, dest_lng: lng ?? null,
+      offered_price: suggested, pending_dest_text: null,
+    }),
+    sendButtons(phone,
+      question,
+      [
+        { id: 'dest_yes', title: '✅ Sí, confirmar' },
+        { id: 'dest_no', title: '✏️ Editar' },
+      ]
+    ),
+  ]);
 }
 
 // ─── Servicios que aun no se pueden pedir por WhatsApp ────────────────────────
@@ -1019,9 +1028,14 @@ async function handleConversation(
   msgText: string,
   msgLat?: number,
   msgLng?: number,
+  precomputedAddr?: string,
+  precomputedSession?: Record<string, unknown> | null,
 ) {
-  // Recuperar o crear sesión
-  let session = await getSession(phone) ?? { wa_phone: phone, state: 'idle' };
+  // Recuperar o crear sesión -- precomputedSession viene ya resuelta desde el
+  // webhook (en paralelo con markReadWithTyping/reverseGeocode, ver serve()),
+  // así se evita un segundo round-trip a la DB por el mismo dato.
+  let session = precomputedSession !== undefined ? (precomputedSession ?? { wa_phone: phone, state: 'idle' })
+    : await getSession(phone) ?? { wa_phone: phone, state: 'idle' };
 
   // Sesión expirada → reset
   if (session.expires_at && new Date(session.expires_at) < new Date()) {
@@ -1251,7 +1265,13 @@ async function handleConversation(
         await sendText(phone, `📍 Esa ubicación no parece estar en Colombia.\n\nEnvía tu ubicación actual o escribe tu dirección.`);
         return;
       }
-      addr = await reverseGeocode(lat, lng);
+      // precomputedAddr ya viene resuelto desde el webhook (se lanzó en paralelo
+      // con markReadWithTyping, ver serve() más abajo) -- ahorra un round-trip
+      // completo a Mapbox aquí, que era la causa real de la lentitud reportada
+      // (bug real 2026-08-11, segunda vez: "la carga de la ubicación volvió a
+      // ser lenta"). Si por lo que sea no llegó precalculada (ej. llamada desde
+      // otro lugar), se calcula aquí como respaldo, igual que antes.
+      addr = precomputedAddr ?? await reverseGeocode(lat, lng);
     } else if (text.length > 4) {
       const bias = await lastKnownCityBias(phone);
       const geo = await forwardGeocode(text, bias?.lat, bias?.lng);
@@ -1315,7 +1335,7 @@ async function handleConversation(
 
     if (msgType === 'location' && msgLat != null && msgLng != null) {
       lat = msgLat; lng = msgLng;
-      addr = await reverseGeocode(lat, lng);
+      addr = precomputedAddr ?? await reverseGeocode(lat, lng);
     } else if (text.length > 4) {
       const geo = await forwardGeocode(text, session.origin_lat as number, session.origin_lng as number);
       if (!geo) {
@@ -2185,11 +2205,6 @@ serve(async (req) => {
           }
         }
 
-        // Se espera (antes era fire-and-forget) -- sin ganancia real en
-        // dejarlo sin awaitear, y así queda un solo fetch a la vez en vez de
-        // dos en paralelo al mismo host.
-        if (msgId) await markReadWithTyping(msgId);
-
         // Si el pasajero activó "username" (oculta su número), Meta ya no manda
         // "from" -- solo "from_user_id" con su BSUID (ver nota de isBsuid() más
         // arriba). Se usa ese como identificador de todos modos: la sesión
@@ -2201,6 +2216,27 @@ serve(async (req) => {
           console.error('[WA] mensaje sin "from" ni "from_user_id":', JSON.stringify(msg));
           return new Response('ok', { status: 200 });
         }
+
+        // markReadWithTyping (Meta), el reverse-geocode de una ubicación
+        // compartida (Mapbox) y la carga de la sesión (DB) van a hosts/servicios
+        // distintos e independientes entre sí -- no hay riesgo de repetir la
+        // condición de carrera de 2026-08-09 (esa era específica de 2 fetch()
+        // concurrentes al MISMO host de Meta en arranque en frío) corriéndolos
+        // en paralelo aquí. Antes iban en serie (markReadWithTyping, luego
+        // getSession y reverseGeocode más abajo en handleConversation), sumando
+        // 2 round-trips completos al tiempo total de respuesta -- causa real de
+        // que "la carga de la ubicación" se sintiera lenta (bug real reportado
+        // 2026-08-11, segunda vez). Los resultados se pasan precalculados a
+        // handleConversation para que no vuelva a pedirlos.
+        const rawLoc = msg.type === 'location' ? (msg.location as Record<string, unknown>) : null;
+        const rawLat = rawLoc?.latitude as number | undefined;
+        const rawLng = rawLoc?.longitude as number | undefined;
+        const [, precomputedAddr, precomputedSession] = await Promise.all([
+          msgId ? markReadWithTyping(msgId) : Promise.resolve(),
+          (rawLat != null && rawLng != null) ? reverseGeocode(rawLat, rawLng) : Promise.resolve(undefined),
+          getSession(fromPhone),
+        ]);
+
         let   msgType     = msg.type as string;
         const contactName = ((value?.contacts as unknown[])?.[0] as Record<string, unknown>)?.profile as Record<string, unknown>;
         const name        = (contactName?.name as string) ?? 'Usuario';
@@ -2236,7 +2272,7 @@ serve(async (req) => {
           }
         }
 
-        await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng);
+        await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession);
       }
     } catch (e) {
       console.error('[WA] Webhook processing error:', e);
