@@ -2304,11 +2304,25 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // rigida no puede mostrar condicionalmente). Es texto fijo aprobado por
     // Meta -- igual que conductor_llego, no se puede variar por servicio sin
     // aprobar una plantilla nueva.
-    let waResult = await sendTemplate(phone, 'viaje_completado', 'es_CO', [
-      distanceKm.toFixed(1), cop(amount), driverName,
-    ]);
+    //
+    // BUG REAL 2026-08-11: cuando el viaje es para otra persona, la plantilla
+    // SIEMPRE le ganaba al texto libre personalizado de abajo (waResult.ok
+    // era true de verdad, Meta la manda bien) -- el pasajero seguía viendo
+    // "Llegaste... ¿Cómo TE fue?" sin importar el arreglo del texto libre,
+    // porque ese texto libre nunca llegaba a ejecutarse. La plantilla es
+    // texto fijo aprobado por Meta, no se le puede meter el nombre de otra
+    // persona sin crear y aprobar una plantilla nueva (días de trámite). Se
+    // opta por saltarse la plantilla del todo en este caso y usar directo el
+    // texto libre personalizado -- la ventana de 24h no es un riesgo real
+    // acá: el pasajero acaba de estar activo en la conversación durante todo
+    // el viaje que recién terminó.
+    const forName = travelerLabel(session ?? {});
+    let waResult = forName
+      ? { ok: false }
+      : await sendTemplate(phone, 'viaje_completado', 'es_CO', [
+          distanceKm.toFixed(1), cop(amount), driverName,
+        ]);
     if (!waResult.ok) {
-      const forName = travelerLabel(session ?? {});
       await sendText(phone,
         (delivery
           ? `🏁 Tu paquete fue entregado 💚\n\n`
