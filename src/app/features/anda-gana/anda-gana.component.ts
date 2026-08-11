@@ -630,6 +630,25 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
             </div>
 
+            <!-- Accesibilidad + nota del pasajero -->
+            @if (reqAccessibilityTags(req).length > 0 || req.passenger_note) {
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                @if (reqAccessibilityTags(req).length > 0) {
+                  <div style="display:flex;gap:5px;flex-wrap:wrap">
+                    @for (tag of reqAccessibilityTags(req); track tag) {
+                      <span style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.35);color:#fbbf24;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px">{{ tag }}</span>
+                    }
+                  </div>
+                }
+                @if (req.passenger_note) {
+                  <div style="display:flex;align-items:flex-start;gap:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:7px 10px">
+                    <span class="material-symbols-outlined" style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:1px">chat</span>
+                    <p style="color:rgba(255,255,255,0.75);font-size:11px;font-style:italic;margin:0;line-height:1.3">"{{ req.passenger_note }}"</p>
+                  </div>
+                }
+              </div>
+            }
+
             <!-- Botones Aceptar / Contra-oferta -->
             @if (offerSentFor().has(req.id)) {
               <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)">
@@ -16854,6 +16873,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.forOtherName = '';
     this.forOtherPhone = '';
     this.forOtherLiabilityAck.set(false);
+    this.passengerTripNote = '';
+    this.tripAccessibility.set({ pets: false, luggage: false, child_seat: false, wheelchair: false });
     // Limpiar estado persistido del viaje
     if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
   }
@@ -17280,6 +17301,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         travelerName: this.forOtherName.trim(),
         travelerPhone: travelerPhoneDigits,
       } : {}),
+      // ── Nota al conductor + accesibilidad ───────────────────────
+      passengerNote: this.passengerTripNote.trim() || undefined,
+      accessibility: this.tripAccessibility(),
     });
     this.tripSending.set(false);
     if (!result.success || !result.tripId) {
@@ -18085,6 +18109,20 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   /** Lista de solicitudes que realmente se le muestran al conductor (ver driverOkForNewRequests). */
   visibleDriverRequests(): AgTripRequest[] {
     return this.driverOkForNewRequests() ? this.driverRequests() : [];
+  }
+
+  /** Etiquetas legibles de accesibilidad de una solicitud, para mostrarle al conductor
+   * en la tarjeta de "nueva solicitud" -- mismos íconos/textos que el pasajero ve al
+   * marcarlas al pedir el viaje. */
+  reqAccessibilityTags(req: AgTripRequest): string[] {
+    const a = req.accessibility;
+    if (!a) return [];
+    const tags: string[] = [];
+    if (a.pets) tags.push('🐾 Mascota');
+    if (a.luggage) tags.push('🧳 Equipaje');
+    if (a.child_seat) tags.push('👶 Silla niño');
+    if (a.wheelchair) tags.push('♿ Silla ruedas');
+    return tags;
   }
 
   /** Pedido explicito del usuario 2026-08-03: que en los modales del pasajero (oferta recibida,

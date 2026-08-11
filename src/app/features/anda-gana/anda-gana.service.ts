@@ -89,8 +89,12 @@ export interface AgTripRequest {
   passenger_user_id: string;
   passenger_name?: string;
   passenger_selfie_url?: string;
-  // Pedido para otra persona (WhatsApp) -- ver ag-whatsapp/index.ts createWaTrip().
-  for_other?: { name: string; phone: string | null; requested_by_phone: string } | null;
+  // Pedido para otra persona -- ver ag-whatsapp/index.ts createWaTrip() (WhatsApp,
+  // identifica a quien pidió por su celular) y requestTrip() más abajo (app,
+  // identifica a quien pidió por su user id).
+  for_other?: { name: string; phone: string | null; requested_by_phone?: string; requested_by_user_id?: string } | null;
+  passenger_note?: string | null;
+  accessibility?: { pets?: boolean; luggage?: boolean; child_seat?: boolean; wheelchair?: boolean } | null;
   origin_lat: number;
   origin_lng: number;
   origin_name?: string;
@@ -688,6 +692,9 @@ export class AndaGanaService {
     isForSelf?: boolean;
     travelerName?: string;
     travelerPhone?: string;
+    // ── Nota al conductor + accesibilidad (optional) ──────────────
+    passengerNote?: string;
+    accessibility?: { pets?: boolean; luggage?: boolean; child_seat?: boolean; wheelchair?: boolean };
   }): Promise<{ success: boolean; tripId?: string; error?: string }> {
     const { data: row, error } = await this.supabase
       .from('ag_trip_requests')
@@ -723,6 +730,12 @@ export class AndaGanaService {
             requested_by_user_id: data.passengerUserId,
           },
         } : {}),
+        // Nota al conductor (solo si escribió algo)
+        ...(data.passengerNote?.trim() ? { passenger_note: data.passengerNote.trim() } : {}),
+        // Accesibilidad (solo si marcó al menos una -- no llenar la columna con
+        // un objeto de puros "false" cuando el pasajero no pidió nada especial)
+        ...(data.accessibility && Object.values(data.accessibility).some(Boolean)
+          ? { accessibility: data.accessibility } : {}),
       })
       .select('id')
       .single();
