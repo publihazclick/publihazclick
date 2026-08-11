@@ -139,13 +139,14 @@ async function markReadWithTyping(messageId: string): Promise<void> {
 
 async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
   try {
+    const fullBody = { messaging_product: 'whatsapp', ...payload };
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', ...payload }),
+      body: JSON.stringify(fullBody),
     });
     const bodyText = await res.text();
-    if (!res.ok) console.error('[WA] sendGraph Meta API error:', res.status, bodyText);
+    if (!res.ok) console.error('[WA] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendGraph fetch error:', e);
