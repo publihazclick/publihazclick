@@ -1328,7 +1328,7 @@ async function handleConversation(
     await upsertSession(phone, { state: 'awaiting_traveler_same_location', traveler_name: text.trim() });
     await sendButtons(phone, `¿${text.trim()} está contigo ahora mismo (misma ubicación)?`, [
       { id: 'same_loc_yes', title: 'Sí, está conmigo' },
-      { id: 'same_loc_no', title: 'No, está en otro lugar' },
+      { id: 'same_loc_no', title: 'En otro lugar' },
     ]);
     return;
   }
@@ -1338,6 +1338,14 @@ async function handleConversation(
     const travelerName = (session.traveler_name as string) ?? 'esa persona';
     // Match a medida (ver misma nota en awaiting_liability_ack) -- "conmigo"/"otro
     // lugar" no calzan con el vocabulario de isYes()/isNo().
+    //
+    // BUG REAL 2026-08-11: el botón se llamaba "No, está en otro lugar" (22
+    // caracteres) -- sendButtons() trunca el title a 20 con .slice(0,20) (límite
+    // real de la API de WhatsApp), así que lo que llegaba de vuelta al tocarlo
+    // era "No, está en otro lu" (sin "gar"). Ni el match de "otro lugar" ni el de
+    // "no" calzaban con eso, así que caía siempre al else y reenviaba los MISMOS
+    // botones -- el pasajero quedaba en un bucle sin poder avanzar. Se acortó el
+    // título a "En otro lugar" (13 caracteres, con margen de sobra).
     const n = text.trim().toLowerCase();
     if (n.includes('conmigo') || n === 'si' || n === 'sí') {
       await upsertSession(phone, { state: 'awaiting_origin' });
@@ -1356,7 +1364,7 @@ async function handleConversation(
     } else {
       await sendButtons(phone, `¿${travelerName} está contigo ahora mismo?`, [
         { id: 'same_loc_yes', title: 'Sí, está conmigo' },
-        { id: 'same_loc_no', title: 'No, está en otro lugar' },
+        { id: 'same_loc_no', title: 'En otro lugar' },
       ]);
     }
     return;
