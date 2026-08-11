@@ -1556,7 +1556,16 @@ async function handleConversation(
           (session.driver_vehicle ? `${emoji} ${session.driver_vehicle}` : '') +
           (session.driver_plate   ? ` · ${session.driver_plate}` : '') +
           `\n💰 Acordaron *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*` +
-          `\n📱 Si necesitas contactarlo, escríbenos al ${toE164(SUPPORT_PHONE)}` +
+          // Bug real reportado 2026-08-11 (varias veces): esta línea mandaba
+          // SUPPORT_PHONE (el número "de soporte" hardcodeado en el archivo) --
+          // que en este entorno de pruebas es EL MISMO número real del
+          // conductor de prueba, así que el pasajero terminaba viendo el
+          // celular real del conductor de todos modos. Nunca debía darse un
+          // número aquí: ya existe llamada enmascarada (escribir "llamar",
+          // ver más abajo en el estado in_trip) y puente de chat en ambos
+          // sentidos (cualquier texto libre en este mismo chat le llega al
+          // conductor) -- ninguno expone el número real de nadie.
+          `\n📱 Si necesitas contactarlo, escribe *llamar* o mándale un mensaje aquí mismo` +
           `\n\nTe aviso apenas llegue.`
         );
         // Ubicación nativa del punto de recogida -- mismo motivo que el
