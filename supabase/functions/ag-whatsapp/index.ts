@@ -57,6 +57,18 @@ function destQuestionText(session: Record<string, unknown>): string {
   }
   return `¿Hacia dónde va?`;
 }
+
+// ─── Nombre de la persona que viaja, cuando el viaje NO es para quien escribe ──
+// Usado por todo el resto del flujo (oferta, confirmación, llegada, inicio de
+// viaje, recibo) para hablar de la persona correcta en vez de tratar al
+// pasajero de WhatsApp como si fuera quien físicamente viaja -- pedido
+// explícito del usuario 2026-08-11 ("estamos respondiendo como si el pedido
+// fuera para la misma persona"). null cuando es para quien escribe (el caso
+// de siempre, sin cambios de wording).
+function travelerLabel(session: Record<string, unknown>): string | null {
+  if (session.is_for_self === false && session.traveler_name) return session.traveler_name as string;
+  return null;
+}
 function svcCopy(svc: string | null | undefined) {
   const delivery = isDeliveryService(svc);
   return {
@@ -718,7 +730,14 @@ async function presentOffer(phone: string, o: Record<string, unknown>, prefix = 
     trips  > 0 ? `${trips} viaje${trips === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ');
 
-  const action = copy.delivery ? 'quiere recoger tu paquete 📦' : 'quiere llevarte 🚗';
+  // o.for_name: nombre de la persona que viaja, cuando el viaje no es para
+  // quien escribe (ver travelerLabel()) -- pasado por cada caller desde su
+  // propia sesión. "Vix quiere llevarte" no tiene sentido si quien viaja es
+  // otra persona.
+  const forName = o.for_name as string | null | undefined;
+  const action = copy.delivery
+    ? 'quiere recoger tu paquete 📦'
+    : (forName ? `quiere llevar a *${forName}* 🚗` : 'quiere llevarte 🚗');
   const body =
     `${prefix}${o.driver_name} ${action}\n\n` +
     (trustParts ? `${trustParts}` + (details ? ` · ${details}` : '') + `\n` : (details ? `${details}\n` : '')) +
@@ -830,7 +849,9 @@ async function parseFreeTextRequest(text: string): Promise<ParsedRequest | null>
 }
 
 // ─── Confirmar origen (reusado por el flujo clásico y el flujo inteligente) ───
-async function presentOriginConfirm(phone: string, addr: string, lat: number, lng: number): Promise<void> {
+async function presentOriginConfirm(phone: string, addr: string, lat: number, lng: number, session: Record<string, unknown>): Promise<void> {
+  const forName = travelerLabel(session);
+  const question = forName ? `📍 ¿Ahí está *${forName}*? (*${addr}*)` : `📍 ¿Estás en *${addr}*?`;
   // Guardar la sesión y enviar el mensaje son operaciones independientes (ninguna
   // necesita el resultado de la otra) -- en paralelo en vez de en serie ahorra
   // un round-trip completo, parte del mismo fix de lentitud de 2026-08-11.
@@ -839,7 +860,7 @@ async function presentOriginConfirm(phone: string, addr: string, lat: number, ln
       state: 'awaiting_origin_confirm',
       origin_lat: lat, origin_lng: lng, origin_address: addr,
     }),
-    sendButtons(phone, `📍 ¿Estás en *${addr}*?`, [
+    sendButtons(phone, question, [
       { id: 'origin_yes', title: '✅ Sí, confirmar' },
       { id: 'origin_no', title: '✏️ Editar' },
     ]),
@@ -858,9 +879,12 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
   }
 
   const distText = distKm > 0 ? ` (${distKm.toFixed(1)} km)` : '';
+  const forName = travelerLabel(session);
   const question = isDeliveryService(session.service_type as string)
     ? `📍 ¿Ahí se debe entregar el paquete: *${addr}*?${distText}`
-    : `📍 ¿Vas a *${addr}*?${distText}`;
+    : forName
+      ? `📍 ¿${forName} va a *${addr}*?${distText}`
+      : `📍 ¿Vas a *${addr}*?${distText}`;
 
   // Guardar sesión + enviar mensaje en paralelo -- ver misma nota en
   // presentOriginConfirm.
@@ -1432,7 +1456,7 @@ async function handleConversation(
       return;
     }
 
-    await presentOriginConfirm(phone, addr, lat, lng);
+    await presentOriginConfirm(phone, addr, lat, lng, session);
     return;
   }
 
@@ -1593,8 +1617,13 @@ async function handleConversation(
 
     const svc = SERVICE_LABELS[session.service_type as string] ?? 'Servicio';
     const delivery = isDeliveryService(session.service_type as string);
+    const forName = travelerLabel(session);
     await sendText(phone,
-      (delivery ? `🔍 Buscando mensajero disponible...\n\n` : `🔍 Buscando conductores cerca de ti...\n\n`) +
+      (delivery
+        ? `🔍 Buscando mensajero disponible...\n\n`
+        : forName
+          ? `🔍 Buscando conductores cerca de *${forName}*...\n\n`
+          : `🔍 Buscando conductores cerca de ti...\n\n`) +
       `${svc}\n` +
       `📍 Desde: ${session.origin_address}\n` +
       `📍 Hasta: ${session.dest_name}\n` +
@@ -1675,7 +1704,7 @@ async function handleConversation(
       // aviso push no alcanzó a llegar) — no debe perderse.
       const nextOffer = await fetchNextPendingOffer(tripId);
       if (nextOffer) {
-        await presentOffer(phone, { ...nextOffer, service_type: session.service_type });
+        await presentOffer(phone, { ...nextOffer, service_type: session.service_type, for_name: travelerLabel(session) });
         return;
       }
     }
@@ -1752,7 +1781,7 @@ async function handleConversation(
         );
         // Ubicación nativa del punto de recogida -- mismo motivo que el
         // seguimiento en vivo: un mapa real en el chat, no un link.
-        if (oLat && oLng) await sendLocation(phone, oLat, oLng, 'Tu punto de recogida');
+        if (oLat && oLng) await sendLocation(phone, oLat, oLng, travelerLabel(session) ? 'Punto de recogida' : 'Tu punto de recogida');
       }
     } else if (isNo(text)) {
       // Rechazar esta oferta y seguir buscando
@@ -1768,7 +1797,7 @@ async function handleConversation(
       // de perderla / esperar a que llegue un nuevo aviso.
       const nextOffer = tripId ? await fetchNextPendingOffer(tripId) : null;
       if (nextOffer) {
-        await presentOffer(phone, { ...nextOffer, service_type: session.service_type }, 'Oferta rechazada ❌\n\n');
+        await presentOffer(phone, { ...nextOffer, service_type: session.service_type, for_name: travelerLabel(session) }, 'Oferta rechazada ❌\n\n');
         return;
       }
 
@@ -1927,9 +1956,14 @@ async function handleConversation(
             }
           }
         }
-        await sendText(phone, delivery
-          ? `¡Listo! 📦 Ya le avisamos a tu mensajero que puede salir.`
-          : `¡Buen viaje! 🚗 Esperamos que este viaje sea de tu agrado 😊`);
+        {
+          const forNameBoard = travelerLabel(session);
+          await sendText(phone, delivery
+            ? `¡Listo! 📦 Ya le avisamos a tu mensajero que puede salir.`
+            : forNameBoard
+              ? `¡Buen viaje para *${forNameBoard}*! 🚗 Esperamos que sea de su agrado 😊`
+              : `¡Buen viaje! 🚗 Esperamos que este viaje sea de tu agrado 😊`);
+        }
         return;
       }
     }
@@ -1956,8 +1990,9 @@ async function handleConversation(
             .maybeSingle();
           if (loc?.lat != null && loc?.lng != null) {
             const stage = trip.driver_stage as string ?? '';
+            const forName = travelerLabel(session);
             const label = stage === 'heading_to_pickup'
-              ? (delivery ? 'Va en camino a recoger tu paquete' : 'Va en camino a recogerte')
+              ? (delivery ? 'Va en camino a recoger tu paquete' : forName ? `Va en camino a recoger a ${forName}` : 'Va en camino a recogerte')
               : stage === 'arrived_at_pickup'
                 ? 'Llegó al punto de recogida'
                 : 'Va en camino';
@@ -2113,6 +2148,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       driver_rating:  payload.driver_rating as number ?? 0,
       driver_trips:   payload.driver_trips as number ?? 0,
       service_type:   session.service_type,
+      for_name:       travelerLabel(session),
     });
   }
 
@@ -2151,28 +2187,32 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // aprobar una plantilla nueva, así que ese respaldo se queda con el
     // wording de pasajero en los dos casos (mejor un mensaje aprobado genérico
     // que ninguno).
-    let waResult = delivery
-      ? await sendButtons(phone,
-          `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦\n\n` +
-          (vehicleLine ? `${vehicleLine}\n\n` : '') +
-          `¿Ya se lo entregaste?`,
-          [{ id: 'board_confirm', title: '✅ Ya se lo entregué' }],
-        )
-      : await sendButtons(phone,
-          `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗\n\n` +
-          (vehicleLine ? `${vehicleLine}\n\n` : '') +
-          `¿Ya subiste al vehículo?`,
-          [{ id: 'board_confirm', title: '✅ Ya estoy a bordo' }],
-        );
+    // Viaje para otra persona (no aplica a domicilio, ver alcance de la
+    // feature): "te está esperando"/"Sal cuando estés listo" no tiene sentido
+    // si quien va a subir es otra persona. El título del botón SIGUE
+    // necesitando contener "a bordo" literal -- el estado in_trip reconoce la
+    // confirmación de abordaje con el regex /a bordo|entregu[eé]/i (más abajo
+    // en este archivo), y "Ya está a bordo" lo sigue cumpliendo igual que
+    // "Ya estoy a bordo".
+    const forName = travelerLabel(session ?? {});
+    const arrivedBody = delivery
+      ? `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦`
+      : forName
+        ? `📍 *${driverName}* ya llegó y está esperando a *${forName}*. ¡Que salga cuando esté listo! 🚗`
+        : `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`;
+    const boardQuestion = delivery ? `¿Ya se lo entregaste?` : (forName ? `¿${forName} ya está a bordo?` : `¿Ya subiste al vehículo?`);
+    const boardButtonTitle = delivery ? '✅ Ya se lo entregué' : (forName ? '✅ Ya está a bordo' : '✅ Ya estoy a bordo');
+    let waResult = await sendButtons(phone,
+      arrivedBody + `\n\n` + (vehicleLine ? `${vehicleLine}\n\n` : '') + boardQuestion,
+      [{ id: 'board_confirm', title: boardButtonTitle }],
+    );
     if (!waResult.ok) {
       const tplResult = await sendTemplate(phone, 'conductor_llego', 'es_CO', [driverName]);
       if (!tplResult.ok) {
-        await sendText(phone, delivery
-          ? `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦` + (vehicleLine ? `\n\n${vehicleLine}` : '')
-          : `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗` + (vehicleLine ? `\n\n${vehicleLine}` : ''));
+        await sendText(phone, arrivedBody + (vehicleLine ? `\n\n${vehicleLine}` : ''));
       }
     }
-    if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');
+    if (lat != null && lng != null) await sendLocation(phone, lat, lng, forName ? 'Punto de recogida' : 'Tu punto de recogida');
   }
 
   if (event === 'trip_started') {
@@ -2187,9 +2227,12 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const session    = await getSession(phone);
     const delivery   = isDeliveryService(session?.service_type as string | undefined);
     const driverName = payload.driver_name as string ?? (delivery ? 'Tu mensajero' : 'Tu conductor');
+    const forName    = travelerLabel(session ?? {});
     await sendText(phone, delivery
       ? `🚀 *${driverName}* ya va en camino a entregar tu paquete.`
-      : `🚀 ¡Vamos en camino! *${driverName}* ya arrancó hacia tu destino.`);
+      : forName
+        ? `🚀 ¡En camino! *${driverName}* ya arrancó con *${forName}* hacia el destino.`
+        : `🚀 ¡Vamos en camino! *${driverName}* ya arrancó hacia tu destino.`);
   }
 
   // Puente de chat: el conductor escribió desde el chat de la app en un
@@ -2239,11 +2282,18 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       distanceKm.toFixed(1), cop(amount), driverName,
     ]);
     if (!waResult.ok) {
+      const forName = travelerLabel(session ?? {});
       await sendText(phone,
-        (delivery ? `🏁 Tu paquete fue entregado 💚\n\n` : `🏁 Llegaste — gracias por viajar con Movi 💚\n\n`) +
+        (delivery
+          ? `🏁 Tu paquete fue entregado 💚\n\n`
+          : forName
+            ? `🏁 *${forName}* llegó — gracias por viajar con Movi 💚\n\n`
+            : `🏁 Llegaste — gracias por viajar con Movi 💚\n\n`) +
         (receiptLines ? `${receiptLines}\n` : '') +
         `💰 *Total: ${cop(amount)}*\n\n` +
-        `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n` +
+        (forName
+          ? `⭐ ¿Cómo le fue a *${forName}* con *${driverName}*? Responde del *1* al *5*.\n`
+          : `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n`) +
         `_(o escribe *omitir* para saltar)_`
       );
     }
@@ -2257,8 +2307,9 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
 
     const session  = await getSession(phone);
     const delivery = isDeliveryService(session?.service_type as string | undefined);
+    const forNameLive = travelerLabel(session ?? {});
     const label = stage === 'heading_to_pickup'
-      ? (delivery ? 'Va en camino a recoger tu paquete' : 'Va en camino a recogerte')
+      ? (delivery ? 'Va en camino a recoger tu paquete' : forNameLive ? `Va en camino a recoger a ${forNameLive}` : 'Va en camino a recogerte')
       : stage === 'arrived_at_pickup'
         ? 'Llegó al punto de recogida'
         : 'Va en camino';
