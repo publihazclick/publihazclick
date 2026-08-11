@@ -59,6 +59,24 @@ function db() {
   });
 }
 
+// ─── BSUID vs número real ──────────────────────────────────────────────────────
+// Desde abril 2026 Meta permite a los usuarios de WhatsApp ocultar su número
+// real detrás de un "username" -- para esos usuarios el webhook YA NO manda
+// "from" (número), solo "from_user_id" con un Business-Scoped User ID (BSUID,
+// formato tipo "CO.1745906379785888"). Para responderles hay que mandar el
+// mensaje saliente con el campo "recipient" (el BSUID) en vez de "to" (que
+// exige un número real) -- si se manda como "to" Meta rechaza con "(#100)
+// The parameter to is required" porque no reconoce el BSUID como número
+// válido. Esto es lo que causaba el bug real reportado 2026-08-11 ("no le
+// llega a un iPhone") -- no era un bug de iOS, era un pasajero con username
+// activado; confirmado viendo el payload crudo real de Meta en los logs.
+function isBsuid(id: string): boolean {
+  return !/^\+?\d+$/.test(id);
+}
+function recipientField(id: string): { to: string } | { recipient: string } {
+  return isBsuid(id) ? { recipient: id } : { to: id };
+}
+
 // ─── WhatsApp API helpers ─────────────────────────────────────────────────────
 async function sendText(to: string, text: string): Promise<{ ok: boolean; status?: number; body?: string }> {
   try {
@@ -68,7 +86,7 @@ async function sendText(to: string, text: string): Promise<{ ok: boolean; status
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
-        to,
+        ...recipientField(to),
         type: 'text',
         text: { preview_url: false, body: text },
       }),
@@ -94,7 +112,7 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to,
+        ...recipientField(to),
         type: 'template',
         template: {
           name: templateName,
@@ -139,7 +157,8 @@ async function markReadWithTyping(messageId: string): Promise<void> {
 
 async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
   try {
-    const fullBody = { messaging_product: 'whatsapp', ...payload };
+    const { to, ...rest } = payload;
+    const fullBody = { messaging_product: 'whatsapp', ...(to ? recipientField(to as string) : {}), ...rest };
     const res = await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
@@ -179,6 +198,9 @@ async function sendLocation(to: string, lat: number, lng: number, name?: string,
 
 // ─── Normalizar número a E.164 ────────────────────────────────────────────────
 function toE164(phone: string): string {
+  // Un BSUID (ver isBsuid()) no es un número -- pasarlo por esta lógica lo
+  // destruiría (le quita todo lo que no sea dígito). Se deja intacto.
+  if (isBsuid(phone)) return phone;
   const digits = phone.replace(/\D/g, '');
   if (phone.startsWith('+')) return `+${digits}`;
   if (digits.length === 10) return `+57${digits}`;
@@ -1486,7 +1508,13 @@ async function handleConversation(
           ? await supabase.from('ag_users').select('phone').eq('id', driver.ag_user_id as string).maybeSingle()
           : { data: null };
 
-        if (driverUser?.phone) {
+        // La llamada enmascarada marca por PSTN de verdad (Telnyx) -- necesita
+        // un número real, no sirve con un BSUID (pasajero con "username" de
+        // WhatsApp activado, sin número visible). Se avisa claro en vez de
+        // intentar marcar un identificador que no es un teléfono.
+        if (isBsuid(phone)) {
+          await sendText(phone, `No podemos hacer la llamada porque tu WhatsApp no comparte tu número 😔\n\nEscríbele por aquí en el chat, o desactiva el nombre de usuario en Ajustes de WhatsApp para poder llamarte.`);
+        } else if (driverUser?.phone) {
           const result = await startMaskedCall(toE164(phone), toE164(driverUser.phone as string));
           await sendText(phone, result.ok
             ? `📞 Te estamos llamando... contesta y te conectamos con tu ${driverNoun}.`
@@ -2035,20 +2063,22 @@ serve(async (req) => {
           }
         }
 
-        // Se espera (aunque sea rápido) -- antes era fire-and-forget para no
-        // bloquear el procesamiento, pero eso deja 2 fetch() corriendo en
-        // paralelo justo en el arranque en frío de la instancia (recién
-        // "booted"), que es exactamente cuando se reprodujo en logs reales un
-        // bug real y grave: el siguiente envío (sendButtons/sendGraph) salía
-        // con el campo "to" ausente del JSON pese a que `fromPhone` sí estaba
-        // bien seteado -- el pasajero se quedaba viendo "escribiendo..." para
-        // siempre. Nunca se reprodujo en una instancia ya tibia, solo en frío
-        // con dos fetch simultáneos al mismo host -- awaitear esto los separa
-        // en secuencia y elimina la carrera (pedido explícito del usuario
-        // 2026-08-11, reportado con un iPhone real pero no es un bug de iOS).
+        // Se espera (antes era fire-and-forget) -- sin ganancia real en
+        // dejarlo sin awaitear, y así queda un solo fetch a la vez en vez de
+        // dos en paralelo al mismo host.
         if (msgId) await markReadWithTyping(msgId);
 
-        const fromPhone   = msg.from as string;
+        // Si el pasajero activó "username" (oculta su número), Meta ya no manda
+        // "from" -- solo "from_user_id" con su BSUID (ver nota de isBsuid() más
+        // arriba). Se usa ese como identificador de todos modos: la sesión
+        // (ag_wa_sessions.wa_phone) y el resto del código lo tratan como texto
+        // opaco, y recipientField() sabe mandar "recipient" en vez de "to" al
+        // responderle.
+        const fromPhone   = (msg.from as string | undefined) ?? (msg.from_user_id as string | undefined);
+        if (!fromPhone) {
+          console.error('[WA] mensaje sin "from" ni "from_user_id":', JSON.stringify(msg));
+          return new Response('ok', { status: 200 });
+        }
         let   msgType     = msg.type as string;
         const contactName = ((value?.contacts as unknown[])?.[0] as Record<string, unknown>)?.profile as Record<string, unknown>;
         const name        = (contactName?.name as string) ?? 'Usuario';
