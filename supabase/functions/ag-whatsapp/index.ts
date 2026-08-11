@@ -2195,11 +2195,19 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // en este archivo), y "Ya está a bordo" lo sigue cumpliendo igual que
     // "Ya estoy a bordo".
     const forName = travelerLabel(session ?? {});
+    // Aviso de los 4 minutos (240s) -- mismo límite que ya usa la app en
+    // pantalla (driverArrivalTimer/arrivedAtPickupTimer, ambos arrancan en
+    // 240 y solo son un contador visual ahí, no hay cancelación automática
+    // real al llegar a 0) pero que el canal de WhatsApp nunca comunicaba.
+    // Pedido explícito del usuario 2026-08-11 -- se agrega en los dos casos
+    // (para uno mismo y para otra persona) porque el límite real es el mismo
+    // sin importar quién sube, solo cambiaba a quién se lo decíamos.
+    const waitNotice = `\n\n⏱️ Tiene un máximo de *4 minutos* para salir y abordar el vehículo.`;
     const arrivedBody = delivery
       ? `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦`
       : forName
-        ? `📍 *${driverName}* ya llegó y está esperando a *${forName}*. ¡Que salga cuando esté listo! 🚗`
-        : `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`;
+        ? `📍 *${driverName}* ya llegó y está esperando a *${forName}*. ¡Que salga cuando esté listo! 🚗${waitNotice}`
+        : `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗${waitNotice.replace('Tiene', 'Tienes')}`;
     const boardQuestion = delivery ? `¿Ya se lo entregaste?` : (forName ? `¿${forName} ya está a bordo?` : `¿Ya subiste al vehículo?`);
     const boardButtonTitle = delivery ? '✅ Ya se lo entregué' : (forName ? '✅ Ya está a bordo' : '✅ Ya estoy a bordo');
     let waResult = await sendButtons(phone,
