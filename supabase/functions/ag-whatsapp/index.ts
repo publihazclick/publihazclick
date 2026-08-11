@@ -254,78 +254,51 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 4000):
   }
 }
 
-// ─── Geocoding inverso (Mapbox + Nominatim) ───────────────────────────────────
+// ─── Geocoding inverso (solo Mapbox) ───────────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  // Mapbox como fuente principal -- el mismo token publico que ya usa el mapa
-  // de la app (environment.ts, andaGana.mapboxToken). No se usa Google aca
+  // Mapbox como única fuente -- el mismo token publico que ya usa el mapa de
+  // la app (environment.ts, andaGana.mapboxToken). No se usa Google aca
   // porque la API key del proyecto solo tiene Places API habilitada, no
   // Geocoding API (el endpoint de reverse geocoding "clasico" de Google) --
   // probado y confirmado con REQUEST_DENIED antes de elegir Mapbox.
   //
-  // Mapbox y Nominatim se consultan EN PARALELO (no uno tras otro) -- antes
-  // Nominatim solo se llamaba si Mapbox fallaba la validación de distancia
-  // de abajo, así que en cualquier ubicación real con poca cobertura en
-  // Mapbox el pasajero pagaba las dos latencias sumadas, una detrás de la
-  // otra (Nominatim en particular puede tardar varios segundos). Ahora se
-  // dispara todo a la vez y se usa el primer resultado válido que llegue.
+  // Nominatim (OSM) YA NO se usa como respaldo -- medido en producción que
+  // es la causa real de que "todo el chat vaya rápido menos cuando mando mi
+  // ubicación" (bug real reportado 2026-08-11, dos veces): es un servicio
+  // público gratuito sin SLA, y bajo las pruebas de este mismo fix devolvió
+  // un error de límite de solicitudes en vivo. Mapbox medido en producción
+  // responde en ~10-15ms de forma consistente -- no vale la pena la
+  // "seguridad" de un segundo resultado si ese segundo resultado es lo que
+  // vuelve lenta e impredecible toda la función. Si Mapbox no da un
+  // resultado confiable, se cae directo a coordenadas crudas (rápido,
+  // siempre disponible, y más honesto que una dirección adivinada).
   const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN');
-
-  const mapboxPromise = mapboxToken
-    ? fetchWithTimeout(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&language=es&types=address,poi`)
-        .then(r => r.json())
-        .then(j => {
-          const feature = j?.features?.[0];
-          const center = feature?.center as [number, number] | undefined;
-          if (feature?.place_name && center && haversineKm(lat, lng, center[1], center[0]) <= 3) {
-            // "Calle 1B 2 15, 540001 San José de Cúcuta, Norte de Santander,
-            // Colombia" -> se recorta a los primeros 2-3 segmentos (calle +
-            // ciudad) para no mandar el pais/codigo postal en cada mensaje.
-            return feature.place_name.split(',').slice(0, 3).join(',').trim();
-          }
-          return null;
-        })
-        .catch((e) => { console.error('[Geo] Mapbox reverseGeocode error:', e); return null; })
-    : Promise.resolve(null);
-
-  const nominatimPromise = fetchWithTimeout(
-    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=es`,
-    { headers: { 'User-Agent': 'Movi-App/1.0 (movi@publihazclick.com)' } }
-  )
-    .then(r => r.json())
-    .then(j => {
-      if (j?.display_name && j?.lat && j?.lon && haversineKm(lat, lng, parseFloat(j.lat), parseFloat(j.lon)) <= 3) {
-        const a = j.address ?? {};
-        const parts = [
-          a.road ?? a.pedestrian ?? a.path,
-          a.neighbourhood ?? a.suburb ?? a.quarter,
-          a.city ?? a.town ?? a.municipality ?? a.county,
-        ].filter(Boolean);
-        return parts.length ? parts.join(', ') : j.display_name.split(',').slice(0, 3).join(',');
+  if (mapboxToken) {
+    try {
+      const r = await fetchWithTimeout(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&language=es&types=address,poi`,
+        {}, 3000
+      );
+      const j = await r.json();
+      const feature = j?.features?.[0];
+      const center = feature?.center as [number, number] | undefined;
+      // Sanity check: si el punto que devuelve Mapbox queda lejos del punto
+      // real que mandó el pasajero, es un match de baja confianza (zona con
+      // poca cobertura de datos) -- mejor no mostrar con seguridad una
+      // dirección que en realidad no es la suya (bug real reportado
+      // 2026-08-11: "la dirección no concuerda con la ubicación real del
+      // pasajero").
+      if (feature?.place_name && center && haversineKm(lat, lng, center[1], center[0]) <= 3) {
+        // "Calle 1B 2 15, 540001 San José de Cúcuta, Norte de Santander,
+        // Colombia" -> se recorta a los primeros 2-3 segmentos (calle +
+        // ciudad) para no mandar el pais/codigo postal en cada mensaje.
+        return feature.place_name.split(',').slice(0, 3).join(',').trim();
       }
-      return null;
-    })
-    .catch((e) => { console.error('[Geo] Nominatim fallback error:', e); return null; });
-
-  // Sanity check en ambas fuentes: si el punto que devuelven queda lejos del
-  // punto real que mandó el pasajero, es un match de baja confianza (zona
-  // con poca cobertura de datos) -- mejor no mostrar con seguridad una
-  // dirección que en realidad no es la suya (bug real reportado 2026-08-11:
-  // "la dirección no concuerda con la ubicación real del pasajero"). Se
-  // prefiere Mapbox por ser más preciso en Colombia, Nominatim como respaldo
-  // -- ambos arrancan a la vez, pero si Mapbox (que es el rápido y confiable
-  // de los dos) ya da un resultado válido, se responde de inmediato SIN
-  // esperar a Nominatim, que es un servicio público gratuito sin SLA y puede
-  // tardar varios segundos o directamente devolver un error bajo carga (bug
-  // real reportado 2026-08-11: "todo el chat va rápido menos cuando mando mi
-  // ubicación" -- esperar siempre a los dos con Promise.all no arreglaba
-  // nada si Nominatim era el lento).
-  const mapboxAddr = await mapboxPromise;
-  if (mapboxAddr) return mapboxAddr;
-  const nominatimAddr = await nominatimPromise;
-  if (nominatimAddr) return nominatimAddr;
-  // Ninguna fuente dio un resultado confiable cerca del punto real -- mejor
-  // mostrar las coordenadas crudas (que sí son exactas) que una dirección
-  // inventada que puede quedar en otra parte de la ciudad o del país.
+    } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
+  }
+  // Sin resultado confiable cerca del punto real -- mejor mostrar las
+  // coordenadas crudas (que sí son exactas) que una dirección inventada que
+  // puede quedar en otra parte de la ciudad o del país.
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
