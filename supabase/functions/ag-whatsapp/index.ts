@@ -2223,6 +2223,24 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     if (lat != null && lng != null) await sendLocation(phone, lat, lng, forName ? 'Punto de recogida' : 'Tu punto de recogida');
   }
 
+  // Recordatorio a los ~2 minutos de que el conductor llegó y el pasajero
+  // sigue sin abordar -- disparado por el cron ag_wa_arrival_reminder
+  // (migración 216, mismo patrón que ag_wa_broadcast_live_locations). Un
+  // mensaje de WhatsApp no se puede actualizar solo (no hay contador en
+  // vivo real dentro de un mensaje), así que esto es lo más parecido: un
+  // segundo mensaje que avisa cuánto tiempo queda de los 4 minutos totales.
+  // Pedido explícito del usuario 2026-08-11.
+  if (event === 'arrival_reminder') {
+    const session    = await getSession(phone);
+    const driverName = payload.driver_name as string ?? 'Tu conductor';
+    const forName     = travelerLabel(session ?? {});
+    await sendText(phone,
+      forName
+        ? `⏱️ Quedan *2 minutos* para que *${forName}* aborde con *${driverName}* antes de que se cumpla el máximo de espera.`
+        : `⏱️ Te quedan *2 minutos* para abordar con *${driverName}* antes de que se cumpla el máximo de espera.`
+    );
+  }
+
   if (event === 'trip_started') {
     // driver_stage pasó a 'on_route' -- el viaje arrancó de verdad hacia el
     // destino. Dispara sin importar si lo confirmó el pasajero por WhatsApp
