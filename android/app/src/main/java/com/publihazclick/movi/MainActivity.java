@@ -44,7 +44,11 @@ public class MainActivity extends BridgeActivity {
      * manifest. Se mantiene tambien el fix del WebView (color + force-dark off) como respaldo.
      */
     private void fixWebViewBlankBackground() {
-        getWindow().setBackgroundDrawableResource(R.drawable.splash_bg);
+        // splash_bg (color solido) -> splash (imagen con logo/marca completa). Antes, mientras
+        // el WebView cargaba la pagina remota, se veia el azul liso sin ningun logo -- a veces
+        // varios segundos si la red iba lenta. splash ya existia como recurso (generado por
+        // Capacitor hace tiempo) pero no lo referenciaba nada, asi que quedaba sin usar.
+        getWindow().setBackgroundDrawableResource(R.drawable.splash);
         if (getBridge() == null || getBridge().getWebView() == null) return;
         android.webkit.WebView webView = getBridge().getWebView();
         webView.setBackgroundColor(Color.parseColor("#245BDB"));
