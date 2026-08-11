@@ -10967,6 +10967,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   private _requestsChannel: RealtimeChannel | null = null;
   private _myOffersChannel: RealtimeChannel | null = null;
   private _tripBoardingChannel: RealtimeChannel | null = null;
+  private _driverTripStageChannel: RealtimeChannel | null = null;
   private _passengerLiveChannel: RealtimeChannel | null = null;
   private _mapboxPromise: Promise<void> | null = null;
   private _mbxSessionToken: string | null = null;
@@ -11486,6 +11487,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (this._requestsChannel) { this._requestsChannel.unsubscribe(); this._requestsChannel = null; }
     if (this._myOffersChannel) { this._myOffersChannel.unsubscribe(); this._myOffersChannel = null; }
     if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); this._tripBoardingChannel = null; }
+    if (this._driverTripStageChannel) { this._driverTripStageChannel.unsubscribe(); this._driverTripStageChannel = null; }
     if (this._passengerLiveChannel) { this._passengerLiveChannel.unsubscribe(); this._passengerLiveChannel = null; }
     if (this._driverBroadcastChannel) { try { this._driverBroadcastChannel.unsubscribe(); } catch {} this._driverBroadcastChannel = null; }
     if (this._locationChannel) { this._locationChannel.unsubscribe(); this._locationChannel = null; }
@@ -15226,6 +15228,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this._tripBoardingChannel = this.agService.subscribeTripBoarding(boardId, () => {
           if (this.driverArrivalTrip()) this._applyDriverBoarding();
         });
+        // Respaldo a nivel de base de datos -- el canal de arriba es un
+        // broadcast que SOLO dispara passengerConfirmBoarding() (pasajero
+        // usando la app). Un pasajero de WhatsApp confirma "ya estoy a
+        // bordo" con un UPDATE directo a driver_stage desde ag-whatsapp, sin
+        // pasar por ningún broadcast -- el conductor se quedaba esperando
+        // para siempre aunque el viaje ya hubiera arrancado de verdad en la
+        // base de datos (bug real reportado 2026-08-11: "no están
+        // sincronizados"). subscribeTripStage sí reacciona a CUALQUIER
+        // UPDATE de driver_stage sin importar qué canal lo hizo.
+        if (this._driverTripStageChannel) { this._driverTripStageChannel.unsubscribe(); }
+        this._driverTripStageChannel = this.agService.subscribeTripStage(boardId, (newStage: string) => {
+          if (newStage === BOARDING_TARGET_STAGE && this.driverArrivalTrip()) this._applyDriverBoarding();
+        });
       }
     }
 
@@ -18134,6 +18149,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
     this.passengerSection.set(null);
     if (this._tripBoardingChannel) { this._tripBoardingChannel.unsubscribe(); this._tripBoardingChannel = null; }
+    if (this._driverTripStageChannel) { this._driverTripStageChannel.unsubscribe(); this._driverTripStageChannel = null; }
     if (this._passengerLiveChannel) { this._passengerLiveChannel.unsubscribe(); this._passengerLiveChannel = null; }
     // Reset domicilio si estaba activo
     if (this.tripService() === 'domicilio') this.resetDomicilio();

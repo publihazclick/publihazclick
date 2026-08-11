@@ -744,7 +744,7 @@ async function presentOriginConfirm(phone: string, addr: string, lat: number, ln
   });
   await sendButtons(phone, `📍 ¿Estás en *${addr}*?`, [
     { id: 'origin_yes', title: '✅ Sí, confirmar' },
-    { id: 'origin_no', title: '❌ Cambiar' },
+    { id: 'origin_no', title: '✏️ Editar' },
   ]);
 }
 
@@ -770,10 +770,10 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
     ? `📍 ¿Ahí se debe entregar el paquete: *${addr}*?${distText}`
     : `📍 ¿Vas a *${addr}*?${distText}`;
   await sendButtons(phone,
-    `${question}\n\n💰 Precio sugerido: *$${suggested.toLocaleString('es-CO')}*`,
+    question,
     [
       { id: 'dest_yes', title: '✅ Sí, confirmar' },
-      { id: 'dest_no', title: '❌ Cambiar' },
+      { id: 'dest_no', title: '✏️ Editar' },
     ]
   );
 }
@@ -889,8 +889,8 @@ function isYes(t: string): boolean {
 }
 function isNo(t: string): boolean {
   const n = t.trim().toLowerCase();
-  if (/^(no|nope|2|❌|👎|cambiar|otro|incorrecta|mal)$/i.test(n)) return true;
-  return n.includes('buscar otro') || n.includes('cambiar');
+  if (/^(no|nope|2|❌|👎|cambiar|editar|otro|incorrecta|mal)$/i.test(n)) return true;
+  return n.includes('buscar otro') || n.includes('cambiar') || n.includes('editar');
 }
 function isCancel(t: string): boolean {
   return /^(cancelar|cancel|salir|exit)$/i.test(t.trim());
@@ -1098,8 +1098,8 @@ async function handleConversation(
     // de contacto, y se veía poco profesional/impreciso (pedido explícito del
     // usuario 2026-08-10).
     await presentServiceMenu(phone,
-      `¡Hola! 👋 Soy Movi.\n\n¿En qué te ayudo hoy?\n\n` +
-      `_¿Necesitas viaje entre ciudades o un flete? Escríbeme cuál._`,
+      `¡Hola! 👋 Soy *Leidy Guzmán,* servicio al cliente de *Movi.*\n¿En qué te ayudo hoy?\n\n` +
+      `_¿Necesitas viaje urbano, domicilio, viaje de ciudad a ciudad o un flete? Selecciona la opción o escríbeme cuál._`,
       { contact_name: contactName }
     );
     return;
@@ -1282,8 +1282,7 @@ async function handleConversation(
         (delivery ? `💰 *¿Cuánto ofreces por este envío?*\n\n` : `💰 *¿Cuánto ofreces por este viaje?*\n\n`) +
         `Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
         `• Escribe un monto (ej: *12000*)\n` +
-        `• O escribe *ok* para usar el precio sugerido\n\n` +
-        `_Mínimo $${MIN_PRICE.toLocaleString('es-CO')}_`
+        `• O escribe *ok* para usar el precio sugerido`
       );
     } else if (isNo(text)) {
       await upsertSession(phone, { state: 'awaiting_dest', dest_name: null, dest_lat: null, dest_lng: null });
@@ -1328,14 +1327,14 @@ async function handleConversation(
     const svc = SERVICE_LABELS[session.service_type as string] ?? 'Servicio';
     const delivery = isDeliveryService(session.service_type as string);
     await sendText(phone,
-      `✅ ¡Solicitud enviada!\n\n` +
+      (delivery ? `🔍 Buscando mensajero disponible...\n\n` : `🔍 Buscando conductores cerca de ti...\n\n`) +
       `${svc}\n` +
       `📍 Desde: ${session.origin_address}\n` +
       `📍 Hasta: ${session.dest_name}\n` +
       `💰 Tu oferta: *$${price.toLocaleString('es-CO')}*\n\n` +
-      (delivery ? `🔍 Buscando mensajero disponible...\n\n` : `🔍 Buscando conductores cerca de ti...\n\n`) +
-      `Te avisamos cuando alguien acepte. Máx 5 minutos.\n` +
-      `Escribe *cancelar* si deseas cancelar la solicitud.`
+      `Te avisamos cuando alguien acepte. Máx. 5 minutos.\n` +
+      `Escribe *cancelar* si deseas cancelar la solicitud.\n\n` +
+      `✅ ¡Solicitud enviada!`
     );
     return;
   }
@@ -1472,7 +1471,7 @@ async function handleConversation(
           (session.driver_vehicle ? `${emoji} ${session.driver_vehicle}` : '') +
           (session.driver_plate   ? ` · ${session.driver_plate}` : '') +
           `\n💰 Acordaron *$${(session.driver_price as number ?? 0).toLocaleString('es-CO')}*` +
-          (session.driver_phone   ? `\n📱 Si necesitas llamarlo: ${toE164(session.driver_phone as string)}` : '') +
+          `\n📱 Si necesitas contactarlo, escríbenos al ${toE164(SUPPORT_PHONE)}` +
           `\n\nTe aviso apenas llegue.`
         );
         // Ubicación nativa del punto de recogida -- mismo motivo que el
@@ -1794,7 +1793,11 @@ async function handleConversation(
     }
 
     await resetSession(phone);
-    await sendText(phone, `¡Gracias por calificar! ${'⭐'.repeat(stars)}\n\n¿Necesitas otro servicio? Escribe *hola*.`);
+    await sendText(phone,
+      `¡Gracias por calificar al conductor! ${'⭐'.repeat(stars)}\n\n` +
+      `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
+      `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
+    );
     await maybeOfferAppDownload(phone);
     return;
   }
