@@ -599,6 +599,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
               <div style="flex:1;min-width:0">
                 <p style="color:#fff;font-weight:900;font-size:14px;margin:0;line-height:1.2">{{ req.passenger_name ?? req.ag_users?.full_name ?? 'Pasajero' }}</p>
+                @if (req.for_other) {
+                  <p style="color:#fbbf24;font-weight:700;font-size:10px;margin:1px 0 0">👤 Pedido por otra persona</p>
+                }
                 <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
                   <span style="color:rgba(255,255,255,0.4);font-size:10px">{{ req.ag_users?.total_trips_as_passenger ?? 0 }} viajes</span>
                   <span style="color:rgba(255,255,255,0.25)">·</span>

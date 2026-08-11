@@ -89,6 +89,8 @@ export interface AgTripRequest {
   passenger_user_id: string;
   passenger_name?: string;
   passenger_selfie_url?: string;
+  // Pedido para otra persona (WhatsApp) -- ver ag-whatsapp/index.ts createWaTrip().
+  for_other?: { name: string; phone: string | null; requested_by_phone: string } | null;
   origin_lat: number;
   origin_lng: number;
   origin_name?: string;

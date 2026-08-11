@@ -573,6 +573,21 @@ async function createWaTrip(session: Record<string, unknown>): Promise<string | 
       : '[Pedido vía WhatsApp]',
   };
 
+  // Viaje pedido para otra persona (pedido explícito del usuario 2026-08-11):
+  // se reutilizan dos columnas de ag_trip_requests que ya existían pero nunca
+  // se habían usado en ningún lado del código -- passenger_name (el conductor
+  // YA la lee con prioridad sobre el nombre de la cuenta, ver
+  // anda-gana.component.ts) y for_other (agregada en la migración 116). No se
+  // toca nada cuando is_for_self es true/undefined (el caso de siempre).
+  if (session.is_for_self === false && session.traveler_name) {
+    tripData.passenger_name = session.traveler_name;
+    tripData.for_other = {
+      name: session.traveler_name,
+      phone: session.traveler_phone ?? null,
+      requested_by_phone: session.wa_phone,
+    };
+  }
+
   const { data, error } = await supabase
     .from('ag_trip_requests')
     .insert(tripData)
@@ -885,20 +900,21 @@ async function startSmartFlow(phone: string, parsed: ParsedRequest): Promise<voi
     pending_dest_text: parsed.dest_text,
   });
 
-  if (parsed.origin_text) {
-    const bias = await lastKnownCityBias(phone);
-    const geo = await forwardGeocode(parsed.origin_text, bias?.lat, bias?.lng);
-    if (geo && isInColombia(geo.lat, geo.lng)) {
-      await presentOriginConfirm(phone, geo.address, geo.lat, geo.lng);
-      return;
-    }
-  }
-
-  await upsertSession(phone, { state: 'awaiting_origin' });
-  await sendText(phone,
-    `${SERVICE_LABELS[svc]} detectado ✨\n\n📍 *¿Dónde estás?*\n\n` +
-    `Envía tu ubicación:\n• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
-    `O escribe tu dirección completa.`
+  // "¿Para ti o para otra persona?" -- mismo paso nuevo que en el menú de
+  // botones (awaiting_for_whom), por consistencia. Se pierde el atajo de
+  // saltar directo a confirmar origen aunque parsed.origin_text ya lo traiga
+  // (simplificación a propósito: es un caso raro -- lenguaje natural CON
+  // origen explícito -- y evita duplicar la lógica de "otra persona" dos
+  // veces con riesgo de que queden inconsistentes entre sí). El origen se
+  // vuelve a pedir normal en awaiting_origin, sea para uno mismo o para otra
+  // persona.
+  await upsertSession(phone, { state: 'awaiting_for_whom', is_for_self: true, traveler_name: null, traveler_phone: null });
+  await sendButtons(phone,
+    `${SERVICE_LABELS[svc]} detectado ✨\n\n¿Este viaje es para ti o para otra persona?`,
+    [
+      { id: 'for_self', title: 'Para mí' },
+      { id: 'for_other', title: 'Otra persona' },
+    ]
   );
 }
 
@@ -1219,25 +1235,129 @@ async function handleConversation(
 
     if (svc === 'ciudad' || svc === 'flete') { await sendUnsupportedServiceMessage(phone, svc); return; }
 
-    await upsertSession(phone, { state: 'awaiting_origin', service_type: svc });
-
     const needsPackage = svc === 'domicilio' || svc === 'flete';
     if (needsPackage) {
-      const label = svc === 'domicilio' ? 'domicilio' : 'flete';
+      await upsertSession(phone, { state: 'awaiting_package_desc', service_type: svc });
       await sendText(phone,
         `${SERVICE_LABELS[svc]} seleccionado.\n\n` +
         `Primero, descríbeme qué necesitas enviar/recoger:\n` +
         `_(ej: "Ropa, bolsa pequeña")_`
       );
-      await upsertSession(phone, { state: 'awaiting_package_desc' });
     } else {
+      // "¿Para ti o para otra persona?" -- solo aplica a Carro/Moto (viajes de
+      // pasajero). Domicilio ya tiene su propio concepto de "destinatario"
+      // (recipient_name/recipient_phone, quien recibe el paquete) -- distinto,
+      // no se toca. Pedido explícito del usuario 2026-08-11.
+      await upsertSession(phone, { state: 'awaiting_for_whom', service_type: svc, is_for_self: true, traveler_name: null, traveler_phone: null });
+      await sendButtons(phone,
+        `${SERVICE_LABELS[svc]} seleccionado 👍\n\n¿Este viaje es para ti o para otra persona?`,
+        [
+          { id: 'for_self', title: 'Para mí' },
+          { id: 'for_other', title: 'Otra persona' },
+        ]
+      );
+    }
+    return;
+  }
+
+  // ── AWAITING_FOR_WHOM ────────────────────────────────────────────────────────
+  if (state === 'awaiting_for_whom') {
+    const n = text.trim().toLowerCase();
+    const isForOther = n.includes('otra') || n.includes('otro');
+    const isForSelf  = !isForOther && (n.includes('para m') || n.includes('mi') || isYes(text));
+    if (isForOther) {
+      await upsertSession(phone, { state: 'awaiting_liability_ack' });
+      await sendButtons(phone,
+        `⚠️ *Importante antes de continuar*\n\n` +
+        `Al pedir el servicio para otra persona, *eres totalmente responsable* de cualquier daño físico o material que esa persona pueda causarle al conductor.\n\n` +
+        `Te recomendamos pedirlo solo para personas de tu entera confianza.\n\n` +
+        `¿Entiendes y aceptas esto?`,
+        [
+          { id: 'ack_yes', title: 'Sí, acepto' },
+          { id: 'ack_no', title: 'Cancelar' },
+        ]
+      );
+    } else if (isForSelf) {
+      await upsertSession(phone, { state: 'awaiting_origin' });
       await sendText(phone,
-        `${SERVICE_LABELS[svc]} seleccionado 👍\n\n` +
         `📍 *¿Dónde estás?*\n\n` +
         `Envía tu ubicación:\n` +
         `• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
         `O escribe tu dirección completa.`
       );
+    } else {
+      await sendButtons(phone, `¿Es para ti o para otra persona?`, [
+        { id: 'for_self', title: 'Para mí' },
+        { id: 'for_other', title: 'Otra persona' },
+      ]);
+    }
+    return;
+  }
+
+  // ── AWAITING_LIABILITY_ACK ───────────────────────────────────────────────────
+  if (state === 'awaiting_liability_ack') {
+    // Match a medida en vez de isYes/isNo -- esas funciones están afinadas para su
+    // propio vocabulario ("aceptar"/"confirmar", no "acepto") y para "Cancelar" no
+    // hay match en isNo() (ni exacto ni por substring), así que confiar en ellas
+    // aquí dejaría este paso roto en silencio con el texto real de estos botones.
+    const n = text.trim().toLowerCase();
+    if (n.includes('acepto') || n === 'si' || n === 'sí') {
+      await upsertSession(phone, { state: 'awaiting_traveler_name', is_for_self: false });
+      await sendText(phone, `¿Cómo se llama la persona que viaja?`);
+    } else if (n.includes('cancelar') || n === 'no') {
+      await upsertSession(phone, { state: 'awaiting_for_whom' });
+      await sendButtons(phone, `Entendido. ¿Es para ti o para otra persona?`, [
+        { id: 'for_self', title: 'Para mí' },
+        { id: 'for_other', title: 'Otra persona' },
+      ]);
+    } else {
+      await sendButtons(phone, `¿Entiendes y aceptas la responsabilidad por la otra persona?`, [
+        { id: 'ack_yes', title: 'Sí, acepto' },
+        { id: 'ack_no', title: 'Cancelar' },
+      ]);
+    }
+    return;
+  }
+
+  // ── AWAITING_TRAVELER_NAME ───────────────────────────────────────────────────
+  if (state === 'awaiting_traveler_name') {
+    if (text.trim().length < 2) {
+      await sendText(phone, `Por favor escribe el nombre de la persona que viaja.`);
+      return;
+    }
+    await upsertSession(phone, { state: 'awaiting_traveler_same_location', traveler_name: text.trim() });
+    await sendButtons(phone, `¿${text.trim()} está contigo ahora mismo (misma ubicación)?`, [
+      { id: 'same_loc_yes', title: 'Sí, está conmigo' },
+      { id: 'same_loc_no', title: 'No, está en otro lugar' },
+    ]);
+    return;
+  }
+
+  // ── AWAITING_TRAVELER_SAME_LOCATION ─────────────────────────────────────────
+  if (state === 'awaiting_traveler_same_location') {
+    const travelerName = (session.traveler_name as string) ?? 'esa persona';
+    // Match a medida (ver misma nota en awaiting_liability_ack) -- "conmigo"/"otro
+    // lugar" no calzan con el vocabulario de isYes()/isNo().
+    const n = text.trim().toLowerCase();
+    if (n.includes('conmigo') || n === 'si' || n === 'sí') {
+      await upsertSession(phone, { state: 'awaiting_origin' });
+      await sendText(phone,
+        `📍 *¿Dónde estás?*\n\n` +
+        `Envía tu ubicación:\n` +
+        `• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
+        `O escribe tu dirección completa.`
+      );
+    } else if (n.includes('otro lugar') || n === 'no') {
+      await upsertSession(phone, { state: 'awaiting_origin' });
+      await sendText(phone,
+        `📍 *¿Dónde está ${travelerName}?* (punto de recogida)\n\n` +
+        `Envía su ubicación (pídele que te la comparta y reenvíala aquí) o escribe la dirección.`
+      );
+    } else {
+      await sendButtons(phone, `¿${travelerName} está contigo ahora mismo?`, [
+        { id: 'same_loc_yes', title: 'Sí, está conmigo' },
+        { id: 'same_loc_no', title: 'No, está en otro lugar' },
+      ]);
     }
     return;
   }
@@ -1296,6 +1416,18 @@ async function handleConversation(
   // ── AWAITING_ORIGIN_CONFIRM ─────────────────────────────────────────────────
   if (state === 'awaiting_origin_confirm') {
     if (isYes(text)) {
+      // Viaje para otra persona: falta su número de celular antes de seguir a
+      // destino -- se pide acá, una sola vez (traveler_phone todavía vacío),
+      // justo después de confirmar dónde se recoge. pending_dest_text (atajo
+      // de lenguaje natural) se conserva en la sesión tal cual y se resuelve
+      // normalmente apenas vuelva de awaiting_traveler_phone.
+      if (session.is_for_self === false && !session.traveler_phone) {
+        const travelerName = (session.traveler_name as string) ?? 'esa persona';
+        await upsertSession(phone, { state: 'awaiting_traveler_phone' });
+        await sendText(phone, `📱 ¿Cuál es el número de celular de *${travelerName}*? (para que el conductor pueda ubicarla si hace falta)`);
+        return;
+      }
+
       // Flujo inteligente: si ya sabíamos el destino desde el mensaje original
       // en lenguaje natural, saltar directo a confirmarlo en vez de preguntar.
       const pendingDest = session.pending_dest_text as string | null;
@@ -1324,6 +1456,40 @@ async function handleConversation(
     } else {
       await sendText(phone, `Responde *si* para confirmar o *no* para cambiar la dirección.`);
     }
+    return;
+  }
+
+  // ── AWAITING_TRAVELER_PHONE ──────────────────────────────────────────────────
+  if (state === 'awaiting_traveler_phone') {
+    const digits = text.replace(/\D/g, '');
+    if (digits.length < 7) {
+      await sendText(phone, `Ese número no parece válido. Escribe el celular de la persona que viaja (solo números).`);
+      return;
+    }
+    await upsertSession(phone, { traveler_phone: digits });
+
+    // Mismo flujo que el "sí" de awaiting_origin_confirm (atajo de lenguaje
+    // natural si ya se conocía el destino, si no preguntar destino normal) --
+    // duplicado a propósito en vez de factorizarlo, para no arriesgar tocar
+    // ese camino ya probado hoy con el resto de la sesión.
+    const pendingDest = session.pending_dest_text as string | null;
+    if (pendingDest) {
+      const geo = await forwardGeocode(pendingDest, session.origin_lat as number, session.origin_lng as number);
+      if (geo && isInColombia(geo.lat, geo.lng)) {
+        await presentDestConfirm(phone, geo.address, geo.lat, geo.lng, session);
+        return;
+      }
+      await upsertSession(phone, { pending_dest_text: null });
+    }
+
+    await upsertSession(phone, { state: 'awaiting_dest' });
+    await sendText(phone,
+      `¡Perfecto! 🎯\n\n` +
+      (isDeliveryService(session.service_type as string)
+        ? `📍 *¿A dónde debe llegar el paquete?*\n\n`
+        : `📍 *¿A dónde vas?*\n\n`) +
+      `Envía la ubicación de destino o escribe la dirección.`
+    );
     return;
   }
 
