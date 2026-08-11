@@ -51,7 +51,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     .dot3 { animation: dotPulse 1.4s ease-in-out 0.4s infinite; }
     .qr-input::placeholder { color: #6B7280; }
     .qr-input { border-width: 1px !important; border-color: #D1D5DB !important; outline: none; }
-    .qr-input:focus { border-width: 1.5px !important; border-color: #7C3AED !important; outline: none; }
+    .qr-input:focus { border-width: 1.5px !important; border-color: #245BDB !important; outline: none; }
     /* Skeleton del mapa mientras cargan Mapbox GL + los tiles (ver _createMap) -- reemplaza
        el flash de div vacío por un shimmer, se tapa solo apenas Mapbox pinta su canvas encima. */
     @keyframes ag-map-shimmer {
@@ -72,14 +72,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     }
   `],
   host: {
-    '[style.background]': "screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'",
+    '[style.background]': "screen() === 'splash' ? '#245BDB' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'",
     '[style.min-height]': "'100dvh'",
     '[style.display]': "'block'",
     '[style.transition]': "'background 0.3s'",
   },
   template: `
 <div class="min-h-screen w-full flex flex-col items-center"
-  [style.background]="screen() === 'splash' ? '#7C3AED' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'"
+  [style.background]="screen() === 'splash' ? '#245BDB' : screen() === 'driver-form' ? '#060b17' : '#FFFFFF'"
   [style.padding]="screen() === 'quick-register' || screen() === 'passenger-home' ? '0' : screen() === 'driver-home' ? '0 16px' : '24px 16px'"
   style="min-height:100dvh">
 
@@ -931,8 +931,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
         <!-- Ícono -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
-          <div style="width:60px;height:60px;border-radius:50%;background:rgba(124,58,237,0.15);border:2px solid rgba(124,58,237,0.4);display:flex;align-items:center;justify-content:center">
-            <span class="material-symbols-outlined" style="font-size:28px;color:#a78bfa">sms</span>
+          <div style="width:60px;height:60px;border-radius:50%;background:rgba(36,91,219,0.15);border:2px solid rgba(36,91,219,0.4);display:flex;align-items:center;justify-content:center">
+            <span class="material-symbols-outlined" style="font-size:28px;color:#6E93F2">sms</span>
           </div>
           <h3 style="color:#fff;font-weight:900;font-size:18px;margin:0">Verifica tu número</h3>
           <p style="color:#94a3b8;font-size:13px;text-align:center;margin:0;line-height:1.5">
@@ -944,7 +944,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @if (otpStep() === 'sending') {
           <!-- Enviando -->
           <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:16px">
-            <span class="material-symbols-outlined animate-spin" style="font-size:22px;color:#7C3AED">autorenew</span>
+            <span class="material-symbols-outlined animate-spin" style="font-size:22px;color:#245BDB">autorenew</span>
             <span style="color:#94a3b8;font-size:14px">Enviando SMS...</span>
           </div>
         } @else {
@@ -970,7 +970,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Botones -->
           <div style="display:flex;flex-direction:column;gap:10px">
             <button (click)="confirmOtp()" [disabled]="otpStep() === 'verifying' || otpCode().length < 6"
-              style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:15px;border:none;cursor:pointer;opacity:1;display:flex;align-items:center;justify-content:center;gap:8px"
+              style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#245BDB,#2563EB);color:#fff;font-weight:900;font-size:15px;border:none;cursor:pointer;opacity:1;display:flex;align-items:center;justify-content:center;gap:8px"
               [style.opacity]="otpStep() === 'verifying' || otpCode().length < 6 ? '0.5' : '1'">
               @if (otpStep() === 'verifying') {
                 <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Verificando...
@@ -1033,7 +1033,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
         }
         <button (click)="confirmPermissionsPrimer()"
-          style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;font-weight:900;font-size:14px;border:none;cursor:pointer">
+          style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#245BDB,#1D3FAE);color:#fff;font-weight:900;font-size:14px;border:none;cursor:pointer">
           Entendido, continuar
         </button>
       </div>
@@ -1042,7 +1042,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
   <!-- ═══════════ SPLASH ═══════════ -->
   @if (screen() === 'splash') {
-    <div style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#7C3AED 0%,#4F46E5 50%,#2563EB 100%)">
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#245BDB 0%,#1D3FAE 50%,#2563EB 100%)">
 
       <!-- Círculos decorativos de fondo -->
       <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,0.05)"></div>
@@ -1059,7 +1059,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Pin blanco -->
           <g transform="translate(100,95)">
             <path d="M0-58C-32-58-54-36-54-8C-54 24 0 66 0 66C0 66 54 24 54-8C54-36 32-58 0-58Z" fill="#FFFFFF"/>
-            <circle cx="0" cy="-14" r="20" fill="#6D28D9"/>
+            <circle cx="0" cy="-14" r="20" fill="#245BDB"/>
             <circle cx="0" cy="-14" r="9"  fill="#FFFFFF"/>
           </g>
           <!-- MOVI -->
@@ -1270,8 +1270,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (locationUpdating()) {
             <div class="flex items-center justify-center gap-1.5 mb-1.5">
               <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-                style="background:rgba(13,17,26,0.85);border:1px solid rgba(124,58,237,0.35)">
-                <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:12px">autorenew</span>
+                style="background:rgba(13,17,26,0.85);border:1px solid rgba(36,91,219,0.35)">
+                <span class="material-symbols-outlined animate-spin text-blue-400" style="font-size:12px">autorenew</span>
                 <span class="text-xs font-medium" style="color:rgba(255,255,255,0.75)">Actualizando zona...</span>
               </div>
             </div>
@@ -1669,10 +1669,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </button>
               <button (click)="tripService.set('ciudad'); setTripVehicle('carro'); resetDomicilio()"
                 class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl flex-shrink-0 transition-all"
-                [class]="tripService()==='ciudad' ? 'bg-purple-50 border border-purple-200' : 'hover:bg-slate-200'">
+                [class]="tripService()==='ciudad' ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-200'">
                 <span class="material-symbols-outlined" style="font-size:26px"
-                  [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">commute</span>
-                <span class="text-[10px] font-bold" [style.color]="tripService()==='ciudad' ? '#a855f7' : '#94a3b8'">Ciudad a ciudad</span>
+                  [style.color]="tripService()==='ciudad' ? '#4C7DF0' : '#94a3b8'">commute</span>
+                <span class="text-[10px] font-bold" [style.color]="tripService()==='ciudad' ? '#4C7DF0' : '#94a3b8'">Ciudad a ciudad</span>
               </button>
             </div>
               <button (click)="scrollIcons(120)"
@@ -2642,19 +2642,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <div class="flex gap-1 px-3 pt-2 pb-2">
                       <button (click)="ccGoNew()"
                         class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
-                        [style.background]="(ccView()==='new'||ccView()==='matching'||ccView()==='assigned'||ccView()==='active'||ccView()==='completed')?'#a855f7':'#f1f5f9'"
+                        [style.background]="(ccView()==='new'||ccView()==='matching'||ccView()==='assigned'||ccView()==='active'||ccView()==='completed')?'#4C7DF0':'#f1f5f9'"
                         [style.color]="(ccView()==='new'||ccView()==='matching'||ccView()==='assigned'||ccView()==='active'||ccView()==='completed')?'white':'#64748b'">
                         + Viaje
                       </button>
                       <button (click)="ccGoMyTrips()"
                         class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
-                        [style.background]="ccView()==='my_trips'?'#a855f7':'#f1f5f9'"
+                        [style.background]="ccView()==='my_trips'?'#4C7DF0':'#f1f5f9'"
                         [style.color]="ccView()==='my_trips'?'white':'#64748b'">
                         Mis viajes
                       </button>
                       <button (click)="ccGoDriver()"
                         class="flex-1 py-2 rounded-xl text-xs font-black transition-all"
-                        [style.background]="ccView()==='driver'?'#a855f7':'#f1f5f9'"
+                        [style.background]="ccView()==='driver'?'#4C7DF0':'#f1f5f9'"
                         [style.color]="ccView()==='driver'?'white':'#64748b'">
                         🚗 Conductor
                       </button>
@@ -2671,9 +2671,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <!-- Origen -->
                           <div>
                             <p class="text-xs font-black text-slate-500 mb-1 uppercase tracking-wider">Ciudad de origen</p>
-                            <div class="rounded-xl overflow-visible" style="border:1.5px solid #d8b4fe;background:#faf5ff;position:relative;z-index:20">
+                            <div class="rounded-xl overflow-visible" style="border:1.5px solid #BFD3FA;background:#EEF3FE;position:relative;z-index:20">
                               <div class="flex items-center gap-2 px-3 py-2.5">
-                                <div class="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0"></div>
+                                <div class="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0"></div>
                                 <input [value]="ccOriginQuery()"
                                   (input)="onCcOriginInput($any($event.target).value)"
                                   (focus)="ccOriginOpen.set(true)"
@@ -2687,11 +2687,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                 }
                               </div>
                               @if (ccOriginOpen()) {
-                                <div class="border-t border-purple-100" style="max-height:160px;overflow-y:auto">
+                                <div class="border-t border-blue-100" style="max-height:160px;overflow-y:auto">
                                   @for (c of ccFilteredCities(ccOriginQuery()); track c.name) {
                                     <button (mousedown)="$event.preventDefault(); ccSelectOrigin(c)"
-                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-purple-50 last:border-0 hover:bg-purple-50">
-                                      <span class="material-symbols-outlined text-purple-400" style="font-size:16px">location_city</span>
+                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-blue-50 last:border-0 hover:bg-blue-50">
+                                      <span class="material-symbols-outlined text-blue-400" style="font-size:16px">location_city</span>
                                       <span class="text-sm font-semibold text-slate-700">{{ c.name }}</span>
                                     </button>
                                   }
@@ -2704,7 +2704,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <div class="flex justify-center">
                             <button (click)="ccSwapCities()"
                               class="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all"
-                              style="background:#a855f7;box-shadow:0 2px 8px rgba(168,85,247,0.4)">
+                              style="background:#4C7DF0;box-shadow:0 2px 8px rgba(76,125,240,0.4)">
                               <span class="material-symbols-outlined text-white" style="font-size:20px">swap_vert</span>
                             </button>
                           </div>
@@ -2712,7 +2712,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <!-- Destino -->
                           <div>
                             <p class="text-xs font-black text-slate-500 mb-1 uppercase tracking-wider">Ciudad de destino</p>
-                            <div class="rounded-xl overflow-visible" style="border:1.5px solid #d8b4fe;background:#faf5ff;position:relative;z-index:19">
+                            <div class="rounded-xl overflow-visible" style="border:1.5px solid #BFD3FA;background:#EEF3FE;position:relative;z-index:19">
                               <div class="flex items-center gap-2 px-3 py-2.5">
                                 <div class="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
                                 <input [value]="ccDestQuery()"
@@ -2728,11 +2728,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                 }
                               </div>
                               @if (ccDestOpen()) {
-                                <div class="border-t border-purple-100" style="max-height:160px;overflow-y:auto">
+                                <div class="border-t border-blue-100" style="max-height:160px;overflow-y:auto">
                                   @for (c of ccFilteredCities(ccDestQuery()); track c.name) {
                                     <button (mousedown)="$event.preventDefault(); ccSelectDest(c)"
-                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-purple-50 last:border-0 hover:bg-purple-50">
-                                      <span class="material-symbols-outlined text-purple-400" style="font-size:16px">location_city</span>
+                                      class="flex items-center gap-2 px-3 py-2.5 w-full text-left border-b border-blue-50 last:border-0 hover:bg-blue-50">
+                                      <span class="material-symbols-outlined text-blue-400" style="font-size:16px">location_city</span>
                                       <span class="text-sm font-semibold text-slate-700">{{ c.name }}</span>
                                     </button>
                                   }
@@ -2742,9 +2742,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           </div>
 
                           @if (ccDistKm() > 0) {
-                            <div class="flex items-center gap-2 rounded-xl px-3 py-2" style="background:#faf5ff;border:1px solid #d8b4fe">
-                              <span class="material-symbols-outlined text-purple-500" style="font-size:18px">route</span>
-                              <p class="text-sm font-black text-purple-700">~{{ ccDistKm() }} km de distancia</p>
+                            <div class="flex items-center gap-2 rounded-xl px-3 py-2" style="background:#EEF3FE;border:1px solid #BFD3FA">
+                              <span class="material-symbols-outlined text-blue-500" style="font-size:18px">route</span>
+                              <p class="text-sm font-black text-blue-700">~{{ ccDistKm() }} km de distancia</p>
                             </div>
                           }
 
@@ -2755,13 +2755,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             <div class="flex gap-2 mb-2">
                               <button (click)="ccSetAhora()"
                                 class="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
-                                [style.background]="ccSalirAhora()?'#a855f7':'#f1f5f9'"
+                                [style.background]="ccSalirAhora()?'#4C7DF0':'#f1f5f9'"
                                 [style.color]="ccSalirAhora()?'white':'#64748b'">
                                 ⚡ Ahora
                               </button>
                               <button (click)="ccSalirAhora.set(false)"
                                 class="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
-                                [style.background]="!ccSalirAhora()?'#a855f7':'#f1f5f9'"
+                                [style.background]="!ccSalirAhora()?'#4C7DF0':'#f1f5f9'"
                                 [style.color]="!ccSalirAhora()?'white':'#64748b'">
                                 📅 Agendar
                               </button>
@@ -2775,9 +2775,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                   class="w-28 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none bg-white"/>
                               </div>
                             } @else {
-                              <div class="flex items-center gap-2 rounded-xl px-3 py-2.5" style="background:#faf5ff;border:1px solid #d8b4fe">
-                                <span class="material-symbols-outlined text-purple-500" style="font-size:18px">schedule</span>
-                                <p class="text-sm font-black text-purple-700">Salida inmediata</p>
+                              <div class="flex items-center gap-2 rounded-xl px-3 py-2.5" style="background:#EEF3FE;border:1px solid #BFD3FA">
+                                <span class="material-symbols-outlined text-blue-500" style="font-size:18px">schedule</span>
+                                <p class="text-sm font-black text-blue-700">Salida inmediata</p>
                               </div>
                             }
                           </div>
@@ -2789,8 +2789,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               @for (v of ccVehicleTypes; track v.value) {
                                 <button (click)="ccSetVehicle(v.value)"
                                   class="flex items-center gap-2 px-3 py-2.5 rounded-2xl text-left active:scale-[0.98] transition-all"
-                                  [style.border]="ccVehicleCat()===v.value?'2px solid #a855f7':'1.5px solid #e2e8f0'"
-                                  [style.background]="ccVehicleCat()===v.value?'#faf5ff':'#f8fafc'">
+                                  [style.border]="ccVehicleCat()===v.value?'2px solid #4C7DF0':'1.5px solid #e2e8f0'"
+                                  [style.background]="ccVehicleCat()===v.value?'#EEF3FE':'#f8fafc'">
                                   <span class="text-xl">{{ v.icon }}</span>
                                   <div>
                                     <p class="text-xs font-black text-slate-700">{{ v.label }}</p>
@@ -2802,7 +2802,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           </div>
 
                           <!-- Ida y vuelta -->
-                          <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer" style="background:#faf5ff;border:1px solid #d8b4fe">
+                          <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer" style="background:#EEF3FE;border:1px solid #BFD3FA">
                             <input type="checkbox" [checked]="ccRoundTrip()" (change)="ccRoundTrip.set($any($event.target).checked)" class="rounded w-4 h-4"/>
                             <div>
                               <p class="text-sm font-bold text-slate-700">🔄 Ida y vuelta</p>
@@ -2826,7 +2826,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <button (click)="ccStep.set(2); ccCalcPrice()"
                             [disabled]="!ccOriginCity() || !ccDestCity() || !ccScheduledDt()"
                             class="w-full py-3.5 rounded-2xl text-white font-black text-sm active:scale-[0.98] disabled:opacity-50"
-                            style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                            style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
                             Continuar
                           </button>
                         </div>
@@ -2836,7 +2836,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       @else if (ccStep() === 2) {
                         <div class="flex flex-col px-4 pb-4 gap-3">
                           <div class="flex items-center gap-2">
-                            <button (click)="ccStep.set(1)" style="color:#a855f7;font-size:13px;font-weight:800" class="flex items-center gap-1">
+                            <button (click)="ccStep.set(1)" style="color:#4C7DF0;font-size:13px;font-weight:800" class="flex items-center gap-1">
                               <span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Volver
                             </button>
                             <span class="flex-1 text-center text-slate-700 font-black text-sm">
@@ -2845,10 +2845,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           </div>
 
                           <!-- Resumen ruta -->
-                          <div class="rounded-2xl p-3" style="background:#faf5ff;border:1px solid #d8b4fe">
+                          <div class="rounded-2xl p-3" style="background:#EEF3FE;border:1px solid #BFD3FA">
                             <div class="flex items-center justify-between text-xs">
                               <span class="font-bold text-slate-600">🗓️ {{ ccScheduledDt() }} {{ ccScheduledTime() }}</span>
-                              <span class="font-bold text-purple-600">~{{ ccDistKm() }} km</span>
+                              <span class="font-bold text-blue-600">~{{ ccDistKm() }} km</span>
                             </div>
                           </div>
 
@@ -2858,7 +2858,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             <div class="flex items-center gap-3">
                               <button (click)="decCcPassengers()" class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-black text-lg active:scale-90">−</button>
                               <span class="font-black text-slate-800 text-lg w-8 text-center">{{ ccPassengers() }}</span>
-                              <button (click)="incCcPassengers()" class="w-9 h-9 rounded-full text-white flex items-center justify-center font-black text-lg active:scale-90" style="background:#a855f7">+</button>
+                              <button (click)="incCcPassengers()" class="w-9 h-9 rounded-full text-white flex items-center justify-center font-black text-lg active:scale-90" style="background:#4C7DF0">+</button>
                               <span class="text-xs text-slate-500">persona(s)</span>
                             </div>
                           </div>
@@ -2870,7 +2870,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               <div class="flex items-center gap-2">
                                 <button (click)="decCcLuggage()" class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-black text-base active:scale-90">−</button>
                                 <span class="font-black text-slate-800 text-base w-6 text-center">{{ ccLuggage() }}</span>
-                                <button (click)="incCcLuggage()" class="w-8 h-8 rounded-full text-white flex items-center justify-center font-black text-base active:scale-90" style="background:#a855f7">+</button>
+                                <button (click)="incCcLuggage()" class="w-8 h-8 rounded-full text-white flex items-center justify-center font-black text-base active:scale-90" style="background:#4C7DF0">+</button>
                               </div>
                             </div>
                             <div>
@@ -2878,7 +2878,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               <div class="flex items-center gap-2">
                                 <button (click)="decCcBabySeats()" class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-black text-base active:scale-90">−</button>
                                 <span class="font-black text-slate-800 text-base w-6 text-center">{{ ccBabySeats() }}</span>
-                                <button (click)="incCcBabySeats()" class="w-8 h-8 rounded-full text-white flex items-center justify-center font-black text-base active:scale-90" style="background:#a855f7">+</button>
+                                <button (click)="incCcBabySeats()" class="w-8 h-8 rounded-full text-white flex items-center justify-center font-black text-base active:scale-90" style="background:#4C7DF0">+</button>
                               </div>
                             </div>
                           </div>
@@ -2889,8 +2889,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             @if (ccStops().length > 0) {
                               <div class="flex flex-col gap-1.5 mb-2">
                                 @for (stop of ccStops(); track stop.id) {
-                                  <div class="flex items-center gap-2 px-3 py-2 rounded-xl" style="background:#faf5ff;border:1px solid #e9d5ff">
-                                    <span class="material-symbols-outlined text-purple-400" style="font-size:16px">place</span>
+                                  <div class="flex items-center gap-2 px-3 py-2 rounded-xl" style="background:#EEF3FE;border:1px solid #D6E4FC">
+                                    <span class="material-symbols-outlined text-blue-400" style="font-size:16px">place</span>
                                     <div class="flex-1 min-w-0">
                                       <p class="text-xs font-semibold text-slate-700 truncate">{{ stop.address }}</p>
                                       <p class="text-[10px] text-slate-400">⏱ {{ stop.wait_min }} min espera</p>
@@ -2919,7 +2919,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                   </select>
                                   <button (click)="ccAddStop()" [disabled]="!ccNewStopAddr.trim()"
                                     class="flex-1 py-1.5 rounded-xl text-white text-xs font-black disabled:opacity-40"
-                                    style="background:#a855f7">+ Agregar parada</button>
+                                    style="background:#4C7DF0">+ Agregar parada</button>
                                 </div>
                               </div>
                             }
@@ -2940,16 +2940,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             <div class="flex gap-2">
                               <button (click)="ccPriceDynamic.set(false)"
                                 class="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all"
-                                [style.border]="!ccPriceDynamic()?'2px solid #a855f7':'1.5px solid #e2e8f0'"
-                                [style.background]="!ccPriceDynamic()?'#faf5ff':'#f8fafc'">
+                                [style.border]="!ccPriceDynamic()?'2px solid #4C7DF0':'1.5px solid #e2e8f0'"
+                                [style.background]="!ccPriceDynamic()?'#EEF3FE':'#f8fafc'">
                                 <span class="text-lg">🔒</span>
                                 <p class="text-xs font-black text-slate-700">Precio fijo</p>
                                 <p class="text-[10px] text-slate-400 text-center">Tú propones, ellos aceptan o no</p>
                               </button>
                               <button (click)="ccPriceDynamic.set(true)"
                                 class="flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all"
-                                [style.border]="ccPriceDynamic()?'2px solid #a855f7':'1.5px solid #e2e8f0'"
-                                [style.background]="ccPriceDynamic()?'#faf5ff':'#f8fafc'">
+                                [style.border]="ccPriceDynamic()?'2px solid #4C7DF0':'1.5px solid #e2e8f0'"
+                                [style.background]="ccPriceDynamic()?'#EEF3FE':'#f8fafc'">
                                 <span class="text-lg">🔄</span>
                                 <p class="text-xs font-black text-slate-700">Dinámico (InDrive)</p>
                                 <p class="text-[10px] text-slate-400 text-center">Negocian hasta acordar</p>
@@ -2958,8 +2958,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           </div>
 
                           <!-- Precio sugerido -->
-                          <div class="rounded-2xl p-4" style="background:#faf5ff;border:1.5px solid #d8b4fe">
-                            <p class="text-xs font-black text-purple-600 mb-2">
+                          <div class="rounded-2xl p-4" style="background:#EEF3FE;border:1.5px solid #BFD3FA">
+                            <p class="text-xs font-black text-blue-600 mb-2">
                               {{ ccPriceDynamic() ? 'Tu precio de salida (COP)' : 'Tu precio (COP)' }}
                             </p>
                             <div class="flex items-center gap-2">
@@ -2972,7 +2972,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             @if (ccRoundTrip() && !ccRoundTripSame()) {
                               <label class="flex items-center gap-2 mt-2 cursor-pointer">
                                 <input type="checkbox" [checked]="ccRoundTripSame()" (change)="ccRoundTripSame.set($any($event.target).checked)" class="rounded w-4 h-4"/>
-                                <p class="text-xs text-purple-700 font-bold">🔄 Mismo conductor ida y vuelta <span class="text-green-600">(-15%)</span></p>
+                                <p class="text-xs text-blue-700 font-bold">🔄 Mismo conductor ida y vuelta <span class="text-green-600">(-15%)</span></p>
                               </label>
                             }
                             @if (ccRoundTrip() && ccRoundTripSame()) {
@@ -2982,11 +2982,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               </div>
                             }
                             <!-- CO2 -->
-                            <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-purple-100">
+                            <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-blue-100">
                               <span class="text-base">🌱</span>
                               <p class="text-[10px] text-slate-500">Huella de carbono estimada: <strong class="text-green-600">~{{ ccCo2Kg() }} kg CO₂</strong></p>
                             </div>
-                            <p class="text-[10px] text-purple-500 mt-1">Precio por vehículo completo · conductores pueden contraofertar</p>
+                            <p class="text-[10px] text-blue-500 mt-1">Precio por vehículo completo · conductores pueden contraofertar</p>
                           </div>
 
                           <!-- Método de pago -->
@@ -2996,15 +2996,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               @for (pm of ccPaymentMethods; track pm.value) {
                                 <button (click)="setCcPaymentMethod(pm.value)"
                                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all"
-                                  [style.border]="ccPaymentMethod()===pm.value?'2px solid #a855f7':'1.5px solid #e2e8f0'"
-                                  [style.background]="ccPaymentMethod()===pm.value?'#faf5ff':'#f8fafc'">
+                                  [style.border]="ccPaymentMethod()===pm.value?'2px solid #4C7DF0':'1.5px solid #e2e8f0'"
+                                  [style.background]="ccPaymentMethod()===pm.value?'#EEF3FE':'#f8fafc'">
                                   <span class="text-xl">{{ pm.icon }}</span>
                                   <div class="flex-1">
                                     <p class="text-sm font-black text-slate-700">{{ pm.label }}</p>
                                     <p class="text-xs text-slate-400">{{ pm.desc }}</p>
                                   </div>
                                   @if (ccPaymentMethod()===pm.value) {
-                                    <span class="material-symbols-outlined text-purple-500" style="font-size:20px">check_circle</span>
+                                    <span class="material-symbols-outlined text-blue-500" style="font-size:20px">check_circle</span>
                                   }
                                 </button>
                               }
@@ -3026,7 +3026,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                           <button (click)="ccPublish()" [disabled]="ccSending() || ccSuggestedPrice() < 50000"
                             class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                            style="background:linear-gradient(135deg,#a855f7,#7c3aed);box-shadow:0 4px 16px rgba(168,85,247,0.4)">
+                            style="background:linear-gradient(135deg,#4C7DF0,#245bdb);box-shadow:0 4px 16px rgba(76,125,240,0.4)">
                             @if (ccSending()) {
                               <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Publicando...
                             } @else {
@@ -3047,9 +3047,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             <p class="text-xs text-slate-400">{{ ccActiveReq()?.origin_city }} → {{ ccActiveReq()?.dest_city }}</p>
                           </div>
                           <div class="flex flex-col items-center">
-                            <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:conic-gradient(#a855f7 {{ ccMatchProgress() }}%, #e9d5ff {{ ccMatchProgress() }}%)">
+                            <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:conic-gradient(#4C7DF0 {{ ccMatchProgress() }}%, #D6E4FC {{ ccMatchProgress() }}%)">
                               <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                                <span class="font-black text-purple-700 text-xs">{{ ccMatchMinSec() }}</span>
+                                <span class="font-black text-blue-700 text-xs">{{ ccMatchMinSec() }}</span>
                               </div>
                             </div>
                           </div>
@@ -3058,8 +3058,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <!-- Animación buscando -->
                         @if (ccOffers().length === 0) {
                           <div class="flex flex-col items-center py-4 mb-3">
-                            <div class="w-16 h-16 rounded-full flex items-center justify-center mb-3" style="background:#faf5ff;border:2px solid #d8b4fe">
-                              <span class="material-symbols-outlined text-purple-500 animate-pulse" style="font-size:32px">commute</span>
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center mb-3" style="background:#EEF3FE;border:2px solid #BFD3FA">
+                              <span class="material-symbols-outlined text-blue-500 animate-pulse" style="font-size:32px">commute</span>
                             </div>
                             <p class="text-sm font-bold text-slate-600">Esperando conductores...</p>
                             <p class="text-xs text-slate-400 mt-1 text-center">Recibirás una notificación cuando alguien haga una oferta</p>
@@ -3070,18 +3070,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             @for (offer of ccOffers(); track offer.id) {
                               <div class="p-3 rounded-2xl" style="background:#f8fafc;border:1px solid #e2e8f0">
                                 <div class="flex items-center gap-2 mb-2">
-                                  <div class="w-10 h-10 rounded-full bg-purple-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                  <div class="w-10 h-10 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center flex-shrink-0">
                                     @if (offer.driver_photo) {
                                       <img [src]="offer.driver_photo" class="w-full h-full object-cover"/>
                                     } @else {
-                                      <span class="material-symbols-outlined text-purple-400" style="font-size:20px">person</span>
+                                      <span class="material-symbols-outlined text-blue-400" style="font-size:20px">person</span>
                                     }
                                   </div>
                                   <div class="flex-1">
                                     <p class="font-black text-slate-800 text-sm">{{ offer.driver_name || 'Conductor' }}</p>
                                     <p class="text-xs text-slate-400">⭐ {{ offer.driver_rating || '–' }} · {{ offer.driver_trips || 0 }} viajes</p>
                                   </div>
-                                  <p class="text-lg font-black text-purple-600">{{ formatCOP(offer.offered_price) }}</p>
+                                  <p class="text-lg font-black text-blue-600">{{ formatCOP(offer.offered_price) }}</p>
                                 </div>
                                 @if (offer.vehicle_desc || offer.plate) {
                                   <div class="flex items-center gap-2 mb-2 text-xs text-slate-500">
@@ -3095,7 +3095,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                 }
                                 <button (click)="ccAcceptOffer(offer.id)"
                                   class="w-full py-2.5 rounded-xl text-white text-sm font-black active:scale-[0.98]"
-                                  style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                                  style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
                                   ✓ Aceptar esta oferta
                                 </button>
                               </div>
@@ -3104,14 +3104,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         }
 
                         <!-- Modificar precio -->
-                        <div class="rounded-xl p-3 mb-2" style="background:#faf5ff;border:1px solid #d8b4fe">
-                          <p class="text-xs font-black text-purple-600 mb-2">Modificar tu precio</p>
+                        <div class="rounded-xl p-3 mb-2" style="background:#EEF3FE;border:1px solid #BFD3FA">
+                          <p class="text-xs font-black text-blue-600 mb-2">Modificar tu precio</p>
                           <div class="flex gap-2">
                             <input type="number" [value]="ccSuggestedPrice()"
                               (input)="ccSuggestedPrice.set(+$any($event.target).value)"
-                              class="flex-1 border border-purple-200 rounded-lg px-2.5 py-1.5 text-sm font-black text-slate-800 outline-none bg-white" min="0" step="10000"/>
+                              class="flex-1 border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm font-black text-slate-800 outline-none bg-white" min="0" step="10000"/>
                             <button (click)="ccUpdatePrice()"
-                              class="px-3 py-1.5 rounded-lg text-white text-xs font-black active:scale-90" style="background:#a855f7">
+                              class="px-3 py-1.5 rounded-lg text-white text-xs font-black active:scale-90" style="background:#4C7DF0">
                               Actualizar
                             </button>
                           </div>
@@ -3129,9 +3129,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     @else if (ccView() === 'assigned' && ccActiveReq()) {
                       <div class="flex flex-col px-4 pb-4 gap-3">
                         <!-- Info del viaje -->
-                        <div class="rounded-2xl p-3" style="background:#faf5ff;border:1px solid #d8b4fe">
+                        <div class="rounded-2xl p-3" style="background:#EEF3FE;border:1px solid #BFD3FA">
                           <div class="flex items-center gap-1 text-xs text-slate-600 mb-1">
-                            <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                            <div class="w-2 h-2 rounded-full bg-blue-500"></div>
                             <span class="font-semibold">{{ ccActiveReq().origin_city }}</span>
                             <span class="text-slate-400 mx-1">→</span>
                             <div class="w-2 h-2 rounded-full bg-red-500"></div>
@@ -3139,7 +3139,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           </div>
                           <div class="flex items-center justify-between">
                             <p class="text-xs text-slate-500">🗓️ {{ ccActiveReq().scheduled_dt | date:'dd/MM HH:mm' }}</p>
-                            <p class="font-black text-purple-700">{{ formatCOP(ccActiveReq().accepted_price) }}</p>
+                            <p class="font-black text-blue-700">{{ formatCOP(ccActiveReq().accepted_price) }}</p>
                           </div>
                         </div>
 
@@ -3159,7 +3159,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         </div>
 
                         <!-- Código de verificación de abordaje -->
-                        <div class="rounded-2xl p-4 text-center" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                        <div class="rounded-2xl p-4 text-center" style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
                           <p class="text-white text-xs font-black mb-1 uppercase tracking-wider">Código de abordaje</p>
                           <p class="text-white font-black tracking-widest" style="font-size:40px;letter-spacing:12px">
                             {{ ccActiveReq().verification_code }}
@@ -3178,7 +3178,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                               <button (click)="ccVerifyCode()"
                                 [disabled]="ccCodeInput().length !== 4 || ccCodeVerifying()"
                                 class="px-4 py-2 rounded-xl text-white font-black text-sm disabled:opacity-50 active:scale-90"
-                                style="background:#a855f7">
+                                style="background:#4C7DF0">
                                 @if (ccCodeVerifying()) {
                                   <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span>
                                 } @else { Verificar }
@@ -3212,7 +3212,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         @if (ccActiveReq().code_verified) {
                           <button (click)="ccStartTrip()"
                             class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98]"
-                            style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                            style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
                             <span class="material-symbols-outlined" style="font-size:22px;font-variation-settings:'FILL' 1">play_arrow</span>
                             Iniciar viaje
                           </button>
@@ -3236,7 +3236,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     @else if (ccView() === 'active' && ccActiveReq()) {
                       <div class="flex flex-col px-4 pb-4 gap-3">
                         <!-- Barra de estado con ETA -->
-                        <div class="flex items-center gap-2 p-3 rounded-2xl" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                        <div class="flex items-center gap-2 p-3 rounded-2xl" style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
                           <span class="material-symbols-outlined text-white animate-pulse" style="font-size:24px">commute</span>
                           <div class="flex-1">
                             <p class="text-white font-black text-sm">En camino a {{ ccActiveReq().dest_city }}</p>
@@ -3250,17 +3250,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                         <!-- KPIs ruta -->
                         <div class="grid grid-cols-3 gap-2">
-                          <div class="rounded-xl p-2.5 text-center" style="background:#faf5ff;border:1px solid #d8b4fe">
+                          <div class="rounded-xl p-2.5 text-center" style="background:#EEF3FE;border:1px solid #BFD3FA">
                             <p class="text-[10px] text-slate-500">Distancia</p>
-                            <p class="font-black text-purple-700 text-sm">{{ ccActiveReq().distance_km }} km</p>
+                            <p class="font-black text-blue-700 text-sm">{{ ccActiveReq().distance_km }} km</p>
                           </div>
-                          <div class="rounded-xl p-2.5 text-center" style="background:#faf5ff;border:1px solid #d8b4fe">
+                          <div class="rounded-xl p-2.5 text-center" style="background:#EEF3FE;border:1px solid #BFD3FA">
                             <p class="text-[10px] text-slate-500">Precio</p>
-                            <p class="font-black text-purple-700 text-sm">{{ formatCOP(ccActiveReq().accepted_price) }}</p>
+                            <p class="font-black text-blue-700 text-sm">{{ formatCOP(ccActiveReq().accepted_price) }}</p>
                           </div>
-                          <div class="rounded-xl p-2.5 text-center" style="background:#faf5ff;border:1px solid #d8b4fe">
+                          <div class="rounded-xl p-2.5 text-center" style="background:#EEF3FE;border:1px solid #BFD3FA">
                             <p class="text-[10px] text-slate-500">Pago</p>
-                            <p class="font-black text-purple-700 text-sm">{{ ccActiveReq().payment_method || 'efectivo' }}</p>
+                            <p class="font-black text-blue-700 text-sm">{{ ccActiveReq().payment_method || 'efectivo' }}</p>
                           </div>
                         </div>
 
@@ -3287,9 +3287,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           </button>
                           <button (click)="ccAddStopModal.set(true)"
                             class="flex flex-col items-center gap-1 py-3 rounded-2xl active:scale-95 transition-all"
-                            style="background:#faf5ff;border:1.5px solid #d8b4fe">
-                            <span class="material-symbols-outlined text-purple-500" style="font-size:24px;font-variation-settings:'FILL' 1">add_location</span>
-                            <span class="text-xs font-black text-purple-600">+ Parada</span>
+                            style="background:#EEF3FE;border:1.5px solid #BFD3FA">
+                            <span class="material-symbols-outlined text-blue-500" style="font-size:24px;font-variation-settings:'FILL' 1">add_location</span>
+                            <span class="text-xs font-black text-blue-600">+ Parada</span>
                           </button>
                         </div>
 
@@ -3316,19 +3316,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <div class="flex flex-col px-4 pb-4 gap-3">
                         <!-- Header -->
                         <div class="flex flex-col items-center py-3">
-                          <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mb-2">
-                            <span class="material-symbols-outlined text-purple-500" style="font-size:36px;font-variation-settings:'FILL' 1">check_circle</span>
+                          <div class="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-2">
+                            <span class="material-symbols-outlined text-blue-500" style="font-size:36px;font-variation-settings:'FILL' 1">check_circle</span>
                           </div>
                           <p class="font-black text-slate-800 text-base">¡Viaje completado!</p>
                           <p class="text-slate-500 text-xs mt-1">{{ ccActiveReq().origin_city }} → {{ ccActiveReq().dest_city }}</p>
                         </div>
 
                         <!-- Desglose de costos -->
-                        <div class="rounded-2xl overflow-hidden" style="border:1px solid #e9d5ff">
-                          <div class="px-3 py-2" style="background:#a855f7">
+                        <div class="rounded-2xl overflow-hidden" style="border:1px solid #D6E4FC">
+                          <div class="px-3 py-2" style="background:#4C7DF0">
                             <p class="text-white font-black text-xs uppercase tracking-wider">Desglose del viaje</p>
                           </div>
-                          <div class="px-3 py-2 flex flex-col gap-1.5" style="background:#faf5ff">
+                          <div class="px-3 py-2 flex flex-col gap-1.5" style="background:#EEF3FE">
                             <div class="flex justify-between text-xs">
                               <span class="text-slate-500">Tarifa base ({{ ccActiveReq().distance_km }} km)</span>
                               <span class="font-bold text-slate-700">{{ formatCOP(ccBasePrice()) }}</span>
@@ -3351,9 +3351,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                 <span class="font-bold text-green-600">+ {{ formatCOP(ccRatingTip()) }}</span>
                               </div>
                             }
-                            <div class="border-t border-purple-200 pt-1.5 flex justify-between">
+                            <div class="border-t border-blue-200 pt-1.5 flex justify-between">
                               <span class="font-black text-slate-700 text-sm">Total</span>
-                              <span class="font-black text-purple-700 text-sm">{{ formatCOP((ccActiveReq().accepted_price || 0) + ccRatingTip()) }}</span>
+                              <span class="font-black text-blue-700 text-sm">{{ formatCOP((ccActiveReq().accepted_price || 0) + ccRatingTip()) }}</span>
                             </div>
                             <p class="text-[10px] text-slate-400">Método: {{ ccActiveReq().payment_method || 'efectivo' }}</p>
                           </div>
@@ -3374,23 +3374,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <div class="grid grid-cols-5 gap-1.5">
                             <button (click)="ccRatingTip.set(0); ccTipCustom.set(false)"
                               class="py-2 rounded-xl text-xs font-black transition-all"
-                              [style.background]="ccRatingTip()===0&&!ccTipCustom()?'#a855f7':'#f1f5f9'"
+                              [style.background]="ccRatingTip()===0&&!ccTipCustom()?'#4C7DF0':'#f1f5f9'"
                               [style.color]="ccRatingTip()===0&&!ccTipCustom()?'white':'#64748b'">Sin</button>
                             @for (pct of [10, 15, 20]; track pct) {
                               <button (click)="ccSetTipPct(pct); ccTipCustom.set(false)"
                                 class="py-2 rounded-xl text-xs font-black transition-all"
-                                [style.background]="ccIsTipPct(pct)&&!ccTipCustom()?'#a855f7':'#f1f5f9'"
+                                [style.background]="ccIsTipPct(pct)&&!ccTipCustom()?'#4C7DF0':'#f1f5f9'"
                                 [style.color]="ccIsTipPct(pct)&&!ccTipCustom()?'white':'#64748b'">
                                 {{ pct }}%
                               </button>
                             }
                             <button (click)="ccTipCustom.set(true)"
                               class="py-2 rounded-xl text-xs font-black transition-all"
-                              [style.background]="ccTipCustom()?'#a855f7':'#f1f5f9'"
+                              [style.background]="ccTipCustom()?'#4C7DF0':'#f1f5f9'"
                               [style.color]="ccTipCustom()?'white':'#64748b'">✏️</button>
                           </div>
                           @if (ccTipCustom()) {
-                            <div class="flex items-center gap-2 mt-2 border border-purple-200 rounded-xl px-3 py-2" style="background:#faf5ff">
+                            <div class="flex items-center gap-2 mt-2 border border-blue-200 rounded-xl px-3 py-2" style="background:#EEF3FE">
                               <span class="text-slate-400">$</span>
                               <input type="number" [value]="ccTipCustomAmount()"
                                 (input)="ccTipCustomAmount.set(+$any($event.target).value); ccRatingTip.set(+$any($event.target).value)"
@@ -3399,7 +3399,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             </div>
                           }
                           @if (ccRatingTip() > 0) {
-                            <p class="text-center text-purple-600 font-black text-sm mt-1">+{{ formatCOP(ccRatingTip()) }}</p>
+                            <p class="text-center text-blue-600 font-black text-sm mt-1">+{{ formatCOP(ccRatingTip()) }}</p>
                           }
                         </div>
 
@@ -3418,7 +3418,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           @for (tag of ccRatingTags; track tag) {
                             <button (click)="ccToggleTag(tag)"
                               class="px-2.5 py-1 rounded-full text-xs font-bold transition-all"
-                              [style.background]="ccHasTag(tag)?'#a855f7':'#f1f5f9'"
+                              [style.background]="ccHasTag(tag)?'#4C7DF0':'#f1f5f9'"
                               [style.color]="ccHasTag(tag)?'white':'#64748b'">
                               {{ tag }}
                             </button>
@@ -3430,7 +3430,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                         <button (click)="ccSubmitRating()" [disabled]="ccRatingSending()"
                           class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                          style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                          style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
                           @if (ccRatingSending()) {
                             <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Enviando...
                           } @else {
@@ -3440,7 +3440,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <!-- Factura -->
                         <button (click)="ccShareReceipt()"
                           class="w-full py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
-                          style="background:#faf5ff;border:1.5px solid #d8b4fe;color:#7c3aed">
+                          style="background:#EEF3FE;border:1.5px solid #BFD3FA;color:#245bdb">
                           <span class="material-symbols-outlined" style="font-size:20px">receipt_long</span>
                           Compartir factura
                         </button>
@@ -3453,13 +3453,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                       <div class="px-4 pb-4">
                         @if (ccMyTripsLoading()) {
                           <div class="flex justify-center py-6">
-                            <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:32px">autorenew</span>
+                            <span class="material-symbols-outlined animate-spin text-blue-400" style="font-size:32px">autorenew</span>
                           </div>
                         } @else if (ccMyTrips().length === 0) {
                           <div class="flex flex-col items-center py-6 text-slate-400">
                             <span class="material-symbols-outlined" style="font-size:48px">commute</span>
                             <p class="font-bold mt-2 text-sm">Sin viajes intercity aún</p>
-                            <button (click)="ccGoNew()" class="mt-3 px-4 py-2 rounded-xl text-white text-sm font-black" style="background:#a855f7">
+                            <button (click)="ccGoNew()" class="mt-3 px-4 py-2 rounded-xl text-white text-sm font-black" style="background:#4C7DF0">
                               + Nuevo viaje
                             </button>
                           </div>
@@ -3489,7 +3489,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                   </div>
                                   <div class="flex items-center justify-between">
                                     <p class="text-xs text-slate-400">🗓️ {{ trip.scheduled_dt | date:'dd MMM yyyy HH:mm' }}</p>
-                                    <p class="text-sm font-black text-purple-600">{{ formatCOP(trip.accepted_price || trip.suggested_price) }}</p>
+                                    <p class="text-sm font-black text-blue-600">{{ formatCOP(trip.accepted_price || trip.suggested_price) }}</p>
                                   </div>
                                 </button>
                                 @if (trip.status === 'completed' && trip.driver_id) {
@@ -3516,13 +3516,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         <div class="flex items-center justify-between mb-3">
                           <p class="font-black text-slate-700 text-sm">Viajes disponibles</p>
                           <button (click)="ccLoadDriverReqs()"
-                            class="flex items-center gap-1 text-purple-500 font-bold text-xs active:scale-90">
+                            class="flex items-center gap-1 text-blue-500 font-bold text-xs active:scale-90">
                             <span class="material-symbols-outlined" style="font-size:16px">refresh</span>Actualizar
                           </button>
                         </div>
                         @if (ccDriverLoading()) {
                           <div class="flex justify-center py-6">
-                            <span class="material-symbols-outlined animate-spin text-purple-400" style="font-size:32px">autorenew</span>
+                            <span class="material-symbols-outlined animate-spin text-blue-400" style="font-size:32px">autorenew</span>
                           </div>
                         } @else if (ccDriverReqs().length === 0) {
                           <div class="flex flex-col items-center py-6 text-slate-400">
@@ -3539,7 +3539,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                     <p class="text-[10px] text-slate-400">🗓️ {{ req.scheduled_dt | date:'dd MMM yyyy HH:mm' }}</p>
                                   </div>
                                   <div class="text-right">
-                                    <p class="font-black text-purple-600">{{ formatCOP(req.suggested_price) }}</p>
+                                    <p class="font-black text-blue-600">{{ formatCOP(req.suggested_price) }}</p>
                                     <p class="text-[10px] text-slate-400">{{ req.offers_count }} oferta(s)</p>
                                   </div>
                                 </div>
@@ -3561,7 +3561,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                                 </div>
                                 <button (click)="ccOpenDriverOffer(req)"
                                   class="w-full py-2.5 rounded-xl text-white text-sm font-black active:scale-[0.98]"
-                                  style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+                                  style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
                                   Hacer oferta
                                 </button>
                               </div>
@@ -4487,7 +4487,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <!-- Billetera de retiro -->
             <div class="rounded-2xl p-4 flex flex-col gap-2"
-              style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.2)">
+              style="background:linear-gradient(135deg,#245BDB,#2563EB);border:1px solid rgba(255,255,255,0.2)">
               <p class="text-white/70 text-xs font-bold uppercase tracking-widest">Billetera de retiro</p>
               <p class="text-white font-black text-2xl">{{ '$' + referralBalance().toLocaleString() }}</p>
               <div class="flex items-center gap-4 mt-1">
@@ -4503,7 +4503,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
 
             <div class="rounded-2xl p-4 flex flex-col gap-3"
-              style="background:linear-gradient(135deg,rgba(108,58,237,0.15),rgba(37,99,235,0.15));border:1px solid rgba(108,58,237,0.3)">
+              style="background:linear-gradient(135deg,rgba(36,91,219,0.15),rgba(37,99,235,0.15));border:1px solid rgba(36,91,219,0.3)">
               <p class="text-white font-black text-base">Gana el 2% por invitado</p>
               <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
                 Cada vez que alguien se registre en <span class="text-white font-bold">Movi</span> con tu link y use nuestro servicio,
@@ -4551,14 +4551,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">¿Cómo funciona?</p>
             <div class="flex flex-col gap-2">
               <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
-                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.2)">
-                  <span class="text-purple-400 font-black text-xs">1</span>
+                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.2)">
+                  <span class="text-blue-400 font-black text-xs">1</span>
                 </div>
                 <p class="text-slate-300 text-xs leading-relaxed">Comparte tu link con amigos, familiares o en redes sociales</p>
               </div>
               <div class="flex items-start gap-3 rounded-xl p-3" style="background:rgba(255,255,255,0.04)">
-                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.2)">
-                  <span class="text-purple-400 font-black text-xs">2</span>
+                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.2)">
+                  <span class="text-blue-400 font-black text-xs">2</span>
                 </div>
                 <p class="text-slate-300 text-xs leading-relaxed">Ellos se registran como pasajero o conductor usando tu link</p>
               </div>
@@ -5308,7 +5308,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <!-- Gana por invitar -->
         <button (click)="openDriverSection('referrals')"
           class="flex flex-col items-start gap-1.5 active:scale-[0.98] transition-transform"
-          style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:12px;padding:10px 12px;border:none;cursor:pointer">
+          style="background:linear-gradient(135deg,#245BDB,#3B82F6);border-radius:12px;padding:10px 12px;border:none;cursor:pointer">
           <div class="flex items-center justify-center flex-shrink-0"
             style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.15)">
             <span class="material-symbols-outlined" style="font-size:16px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
@@ -5428,7 +5428,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- ══ Gana por invitar conductor (full-width, hidden — kept for menu) ══ -->
       <button (click)="openDriverSection('referrals')" class="hidden"
-        style="background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
+        style="background:linear-gradient(135deg,#245BDB,#3B82F6);border-radius:16px;padding:14px 16px;border:none;cursor:pointer">
         <div class="flex items-center justify-center flex-shrink-0"
           style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15)">
           <span class="material-symbols-outlined" style="font-size:22px;color:rgba(255,255,255,0.9);font-variation-settings:'FILL' 1">redeem</span>
@@ -5447,8 +5447,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       @if (driverStatus() === 'quick') {
         <div class="rounded-2xl p-4 flex items-start gap-3"
-          style="background:linear-gradient(135deg,rgba(124,58,237,0.10),rgba(59,130,246,0.07));border:1px solid rgba(124,58,237,0.25)">
-          <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#7C3AED">rocket_launch</span>
+          style="background:linear-gradient(135deg,rgba(36,91,219,0.10),rgba(59,130,246,0.07));border:1px solid rgba(36,91,219,0.25)">
+          <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#245BDB">rocket_launch</span>
           <div>
             <p class="font-black text-sm" style="color:#0f172a">No necesitas saldo para tu primera carrera</p>
             <p class="text-slate-600 text-xs leading-relaxed mt-0.5">Acepta un viaje ahora mismo sin saldo ni aprobación. Después de tu primer viaje completa tu registro.</p>
@@ -5547,7 +5547,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   @if (!trip.ag_trip_requests?.driver_stage || trip.ag_trip_requests?.driver_stage === 'heading_to_pickup') {
                     <button (click)="startInAppNav(trip, true)"
                       class="w-full py-3 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2 active:scale-[0.98]"
-                      style="background:linear-gradient(135deg,#7c3aed,#6366f1)">
+                      style="background:linear-gradient(135deg,#245bdb,#245bdb)">
                       <span class="material-symbols-outlined" style="font-size:18px">navigation</span>Navegar al punto de recogida
                     </button>
                     <button (click)="advanceStage(trip, 'arrived_at_pickup')"
@@ -5859,11 +5859,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <div class="flex items-center gap-1.5 px-3 py-1 rounded-full"
                   [style.background]="navPhase() === 'to_pickup' ? 'rgba(139,92,246,0.2)' : 'rgba(249,115,22,0.2)'">
                   <span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'FILL' 1"
-                    [style.color]="navPhase() === 'to_pickup' ? '#c4b5fd' : '#fdba74'">
+                    [style.color]="navPhase() === 'to_pickup' ? '#6E93F2' : '#fdba74'">
                     {{ navPhase() === 'to_pickup' ? 'person_pin' : 'flag' }}
                   </span>
                   <p class="text-xs font-black"
-                    [style.color]="navPhase() === 'to_pickup' ? '#c4b5fd' : '#fdba74'">
+                    [style.color]="navPhase() === 'to_pickup' ? '#6E93F2' : '#fdba74'">
                     {{ navPhase() === 'to_pickup' ? 'Recogiendo pasajero' : 'Llevando al destino' }}
                   </p>
                 </div>
@@ -6240,7 +6240,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (!loadingSection() && driverSection() === 'earnings') {
             <!-- Tarjeta billetera de comisiones -->
             <div class="rounded-2xl p-5 flex flex-col gap-3"
-              style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.15)">
+              style="background:linear-gradient(135deg,#245BDB,#2563EB);border:1px solid rgba(255,255,255,0.15)">
               <p class="text-white/60 text-xs font-bold uppercase tracking-widest">Comisiones por invitados</p>
               <p class="text-white font-black text-4xl">{{ '$' + referralBalance().toLocaleString() }}</p>
               <p class="text-white/60 text-[10px]">Disponible para retirar</p>
@@ -6258,18 +6258,18 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <!-- Retirar comisiones -->
             <div class="rounded-2xl p-4 flex flex-col gap-3"
-              style="background:#EEF2FF;border:1px solid rgba(108,58,237,0.25)">
+              style="background:#EEF3FE;border:1px solid rgba(36,91,219,0.25)">
               <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-purple-600" style="font-size:18px">account_balance</span>
+                <span class="material-symbols-outlined text-blue-600" style="font-size:18px">account_balance</span>
                 <p class="font-black text-sm" style="color:#0f172a">Retirar comisiones</p>
               </div>
               <p class="text-slate-600 text-[11px]">Mínimo 10.000 COP. Recibes en 1-3 días hábiles.</p>
               <input type="number" [(ngModel)]="refWdAmount" placeholder="Monto en COP" min="10000"
                 class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                style="background:#FFFFFF;border:1px solid #C7D2FE" />
+                style="background:#FFFFFF;border:1px solid #D6E4FC" />
               <select [(ngModel)]="refWdMethod"
                 class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                style="background:#FFFFFF;border:1px solid #C7D2FE">
+                style="background:#FFFFFF;border:1px solid #D6E4FC">
                 <option value="bank_ahorros">Bancolombia — Cuenta de Ahorros</option>
                 <option value="bank_corriente">Bancolombia — Cuenta Corriente</option>
                 <option value="nequi">Nequi</option>
@@ -6277,10 +6277,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </select>
               <input type="text" [(ngModel)]="refWdAccount" [placeholder]="refWdPlaceholder()"
                 class="w-full px-3 py-2 rounded-lg text-slate-900 text-sm outline-none"
-                style="background:#FFFFFF;border:1px solid #C7D2FE" />
+                style="background:#FFFFFF;border:1px solid #D6E4FC" />
               <button (click)="requestReferralWithdraw()" [disabled]="refWdLoading() || (refWdAmount ?? 0) < 10000"
                 class="w-full py-2.5 rounded-xl font-black text-xs uppercase disabled:opacity-40"
-                style="background:linear-gradient(135deg,#6C3AED,#2563EB);color:#fff">
+                style="background:linear-gradient(135deg,#245BDB,#2563EB);color:#fff">
                 {{ refWdLoading() ? 'Procesando...' : 'Solicitar retiro' }}
               </button>
               @if (refWdMsg()) {
@@ -6372,9 +6372,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     <p class="text-[10px] text-slate-500 uppercase">Rating</p>
                     <p class="text-2xl font-black text-amber-600 mt-1">{{ a.avg_rating }} <span class="text-xs text-slate-500">({{ a.ratings_count }})</span></p>
                   </div>
-                  <div class="rounded-2xl p-4" style="background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.2)">
-                    <p class="text-[10px] text-purple-600 uppercase">Nivel</p>
-                    <p class="text-xl font-black text-purple-700 mt-1 uppercase">{{ a.level }}</p>
+                  <div class="rounded-2xl p-4" style="background:rgba(76,125,240,0.07);border:1px solid rgba(76,125,240,0.2)">
+                    <p class="text-[10px] text-blue-600 uppercase">Nivel</p>
+                    <p class="text-xl font-black text-blue-700 mt-1 uppercase">{{ a.level }}</p>
                   </div>
                 </div>
                 @if (driverDailyEarnings().length > 0) {
@@ -6400,9 +6400,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 @let current = prog?.current_value ?? 0;
                 @let target = q.target_value ?? 1;
                 @let done = prog?.completed_at != null;
-                <div class="rounded-2xl p-4" style="background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.2)">
+                <div class="rounded-2xl p-4" style="background:rgba(76,125,240,0.07);border:1px solid rgba(76,125,240,0.2)">
                   <div class="flex items-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-purple-600" style="font-size:22px">emoji_events</span>
+                    <span class="material-symbols-outlined text-blue-600" style="font-size:22px">emoji_events</span>
                     <p class="font-black text-sm flex-1" style="color:#0f172a">{{ q.title }}</p>
                     @if (done) {
                       <span class="px-2 py-0.5 rounded-full text-[10px] font-black" style="background:rgba(16,185,129,0.15);color:#059669">✓ Completada</span>
@@ -6412,12 +6412,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   </div>
                   <p class="text-slate-600 text-xs mb-2">{{ q.description }}</p>
                   <div class="flex items-center gap-2 mb-1">
-                    <div class="flex-1 h-1.5 rounded-full overflow-hidden" style="background:rgba(168,85,247,0.15)">
+                    <div class="flex-1 h-1.5 rounded-full overflow-hidden" style="background:rgba(76,125,240,0.15)">
                       <div class="h-full rounded-full transition-all"
                         [style.width.%]="current / target * 100 > 100 ? 100 : current / target * 100"
-                        [style.background]="done ? '#059669' : 'linear-gradient(90deg,#a855f7,#7c3aed)'"></div>
+                        [style.background]="done ? '#059669' : 'linear-gradient(90deg,#4C7DF0,#245bdb)'"></div>
                     </div>
-                    <span class="text-[10px] font-bold" style="color:#7c3aed">{{ current }}/{{ target }}</span>
+                    <span class="text-[10px] font-bold" style="color:#245bdb">{{ current }}/{{ target }}</span>
                   </div>
                   <p class="text-[10px] text-slate-500">Expira: {{ q.valid_until | date:'shortDate' }} · {{ q.period }}</p>
                 </div>
@@ -6787,7 +6787,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- Billetera de retiro -->
               <div class="rounded-2xl p-4 flex flex-col gap-2"
-                style="background:linear-gradient(135deg,#6C3AED,#2563EB);border:1px solid rgba(255,255,255,0.2)">
+                style="background:linear-gradient(135deg,#245BDB,#2563EB);border:1px solid rgba(255,255,255,0.2)">
                 <p class="text-white/70 text-xs font-bold uppercase tracking-widest">Billetera de retiro</p>
                 <p class="text-white font-black text-2xl">{{ '$' + referralBalance().toLocaleString() }}</p>
                 <div class="flex items-center gap-4 mt-1">
@@ -6803,7 +6803,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </div>
 
               <div class="rounded-2xl p-4 flex flex-col gap-3"
-                style="background:linear-gradient(135deg,rgba(108,58,237,0.10),rgba(37,99,235,0.08));border:1px solid rgba(108,58,237,0.25)">
+                style="background:linear-gradient(135deg,rgba(36,91,219,0.10),rgba(37,99,235,0.08));border:1px solid rgba(36,91,219,0.25)">
                 <p class="font-black text-base" style="color:#0f172a">Gana el 2% por invitado</p>
                 <p class="text-slate-700 text-xs sm:text-sm leading-relaxed">
                   Cada vez que alguien se registre en <span class="font-bold" style="color:#0f172a">Movi</span> con tu link y use nuestro servicio,
@@ -6850,14 +6850,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <p class="text-slate-600 text-xs font-bold uppercase tracking-widest">¿Cómo funciona?</p>
               <div class="flex flex-col gap-2">
                 <div class="flex items-start gap-3 rounded-xl p-3" style="background:#F9FAFB;border:1px solid #E2E8F0">
-                  <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.12)">
-                    <span class="text-purple-700 font-black text-xs">1</span>
+                  <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.12)">
+                    <span class="text-blue-700 font-black text-xs">1</span>
                   </div>
                   <p class="text-slate-700 text-xs leading-relaxed">Comparte tu link con amigos, familiares o en redes sociales</p>
                 </div>
                 <div class="flex items-start gap-3 rounded-xl p-3" style="background:#F9FAFB;border:1px solid #E2E8F0">
-                  <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(108,58,237,0.12)">
-                    <span class="text-purple-700 font-black text-xs">2</span>
+                  <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.12)">
+                    <span class="text-blue-700 font-black text-xs">2</span>
                   </div>
                   <p class="text-slate-700 text-xs leading-relaxed">Ellos se registran como pasajero o conductor usando tu link</p>
                 </div>
@@ -6956,17 +6956,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
               <!-- Beneficio de invitados -->
               <div class="rounded-2xl p-4 flex items-start gap-3"
-                style="background:linear-gradient(135deg,rgba(108,58,237,0.07),rgba(37,99,235,0.05));border:1px solid rgba(108,58,237,0.18)">
+                style="background:linear-gradient(135deg,rgba(36,91,219,0.07),rgba(37,99,235,0.05));border:1px solid rgba(36,91,219,0.18)">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style="background:rgba(108,58,237,0.12);border:1px solid rgba(108,58,237,0.25)">
-                  <span class="material-symbols-outlined" style="font-size:20px;color:#7c3aed;font-variation-settings:'FILL' 1">group_add</span>
+                  style="background:rgba(36,91,219,0.12);border:1px solid rgba(36,91,219,0.25)">
+                  <span class="material-symbols-outlined" style="font-size:20px;color:#245bdb;font-variation-settings:'FILL' 1">group_add</span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="font-black text-sm" style="color:#0f172a">Gana el 2% por cada invitado</p>
-                  <p class="text-slate-600 text-xs mt-0.5 leading-relaxed">Cada conductor o pasajero que se registre con tu link y complete servicios, te genera el <span class="font-bold text-purple-700">2% de cada servicio</span>.</p>
+                  <p class="text-slate-600 text-xs mt-0.5 leading-relaxed">Cada conductor o pasajero que se registre con tu link y complete servicios, te genera el <span class="font-bold text-blue-700">2% de cada servicio</span>.</p>
                   <button (click)="openDriverSection('referrals')"
                     class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black active:scale-95 transition-all"
-                    style="background:rgba(108,58,237,0.12);border:1px solid rgba(108,58,237,0.25);color:#7c3aed">
+                    style="background:rgba(36,91,219,0.12);border:1px solid rgba(36,91,219,0.25);color:#245bdb">
                     <span class="material-symbols-outlined" style="font-size:14px">share</span> Ver mi link de invitado
                   </button>
                 </div>
@@ -7564,7 +7564,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-4"></div>
           <div class="flex items-start gap-3">
             <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+              style="background:linear-gradient(135deg,#1d3fae,#245bdb)">
               <span class="material-symbols-outlined text-white" style="font-size:22px;font-variation-settings:'FILL' 1">shield_person</span>
             </div>
             <div>
@@ -7580,7 +7580,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- Selfie -->
           <div>
             <p class="text-slate-700 font-black text-sm mb-2 flex items-center gap-1.5">
-              <span class="material-symbols-outlined" style="font-size:18px;color:#4f46e5">face</span>
+              <span class="material-symbols-outlined" style="font-size:18px;color:#1d3fae">face</span>
               Foto de tu rostro (selfie)
             </p>
             <label class="block cursor-pointer">
@@ -7590,17 +7590,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <div class="relative w-full rounded-2xl overflow-hidden" style="aspect-ratio:4/3">
                   <img [src]="passengerVerifSelfiePreview()!" class="w-full h-full object-cover"/>
                   <div class="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full"
-                    style="background:rgba(79,70,229,0.9)">
+                    style="background:rgba(29,63,174,0.9)">
                     <span class="material-symbols-outlined text-white" style="font-size:14px">check_circle</span>
                     <span class="text-white text-[10px] font-black">Cambiar</span>
                   </div>
                 </div>
               } @else {
                 <div class="w-full flex flex-col items-center justify-center gap-2 rounded-2xl py-8"
-                  style="background:#f5f3ff;border:2px dashed #a5b4fc">
-                  <span class="material-symbols-outlined" style="font-size:36px;color:#4f46e5">add_a_photo</span>
-                  <p class="text-indigo-700 font-bold text-sm">Tomar selfie</p>
-                  <p class="text-indigo-400 text-xs">Asegúrate que tu rostro se vea claro</p>
+                  style="background:#eef3fe;border:2px dashed #BFD3FA">
+                  <span class="material-symbols-outlined" style="font-size:36px;color:#1d3fae">add_a_photo</span>
+                  <p class="text-blue-700 font-bold text-sm">Tomar selfie</p>
+                  <p class="text-blue-400 text-xs">Asegúrate que tu rostro se vea claro</p>
                 </div>
               }
             </label>
@@ -7679,7 +7679,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <button (click)="submitPassengerVerif()"
             [disabled]="passengerVerifSending() || !passengerVerifSelfie() || !passengerVerifFront() || !passengerVerifBack()"
             class="w-full py-4 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
-            style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 16px rgba(79,70,229,0.35)">
+            style="background:linear-gradient(135deg,#1d3fae,#245bdb);box-shadow:0 4px 16px rgba(29,63,174,0.35)">
             @if (passengerVerifSending()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>
               Enviando fotos...
@@ -7952,9 +7952,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
       <!-- Value props -->
       <div class="grid grid-cols-3 w-full" style="gap:12px;padding-left:24px;padding-right:24px;padding-bottom:32px">
-        <div class="flex flex-col items-center" style="background:#F5F3FF;border-radius:16px;padding:16px 8px;gap:10px">
-          <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED">sell</span>
-          <span style="font-size:14px;font-weight:500;color:#7C3AED;text-align:center;line-height:20px;font-family:'Inter-Medium',sans-serif">Tú propones<br>el precio</span>
+        <div class="flex flex-col items-center" style="background:#EEF3FE;border-radius:16px;padding:16px 8px;gap:10px">
+          <span class="material-symbols-outlined" style="font-size:20px;color:#245BDB">sell</span>
+          <span style="font-size:14px;font-weight:500;color:#245BDB;text-align:center;line-height:20px;font-family:'Inter-Medium',sans-serif">Tú propones<br>el precio</span>
         </div>
         <div class="flex flex-col items-center" style="background:#ECFDF5;border-radius:16px;padding:16px 8px;gap:10px">
           <span class="material-symbols-outlined" style="font-size:20px;color:#059669">star</span>
@@ -7970,7 +7970,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       <div class="flex flex-col w-full" style="gap:12px;padding-left:24px;padding-right:24px">
         <button (click)="startQuickRegister()"
           class="w-full text-white flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
-          style="height:56px;background:#7C3AED;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
+          style="height:56px;background:#245BDB;border-radius:16px;font-size:17px;font-weight:600;letter-spacing:-0.1px;font-family:'Inter',sans-serif">
           Pasajero
         </button>
         <button (click)="qrRole.set('conductor'); screen.set('quick-register'); qrStep.set(1)"
@@ -8020,14 +8020,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Progreso -->
           <div style="display:flex;gap:4px">
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
             <div style="flex:1;height:3px;border-radius:99px;background:#E5E7EB"></div>
             <div style="flex:1;height:3px;border-radius:99px;background:#E5E7EB"></div>
           </div>
 
           <!-- Icono central -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
-            <div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center">
+            <div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#245BDB,#3B82F6);display:flex;align-items:center;justify-content:center">
               <span class="material-symbols-outlined" style="font-size:36px;color:#fff">hail</span>
             </div>
             <p style="color:#6B7280;font-size:13px;text-align:center;margin:0">Ingresa tu número. Te enviamos un código<br>en 10 segundos.</p>
@@ -8075,7 +8075,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- CTA -->
           <button (click)="qrSendOtp()" [disabled]="qrOtpSending() || qrPhone().length !== 10"
-            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
             [style.opacity]="qrOtpSending() || qrPhone().length !== 10 ? '0.9' : '1'">
             @if (qrOtpSending()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:18px;margin-right:8px">autorenew</span> Enviando SMS...
@@ -8088,7 +8088,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <p style="text-align:center;color:#6B7280;font-size:12px;margin-top:4px">
             ¿Eres conductor?
             <button (click)="screen.set('driver-form'); driverStep.set(1)"
-              style="background:none;border:none;color:#7C3AED;font-weight:700;font-size:12px;cursor:pointer;padding:0;margin-left:2px">
+              style="background:none;border:none;color:#245BDB;font-weight:700;font-size:12px;cursor:pointer;padding:0;margin-left:2px">
               Regístrate aquí
             </button>
           </p>
@@ -8113,14 +8113,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Progreso -->
           <div style="display:flex;gap:4px">
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
             <div style="flex:1;height:3px;border-radius:99px;background:#E5E7EB"></div>
           </div>
 
           <!-- Info -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
-            <div style="width:72px;height:72px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center">
+            <div style="width:72px;height:72px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);display:flex;align-items:center;justify-content:center">
               <span class="material-symbols-outlined" style="font-size:36px;color:#fff;font-variation-settings:'FILL' 1">sms</span>
             </div>
             <p style="color:#6B7280;font-size:13px;text-align:center;margin:0;line-height:1.6">
@@ -8152,7 +8152,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Confirmar -->
           <button (click)="qrVerifyOtp()" [disabled]="qrOtpVerifying() || qrOtpCode().length < 6"
-            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-weight:600;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);color:#fff;font-weight:600;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
             [style.opacity]="qrOtpVerifying() || qrOtpCode().length < 6 ? '0.9' : '1'">
             @if (qrOtpVerifying()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:18px;margin-right:8px">autorenew</span> Verificando...
@@ -8165,11 +8165,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="text-align:center">
             @if (qrResendCountdown() > 0) {
               <p style="color:#6B7280;font-size:13px;margin:0">
-                Reenviar en <span style="color:#7C3AED;font-weight:700">{{ qrResendCountdown() }}s</span>
+                Reenviar en <span style="color:#245BDB;font-weight:700">{{ qrResendCountdown() }}s</span>
               </p>
             } @else {
               <button (click)="qrResendOtp()"
-                style="background:none;border:none;color:#7C3AED;font-weight:700;font-size:13px;cursor:pointer;padding:0">
+                style="background:none;border:none;color:#245BDB;font-weight:700;font-size:13px;cursor:pointer;padding:0">
                 ¿No llegó? Reenviar SMS
               </button>
             }
@@ -8195,14 +8195,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Progreso -->
           <div style="display:flex;gap:4px">
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
           </div>
 
           <!-- Icono central -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
-            <div style="width:72px;height:72px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center">
+            <div style="width:72px;height:72px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);display:flex;align-items:center;justify-content:center">
               <span class="material-symbols-outlined" style="font-size:36px;color:#fff;font-variation-settings:'FILL' 1">commute</span>
             </div>
             <p style="color:#6B7280;font-size:13px;text-align:center;margin:0;line-height:1.5">Elige el tipo de vehículo con el que<br>vas a prestar el servicio</p>
@@ -8213,55 +8213,55 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <button (click)="qrVehicleType.set('carro')"
               style="width:100%;display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;border:1.5px solid;cursor:pointer;transition:all 0.15s;text-align:left"
-              [style.borderColor]="qrVehicleType() === 'carro' ? '#7C3AED' : '#E5E7EB'"
-              [style.background]="qrVehicleType() === 'carro' ? '#F5F3FF' : '#F9FAFB'">
+              [style.borderColor]="qrVehicleType() === 'carro' ? '#245BDB' : '#E5E7EB'"
+              [style.background]="qrVehicleType() === 'carro' ? '#EEF3FE' : '#F9FAFB'">
               <div style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-                [style.background]="qrVehicleType() === 'carro' ? '#7C3AED' : '#E5E7EB'">
+                [style.background]="qrVehicleType() === 'carro' ? '#245BDB' : '#E5E7EB'">
                 <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
                   [style.color]="qrVehicleType() === 'carro' ? '#fff' : '#6B7280'">directions_car</span>
               </div>
               <div>
-                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'carro' ? '#7C3AED' : '#111827'">Carro / Camioneta</p>
+                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'carro' ? '#245BDB' : '#111827'">Carro / Camioneta</p>
                 <p style="margin:0;font-size:12px;color:#6B7280">Servicio de transporte urbano</p>
               </div>
               @if (qrVehicleType() === 'carro') {
-                <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
+                <span class="material-symbols-outlined" style="font-size:20px;color:#245BDB;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
               }
             </button>
 
             <button (click)="qrVehicleType.set('moto')"
               style="width:100%;display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;border:1.5px solid;cursor:pointer;transition:all 0.15s;text-align:left"
-              [style.borderColor]="qrVehicleType() === 'moto' ? '#7C3AED' : '#E5E7EB'"
-              [style.background]="qrVehicleType() === 'moto' ? '#F5F3FF' : '#F9FAFB'">
+              [style.borderColor]="qrVehicleType() === 'moto' ? '#245BDB' : '#E5E7EB'"
+              [style.background]="qrVehicleType() === 'moto' ? '#EEF3FE' : '#F9FAFB'">
               <div style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-                [style.background]="qrVehicleType() === 'moto' ? '#7C3AED' : '#E5E7EB'">
+                [style.background]="qrVehicleType() === 'moto' ? '#245BDB' : '#E5E7EB'">
                 <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
                   [style.color]="qrVehicleType() === 'moto' ? '#fff' : '#6B7280'">two_wheeler</span>
               </div>
               <div>
-                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'moto' ? '#7C3AED' : '#111827'">Moto</p>
+                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'moto' ? '#245BDB' : '#111827'">Moto</p>
                 <p style="margin:0;font-size:12px;color:#6B7280">Mensajería y domicilios rápidos</p>
               </div>
               @if (qrVehicleType() === 'moto') {
-                <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
+                <span class="material-symbols-outlined" style="font-size:20px;color:#245BDB;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
               }
             </button>
 
             <button (click)="qrVehicleType.set('camion')"
               style="width:100%;display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;border:1.5px solid;cursor:pointer;transition:all 0.15s;text-align:left"
-              [style.borderColor]="qrVehicleType() === 'camion' ? '#7C3AED' : '#E5E7EB'"
-              [style.background]="qrVehicleType() === 'camion' ? '#F5F3FF' : '#F9FAFB'">
+              [style.borderColor]="qrVehicleType() === 'camion' ? '#245BDB' : '#E5E7EB'"
+              [style.background]="qrVehicleType() === 'camion' ? '#EEF3FE' : '#F9FAFB'">
               <div style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-                [style.background]="qrVehicleType() === 'camion' ? '#7C3AED' : '#E5E7EB'">
+                [style.background]="qrVehicleType() === 'camion' ? '#245BDB' : '#E5E7EB'">
                 <span class="material-symbols-outlined" style="font-size:26px;font-variation-settings:'FILL' 1"
                   [style.color]="qrVehicleType() === 'camion' ? '#fff' : '#6B7280'">local_shipping</span>
               </div>
               <div>
-                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'camion' ? '#7C3AED' : '#111827'">Camión de Acarreos</p>
+                <p style="margin:0;font-weight:600;font-size:15px" [style.color]="qrVehicleType() === 'camion' ? '#245BDB' : '#111827'">Camión de Acarreos</p>
                 <p style="margin:0;font-size:12px;color:#6B7280">Mudanzas y carga pesada</p>
               </div>
               @if (qrVehicleType() === 'camion') {
-                <span class="material-symbols-outlined" style="font-size:20px;color:#7C3AED;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
+                <span class="material-symbols-outlined" style="font-size:20px;color:#245BDB;margin-left:auto;font-variation-settings:'FILL' 1">check_circle</span>
               }
             </button>
           </div>
@@ -8273,19 +8273,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <input [(ngModel)]="qrVehicleBrandVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleBrand.set($event)"
                 placeholder="Marca (ej: Yamaha, Toyota)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
-                [style.borderColor]="qrVehicleBrand() ? '#7C3AED' : '#D1D5DB'" />
+                [style.borderColor]="qrVehicleBrand() ? '#245BDB' : '#D1D5DB'" />
               <input [(ngModel)]="qrVehicleColorVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleColor.set($event)"
                 placeholder="Color (ej: Rojo, Negro)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
-                [style.borderColor]="qrVehicleColor() ? '#7C3AED' : '#D1D5DB'" />
+                [style.borderColor]="qrVehicleColor() ? '#245BDB' : '#D1D5DB'" />
               <input [(ngModel)]="qrVehiclePlateVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehiclePlate.set($event.toUpperCase())"
                 placeholder="Placa (ej: ABC123)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box;text-transform:uppercase"
-                [style.borderColor]="qrVehiclePlate() ? '#7C3AED' : '#D1D5DB'" />
+                [style.borderColor]="qrVehiclePlate() ? '#245BDB' : '#D1D5DB'" />
               <input [(ngModel)]="qrVehicleYearVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleYear.set($event)"
                 placeholder="Año (ej: 2020)" type="number" min="1970"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
-                [style.borderColor]="qrVehicleYear() ? '#7C3AED' : '#D1D5DB'" />
+                [style.borderColor]="qrVehicleYear() ? '#245BDB' : '#D1D5DB'" />
             </div>
           </div>
 
@@ -8299,7 +8299,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <!-- CTA -->
           <button (click)="qrSaveVehicleAndEnter()"
             [disabled]="!qrVehicleType() || !qrVehicleBrand() || !qrVehicleColor() || !qrVehiclePlate() || !qrVehicleYear() || qrOtpVerifying()"
-            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
             [style.opacity]="!qrVehicleType() || qrOtpVerifying() ? '0.9' : '1'">
             @if (qrOtpVerifying()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Creando perfil...
@@ -8330,9 +8330,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Progreso -->
           <div style="display:flex;gap:4px">
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
-            <div style="flex:1;height:3px;border-radius:99px;background:#7C3AED"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
+            <div style="flex:1;height:3px;border-radius:99px;background:#245BDB"></div>
           </div>
 
           <!-- Origen -->
@@ -8380,8 +8380,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:5px">
             <label style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:0.08em">DESTINO</label>
             @if (qrDestSelected()) {
-              <div style="display:flex;align-items:center;gap:10px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.3);border-radius:14px;padding:12px 14px">
-                <span class="material-symbols-outlined" style="font-size:20px;color:#a78bfa;flex-shrink:0">location_on</span>
+              <div style="display:flex;align-items:center;gap:10px;background:rgba(36,91,219,0.08);border:1px solid rgba(36,91,219,0.3);border-radius:14px;padding:12px 14px">
+                <span class="material-symbols-outlined" style="font-size:20px;color:#6E93F2;flex-shrink:0">location_on</span>
                 <p style="color:#fff;font-size:14px;font-weight:600;flex:1;margin:0;word-break:break-word">{{ qrDestSelected()!.name }}</p>
                 <button (click)="qrDestSelected.set(null); qrDestQuery.set('')"
                   style="background:none;border:none;color:#64748b;cursor:pointer;padding:0;flex-shrink:0">
@@ -8391,7 +8391,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             } @else {
               <div style="position:relative">
                 <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 14px">
-                  <span class="material-symbols-outlined" style="font-size:20px;color:#a78bfa;flex-shrink:0">location_on</span>
+                  <span class="material-symbols-outlined" style="font-size:20px;color:#6E93F2;flex-shrink:0">location_on</span>
                   <input
                     [value]="qrDestQuery()"
                     (input)="onQrDestInput($any($event.target).value)"
@@ -8404,7 +8404,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     @for (s of qrDestSuggestions(); track s.id) {
                       <button (mousedown)="$event.preventDefault(); qrSelectDest(s)"
                         style="width:100%;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:none;background:transparent;cursor:pointer;text-align:left;border-bottom:1px solid rgba(255,255,255,0.05)">
-                        <span class="material-symbols-outlined" style="font-size:16px;color:#a78bfa;margin-top:2px;flex-shrink:0">location_on</span>
+                        <span class="material-symbols-outlined" style="font-size:16px;color:#6E93F2;margin-top:2px;flex-shrink:0">location_on</span>
                         <div style="min-width:0">
                           <p style="color:#fff;font-size:13px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.text }}</p>
                           <p style="color:#64748b;font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.place_name }}</p>
@@ -8423,24 +8423,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="display:flex;gap:8px">
               <button (click)="qrVehicle.set('carro')"
                 style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
-                [style.background]="qrVehicle() === 'carro' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
-                [style.border]="qrVehicle() === 'carro' ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
-                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'carro' ? '#a78bfa' : '#64748b'" style="font-size:24px">directions_car</span>
-                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'carro' ? '#a78bfa' : '#64748b'">Carro</span>
+                [style.background]="qrVehicle() === 'carro' ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.05)'"
+                [style.border]="qrVehicle() === 'carro' ? '1.5px solid rgba(36,91,219,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'carro' ? '#6E93F2' : '#64748b'" style="font-size:24px">directions_car</span>
+                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'carro' ? '#6E93F2' : '#64748b'">Carro</span>
               </button>
               <button (click)="qrVehicle.set('moto')"
                 style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
-                [style.background]="qrVehicle() === 'moto' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
-                [style.border]="qrVehicle() === 'moto' ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
-                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'moto' ? '#a78bfa' : '#64748b'" style="font-size:24px">two_wheeler</span>
-                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'moto' ? '#a78bfa' : '#64748b'">Moto</span>
+                [style.background]="qrVehicle() === 'moto' ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.05)'"
+                [style.border]="qrVehicle() === 'moto' ? '1.5px solid rgba(36,91,219,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'moto' ? '#6E93F2' : '#64748b'" style="font-size:24px">two_wheeler</span>
+                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'moto' ? '#6E93F2' : '#64748b'">Moto</span>
               </button>
               <button (click)="qrVehicle.set('camion')"
                 style="flex:1;padding:12px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;cursor:pointer;transition:all 0.15s"
-                [style.background]="qrVehicle() === 'camion' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
-                [style.border]="qrVehicle() === 'camion' ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
-                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'camion' ? '#a78bfa' : '#64748b'" style="font-size:24px">local_shipping</span>
-                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'camion' ? '#a78bfa' : '#64748b'">Camión</span>
+                [style.background]="qrVehicle() === 'camion' ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.05)'"
+                [style.border]="qrVehicle() === 'camion' ? '1.5px solid rgba(36,91,219,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                <span class="material-symbols-outlined" [style.color]="qrVehicle() === 'camion' ? '#6E93F2' : '#64748b'" style="font-size:24px">local_shipping</span>
+                <span style="font-size:12px;font-weight:700" [style.color]="qrVehicle() === 'camion' ? '#6E93F2' : '#64748b'">Camión</span>
               </button>
             </div>
           </div>
@@ -8467,10 +8467,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               @for (pm of [{k:'efectivo',l:'Efectivo',i:'payments'},{k:'nequi',l:'Nequi',i:'smartphone'},{k:'daviplata',l:'Daviplata',i:'smartphone'}]; track pm.k) {
                 <button (click)="qrPayment.set($any(pm.k))"
                   style="flex:1;min-width:80px;padding:10px 8px;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;cursor:pointer;transition:all 0.15s"
-                  [style.background]="qrPayment() === pm.k ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)'"
-                  [style.border]="qrPayment() === pm.k ? '1.5px solid rgba(124,58,237,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
-                  <span class="material-symbols-outlined" [style.color]="qrPayment() === pm.k ? '#a78bfa' : '#64748b'" style="font-size:18px">{{ pm.i }}</span>
-                  <span style="font-size:11px;font-weight:700" [style.color]="qrPayment() === pm.k ? '#a78bfa' : '#64748b'">{{ pm.l }}</span>
+                  [style.background]="qrPayment() === pm.k ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.05)'"
+                  [style.border]="qrPayment() === pm.k ? '1.5px solid rgba(36,91,219,0.5)' : '1.5px solid rgba(255,255,255,0.08)'">
+                  <span class="material-symbols-outlined" [style.color]="qrPayment() === pm.k ? '#6E93F2' : '#64748b'" style="font-size:18px">{{ pm.i }}</span>
+                  <span style="font-size:11px;font-weight:700" [style.color]="qrPayment() === pm.k ? '#6E93F2' : '#64748b'">{{ pm.l }}</span>
                 </button>
               }
             </div>
@@ -8484,7 +8484,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
           <!-- Buscar conductor -->
           <button (click)="qrSubmitTrip()" [disabled]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < 2000"
-            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 24px rgba(124,58,237,0.4);margin-top:4px"
+            style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#2563EB);color:#fff;font-weight:900;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 24px rgba(36,91,219,0.4);margin-top:4px"
             [style.opacity]="qrSubmitting() || !qrOriginSelected() || !qrDestSelected() || qrPrice() < 2000 ? '0.5' : '1'">
             @if (qrSubmitting()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Buscando conductor...
@@ -8720,7 +8720,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div class="w-full max-w-lg" style="padding-bottom:32px">
 
       <!-- Hero header -->
-      <div style="background:linear-gradient(135deg,#0d1b3e 0%,#0a1628 60%,#060b17 100%);padding:24px 20px 20px;margin:-24px -16px 0;border-bottom:1px solid rgba(99,102,241,0.15)">
+      <div style="background:linear-gradient(135deg,#0d1b3e 0%,#0a1628 60%,#060b17 100%);padding:24px 20px 20px;margin:-24px -16px 0;border-bottom:1px solid rgba(36,91,219,0.15)">
         <!-- Back + logo row -->
         <div class="flex items-center justify-between mb-5">
           <button (click)="driverStep() === 1 ? screen.set(driverData() ? 'driver-home' : 'home') : driverStep.set(driverStep() - 1)"
@@ -8729,16 +8729,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <span class="material-symbols-outlined text-white" style="font-size:18px">arrow_back</span>
             </div>
           </button>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-full" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
-            <span class="material-symbols-outlined" style="font-size:14px;color:#818cf8">local_taxi</span>
-            <span style="color:#818cf8;font-size:11px;font-weight:800;letter-spacing:0.08em">MOVI CONDUCTORES</span>
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-full" style="background:rgba(36,91,219,0.15);border:1px solid rgba(36,91,219,0.3)">
+            <span class="material-symbols-outlined" style="font-size:14px;color:#4C7DF0">local_taxi</span>
+            <span style="color:#4C7DF0;font-size:11px;font-weight:800;letter-spacing:0.08em">MOVI CONDUCTORES</span>
           </div>
         </div>
 
         <!-- Title -->
         <div class="mb-5">
           <h1 style="color:#fff;font-size:22px;font-weight:900;line-height:1.2;margin:0 0 6px">
-            Activa tu cuenta<br><span style="background:linear-gradient(90deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">de conductor</span>
+            Activa tu cuenta<br><span style="background:linear-gradient(90deg,#245bdb,#4C7DF0);-webkit-background-clip:text;-webkit-text-fill-color:transparent">de conductor</span>
           </h1>
           <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0">Verificación segura · 4 pasos · ~5 minutos</p>
         </div>
@@ -8749,17 +8749,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div class="flex items-center gap-2 flex-1">
               <div class="flex items-center justify-center rounded-full flex-shrink-0 transition-all duration-300"
                 style="width:28px;height:28px"
-                [style.background]="driverStep() > i ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : driverStep() === i ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)'"
-                [style.border]="driverStep() === i ? '2px solid #6366f1' : driverStep() > i ? 'none' : '1.5px solid rgba(255,255,255,0.1)'">
+                [style.background]="driverStep() > i ? 'linear-gradient(135deg,#245bdb,#4C7DF0)' : driverStep() === i ? 'rgba(36,91,219,0.2)' : 'rgba(255,255,255,0.04)'"
+                [style.border]="driverStep() === i ? '2px solid #245bdb' : driverStep() > i ? 'none' : '1.5px solid rgba(255,255,255,0.1)'">
                 @if (driverStep() > i) {
                   <span class="material-symbols-outlined text-white" style="font-size:14px;font-variation-settings:'wght' 700">check</span>
                 } @else {
-                  <span [style.color]="driverStep() === i ? '#a5b4fc' : 'rgba(255,255,255,0.2)'" style="font-size:11px;font-weight:900">{{ i }}</span>
+                  <span [style.color]="driverStep() === i ? '#BFD3FA' : 'rgba(255,255,255,0.2)'" style="font-size:11px;font-weight:900">{{ i }}</span>
                 }
               </div>
               @if (i < 4) {
                 <div class="h-px flex-1 rounded-full transition-all duration-500"
-                  [style.background]="driverStep() > i ? 'linear-gradient(90deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.08)'"></div>
+                  [style.background]="driverStep() > i ? 'linear-gradient(90deg,#245bdb,#4C7DF0)' : 'rgba(255,255,255,0.08)'"></div>
               }
             </div>
           }
@@ -8767,7 +8767,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         <div class="flex justify-between mt-2" style="padding:0 2px">
           @for (label of ['Personal','Documentos','Licencia','Vehículo']; track label; let i = $index) {
             <span style="font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;flex:1;text-align:center"
-              [style.color]="driverStep() > i+1 ? '#818cf8' : driverStep() === i+1 ? '#a5b4fc' : 'rgba(255,255,255,0.2)'">
+              [style.color]="driverStep() > i+1 ? '#4C7DF0' : driverStep() === i+1 ? '#BFD3FA' : 'rgba(255,255,255,0.2)'">
               {{ label }}
             </span>
           }
@@ -8786,10 +8786,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       @if (driverSuccess()) {
         <div class="flex flex-col items-center gap-5 py-12 text-center px-4">
           <div class="relative">
-            <div class="w-24 h-24 rounded-3xl flex items-center justify-center" style="background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.15));border:2px solid rgba(99,102,241,0.4)">
-              <span class="material-symbols-outlined" style="font-size:48px;color:#818cf8;font-variation-settings:'FILL' 1">check_circle</span>
+            <div class="w-24 h-24 rounded-3xl flex items-center justify-center" style="background:linear-gradient(135deg,rgba(36,91,219,0.2),rgba(139,92,246,0.15));border:2px solid rgba(36,91,219,0.4)">
+              <span class="material-symbols-outlined" style="font-size:48px;color:#4C7DF0;font-variation-settings:'FILL' 1">check_circle</span>
             </div>
-            <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+            <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,#245bdb,#4C7DF0)">
               <span class="material-symbols-outlined text-white" style="font-size:14px">star</span>
             </div>
           </div>
@@ -8797,13 +8797,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <h3 style="color:#fff;font-size:22px;font-weight:900;margin:0 0 8px">¡Solicitud enviada!</h3>
             <p style="color:rgba(255,255,255,0.45);font-size:14px;line-height:1.6;margin:0">Tu solicitud está en revisión.<br>Te notificaremos cuando sea aprobada (24–48 h).</p>
           </div>
-          <div class="w-full rounded-2xl px-4 py-3 flex items-center gap-3" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25)">
-            <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px;color:#818cf8">notifications_active</span>
+          <div class="w-full rounded-2xl px-4 py-3 flex items-center gap-3" style="background:rgba(36,91,219,0.1);border:1px solid rgba(36,91,219,0.25)">
+            <span class="material-symbols-outlined flex-shrink-0" style="font-size:20px;color:#4C7DF0">notifications_active</span>
             <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">Recibirás una notificación push cuando tu cuenta sea activada.</p>
           </div>
           <button (click)="screen.set('home'); driverSuccess.set(false)"
             class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
-            style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.03em">
+            style="background:linear-gradient(135deg,#245bdb,#4C7DF0);color:#fff;letter-spacing:0.03em">
             <span class="material-symbols-outlined" style="font-size:18px">home</span> Volver al inicio
           </button>
         </div>
@@ -8815,17 +8815,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="flex flex-col gap-4 mt-4">
             <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
-                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">person</span>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.15);border:1px solid rgba(36,91,219,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#4C7DF0">person</span>
                 </div>
-                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Datos Personales</h3>
+                <h3 style="color:#BFD3FA;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Datos Personales</h3>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Nombre completo *</label>
                 <input [(ngModel)]="df.fullName" name="dfFullName"
                   placeholder="Nombre y apellidos"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Fecha de nacimiento *</label>
@@ -8857,7 +8857,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input [(ngModel)]="df.department" name="dfDepartment"
                     placeholder="Tu departamento o estado"
                     autocomplete="off" spellcheck="false"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 }
               </div>
               <div class="flex flex-col gap-1">
@@ -8875,7 +8875,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input [(ngModel)]="df.city" name="dfCity"
                     placeholder="Tu ciudad"
                     autocomplete="off" spellcheck="false"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 }
               </div>
               <div class="flex flex-col gap-1">
@@ -8883,7 +8883,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <input [(ngModel)]="df.idNumber" name="dfIdNumber"
                   placeholder="Solo números, sin puntos ni espacios"
                   autocomplete="off" spellcheck="false" inputmode="numeric" maxlength="10"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Teléfono *</label>
@@ -8891,7 +8891,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <input [(ngModel)]="df.phone" name="dfPhone"
                     type="tel" placeholder="+57 300 000 0000"
                     autocomplete="off" inputmode="tel"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
               <div class="flex flex-col gap-1">
@@ -8899,14 +8899,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <input [(ngModel)]="df.email" name="dfEmail"
                   type="email" placeholder="correo@ejemplo.com"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Contraseña *</label>
                 <input [(ngModel)]="df.password" name="dfPassword"
                   type="password" placeholder="Mínimo 8 caracteres"
                   autocomplete="new-password"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
             </div>
 
@@ -8922,14 +8922,14 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <input [(ngModel)]="df.emergencyName" name="dfEmergencyName"
                   placeholder="Nombre completo"
                   autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Teléfono del contacto *</label>
                 <input [(ngModel)]="df.emergencyPhone" name="dfEmergencyPhone"
                   type="tel" placeholder="+57 300 000 0000"
                   autocomplete="off" inputmode="tel"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
             </div>
 
@@ -8937,7 +8937,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-300 text-xs">{{ driverError() }}</div>
             }
             <button (click)="nextDriverStep(1)"
-              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#245bdb,#4C7DF0);color:#fff;letter-spacing:0.05em">
               Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
             </button>
           </div>
@@ -8948,10 +8948,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="flex flex-col gap-4 mt-4">
             <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
-                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">badge</span>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.15);border:1px solid rgba(36,91,219,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#4C7DF0">badge</span>
                 </div>
-                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Documentos de Identidad</h3>
+                <h3 style="color:#BFD3FA;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Documentos de Identidad</h3>
               </div>
               <!-- Aviso de privacidad y uso legal -->
               <div class="rounded-xl p-3 flex gap-2.5" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2)">
@@ -9043,7 +9043,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-300 text-xs">{{ driverError() }}</div>
             }
             <button (click)="nextDriverStep(2)"
-              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#245bdb,#4C7DF0);color:#fff;letter-spacing:0.05em">
               Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
             </button>
           </div>
@@ -9054,15 +9054,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="flex flex-col gap-4 mt-4">
             <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
-                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">id_card</span>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.15);border:1px solid rgba(36,91,219,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#4C7DF0">id_card</span>
                 </div>
-                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Licencia de Conducción</h3>
+                <h3 style="color:#BFD3FA;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Licencia de Conducción</h3>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Número de licencia *</label>
                 <input [(ngModel)]="df.licenseNumber" name="d_licenseNumber" placeholder="Número"
-                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                  class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Categoría *</label>
@@ -9105,7 +9105,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-300 text-xs">{{ driverError() }}</div>
             }
             <button (click)="nextDriverStep(3)"
-              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#245bdb,#4C7DF0);color:#fff;letter-spacing:0.05em">
               Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
             </button>
           </div>
@@ -9116,16 +9116,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div class="flex flex-col gap-4 mt-4">
             <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
-                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">directions_car</span>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.15);border:1px solid rgba(36,91,219,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#4C7DF0">directions_car</span>
                 </div>
-                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Datos del Vehículo</h3>
+                <h3 style="color:#BFD3FA;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Datos del Vehículo</h3>
               </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Placa *</label>
                   <input [(ngModel)]="df.plate" [ngModelOptions]="{updateOn: 'blur'}" name="d_plate" placeholder="ABC123"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all uppercase" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all uppercase" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Tipo *</label>
@@ -9144,24 +9144,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Marca *</label>
                   <input [(ngModel)]="df.vehicleBrand" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleBrand" placeholder="Toyota"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Modelo *</label>
                   <input [(ngModel)]="df.vehicleModel" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleModel" placeholder="Corolla"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-2 sm:gap-3">
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Año *</label>
                   <input [(ngModel)]="df.vehicleYear" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleYear" type="number" placeholder="2020" min="2000"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Color *</label>
                   <input [(ngModel)]="df.vehicleColor" [ngModelOptions]="{updateOn: 'blur'}" name="d_vehicleColor" placeholder="Blanco"
-                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(99,102,241,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
+                    class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px" onfocus="this.style.borderColor='rgba(36,91,219,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"/>
                 </div>
               </div>
               @for (f of vehiclePhotoFields; track f.key) {
@@ -9179,10 +9179,10 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
             <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3)">
-                  <span class="material-symbols-outlined" style="font-size:16px;color:#818cf8">description</span>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.15);border:1px solid rgba(36,91,219,0.3)">
+                  <span class="material-symbols-outlined" style="font-size:16px;color:#4C7DF0">description</span>
                 </div>
-                <h3 style="color:#a5b4fc;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Documentos del Vehículo</h3>
+                <h3 style="color:#BFD3FA;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Documentos del Vehículo</h3>
               </div>
               @for (f of vehicleDocFields; track f.key) {
                 <div class="flex flex-col gap-2">
@@ -9212,7 +9212,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             }
 
             <button (click)="submitDriver()" [disabled]="driverLoading()"
-              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-50" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.05em">
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-50" style="background:linear-gradient(135deg,#245bdb,#4C7DF0);color:#fff;letter-spacing:0.05em">
               @if (driverLoading()) {
                 <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Enviando...
               } @else {
@@ -9624,8 +9624,8 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     <div class="fixed bottom-0 left-0 right-0 z-[9681] rounded-t-3xl flex flex-col" style="background:#fff;max-height:80vh;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
       <!-- Header chat -->
       <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
-        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-          <span class="material-symbols-outlined text-purple-500" style="font-size:18px;font-variation-settings:'FILL' 1">chat</span>
+        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+          <span class="material-symbols-outlined text-blue-500" style="font-size:18px;font-variation-settings:'FILL' 1">chat</span>
         </div>
         <div class="flex-1">
           <p class="font-black text-slate-800 text-sm">Chat con {{ ccActiveReq().driver_name || 'conductor' }}</p>
@@ -9643,7 +9643,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         @for (msg of ccMessages(); track msg.id) {
           <div class="flex" [class.justify-end]="ccIsMyMessage(msg)">
             <div class="max-w-[75%] px-3 py-2 rounded-2xl text-sm"
-              [style.background]="ccIsMyMessage(msg)?'#a855f7':'#f1f5f9'"
+              [style.background]="ccIsMyMessage(msg)?'#4C7DF0':'#f1f5f9'"
               [style.color]="ccIsMyMessage(msg)?'white':'#1e293b'">
               <p>{{ msg.content }}</p>
               <p class="text-[10px] mt-0.5 opacity-70">{{ msg.created_at | date:'HH:mm' }}</p>
@@ -9668,7 +9668,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @for (qm of ccQuickMessages; track qm) {
             <button (mousedown)="$event.preventDefault(); ccSendQuick(qm)"
               class="flex-shrink-0 px-2.5 py-1.5 rounded-full text-xs font-bold active:scale-95 transition-all"
-              style="background:#faf5ff;border:1px solid #d8b4fe;color:#7c3aed;white-space:nowrap">
+              style="background:#EEF3FE;border:1px solid #BFD3FA;color:#245bdb;white-space:nowrap">
               {{ qm }}
             </button>
           }
@@ -9682,7 +9682,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           style="background:#f1f5f9;border:1px solid #e2e8f0"/>
         <button (click)="ccSendMessage()" [disabled]="!ccChatInput.trim() || ccChatSending()"
           class="w-10 h-10 rounded-2xl flex items-center justify-center disabled:opacity-40 flex-shrink-0"
-          style="background:#a855f7">
+          style="background:#4C7DF0">
           @if (ccChatSending()) {
             <span class="material-symbols-outlined text-white animate-spin" style="font-size:18px">sync</span>
           } @else {
@@ -9717,7 +9717,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       </div>
       <button (click)="ccSubmitAddStop()" [disabled]="ccAddStopSending() || !ccAddStopAddr.trim()"
         class="w-full py-3.5 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-        style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+        style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
         @if (ccAddStopSending()) {
           <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Agregando...
         } @else {
@@ -9735,7 +9735,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       style="background:#fff;box-shadow:0 -8px 40px rgba(0,0,0,0.2)">
       <div class="mx-auto w-10 h-1 rounded-full bg-slate-200 mb-1"></div>
       <p class="font-black text-slate-800 text-base">Tu oferta</p>
-      <div class="rounded-xl p-3" style="background:#faf5ff;border:1px solid #d8b4fe">
+      <div class="rounded-xl p-3" style="background:#EEF3FE;border:1px solid #BFD3FA">
         <p class="font-bold text-slate-700 text-sm">{{ ccDriverOfferTarget().origin_city }} → {{ ccDriverOfferTarget().dest_city }}</p>
         <p class="text-xs text-slate-400">{{ ccDriverOfferTarget().passengers }} pas. · {{ ccDriverOfferTarget().luggage_large }} maletas · {{ ccDriverOfferTarget().distance_km | number:'1.0-0' }} km</p>
       </div>
@@ -9766,7 +9766,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
       </div>
       <button (click)="ccSubmitDriverOffer()" [disabled]="ccDriverOfferSending() || ccDriverOfferPrice() < 50000"
         class="w-full py-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-        style="background:linear-gradient(135deg,#a855f7,#7c3aed)">
+        style="background:linear-gradient(135deg,#4C7DF0,#245bdb)">
         @if (ccDriverOfferSending()) {
           <span class="material-symbols-outlined animate-spin" style="font-size:20px">autorenew</span>Enviando...
         } @else {
@@ -10812,7 +10812,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   readonly tripCategories = [
     { key: 'economy', label: 'Economy',  mult: 1.0, icon: 'directions_car', color: '#0891b2',
       description: 'Viaje estándar al mejor precio' },
-    { key: 'comfort', label: 'Comfort',  mult: 1.3, icon: 'airline_seat_recline_extra', color: '#8b5cf6',
+    { key: 'comfort', label: 'Comfort',  mult: 1.3, icon: 'airline_seat_recline_extra', color: '#4C7DF0',
       description: 'Autos más nuevos con AC y más espacio' },
     { key: 'xl',      label: 'XL',        mult: 1.5, icon: 'airport_shuttle', color: '#f97316',
       description: 'Hasta 6 pasajeros, ideal para grupos' },
@@ -10877,7 +10877,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     color: string; bgSel: string; colorDark: string; bgDark: string;
   }[] = [
     { value: 'efectivo',    label: 'Efectivo',    icon: 'payments',        color: '#16a34a', bgSel: '#f0fdf4', colorDark: '#4ade80', bgDark: 'rgba(74,222,128,0.08)' },
-    { value: 'nequi',       label: 'Nequi',       icon: 'smartphone',      color: '#7c3aed', bgSel: '#faf5ff', colorDark: '#a78bfa', bgDark: 'rgba(167,139,250,0.08)' },
+    { value: 'nequi',       label: 'Nequi',       icon: 'smartphone',      color: '#245bdb', bgSel: '#EEF3FE', colorDark: '#6E93F2', bgDark: 'rgba(167,139,250,0.08)' },
     { value: 'daviplata',   label: 'Daviplata',   icon: 'smartphone',      color: '#dc2626', bgSel: '#fff1f2', colorDark: '#f87171', bgDark: 'rgba(248,113,113,0.08)' },
     { value: 'bancolombia', label: 'Bancolombia', icon: 'account_balance',  color: '#b45309', bgSel: '#fffbeb', colorDark: '#fbbf24', bgDark: 'rgba(251,191,36,0.08)'  },
     { value: 'tarjeta',     label: 'Tarjeta',     icon: 'credit_card',     color: '#0369a1', bgSel: '#f0f9ff', colorDark: '#38bdf8', bgDark: 'rgba(56,189,248,0.08)'  },
@@ -12125,7 +12125,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const mapboxgl = (window as any).mapboxgl;
     if (this._pinDropMarker) { try { this._pinDropMarker.remove(); } catch {} }
     if (mapboxgl) {
-      const el = this._createDropPin('#4f46e5');
+      const el = this._createDropPin('#1d3fae');
       this._pinDropMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([lng, lat]).addTo(this._map);
     }
@@ -12431,9 +12431,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       btnOut.textContent = '−';
       btnIn.addEventListener('click',  () => this._map?.zoomIn({ duration: 350 }));
       btnOut.addEventListener('click', () => this._map?.zoomOut({ duration: 350 }));
-      btnIn.addEventListener('mouseover',  () => { btnIn.style.background  = 'rgba(123,47,255,0.8)'; });
+      btnIn.addEventListener('mouseover',  () => { btnIn.style.background  = 'rgba(67,97,238,0.8)'; });
       btnIn.addEventListener('mouseout',   () => { btnIn.style.background  = 'rgba(18,18,18,0.85)'; });
-      btnOut.addEventListener('mouseover', () => { btnOut.style.background = 'rgba(123,47,255,0.8)'; });
+      btnOut.addEventListener('mouseover', () => { btnOut.style.background = 'rgba(67,97,238,0.8)'; });
       btnOut.addEventListener('mouseout',  () => { btnOut.style.background = 'rgba(18,18,18,0.85)'; });
       zoomBox.appendChild(btnIn);
       zoomBox.appendChild(btnOut);
@@ -12494,16 +12494,16 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const el = document.createElement('div');
       el.style.cssText = `
         width:36px;height:36px;border-radius:50%;
-        background:radial-gradient(circle,#7B2FFF 0%,rgba(123,47,255,0.3) 60%,transparent 70%);
-        border:2.5px solid #7B2FFF;
-        box-shadow:0 0 0 4px rgba(123,47,255,0.2),0 4px 12px rgba(123,47,255,0.4);
+        background:radial-gradient(circle,#4361EE 0%,rgba(67,97,238,0.3) 60%,transparent 70%);
+        border:2.5px solid #4361EE;
+        box-shadow:0 0 0 4px rgba(67,97,238,0.2),0 4px 12px rgba(67,97,238,0.4);
         display:flex;align-items:center;justify-content:center;
         animation:ag-pulse 1.8s ease-out infinite;
       `;
       const dot = document.createElement('div');
       dot.style.cssText = `
         width:12px;height:12px;border-radius:50%;
-        background:#7B2FFF;border:2.5px solid #fff;
+        background:#4361EE;border:2.5px solid #fff;
         box-shadow:0 2px 6px rgba(0,0,0,0.4);
       `;
       el.appendChild(dot);
@@ -12513,8 +12513,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         s.id = 'ag-map-styles';
         s.textContent = `
           @keyframes ag-pulse {
-            0%   { box-shadow:0 0 0 0px rgba(123,47,255,0.45),0 4px 12px rgba(123,47,255,0.4); }
-            100% { box-shadow:0 0 0 22px rgba(123,47,255,0),0 4px 12px rgba(123,47,255,0.1); }
+            0%   { box-shadow:0 0 0 0px rgba(67,97,238,0.45),0 4px 12px rgba(67,97,238,0.4); }
+            100% { box-shadow:0 0 0 22px rgba(67,97,238,0),0 4px 12px rgba(67,97,238,0.1); }
           }
           @keyframes ag-pulse-search {
             0%   { box-shadow:0 0 0 0px rgba(249,115,22,0.75),0 4px 16px rgba(249,115,22,0.6); }
@@ -12601,7 +12601,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       { isMoto: false, color: '#D97706' },  // ámbar oscuro
       { isMoto: false, color: '#15803D' },  // verde oscuro
       { isMoto: false, color: '#1e293b' },  // grafito
-      { isMoto: false, color: '#7C3AED' },  // violeta
+      { isMoto: false, color: '#9F1239' },  // vino -- antes era el morado de marca; se cambia a un tono
+      // cálido no usado en este arreglo para no terminar con 3 azules en la misma paleta demo
+      // (ya está "azul rey"), tras el rebrand de marca de morado a azul cobalto.
       { isMoto: false, color: '#0F766E' },  // teal
       { isMoto: true,  color: '#EA580C' },  // naranja
       { isMoto: true,  color: '#0891B2' },  // cyan oscuro
@@ -13703,7 +13705,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   ccStatusBg(s: string): string {
-    if (s === 'searching' || s === 'negotiating') return '#faf5ff';
+    if (s === 'searching' || s === 'negotiating') return '#EEF3FE';
     if (s === 'accepted' || s === 'in_progress') return '#dbeafe';
     if (s === 'completed') return '#dcfce7';
     if (s === 'cancelled') return '#fee2e2';
@@ -13711,7 +13713,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   ccStatusColor(s: string): string {
-    if (s === 'searching' || s === 'negotiating') return '#7c3aed';
+    if (s === 'searching' || s === 'negotiating') return '#245bdb';
     if (s === 'accepted' || s === 'in_progress') return '#1d4ed8';
     if (s === 'completed') return '#166534';
     if (s === 'cancelled') return '#991b1b';
@@ -15599,10 +15601,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       dot.style.animation  = 'ag-dot-search 1.1s ease-in-out infinite';
     } else {
       // Normal: púrpura suave, pulso lento (1.8s)
-      el.style.background  = 'radial-gradient(circle,#7B2FFF 0%,rgba(123,47,255,0.3) 60%,transparent 70%)';
-      el.style.borderColor = '#7B2FFF';
+      el.style.background  = 'radial-gradient(circle,#4361EE 0%,rgba(67,97,238,0.3) 60%,transparent 70%)';
+      el.style.borderColor = '#4361EE';
       el.style.animation   = 'ag-pulse 1.8s ease-out infinite';
-      dot.style.background = '#7B2FFF';
+      dot.style.background = '#4361EE';
       dot.style.animation  = 'none';
     }
   }
@@ -16144,7 +16146,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       plata: 'rgba(148,163,184,0.2);color:#e2e8f0',
       oro: 'rgba(251,191,36,0.2);color:#fbbf24',
       platino: 'rgba(103,232,249,0.2);color:#67e8f9',
-      diamante: 'rgba(192,132,252,0.25);color:#c084fc',
+      diamante: 'rgba(192,132,252,0.25);color:#8FADF5',
     };
     return map[lvl] ?? map['bronce'];
   }
@@ -17253,7 +17255,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._stopWaiting();
     const total = 90;
     const driverTimes = [4, 12, 21, 32, 45];
-    const palette = ['#1D4ED8','#DC2626','#15803D','#7C3AED','#EA580C'];
+    const palette = ['#1D4ED8','#DC2626','#15803D','#245BDB','#EA580C'];
     let elapsed = 0;
     this.waitingCountdown.set(total);
     this.waitingProgress.set(0);
@@ -18253,13 +18255,13 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this._map.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry }, lineMetrics: true });
       this._map.addLayer({ id: 'trip-route-bg',   type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
       // Mismo criterio que approach-route: mapa del pasajero siempre claro, degradado pastel.
-      this._map.addLayer({ id: 'trip-route-line', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#c7c5f0', 1, '#4f46e5'], 'line-width': 5,  'line-opacity': 0.92 } });
+      this._map.addLayer({ id: 'trip-route-line', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-gradient': ['interpolate',['linear'],['line-progress'], 0, '#C7D3F5', 1, '#1d3fae'], 'line-width': 5,  'line-opacity': 0.92 } });
       this._map.addLayer({ id: 'trip-route-dash', type: 'line', source: 'trip-route', layout: { 'line-cap': 'round' },                       paint: { 'line-color': '#fff',    'line-width': 1.5,'line-opacity': 0.55, 'line-dasharray': [0, 4, 3, 0] } });
       // "Marching ants" hacia el destino.
       this._startRouteFlow(['trip-route-dash']);
 
       // Marcador de destino
-      const pin = this._createDropPin('#4f46e5');
+      const pin = this._createDropPin('#1d3fae');
       this._destMarker = new mapboxgl.Marker({ element: pin, anchor: 'bottom' }).setLngLat([destLng, destLat]).addTo(this._map);
 
       // Ajustar vista para mostrar toda la ruta

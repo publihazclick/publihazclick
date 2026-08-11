@@ -27,7 +27,7 @@ const TABS: TabDef[] = [
   { id: 'finanzas',      label: 'Finanzas',       sym: 'account_balance',    color: 'text-emerald-400', border: 'border-emerald-400', roles: ['contable'] },
   { id: 'retiros',       label: 'Retiros',        sym: 'payments',           color: 'text-teal-400',    border: 'border-teal-400',    roles: ['super_admin','contable'] },
   { id: 'analytics',     label: 'Analytics',      sym: 'bar_chart',          color: 'text-blue-400',    border: 'border-blue-400',    roles: ['super_admin','contable'] },
-  { id: 'configuracion', label: 'Configuración',  sym: 'tune',               color: 'text-purple-400',  border: 'border-purple-400',  roles: ['super_admin'] },
+  { id: 'configuracion', label: 'Configuración',  sym: 'tune',               color: 'text-blue-400',  border: 'border-blue-400',  roles: ['super_admin'] },
 ];
 
 @Component({
@@ -254,9 +254,9 @@ const TABS: TabDef[] = [
         </div>
         <div class="rounded-2xl p-5 flex flex-col gap-1 col-span-2 md:col-span-1"
           style="background:rgba(168,85,247,0.07);border:1px solid rgba(168,85,247,0.2)">
-          <p class="text-purple-400 text-[10px] font-black uppercase tracking-widest">Comisiones estimadas ({{ commissionPct() }}%)</p>
+          <p class="text-blue-400 text-[10px] font-black uppercase tracking-widest">Comisiones estimadas ({{ commissionPct() }}%)</p>
           <p class="text-white font-black text-3xl">{{ formatCOP(financialData().estimatedCommissions) }}</p>
-          <p class="text-purple-600 text-xs">{{ financialData().completedTrips }} viajes completados</p>
+          <p class="text-blue-600 text-xs">{{ financialData().completedTrips }} viajes completados</p>
         </div>
       </div>
 
@@ -613,7 +613,7 @@ const TABS: TabDef[] = [
             <p class="text-3xl font-black text-white">{{ a.completion_rate }}<span class="text-lg">%</span></p>
           </div>
           <div class="rounded-2xl p-4" style="background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.15)">
-            <p class="text-[10px] text-purple-400 uppercase tracking-wider mb-1">Conductores activos</p>
+            <p class="text-[10px] text-blue-400 uppercase tracking-wider mb-1">Conductores activos</p>
             <p class="text-3xl font-black text-white">{{ a.active_drivers }}</p>
           </div>
           <div class="rounded-2xl p-4" style="background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.15)">
@@ -881,7 +881,7 @@ const TABS: TabDef[] = [
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
               style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25)">
-              <span class="material-symbols-outlined text-purple-400" style="font-size:22px;font-variation-settings:'FILL' 1">percent</span>
+              <span class="material-symbols-outlined text-blue-400" style="font-size:22px;font-variation-settings:'FILL' 1">percent</span>
             </div>
             <div>
               <p class="text-white font-black">Comisión por servicio</p>
@@ -892,7 +892,7 @@ const TABS: TabDef[] = [
           <div class="flex items-center justify-center py-4">
             <div class="flex flex-col items-center gap-1 px-10 py-5 rounded-2xl"
               style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2)">
-              <p class="font-black text-6xl" style="background:linear-gradient(135deg,#c084fc,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+              <p class="font-black text-6xl" style="background:linear-gradient(135deg,#8FADF5,#4C7DF0);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
                 {{ commissionPct() }}<span class="text-3xl">%</span>
               </p>
               <p class="text-slate-500 text-xs">comisión actual</p>
@@ -906,14 +906,14 @@ const TABS: TabDef[] = [
             <input type="range" min="0" max="15" step="1"
               [value]="commissionPct()"
               (input)="commissionPct.set(+$any($event.target).value)"
-              class="w-full h-2 rounded-full appearance-none cursor-pointer" style="accent-color:#a855f7"/>
+              class="w-full h-2 rounded-full appearance-none cursor-pointer" style="accent-color:#4C7DF0"/>
           </div>
 
           <div class="flex gap-2 flex-wrap">
             @for (p of [0,3,5,8,10,12,15]; track p) {
               <button (click)="commissionPct.set(p)"
                 class="px-4 py-2 rounded-xl text-xs font-black transition-all"
-                [style]="commissionPct() === p ? 'background:#a855f7;color:#fff' : 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#64748b'">
+                [style]="commissionPct() === p ? 'background:#4C7DF0;color:#fff' : 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#64748b'">
                 {{ p }}%
               </button>
             }
@@ -925,7 +925,7 @@ const TABS: TabDef[] = [
             } @else {
               <p class="text-slate-400 text-xs">
                 Ejemplo: viaje de <span class="text-white font-bold">{{ formatCOP(10000) }}</span>
-                → comisión Movi <span class="text-purple-400 font-black">{{ formatCOP(exampleCommission()) }}</span>
+                → comisión Movi <span class="text-blue-400 font-black">{{ formatCOP(exampleCommission()) }}</span>
                 · conductor recibe <span class="text-emerald-400 font-bold">{{ formatCOP(10000 - exampleCommission()) }}</span>
               </p>
             }
@@ -933,7 +933,7 @@ const TABS: TabDef[] = [
 
           <button (click)="saveCommission()" [disabled]="savingCommission()"
             class="w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
-            style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff">
+            style="background:linear-gradient(135deg,#4C7DF0,#245bdb);color:#fff">
             @if (savingCommission()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Guardando…
             } @else {

@@ -22,7 +22,7 @@ const config: CapacitorConfig = {
       // apenas la pagina pinta algo real, asi que en la practica casi nunca se llega al techo.
       launchShowDuration: 5000,
       launchAutoHide: true,
-      backgroundColor: '#7C3AED',
+      backgroundColor: '#245BDB',
       splashFullScreen: true,
       splashImmersive: true,
     },

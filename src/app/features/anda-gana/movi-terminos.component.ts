@@ -39,7 +39,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 1 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">1. Qué es Movi</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">1. Qué es Movi</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Movi es una plataforma tecnológica que conecta a pasajeros con conductores independientes de vehículos
         particulares (carro y moto) para facilitar el transporte de personas dentro de Colombia. Movi actúa
@@ -51,7 +51,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 2 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">2. Registro y elegibilidad</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">2. Registro y elegibilidad</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0 0 10px">
         Para usar Movi debes ser mayor de edad y registrarte con un número de celular válido, verificado
         mediante un código de un solo uso (OTP).
@@ -71,7 +71,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 3 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">3. Cómo funciona el servicio</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">3. Cómo funciona el servicio</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         El pasajero solicita un viaje indicando origen y destino, y propone un precio. Los conductores
         disponibles pueden aceptar el precio ofrecido o enviar una contraoferta. Movi no fija tarifas: el
@@ -83,7 +83,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 4 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">4. Tarifas, comisión y pagos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">4. Tarifas, comisión y pagos</h2>
       <ul style="color:#cbd5e1;font-size:14px;line-height:1.8;margin:0;padding-left:20px">
         <li>Los conductores mantienen un saldo prepago (wallet) que recargan a través de los métodos de pago
           disponibles en la Plataforma.</li>
@@ -100,7 +100,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 5 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">5. Documentos y vigencia</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">5. Documentos y vigencia</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Los documentos del conductor (licencia) y de cada vehículo registrado (SOAT, tecnomecánica, seguro)
         deben mantenerse vigentes en todo momento. La Plataforma avisa dentro de la aplicación cuando un
@@ -113,7 +113,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 6 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">6. Seguridad</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">6. Seguridad</h2>
       <ul style="color:#cbd5e1;font-size:14px;line-height:1.8;margin:0;padding-left:20px">
         <li>Botón de pánico/SOS disponible durante el viaje.</li>
         <li>Seguimiento por GPS del conductor y, durante trayectos activos, también del pasajero, con el
@@ -129,7 +129,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 7 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">7. Privacidad de tus datos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">7. Privacidad de tus datos</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0 0 10px">
         Para operar la Plataforma recolectamos datos de identidad (documento, licencia, fotos de
         verificación), ubicación durante los viajes, historial de viajes y comunicaciones dentro de la app.
@@ -144,7 +144,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 8 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">8. Conducta esperada</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">8. Conducta esperada</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Se espera un trato respetuoso entre todos los usuarios de la Plataforma. Está prohibido usar Movi
         para fines ilegales, fraudulentos, o para poner en riesgo la seguridad de otros usuarios. Movi se
@@ -155,7 +155,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 9 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">9. Responsabilidad</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">9. Responsabilidad</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Movi facilita el encuentro entre pasajeros y conductores independientes, pero no presta directamente
         el servicio de transporte. Movi no es responsable por accidentes, retrasos, pérdidas o daños
@@ -167,7 +167,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 10 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">10. Modificaciones</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">10. Modificaciones</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Estos Términos pueden actualizarse periódicamente para reflejar cambios en la Plataforma. El uso
         continuado de Movi después de una actualización implica la aceptación de los nuevos términos.
@@ -176,7 +176,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 11 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">11. Ley aplicable</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">11. Ley aplicable</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Estos Términos se rigen por las leyes de la República de Colombia.
       </p>
@@ -184,7 +184,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- Contacto -->
     <div style="margin-top:40px;padding:18px;border-radius:16px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25)">
-      <p style="color:#a78bfa;font-weight:900;font-size:13px;margin:0 0 6px;font-family:Montserrat,sans-serif">¿Tienes dudas?</p>
+      <p style="color:#6E93F2;font-weight:900;font-size:13px;margin:0 0 6px;font-family:Montserrat,sans-serif">¿Tienes dudas?</p>
       <p style="color:#cbd5e1;font-size:13px;line-height:1.6;margin:0">
         Escríbenos por WhatsApp desde el menú de soporte dentro de la app.
       </p>

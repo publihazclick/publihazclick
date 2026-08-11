@@ -26,8 +26,8 @@ const USERS: AccessUser[] = [
     email: 'superadmin@phc.dev',
     password: 'PHC_SuperAdmin_2026!',
     iconSymbol: 'shield_person',
-    color: '#7C3AED',
-    gradient: 'linear-gradient(135deg,#7C3AED,#4F46E5)',
+    color: '#245BDB',
+    gradient: 'linear-gradient(135deg,#245BDB,#1D3FAE)',
     redirect: '/movi-admin',
     description: 'Control total de Movi. Acceso a todos los módulos: conductores, pasajeros, viajes, retiros y configuración.',
     features: ['Aprobar conductores', 'Ver todos los viajes', 'Retiros & pagos', 'Cupones', 'Configuración comisión'],
@@ -100,12 +100,12 @@ const USERS: AccessUser[] = [
       <!-- Header -->
       <div class="w-full max-w-4xl mb-10 text-center">
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
-          style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.25)">
-          <span class="material-symbols-outlined text-purple-400" style="font-size:14px">lock</span>
-          <span class="text-purple-300 text-xs font-mono tracking-widest">ACCESO INTERNO · PHC SYSTEMS</span>
+          style="background:rgba(36,91,219,0.12);border:1px solid rgba(36,91,219,0.25)">
+          <span class="material-symbols-outlined text-blue-400" style="font-size:14px">lock</span>
+          <span class="text-blue-300 text-xs font-mono tracking-widest">ACCESO INTERNO · PHC SYSTEMS</span>
         </div>
         <h1 class="text-3xl font-black tracking-tight mb-2"
-          style="background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+          style="background:linear-gradient(135deg,#fff,#6E93F2);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
           Panel de Acceso Rápido
         </h1>
         <p class="text-slate-400 text-sm max-w-lg mx-auto">

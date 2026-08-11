@@ -121,7 +121,7 @@ class MoviFirebaseMessagingService : MessagingService() {
 
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setColor(Color.parseColor("#7C3AED"))
+            .setColor(Color.parseColor("#245BDB"))
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -194,7 +194,7 @@ class MoviFirebaseMessagingService : MessagingService() {
 
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setColor(Color.parseColor("#7C3AED"))
+            .setColor(Color.parseColor("#245BDB"))
             .setContentTitle(title)
             .setContentText(body)
             // Respaldo en dispositivos/OEMs que no respetan customBigContentView.

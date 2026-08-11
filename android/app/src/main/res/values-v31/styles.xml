@@ -19,7 +19,7 @@
         <item name="android:windowBackground">@drawable/splash_bg</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowSplashScreenBackground">#7C3AED</item>
+        <item name="android:windowSplashScreenBackground">#245BDB</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_empty</item>
     </style>
 </resources>

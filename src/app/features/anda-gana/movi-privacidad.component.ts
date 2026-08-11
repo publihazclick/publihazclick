@@ -40,17 +40,17 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 1 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">1. Responsable del tratamiento</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">1. Responsable del tratamiento</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Movi es responsable del tratamiento de los datos personales que recolecta a través de la aplicación,
         con el fin de operar la plataforma de intermediación entre pasajeros y conductores descrita en los
-        <a href="/anda-gana/terminos" style="color:#a78bfa">Términos y Condiciones</a>.
+        <a href="/anda-gana/terminos" style="color:#6E93F2">Términos y Condiciones</a>.
       </p>
     </section>
 
     <!-- 2 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">2. Qué datos recolectamos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">2. Qué datos recolectamos</h2>
 
       <p style="color:#94a3b8;font-size:13px;font-weight:700;margin:0 0 6px">Datos de identidad y contacto</p>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0 0 14px">
@@ -94,7 +94,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 3 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">3. Datos sensibles</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">3. Datos sensibles</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         La foto de tu cédula y tu selfie de verificación se procesan con tecnología de reconocimiento facial
         para confirmar que la persona que se registra es la dueña del documento, y la consulta de
@@ -107,7 +107,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 4 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">4. Para qué usamos tus datos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">4. Para qué usamos tus datos</h2>
       <ul style="color:#cbd5e1;font-size:14px;line-height:1.8;margin:0;padding-left:20px">
         <li>Crear y verificar tu cuenta, y confirmar tu identidad y la de tu vehículo.</li>
         <li>Conectar pasajeros y conductores, mostrar el mapa y calcular rutas y precios.</li>
@@ -122,7 +122,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 5 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">5. Con quién compartimos tus datos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">5. Con quién compartimos tus datos</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0 0 10px">
         No vendemos tus datos personales. Los compartimos únicamente con proveedores que nos ayudan a operar
         la Plataforma, bajo las siguientes finalidades:
@@ -147,7 +147,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 6 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">6. Cuánto tiempo conservamos tus datos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">6. Cuánto tiempo conservamos tus datos</h2>
       <ul style="color:#cbd5e1;font-size:14px;line-height:1.8;margin:0;padding-left:20px">
         <li>Ubicación GPS de tus viajes: se elimina automáticamente a los 30 días.</li>
         <li>Token de notificaciones de tu dispositivo: se elimina si no usas la app durante 60 días.</li>
@@ -159,7 +159,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 7 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">7. Cómo protegemos tus datos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">7. Cómo protegemos tus datos</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Tu información se almacena cifrada en tránsito y en reposo. El acceso a la base de datos está
         restringido por reglas de seguridad que solo permiten a cada usuario ver su propia información. Los
@@ -170,7 +170,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 8 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">8. Tus derechos</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">8. Tus derechos</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0 0 10px">
         Como titular de tus datos personales, tienes derecho a:
       </p>
@@ -193,7 +193,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 9 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">9. Menores de edad</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">9. Menores de edad</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Movi está dirigido únicamente a personas mayores de edad. No recolectamos intencionalmente datos de
         menores de edad.
@@ -202,7 +202,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 10 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#a78bfa;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">10. Cambios a esta política</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">10. Cambios a esta política</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
         Podemos actualizar esta Política cuando cambien las funciones de la Plataforma o la normativa
         aplicable. El uso continuado de Movi después de una actualización implica la aceptación de los
@@ -212,7 +212,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- Contacto -->
     <div style="margin-top:40px;padding:18px;border-radius:16px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25)">
-      <p style="color:#a78bfa;font-weight:900;font-size:13px;margin:0 0 6px;font-family:Montserrat,sans-serif">¿Quieres ejercer tus derechos o tienes dudas?</p>
+      <p style="color:#6E93F2;font-weight:900;font-size:13px;margin:0 0 6px;font-family:Montserrat,sans-serif">¿Quieres ejercer tus derechos o tienes dudas?</p>
       <p style="color:#cbd5e1;font-size:13px;line-height:1.6;margin:0">
         Escríbenos por WhatsApp desde el menú de soporte dentro de la app.
       </p>

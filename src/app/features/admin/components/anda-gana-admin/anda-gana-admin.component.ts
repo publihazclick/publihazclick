@@ -92,7 +92,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
     </button>
     <button (click)="tab.set('configuracion')"
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
-      [class]="tab() === 'configuracion' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-slate-500 hover:text-slate-300'">
+      [class]="tab() === 'configuracion' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'">
       Configuración
     </button>
   </div>
@@ -260,8 +260,8 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       <!-- Comisión por servicio -->
       <div class="bg-white/[0.03] border border-white/8 rounded-2xl p-5 flex flex-col gap-5">
         <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-purple-400" style="font-size:20px">percent</span>
+          <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-blue-400" style="font-size:20px">percent</span>
           </div>
           <div>
             <p class="text-white font-black text-sm">Comisión por servicio</p>
@@ -273,7 +273,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         <div class="flex items-center justify-center">
           <div class="flex flex-col items-center gap-1 px-8 py-4 rounded-2xl"
             style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2)">
-            <p class="text-purple-300 font-black text-5xl">{{ commissionPct() }}<span class="text-2xl">%</span></p>
+            <p class="text-blue-300 font-black text-5xl">{{ commissionPct() }}<span class="text-2xl">%</span></p>
             <p class="text-slate-500 text-xs">Comisión actual</p>
           </div>
         </div>
@@ -287,7 +287,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
             [value]="commissionPct()"
             (input)="commissionPct.set(+$any($event.target).value)"
             class="w-full h-2 rounded-full appearance-none cursor-pointer"
-            style="accent-color:#a855f7"/>
+            style="accent-color:#4C7DF0"/>
         </div>
 
         <!-- Presets rápidos -->
@@ -296,7 +296,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
             <button (click)="commissionPct.set(p)"
               class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
               [class]="commissionPct() === p
-                ? 'bg-purple-500 text-white'
+                ? 'bg-blue-500 text-white'
                 : 'text-slate-400 hover:text-slate-200'"
               [style]="commissionPct() !== p ? 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)' : ''">
               {{ p }}%
@@ -308,7 +308,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         <button (click)="saveCommission()"
           [disabled]="savingCommission()"
           class="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-          style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff">
+          style="background:linear-gradient(135deg,#4C7DF0,#245bdb);color:#fff">
           @if (savingCommission()) {
             <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Guardando…
           } @else {
@@ -431,7 +431,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         </div>
         <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
           <p class="text-[10px] text-slate-500 uppercase tracking-wider">Conductores activos</p>
-          <p class="text-2xl font-black text-purple-400 mt-1">{{ a.active_drivers }}</p>
+          <p class="text-2xl font-black text-blue-400 mt-1">{{ a.active_drivers }}</p>
         </div>
         <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
           <p class="text-[10px] text-slate-500 uppercase tracking-wider">Pasajeros únicos</p>

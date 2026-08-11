@@ -47,7 +47,7 @@ public class MainActivity extends BridgeActivity {
         getWindow().setBackgroundDrawableResource(R.drawable.splash_bg);
         if (getBridge() == null || getBridge().getWebView() == null) return;
         android.webkit.WebView webView = getBridge().getWebView();
-        webView.setBackgroundColor(Color.parseColor("#7C3AED"));
+        webView.setBackgroundColor(Color.parseColor("#245BDB"));
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
             WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
         }
