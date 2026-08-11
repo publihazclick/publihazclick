@@ -560,12 +560,12 @@ async function fetchNextPendingOffer(tripId: string): Promise<Record<string, unk
 
   const { data: driver } = await supabase
     .from('ag_drivers')
-    .select('vehicle_brand, vehicle_model, plate, ag_user_id, metric_trips_completed')
+    .select('vehicle_brand, vehicle_model, vehicle_color, plate, ag_user_id, metric_trips_completed')
     .eq('id', offer.driver_id as string)
     .maybeSingle();
 
   if (driver) {
-    driverVeh   = [driver.vehicle_brand, driver.vehicle_model].filter(Boolean).join(' ');
+    driverVeh   = [driver.vehicle_brand, driver.vehicle_model, driver.vehicle_color].filter(Boolean).join(' ');
     driverPlate = driver.plate ?? '';
     driverTrips = (driver.metric_trips_completed as number) ?? 0;
 
@@ -1385,10 +1385,10 @@ async function handleConversation(
         let driverPlate: string | null = null;
         if (fullTrip?.driver_id) {
           const { data: driver } = await supabase.from('ag_drivers')
-            .select('vehicle_brand, vehicle_model, plate, ag_user_id')
+            .select('vehicle_brand, vehicle_model, vehicle_color, plate, ag_user_id')
             .eq('id', fullTrip.driver_id as string).maybeSingle();
           if (driver) {
-            driverVeh   = [driver.vehicle_brand, driver.vehicle_model].filter(Boolean).join(' ');
+            driverVeh   = [driver.vehicle_brand, driver.vehicle_model, driver.vehicle_color].filter(Boolean).join(' ');
             driverPlate = driver.plate as string ?? null;
             const { data: user } = await supabase.from('ag_users')
               .select('full_name, phone').eq('id', driver.ag_user_id as string).maybeSingle();
@@ -1858,6 +1858,15 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const driverName  = payload.driver_name as string ?? (delivery ? 'Tu mensajero' : 'Tu conductor');
     const lat = payload.origin_lat as number | null;
     const lng = payload.origin_lng as number | null;
+    // Marca/modelo/color + placa -- ya quedaron guardados en la sesión desde
+    // que se presentó/aceptó la oferta (presentOffer), no hace falta pedirlos
+    // de nuevo. Para que el pasajero pueda reconocer el vehículo en la calle
+    // cuando el conductor llega, no solo cuando acepta la oferta (pedido
+    // explícito del usuario 2026-08-11).
+    const vehicleLine = [
+      session?.driver_vehicle as string | undefined,
+      session?.driver_plate ? `Placa ${session.driver_plate}` : null,
+    ].filter(Boolean).join(' · ');
     // Antes esto solo se enteraba por el ping de ubicacion en vivo del cron
     // (cada 4 min) -- ahora es instantaneo, disparado por el trigger apenas
     // el conductor marca "llegue al punto de recogida" en la app.
@@ -1880,19 +1889,23 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // que ninguno).
     let waResult = delivery
       ? await sendButtons(phone,
-          `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦\n\n¿Ya se lo entregaste?`,
+          `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦\n\n` +
+          (vehicleLine ? `${vehicleLine}\n\n` : '') +
+          `¿Ya se lo entregaste?`,
           [{ id: 'board_confirm', title: '✅ Ya se lo entregué' }],
         )
       : await sendButtons(phone,
-          `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗\n\n¿Ya subiste al vehículo?`,
+          `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗\n\n` +
+          (vehicleLine ? `${vehicleLine}\n\n` : '') +
+          `¿Ya subiste al vehículo?`,
           [{ id: 'board_confirm', title: '✅ Ya estoy a bordo' }],
         );
     if (!waResult.ok) {
       const tplResult = await sendTemplate(phone, 'conductor_llego', 'es_CO', [driverName]);
       if (!tplResult.ok) {
         await sendText(phone, delivery
-          ? `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦`
-          : `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗`);
+          ? `📍 *${driverName}* ya llegó al punto de recogida. Entrégale tu paquete cuando estés listo 📦` + (vehicleLine ? `\n\n${vehicleLine}` : '')
+          : `📍 *${driverName}* ya llegó y te está esperando. ¡Sal cuando estés listo! 🚗` + (vehicleLine ? `\n\n${vehicleLine}` : ''));
       }
     }
     if (lat != null && lng != null) await sendLocation(phone, lat, lng, 'Tu punto de recogida');

@@ -15206,7 +15206,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       } else if (stage === 'on_route') {
         this._sendWhatsApp(passengerPhone, 'trip_started', { destination: dest });
       } else if (stage === 'arrived_at_destination') {
-        this._sendWhatsApp(passengerPhone, 'trip_completed', { amount: String(req?.offered_price ?? '') });
+        this._sendWhatsApp(passengerPhone, 'trip_completed', { amount: String(req?.final_price ?? req?.offered_price ?? '') });
       }
     }
 
