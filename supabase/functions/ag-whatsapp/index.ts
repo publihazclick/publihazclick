@@ -42,6 +42,21 @@ const SERVICE_LABELS: Record<string, string> = {
 function isDeliveryService(svc: string | null | undefined): boolean {
   return svc === 'domicilio' || svc === 'flete';
 }
+
+// ─── Texto de la pregunta de destino ──────────────────────────────────────────
+// "¿Hacia dónde va?" (neutral, en 3ra persona) en vez de "¿A dónde vas?" -- con
+// el nombre de la persona cuando el viaje es para otra persona, no para quien
+// escribe (pedido explícito del usuario 2026-08-11). Un solo lugar para las 3
+// veces que se pregunta el destino, para que no se desincronicen entre sí.
+function destQuestionText(session: Record<string, unknown>): string {
+  if (isDeliveryService(session.service_type as string)) {
+    return `¿A dónde debe llegar el paquete?`;
+  }
+  if (session.is_for_self === false && session.traveler_name) {
+    return `¿Hacia dónde va ${session.traveler_name}?`;
+  }
+  return `¿Hacia dónde va?`;
+}
 function svcCopy(svc: string | null | undefined) {
   const delivery = isDeliveryService(svc);
   return {
@@ -1451,9 +1466,7 @@ async function handleConversation(
       await upsertSession(phone, { state: 'awaiting_dest' });
       await sendText(phone,
         `¡Perfecto! 🎯\n\n` +
-        (isDeliveryService(session.service_type as string)
-          ? `📍 *¿A dónde debe llegar el paquete?*\n\n`
-          : `📍 *¿A dónde vas?*\n\n`) +
+        `📍 *${destQuestionText(session)}*\n\n` +
         `Envía la ubicación de destino o escribe la dirección.`
       );
     } else if (isNo(text)) {
@@ -1493,9 +1506,7 @@ async function handleConversation(
     await upsertSession(phone, { state: 'awaiting_dest' });
     await sendText(phone,
       `¡Perfecto! 🎯\n\n` +
-      (isDeliveryService(session.service_type as string)
-        ? `📍 *¿A dónde debe llegar el paquete?*\n\n`
-        : `📍 *¿A dónde vas?*\n\n`) +
+      `📍 *${destQuestionText(session)}*\n\n` +
       `Envía la ubicación de destino o escribe la dirección.`
     );
     return;
@@ -1545,10 +1556,7 @@ async function handleConversation(
       );
     } else if (isNo(text)) {
       await upsertSession(phone, { state: 'awaiting_dest', dest_name: null, dest_lat: null, dest_lng: null });
-      const delivery = isDeliveryService(session.service_type as string);
-      await sendText(phone, delivery
-        ? `Entendido. ¿A dónde debe llegar el paquete? Escribe la dirección o envía la ubicación de destino.`
-        : `Entendido. ¿A dónde vas? Escribe la dirección o envía tu ubicación de destino.`);
+      await sendText(phone, `Entendido. ${destQuestionText(session)} Escribe la dirección o envía la ubicación de destino.`);
     } else {
       await sendText(phone, `Responde *si* para confirmar el destino o *no* para cambiarlo.`);
     }
