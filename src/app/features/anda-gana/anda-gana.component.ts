@@ -3822,21 +3822,33 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
 
-              <!-- Notas + viaje para otra persona -->
+              <!-- Notas + viaje para otra persona (solo aplica a servicios con pasajero -- un
+                   domicilio/flete ya tiene sus propios campos de destinatario, no "viajero") -->
               <div class="px-4 pt-2 pb-1">
-                <button (click)="forOtherEnabled.set(!forOtherEnabled())"
-                  class="w-full text-left text-[11px] font-bold py-1 flex items-center gap-1"
-                  [style.color]="forOtherEnabled() ? '#f97316' : '#64748b'">
-                  <span class="material-symbols-outlined" style="font-size:14px">{{ forOtherEnabled() ? 'check_box' : 'check_box_outline_blank' }}</span>
-                  Pedir para otra persona
-                </button>
-                @if (forOtherEnabled()) {
-                  <div class="grid grid-cols-2 gap-1.5 mt-1">
-                    <input type="text" [(ngModel)]="forOtherName" placeholder="Nombre"
-                      class="px-2 py-1.5 rounded-lg text-xs" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#1e293b" />
-                    <input type="tel" [(ngModel)]="forOtherPhone" placeholder="Teléfono"
-                      class="px-2 py-1.5 rounded-lg text-xs" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#1e293b" />
-                  </div>
+                @if (tripService() !== 'domicilio' && tripService() !== 'fletes') {
+                  <button (click)="toggleForOther()"
+                    class="w-full text-left text-[11px] font-bold py-1 flex items-center gap-1">
+                    <span class="material-symbols-outlined" style="font-size:14px" [style.color]="forOtherEnabled() ? '#f97316' : '#64748b'">{{ forOtherEnabled() ? 'check_box' : 'check_box_outline_blank' }}</span>
+                    <span [style.color]="forOtherEnabled() ? '#f97316' : '#64748b'">Pedir para otra persona</span>
+                  </button>
+                  @if (forOtherEnabled()) {
+                    <div class="grid grid-cols-2 gap-1.5 mt-1">
+                      <input type="text" [(ngModel)]="forOtherName" placeholder="Nombre de quien viaja"
+                        class="px-2 py-1.5 rounded-lg text-xs" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#1e293b" />
+                      <input type="tel" [(ngModel)]="forOtherPhone" placeholder="Su teléfono"
+                        class="px-2 py-1.5 rounded-lg text-xs" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#1e293b" />
+                    </div>
+                    <div class="mt-1.5 p-2 rounded-lg" style="background:#fff7ed;border:1px solid #fed7aa">
+                      <p class="text-[10px] leading-relaxed" style="color:#9a3412">
+                        ⚠️ Al pedirlo para otra persona, <strong>eres totalmente responsable</strong> de cualquier daño físico o material que esa persona pueda causarle al conductor. Pídelo solo para personas de tu entera confianza.
+                      </p>
+                      <button (click)="forOtherLiabilityAck.set(!forOtherLiabilityAck())"
+                        class="w-full text-left text-[10px] font-bold py-1 flex items-center gap-1 mt-0.5">
+                        <span class="material-symbols-outlined" style="font-size:13px" [style.color]="forOtherLiabilityAck() ? '#16a34a' : '#9a3412'">{{ forOtherLiabilityAck() ? 'check_box' : 'check_box_outline_blank' }}</span>
+                        <span [style.color]="forOtherLiabilityAck() ? '#16a34a' : '#9a3412'">Entiendo y acepto la responsabilidad</span>
+                      </button>
+                    </div>
+                  }
                 }
                 <input type="text" [(ngModel)]="passengerTripNote" placeholder="Nota al conductor (opcional)"
                   maxlength="80"
@@ -10825,9 +10837,22 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   tripAccessibility = signal({ pets: false, luggage: false, child_seat: false, wheelchair: false });
 
   // ── Viaje para otra persona ──
-  forOtherEnabled = signal(false);
-  forOtherName    = '';
-  forOtherPhone   = '';
+  forOtherEnabled      = signal(false);
+  forOtherName         = '';
+  forOtherPhone        = '';
+  forOtherLiabilityAck = signal(false);
+
+  toggleForOther() {
+    const next = !this.forOtherEnabled();
+    this.forOtherEnabled.set(next);
+    if (!next) {
+      // Al desmarcar, limpiar todo -- que no quede un nombre/teléfono viejo
+      // pegado si el usuario lo vuelve a marcar más tarde para otro viaje.
+      this.forOtherName = '';
+      this.forOtherPhone = '';
+      this.forOtherLiabilityAck.set(false);
+    }
+  }
 
   // ── Editar perfil pasajero ──
   editProfileOpen   = signal(false);
@@ -16825,6 +16850,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.acceptingOfferId.set(null);
     this.offerAcceptError.set(null);
     this._clearRoute();
+    this.forOtherEnabled.set(false);
+    this.forOtherName = '';
+    this.forOtherPhone = '';
+    this.forOtherLiabilityAck.set(false);
     // Limpiar estado persistido del viaje
     if (typeof localStorage !== 'undefined') localStorage.removeItem('movi_active_trip');
   }
@@ -17202,6 +17231,28 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.domRecipientPhone.set(this.domRecipPhoneVal);
     }
 
+    // Viaje para otra persona: validar ANTES de crear el viaje -- si algo falta,
+    // no se manda un viaje "para otra persona" a medias (sin teléfono, o sin que
+    // el pasajero haya aceptado la responsabilidad).
+    const isForOther = this.forOtherEnabled();
+    let travelerPhoneDigits = '';
+    if (isForOther) {
+      const travelerName = this.forOtherName.trim();
+      travelerPhoneDigits = this.forOtherPhone.replace(/\D/g, '');
+      if (!travelerName || travelerPhoneDigits.length < 7) {
+        this.tripSending.set(false);
+        this.tripRequestError.set('Escribe el nombre y un teléfono válido de la persona que viaja.');
+        setTimeout(() => this.tripRequestError.set(null), 5000);
+        return;
+      }
+      if (!this.forOtherLiabilityAck()) {
+        this.tripSending.set(false);
+        this.tripRequestError.set('Debes aceptar la responsabilidad antes de pedirlo para otra persona.');
+        setTimeout(() => this.tripRequestError.set(null), 5000);
+        return;
+      }
+    }
+
     const isDomicilio = this.tripService() === 'domicilio';
     const result = await this.agService.requestTrip({
       passengerUserId: profile.id,
@@ -17222,6 +17273,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         recipientName:       this.domRecipientName()  || undefined,
         recipientPhone:      this.domRecipientPhone() || undefined,
         contactlessDelivery: this.domContactless(),
+      } : {}),
+      // ── Viaje para otra persona ────────────────────────────────
+      ...(isForOther ? {
+        isForSelf: false,
+        travelerName: this.forOtherName.trim(),
+        travelerPhone: travelerPhoneDigits,
       } : {}),
     });
     this.tripSending.set(false);

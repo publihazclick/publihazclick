@@ -684,6 +684,10 @@ export class AndaGanaService {
     recipientName?: string;
     recipientPhone?: string;
     contactlessDelivery?: boolean;
+    // ── Viaje para otra persona (optional) ────────────────────────
+    isForSelf?: boolean;
+    travelerName?: string;
+    travelerPhone?: string;
   }): Promise<{ success: boolean; tripId?: string; error?: string }> {
     const { data: row, error } = await this.supabase
       .from('ag_trip_requests')
@@ -705,6 +709,19 @@ export class AndaGanaService {
           recipient_name:       data.recipientName       ?? null,
           recipient_phone:      data.recipientPhone      ?? null,
           contactless_delivery: data.contactlessDelivery ?? false,
+        } : {}),
+        // Viaje para otra persona: mismas 2 columnas que ya usa el flujo de
+        // WhatsApp (ver ag-whatsapp/index.ts createWaTrip) -- passenger_name
+        // pasa a ser el nombre de quien viaja (el conductor ya lo lee con
+        // prioridad sobre el nombre de la cuenta), y for_other queda como
+        // registro de quién pidió el viaje y a quién es responsable.
+        ...(data.isForSelf === false && data.travelerName ? {
+          passenger_name: data.travelerName,
+          for_other: {
+            name: data.travelerName,
+            phone: data.travelerPhone || null,
+            requested_by_user_id: data.passengerUserId,
+          },
         } : {}),
       })
       .select('id')
