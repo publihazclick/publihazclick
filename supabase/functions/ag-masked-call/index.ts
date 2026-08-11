@@ -58,16 +58,33 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Resolver pasajero y conductor del viaje
+    // Resolver pasajero y conductor del viaje -- primero en ag_trip_requests (viajes
+    // normales), y si no aparece ahí, en cc_requests (fletes/carga completa, que usa
+    // otro nombre de columna para el pasajero: user_id en vez de passenger_user_id).
+    let passengerUserId: string | null = null;
+    let driverId: string | null = null;
+
     const { data: trip } = await supabase.from('ag_trip_requests').select('passenger_user_id, driver_id, status').eq('id', trip_request_id).maybeSingle();
-    if (!trip) return json({ error: 'Viaje no encontrado' }, 404);
-    if (!['accepted', 'in_progress', 'on_route', 'arrived', 'pickup'].includes((trip as any).status)) {
-      return json({ error: 'El viaje no está activo' }, 400);
+    if (trip) {
+      if (!['accepted', 'in_progress', 'on_route', 'arrived', 'pickup'].includes((trip as any).status)) {
+        return json({ error: 'El viaje no está activo' }, 400);
+      }
+      passengerUserId = (trip as any).passenger_user_id;
+      driverId = (trip as any).driver_id;
+    } else {
+      const { data: ccTrip } = await supabase.from('cc_requests').select('user_id, driver_id, status').eq('id', trip_request_id).maybeSingle();
+      if (!ccTrip) return json({ error: 'Viaje no encontrado' }, 404);
+      if (!['accepted', 'in_progress'].includes((ccTrip as any).status)) {
+        return json({ error: 'El viaje no está activo' }, 400);
+      }
+      passengerUserId = (ccTrip as any).user_id;
+      driverId = (ccTrip as any).driver_id;
     }
+    if (!driverId) return json({ error: 'Este viaje aún no tiene conductor asignado' }, 400);
 
     // Phones de pasajero y conductor
-    const { data: passUser } = await supabase.from('ag_users').select('auth_user_id, phone').eq('id', (trip as any).passenger_user_id).maybeSingle();
-    const { data: drvLookup } = await supabase.from('ag_drivers').select('ag_user_id').eq('id', (trip as any).driver_id).maybeSingle();
+    const { data: passUser } = await supabase.from('ag_users').select('auth_user_id, phone').eq('id', passengerUserId).maybeSingle();
+    const { data: drvLookup } = await supabase.from('ag_drivers').select('ag_user_id').eq('id', driverId).maybeSingle();
     const { data: drvUser } = drvLookup ? await supabase.from('ag_users').select('auth_user_id, phone').eq('id', (drvLookup as any).ag_user_id).maybeSingle() : { data: null };
 
     if (!passUser || !drvUser) return json({ error: 'Usuarios no encontrados' }, 404);

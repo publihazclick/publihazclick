@@ -3152,9 +3152,6 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <div class="flex-1">
                             <p class="font-black text-slate-800">{{ ccActiveReq().driver_name || 'Tu conductor' }}</p>
                             <p class="text-xs text-slate-500 mt-0.5">⭐ {{ ccActiveReq().driver_rating || '–' }} · {{ ccActiveReq().driver_trips || 0 }} viajes</p>
-                            @if (ccActiveReq().driver_phone) {
-                              <p class="text-xs text-slate-500 mt-0.5">📱 {{ ccActiveReq().driver_phone }}</p>
-                            }
                           </div>
                         </div>
 
@@ -3192,13 +3189,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
 
                         <!-- Botones de acción -->
                         <div class="grid grid-cols-2 gap-2">
-                          @if (ccActiveReq().driver_phone) {
-                            <a [href]="'tel:' + ccActiveReq().driver_phone"
-                              class="flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-black"
+                          @if (ccActiveReq().driver_id) {
+                            <button (click)="ccCallDriver()" [disabled]="ccCallingDriver()"
+                              class="flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-black disabled:opacity-60"
                               style="background:linear-gradient(135deg,#10b981,#059669)">
-                              <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">call</span>
+                              <span class="material-symbols-outlined" style="font-size:20px;font-variation-settings:'FILL' 1">{{ ccCallingDriver() ? 'hourglass_empty' : 'call' }}</span>
                               Llamar
-                            </a>
+                            </button>
                           }
                           <button (click)="ccShareTrip()"
                             class="flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-black"
@@ -10590,6 +10587,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Solicitud activa (matching/assigned/active)
   ccActiveReqId   = signal<string|null>(null);
   ccActiveReq     = signal<any|null>(null);
+  ccCallingDriver = signal(false);
   ccOffers        = signal<any[]>([]);
   ccOffersLoading = signal(false);
   ccMatchSeconds  = signal(300);
@@ -13873,6 +13871,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const req = this.ccActiveReq();
     if (!req) return false;
     return msg.sender_id !== req.driver_id || msg.sender_id === req.user_id;
+  }
+
+  async ccCallDriver(): Promise<void> {
+    const id = this.ccActiveReqId();
+    if (!id || this.ccCallingDriver()) return;
+    this.ccCallingDriver.set(true);
+    try {
+      const res = await this.agService.startMaskedCall(id);
+      if (!res.ok) alert('No se pudo llamar al conductor: ' + (res.error ?? 'Error desconocido'));
+    } finally {
+      this.ccCallingDriver.set(false);
+      this.cdr.markForCheck();
+    }
   }
 
   ccShareLiveLocation(): void {

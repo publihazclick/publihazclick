@@ -377,6 +377,35 @@ async function forwardGeocode(text: string, biasLat?: number, biasLng?: number):
   return null;
 }
 
+// ─── Última ubicación conocida del pasajero (sesgo de ciudad para el ORIGEN) ──
+// A diferencia del destino (que ya tiene el origen recién geocodificado como
+// sesgo, ver forwardGeocode(text, session.origin_lat, ...) en awaiting_dest),
+// cuando el pasajero escribe su dirección de ORIGEN todavía no tenemos
+// ninguna coordenada suya en la sesión -- Google Places Text Search sin sesgo
+// devuelve el resultado más "famoso" a nivel nacional (bug real reportado
+// 2026-08-11: "trae direcciones o barrios de otra ciudad"). Se usa el origen
+// de su viaje más reciente (cualquier estado, no hace falta que haya
+// completado) como sesgo -- un pasajero recurrente casi siempre pide desde la
+// misma ciudad. Si nunca ha pedido un viaje, no hay forma de adivinar su
+// ciudad sin coordenadas reales, así que se sigue sin sesgo (fallback ya
+// existente, no es un bug distinto).
+async function lastKnownCityBias(phone: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const supabase = db();
+    const { data } = await supabase
+      .from('ag_trip_requests')
+      .select('origin_lat, origin_lng')
+      .eq('wa_phone', phone)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data?.origin_lat != null && data?.origin_lng != null) {
+      return { lat: data.origin_lat as number, lng: data.origin_lng as number };
+    }
+  } catch (e) { console.error('[Geo] lastKnownCityBias error:', e); }
+  return null;
+}
+
 // ─── Validación geoespacial Colombia ─────────────────────────────────────────
 function isInColombia(lat: number, lng: number): boolean {
   return lat >= -4.5 && lat <= 13.5 && lng >= -79.0 && lng <= -66.5;
@@ -402,21 +431,43 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 // domicilio (rate=1000, comentario de abajo) también estaba mal calibrado --
 // domicilio en la app no usa la tarifa de moto, usa su propia fórmula fija
 // de $1500/km sin cobro base (_calcDomPrice).
-function suggestPrice(distKm: number, service: string): number {
+// Multiplicador de demanda (horas pico) -- misma RPC que ya usa la app
+// (agService.currentSurge(), siempre llamada sin zona = multiplicador global
+// vigente) para que la tarifa sugerida por WhatsApp tenga paridad real con la
+// app. Antes esta función nunca lo aplicaba -- las tarifas base sí están
+// calibradas para igualar a InDrive (ver _calcPrice en anda-gana.component.ts),
+// pero en horas de alta demanda InDrive sí sube su precio sugerido y Movi por
+// WhatsApp se quedaba siempre en la tarifa plana, saliendo más barato sin
+// motivo real (bug real reportado 2026-08-11: "el precio sugerido es más
+// barato que indriver"). Si la consulta falla, se usa 1 (sin recargo) en vez
+// de bloquear la solicitud.
+async function currentSurgeMultiplier(): Promise<number> {
+  try {
+    const { data, error } = await db().rpc('ag_current_surge', { p_zone_id: null });
+    if (error) { console.error('[Price] ag_current_surge error:', error); return 1; }
+    return Number(data ?? 1);
+  } catch (e) { console.error('[Price] ag_current_surge fetch error:', e); return 1; }
+}
+
+async function suggestPrice(distKm: number, service: string): Promise<number> {
+  const surge = await currentSurgeMultiplier();
   if (service === 'domicilio') {
-    return Math.max(MIN_PRICE, Math.round(distKm * 1500 / 500) * 500);
+    return Math.max(MIN_PRICE, Math.round(distKm * 1500 * surge / 500) * 500);
   }
   if (service === 'moto') {
-    return Math.round(Math.max(3000, 2500 + distKm * 700) / 500) * 500;
+    const raw = Math.max(3000, 2500 + distKm * 700);
+    return Math.round(raw * surge / 500) * 500;
   }
   if (service === 'flete') {
-    return Math.round(Math.max(8000, 6000 + distKm * 1500) / 500) * 500;
+    const raw = Math.max(8000, 6000 + distKm * 1500);
+    return Math.round(raw * surge / 500) * 500;
   }
   if (service === 'ciudad') {
-    return Math.max(MIN_PRICE, Math.round(distKm * 1800 / 500) * 500);
+    return Math.max(MIN_PRICE, Math.round(distKm * 1800 * surge / 500) * 500);
   }
   // carro (default)
-  return Math.round(Math.max(4500, 4000 + distKm * 1000) / 500) * 500;
+  const raw = Math.max(4500, 4000 + distKm * 1000);
+  return Math.round(raw * surge / 500) * 500;
 }
 
 // ─── Sesión WA ────────────────────────────────────────────────────────────────
@@ -768,7 +819,7 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
   let suggested = MIN_PRICE;
   if (lat != null && lng != null && oLat && oLng) {
     distKm = haversineKm(oLat, oLng, lat, lng);
-    suggested = suggestPrice(distKm, session.service_type as string ?? 'carro');
+    suggested = await suggestPrice(distKm, session.service_type as string ?? 'carro');
   }
 
   await upsertSession(phone, {
@@ -826,7 +877,8 @@ async function startSmartFlow(phone: string, parsed: ParsedRequest): Promise<voi
   });
 
   if (parsed.origin_text) {
-    const geo = await forwardGeocode(parsed.origin_text);
+    const bias = await lastKnownCityBias(phone);
+    const geo = await forwardGeocode(parsed.origin_text, bias?.lat, bias?.lng);
     if (geo && isInColombia(geo.lat, geo.lng)) {
       await presentOriginConfirm(phone, geo.address, geo.lat, geo.lng);
       return;
@@ -1201,7 +1253,8 @@ async function handleConversation(
       }
       addr = await reverseGeocode(lat, lng);
     } else if (text.length > 4) {
-      const geo = await forwardGeocode(text);
+      const bias = await lastKnownCityBias(phone);
+      const geo = await forwardGeocode(text, bias?.lat, bias?.lng);
       if (!geo) {
         await sendText(phone, `No encontré esa dirección 🔍\n\nIntenta ser más específico o envía tu ubicación con el clip 📎.`);
         return;
