@@ -8,7 +8,6 @@ const WEBHOOK_VERIFY_TOKEN = Deno.env.get('META_WA_WEBHOOK_VERIFY_TOKEN') ?? 'mo
 const SUPABASE_URL        = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const PRICE_PER_KM = 1500;
 const MIN_PRICE    = 5000;
 // Número de soporte de Movi (el mismo ya usado en la app para wa.me/573134453649)
 const SUPPORT_PHONE = '573134453649';
@@ -257,13 +256,21 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
       );
       const j = await r.json();
       const feature = j?.features?.[0];
-      if (feature?.place_name) {
+      const center = feature?.center as [number, number] | undefined;
+      // Sanity check: si el punto que devuelve Mapbox queda lejos del punto
+      // real que mandó el pasajero, es un match de baja confianza (zona con
+      // poca cobertura de datos, típico fuera del centro de las ciudades) --
+      // mejor no mostrar con seguridad una dirección que en realidad no es la
+      // suya (bug real reportado 2026-08-11: "la dirección no concuerda con
+      // la ubicación real del pasajero").
+      if (feature?.place_name && center && haversineKm(lat, lng, center[1], center[0]) <= 3) {
         // "Calle 1B 2 15, 540001 San José de Cúcuta, Norte de Santander, Colombia"
         // -> se recorta a los primeros 2-3 segmentos (calle + ciudad), igual
         // que se hacia antes con Nominatim, para no mandar el pais/codigo
         // postal en cada mensaje.
         return feature.place_name.split(',').slice(0, 3).join(',').trim();
       }
+      if (feature) console.error('[Geo] Mapbox reverseGeocode match lejos del punto real:', center);
     } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
   }
 
@@ -273,7 +280,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
       { headers: { 'User-Agent': 'Movi-App/1.0 (movi@publihazclick.com)' } }
     );
     const j = await r.json();
-    if (j?.display_name) {
+    // Mismo chequeo de distancia que arriba -- Nominatim también puede
+    // devolver el punto conocido más cercano cuando no tiene datos exactos
+    // para esa ubicación, y quedar lejos de donde está el pasajero de verdad.
+    if (j?.display_name && j?.lat && j?.lon && haversineKm(lat, lng, parseFloat(j.lat), parseFloat(j.lon)) <= 3) {
       const a = j.address ?? {};
       const parts = [
         a.road ?? a.pedestrian ?? a.path,
@@ -283,10 +293,13 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
       return parts.length ? parts.join(', ') : j.display_name.split(',').slice(0, 3).join(',');
     }
   } catch (e) { console.error('[Geo] Nominatim fallback error:', e); }
+  // Ninguna fuente dio un resultado confiable cerca del punto real -- mejor
+  // mostrar las coordenadas crudas (que sí son exactas) que una dirección
+  // inventada que puede quedar en otra parte de la ciudad o del país.
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
-async function forwardGeocode(text: string): Promise<{ lat: number; lng: number; address: string } | null> {
+async function forwardGeocode(text: string, biasLat?: number, biasLng?: number): Promise<{ lat: number; lng: number; address: string } | null> {
   // Google Places (Text Search) como fuente principal -- la misma API key que
   // ya usa el buscador de la app (ver memoria buscador_google_places), con
   // Maps JavaScript API + Places API habilitadas. Entiende direcciones
@@ -295,13 +308,25 @@ async function forwardGeocode(text: string): Promise<{ lat: number; lng: number;
   // "no encontré esa dirección" con el texto tal cual lo escribe un pasajero
   // real por WhatsApp (bug reportado 2026-08-10). Nominatim se deja como
   // ultimo respaldo si Google falla (cuota, red, o sin resultados).
+  //
+  // biasLat/biasLng (cuando se conoce el origen del pasajero) hacen que
+  // Google prefiera resultados cercanos en vez del más "famoso" a nivel
+  // nacional -- sin esto, nombres genéricos que se repiten en varias
+  // ciudades ("Unicentro", "Centro Mayor", "Éxito") casi siempre devolvían el
+  // de Bogotá sin importar en qué ciudad estuviera el pasajero real (bug
+  // real reportado 2026-08-11: "el destino sale en otra ciudad").
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
   if (googleKey) {
     try {
       const q = encodeURIComponent(text + ', Colombia');
-      const r = await fetch(
-        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${q}&region=co&language=es&key=${googleKey}`
-      );
+      let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${q}&region=co&language=es&key=${googleKey}`;
+      if (biasLat != null && biasLng != null) {
+        // location+radius en Text Search es un sesgo (no restringe resultados
+        // fuera del radio) -- sigue encontrando lugares lejos si el texto es
+        // específico, solo prioriza los cercanos cuando el nombre es ambiguo.
+        url += `&location=${biasLat},${biasLng}&radius=50000`;
+      }
+      const r = await fetch(url);
       const j = await r.json();
       if (j.status === 'OK' && j.results?.length) {
         const item = j.results[0];
@@ -356,18 +381,30 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 // ─── Calcular precio sugerido ─────────────────────────────────────────────────
-// Domicilio siempre se despacha en moto (ver vehicleType en createWaTrip -- el
-// pasajero de WhatsApp no elige vehículo aparte para domicilios), así que debe
-// cobrar la tarifa de moto, no la de carro -- antes caía al default (tarifa de
-// carro, $1500/km) por no tener rama propia, sugiriendo ~50% más de lo que
-// corresponde a su propio vehículo asignado (bug real reportado 2026-08-11).
+// Debe coincidir con la fórmula real que usa la app (_calcPrice/_calcDomPrice
+// en anda-gana.component.ts) -- antes esto era solo tarifa*km sin ningún
+// cobro base, así que en viajes cortos (la mayoría de los viajes dentro de
+// una ciudad) el precio sugerido por WhatsApp salía mucho más barato que
+// pedir exactamente el mismo viaje desde la app (bug real reportado
+// 2026-08-11: "las veo demasiado baratas"). El intento anterior de arreglar
+// domicilio (rate=1000, comentario de abajo) también estaba mal calibrado --
+// domicilio en la app no usa la tarifa de moto, usa su propia fórmula fija
+// de $1500/km sin cobro base (_calcDomPrice).
 function suggestPrice(distKm: number, service: string): number {
-  let rate = PRICE_PER_KM;
-  if (service === 'moto' || service === 'domicilio') rate = 1000;
-  if (service === 'flete') rate = 2500;
-  if (service === 'ciudad') rate = 1800;
-  const raw = Math.round(distKm * rate / 500) * 500;
-  return Math.max(raw, MIN_PRICE);
+  if (service === 'domicilio') {
+    return Math.max(MIN_PRICE, Math.round(distKm * 1500 / 500) * 500);
+  }
+  if (service === 'moto') {
+    return Math.round(Math.max(3000, 2500 + distKm * 700) / 500) * 500;
+  }
+  if (service === 'flete') {
+    return Math.round(Math.max(8000, 6000 + distKm * 1500) / 500) * 500;
+  }
+  if (service === 'ciudad') {
+    return Math.max(MIN_PRICE, Math.round(distKm * 1800 / 500) * 500);
+  }
+  // carro (default)
+  return Math.round(Math.max(4500, 4000 + distKm * 1000) / 500) * 500;
 }
 
 // ─── Sesión WA ────────────────────────────────────────────────────────────────
@@ -1178,7 +1215,7 @@ async function handleConversation(
       // en lenguaje natural, saltar directo a confirmarlo en vez de preguntar.
       const pendingDest = session.pending_dest_text as string | null;
       if (pendingDest) {
-        const geo = await forwardGeocode(pendingDest);
+        const geo = await forwardGeocode(pendingDest, session.origin_lat as number, session.origin_lng as number);
         if (geo && isInColombia(geo.lat, geo.lng)) {
           await presentDestConfirm(phone, geo.address, geo.lat, geo.lng, session);
           return;
@@ -1215,7 +1252,7 @@ async function handleConversation(
       lat = msgLat; lng = msgLng;
       addr = await reverseGeocode(lat, lng);
     } else if (text.length > 4) {
-      const geo = await forwardGeocode(text);
+      const geo = await forwardGeocode(text, session.origin_lat as number, session.origin_lng as number);
       if (!geo) {
         // dest_lat/dest_lng son NOT NULL en ag_trip_requests -- antes esto dejaba
         // pasar la direccion en texto plano sin coordenadas y la solicitud nunca
