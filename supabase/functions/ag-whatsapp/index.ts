@@ -848,6 +848,95 @@ async function parseFreeTextRequest(text: string): Promise<ParsedRequest | null>
   } catch (e) { console.error('[AI] parseFreeTextRequest error:', e); return null; }
 }
 
+// ─── Piloto: interpretar una respuesta que no calzó con el validador rápido ───
+// Se llama SOLO cuando el match rápido (regex/botones/isYes/isNo) ya falló --
+// no reemplaza el camino rápido, es una segunda oportunidad antes de repetir el
+// mensaje robótico de siempre. Nunca hace avanzar el flujo si no está seguro:
+// "matched" de baja confianza se degrada a "unclear" en vez de arriesgar un dato
+// que el usuario nunca dijo (ver movi-wa-humanizacion, piloto en 3 estados
+// 2026-08-11: awaiting_traveler_phone, awaiting_dest_confirm, awaiting_offer_response).
+interface FallbackInterpretation {
+  outcome: 'matched' | 'distraction' | 'unclear';
+  matched_value: string | null;
+  reply_text: string | null;
+  confidence: number;
+}
+async function interpretFallback(params: {
+  state: string;
+  question: string;
+  answerFormat: string;
+  userText: string;
+}): Promise<FallbackInterpretation | null> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) return null;
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Eres el asistente de Movi (app de viajes/domicilios por WhatsApp en Colombia). El usuario está ' +
+              'a mitad de un flujo y le acabamos de hacer una pregunta puntual, pero su respuesta no calzó con ' +
+              'el formato exacto esperado. Decide qué pasó SIN inventar datos que el usuario no dijo.\n\n' +
+              'Responde SOLO un objeto JSON con estas claves:\n' +
+              '- outcome: "matched" si el texto sí corresponde con confianza a una respuesta válida (aunque ' +
+              'tenga typos, otro formato, o esté escrito informal); "distraction" si claramente dijo/preguntó ' +
+              'algo distinto al tema (otra pregunta, un comentario, un saludo); "unclear" si de verdad no se ' +
+              'puede saber qué quiso decir.\n' +
+              '- matched_value: SOLO si outcome="matched", el valor siguiendo EXACTO el formato pedido en ' +
+              '"Formato de respuesta esperado" (abajo). null en cualquier otro caso.\n' +
+              '- reply_text: SOLO si outcome="distraction" o "unclear", un mensaje corto, cálido y natural en ' +
+              'español de Colombia (máximo 2 frases, con algún emoji si encaja) -- si es "distraction", responde ' +
+              'brevemente lo que preguntó Y regresa a la pregunta pendiente; si es "unclear", reformula la ' +
+              'pregunta original con otras palabras (nunca repitas la misma frase). null si outcome="matched".\n' +
+              '- confidence: número entre 0 y 1, qué tan seguro estás del outcome.\n\n' +
+              `Pregunta pendiente: "${params.question}"\n` +
+              `Formato de respuesta esperado: ${params.answerFormat}`,
+          },
+          { role: 'user', content: params.userText },
+        ],
+      }),
+    });
+    if (!r.ok) { console.error('[AI] interpretFallback error', r.status, await r.text()); return null; }
+    const j = await r.json();
+    const raw = j?.choices?.[0]?.message?.content as string | undefined;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const outcome: string = ['matched', 'distraction', 'unclear'].includes(parsed.outcome) ? parsed.outcome : 'unclear';
+    const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0;
+    // No confiar en un "matched" de baja confianza -- degradar a "unclear" en vez de arriesgar.
+    const safeOutcome = outcome === 'matched' && confidence < 0.72 ? 'unclear' : outcome;
+    return {
+      outcome: safeOutcome as FallbackInterpretation['outcome'],
+      matched_value: safeOutcome === 'matched' && typeof parsed.matched_value === 'string' ? parsed.matched_value : null,
+      reply_text: typeof parsed.reply_text === 'string' ? parsed.reply_text : null,
+      confidence,
+    };
+  } catch (e) { console.error('[AI] interpretFallback error:', e); return null; }
+}
+
+async function logFallbackInterpretation(
+  phone: string, state: string, userText: string, result: FallbackInterpretation | null
+): Promise<void> {
+  try {
+    await db().from('ag_wa_fallback_interpretations').insert({
+      wa_phone: phone,
+      state,
+      user_text: userText,
+      outcome: result?.outcome ?? 'error',
+      matched_value: result?.matched_value ?? null,
+      reply_text: result?.reply_text ?? null,
+      confidence: result?.confidence ?? null,
+    });
+  } catch (e) { console.error('[AI] logFallbackInterpretation error:', e); }
+}
+
 // ─── Confirmar origen (reusado por el flujo clásico y el flujo inteligente) ───
 async function presentOriginConfirm(phone: string, addr: string, lat: number, lng: number, session: Record<string, unknown>): Promise<void> {
   const forName = travelerLabel(session);
@@ -1506,10 +1595,26 @@ async function handleConversation(
 
   // ── AWAITING_TRAVELER_PHONE ──────────────────────────────────────────────────
   if (state === 'awaiting_traveler_phone') {
-    const digits = text.replace(/\D/g, '');
+    let digits = text.replace(/\D/g, '');
     if (digits.length < 7) {
-      await sendText(phone, `Ese número no parece válido. Escribe el celular de la persona que viaja (solo números).`);
-      return;
+      // Piloto de interpretación humana (2026-08-11): antes de repetir el mensaje
+      // de siempre, un intento con IA por si el usuario sí dio un celular válido
+      // pero en un formato que el regex no reconoció, o se distrajo con otra cosa.
+      const travelerName = (session.traveler_name as string) ?? 'la persona que viaja';
+      const interp = await interpretFallback({
+        state,
+        question: `¿Cuál es el número de celular de ${travelerName}?`,
+        answerFormat: 'un número de celular colombiano (normalmente 10 dígitos empezando por 3; puede venir con espacios, guiones, paréntesis o el prefijo +57). En matched_value escribe el número limpio, solo dígitos.',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interp);
+      if (interp?.outcome === 'matched' && interp.matched_value) {
+        digits = interp.matched_value.replace(/\D/g, '');
+      }
+      if (digits.length < 7) {
+        await sendText(phone, interp?.reply_text || `Ese número no parece válido. Escribe el celular de la persona que viaja (solo números).`);
+        return;
+      }
     }
     await upsertSession(phone, { traveler_phone: digits });
 
@@ -1567,7 +1672,27 @@ async function handleConversation(
 
   // ── AWAITING_DEST_CONFIRM ───────────────────────────────────────────────────
   if (state === 'awaiting_dest_confirm') {
-    if (isYes(text)) {
+    // Piloto de interpretación humana (2026-08-11): si el match rápido de
+    // isYes/isNo no calza, un intento con IA antes de repetir el mensaje de
+    // siempre -- el resultado solo decide CUÁL de los dos caminos ya probados
+    // (confirmar / cambiar) correr, nunca cambia lo que cada uno hace.
+    let decision: 'yes' | 'no' | null = isYes(text) ? 'yes' : isNo(text) ? 'no' : null;
+    let interp: FallbackInterpretation | null = null;
+    if (!decision) {
+      const destName = (session.dest_name as string) ?? 'ese destino';
+      interp = await interpretFallback({
+        state,
+        question: `¿Confirmas que el destino es "${destName}"?`,
+        answerFormat: 'sí (confirma que el destino está correcto) o no (quiere cambiar/corregir el destino). En matched_value escribe exactamente "yes" o "no".',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interp);
+      if (interp?.outcome === 'matched' && (interp.matched_value === 'yes' || interp.matched_value === 'no')) {
+        decision = interp.matched_value;
+      }
+    }
+
+    if (decision === 'yes') {
       const suggested = session.offered_price as number ?? MIN_PRICE;
       const delivery = isDeliveryService(session.service_type as string);
       await upsertSession(phone, { state: 'awaiting_price' });
@@ -1578,11 +1703,11 @@ async function handleConversation(
         `• Escribe un monto (ej: *12000*)\n` +
         `• O escribe *ok* para usar el precio sugerido`
       );
-    } else if (isNo(text)) {
+    } else if (decision === 'no') {
       await upsertSession(phone, { state: 'awaiting_dest', dest_name: null, dest_lat: null, dest_lng: null });
       await sendText(phone, `Entendido. ${destQuestionText(session)} Escribe la dirección o envía la ubicación de destino.`);
     } else {
-      await sendText(phone, `Responde *si* para confirmar el destino o *no* para cambiarlo.`);
+      await sendText(phone, interp?.reply_text || `Responde *si* para confirmar el destino o *no* para cambiarlo.`);
     }
     return;
   }
@@ -1747,7 +1872,26 @@ async function handleConversation(
     const offerId  = session.active_offer_id as string;
     const tripId   = session.trip_request_id as string;
 
-    if (isYes(text)) {
+    // Piloto de interpretación humana (2026-08-11): mismo patrón que
+    // awaiting_dest_confirm -- la IA solo decide cuál camino ya probado correr,
+    // nunca toca la lógica de aceptar/rechazar la oferta en sí.
+    let decision: 'yes' | 'no' | null = isYes(text) ? 'yes' : isNo(text) ? 'no' : null;
+    let interp: FallbackInterpretation | null = null;
+    if (!decision) {
+      const driverNounEarly = svcCopy(session.service_type as string).driverNoun;
+      interp = await interpretFallback({
+        state,
+        question: `¿Aceptas al ${driverNounEarly} ${session.driver_name} por $${(session.driver_price as number ?? 0).toLocaleString('es-CO')}?`,
+        answerFormat: 'sí (acepta esta oferta) o no (la rechaza y sigue buscando otra). En matched_value escribe exactamente "yes" o "no".',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interp);
+      if (interp?.outcome === 'matched' && (interp.matched_value === 'yes' || interp.matched_value === 'no')) {
+        decision = interp.matched_value;
+      }
+    }
+
+    if (decision === 'yes') {
       if (offerId && tripId) {
         const supabase = db();
         const { error } = await supabase.rpc('ag_wa_accept_offer', {
@@ -1783,7 +1927,7 @@ async function handleConversation(
         // seguimiento en vivo: un mapa real en el chat, no un link.
         if (oLat && oLng) await sendLocation(phone, oLat, oLng, travelerLabel(session) ? 'Punto de recogida' : 'Tu punto de recogida');
       }
-    } else if (isNo(text)) {
+    } else if (decision === 'no') {
       // Rechazar esta oferta y seguir buscando
       if (offerId) {
         const supabase = db();
@@ -1813,7 +1957,7 @@ async function handleConversation(
       );
     } else {
       const driverNoun = svcCopy(session.service_type as string).driverNoun;
-      await sendText(phone,
+      await sendText(phone, interp?.reply_text ||
         `Responde:\n*1* o *si* — aceptar al ${driverNoun} ${session.driver_name}\n*2* o *no* — buscar otro ${driverNoun}`
       );
     }
