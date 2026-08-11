@@ -20738,6 +20738,17 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   // Aplica el estado de abordaje en el lado del pasajero (sin broadcast para evitar bucle)
+  //
+  // BUG REAL 2026-08-11 ("se rompe el mapa al iniciar el viaje"): esta función dibujaba la
+  // ruta con _drawPassengerTripRoute() a los 500ms, pero el UPDATE a driver_stage='on_route'
+  // que dispara este boarding TAMBIÉN llega por el canal de tiempo real que ya está
+  // escuchando startDriverTracking() (subscribeTripStage, ver más abajo) -- ese canal reacciona
+  // a CUALQUIER cambio de stage sin importar quién lo causó, así que el propio eco del cambio
+  // que acabamos de hacer disparaba _drawPassengerTripRoute() una SEGUNDA vez casi al mismo
+  // tiempo (2 fetch() a Mapbox Directions + 2 fitBounds() peleando la cámara = el mapa se veía
+  // roto/saltando). Se deja que el listener de tiempo real (única fuente confiable, dispara
+  // igual sea el pasajero, el conductor o WhatsApp quien confirmó el abordaje) sea el ÚNICO
+  // que dibuje la ruta -- aquí solo queda el feedback visual instantáneo (fullscreen + resize).
   private _applyPassengerBoarding(): void {
     if (!this.tripAccepted()) return;
     this._clearArrivalTimer();
@@ -20745,12 +20756,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.passengerSection.set(null);
     this.passengerMapFullscreen.set(true);
     this.cdr.markForCheck();
-    // Doble resize: uno inmediato + uno a 500ms (transición CSS 350ms + buffer)
     setTimeout(() => this._map?.resize(), 50);
-    setTimeout(() => {
-      this._map?.resize();
-      this._drawPassengerTripRoute();
-    }, 500);
   }
 
   async passengerConfirmBoarding(): Promise<void> {
@@ -20770,7 +20776,17 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   }
 
   // Aplica el estado de abordaje en el lado del conductor (sin broadcast para evitar bucle)
-  private _applyDriverBoarding(): void {
+  //
+  // BUG REAL 2026-08-11 ("se rompe el mapa al iniciar el viaje"): esta función arrancaba la
+  // navegación ella misma (startInAppNav a los 450ms) Y TAMBIÉN llamaba a advanceStage(trip,
+  // 'on_route'), que YA tiene su propio bloque que hace exactamente lo mismo (fullscreen +
+  // resize + startInAppNav, a los 200ms) -- dos llamadas a startInAppNav() casi al mismo
+  // tiempo, cada una con su propio fetch() a Mapbox Directions y su propio fitBounds()
+  // peleando la cámara del mapa (se veía saltar/romperse). advanceStage sigue siendo
+  // necesario aparte (actualiza la DB, el signal de driverActiveTrips, y notifica al
+  // pasajero) -- se le deja como ÚNICO responsable de disparar la navegación; aquí solo
+  // queda el feedback visual instantáneo (fullscreen) mientras esa llamada está en vuelo.
+  private async _applyDriverBoarding(): Promise<void> {
     const trip = this.driverArrivalTrip();
     if (!trip) return;
     this._clearDriverArrivalTimer();
@@ -20783,7 +20799,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const dLng = parseFloat(req?.dest_lng);
     if (!isFinite(dLat) || !isFinite(dLng)) {
       console.error('[Movi] dest coords missing on boarding', req);
-      this.advanceStage(trip, BOARDING_TARGET_STAGE);
+      await this.advanceStage(trip, BOARDING_TARGET_STAGE);
       return;
     }
 
@@ -20791,17 +20807,8 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.driverMapFullscreen.set(true);
     this.cdr.markForCheck();
 
-    // Doble resize: uno inmediato + uno a 450ms (tras transición CSS de 350ms)
-    this._waitForMap(() => {
-      this._map?.resize();
-      setTimeout(() => {
-        this._map?.resize();
-        this.startInAppNav(trip, false);
-      }, 450);
-    });
-
-    // Actualizar DB en segundo plano
-    this.advanceStage(trip, BOARDING_TARGET_STAGE);
+    // advanceStage() es quien de verdad arranca la navegación (ver su bloque 'on_route').
+    await this.advanceStage(trip, BOARDING_TARGET_STAGE);
   }
 
   async driverPassengerBoarded(): Promise<void> {
@@ -20809,7 +20816,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const trip = this.driverArrivalTrip();
     if (!trip) return;
     const passengerAuthId = trip.ag_trip_requests?.ag_users?.auth_user_id;
-    this._applyDriverBoarding();
+    await this._applyDriverBoarding();
     if (passengerAuthId) this.agService.broadcastBoardingToPassenger(passengerAuthId);
   }
 
