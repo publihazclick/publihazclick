@@ -3,7 +3,6 @@ package com.publihazclick.movi;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -41,7 +40,12 @@ public class MainActivity extends BridgeActivity {
      *
      * Fix: restaurar el fondo de la ventana explicitamente DESPUES de super.onCreate() (que es
      * cuando Capacitor ya hizo su swap de tema) en vez de confiar en el tema declarado en el
-     * manifest. Se mantiene tambien el fix del WebView (color + force-dark off) como respaldo.
+     * manifest. Se mantiene tambien el fix del WebView (force-dark off) como respaldo.
+     *
+     * ACTUALIZACION 2026-08-11 (confirmado con 3 videos reales del arranque): arreglar SOLO la
+     * ventana no bastaba para mostrar el logo -- el WebView se adjunta casi de inmediato y pinta
+     * SU PROPIO fondo por encima, tapando la ventana durante todo el tiempo de carga. Ver el
+     * comentario junto a webView.setBackground() mas abajo.
      */
     private void fixWebViewBlankBackground() {
         // splash_bg (color solido) -> splash (imagen con logo/marca completa). Antes, mientras
@@ -51,7 +55,13 @@ public class MainActivity extends BridgeActivity {
         getWindow().setBackgroundDrawableResource(R.drawable.splash);
         if (getBridge() == null || getBridge().getWebView() == null) return;
         android.webkit.WebView webView = getBridge().getWebView();
-        webView.setBackgroundColor(Color.parseColor("#245BDB"));
+        // CAUSA REAL de que el logo nunca se viera (encontrado revisando un video real del
+        // arranque, 2026-08-11): el WebView se adjunta a la ventana casi de inmediato y pinta SU
+        // PROPIO fondo por encima de lo que sea que muestre la ventana -- por eso cambiar solo
+        // getWindow() de arriba no alcanzaba, seguia tapado por este color plano durante TODO el
+        // tiempo que tarda en cargar la pagina remota. setBackgroundColor() solo acepta un color
+        // solido; setBackground() con un Drawable si permite poner la imagen con el logo.
+        webView.setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.splash));
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
             WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
         }
