@@ -16884,6 +16884,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this._unsubscribeOffers();
     this.stopDriverTracking();
     this._stopTrackingAssignedDriver();
+    // El overlay de "marcar en el mapa" (tripPinDrop) y el aviso de
+    // "conductor cerca" solo se apagaban desde sus propios botones de salida
+    // (cancelPinDrop/el timeout de 6s) -- si el pasajero salía del flujo por
+    // CUALQUIER otro camino (viaje completado, oferta rechazada, etc.) el
+    // overlay se quedaba prendido para siempre y se veía superpuesto sobre
+    // las pantallas siguientes. Bug real reportado 2026-08-12 ("se ven
+    // pantallas sobrepuestas durante el flujo").
+    this.cancelPinDrop();
+    this._driverNearbyShown = false;
+    this.driverNearbyAlert.set(false);
     this.passengerMapFullscreen.set(false);
     this.currentTripStage.set(null);
     this._clearNavRoute();
@@ -18302,6 +18312,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   cancelTrip(reason?: string) {
     this._driverNearbyShown = false;
     this.driverNearbyAlert.set(false);
+    // Ver misma nota en _resetTrip() -- cancelar el viaje es otro camino de
+    // salida del flujo que antes dejaba el overlay de "marcar en el mapa"
+    // prendido si el pasajero estaba en medio de esa acción.
+    this.cancelPinDrop();
     this._stopWaiting();
     this._unsubscribeOffers();
     this.stopDriverTracking();
