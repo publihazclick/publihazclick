@@ -968,7 +968,14 @@ async function logFallbackInterpretation(
 // ─── Confirmar origen (reusado por el flujo clásico y el flujo inteligente) ───
 async function presentOriginConfirm(phone: string, addr: string, lat: number, lng: number, session: Record<string, unknown>): Promise<void> {
   const forName = travelerLabel(session);
-  const question = forName ? `📍 ¿Ahí está *${forName}*? (*${addr}*)` : `📍 ¿Estás en *${addr}*?`;
+  const base = forName ? `📍 ¿Ahí está *${forName}*? (*${addr}*)` : `📍 ¿Estás en *${addr}*?`;
+  // Botón limitado a 20 caracteres por WhatsApp (sendButtons trunca con
+  // .slice(0,20) -- ver incidente real documentado más abajo en "En otro
+  // lugar"), así que la explicación completa de qué hace "Editar" no cabe en
+  // el título del botón. Se explica en el cuerpo del mensaje en su lugar
+  // (2026-08-12, pedido del usuario): que sepa que si escribe su dirección
+  // completa a mano, esa es la que le llega tal cual al conductor.
+  const question = `${base}\n\n_¿No es exacta? Toca *Editar* y escribe tu dirección completa (calle, número, barrio) para que el conductor llegue justo a la puerta._`;
   // Guardar la sesión y enviar el mensaje son operaciones independientes (ninguna
   // necesita el resultado de la otra) -- en paralelo en vez de en serie ahorra
   // un round-trip completo, parte del mismo fix de lentitud de 2026-08-11.
@@ -979,7 +986,7 @@ async function presentOriginConfirm(phone: string, addr: string, lat: number, ln
     }),
     sendButtons(phone, question, [
       { id: 'origin_yes', title: '✅ Sí, confirmar' },
-      { id: 'origin_no', title: '✏️ Editar' },
+      { id: 'origin_no', title: '✏️ Editar (exacta)' },
     ]),
   ]);
 }
@@ -997,11 +1004,15 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
 
   const distText = distKm > 0 ? ` (${distKm.toFixed(1)} km)` : '';
   const forName = travelerLabel(session);
-  const question = isDeliveryService(session.service_type as string)
+  const base = isDeliveryService(session.service_type as string)
     ? `📍 ¿Ahí se debe entregar el paquete: *${addr}*?${distText}`
     : forName
       ? `📍 ¿${forName} va a *${addr}*?${distText}`
       : `📍 ¿Vas a *${addr}*?${distText}`;
+  // Misma nota que en presentOriginConfirm: el título del botón no tiene
+  // espacio (límite de 20 caracteres de WhatsApp) para explicar qué hace
+  // "Editar", así que va en el cuerpo del mensaje.
+  const question = `${base}\n\n_¿No es exacta? Toca *Editar* y escribe tu dirección completa (calle, número, barrio) para que el conductor llegue justo a la puerta._`;
 
   // Guardar sesión + enviar mensaje en paralelo -- ver misma nota en
   // presentOriginConfirm.
@@ -1015,7 +1026,7 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
       question,
       [
         { id: 'dest_yes', title: '✅ Sí, confirmar' },
-        { id: 'dest_no', title: '✏️ Editar' },
+        { id: 'dest_no', title: '✏️ Editar (exacta)' },
       ]
     ),
   ]);
@@ -1567,7 +1578,12 @@ async function handleConversation(
         await sendText(phone, `📍 Esa dirección no está en Colombia. Escribe una dirección válida en Colombia.`);
         return;
       }
-      lat = geo.lat; lng = geo.lng; addr = geo.address;
+      // Se muestra/guarda literal lo que el pasajero escribió, no el
+      // formatted_address de Google -- geo.lat/geo.lng (de ese mismo match)
+      // siguen usándose para el mapa/ruta, pero el texto que confirma el
+      // pasajero es exactamente el suyo (reportado 2026-08-12: la dirección
+      // devuelta salía "un poco diferente" a la escrita).
+      lat = geo.lat; lng = geo.lng; addr = text.trim();
     } else {
       await sendText(phone, `Por favor envía tu ubicación (📎 → Ubicación) o escribe la dirección completa.`);
       return;
@@ -1598,7 +1614,10 @@ async function handleConversation(
       if (pendingDest) {
         const geo = await forwardGeocode(pendingDest, session.origin_lat as number, session.origin_lng as number);
         if (geo && isInColombia(geo.lat, geo.lng)) {
-          await presentDestConfirm(phone, geo.address, geo.lat, geo.lng, session);
+          // pendingDest ya es literal lo que escribió/dijo el pasajero (la
+          // frase de destino extraída del mensaje original) -- mismo criterio
+          // que en awaiting_origin/awaiting_dest, no usar geo.address.
+          await presentDestConfirm(phone, pendingDest, geo.lat, geo.lng, session);
           return;
         }
         await upsertSession(phone, { pending_dest_text: null });
@@ -1654,7 +1673,9 @@ async function handleConversation(
     if (pendingDest) {
       const geo = await forwardGeocode(pendingDest, session.origin_lat as number, session.origin_lng as number);
       if (geo && isInColombia(geo.lat, geo.lng)) {
-        await presentDestConfirm(phone, geo.address, geo.lat, geo.lng, session);
+        // Igual que en el otro camino de arriba: literal lo que escribió el
+        // pasajero, no geo.address.
+        await presentDestConfirm(phone, pendingDest, geo.lat, geo.lng, session);
         return;
       }
       await upsertSession(phone, { pending_dest_text: null });
@@ -1688,7 +1709,9 @@ async function handleConversation(
         await sendText(phone, `No encontré esa dirección 🔍\n\nIntenta ser más específico o envía tu ubicación con el clip 📎.`);
         return;
       }
-      lat = geo.lat; lng = geo.lng; addr = geo.address;
+      // Mismo criterio que en awaiting_origin: literal lo escrito por el
+      // pasajero, no el formatted_address de Google.
+      lat = geo.lat; lng = geo.lng; addr = text.trim();
     } else {
       await sendText(phone, `Escribe la dirección de destino o envía la ubicación con el clip 📎.`);
       return;
