@@ -9366,6 +9366,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
     </div>
   }
 
+  <!-- ═══════════ OVERLAY "FINALIZANDO VIAJE" (pasajero) ═══════════
+       Mismo patrón y mismo motivo que el overlay equivalente del conductor arriba --
+       cubre TODO desde el instante en que el pasajero toca "Finalizar viaje" hasta
+       que el recibo está listo, para que la espera de red (completeTrip +
+       getTripDetails) no deje ver de fondo el mapa/banners del viaje que ya terminó. -->
+  @if (passengerFinishingTrip()) {
+    <div class="fixed inset-0 z-[9996] flex flex-col items-center justify-center gap-4"
+      style="background:#0f1421">
+      <span class="material-symbols-outlined animate-spin" style="font-size:48px;color:#10b981">autorenew</span>
+      <p class="text-white text-base font-bold">Finalizando viaje...</p>
+    </div>
+  }
+
   <!-- ═══════════ MODAL RECIBO DE VIAJE ═══════════ -->
   @if (tripReceiptModal() && tripReceiptData()) {
     <div class="fixed inset-0 z-[9995] flex items-end justify-center pb-0"
@@ -10146,6 +10159,12 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Overlay que cubre TODO mientras se finaliza el viaje, sin importar si había
   // pantalla completa activa o no -- ver finishDriverTrip().
   driverFinishingTrip    = signal(false);
+  // Mismo overlay que driverFinishingTrip pero para el pasajero -- ver finishTrip().
+  // Sin esto, la espera de red entre tocar "Finalizar viaje" y que aparezca el
+  // recibo dejaba ver de fondo lo que sea que estuviera dibujado en ese momento
+  // (mapa, banners de viaje en curso, etc.), la misma clase de "pantalla
+  // superpuesta" ya corregida antes del lado del conductor.
+  passengerFinishingTrip = signal(false);
 
   // ── inDrive parity features ───────────────────────────────────
   // 1. ETA en vivo mientras conductor se acerca
@@ -13102,12 +13121,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const tripId = this.currentTripRequestId();
     const offer  = this.tripAccepted();
     if (!tripId || !offer) { this._resetTrip(); return; }
+    // Mismo overlay y mismo motivo que finishDriverTrip(): cubre TODO durante la
+    // espera de red para que no se vea el mapa/banners del viaje ya terminado de
+    // fondo. Se quita recién cuando el recibo está listo para mostrarse.
+    this.passengerFinishingTrip.set(true);
+    this.cdr.markForCheck();
     this.passengerMapFullscreen.set(false);
     this._clearNavRoute();
     this._clearArrivalTimer();
     try {
       await this._withTimeout(this.agService.completeTrip(tripId));
     } catch (e: any) {
+      this.passengerFinishingTrip.set(false);
       alert(e?.message ?? 'Error al finalizar el viaje. Intenta de nuevo.');
       return;
     }
@@ -13143,7 +13168,9 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     // Resetear el viaje (ratingTripId/ratingTarget quedan preservados)
     this._resetTrip();
 
-    // Mostrar recibo con datos cargados
+    // Mostrar recibo con datos cargados -- recién acá se quita el overlay, en el
+    // mismo ciclo en que aparece el recibo, nunca antes (igual que finishDriverTrip).
+    this.passengerFinishingTrip.set(false);
     this.tripReceiptData.set(receipt);
     this.tripReceiptModal.set(true);
     this.cdr.markForCheck();
