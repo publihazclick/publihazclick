@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pedido explícito del usuario 2026-08-12: que el splash flote desde el instante mismo en que se
+  toca el ícono, sin esperar a que cargue nada por red. Esto corre 100% nativo, sin depender del
+  WebView ni de Angular. 8 cuadros generados a partir de splash.png (mismo diseño, mismo
+  desplazamiento tipo onda que @keyframes moviFloat en la versión web) para que la transición al
+  splash animado real (una vez carga la página) sea continua, sin salto visible.
+
+  A propósito NO se tocó @drawable/splash (la imagen estática ya probada) ni el
+  android:windowBackground del tema. Esta animación solo se usa en el único lugar donde es
+  seguro experimentar: el fondo del WebView en MainActivity.java. Si por cualquier motivo esta
+  animación no arrancara, el peor caso es que se vea el primer cuadro quieto, exactamente igual
+  a como se ve hoy, nunca peor.
+-->
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android" android:oneshot="false">
+    <item android:drawable="@drawable/splash_float_00" android:duration="233"/>
+    <item android:drawable="@drawable/splash_float_01" android:duration="233"/>
+    <item android:drawable="@drawable/splash_float_02" android:duration="233"/>
+    <item android:drawable="@drawable/splash_float_03" android:duration="233"/>
+    <item android:drawable="@drawable/splash_float_04" android:duration="233"/>
+    <item android:drawable="@drawable/splash_float_05" android:duration="233"/>
+    <item android:drawable="@drawable/splash_float_06" android:duration="233"/>
+    <item android:drawable="@drawable/splash_float_07" android:duration="233"/>
+</animation-list>

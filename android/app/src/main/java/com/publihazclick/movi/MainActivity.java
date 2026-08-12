@@ -61,7 +61,21 @@ public class MainActivity extends BridgeActivity {
         // getWindow() de arriba no alcanzaba, seguia tapado por este color plano durante TODO el
         // tiempo que tarda en cargar la pagina remota. setBackgroundColor() solo acepta un color
         // solido; setBackground() con un Drawable si permite poner la imagen con el logo.
-        webView.setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.splash));
+        // Pedido explicito del usuario 2026-08-12: que el logo flote desde el instante mismo en
+        // que se toca el icono, sin esperar a que cargue nada por red. splash_float_anim es un
+        // AnimationDrawable de 8 cuadros (mismo diseño de "splash", generado a partir de el) que
+        // no depende del WebView ni de Angular para animarse -- corre 100% nativo. A proposito
+        // NO se toco getWindow() arriba (sigue usando la imagen estatica ya probada) ni ningun
+        // otro archivo de esta sesion -- si por cualquier motivo esta animacion no arrancara
+        // (ver mAnimStart abajo), el peor caso es que se vea el primer cuadro quieto, exactamente
+        // igual a como se ve hoy. Nunca puede verse peor que antes de este cambio.
+        android.graphics.drawable.Drawable splashFloatDrawable =
+            androidx.core.content.ContextCompat.getDrawable(this, R.drawable.splash_float_anim);
+        webView.setBackground(splashFloatDrawable);
+        if (splashFloatDrawable instanceof android.graphics.drawable.AnimationDrawable) {
+            final android.graphics.drawable.AnimationDrawable anim = (android.graphics.drawable.AnimationDrawable) splashFloatDrawable;
+            webView.post(anim::start);
+        }
 
         // Bug real reportado 2026-08-12: un usuario quedó viendo el splash 10 MINUTOS -- muy por
         // encima del techo de 12s que ya existe en el código web (anda-gana.component.ts). Eso
