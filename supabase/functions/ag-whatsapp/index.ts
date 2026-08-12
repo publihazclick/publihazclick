@@ -1177,7 +1177,7 @@ function isSos(t: string): boolean {
   return /^(sos|s\.o\.s\.?|ayuda|emergencia|auxilio|help)$/i.test(t.trim());
 }
 // Comando global para pedir un vehículo nuevo mientras otro ya va en curso --
-// reconocido tanto del botón "🚗 Otro vehículo" (ver evento trip_started en
+// reconocido tanto del botón "🚗🏍️ Otro vehículo" (ver evento trip_started en
 // handleInternalEvent) como si el pasajero lo escribe a mano. Pedido
 // explícito del usuario 2026-08-12.
 function isNewOrderRequest(t: string): boolean {
@@ -2596,7 +2596,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // escribe a mano en vez de tocar el botón), sin importar en qué estado
     // quede la conversación después de este aviso. Pedido explícito del
     // usuario 2026-08-12.
-    await sendButtons(phone, body, [{ id: 'new_order', title: '🚗 Otro vehículo' }]);
+    await sendButtons(phone, body, [{ id: 'new_order', title: '🚗🏍️ Otro vehículo' }]);
   }
 
   // Puente de chat: el conductor escribió desde el chat de la app en un
