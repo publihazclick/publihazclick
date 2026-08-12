@@ -30,6 +30,12 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: true,
     webContentsDebuggingEnabled: false,
+    // NUNCA agregar "captureInput: true" aqui. Reemplaza el InputConnection real
+    // de Chromium por uno generico de Android View: rompe backspace (quedaba trabado,
+    // a veces corrompia el texto) y mata por completo el Autofill nativo, sin importar
+    // los atributos "autocomplete" del HTML. Confirmado leyendo CapacitorWebView.java
+    // (@capacitor/android) y verificado en produccion 2026-08-12 -- el registro de
+    // conductor era casi imposible de editar hasta que se quito este flag.
   },
 };
 
