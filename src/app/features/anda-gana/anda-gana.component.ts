@@ -9953,6 +9953,18 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   splashSize = signal(10);
   driverStep = signal<number>(1);
 
+  // Pedido explicito del usuario 2026-08-12: le avisa al splash estatico persistente de
+  // index.html (fuera de <app-root>, nunca se destruye/reinicia) que ya hay una pantalla real
+  // que mostrar, para que se oculte UNA sola vez sin parpadeos. Un effect (no un call site
+  // puntual) para que capture automáticamente la primera transición sin importar desde dónde se
+  // dispare -- no depende de acordarse de tocar cada lugar donde se llama screen.set(...).
+  private readonly _notifyStaticSplash = effect(() => {
+    const s = this.screen();
+    if (s !== 'splash' && s !== 'loading' && isPlatformBrowser(this.platformId)) {
+      (window as any).__moviInterfaceReady = true;
+    }
+  });
+
   // Perfil actual
   agProfile             = signal<AgUser | null>(null);
   driverData            = signal<any>(null);
