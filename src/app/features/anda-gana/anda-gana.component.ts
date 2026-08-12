@@ -8070,10 +8070,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             <div style="display:flex;flex-direction:column;gap:5px">
               <label style="color:#374151;font-size:11px;font-weight:700;letter-spacing:0.08em">Nombre</label>
               <input
-                [(ngModel)]="qrNameDisplay"
-                (ngModelChange)="qrName.set($event)"
+                #qrNameRef
+                [value]="qrName()"
+                (blur)="qrName.set(qrNameRef.value)"
                 name="qrName"
-                type="text" autocomplete="given-name" placeholder="Tu nombre"
+                type="text" autocomplete="name" autocapitalize="words" placeholder="Tu nombre"
                 class="qr-input"
                 style="background:#F9FAFB;border-style:solid;border-radius:14px;padding:14px 16px;color:#111827;font-size:16px;font-weight:600;width:100%;box-sizing:border-box"
               />
@@ -8087,10 +8088,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   +57
                 </div>
                 <input
-                  [(ngModel)]="qrPhoneDisplay"
-                  (ngModelChange)="qrPhone.set($event.replace(/\D/g,'').slice(0,10))"
+                  #qrPhoneRef
+                  [value]="qrPhone()"
+                  (blur)="qrPhone.set(qrPhoneRef.value.replace(/\D/g,'').slice(0,10))"
                   name="qrPhone"
-                  type="tel" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
+                  type="tel" autocomplete="tel-national" inputmode="numeric" maxlength="10" placeholder="300 123 4567"
                   class="qr-input"
                   style="flex:1;background:#F9FAFB;border-style:solid;border-radius:12px;padding:11px 14px;color:#111827;font-size:16px;font-weight:700;letter-spacing:0.03em;box-sizing:border-box"
                 />
@@ -8105,7 +8107,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           </div>
 
           <!-- CTA -->
-          <button (click)="qrSendOtp()" [disabled]="qrOtpSending() || qrPhone().length !== 10"
+          <button (click)="qrSendOtp()" [disabled]="qrOtpSending()"
             style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);color:#fff;font-family:'Inter-Semibold',sans-serif;font-size:16px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
             [style.opacity]="qrOtpSending() || qrPhone().length !== 10 ? '0.9' : '1'">
             @if (qrOtpSending()) {
@@ -8164,10 +8166,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:5px">
             <label style="color:#6B7280;font-size:13px;font-weight:500;text-align:center">Código de verificación</label>
             <input
-              [(ngModel)]="qrOtpCodeDisplay"
-              (ngModelChange)="qrOtpCode.set($event.replace(/\D/g,'').slice(0,6))"
+              #qrOtpRef
+              [value]="qrOtpCode()"
+              (blur)="qrOtpCode.set(qrOtpRef.value.replace(/\D/g,'').slice(0,6))"
               name="qrOtpCode"
-              type="tel" inputmode="numeric" maxlength="6"
+              type="tel" autocomplete="one-time-code" inputmode="numeric" maxlength="6"
               placeholder="_ _ _ _ _ _"
               [disabled]="qrOtpVerifying()"
               class="qr-input"
@@ -8182,7 +8185,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           }
 
           <!-- Confirmar -->
-          <button (click)="qrVerifyOtp()" [disabled]="qrOtpVerifying() || qrOtpCode().length < 6"
+          <button (click)="qrVerifyOtp()" [disabled]="qrOtpVerifying()"
             style="width:100%;padding:16px;border-radius:16px;background:linear-gradient(135deg,#245BDB,#3B82F6);color:#fff;font-weight:600;font-size:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center"
             [style.opacity]="qrOtpVerifying() || qrOtpCode().length < 6 ? '0.9' : '1'">
             @if (qrOtpVerifying()) {
@@ -8301,19 +8304,23 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           <div style="display:flex;flex-direction:column;gap:10px">
             <p style="color:#374151;font-size:13px;font-weight:700;margin:0">Datos del vehículo</p>
             <div style="display:flex;flex-direction:column;gap:8px">
-              <input [(ngModel)]="qrVehicleBrandVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleBrand.set($event)"
+              <input #qrBrandRef [value]="qrVehicleBrand()" (blur)="qrVehicleBrand.set(qrBrandRef.value)"
+                name="vehicleBrand" autocomplete="on"
                 placeholder="Marca (ej: Yamaha, Toyota)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
                 [style.borderColor]="qrVehicleBrand() ? '#245BDB' : '#D1D5DB'" />
-              <input [(ngModel)]="qrVehicleColorVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleColor.set($event)"
+              <input #qrColorRef [value]="qrVehicleColor()" (blur)="qrVehicleColor.set(qrColorRef.value)"
+                name="vehicleColor" autocomplete="on"
                 placeholder="Color (ej: Rojo, Negro)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
                 [style.borderColor]="qrVehicleColor() ? '#245BDB' : '#D1D5DB'" />
-              <input [(ngModel)]="qrVehiclePlateVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehiclePlate.set($event.toUpperCase())"
+              <input #qrPlateRef [value]="qrVehiclePlate()" (blur)="qrVehiclePlate.set(qrPlateRef.value.toUpperCase())"
+                name="vehiclePlate" autocomplete="on"
                 placeholder="Placa (ej: ABC123)"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box;text-transform:uppercase"
                 [style.borderColor]="qrVehiclePlate() ? '#245BDB' : '#D1D5DB'" />
-              <input [(ngModel)]="qrVehicleYearVal" [ngModelOptions]="{updateOn: 'blur'}" (ngModelChange)="qrVehicleYear.set($event)"
+              <input #qrYearRef [value]="qrVehicleYear()" (blur)="qrVehicleYear.set(qrYearRef.value)"
+                name="vehicleYear" autocomplete="on"
                 placeholder="Año (ej: 2020)" type="number" min="1970"
                 style="width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #D1D5DB;background:#F9FAFB;color:#111827;font-size:14px;outline:none;box-sizing:border-box"
                 [style.borderColor]="qrVehicleYear() ? '#245BDB' : '#D1D5DB'" />
@@ -18557,19 +18564,12 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   qrVehicleColor      = signal('');
   qrVehiclePlate      = signal('');
   qrVehicleYear       = signal('');
-  qrVehicleBrandVal   = '';
-  qrVehicleColorVal   = '';
-  qrVehiclePlateVal   = '';
-  qrVehicleYearVal    = '';
   qrStep              = signal<1 | 2 | 3>(1);
   qrName              = signal('');
   qrPhone             = signal('');
   qrOtpCode           = signal('');
-  // display vars for [(ngModel)] — avoids cursor-jump caused by [value] re-evaluation on signal CD
+  // display var for [(ngModel)] — avoids cursor-jump caused by [value] re-evaluation on signal CD
   otpCodeDisplay   = '';
-  qrNameDisplay    = '';
-  qrPhoneDisplay   = '';
-  qrOtpCodeDisplay = '';
   qrOtpError          = signal('');
   qrOtpSending        = signal(false);
   qrOtpVerifying      = signal(false);
@@ -20636,9 +20636,6 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrName.set('');
     this.qrPhone.set('');
     this.qrOtpCode.set('');
-    this.qrNameDisplay    = '';
-    this.qrPhoneDisplay   = '';
-    this.qrOtpCodeDisplay = '';
     this.qrOtpError.set('');
     this.qrError.set('');
     this.qrOriginQuery.set('');
@@ -20665,7 +20662,6 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this.qrOtpSending.set(false);
     if (result.ok) {
       this.qrOtpCode.set('');
-      this.qrOtpCodeDisplay = '';
       this.qrOtpError.set('');
       this.qrStep.set(2);
       this._startQrCountdown();
@@ -20692,7 +20688,6 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
   async qrResendOtp() {
     this.phoneAuth.reset();
     this.qrOtpCode.set('');
-    this.qrOtpCodeDisplay = '';
     this.qrOtpError.set('');
     setTimeout(() => this.phoneAuth.setupRecaptcha('qr-recaptcha-container'), 100);
     await this.qrSendOtp();
