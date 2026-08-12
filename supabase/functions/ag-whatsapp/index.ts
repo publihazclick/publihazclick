@@ -368,8 +368,26 @@ async function forwardGeocode(text: string, biasLat?: number, biasLng?: number):
       const r = await fetchWithTimeout(url);
       const j = await r.json();
       if (j.status === 'OK' && j.results?.length) {
-        const item = j.results[0];
-        const loc = item.geometry?.location;
+        // El "location+radius" de arriba es solo un sesgo blando -- Google
+        // igual puede devolver primero un lugar homónimo lejano ("La Ermita"
+        // existe en varias ciudades) si le parece más relevante/famoso. Se
+        // filtra duro por distancia real al origen: Movi son viajes
+        // intraurbanos, así que un resultado a cientos de km NUNCA es el
+        // destino correcto aunque el nombre coincida (bug real reportado
+        // 2026-08-12: pasajero en su ciudad, destino "la ermita" cayó a
+        // 665km en Cali/San Pedro). Si ninguno cae cerca, se descarta la
+        // lista completa (no se usa el más lejano) y se sigue probando con
+        // Nominatim más abajo.
+        const MAX_BIAS_KM = 60;
+        const candidates = (biasLat != null && biasLng != null)
+          ? j.results.filter((it: any) => {
+              const loc = it.geometry?.location;
+              return loc?.lat != null && loc?.lng != null &&
+                haversineKm(biasLat, biasLng, loc.lat, loc.lng) <= MAX_BIAS_KM;
+            })
+          : j.results;
+        const item = candidates[0];
+        const loc = item?.geometry?.location;
         if (loc?.lat != null && loc?.lng != null) {
           return {
             lat: loc.lat,
@@ -388,17 +406,27 @@ async function forwardGeocode(text: string, biasLat?: number, biasLng?: number):
   try {
     const q = encodeURIComponent(text + ', Colombia');
     const r = await fetchWithTimeout(
-      `https://nominatim.openstreetmap.org/search?q=${q}&format=json&countrycodes=co&limit=1`,
+      `https://nominatim.openstreetmap.org/search?q=${q}&format=json&countrycodes=co&limit=5`,
       { headers: { 'User-Agent': 'Movi-App/1.0 (movi@publihazclick.com)' } }
     );
     const results = await r.json();
     if (results?.length) {
-      const item = results[0];
-      return {
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-        address: item.display_name.split(',').slice(0, 3).join(',').trim(),
-      };
+      // Mismo filtro duro de cercanía que arriba, por la misma razón --
+      // Nominatim es el último respaldo y puede repetir el mismo error de
+      // devolver un homónimo en otra ciudad.
+      const MAX_BIAS_KM = 60;
+      const candidates = (biasLat != null && biasLng != null)
+        ? results.filter((it: any) =>
+            haversineKm(biasLat, biasLng, parseFloat(it.lat), parseFloat(it.lon)) <= MAX_BIAS_KM)
+        : results;
+      const item = candidates[0];
+      if (item) {
+        return {
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+          address: item.display_name.split(',').slice(0, 3).join(',').trim(),
+        };
+      }
     }
   } catch (e) { console.error('[Geo] Nominatim fallback error:', e); }
   return null;
