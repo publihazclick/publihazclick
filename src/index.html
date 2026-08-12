@@ -132,6 +132,16 @@
       background: #245BDB;
       background: linear-gradient(160deg, #245BDB 0%, #1D3FAE 50%, #2563EB 100%);
     }
+    /* Pedido explicito del usuario 2026-08-11: que el logo flote apenas aparece, para que la
+       espera se sienta "viva" y no como una app congelada. MISMOS valores que .movi-logo-wrap/
+       @keyframes moviFloat en anda-gana.component.ts (2.8s, -18px) a propósito -- es la misma
+       animación en loop continuo, sin punto de inicio marcado, así que cuando Angular toma el
+       control del mismo elemento no se nota ningún salto ni reinicio. */
+    .movi-static-splash svg { animation: moviFloat 2.8s ease-in-out infinite; }
+    @keyframes moviFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-18px); }
+    }
   </style>
 </head>
 <body>
