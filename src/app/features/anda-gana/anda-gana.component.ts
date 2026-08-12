@@ -11091,6 +11091,15 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // ── Lifecycle ────────────────────────────────���─────────────────
   async ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
+      // Red de seguridad final (2026-08-12): si por CUALQUIER motivo -- incluso uno que no se
+      // haya identificado todavía -- el arranque no logra sacar la pantalla de 'splash' en un
+      // tiempo razonable, forzarla a 'home' en vez de dejar al usuario congelado en el logo para
+      // siempre. No reemplaza los fixes puntuales (timeout en currentUserId/tryReAuth), es un
+      // respaldo adicional por si aparece otro camino de bloqueo en el futuro.
+      setTimeout(() => {
+        if (this.screen() === 'splash') this.screen.set('home');
+      }, 12000);
+
       SplashScreen.hide({ fadeOutDuration: 0 }).catch(() => {});
       // Puente para MainActivity.java (handleTripRequestIntent): con la app YA corriendo (warm),
       // el nativo llama esto via evaluateJavascript en vez de recargar el WebView entero -- pedido
@@ -11176,13 +11185,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       ? new Promise<void>(r => setTimeout(r, 500))
       : Promise.resolve();
 
+    // Bug real encontrado 2026-08-12 (usuario reportó que la app se quedaba en el splash para
+    // siempre, confirmado esperando >15s): esta cadena nunca tenía un .catch() -- si
+    // getMyAgProfile()/tryReAuth() fallaba o (antes del fix en currentUserId) se colgaba sin
+    // resolver ni rechazar, el Promise.all de abajo quedaba esperando para siempre y
+    // this.screen.set(...) nunca se llegaba a ejecutar, dejando al usuario congelado en el logo.
+    // Con esto, cualquier falla cae a null -> más abajo eso ya manda a 'home' como fallback.
     const _profilePromise = this.agService.getMyAgProfile().then(async p => {
       if (!p) {
         const reauth = await this.phoneAuth.tryReAuth();
         return reauth?.profile ?? null;
       }
       return p;
-    });
+    }).catch(() => null);
 
     const [profile] = await Promise.all([_profilePromise, _splashTimer]);
 

@@ -159,7 +159,12 @@ export class AndaGanaService {
 
   // ── Auth ──────────────────────────────────────────────────────
   private async currentUserId(): Promise<string | null> {
-    const { data } = await this.supabase.auth.getSession();
+    // Bug real encontrado 2026-08-12 (app que nunca salía de la pantalla de carga, confirmado
+    // por el usuario que esperó mas de 15s): getSession() puede quedarse colgado sin resolver
+    // NI rechazar bajo ciertas condiciones (token de sesión corrupto/expirado, lock interno del
+    // SDK) -- sin timeout, ngOnInit espera este await para siempre y screen() nunca sale de
+    // 'splash'. _withTimeout ya existía para otros usos pero no estaba aplicado aquí.
+    const { data } = await this._withTimeout(this.supabase.auth.getSession(), 8000);
     return data.session?.user?.id ?? null;
   }
 

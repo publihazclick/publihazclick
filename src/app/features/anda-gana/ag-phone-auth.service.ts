@@ -96,9 +96,14 @@ export class AgPhoneAuthService {
 
     try {
       const sb = getMoviClient();
-      const { data, error } = await sb.functions.invoke('ag-reauth', {
-        body: { phone },
-      });
+      // Timeout defensivo (mismo bug del 2026-08-12 que currentUserId() en anda-gana.service.ts):
+      // functions.invoke() no tiene límite de tiempo propio -- si se queda colgado, esta llamada
+      // nunca resuelve ni rechaza, y como tryReAuth() se llama desde ngOnInit antes de decidir
+      // qué pantalla mostrar, dejaba al usuario congelado en el splash para siempre.
+      const { data, error } = await Promise.race([
+        sb.functions.invoke('ag-reauth', { body: { phone } }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+      ]);
 
       if (error || !data?.ok) return null;
       if (!data.access_token || !data.refresh_token) return null;
