@@ -73,8 +73,16 @@ public class MainActivity extends BridgeActivity {
         // LOAD_NO_CACHE de forma explícita para esta app: como server.url siempre apunta a la
         // página remota en vivo (nunca a archivos locales), no hay ninguna razón para cachear
         // nada -- cada carga debe traer el código más reciente, sin excepciones.
+        //
+        // CORRECCION 2026-08-12 (mismo día): el clearCache(true) que había acá causaba un bug
+        // nuevo -- el usuario reportó el splash apareciendo, luego una pantalla azul en blanco,
+        // luego el splash otra vez, en vez de pasar directo a la interfaz. clearCache() borra
+        // archivos en disco de forma síncrona; llamado justo aquí, puede interrumpir/reiniciar la
+        // carga de la página que Capacitor ya arrancó dentro de super.onCreate(), causando ese
+        // efecto de "recarga a medias". setCacheMode(LOAD_NO_CACHE) por sí solo ya alcanza para
+        // evitar que se sirvan copias viejas del código -- no hace falta además borrar el caché
+        // existente de forma disruptiva en medio del arranque.
         webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
-        webView.clearCache(true);
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
             WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
         }
