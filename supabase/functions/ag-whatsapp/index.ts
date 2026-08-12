@@ -69,6 +69,18 @@ function travelerLabel(session: Record<string, unknown>): string | null {
   if (session.is_for_self === false && session.traveler_name) return session.traveler_name as string;
   return null;
 }
+// Misma idea que travelerLabel() pero a partir de ag_trip_requests.for_other
+// (jsonb {name, phone, requested_by_phone}, ver createWaTrip) en vez de la
+// sesión -- para los avisos de un viaje que ya no es "el actual" de la
+// conversación (puede haber otro pedido en curso al mismo tiempo, ver
+// handleInternalEvent), la sesión ya no es una fuente confiable de a quién
+// pertenece ese viaje.
+function travelerLabelFromForOther(forOther: unknown): string | null {
+  if (forOther && typeof forOther === 'object' && (forOther as Record<string, unknown>).name) {
+    return (forOther as Record<string, unknown>).name as string;
+  }
+  return null;
+}
 function svcCopy(svc: string | null | undefined) {
   const delivery = isDeliveryService(svc);
   return {
@@ -1164,6 +1176,16 @@ function isGreeting(t: string): boolean {
 function isSos(t: string): boolean {
   return /^(sos|s\.o\.s\.?|ayuda|emergencia|auxilio|help)$/i.test(t.trim());
 }
+// Comando global para pedir un vehículo nuevo mientras otro ya va en curso --
+// reconocido tanto del botón "🚗 Otro vehículo" (ver evento trip_started en
+// handleInternalEvent) como si el pasajero lo escribe a mano. Pedido
+// explícito del usuario 2026-08-12.
+function isNewOrderRequest(t: string): boolean {
+  const n = t.trim().toLowerCase();
+  return n.includes('otro vehiculo') || n.includes('otro vehículo') ||
+    n.includes('otro carro') || n.includes('otra moto') ||
+    n.includes('nuevo pedido') || n.includes('nuevo viaje') || n.includes('pedir otro');
+}
 
 // ─── Disparar alerta SOS para un usuario de WhatsApp ──────────────────────────
 // ag-sos-trigger (el mecanismo normal de la app) exige un JWT real de Supabase
@@ -1329,10 +1351,46 @@ async function handleConversation(
 
     await resetSession(phone);
     const driverName = session.driver_name as string | null;
-    await presentServiceMenu(phone, assignedDriverId
+    await presentIdleOrPendingRating(phone, () => presentServiceMenu(phone, assignedDriverId
       ? `Solicitud cancelada ❌\n\nLe avisamos a tu ${copy.driverNoun}${driverName ? ` (*${driverName}*)` : ''} que ya no necesitas el servicio.\n\n¿En qué más te ayudo?`
-      : `Solicitud cancelada. ¿En qué te ayudo ahora?`);
+      : `Solicitud cancelada. ¿En qué te ayudo ahora?`));
     return;
+  }
+
+  // Pedir un vehículo nuevo mientras el actual ya va en curso -- solo se
+  // permite cuando el viaje de la conversación activa YA NO necesita más
+  // respuestas del pasajero para seguir: ya está en camino al destino
+  // (in_trip con driver_stage on_route o más adelante -- la persona ya está
+  // a bordo) o ya terminó del todo (awaiting_rating). En cualquier otro
+  // estado (armando/confirmando ESTE pedido: eligiendo servicio, dirección,
+  // esperando ofertas, etc.) se sigue bloqueando igual que siempre -- ahí sí
+  // hace falta la respuesta del pasajero para poder continuar, y arrancar
+  // un pedido paralelo sería confuso. Pedido explícito del usuario
+  // 2026-08-12: "que pueda pedir otro vehículo apenas la otra persona esté
+  // a bordo".
+  if (isNewOrderRequest(text) && state !== 'idle') {
+    let allowed = state === 'awaiting_rating';
+    if (!allowed && state === 'in_trip' && session.trip_request_id) {
+      const { data: currentTrip } = await db()
+        .from('ag_trip_requests')
+        .select('driver_stage')
+        .eq('id', session.trip_request_id as string)
+        .maybeSingle();
+      allowed = !!currentTrip?.driver_stage &&
+        ['on_route', 'arrived_at_destination', 'completed'].includes(currentTrip.driver_stage as string);
+    }
+    if (allowed) {
+      // El viaje que queda en la sesión sigue vivo solo como filas de
+      // ag_trip_requests/ag_trip_offers -- sus avisos futuros (llegada al
+      // destino, ubicación en vivo, completado) ya no dependen de esta
+      // sesión (ver handleInternalEvent, ahora usa el payload de cada
+      // evento en vez de la sesión compartida), y "cancelar" nunca podrá
+      // tocarlo porque trip_request_id deja de apuntarle desde ya.
+      await resetSession(phone);
+      await presentServiceMenu(phone, `¡Claro! 🚗 ¿Qué necesitas ahora?`);
+      return;
+    }
+    // Todavía no se puede -- sigue al mensaje normal de "sigo aquí" de abajo.
   }
 
   // Saludo/reinicio a mitad de un pedido ya en curso -- ya NO cancela nada
@@ -2263,12 +2321,14 @@ async function handleConversation(
   if (state === 'awaiting_rating') {
     if (/^(omitir|saltar|no|skip)$/i.test(text)) {
       await resetSession(phone);
-      await sendText(phone,
-        `Sin problema 👍\n\n` +
-        `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
-        `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
-      );
-      await maybeOfferAppDownload(phone);
+      await presentIdleOrPendingRating(phone, async () => {
+        await sendText(phone,
+          `Sin problema 👍\n\n` +
+          `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
+          `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
+        );
+        await maybeOfferAppDownload(phone);
+      });
       return;
     }
 
@@ -2303,18 +2363,91 @@ async function handleConversation(
     }
 
     await resetSession(phone);
-    await sendText(phone,
-      `¡Gracias por calificar al conductor! ${'⭐'.repeat(stars)}\n\n` +
-      `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
-      `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
-    );
-    await maybeOfferAppDownload(phone);
+    await presentIdleOrPendingRating(phone, async () => {
+      await sendText(phone,
+        `¡Gracias por calificar al conductor! ${'⭐'.repeat(stars)}\n\n` +
+        `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
+        `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
+      );
+      await maybeOfferAppDownload(phone);
+    });
     return;
   }
 
   // ── ESTADO DESCONOCIDO → reset ───────────────────────────────────────────────
   await resetSession(phone);
-  await presentServiceMenu(phone, `Uy, no logré entender eso 🤔 ¿en qué te ayudo?`);
+  await presentIdleOrPendingRating(phone, () => presentServiceMenu(phone, `Uy, no logré entender eso 🤔 ¿en qué te ayudo?`));
+}
+
+// ─── Pedir la calificación del conductor (reusado por trip_completed y por
+// el drenado de ag_wa_pending_ratings cuando la conversación vuelve a estar
+// libre) ────────────────────────────────────────────────────────────────────
+async function presentRatingRequest(phone: string, r: {
+  tripId: string; driverName: string; amount: number; tipAmount: number;
+  distanceKm: number; delivery: boolean; forName: string | null;
+}): Promise<void> {
+  const cop = (n: number) => `$${Number(n).toLocaleString('es-CO')}`;
+  const receiptLines = [
+    r.distanceKm > 0 ? `📏 ${r.distanceKm.toFixed(1)} km recorridos` : null,
+    r.tipAmount > 0  ? `🙌 Propina: ${cop(r.tipAmount)}` : null,
+  ].filter(Boolean).join('\n');
+
+  await upsertSession(phone, { state: 'awaiting_rating', trip_request_id: r.tripId });
+
+  // Mismo criterio que ya existía: plantilla aprobada "viaje_completado"
+  // salvo cuando el viaje es para otra persona (la plantilla es texto fijo
+  // de Meta, no se le puede meter el nombre de otra persona -- ver bug real
+  // 2026-08-11 documentado en la versión anterior de este bloque).
+  let waResult = r.forName
+    ? { ok: false }
+    : await sendTemplate(phone, 'viaje_completado', 'es_CO', [
+        r.distanceKm.toFixed(1), cop(r.amount), r.driverName,
+      ]);
+  if (!waResult.ok) {
+    await sendText(phone,
+      (r.delivery
+        ? `🏁 Tu paquete fue entregado 💚\n\n`
+        : r.forName
+          ? `🏁 *${r.forName}* llegó — gracias por viajar con Movi 💚\n\n`
+          : `🏁 Llegaste — gracias por viajar con Movi 💚\n\n`) +
+      (receiptLines ? `${receiptLines}\n` : '') +
+      `💰 *Total: ${cop(r.amount)}*\n\n` +
+      (r.forName
+        ? `⭐ ¿Cómo le fue a *${r.forName}* con *${r.driverName}*? Responde del *1* al *5*.\n`
+        : `⭐ ¿Cómo te fue con *${r.driverName}*? Responde del *1* al *5*.\n`) +
+      `_(o escribe *omitir* para saltar)_`
+    );
+  }
+}
+
+// Revisa si hay una calificación pendiente encolada (ver evento trip_completed
+// más abajo) antes de mostrar el menú de idle -- si hay, se prioriza pedirla
+// (mismo criterio que ya existía cuando solo había un viaje posible: se
+// calificaba antes de poder pedir algo nuevo). Se usa en los puntos donde la
+// conversación vuelve a quedar libre de verdad (cancelar, calificación ya
+// respondida/omitida, estado desconocido) -- NO en el disparador de "pedir
+// otro vehículo", que a propósito va directo al menú sin esperar por esto.
+async function presentIdleOrPendingRating(phone: string, idleAction: () => Promise<void>): Promise<void> {
+  const { data: pending } = await db()
+    .from('ag_wa_pending_ratings')
+    .select('*')
+    .eq('wa_phone', phone)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!pending) { await idleAction(); return; }
+
+  await db().from('ag_wa_pending_ratings').delete().eq('id', pending.id as string);
+  await presentRatingRequest(phone, {
+    tripId:     pending.trip_request_id as string,
+    driverName: pending.driver_name as string ?? 'tu conductor',
+    amount:     pending.amount as number ?? 0,
+    tipAmount:  pending.tip_amount as number ?? 0,
+    distanceKm: pending.distance_km as number ?? 0,
+    delivery:   pending.is_delivery as boolean ?? false,
+    forName:    pending.for_name as string | null,
+  });
 }
 
 // ─── Manejar eventos internos (DB triggers) ───────────────────────────────────
@@ -2326,7 +2459,11 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
 
   if (event === 'offer_received') {
     const session = await getSession(phone);
-    if (!session || session.state !== 'matching') return;
+    // El trip_request_id del payload tiene que ser el mismo que la
+    // conversación activa está esperando -- con más de un viaje en curso
+    // por teléfono, "matching" ya no alcanza solo por sí (podría ser el
+    // estado de una segunda conversación distinta a la de esta oferta).
+    if (!session || session.state !== 'matching' || session.trip_request_id !== payload.trip_request_id) return;
 
     // Misma tarjeta (foto + botones) que usa el chequeo oportunista en
     // fetchNextPendingOffer/presentOffer -- una sola forma de mostrar una
@@ -2342,25 +2479,25 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
       driver_photo:   payload.driver_photo as string ?? '',
       driver_rating:  payload.driver_rating as number ?? 0,
       driver_trips:   payload.driver_trips as number ?? 0,
-      service_type:   session.service_type,
-      for_name:       travelerLabel(session),
+      service_type:   payload.service_type as string,
+      for_name:       travelerLabelFromForOther(payload.for_other),
     });
   }
 
   if (event === 'driver_arrived') {
-    const session     = await getSession(phone);
-    const delivery    = isDeliveryService(session?.service_type as string | undefined);
+    const delivery    = isDeliveryService(payload.service_type as string | undefined);
     const driverName  = payload.driver_name as string ?? (delivery ? 'Tu mensajero' : 'Tu conductor');
     const lat = payload.origin_lat as number | null;
     const lng = payload.origin_lng as number | null;
-    // Marca/modelo/color + placa -- ya quedaron guardados en la sesión desde
-    // que se presentó/aceptó la oferta (presentOffer), no hace falta pedirlos
-    // de nuevo. Para que el pasajero pueda reconocer el vehículo en la calle
-    // cuando el conductor llega, no solo cuando acepta la oferta (pedido
-    // explícito del usuario 2026-08-11).
+    // Marca/modelo/color + placa -- vienen directo del trigger (migración
+    // 217), no de la sesión: con más de un viaje en curso por teléfono, la
+    // sesión puede ya pertenecer a un pedido distinto a este. Para que el
+    // pasajero pueda reconocer el vehículo en la calle cuando el conductor
+    // llega, no solo cuando acepta la oferta (pedido explícito del usuario
+    // 2026-08-11).
     const vehicleLine = [
-      session?.driver_vehicle as string | undefined,
-      session?.driver_plate ? `Placa ${session.driver_plate}` : null,
+      payload.driver_vehicle as string | undefined,
+      payload.driver_plate ? `Placa ${payload.driver_plate}` : null,
     ].filter(Boolean).join(' · ');
     // Antes esto solo se enteraba por el ping de ubicacion en vivo del cron
     // (cada 4 min) -- ahora es instantaneo, disparado por el trigger apenas
@@ -2389,7 +2526,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // confirmación de abordaje con el regex /a bordo|entregu[eé]/i (más abajo
     // en este archivo), y "Ya está a bordo" lo sigue cumpliendo igual que
     // "Ya estoy a bordo".
-    const forName = travelerLabel(session ?? {});
+    const forName = travelerLabelFromForOther(payload.for_other);
     // Aviso de los 4 minutos (240s) -- mismo límite que ya usa la app en
     // pantalla (driverArrivalTimer/arrivedAtPickupTimer, ambos arrancan en
     // 240 y solo son un contador visual ahí, no hay cancelación automática
@@ -2426,9 +2563,8 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
   // segundo mensaje que avisa cuánto tiempo queda de los 4 minutos totales.
   // Pedido explícito del usuario 2026-08-11.
   if (event === 'arrival_reminder') {
-    const session    = await getSession(phone);
     const driverName = payload.driver_name as string ?? 'Tu conductor';
-    const forName     = travelerLabel(session ?? {});
+    const forName     = travelerLabelFromForOther(payload.for_other);
     await sendText(phone,
       forName
         ? `⏱️ Quedan *2 minutos* para que *${forName}* aborde con *${driverName}* antes de que se cumpla el máximo de espera.`
@@ -2445,15 +2581,22 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // queden en paridad. Cuando lo confirma el propio pasajero por WhatsApp
     // ya recibió un "¡Buen viaje!" inmediato en el mismo mensaje -- este es
     // el aviso equivalente para cuando quien confirmó fue el conductor.
-    const session    = await getSession(phone);
-    const delivery   = isDeliveryService(session?.service_type as string | undefined);
+    const delivery   = isDeliveryService(payload.service_type as string | undefined);
     const driverName = payload.driver_name as string ?? (delivery ? 'Tu mensajero' : 'Tu conductor');
-    const forName    = travelerLabel(session ?? {});
-    await sendText(phone, delivery
+    const forName    = travelerLabelFromForOther(payload.for_other);
+    const body = delivery
       ? `🚀 *${driverName}* ya va en camino a entregar tu paquete.`
       : forName
         ? `🚀 ¡En camino! *${driverName}* ya arrancó con *${forName}* hacia el destino.`
-        : `🚀 ¡Vamos en camino! *${driverName}* ya arrancó hacia tu destino.`);
+        : `🚀 ¡Vamos en camino! *${driverName}* ya arrancó hacia tu destino.`;
+    // A partir de aquí este viaje ya no necesita más respuestas del pasajero
+    // para seguir -- se ofrece de una vez la opción de pedir otro vehículo
+    // (para él mismo o para alguien más) sin esperar a que este termine.
+    // Reconocido como comando global por isNewOrderRequest() (también si lo
+    // escribe a mano en vez de tocar el botón), sin importar en qué estado
+    // quede la conversación después de este aviso. Pedido explícito del
+    // usuario 2026-08-12.
+    await sendButtons(phone, body, [{ id: 'new_order', title: '🚗 Otro vehículo' }]);
   }
 
   // Puente de chat: el conductor escribió desde el chat de la app en un
@@ -2472,66 +2615,51 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
 
   if (event === 'trip_completed') {
     const session      = await getSession(phone);
-    const delivery     = isDeliveryService(session?.service_type as string | undefined);
+    const delivery     = isDeliveryService(payload.service_type as string | undefined);
     const amount       = payload.amount as number ?? 0;
     const tipAmount    = payload.tip_amount as number ?? 0;
     const distanceKm   = payload.distance_km as number ?? 0;
     const driverName   = payload.driver_name as string ?? (delivery ? 'tu mensajero' : 'tu conductor');
-    const cop = (n: number) => `$${Number(n).toLocaleString('es-CO')}`;
+    const forName      = travelerLabelFromForOther(payload.for_other);
+    const tripId       = payload.trip_request_id as string;
 
-    // Los viajes de WhatsApp negocian un precio único (no hay tarifa base +
-    // distancia por separado como en la app) -- base_fare/distance_fare
-    // siempre quedan vacíos aquí, así que el "desglose" real y honesto es
-    // la distancia recorrida (sí se guarda, ver createWaTrip) más la propina
-    // si hubo, no una tarifa inventada.
+    // Con más de un viaje en curso por teléfono, el que se completó ahora
+    // puede NO ser el que la conversación activa está tratando (ej: el
+    // pasajero está armando un segundo pedido, o ya está en el viaje de
+    // ESE segundo pedido). En ese caso no se le puede pedir la calificación
+    // de inmediato -- se perdería la respuesta a lo que sea que esté
+    // haciendo -- se manda el recibo igual (para que sepa que ese viaje
+    // terminó) y se encola la calificación para cuando la conversación
+    // vuelva a quedar libre (ver presentIdleOrPendingRating). Si la sesión
+    // ya está en idle, o ya era justo la de este viaje, es el camino de
+    // siempre: se pide la calificación ya mismo.
+    const busyWithOtherTrip = !!session && session.state !== 'idle' && session.trip_request_id !== tripId;
+
+    if (!busyWithOtherTrip) {
+      await presentRatingRequest(phone, { tripId, driverName, amount, tipAmount, distanceKm, delivery, forName });
+      return;
+    }
+
+    const cop = (n: number) => `$${Number(n).toLocaleString('es-CO')}`;
     const receiptLines = [
       distanceKm > 0 ? `📏 ${distanceKm.toFixed(1)} km recorridos` : null,
       tipAmount > 0  ? `🙌 Propina: ${cop(tipAmount)}` : null,
     ].filter(Boolean).join('\n');
-
-    // No resetear todavía -- primero se pide la calificación del conductor,
-    // manteniendo trip_request_id/ag_user_id en sesión para poder insertarla.
-    await upsertSession(phone, { state: 'awaiting_rating' });
-
-    // Plantilla aprobada "viaje_completado" para no depender de la ventana de
-    // 24h -- si aun no esta aprobada o falla, cae al texto libre de siempre
-    // (que ademas incluye la propina cuando aplica, cosa que la plantilla
-    // rigida no puede mostrar condicionalmente). Es texto fijo aprobado por
-    // Meta -- igual que conductor_llego, no se puede variar por servicio sin
-    // aprobar una plantilla nueva.
-    //
-    // BUG REAL 2026-08-11: cuando el viaje es para otra persona, la plantilla
-    // SIEMPRE le ganaba al texto libre personalizado de abajo (waResult.ok
-    // era true de verdad, Meta la manda bien) -- el pasajero seguía viendo
-    // "Llegaste... ¿Cómo TE fue?" sin importar el arreglo del texto libre,
-    // porque ese texto libre nunca llegaba a ejecutarse. La plantilla es
-    // texto fijo aprobado por Meta, no se le puede meter el nombre de otra
-    // persona sin crear y aprobar una plantilla nueva (días de trámite). Se
-    // opta por saltarse la plantilla del todo en este caso y usar directo el
-    // texto libre personalizado -- la ventana de 24h no es un riesgo real
-    // acá: el pasajero acaba de estar activo en la conversación durante todo
-    // el viaje que recién terminó.
-    const forName = travelerLabel(session ?? {});
-    let waResult = forName
-      ? { ok: false }
-      : await sendTemplate(phone, 'viaje_completado', 'es_CO', [
-          distanceKm.toFixed(1), cop(amount), driverName,
-        ]);
-    if (!waResult.ok) {
-      await sendText(phone,
-        (delivery
-          ? `🏁 Tu paquete fue entregado 💚\n\n`
-          : forName
-            ? `🏁 *${forName}* llegó — gracias por viajar con Movi 💚\n\n`
-            : `🏁 Llegaste — gracias por viajar con Movi 💚\n\n`) +
-        (receiptLines ? `${receiptLines}\n` : '') +
-        `💰 *Total: ${cop(amount)}*\n\n` +
-        (forName
-          ? `⭐ ¿Cómo le fue a *${forName}* con *${driverName}*? Responde del *1* al *5*.\n`
-          : `⭐ ¿Cómo te fue con *${driverName}*? Responde del *1* al *5*.\n`) +
-        `_(o escribe *omitir* para saltar)_`
-      );
-    }
+    await sendText(phone,
+      (delivery
+        ? `🏁 Tu paquete fue entregado 💚\n\n`
+        : forName
+          ? `🏁 *${forName}* llegó — gracias por viajar con Movi 💚\n\n`
+          : `🏁 Llegaste — gracias por viajar con Movi 💚\n\n`) +
+      (receiptLines ? `${receiptLines}\n` : '') +
+      `💰 *Total: ${cop(amount)}*\n\n` +
+      `⭐ Apenas terminemos con lo que estás haciendo ahora te pedimos que califiques este viaje.`
+    );
+    await db().from('ag_wa_pending_ratings').insert({
+      wa_phone: phone, trip_request_id: tripId, driver_name: driverName,
+      amount, tip_amount: tipAmount, distance_km: distanceKm,
+      is_delivery: delivery, for_name: forName,
+    });
   }
 
   if (event === 'live_location') {
@@ -2540,9 +2668,8 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     const stage = payload.driver_stage as string ?? '';
     if (lat == null || lng == null) return;
 
-    const session  = await getSession(phone);
-    const delivery = isDeliveryService(session?.service_type as string | undefined);
-    const forNameLive = travelerLabel(session ?? {});
+    const delivery = isDeliveryService(payload.service_type as string | undefined);
+    const forNameLive = travelerLabelFromForOther(payload.for_other);
     const label = stage === 'heading_to_pickup'
       ? (delivery ? 'Va en camino a recoger tu paquete' : forNameLive ? `Va en camino a recoger a ${forNameLive}` : 'Va en camino a recogerte')
       : stage === 'arrived_at_pickup'
