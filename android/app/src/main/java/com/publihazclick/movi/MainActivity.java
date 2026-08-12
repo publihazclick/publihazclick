@@ -62,6 +62,19 @@ public class MainActivity extends BridgeActivity {
         // tiempo que tarda en cargar la pagina remota. setBackgroundColor() solo acepta un color
         // solido; setBackground() con un Drawable si permite poner la imagen con el logo.
         webView.setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.splash));
+
+        // Bug real reportado 2026-08-12: un usuario quedó viendo el splash 10 MINUTOS -- muy por
+        // encima del techo de 12s que ya existe en el código web (anda-gana.component.ts). Eso
+        // solo se explica si el WebView seguía ejecutando JS VIEJO, cacheado de antes del fix,
+        // pese a que el servidor ya manda "Cache-Control: no-cache, no-store, must-revalidate".
+        // El caché HTTP del WebView de Android no siempre respeta esos headers al pie de la letra
+        // (mas comun en WebView desactualizado, ej. Huawei/Honor sin Google Play Services -- el
+        // mismo tipo de dispositivo que ya causó otro bug distinto esta misma sesión). Se fuerza
+        // LOAD_NO_CACHE de forma explícita para esta app: como server.url siempre apunta a la
+        // página remota en vivo (nunca a archivos locales), no hay ninguna razón para cachear
+        // nada -- cada carga debe traer el código más reciente, sin excepciones.
+        webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
+        webView.clearCache(true);
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
             WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
         }
