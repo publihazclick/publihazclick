@@ -18,6 +18,11 @@ const SERVICE_ROLE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MIN_PRICE    = 5000;
 // Número de soporte de Movi (el mismo ya usado en la app para wa.me/573134453649)
 const SUPPORT_PHONE = '573134453649';
+// Número dedicado a conductores (registro/soporte, ver memoria
+// movi_whatsapp_support_number) -- se usa para redirigir a quien escribe al
+// número de VIAJES preguntando por trabajar como conductor, en vez de intentar
+// responder esa lógica dos veces en dos números distintos.
+const DRIVER_SUPPORT_PHONE = '573009645697';
 
 // Llamada enmascarada por PSTN (Telnyx) -- mismo proveedor/patrón que usa ag-masked-call
 // para conductor->pasajero desde la app. Acá cubre el sentido contrario: pasajero de
@@ -1265,6 +1270,39 @@ function isCancel(t: string): boolean {
 function isGreeting(t: string): boolean {
   return /^(menu|menú|inicio|start|hola|hi|hello|comenzar)$/i.test(t.trim());
 }
+
+// Humanización de saludos (2026-08-14, pedido explícito del usuario): un "buenos
+// días"/"buenas tardes" siempre recibía el mismo texto fijo, lo que se sentía a
+// automatización. Se rota entre variantes según la hora real de Colombia, y se
+// personaliza con el nombre real de la cuenta cuando se conoce (nunca con el
+// nombre de perfil de WhatsApp del pasajero -- ver nota en el flujo IDLE, eso
+// ya se había descartado antes por poco preciso/profesional).
+function bogotaHour(): number {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Bogota', hour: 'numeric', hour12: false }).formatToParts(new Date());
+  return parseInt(parts.find(p => p.type === 'hour')?.value ?? '12', 10);
+}
+function greetingOpener(realName?: string | null): string {
+  const h = bogotaHour();
+  const period = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const who = realName ? `, ${realName}` : '';
+  const variants = [
+    `¡Hola${who}! 👋`,
+    `¡${period}${who}! 👋`,
+    `¡${period}${who}!`,
+    `¡Qué tal${who}! 👋`,
+  ];
+  return variants[Math.floor(Math.random() * variants.length)];
+}
+// Nombre real de la cuenta (si existe), NO el nombre de perfil de WhatsApp --
+// solo el primer nombre, que suena más natural en un saludo corto.
+async function lookupRealFirstName(phone: string): Promise<string | null> {
+  try {
+    const { data } = await db().from('ag_users').select('full_name').eq('phone', toE164(phone)).maybeSingle();
+    const n = (data?.full_name as string | undefined)?.trim();
+    return n ? n.split(' ')[0] : null;
+  } catch (e) { console.error('[WA] lookupRealFirstName error:', e); return null; }
+}
+
 function isSos(t: string): boolean {
   return /^(sos|s\.o\.s\.?|ayuda|emergencia|auxilio|help)$/i.test(t.trim());
 }
@@ -1277,6 +1315,44 @@ function isNewOrderRequest(t: string): boolean {
   return n.includes('otro vehiculo') || n.includes('otro vehículo') ||
     n.includes('otro carro') || n.includes('otra moto') ||
     n.includes('nuevo pedido') || n.includes('nuevo viaje') || n.includes('pedir otro');
+}
+
+// Alguien pregunta por trabajar/registrarse como conductor pero le escribe al
+// número de VIAJES (no al de soporte a conductores) -- bug real encontrado
+// 2026-08-14: si mencionaba el vehículo ("quiero trabajar con mi moto") el
+// intérprete de lenguaje natural lo tomaba como un pedido de viaje real y
+// arrancaba el flujo de reserva. Se detecta ANTES de intentar interpretar el
+// mensaje como pedido, y se redirige al número de conductores en vez de
+// intentar responder esa lógica aquí también (ese número ya tiene su propio
+// bot dedicado y probado a fondo para esto).
+function isDriverJobInquiry(t: string): boolean {
+  const n = t.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const strong = [
+    'ser conductor', 'ser domiciliario', 'afili', 'vacante', 'reclut',
+    'unirme', 'postularme', 'postular como', 'aplicar como conductor', 'como aplico',
+    'registrarme como conductor', 'quiero ser conductor',
+    'requisitos para ser conductor', 'requisitos para trabajar',
+    'necesito trabajo', 'busco trabajo', 'busco empleo', 'necesito empleo',
+    'contratan conductores', 'como entro a trabajar', 'como hago para trabajar',
+    'como puedo trabajar', 'informacion para trabajar', 'quiero conducir con',
+    'quiero conducir para', 'quiero manejar para', 'como me uno', 'quiero pertenecer',
+    'parte del equipo', 'parte de movi',
+  ];
+  if (strong.some(p => n.includes(p))) return true;
+  // "trabajar" solo es ambiguo (puede ser "voy para mi trabajo", un pedido de
+  // viaje real) -- se exige que aparezca junto a una referencia a Movi,
+  // conductor/domiciliario, o "mi" vehículo propio.
+  if (!n.includes('trabaj')) return false;
+  const qualifier = ['ustedes', 'uds', 'movi', 'conductor', 'domiciliario',
+    'mi carro', 'mi moto', 'mi vehiculo', 'mi propio carro', 'mi propia moto'];
+  return qualifier.some(q => n.includes(q));
+}
+function driverJobInquiryReply(): string {
+  return `¡Qué bueno que quieras unirte a Movi! 🚗🏍️\n\n` +
+    `Este número es solo para pedir viajes -- para todo lo de registro como conductor ` +
+    `(requisitos, documentos, comisión, bonos) escríbenos directo aquí:\n` +
+    `https://wa.me/${DRIVER_SUPPORT_PHONE}\n\n` +
+    `Ahí te ayudamos con todo el proceso.`;
 }
 
 // ─── Disparar alerta SOS para un usuario de WhatsApp ──────────────────────────
@@ -1495,6 +1571,12 @@ async function handleConversation(
 
   // ── IDLE / WELCOME ──────────────────────────────────────────────────────────
   if (state === 'idle') {
+    // Preguntas de "quiero trabajar/ser conductor" se revisan ANTES de intentar
+    // interpretar el mensaje como pedido de viaje -- ver isDriverJobInquiry.
+    if (isDriverJobInquiry(text)) {
+      await sendText(phone, driverJobInquiryReply());
+      return;
+    }
     // Si ya escribió/dictó una solicitud completa desde el primer mensaje
     // ("hola necesito un carro para el aeropuerto"), no obligarlo a repetirla.
     if (text.length >= 8) {
@@ -1507,9 +1589,10 @@ async function handleConversation(
     // No se usa el nombre de perfil de WhatsApp para saludar -- muchos
     // pasajeros tienen apodos o nombres que no son el suyo real como nombre
     // de contacto, y se veía poco profesional/impreciso (pedido explícito del
-    // usuario 2026-08-10).
+    // usuario 2026-08-10). Sí se usa el nombre REAL de la cuenta si ya existe.
+    const realName = await lookupRealFirstName(phone);
     await presentServiceMenu(phone,
-      `¡Hola! 👋 Soy *Leidy Guzmán,* servicio al cliente de *Movi.*\n¿En qué te ayudo hoy?\n\n` +
+      `${greetingOpener(realName)} Soy *Leidy Guzmán,* servicio al cliente de *Movi.*\n¿En qué te ayudo hoy?\n\n` +
       `_¿Necesitas viaje urbano, domicilio, viaje de ciudad a ciudad o un flete? Selecciona la opción o escríbeme cuál._`,
       { contact_name: contactName }
     );
@@ -1518,6 +1601,13 @@ async function handleConversation(
 
   // ── AWAITING_SERVICE ────────────────────────────────────────────────────────
   if (state === 'awaiting_service') {
+    // Mismo chequeo que en IDLE -- corre primero para que "quiero trabajar con
+    // mi moto" nunca se cuele por el match de substring de abajo (que buscaría
+    // "moto" dentro del texto y lo tomaría como si hubiera elegido ese servicio).
+    if (isDriverJobInquiry(text)) {
+      await sendText(phone, driverJobInquiryReply());
+      return;
+    }
     const map: Record<string, string> = {
       '1': 'carro', '2': 'moto', '3': 'domicilio', '4': 'ciudad', '5': 'flete',
       'carro': 'carro', 'moto': 'moto', 'domicilio': 'domicilio',
@@ -3308,7 +3398,7 @@ async function handleSupportConversation(phone: string, name: string, msgText: s
     /^(hola|ola|buenas|buenos dias|buenas tardes|buenas noches|ayuda|info|informacion|inicio|menu|hey|hi)$/.test(bareWords);
   if (isGreeting) {
     const menuText =
-      `¡Hola${name && name !== 'Usuario' ? ` ${name}` : ''}! 👋 Soy el asistente de conductores de Movi.\n\n` +
+      `${greetingOpener(name && name !== 'Usuario' ? name : null)} Soy el asistente de conductores de Movi.\n\n` +
       `Pregúntame lo que necesites, por ejemplo:\n` +
       `- Cómo registrarme y qué documentos necesito\n` +
       `- Cuánto es la comisión y cómo me pagan\n` +
