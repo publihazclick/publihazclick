@@ -39,13 +39,24 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 
     <!-- 1 -->
     <section style="margin-bottom:28px">
-      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">1. Qué es Movi</h2>
+      <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">1. Naturaleza jurídica de Movi</h2>
+      <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0 0 10px">
+        Movi es <strong style="color:#fff">una plataforma tecnológica de intermediación</strong>, no una
+        empresa de transporte ni un operador o prestador del servicio de transporte público o privado de
+        pasajeros. La función de Movi se limita a poner a disposición un software que permite a pasajeros y
+        conductores independientes encontrarse, comunicarse, acordar libremente un precio y calificarse
+        mutuamente. Movi no opera, posee ni administra una flota de vehículos, no contrata conductores como
+        empleados ni bajo ningún vínculo de subordinación laboral, y no fija tarifas: cada viaje resulta de
+        una negociación directa y libre entre el pasajero y el conductor.
+      </p>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
-        Movi es una plataforma tecnológica que conecta a pasajeros con conductores independientes de vehículos
-        particulares (carro y moto) para facilitar el transporte de personas dentro de Colombia. Movi actúa
-        únicamente como intermediario tecnológico: no presta directamente el servicio de transporte, no es
-        una empresa transportadora, y los conductores no son empleados de Movi sino usuarios independientes
-        de la Plataforma.
+        El contrato de transporte, cuando se perfecciona, se celebra exclusivamente entre el pasajero y el
+        conductor independiente que acepta el viaje; Movi no es parte de ese contrato. Cada conductor es
+        responsable, a título personal e independiente, de contar con los documentos, licencias, seguros
+        (SOAT) y demás requisitos que la ley exija para conducir y transportar pasajeros con su propio
+        vehículo, así como de cumplir las normas de tránsito aplicables. Movi verifica esos documentos como
+        medida de seguridad para sus usuarios, pero dicha verificación no convierte a Movi en prestador del
+        servicio de transporte ni en empleador del conductor.
       </p>
     </section>
 
@@ -157,11 +168,14 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
     <section style="margin-bottom:28px">
       <h2 style="color:#6E93F2;font-weight:900;font-size:16px;margin:0 0 10px;font-family:Montserrat,sans-serif">9. Responsabilidad</h2>
       <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0">
-        Movi facilita el encuentro entre pasajeros y conductores independientes, pero no presta directamente
-        el servicio de transporte. Movi no es responsable por accidentes, retrasos, pérdidas o daños
-        ocurridos durante un viaje que sean atribuibles a la conducta del conductor o del pasajero, sin
-        perjuicio de las herramientas de verificación, seguimiento y seguridad que la Plataforma pone a
-        disposición para reducir esos riesgos.
+        Conforme a lo descrito en la sección 1, Movi facilita tecnológicamente el encuentro entre pasajeros y
+        conductores independientes, pero no presta directamente el servicio de transporte ni es parte del
+        contrato de transporte celebrado entre ellos. En consecuencia, Movi no es responsable por accidentes,
+        infracciones de tránsito, retrasos, pérdidas, daños o cualquier hecho ocurrido durante la ejecución
+        del viaje que sea atribuible a la conducta del conductor, del pasajero o de terceros, sin perjuicio
+        de las herramientas de verificación de documentos, seguimiento en tiempo real y seguridad (botón
+        SOS, calificaciones, bloqueo de usuarios) que la Plataforma pone a disposición para reducir esos
+        riesgos y de las gestiones de soporte que Movi realiza de buena fe ante cualquier incidente.
       </p>
     </section>
 
