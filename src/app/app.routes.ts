@@ -482,9 +482,16 @@ export const routes: Routes = [
     loadComponent: () => import('./app').then(m => m.App),
     canActivate: [roleRedirectGuard]
   },
-  // Ruta pública para la app Movi (Capacitor apunta a /anda-gana)
+  // Ruta pública para la app Movi (Capacitor apunta a /anda-gana, NO tocar --
+  // ver capacitor.config.ts). "/movi" es un alias con el mismo componente,
+  // agregado 2026-08-14 para que los links de invitación (referidos) se vean
+  // con el nombre real de marca en vez del codename interno "anda-gana".
   {
     path: 'anda-gana',
+    loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent),
+  },
+  {
+    path: 'movi',
     loadComponent: () => import('./features/anda-gana/anda-gana.component').then(m => m.AndaGanaComponent),
   },
   // Términos y condiciones / privacidad de Movi -- páginas independientes, sin layout ni

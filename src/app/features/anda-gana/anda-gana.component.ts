@@ -11194,7 +11194,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const { p, d } = JSON.parse(_raw);
         if (p?.role) {
           this.agProfile.set(p);
-          this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${p.id}`);
+          this.agReferralLink.set(`${window.location.origin}/movi?ref=${p.id}`);
           _cachedRole   = p.role;
           _cachedDriver = d ?? null;
           if (d && p.role !== 'passenger') {
@@ -11240,7 +11240,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const [profile] = await Promise.all([_profilePromise, _splashTimer]);
 
     this.agProfile.set(profile);
-    if (profile) this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
+    if (profile) this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
     if (!profile) { this.screen.set('home'); return; }
 
     // Operaciones no críticas diferidas
@@ -13362,6 +13362,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     this.domDistKm.set(Math.round(km * 10) / 10);
     const price = Math.max(5000, Math.round(km * 1500 * this.surgeMultiplier() / 500) * 500);
     this.domEstPrice.set(price);
+    this._refreshBlendedSurgeThenRecalc(fromLat, fromLng, () => this._calcDomPrice());
   }
 
   resetDomicilio(): void {
@@ -18384,6 +18385,28 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       setTimeout(() => rej(new Error('Tiempo de espera agotado. Verifica tu conexión.')), ms))]);
   }
 
+  // Fase 3 (ver memoria movi_unicorn_code_plan_2026-08-14): el precio mostrado siempre
+  // se calcula primero con el multiplicador de horario fijo (this.surgeMultiplier(), ya
+  // cargado desde el arranque -- cero cambio de comportamiento ni de velocidad). En
+  // paralelo, sin bloquear ni retrasar ese precio, se consulta oferta/demanda real cerca
+  // del origen; si al volver el valor es más alto, se actualiza el precio mostrado.
+  // Deduplicado por coordenada redondeada para no golpear el RPC en cada pixel de mapa.
+  private _lastBlendedSurgeKey = '';
+  private async _refreshBlendedSurgeThenRecalc(lat: number | undefined, lng: number | undefined, recalc: () => void): Promise<void> {
+    if (lat == null || lng == null || !isFinite(lat) || !isFinite(lng)) return;
+    const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+    if (key === this._lastBlendedSurgeKey) return;
+    this._lastBlendedSurgeKey = key;
+    try {
+      const surge = await this.agService.blendedSurge(lat, lng);
+      if (isFinite(surge) && surge !== this.surgeMultiplier()) {
+        this.surgeMultiplier.set(surge);
+        recalc();
+        this.cdr.markForCheck();
+      }
+    } catch { /* silencioso -- se queda con el precio de horario fijo ya mostrado */ }
+  }
+
   private _calcPrice(km: number, vehicle: 'carro' | 'moto' | 'camion'): number {
     // Tarifas calibradas para igualar el precio sugerido de InDrive en Colombia
     const raw = vehicle === 'camion'
@@ -18421,6 +18444,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.tripDistKm.set(km);
       this.tripSuggestions.set([]);
       this.tripPrice.set(this._calcPrice(km, this.tripVehicle()));
+      this._refreshBlendedSurgeThenRecalc(this._currentLat, this._currentLng,
+        () => this.tripPrice.set(this._calcPrice(this.tripDistKm(), this.tripVehicle())));
 
       this._map.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: route.geometry }, lineMetrics: true });
       this._map.addLayer({ id: 'trip-route-bg',   type: 'line', source: 'trip-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000',    'line-width': 9,  'line-opacity': 0.18 } });
@@ -20658,7 +20683,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const profile = data.profile;
     const driverRow = data.driver;
     this.agProfile.set(profile);
-    this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
+    this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
     const mine = driverRow ? { ...driverRow, status: driverRow.status ?? 'quick' } : null;
     this.driverData.set(mine);
     this.driverStatus.set(mine?.status ?? 'quick');
@@ -20784,7 +20809,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     }
 
     this.agProfile.set(profile);
-    this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
+    this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
     this.loadReferralData();
     this.screen.set('passenger-home');
     this._subscribeToDriverLocations();
@@ -21178,7 +21203,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this._subscribeToDriverLocations();
     setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
     if (isPlatformBrowser(this.platformId)) {
-      this.agReferralLink.set(`${window.location.origin}/anda-gana?ref=${profile.id}`);
+      this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
     }
     this.cdr.markForCheck();
   }

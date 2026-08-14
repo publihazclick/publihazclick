@@ -487,6 +487,110 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
         </div>
       }
     }
+
+    <!-- ═══ FASE 3: Métricas de negocio reales ═══ -->
+    @if (businessMetrics(); as m) {
+      <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4 mt-4">
+        <p class="text-[10px] text-blue-400 uppercase tracking-wider font-black mb-3 flex items-center gap-1.5">
+          <span class="material-symbols-outlined" style="font-size:14px">insights</span> Métricas de negocio ({{ m.period_days }}d)
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Tasa completitud</p>
+            <p class="text-xl font-black text-white mt-1">{{ m.completion_rate_pct }}%</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Espera promedio</p>
+            <p class="text-xl font-black text-white mt-1">{{ m.avg_wait_minutes }} min</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Duración viaje</p>
+            <p class="text-xl font-black text-white mt-1">{{ m.avg_trip_minutes }} min</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Precio promedio</p>
+            <p class="text-xl font-black text-amber-400 mt-1">{{ formatCOP(m.avg_price_cop) }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Solicitudes totales</p>
+            <p class="text-xl font-black text-white mt-1">{{ m.total_requests }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Canceladas</p>
+            <p class="text-xl font-black text-rose-400 mt-1">{{ m.cancelled_requests }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Pasajeros del período</p>
+            <p class="text-xl font-black text-white mt-1">{{ m.total_passengers }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Retención (repiten)</p>
+            <p class="text-xl font-black text-emerald-400 mt-1">{{ m.retention_rate_pct }}%</p>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ FASE 3: Alertas de fraude (solo revisión del admin, nada automático) ═══ -->
+    <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4 mt-4">
+      <p class="text-[10px] text-rose-400 uppercase tracking-wider font-black mb-3 flex items-center gap-1.5">
+        <span class="material-symbols-outlined" style="font-size:14px">shield_with_heart</span> Patrones sospechosos (solo alerta, no castiga automáticamente)
+      </p>
+
+      @if (loadingFraud()) {
+        <p class="text-slate-500 text-xs">Cargando...</p>
+      } @else {
+        <div class="flex flex-col gap-4">
+          <div>
+            <p class="text-[11px] text-slate-400 font-bold mb-2">Mismo par conductor-pasajero repetido de forma anormal</p>
+            @if (fraudRepeatedPairs().length === 0) {
+              <p class="text-slate-500 text-xs">Sin casos.</p>
+            } @else {
+              <div class="flex flex-col gap-1.5">
+                @for (p of fraudRepeatedPairs(); track p.driver_id + '-' + p.passenger_user_id) {
+                  <div class="bg-rose-500/5 border border-rose-500/15 rounded-xl px-3 py-2 text-xs flex items-center justify-between gap-2 flex-wrap">
+                    <span class="text-white">{{ p.driver_name ?? 'Conductor' }} ↔ {{ p.passenger_name ?? 'Pasajero' }}</span>
+                    <span class="text-rose-400 font-bold">{{ p.pair_trips }}/{{ p.driver_total_trips }} viajes ({{ (p.share * 100).toFixed(0) }}%)</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div>
+            <p class="text-[11px] text-slate-400 font-bold mb-2">Viajes muy cortos repetidos (posible farmeo de bonos)</p>
+            @if (fraudShortTrips().length === 0) {
+              <p class="text-slate-500 text-xs">Sin casos.</p>
+            } @else {
+              <div class="flex flex-col gap-1.5">
+                @for (t of fraudShortTrips(); track t.driver_id) {
+                  <div class="bg-rose-500/5 border border-rose-500/15 rounded-xl px-3 py-2 text-xs flex items-center justify-between gap-2 flex-wrap">
+                    <span class="text-white">{{ t.driver_name ?? 'Conductor' }}</span>
+                    <span class="text-rose-400 font-bold">{{ t.short_trips }} viajes · {{ t.avg_distance_km }} km prom.</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div>
+            <p class="text-[11px] text-slate-400 font-bold mb-2">Viajes con GPS marcado como sospechoso al completar</p>
+            @if (fraudGpsFlagged().length === 0) {
+              <p class="text-slate-500 text-xs">Sin casos.</p>
+            } @else {
+              <div class="flex flex-col gap-1.5">
+                @for (g of fraudGpsFlagged(); track g.trip_id) {
+                  <div class="bg-rose-500/5 border border-rose-500/15 rounded-xl px-3 py-2 text-xs flex items-center justify-between gap-2 flex-wrap">
+                    <span class="text-white">{{ g.driver_name ?? 'Conductor' }}</span>
+                    <span class="text-rose-400 font-bold">{{ g.completed_at | date:'short' }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
   }
 
   <!-- ═══ SOS EVENTS ═══ -->
@@ -684,6 +788,14 @@ export class AndaGanaAdminComponent implements OnInit {
   analyticsData   = signal<any | null>(null);
   dailySeries     = signal<{ day: string; trips: number; gmv: number }[]>([]);
 
+  // Fase 3 (ver memoria movi_unicorn_code_plan_2026-08-14): métricas de negocio reales
+  // + detección de patrones sospechosos, solo para que el admin los revise.
+  businessMetrics     = signal<any | null>(null);
+  fraudRepeatedPairs  = signal<any[]>([]);
+  fraudShortTrips     = signal<any[]>([]);
+  fraudGpsFlagged     = signal<any[]>([]);
+  loadingFraud        = signal(false);
+
   // Retiros
   withdrawals              = signal<any[]>([]);
   withdrawalFilter         = signal('pending');
@@ -821,6 +933,25 @@ export class AndaGanaAdminComponent implements OnInit {
     ]);
     this.analyticsData.set(statsR.data ?? null);
     this.dailySeries.set((seriesR.data ?? []).map((r: any) => ({ day: r.day, trips: Number(r.trips), gmv: Number(r.gmv) })));
+    await this.loadFase3Analytics();
+  }
+
+  async loadFase3Analytics(): Promise<void> {
+    this.loadingFraud.set(true);
+    try {
+      const [metrics, pairs, shortTrips, gpsFlagged] = await Promise.all([
+        this.agService.getBusinessMetrics(this.analyticsPeriod()),
+        this.agService.getFraudRepeatedPairs(),
+        this.agService.getFraudShortTripFarming(),
+        this.agService.getFraudGpsFlagged(),
+      ]);
+      this.businessMetrics.set(metrics);
+      this.fraudRepeatedPairs.set(pairs);
+      this.fraudShortTrips.set(shortTrips);
+      this.fraudGpsFlagged.set(gpsFlagged);
+    } finally {
+      this.loadingFraud.set(false);
+    }
   }
 
   barHeight(val: number): number {

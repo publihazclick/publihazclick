@@ -1583,6 +1583,37 @@ export class AndaGanaService {
     return Number(data ?? 1);
   }
 
+  // Fase 3 (ver memoria movi_unicorn_code_plan_2026-08-14): combina el horario fijo
+  // de siempre con oferta/demanda real en vivo -- toma el más alto de los dos.
+  async blendedSurge(lat: number, lng: number, zoneId?: string | null): Promise<number> {
+    const { data } = await this.supabase.rpc('ag_blended_surge', { p_lat: lat, p_lng: lng, p_zone_id: zoneId ?? null });
+    return Number(data ?? 1);
+  }
+
+  async getBusinessMetrics(days = 30): Promise<any> {
+    const { data, error } = await this.supabase.rpc('ag_business_metrics', { p_days: days });
+    if (error) throw error;
+    return data ?? {};
+  }
+
+  async getFraudRepeatedPairs(minTrips = 5, minShare = 0.6): Promise<any[]> {
+    const { data, error } = await this.supabase.rpc('ag_fraud_repeated_pairs', { p_min_trips: minTrips, p_min_share: minShare });
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async getFraudShortTripFarming(maxKm = 0.4, minTrips = 5, days = 7): Promise<any[]> {
+    const { data, error } = await this.supabase.rpc('ag_fraud_short_trip_farming', { p_max_km: maxKm, p_min_trips: minTrips, p_days: days });
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async getFraudGpsFlagged(days = 7): Promise<any[]> {
+    const { data, error } = await this.supabase.rpc('ag_fraud_gps_flagged', { p_days: days });
+    if (error) throw error;
+    return data ?? [];
+  }
+
   async listZones(): Promise<any[]> {
     const { data } = await this.supabase.from('ag_zones').select('*').order('name').limit(100);
     return data ?? [];

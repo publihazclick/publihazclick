@@ -4,6 +4,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // ─── Config ──────────────────────────────────────────────────────────────────
 const WA_TOKEN            = Deno.env.get('META_WA_TOKEN')!;
 const PHONE_NUMBER_ID     = Deno.env.get('META_WA_PHONE_NUMBER_ID')!;
+// Segunda línea de WhatsApp, exclusiva para registro/soporte de conductores --
+// mismo WABA y mismo token que el número de pedir viajes (ver memoria
+// movi_whatsapp_support_number), Meta manda "value.metadata.phone_number_id"
+// en cada webhook entrante y así se distingue a cuál de los dos llegó el
+// mensaje (ver el branching en serve() más abajo).
+const SUPPORT_PHONE_NUMBER_ID = Deno.env.get('META_WA_SUPPORT_PHONE_NUMBER_ID') ?? '';
+const APP_URL = Deno.env.get('APP_URL') ?? '';
 const WEBHOOK_VERIFY_TOKEN = Deno.env.get('META_WA_WEBHOOK_VERIFY_TOKEN') ?? 'movi_webhook_2026';
 const SUPABASE_URL        = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -178,9 +185,9 @@ type WaResult = { ok: boolean; status?: number; body?: string };
 // -- "un bot no debería tardar pero tampoco debería ser instantáneo". Meta
 // muestra el indicador nativo hasta 25s o hasta que se envíe el siguiente
 // mensaje, lo que ocurra primero -- no hace falta apagarlo a mano.
-async function markReadWithTyping(messageId: string): Promise<void> {
+async function markReadWithTyping(messageId: string, phoneNumberId: string = PHONE_NUMBER_ID): Promise<void> {
   try {
-    await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
+    await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -508,16 +515,27 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 // motivo real (bug real reportado 2026-08-11: "el precio sugerido es más
 // barato que indriver"). Si la consulta falla, se usa 1 (sin recargo) en vez
 // de bloquear la solicitud.
-async function currentSurgeMultiplier(): Promise<number> {
+// Fase 3 del plan hacia unicornio (2026-08-14, ver memoria
+// movi_unicorn_code_plan_2026-08-14): cuando se conoce el punto de origen del
+// pasajero, se usa ag_blended_surge (combina este horario fijo de siempre CON
+// oferta/demanda real en vivo -- toma el más alto de los dos) en vez de solo
+// ag_current_surge. Sin coordenadas, sigue exactamente igual que antes -- cero
+// cambio de comportamiento para cualquier caller que no las tenga.
+async function currentSurgeMultiplier(lat?: number, lng?: number): Promise<number> {
   try {
+    if (lat != null && lng != null) {
+      const { data, error } = await db().rpc('ag_blended_surge', { p_lat: lat, p_lng: lng, p_zone_id: null });
+      if (error) { console.error('[Price] ag_blended_surge error:', error); return 1; }
+      return Number(data ?? 1);
+    }
     const { data, error } = await db().rpc('ag_current_surge', { p_zone_id: null });
     if (error) { console.error('[Price] ag_current_surge error:', error); return 1; }
     return Number(data ?? 1);
-  } catch (e) { console.error('[Price] ag_current_surge fetch error:', e); return 1; }
+  } catch (e) { console.error('[Price] currentSurgeMultiplier fetch error:', e); return 1; }
 }
 
-async function suggestPrice(distKm: number, service: string): Promise<number> {
-  const surge = await currentSurgeMultiplier();
+async function suggestPrice(distKm: number, service: string, originLat?: number, originLng?: number): Promise<number> {
+  const surge = await currentSurgeMultiplier(originLat, originLng);
   if (service === 'domicilio') {
     return Math.max(MIN_PRICE, Math.round(distKm * 1500 * surge / 500) * 500);
   }
@@ -987,7 +1005,14 @@ async function presentOriginConfirm(phone: string, addr: string, lat: number, ln
   // el título del botón. Se explica en el cuerpo del mensaje en su lugar
   // (2026-08-12, pedido del usuario): que sepa que si escribe su dirección
   // completa a mano, esa es la que le llega tal cual al conductor.
-  const question = `${base}\n\n_¿No es exacta? Toca *Editar* y escribe tu dirección completa (calle, número, barrio) para que el conductor llegue justo a la puerta._`;
+  // "¿No es exacta?" (versión anterior) se leía como una AFIRMACIÓN del bot
+  // ("no es exacta") en vez de una pregunta real -- bug de UX real reportado
+  // 2026-08-14: pasajeros que ya habían dado la dirección correcta la volvían
+  // a escribir por pura confusión, pensando que el bot les estaba diciendo
+  // que estaba mal. Redactado de nuevo sin ninguna pregunta ni negación: solo
+  // informa qué hace el botón, sin insinuar que la dirección mostrada esté
+  // incorrecta.
+  const question = `${base}\n\n_Si prefieres escribir tu dirección exacta (calle, número, barrio), toca *Editar* y el conductor llega justo a la puerta._`;
   // Guardar la sesión y enviar el mensaje son operaciones independientes (ninguna
   // necesita el resultado de la otra) -- en paralelo en vez de en serie ahorra
   // un round-trip completo, parte del mismo fix de lentitud de 2026-08-11.
@@ -998,7 +1023,7 @@ async function presentOriginConfirm(phone: string, addr: string, lat: number, ln
     }),
     sendButtons(phone, question, [
       { id: 'origin_yes', title: '✅ Sí, confirmar' },
-      { id: 'origin_no', title: '✏️ Editar (exacta)' },
+      { id: 'origin_no', title: '✏️ Editar dirección' },
     ]),
   ]);
 }
@@ -1011,7 +1036,7 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
   let suggested = MIN_PRICE;
   if (lat != null && lng != null && oLat && oLng) {
     distKm = haversineKm(oLat, oLng, lat, lng);
-    suggested = await suggestPrice(distKm, session.service_type as string ?? 'carro');
+    suggested = await suggestPrice(distKm, session.service_type as string ?? 'carro', oLat, oLng);
   }
 
   const distText = distKm > 0 ? ` (${distKm.toFixed(1)} km)` : '';
@@ -1024,7 +1049,14 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
   // Misma nota que en presentOriginConfirm: el título del botón no tiene
   // espacio (límite de 20 caracteres de WhatsApp) para explicar qué hace
   // "Editar", así que va en el cuerpo del mensaje.
-  const question = `${base}\n\n_¿No es exacta? Toca *Editar* y escribe tu dirección completa (calle, número, barrio) para que el conductor llegue justo a la puerta._`;
+  // "¿No es exacta?" (versión anterior) se leía como una AFIRMACIÓN del bot
+  // ("no es exacta") en vez de una pregunta real -- bug de UX real reportado
+  // 2026-08-14: pasajeros que ya habían dado la dirección correcta la volvían
+  // a escribir por pura confusión, pensando que el bot les estaba diciendo
+  // que estaba mal. Redactado de nuevo sin ninguna pregunta ni negación: solo
+  // informa qué hace el botón, sin insinuar que la dirección mostrada esté
+  // incorrecta.
+  const question = `${base}\n\n_Si prefieres escribir tu dirección exacta (calle, número, barrio), toca *Editar* y el conductor llega justo a la puerta._`;
 
   // Guardar sesión + enviar mensaje en paralelo -- ver misma nota en
   // presentOriginConfirm.
@@ -1038,7 +1070,7 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
       question,
       [
         { id: 'dest_yes', title: '✅ Sí, confirmar' },
-        { id: 'dest_no', title: '✏️ Editar (exacta)' },
+        { id: 'dest_no', title: '✏️ Editar dirección' },
       ]
     ),
   ]);
@@ -1049,14 +1081,34 @@ async function presentDestConfirm(phone: string, addr: string, lat: number | nul
 // distintos (cc_/fl_) que createWaTrip() no llena -- en vez de dejar la
 // solicitud rota en silencio (nunca le llegaba nada al conductor), se avisa
 // claro y se manda a la app, que si soporta esos dos completos.
-const APK_LINK = 'https://hndhgtnjyjwrnzdcgcca.supabase.co/storage/v1/object/public/movi-apk/movi-conductor.apk';
+// Play Store en vez del APK suelto de Supabase Storage (pedido explícito del
+// usuario 2026-08-14, ya publicada -- ver memoria movi_play_store_link) --
+// instalar un APK suelto activa la advertencia de Android de "fuente
+// desconocida", Play Store es la señal de app oficial/seria que se quiere
+// transmitir, además de dar actualizaciones automáticas. Se quita
+// "pcampaignid=web_share" del link que pasó el usuario -- es solo un
+// parámetro de tracking que agrega Google al compartir desde su propia app,
+// no hace falta para que el link funcione.
+const APP_DOWNLOAD_LINK = 'https://play.google.com/store/apps/details?id=com.publihazclick.movi';
 async function sendUnsupportedServiceMessage(phone: string, svc: string): Promise<void> {
   await resetSession(phone);
   await sendText(phone,
     `${SERVICE_LABELS[svc] ?? svc} todavía no está disponible por este chat 😔\n\n` +
-    `Por ahora ese servicio solo se puede pedir desde la app de Movi:\n${APK_LINK}\n\n` +
+    `Por ahora ese servicio solo se puede pedir desde la app de Movi (Play Store):\n${APP_DOWNLOAD_LINK}\n\n` +
     `Escribe *hola* si quieres pedir un Carro, Moto o Domicilio por aquí.`
   );
+
+  // Bug real reportado 2026-08-13: un pasajero con OTRO pedido en curso a la
+  // vez que su viaje actual terminaba (ver "pedir otro vehículo" y
+  // ag_wa_pending_ratings más abajo) escribió "5" pensando que estaba
+  // calificando ese viaje ya terminado -- pero como su sesión seguía en
+  // awaiting_service del segundo pedido, "5" se leyó como la opción de menú
+  // "Flete" (no soportado por chat) en vez de la calificación, y su "5" se
+  // perdió sin más. resetSession() ya deja la sesión libre acá mismo -- se
+  // aprovecha para mostrar la calificación pendiente de una vez, en vez de
+  // esperar a que el pasajero mande otro mensaje cualquiera para recién ahí
+  // acordarse de pedírsela (ver presentIdleOrPendingRating, mismo criterio).
+  await presentIdleOrPendingRating(phone, async () => {});
 }
 
 // ─── Arrancar el flujo a partir de una solicitud interpretada por IA ──────────
@@ -1110,11 +1162,46 @@ async function maybeOfferAppDownload(phone: string): Promise<void> {
     if (count === 2) {
       await sendText(phone,
         `🚀 *Psst...* ya llevas 2 viajes con Movi por WhatsApp.\n\n` +
-        `Con la app puedes ver el mapa en vivo, pagar más fácil y pedir en un toque:\n` +
-        `https://hndhgtnjyjwrnzdcgcca.supabase.co/storage/v1/object/public/movi-apk/movi-conductor.apk`
+        `Con la app puedes ver el mapa en vivo, pagar más fácil y pedir en un toque. Descárgala gratis en Play Store:\n` +
+        `${APP_DOWNLOAD_LINK}`
       );
     }
   } catch (e) { console.error('[WA] maybeOfferAppDownload error:', e); }
+}
+
+// ─── Presentar el programa de invitados tras el 1er viaje completado ─────────
+// Pedido explícito del usuario 2026-08-14: contarle al pasajero que existe,
+// justo en el mejor momento (viaje bueno, sin nada pendiente por responder) y
+// separado del aviso de la app (que sale en el 2do viaje) para no juntar dos
+// mensajes de venta el mismo día. Solo se manda UNA vez en la vida del
+// número. El link es real -- se arma con el ag_user_id que ya existe desde
+// que se creó la solicitud (createWaTrip -> ag_get_or_create_wa_user), no
+// hace falta que haya instalado la app ni pasado por la web todavía.
+async function maybeOfferReferralProgram(phone: string, agUserId: string | null): Promise<void> {
+  if (!agUserId) return;
+  try {
+    const supabase = db();
+    const { count } = await supabase
+      .from('ag_trip_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('wa_phone', toE164(phone))
+      .eq('source', 'whatsapp')
+      .eq('status', 'completed');
+    if (count === 1) {
+      const link = `${APP_URL || 'https://www.publihazclick.com'}/movi?ref=${agUserId}`;
+      // El texto explica QUÉ hace único al link (ligado a su cuenta, la misma
+      // de este número de WhatsApp) para que entienda cómo el sistema sabe
+      // que un invitado es suyo, sin tener que avisar nada a mano -- pedido
+      // explícito del usuario: generar confianza, no solo anunciar el bono.
+      await sendText(phone,
+        `🎁 *¿Sabías que puedes ganar dinero invitando gente a Movi?*\n\n` +
+        `Tienes un link 100% personal, único y ligado a tu cuenta (la misma de este número de WhatsApp) -- no hay otro igual. Cuando alguien se registra con él, el sistema ya sabe automáticamente que es tu invitado, sin que tengas que avisarnos nada.\n\n` +
+        `Por cada servicio que esa persona complete -- sea que use Movi como pasajero o como conductor -- ganas el *2%, de por vida*.\n\n` +
+        `Tu link:\n${link}\n\n` +
+        `Compártelo por WhatsApp, redes o donde quieras 🙌`
+      );
+    }
+  } catch (e) { console.error('[WA] maybeOfferReferralProgram error:', e); }
 }
 
 // ─── Menú de servicios ────────────────────────────────────────────────────────
@@ -1161,7 +1248,12 @@ function isNo(t: string): boolean {
   return n.includes('buscar otro') || n.includes('cambiar') || n.includes('editar');
 }
 function isCancel(t: string): boolean {
-  return /^(cancelar|cancel|salir|exit)$/i.test(t.trim());
+  // "cancela" (sin r) y "ya no quiero"/"no quiero" agregados 2026-08-14 --
+  // formas muy naturales de cancelar que no calzaban (probado con cientos de
+  // variantes reales). Sigue siendo match EXACTO del mensaje completo, no
+  // substring, así que no hay riesgo de falso positivo con una dirección u
+  // otra respuesta que contenga esas palabras de pasada.
+  return /^(cancelar|cancela|cancel|salir|exit|ya no quiero|no quiero)$/i.test(t.trim());
 }
 
 // Saludos/reinicio -- antes vivían mezclados con isCancel() y borraban TODO el
@@ -1489,12 +1581,46 @@ async function handleConversation(
   if (state === 'awaiting_for_whom') {
     const n = text.trim().toLowerCase();
     const isForOther = n.includes('otra') || n.includes('otro');
-    const isForSelf  = !isForOther && (n.includes('para m') || n.includes('mi') || isYes(text));
-    if (isForOther) {
+    // Bug real encontrado 2026-08-14 probando cientos de variantes: "para mi
+    // novia"/"para mi hijo"/"para mi mamá" caían aquí como "para mí" porque
+    // "para m" es substring de todas esas frases -- el pasajero se saltaba
+    // TODA la advertencia de responsabilidad y el registro de quién viaja de
+    // verdad. El match rápido ahora exige que sea "para mí" SOLO (nada más
+    // después), no cualquier frase que empiece así.
+    // "pa mi" (forma coloquial de "para mí") -- bug encontrado en la ronda 2
+    // de pruebas 2026-08-14: al exigir "para" completo, "pa mi" caía al
+    // camino de IA y se malinterpretaba como "otra persona". "pa" se acepta
+    // igual que "para" en todos los patrones.
+    const isForSelfFast = !isForOther && (/^(para|pa)?\s*m[ií]\.?$/.test(n) || /^si,?\s*(es\s+)?(para|pa)?\s*m[ií]\.?$/.test(n) || /^es\s+(para|pa)\s+m[ií]\.?$/.test(n));
+    let resolution: 'other' | 'self' | null = isForOther ? 'other' : isForSelfFast ? 'self' : null;
+    let interpForWhom: FallbackInterpretation | null = null;
+    if (!resolution) {
+      // Cualquier cosa que no sea un match limpio ("para mi novia", una
+      // distracción, etc.) se resuelve con IA antes de repetir el menú --
+      // mismo patrón ya probado en awaiting_dest_confirm/awaiting_offer_response.
+      interpForWhom = await interpretFallback({
+        state,
+        question: '¿Este viaje es para ti o para otra persona?',
+        answerFormat: '"self" si el viaje es para quien escribe, "other" si es para alguien más aunque lo mencione indirectamente (ej. "para mi novia", "para mi hijo" son "other", NO "self"). En matched_value escribe exactamente "self" u "other".',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interpForWhom);
+      if (interpForWhom?.outcome === 'matched' && (interpForWhom.matched_value === 'self' || interpForWhom.matched_value === 'other')) {
+        resolution = interpForWhom.matched_value as 'self' | 'other';
+      }
+    }
+    if (resolution === 'other') {
       await upsertSession(phone, { state: 'awaiting_liability_ack' });
+      // Pedido explícito del usuario 2026-08-14: resaltar acá que la seguridad
+      // de conductores Y pasajeros es la prioridad de Movi (conductores
+      // verificados, pasajeros identificados) -- "aun así" conecta esa
+      // tranquilidad con la advertencia de responsabilidad que sigue, sin
+      // restarle peso: la plataforma ya hace su parte, pero quien pide el
+      // servicio para otra persona sigue siendo responsable de a quién invita.
       await sendButtons(phone,
         `⚠️ *Importante antes de continuar*\n\n` +
-        `Al pedir el servicio para otra persona, *eres totalmente responsable* de cualquier daño físico o material que esa persona pueda causarle al conductor.\n\n` +
+        `En Movi lo más importante es la seguridad de conductores y pasajeros: todos nuestros conductores pasan por un proceso de verificación, y cada pasajero también queda identificado en la plataforma.\n\n` +
+        `Aun así, al pedir el servicio para otra persona, *eres totalmente responsable* de cualquier daño físico o material que esa persona pueda causarle al conductor.\n\n` +
         `Te recomendamos pedirlo solo para personas de tu entera confianza.\n\n` +
         `¿Entiendes y aceptas esto?`,
         [
@@ -1502,16 +1628,16 @@ async function handleConversation(
           { id: 'ack_no', title: 'Cancelar' },
         ]
       );
-    } else if (isForSelf) {
+    } else if (resolution === 'self') {
       await upsertSession(phone, { state: 'awaiting_origin' });
       await sendText(phone,
         `📍 *¿Dónde estás?*\n\n` +
         `Envía tu ubicación:\n` +
         `• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
-        `O escribe tu dirección completa.`
+        `O escribe tu dirección completa (calle, barrio y ciudad).`
       );
     } else {
-      await sendButtons(phone, `¿Es para ti o para otra persona?`, [
+      await sendButtons(phone, interpForWhom?.reply_text || `¿Es para ti o para otra persona?`, [
         { id: 'for_self', title: 'Para mí' },
         { id: 'for_other', title: 'Otra persona' },
       ]);
@@ -1526,17 +1652,38 @@ async function handleConversation(
     // hay match en isNo() (ni exacto ni por substring), así que confiar en ellas
     // aquí dejaría este paso roto en silencio con el texto real de estos botones.
     const n = text.trim().toLowerCase();
-    if (n.includes('acepto') || n === 'si' || n === 'sí') {
+    let liabilityDecision: 'yes' | 'no' | null =
+      (n.includes('acepto') || n === 'si' || n === 'sí') ? 'yes' :
+      (n.includes('cancelar') || n === 'no') ? 'no' : null;
+    let interpLiability: FallbackInterpretation | null = null;
+    if (!liabilityDecision) {
+      // Bug real encontrado 2026-08-14: "de acuerdo" (sí) y "mejor no"/"no
+      // quiero" (cancelar) -- respuestas naturales muy comunes -- no
+      // calzaban con el match exacto y dejaban al pasajero atascado
+      // repitiendo los mismos botones. También cubre preguntas de seguridad
+      // genuinas ("¿esto es seguro?") que antes no tenían respuesta.
+      interpLiability = await interpretFallback({
+        state,
+        question: '¿Entiendes y aceptas la responsabilidad por la otra persona?',
+        answerFormat: 'sí (acepta la responsabilidad y continúa) o no (cancela). En matched_value escribe exactamente "yes" o "no".',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interpLiability);
+      if (interpLiability?.outcome === 'matched' && (interpLiability.matched_value === 'yes' || interpLiability.matched_value === 'no')) {
+        liabilityDecision = interpLiability.matched_value;
+      }
+    }
+    if (liabilityDecision === 'yes') {
       await upsertSession(phone, { state: 'awaiting_traveler_name', is_for_self: false });
       await sendText(phone, `¿Cómo se llama la persona que viaja?`);
-    } else if (n.includes('cancelar') || n === 'no') {
+    } else if (liabilityDecision === 'no') {
       await upsertSession(phone, { state: 'awaiting_for_whom' });
       await sendButtons(phone, `Entendido. ¿Es para ti o para otra persona?`, [
         { id: 'for_self', title: 'Para mí' },
         { id: 'for_other', title: 'Otra persona' },
       ]);
     } else {
-      await sendButtons(phone, `¿Entiendes y aceptas la responsabilidad por la otra persona?`, [
+      await sendButtons(phone, interpLiability?.reply_text || `¿Entiendes y aceptas la responsabilidad por la otra persona?`, [
         { id: 'ack_yes', title: 'Sí, acepto' },
         { id: 'ack_no', title: 'Cancelar' },
       ]);
@@ -1550,8 +1697,36 @@ async function handleConversation(
       await sendText(phone, `Por favor escribe el nombre de la persona que viaja.`);
       return;
     }
-    await upsertSession(phone, { state: 'awaiting_traveler_same_location', traveler_name: text.trim() });
-    await sendButtons(phone, `¿${text.trim()} está contigo ahora mismo (misma ubicación)?`, [
+    // Bug real encontrado 2026-08-14 probando cientos de variantes: CUALQUIER
+    // texto se guardaba tal cual como el nombre del pasajero -- alguien
+    // preguntando "¿para qué necesitas el nombre?" en vez de responder
+    // quedaba con esa pregunta literal guardada como su nombre, y así le
+    // llegaba al conductor. Un primer intento filtraba solo frases con forma
+    // de PREGUNTA, pero la ronda 2 de pruebas encontró que frases sin "?" ni
+    // palabra interrogativa al inicio se seguían colando ("mi esposa", "no sé
+    // todavía cómo se llama", "es privado eso") -- se guardaban tal cual, no
+    // eran nombres reales. En vez de perseguir cada frase nueva con más
+    // regex, se resuelve SIEMPRE con IA (mismo patrón ya probado en
+    // awaiting_dest_confirm/awaiting_offer_response/awaiting_traveler_phone),
+    // dejando que sea la IA la que decida si es de verdad un nombre.
+    let travelerNameValue: string | null = null;
+    const interpName = await interpretFallback({
+      state,
+      question: '¿Cómo se llama la persona que viaja?',
+      answerFormat: 'el nombre de una persona (nombre y opcionalmente apellido). Si el mensaje NO es un nombre real (es una pregunta, una relación como "mi esposa" sin nombre propio, una negativa a responder, o cualquier comentario), es "distraction" o "unclear", nunca "matched". En matched_value, si sí es un nombre, escríbelo tal cual.',
+      userText: text,
+    });
+    await logFallbackInterpretation(phone, state, text, interpName);
+    if (interpName?.outcome === 'matched' && interpName.matched_value) {
+      travelerNameValue = interpName.matched_value;
+    } else if (interpName) {
+      await sendText(phone, interpName.reply_text || `¿Cómo se llama la persona que viaja?`);
+      return;
+    } else {
+      travelerNameValue = text.trim();
+    }
+    await upsertSession(phone, { state: 'awaiting_traveler_same_location', traveler_name: travelerNameValue });
+    await sendButtons(phone, `¿${travelerNameValue} está contigo ahora mismo (misma ubicación)?`, [
       { id: 'same_loc_yes', title: 'Sí, está conmigo' },
       { id: 'same_loc_no', title: 'En otro lugar' },
     ]);
@@ -1572,22 +1747,42 @@ async function handleConversation(
     // botones -- el pasajero quedaba en un bucle sin poder avanzar. Se acortó el
     // título a "En otro lugar" (13 caracteres, con margen de sobra).
     const n = text.trim().toLowerCase();
-    if (n.includes('conmigo') || n === 'si' || n === 'sí') {
+    let sameLocDecision: 'yes' | 'no' | null =
+      (n.includes('conmigo') || n === 'si' || n === 'sí') ? 'yes' :
+      (n.includes('otro lugar') || n === 'no') ? 'no' : null;
+    let interpSameLoc: FallbackInterpretation | null = null;
+    if (!sameLocDecision) {
+      // Bug real encontrado 2026-08-14: "aquí está" (sí) y "está en la casa"
+      // (no, en otro lugar) -- respuestas naturales muy comunes -- no
+      // calzaban con el match exacto y dejaban al pasajero atascado
+      // repitiendo los mismos botones.
+      interpSameLoc = await interpretFallback({
+        state,
+        question: `¿${travelerName} está contigo ahora mismo (misma ubicación)?`,
+        answerFormat: 'sí (está en la misma ubicación de quien escribe) o no (está en otro lugar distinto). En matched_value escribe exactamente "yes" o "no".',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interpSameLoc);
+      if (interpSameLoc?.outcome === 'matched' && (interpSameLoc.matched_value === 'yes' || interpSameLoc.matched_value === 'no')) {
+        sameLocDecision = interpSameLoc.matched_value;
+      }
+    }
+    if (sameLocDecision === 'yes') {
       await upsertSession(phone, { state: 'awaiting_origin' });
       await sendText(phone,
         `📍 *¿Dónde estás?*\n\n` +
         `Envía tu ubicación:\n` +
         `• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
-        `O escribe tu dirección completa.`
+        `O escribe tu dirección completa (calle, barrio y ciudad).`
       );
-    } else if (n.includes('otro lugar') || n === 'no') {
+    } else if (sameLocDecision === 'no') {
       await upsertSession(phone, { state: 'awaiting_origin' });
       await sendText(phone,
         `📍 *¿Dónde está ${travelerName}?* (punto de recogida)\n\n` +
-        `Envía su ubicación (pídele que te la comparta y reenvíala aquí) o escribe la dirección.`
+        `Envía su ubicación (pídele que te la comparta y reenvíala aquí) o escribe la dirección completa (calle, barrio y ciudad).`
       );
     } else {
-      await sendButtons(phone, `¿${travelerName} está contigo ahora mismo?`, [
+      await sendButtons(phone, interpSameLoc?.reply_text || `¿${travelerName} está contigo ahora mismo?`, [
         { id: 'same_loc_yes', title: 'Sí, está conmigo' },
         { id: 'same_loc_no', title: 'En otro lugar' },
       ]);
@@ -1597,11 +1792,32 @@ async function handleConversation(
 
   // ── AWAITING_PACKAGE_DESC ───────────────────────────────────────────────────
   if (state === 'awaiting_package_desc') {
-    await upsertSession(phone, { state: 'awaiting_origin', package_desc: text });
+    // Mismo bug que en awaiting_traveler_name (2026-08-14), mismo fix
+    // definitivo tras la ronda 2 de pruebas: filtrar solo frases con forma de
+    // pregunta dejaba pasar comentarios sin "?" ni palabra interrogativa
+    // ("tiene límite de peso", "es frío o normal"), que se guardaban tal cual
+    // como si fueran la descripción real. Se resuelve SIEMPRE con IA.
+    let packageDescValue: string | null = null;
+    const interpPkg = await interpretFallback({
+      state,
+      question: 'Descríbeme qué necesitas enviar/recoger (ej: "Ropa, bolsa pequeña")',
+      answerFormat: 'una descripción breve de un paquete/objeto a enviar. Si el mensaje NO describe un paquete (es una pregunta, un comentario), es "distraction" o "unclear", nunca "matched". En matched_value, si sí describe un paquete, escríbelo tal cual.',
+      userText: text,
+    });
+    await logFallbackInterpretation(phone, state, text, interpPkg);
+    if (interpPkg?.outcome === 'matched' && interpPkg.matched_value) {
+      packageDescValue = interpPkg.matched_value;
+    } else if (interpPkg) {
+      await sendText(phone, interpPkg.reply_text || `Descríbeme qué necesitas enviar/recoger:\n_(ej: "Ropa, bolsa pequeña")_`);
+      return;
+    } else {
+      packageDescValue = text;
+    }
+    await upsertSession(phone, { state: 'awaiting_origin', package_desc: packageDescValue });
     await sendText(phone,
-      `Anotado: _"${text}"_\n\n` +
+      `Anotado: _"${packageDescValue}"_\n\n` +
       `📍 *¿Dónde estás?* (punto de recogida)\n\n` +
-      `Envía tu ubicación o escribe la dirección.`
+      `Envía tu ubicación o escribe la dirección completa (calle, barrio y ciudad).`
     );
     return;
   }
@@ -1615,7 +1831,7 @@ async function handleConversation(
     if (msgType === 'location' && msgLat != null && msgLng != null) {
       lat = msgLat; lng = msgLng;
       if (!isInColombia(lat, lng)) {
-        await sendText(phone, `📍 Esa ubicación no parece estar en Colombia.\n\nEnvía tu ubicación actual o escribe tu dirección.`);
+        await sendText(phone, `📍 Esa ubicación no parece estar en Colombia.\n\nEnvía tu ubicación actual o escribe tu dirección completa (calle, barrio y ciudad).`);
         return;
       }
       // precomputedAddr ya viene resuelto desde el webhook (se lanzó en paralelo
@@ -1629,7 +1845,7 @@ async function handleConversation(
       const bias = await lastKnownCityBias(phone);
       const geo = await forwardGeocode(text, bias?.lat, bias?.lng);
       if (!geo) {
-        await sendText(phone, `No encontré esa dirección 🔍\n\nIntenta ser más específico o envía tu ubicación con el clip 📎.`);
+        await sendText(phone, `No encontré esa dirección 🔍\n\nIntenta ser más específico (calle, barrio y ciudad) o envía tu ubicación con el clip 📎.`);
         return;
       }
       if (!isInColombia(geo.lat, geo.lng)) {
@@ -1643,7 +1859,7 @@ async function handleConversation(
       // devuelta salía "un poco diferente" a la escrita).
       lat = geo.lat; lng = geo.lng; addr = text.trim();
     } else {
-      await sendText(phone, `Por favor envía tu ubicación (📎 → Ubicación) o escribe la dirección completa.`);
+      await sendText(phone, `Por favor envía tu ubicación (📎 → Ubicación) o escribe la dirección completa (calle, barrio y ciudad).`);
       return;
     }
 
@@ -1653,7 +1869,27 @@ async function handleConversation(
 
   // ── AWAITING_ORIGIN_CONFIRM ─────────────────────────────────────────────────
   if (state === 'awaiting_origin_confirm') {
-    if (isYes(text)) {
+    // Bug real encontrado 2026-08-14: "sii"/"siii"/"correcto"/"exacto" (sí) y
+    // "no es ahí"/"está mal" (no) -- respuestas naturales muy comunes -- no
+    // calzaban con isYes()/isNo() (match exacto) y dejaban al pasajero
+    // atascado. Mismo mecanismo de IA ya probado en awaiting_dest_confirm
+    // (su gemelo, que sí entendía estas mismas frases).
+    let originDecision: 'yes' | 'no' | null = isYes(text) ? 'yes' : isNo(text) ? 'no' : null;
+    let interpOriginConfirm: FallbackInterpretation | null = null;
+    if (!originDecision) {
+      const originAddr = (session.origin_address as string) ?? 'esa dirección';
+      interpOriginConfirm = await interpretFallback({
+        state,
+        question: `¿Confirmas que tu ubicación es "${originAddr}"?`,
+        answerFormat: 'sí (confirma que la dirección está correcta) o no (quiere cambiar/corregir la dirección). En matched_value escribe exactamente "yes" o "no".',
+        userText: text,
+      });
+      await logFallbackInterpretation(phone, state, text, interpOriginConfirm);
+      if (interpOriginConfirm?.outcome === 'matched' && (interpOriginConfirm.matched_value === 'yes' || interpOriginConfirm.matched_value === 'no')) {
+        originDecision = interpOriginConfirm.matched_value;
+      }
+    }
+    if (originDecision === 'yes') {
       // Viaje para otra persona: falta su número de celular antes de seguir a
       // destino -- se pide acá, una sola vez (traveler_phone todavía vacío),
       // justo después de confirmar dónde se recoge. pending_dest_text (atajo
@@ -1687,13 +1923,13 @@ async function handleConversation(
         `📍 *${destQuestionText(session)}*\n\n` +
         `Envía la ubicación de destino o escribe la dirección.`
       );
-    } else if (isNo(text)) {
+    } else if (originDecision === 'no') {
       await upsertSession(phone, { state: 'awaiting_origin', origin_lat: null, origin_lng: null, origin_address: null });
       await sendText(phone,
-        `Entendido. 📍 Envía tu ubicación actual o escribe la dirección completa.`
+        `Entendido. 📍 Envía tu ubicación actual o escribe la dirección completa (calle, barrio y ciudad).`
       );
     } else {
-      await sendText(phone, `Responde *si* para confirmar o *no* para cambiar la dirección.`);
+      await sendText(phone, interpOriginConfirm?.reply_text || `Responde *si* para confirmar o *no* para cambiar la dirección.`);
     }
     return;
   }
@@ -1829,13 +2065,34 @@ async function handleConversation(
     if (!isYes(text)) {
       const parsed = parseInt(text.replace(/\D/g, ''), 10);
       if (isNaN(parsed) || parsed < MIN_PRICE) {
-        await sendText(phone,
-          `El monto mínimo es $${MIN_PRICE.toLocaleString('es-CO')} 🚫\n\n` +
-          `Escribe un monto válido o *ok* para usar $${suggested.toLocaleString('es-CO')}.`
-        );
-        return;
+        // Bug real encontrado 2026-08-14: números en palabras ("diez mil") no
+        // se entendían (quitar todo lo que no es dígito deja vacío), y
+        // formatos mixtos ("10 mil pesos") se leían MAL como $10 en vez de
+        // $10.000 (el "mil"/"pesos" se descartaba, solo quedaba el "10").
+        // También cubre preguntas genuinas sobre el precio antes de rendirse
+        // con el mensaje genérico de "monto mínimo".
+        const delivery = isDeliveryService(session.service_type as string);
+        const interpPrice = await interpretFallback({
+          state,
+          question: `¿Cuánto ofreces por este ${delivery ? 'envío' : 'viaje'}? (precio sugerido: $${suggested.toLocaleString('es-CO')})`,
+          answerFormat: `un monto en pesos colombianos como número entero sin puntos ni decimales (ej: si dice "diez mil" o "10 mil pesos", matched_value debe ser "10000"). Debe ser al menos ${MIN_PRICE}. Si el mensaje no es un monto (es una pregunta o comentario), es "distraction" o "unclear", nunca "matched".`,
+          userText: text,
+        });
+        await logFallbackInterpretation(phone, state, text, interpPrice);
+        const aiParsed = interpPrice?.outcome === 'matched' && interpPrice.matched_value
+          ? parseInt(interpPrice.matched_value.replace(/\D/g, ''), 10) : NaN;
+        if (!isNaN(aiParsed) && aiParsed >= MIN_PRICE) {
+          price = aiParsed;
+        } else {
+          await sendText(phone, interpPrice?.reply_text ||
+            `El monto mínimo es $${MIN_PRICE.toLocaleString('es-CO')} 🚫\n\n` +
+            `Escribe un monto válido o *ok* para usar $${suggested.toLocaleString('es-CO')}.`
+          );
+          return;
+        }
+      } else {
+        price = parsed;
       }
-      price = parsed;
     }
 
     await upsertSession(phone, { offered_price: price, state: 'matching', matching_started_at: new Date().toISOString() });
@@ -2327,6 +2584,7 @@ async function handleConversation(
           `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
           `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
         );
+        await maybeOfferReferralProgram(phone, session.ag_user_id as string | null);
         await maybeOfferAppDownload(phone);
       });
       return;
@@ -2369,6 +2627,7 @@ async function handleConversation(
         `En Movi no descansamos: estamos disponibles las 24 horas del día, todos los días, para viajes urbanos, domicilios, viajes de ciudad a ciudad o fletes.\n` +
         `Cuando quieras, escríbeme *hola* y te atiendo personalmente.`
       );
+      await maybeOfferReferralProgram(phone, session.ag_user_id as string | null);
       await maybeOfferAppDownload(phone);
     });
     return;
@@ -2653,7 +2912,7 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
           : `🏁 Llegaste — gracias por viajar con Movi 💚\n\n`) +
       (receiptLines ? `${receiptLines}\n` : '') +
       `💰 *Total: ${cop(amount)}*\n\n` +
-      `⭐ Apenas terminemos con lo que estás haciendo ahora te pedimos que califiques este viaje.`
+      `⭐ Todavía no te pedimos la calificación de este viaje -- te la vamos a preguntar aparte apenas termines lo que estás haciendo ahora. _No hace falta que respondas nada todavía._`
     );
     await db().from('ag_wa_pending_ratings').insert({
       wa_phone: phone, trip_request_id: tripId, driver_name: driverName,
@@ -2681,6 +2940,496 @@ async function handleInternalEvent(payload: Record<string, unknown>) {
     // a que abra otra app.
     await sendLocation(phone, lat, lng, `Tu ${delivery ? 'mensajero' : 'conductor'}`, label);
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ─── Bot de soporte/registro de conductores (número separado, ver arriba) ────
+// Conversación completamente distinta a la de pedir viajes: no hay máquina de
+// estados de viaje, es un FAQ con IA sobre cómo registrarse como conductor,
+// documentos requeridos y estado de una solicitud ya enviada -- con escalamiento
+// a un humano (el mismo SUPPORT_PHONE que ya recibe otras alertas del sistema)
+// cuando la IA no tiene una respuesta segura. Ver memoria movi_whatsapp_support_number.
+// ════════════════════════════════════════════════════════════════════════════
+
+async function sendSupportGraph(payload: Record<string, unknown>): Promise<WaResult> {
+  try {
+    const { to, ...rest } = payload;
+    const fullBody = { messaging_product: 'whatsapp', ...(to ? recipientField(to as string) : {}), ...rest };
+    const res = await fetch(`https://graph.facebook.com/v20.0/${SUPPORT_PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(fullBody),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) console.error('[WA-Support] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
+    return { ok: res.ok, status: res.status, body: bodyText };
+  } catch (e) {
+    console.error('[WA-Support] sendGraph fetch error:', e);
+    return { ok: false, body: String(e) };
+  }
+}
+
+async function sendSupportText(to: string, text: string): Promise<WaResult> {
+  return sendSupportGraph({ to, type: 'text', text: { preview_url: false, body: text } });
+}
+
+// ─── Sesión del bot de soporte ────────────────────────────────────────────────
+async function getSupportSession(phone: string) {
+  const { data } = await db().from('ag_wa_support_sessions').select('*').eq('wa_phone', phone).maybeSingle();
+  return data as Record<string, unknown> | null;
+}
+
+async function upsertSupportSession(phone: string, patch: Record<string, unknown>) {
+  await db().from('ag_wa_support_sessions').upsert(
+    { wa_phone: phone, last_message_at: new Date().toISOString(), ...patch },
+    { onConflict: 'wa_phone' },
+  );
+}
+
+// Después de este tiempo sin que un asesor cierre la conversación, el bot
+// vuelve a responder solo -- para que un conductor no quede "colgado" para
+// siempre si el aviso de escalamiento se le pasó por alto al equipo de soporte.
+const ESCALATION_TTL_MS = 48 * 60 * 60 * 1000;
+
+// ─── Perfil real de un conductor, buscado por teléfono ────────────────────────
+// Reusa exactamente las mismas columnas que ya muestra la app (ag_users + ag_drivers)
+// -- status/rejection_reason, saldo de billetera, vencimiento de documentos del
+// vehículo ACTUAL -- así el bot contesta con datos reales en vez de una respuesta
+// genérica, para lo que sea que pregunten sobre SU cuenta puntual.
+interface DriverProfile {
+  agUserId: string; driverId: string; fullName: string; status: string; rejectionReason: string | null;
+  walletBalance: number; documentsExpired: boolean; vehicleNeedsUpdate: boolean;
+  soatExpiry: string | null; licenseExpiry: string | null; tecnoExpiry: string | null; civilLiabilityExpiry: string | null;
+}
+async function lookupDriverProfile(phone: string): Promise<DriverProfile | null> {
+  try {
+    const supabase = db();
+    const { data: user } = await supabase
+      .from('ag_users').select('id, full_name').eq('phone', toE164(phone)).maybeSingle();
+    if (!user) return null;
+    const { data: driver } = await supabase
+      .from('ag_drivers')
+      .select('id, status, rejection_reason, wallet_balance, documents_expired, vehicle_needs_update, soat_expiry, license_expiry, tecno_expiry, civil_liability_expiry')
+      .eq('ag_user_id', user.id as string).maybeSingle();
+    if (!driver) return null;
+    return {
+      agUserId:             user.id as string,
+      driverId:             driver.id as string,
+      fullName:             (user.full_name as string) ?? 'Conductor',
+      status:               driver.status as string,
+      rejectionReason:      driver.rejection_reason as string | null,
+      walletBalance:        (driver.wallet_balance as number) ?? 0,
+      documentsExpired:     driver.documents_expired as boolean,
+      vehicleNeedsUpdate:   driver.vehicle_needs_update as boolean,
+      soatExpiry:           driver.soat_expiry as string | null,
+      licenseExpiry:        driver.license_expiry as string | null,
+      tecnoExpiry:          driver.tecno_expiry as string | null,
+      civilLiabilityExpiry: driver.civil_liability_expiry as string | null,
+    };
+  } catch (e) { console.error('[WA-Support] lookupDriverProfile error:', e); return null; }
+}
+
+// ─── Billetera de invitados (referidos) ───────────────────────────────────────
+// 2% del valor de cada viaje completado por un invitado -- ya sea que el
+// invitado tome viajes como pasajero, o que trabaje como conductor -- se
+// acredita a quien lo invitó, de forma vitalicia (sin fecha de corte). Si la
+// misma persona invitó al pasajero Y al conductor de un mismo viaje, solo se
+// paga una vez. Confirmado leyendo ag_complete_trip() directo en la base real
+// el 2026-08-13 (pedido explícito del usuario de comunicar esto a conductores).
+async function getReferralInfo(agUserId: string): Promise<{ balance: number; totalEarned: number; referredCount: number }> {
+  try {
+    const supabase = db();
+    const [{ data: wallet }, { count }] = await Promise.all([
+      supabase.from('ag_referral_wallet').select('balance, total_earned').eq('ag_user_id', agUserId).maybeSingle(),
+      supabase.from('ag_users').select('id', { count: 'exact', head: true }).eq('referred_by', agUserId),
+    ]);
+    return {
+      balance:       (wallet?.balance as number) ?? 0,
+      totalEarned:   (wallet?.total_earned as number) ?? 0,
+      referredCount: count ?? 0,
+    };
+  } catch (e) { console.error('[WA-Support] getReferralInfo error:', e); return { balance: 0, totalEarned: 0, referredCount: 0 }; }
+}
+
+// Cuenta básica de Movi por teléfono, SIN exigir que tenga solicitud de
+// conductor -- el programa de invitados aplica a cualquier cuenta, y alguien
+// puede preguntar "cómo invito" antes de siquiera haberse registrado.
+async function lookupAgUserBasic(phone: string): Promise<{ agUserId: string; fullName: string } | null> {
+  try {
+    const { data } = await db().from('ag_users').select('id, full_name').eq('phone', toE164(phone)).maybeSingle();
+    if (!data) return null;
+    return { agUserId: data.id as string, fullName: (data.full_name as string) ?? 'Conductor' };
+  } catch (e) { console.error('[WA-Support] lookupAgUserBasic error:', e); return null; }
+}
+
+// Mensaje del programa de invitados -- reusado tanto si ya sabemos quién es
+// (conductor con perfil completo) como si solo tenemos una cuenta básica, o
+// ni siquiera eso (agUserId null -- explica el programa en general y manda a
+// registrarse primero para conseguir el link).
+async function buildReferralMessage(agUserId: string | null, fullName: string | null): Promise<string> {
+  const intro = `🎁 *Programa de invitados de Movi:*\n\nGanas el *2% de por vida* de cada servicio que complete alguien que invites -- sea que se registre como pasajero o como conductor. Se paga en cada viaje que haga esa persona, sin fecha de corte.`;
+  if (!agUserId) {
+    return `${intro}\n\nTodavía no encuentro una cuenta de Movi con este número. Regístrate en la app (como pasajero o conductor) y ahí mismo consigues tu link personal para empezar a invitar.`;
+  }
+  const ref = await getReferralInfo(agUserId);
+  const link = `${APP_URL || 'https://www.publihazclick.com'}/movi?ref=${agUserId}`;
+  return `${intro}\n\n` +
+    `Invitados hasta ahora: *${ref.referredCount}*\n` +
+    `Ganado en total: *${fmtCOP(ref.totalEarned)}*\n` +
+    `Saldo disponible para retirar: *${fmtCOP(ref.balance)}* (mínimo $10.000, a cuenta de ahorros, corriente, Nequi o Daviplata)\n\n` +
+    `Tu link personal para invitar:\n${link}`;
+}
+
+// ─── Beneficios reales (viajes del mes/total, próximo bono) ──────────────────
+// Misma RPC que usa la app (ag_get_driver_benefits) -- ver ag_bonus_milestones:
+// 10 viajes=$2.000, 25=$3.500, 50=$6.000, luego $24.000 cada 100 viajes de por vida.
+async function getDriverBenefits(driverId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await db().rpc('ag_get_driver_benefits', { p_driver_id: driverId });
+    if (error) { console.error('[WA-Support] getDriverBenefits error:', error); return null; }
+    return data as Record<string, unknown>;
+  } catch (e) { console.error('[WA-Support] getDriverBenefits error:', e); return null; }
+}
+
+function fmtCOP(n: number): string {
+  return `$${Math.round(n).toLocaleString('es-CO')}`;
+}
+function fmtDate(d: string | null): string {
+  if (!d) return 'sin registrar';
+  return new Date(d + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ─── FAQ con IA sobre requisitos/registro/operación de conductor ─────────────
+// Base de conocimiento extraída directamente del código real de la app (docTypes/
+// vehicleDocFields/tutorialSteps en anda-gana.component.ts, comisión/bonos en
+// anda-gana.service.ts + tabla ag_bonus_milestones, política de cancelación en
+// la migración 188, límites de antigüedad en platform_settings) -- pedido
+// explícito del usuario 2026-08-13: cubrir TODO lo relacionado a conductor con
+// la info real de la plataforma, para que casi nunca haga falta un humano.
+// Los datos puntuales de la cuenta de quien escribe (saldo, documentos, bonos,
+// estado de la solicitud) NO van aquí -- esos se resuelven aparte con datos
+// reales de la base antes de llegar a la IA (ver handleSupportConversation).
+const DRIVER_FAQ_SYSTEM_PROMPT = `Eres el asistente de soporte de conductores de Movi (app de viajes/domicilios tipo InDrive en Colombia), atendiendo por WhatsApp. Hablas en español de Colombia, cálido, claro y directo, con mensajes cortos para WhatsApp (evita párrafos largos; usa saltos de línea y viñetas simples con "-" si ayuda a leer mejor). Para negrita usa UN solo asterisco (*así*, el formato real de WhatsApp) -- nunca dobles asteriscos (**así**), en WhatsApp se ven los símbolos literales y queda feo.
+
+Usa SOLO la información real de abajo -- si algo no está aquí y no lo puedes deducir con certeza, es mejor escalar que inventar.
+
+═══ CÓMO REGISTRARSE COMO CONDUCTOR ═══
+- Se hace desde la app Movi (no desde WhatsApp): entrar a "Quiero ser conductor" y completar 4 pasos -- Datos personales, Documentos de identidad, Licencia, Vehículo. Llenar el formulario toma unos 5 minutos.
+- Datos personales pedidos: nombre completo, fecha de nacimiento, país, departamento, ciudad, número de cédula. Debe escribirse exactamente como aparece en los documentos oficiales.
+- Documentos del CONDUCTOR: cédula (documento colombiano -- es obligatorio ser colombiano para conducir en Movi), foto de la cédula, licencia de conducción vigente, y una selfie de rostro SIN la cédula (para que el pasajero lo reconozca al llegar).
+- Documentos del VEHÍCULO: SOAT vigente, tarjeta de propiedad (foto frontal y trasera), revisión tecnomecánica vigente, seguro de responsabilidad civil, fotos del vehículo. El vehículo puede estar matriculado en Colombia o en Venezuela (no hay restricción de formato de placa).
+- Antigüedad máxima del vehículo: carros hasta 23 años, motos hasta 17 años -- si el vehículo supera ese límite no se puede registrar (ni seguir conectado si ya lo tenía registrado y se le venció el límite).
+- Un conductor puede tener carro Y moto guardados a la vez y elegir cuál es su vehículo "actual" desde "Mis vehículos" en la app -- el historial de viajes, la billetera, las calificaciones y los bonos no se pierden al cambiar. Al cambiar de vehículo actual, los documentos/vencimientos que se revisan pasan a ser los del vehículo recién elegido.
+- Revisión de la solicitud: 24-48 horas hábiles después de enviar todos los documentos.
+- Si rechazan la solicitud, se puede corregir lo que falte y volver a enviar los documentos desde la app -- no hay que registrarse de cero otra vez.
+
+═══ SERVICIOS QUE PUEDE OFRECER UN CONDUCTOR ═══
+- Viaje (carro): transporte de pasajeros en carro dentro de la ciudad.
+- Moto: transporte de pasajeros en moto.
+- Domicilio: entrega de paquetes en moto.
+- Flete: transporte de carga/mudanzas en vehículos más grandes.
+- Ciudad a ciudad: viajes intermunicipales.
+Un mismo conductor puede recibir solicitudes de varios de estos servicios según qué vehículo tenga activo.
+
+═══ CÓMO FUNCIONA UN VIAJE ═══
+- El conductor se conecta con el botón verde "En línea" (necesita GPS y permiso de ubicación activados) y empieza a ver solicitudes cercanas con un precio sugerido.
+- El conductor puede aceptar el precio que pidió el pasajero o hacer una contraoferta con otro precio.
+- El precio sugerido sube automáticamente en horas de alta demanda (multiplicador de "hora pico").
+- Antes de salir se recomienda revisar SOAT vigente, tecnomecánica, combustible y que el vehículo esté limpio -- los pasajeros califican todo el servicio.
+- Durante el viaje hay llamada enmascarada disponible (conductor y pasajero se pueden llamar sin ver el número real del otro).
+- Hay botón de SOS/emergencia disponible durante el viaje.
+
+═══ DINERO: CÓMO SE PAGA UN CONDUCTOR ═══
+- El pasajero le paga al conductor DIRECTO (no pasa por Movi). Movi cobra su comisión de la billetera prepagada del conductor, no del pago del viaje.
+- Comisión de Movi: 12% fijo sobre el valor de cada viaje, se descuenta automáticamente de la billetera del conductor.
+- El conductor debe mantener saldo en su billetera para poder seguir recibiendo viajes; se recarga desde la app con tarjeta o PSE.
+- Si un pasajero cancela DESPUÉS de que el conductor ya aceptó (y ya se cobró la comisión): si el pasajero nunca llegó a abordar el vehículo, la comisión se devuelve automáticamente al saldo del conductor; si el pasajero ya iba a bordo cuando se canceló, el viaje se considera hecho y no hay devolución. Esto no depende de quién cancela, depende de si hubo servicio real (validado con el GPS real del conductor, no solo con un botón).
+- Bonos en efectivo por hitos de viajes completados de por vida (no se resetean cada mes): al llegar a 10 viajes, $2.000; a 25 viajes, $3.500; a 50 viajes, $6.000; de ahí en adelante, $24.000 adicionales cada 100 viajes más.
+
+═══ DOCUMENTOS VENCIDOS ═══
+- Licencia, SOAT, tecnomecánica y seguro de responsabilidad civil tienen fecha de vencimiento.
+- Si algo vence en 5 días o menos aparece un aviso en la app; si ya venció, la cuenta queda bloqueada para conectarse (no puede recibir viajes) hasta que se renueve.
+- Renovar (subir el documento con la fecha nueva) desbloquea la cuenta al instante, no hay que esperar revisión.
+- El bloqueo solo mira los documentos del vehículo que está marcado como "actual" en ese momento.
+
+═══ PROGRAMA DE INVITADOS (REFERIDOS) ═══
+- Cada conductor tiene un link personal para invitar gente a Movi (se consigue en la app, sección de referidos/invitados).
+- Quien se registre con ese link -- sea como PASAJERO o como CONDUCTOR -- queda como su invitado, sin importar cuál de los dos roles use.
+- El conductor gana el 2% del valor de CADA servicio que complete su invitado, de forma vitalicia (no tiene fecha de corte ni límite de tiempo) -- si su invitado se convirtió en conductor y hace 500 viajes en toda su vida en Movi, gana 2% de cada uno de esos 500 viajes; si su invitado es pasajero y pide viajes por años, gana 2% de cada uno de esos viajes también.
+- Si esa misma persona invitó tanto al pasajero como al conductor de un mismo viaje, solo se paga una vez (no se duplica).
+- Esta comisión de invitados es aparte de la billetera normal del conductor (la que paga la comisión del 12%) -- tiene su propio saldo.
+- Se puede retirar desde $10.000 COP en adelante, a cuenta de ahorros, cuenta corriente, Nequi o Daviplata.
+
+═══ SEGURIDAD Y CALIDAD ═══
+- Los pasajeros califican al conductor después de cada viaje (estrellas).
+- Llamada enmascarada (ninguno de los dos ve el número real del otro) y botón de SOS durante el viaje.
+- El registro pide selfie y cédula para verificar identidad.
+
+═══ CUENTA E INICIO DE SESIÓN ═══
+- No hay contraseña que se pueda "olvidar" -- el inicio de sesión en Movi es con el número de celular, se manda un código de un solo uso por SMS o WhatsApp y con eso entra. Si alguien pregunta por su contraseña, explícale esto: no la necesita, entra con su número y el código que le llega.
+- Se puede cambiar el número de celular registrado (pide verificación por SMS al número nuevo) y dar de baja la cuenta desde el menú de Seguridad en la app -- dar de baja bloquea el acceso pero no borra el historial.
+
+═══ CONFIANZA / "¿VALE LA PENA?" ═══
+Si preguntan si Movi es confiable, si vale la pena, cuánto se puede ganar en general, o algo similar (no es un reclamo, es duda genuina antes de animarse) -- respóndeles tú mismo, con confianza y calidez, usando lo de arriba: comisión fija transparente del 12%, bonos por hitos de viajes, programa de invitados con 2% de por vida, pasajeros y conductores se califican mutuamente, verificación de identidad en el registro, llamada enmascarada y SOS en cada viaje. Esto NO es motivo para escalar.
+
+═══ QUÉ HACER CUANDO NO SABES ALGO ═══
+No toda pregunta de un conductor es sobre la política interna de Movi -- muchas son preguntas generales de trámites/documentos en Colombia que SÍ tienen una respuesta real buscable (ej. "¿qué es el RUNT?", "¿dónde saco la tecnomecánica en Bucaramanga?", "¿cuánto cuesta el SOAT de una moto?", "¿qué pasa si me para un agente de tránsito sin tecnomecánica?"). Para esas, NO escales -- se resuelven con una búsqueda.
+
+Si la pregunta es vaga pero claramente relacionada con seguridad durante un viaje (ej. "¿qué pasa si un pasajero me hace algo?", "¿y si me pasa algo en la calle?") respóndela con la sección SEGURIDAD Y CALIDAD de arriba (botón de SOS, llamada enmascarada) -- no es motivo para escalar, es una pregunta informativa aunque suene alarmante.
+
+Elige exactamente una acción:
+- "answer": para todo lo que puedas responder con confianza usando la información de arriba (política y funcionamiento real de Movi).
+- "search": para preguntas informativas/factuales que NO son política interna de Movi pero sí tienen una respuesta real y objetiva que se puede buscar (trámites, requisitos legales de tránsito en Colombia, definiciones, precios de mercado, etc.).
+- "escalate": SOLO si la persona pide explícitamente hablar con un humano/asesor; es un reclamo o problema puntual de SU cuenta (ej. "me cobraron mal", "un pasajero me trató mal", "perdí un objeto"); reporta una emergencia o situación de seguridad real; o la pregunta no tiene ninguna relación con ser conductor ni con trámites/vehículos. No escales solo porque la pregunta venga informal o mal escrita -- primero intenta "answer" o "search".
+
+Responde SOLO un objeto JSON con estas claves:
+- "action": "answer" | "search" | "escalate".
+- "answer": tu respuesta en texto plano para WhatsApp (string), SOLO si action="answer". null en los otros dos casos.
+- "search_query": SOLO si action="search", una consulta de búsqueda corta y clara en español para encontrar la respuesta (string). null en los otros dos casos.`;
+
+interface FaqDecision { action: 'answer' | 'search' | 'escalate'; answer: string | null; searchQuery: string | null; }
+
+async function answerDriverFaq(question: string): Promise<FaqDecision> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) return { action: 'escalate', answer: null, searchQuery: null };
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        messages: [
+          { role: 'system', content: DRIVER_FAQ_SYSTEM_PROMPT },
+          { role: 'user', content: question },
+        ],
+      }),
+    });
+    if (!r.ok) { console.error('[WA-Support] answerDriverFaq error', r.status, await r.text()); return { action: 'escalate', answer: null, searchQuery: null }; }
+    const j = await r.json();
+    const raw = j?.choices?.[0]?.message?.content as string | undefined;
+    if (!raw) return { action: 'escalate', answer: null, searchQuery: null };
+    const parsed = JSON.parse(raw);
+    const action: string = ['answer', 'search', 'escalate'].includes(parsed.action) ? parsed.action : 'escalate';
+    if (action === 'answer' && typeof parsed.answer !== 'string') return { action: 'escalate', answer: null, searchQuery: null };
+    if (action === 'search' && typeof parsed.search_query !== 'string') return { action: 'escalate', answer: null, searchQuery: null };
+    return {
+      action: action as FaqDecision['action'],
+      answer: action === 'answer' ? parsed.answer as string : null,
+      searchQuery: action === 'search' ? parsed.search_query as string : null,
+    };
+  } catch (e) { console.error('[WA-Support] answerDriverFaq error:', e); return { action: 'escalate', answer: null, searchQuery: null }; }
+}
+
+// ─── Búsqueda web real para lo que no es política interna de Movi ────────────
+// Usa la Responses API de OpenAI con la herramienta de búsqueda web integrada
+// -- pedido explícito del usuario 2026-08-13: en vez de escalar a un humano
+// apenas algo no está en el FAQ estático, que el bot busque de verdad y
+// responda. Si la búsqueda falla por cualquier motivo, se cae a escalar (ver
+// caller) en vez de dejar al conductor sin respuesta.
+async function searchWebAnswer(originalQuestion: string, searchQuery: string): Promise<string | null> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) return null;
+  try {
+    const r = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        tools: [{ type: 'web_search_preview' }],
+        input: `Eres el asistente de soporte de conductores de Movi (app de viajes/domicilios en Colombia), respondiendo por WhatsApp. Un conductor preguntó: "${originalQuestion}"\n\nBusca en internet lo necesario para responderle con información real y actualizada de Colombia. Responde en español de Colombia, corto y directo (máximo 5-6 líneas, es un chat de WhatsApp, no un artículo). No repitas la pregunta ni digas "según mi búsqueda", solo da la respuesta como si ya la supieras. IMPORTANTE: texto plano sin formato Markdown -- nunca uses enlaces tipo [texto](url) ni asteriscos de encabezado; si necesitas citar una fuente, solo el nombre (ej. "según la Policía Nacional"), nunca la URL completa.\n\nConsulta sugerida: ${searchQuery}`,
+      }),
+    });
+    if (!r.ok) { console.error('[WA-Support] searchWebAnswer error', r.status, await r.text()); return null; }
+    const j = await r.json();
+    // La Responses API expone un atajo "output_text" con el texto final ya
+    // ensamblado; si no viene (según versión de API), se arma a mano
+    // recorriendo output[] buscando el primer mensaje con texto.
+    let text: string | null = null;
+    if (typeof j?.output_text === 'string' && j.output_text.trim()) {
+      text = j.output_text.trim();
+    } else {
+      const output = j?.output as Array<Record<string, unknown>> | undefined;
+      for (const item of output ?? []) {
+        if (item.type !== 'message') continue;
+        const content = item.content as Array<Record<string, unknown>> | undefined;
+        const textPart = content?.find(c => typeof c.text === 'string');
+        if (textPart) { text = (textPart.text as string).trim(); break; }
+      }
+    }
+    if (!text) return null;
+    // Red de seguridad por si el modelo igual mete un link Markdown -- en
+    // WhatsApp se ve como "[texto](url?utm_source=openai)" literal, feo y
+    // roto (no es clickeable). Se deja solo el texto de la cita.
+    return text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  } catch (e) { console.error('[WA-Support] searchWebAnswer error:', e); return null; }
+}
+
+async function escalateSupportConversation(phone: string, name: string, lastMessage: string): Promise<void> {
+  await Promise.all([
+    upsertSupportSession(phone, { escalated: true, escalated_at: new Date().toISOString() }),
+    sendSupportText(phone, 'Ya te conecto con un asesor de Movi 🙌 En un momento te escribe por acá mismo.'),
+    sendText(SUPPORT_PHONE, `🧑‍✈️ *Movi Conductores* — conversación escalada\n\n${name} (${phone})\n"${lastMessage}"\n\nResponde directo desde la bandeja de entrada de WhatsApp Business (número Movi Conductores).`),
+  ]);
+}
+
+// Auditoría de cada interacción -- qué preguntó, qué acción tomó el bot y con
+// qué le respondió. Usado tanto para revisar calidad con el tiempo como para
+// las pruebas masivas de cobertura pedidas por el usuario 2026-08-14. Nunca
+// debe tumbar la conversación si falla (best-effort).
+async function logSupportInteraction(phone: string, question: string, action: string, answerText: string | null): Promise<void> {
+  try {
+    await db().from('ag_wa_support_log').insert({ wa_phone: phone, question, action, answer_text: answerText });
+  } catch (e) { console.error('[WA-Support] logSupportInteraction error:', e); }
+}
+
+// ─── Conversación completa del número de soporte ──────────────────────────────
+async function handleSupportConversation(phone: string, name: string, msgText: string): Promise<void> {
+  const session = await getSupportSession(phone);
+
+  // Ya escalada a un humano -- el bot se queda callado para no pisar al asesor,
+  // salvo que ya pasó el TTL (ver ESCALATION_TTL_MS) y probablemente nadie
+  // retomó la conversación.
+  if (session?.escalated) {
+    const escalatedAt = session.escalated_at ? new Date(session.escalated_at as string).getTime() : 0;
+    if (Date.now() - escalatedAt < ESCALATION_TTL_MS) return;
+    await upsertSupportSession(phone, { escalated: false, escalated_at: null });
+  }
+
+  // Saludo o mensaje demasiado corto/genérico ("hola", "ayuda", "info", solo
+  // emojis) -- no hay pregunta real que interpretar todavía, así que no tiene
+  // sentido ni buscar ni menos escalar a un humano por esto. Se responde con
+  // un menú fijo (instantáneo, sin IA) invitando a preguntar algo puntual.
+  // Bug real encontrado 2026-08-13 probando cientos de preguntas: "ayuda" e
+  // "info" solas escalaban a un humano en vez de guiar a la persona.
+  const bareWords = msgText.trim().toLowerCase().replace(/[¿?¡!.,]/g, '');
+  const isGreeting = bareWords.length <= 20 &&
+    /^(hola|ola|buenas|buenos dias|buenas tardes|buenas noches|ayuda|info|informacion|inicio|menu|hey|hi)$/.test(bareWords);
+  if (isGreeting) {
+    const menuText =
+      `¡Hola${name && name !== 'Usuario' ? ` ${name}` : ''}! 👋 Soy el asistente de conductores de Movi.\n\n` +
+      `Pregúntame lo que necesites, por ejemplo:\n` +
+      `- Cómo registrarme y qué documentos necesito\n` +
+      `- Cuánto es la comisión y cómo me pagan\n` +
+      `- Bonos por viajes y programa de invitados\n` +
+      `- El estado de mi solicitud, mi saldo o mis documentos\n\n` +
+      `Escribe tu pregunta y te respondo.`;
+    await sendSupportText(phone, menuText);
+    await logSupportInteraction(phone, msgText, 'greeting_menu', menuText);
+    return;
+  }
+
+  // OJO: sin \b al final de cada raíz -- "aprobad\b" nunca matchea "aprobado"
+  // porque no hay límite de palabra entre "d" y "o" (ambos son caracteres de
+  // palabra). Bug real encontrado 2026-08-13 (pedido explícito del usuario de
+  // probar "cómo invito a otros y gano" -- con \b esa frase no activaba nada
+  // porque "invitad" tampoco matchea "invitar"). Todas las raíces de abajo son
+  // substrings sueltos a propósito, para cubrir cualquier conjugación/plural
+  // en español (invitar/invita/invito/invitación, aprobado/aprobada/aprueban,
+  // vencido/vencida/vencidos, bono/bonos, bloqueado, etc.).
+  const lower = msgText.toLowerCase();
+  const asksStatus   = /estado|solicitud|aprobad|aprueban|aprobaron|rechazad|revisaron/.test(lower);
+  const asksWallet   = /saldo|billetera|cuanto tengo|cu[aá]nto tengo|cuanta plata|cu[aá]nta plata|recarg/.test(lower);
+  const asksDocs     = /vencen|vence|vencimiento|vencid|bloque|no puedo conectar|no me deja conectar|por qu[eé] no puedo|documentos/.test(lower);
+  const asksBonus    = /bono|hito|cuantos viajes|cu[aá]ntos viajes|proximo bono|pr[oó]ximo bono/.test(lower);
+  const asksReferral = /invit|referid|mi link|codigo de invitaci|c[oó]digo de invitaci|link de invitaci|gano.*(otro|amigo|persona)/.test(lower);
+  const needsProfile = asksStatus || asksWallet || asksDocs || asksBonus || asksReferral;
+
+  let action = '';
+  let answerText: string | null = null;
+
+  // Preguntas sobre SU cuenta puntual -- se resuelven con datos reales de la
+  // base, nunca con la IA (evita que invente un saldo o una fecha que no es).
+  if (needsProfile) {
+    const profile = await lookupDriverProfile(phone);
+    if (!profile) {
+      // El programa de invitados no depende de tener una solicitud de
+      // conductor aprobada -- cualquier cuenta de Movi (o incluso alguien que
+      // todavía no se ha registrado) puede preguntar cómo funciona. No tiene
+      // sentido responderle "no encuentro tu solicitud" a esa pregunta puntual.
+      if (asksReferral) {
+        const basicUser = await lookupAgUserBasic(phone);
+        action = 'profile:referral_no_account';
+        answerText = await buildReferralMessage(basicUser?.agUserId ?? null, basicUser?.fullName ?? null);
+      } else {
+        action = 'profile:not_found';
+        answerText = 'No encuentro ninguna solicitud registrada con este número 🤔\n\n¿Ya completaste el registro en la app Movi (sección "Quiero ser conductor")? Si el registro lo hiciste con otro número, dime cuál para buscarlo.';
+      }
+    } else if (asksStatus) {
+      action = 'profile:status';
+      if (profile.status === 'approved') {
+        answerText = `¡Buenas noticias, ${profile.fullName}! ✅ Tu cuenta de conductor ya está *aprobada*. Ya puedes conectarte desde la app y empezar a recibir viajes.`;
+      } else if (profile.status === 'rejected') {
+        answerText = `Tu solicitud fue *rechazada*${profile.rejectionReason ? `:\n\n"${profile.rejectionReason}"` : '.'}\n\nCorrige lo que haga falta y vuelve a enviar tus documentos desde la app.`;
+      } else {
+        answerText = `Tu solicitud sigue *en revisión* 🕐 (normalmente toma 24-48 horas hábiles). Te avisamos apenas quede lista.`;
+      }
+    } else if (asksWallet) {
+      action = 'profile:wallet';
+      answerText = `Tu saldo actual en la billetera es *${fmtCOP(profile.walletBalance)}* 💰\n\nAhí se descuenta automáticamente el 12% de comisión de cada viaje. Puedes recargar desde la app con tarjeta o PSE.`;
+    } else if (asksDocs) {
+      action = 'profile:docs';
+      const lines = [
+        `Licencia: ${fmtDate(profile.licenseExpiry)}`,
+        `SOAT: ${fmtDate(profile.soatExpiry)}`,
+        `Tecnomecánica: ${fmtDate(profile.tecnoExpiry)}`,
+        `Seguro responsabilidad civil: ${fmtDate(profile.civilLiabilityExpiry)}`,
+      ].join('\n');
+      const blockedMsg = profile.documentsExpired
+        ? '\n\n🔴 Tienes al menos un documento vencido -- tu cuenta está bloqueada para conectarte hasta que lo renueves desde la app. Se desbloquea al instante al subir el documento nuevo.'
+        : profile.vehicleNeedsUpdate
+          ? '\n\n🟠 Tu vehículo actual superó el límite de antigüedad permitido -- actualiza tus datos en "Mis vehículos" para poder conectarte.'
+          : '\n\n✅ Todo en orden, no tienes nada vencido ni bloqueado.';
+      answerText = `📋 *Vencimiento de tus documentos:*\n\n${lines}${blockedMsg}`;
+    } else if (asksBonus) {
+      const benefits = await getDriverBenefits(profile.driverId);
+      if (!benefits) {
+        action = 'profile:bonus_error';
+        answerText = 'No pude consultar tus bonos en este momento, intenta de nuevo en un rato 🙏';
+      } else {
+        action = 'profile:bonus';
+        const totalTrips = benefits.total_trips as number;
+        const nextTrips = benefits.next_milestone_trips as number | null;
+        const nextBonus = benefits.next_milestone_bonus as number | null;
+        const lifetimeBonus = benefits.lifetime_bonus_earned as number;
+        const remaining = nextTrips != null ? nextTrips - totalTrips : null;
+        answerText =
+          `🎁 *Tus bonos, ${profile.fullName}:*\n\n` +
+          `Viajes completados: *${totalTrips}*\n` +
+          `Bonos ganados hasta ahora: *${fmtCOP(lifetimeBonus)}*\n` +
+          (nextTrips != null && nextBonus != null
+            ? `Próximo bono: *${fmtCOP(nextBonus)}* al llegar a *${nextTrips} viajes* (te faltan ${remaining}).`
+            : 'No hay un próximo bono configurado por ahora.');
+      }
+    } else if (asksReferral) {
+      action = 'profile:referral';
+      answerText = await buildReferralMessage(profile.agUserId, profile.fullName);
+    }
+  }
+
+  if (answerText == null) {
+    const faq = await answerDriverFaq(msgText);
+    if (faq.action === 'answer' && faq.answer) {
+      action = 'answer';
+      answerText = faq.answer;
+    } else if (faq.action === 'search' && faq.searchQuery) {
+      const searched = await searchWebAnswer(msgText, faq.searchQuery);
+      if (searched) { action = 'search'; answerText = searched; }
+      // Si la búsqueda falla (sin internet/API/timeout), answerText sigue
+      // null y cae a escalar más abajo -- mejor eso que dejar al conductor
+      // sin ninguna respuesta.
+    }
+  }
+
+  if (answerText != null) {
+    await sendSupportText(phone, answerText);
+    await logSupportInteraction(phone, msgText, action, answerText);
+    return;
+  }
+
+  await escalateSupportConversation(phone, name, msgText);
+  await logSupportInteraction(phone, msgText, 'escalate', null);
 }
 
 // ─── Servidor principal ───────────────────────────────────────────────────────
@@ -2832,13 +3581,19 @@ serve(async (req) => {
         // que "la carga de la ubicación" se sintiera lenta (bug real reportado
         // 2026-08-11, segunda vez). Los resultados se pasan precalculados a
         // handleConversation para que no vuelva a pedirlos.
+        // A cuál de los dos números (viajes o soporte a conductores) llegó
+        // este mensaje -- ver SUPPORT_PHONE_NUMBER_ID más arriba. Meta manda
+        // este campo en todo webhook entrante independientemente del número.
+        const incomingPhoneNumberId = (value?.metadata as Record<string, unknown> | undefined)?.phone_number_id as string | undefined;
+        const isSupportNumber = !!SUPPORT_PHONE_NUMBER_ID && incomingPhoneNumberId === SUPPORT_PHONE_NUMBER_ID;
+
         const rawLoc = msg.type === 'location' ? (msg.location as Record<string, unknown>) : null;
         const rawLat = rawLoc?.latitude as number | undefined;
         const rawLng = rawLoc?.longitude as number | undefined;
         const [, precomputedAddr, precomputedSession] = await Promise.all([
-          msgId ? markReadWithTyping(msgId) : Promise.resolve(),
-          (rawLat != null && rawLng != null) ? reverseGeocode(rawLat, rawLng) : Promise.resolve(undefined),
-          getSession(fromPhone),
+          msgId ? markReadWithTyping(msgId, isSupportNumber ? SUPPORT_PHONE_NUMBER_ID : PHONE_NUMBER_ID) : Promise.resolve(),
+          (!isSupportNumber && rawLat != null && rawLng != null) ? reverseGeocode(rawLat, rawLng) : Promise.resolve(undefined),
+          isSupportNumber ? Promise.resolve(undefined) : getSession(fromPhone),
         ]);
 
         let   msgType     = msg.type as string;
@@ -2871,12 +3626,18 @@ serve(async (req) => {
             msgText = transcribed;
             msgType = 'text';
           } else {
-            await sendText(fromPhone, `No pude escuchar tu audio 😔\n\n¿Puedes escribirlo o intentar de nuevo?`);
+            const errText = `No pude escuchar tu audio 😔\n\n¿Puedes escribirlo o intentar de nuevo?`;
+            if (isSupportNumber) await sendSupportText(fromPhone, errText);
+            else await sendText(fromPhone, errText);
             return new Response('ok', { status: 200 });
           }
         }
 
-        await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession);
+        if (isSupportNumber) {
+          await handleSupportConversation(fromPhone, name, msgText);
+        } else {
+          await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession);
+        }
       }
     } catch (e) {
       console.error('[WA] Webhook processing error:', e);
