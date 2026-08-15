@@ -3588,6 +3588,32 @@ serve(async (req) => {
       });
     }
 
+    // new_registration: aviso al dueño cada vez que alguien se registra en Movi
+    // (pasajero o conductor), pedido explícito 2026-08-15. Reusa la MISMA
+    // plantilla aprobada "trip_error_alert" que error_alert (2 variables de
+    // texto libre, categoría Utilidad ya aprobada por Meta -- no hace falta
+    // pedir una plantilla nueva) pero se guarda con su propio type en
+    // ag_admin_notifications para no mezclarlo con errores reales de viaje.
+    if (event === 'new_registration') {
+      const contexto = msgData.context ?? 'Nuevo registro en Movi';
+      const detalle  = msgData.message ?? '';
+      let waResult = await sendTemplate(toE164(targetPhone), 'trip_error_alert', 'es_CO', [contexto, detalle]);
+      if (!waResult.ok) {
+        waResult = await sendText(toE164(targetPhone), `🆕 *Movi* — ${contexto}\n\n${detalle}`);
+      }
+      try {
+        const supabase = db();
+        await supabase.from('ag_admin_notifications').insert({
+          type:  'new_registration',
+          title: contexto,
+          body:  detalle,
+        });
+      } catch (e) { console.error('[WA] new_registration notification insert error:', e); }
+      return new Response(JSON.stringify({ sent: waResult.ok }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!text && event) {
       const eventMap: Record<string, (d: Record<string, string>) => string> = {
         trip_request: d => `🚗 *Movi* — Nueva solicitud de viaje\n\n📍 Desde: ${d.origin}\n📍 Hasta: ${d.destination}\n💰 Oferta: $${d.price}\n\nAbre la app para ofertar.`,
