@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { SlicePipe, DatePipe } from '@angular/common';
 import { AndaGanaService, AgUser, AgDriver } from '../../../../features/anda-gana/anda-gana.service';
 
-type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'cupones' | 'retiros';
+type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'ciudad-a-ciudad' | 'cupones' | 'retiros';
 
 @Component({
   selector: 'app-anda-gana-admin',
@@ -78,6 +78,12 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition"
       [class]="tab() === 'viajes' ? 'text-green-400 border-b-2 border-green-400' : 'text-slate-500 hover:text-slate-300'">
       Viajes activos
+    </button>
+    <button (click)="tab.set('ciudad-a-ciudad'); loadCcRequests()"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1.5"
+      [class]="tab() === 'ciudad-a-ciudad' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-500 hover:text-slate-300'">
+      🛣️ Ciudad a Ciudad
+      @if (ccFlaggedCount() > 0) { <span class="px-1.5 py-0.5 bg-amber-600 rounded-full text-[10px] font-black text-white" title="Viajes con integridad GPS marcada">{{ ccFlaggedCount() }}</span> }
     </button>
     <button (click)="tab.set('cupones'); loadCoupons()"
       class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition"
@@ -605,6 +611,9 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
             <span class="material-symbols-outlined text-red-400 animate-pulse" style="font-size:20px">emergency</span>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase"
               [class]="s.status === 'active' ? 'bg-red-600 text-white' : s.status === 'resolved' ? 'bg-green-600/30 text-green-400' : 'bg-gray-700 text-gray-400'">{{ s.status }}</span>
+            @if (s.cc_request_id) {
+              <span class="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 text-[10px] font-bold uppercase">🛣️ Ciudad a Ciudad</span>
+            }
             <span class="text-[10px] text-slate-500">{{ s.created_at | date:'short' }}</span>
           </div>
           @if (s.status === 'active') {
@@ -752,6 +761,43 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
     }
   }
 
+  <!-- ═══ CIUDAD A CIUDAD ═══ -->
+  @if (tab() === 'ciudad-a-ciudad') {
+    <div class="flex gap-2 mb-4 overflow-x-auto scrollbar-hide" style="scrollbar-width:none">
+      @for (s of ['','searching','negotiating','accepted','in_progress','completed','cancelled']; track s) {
+        <button (click)="ccStatusFilter.set(s); loadCcRequests()" class="px-3 py-1 rounded-lg text-xs font-bold flex-shrink-0"
+          [class]="ccStatusFilter() === s ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-400'">{{ s || 'Todos' }}</button>
+      }
+    </div>
+    @if (ccRequests().length === 0) {
+      <div class="text-center py-16 text-slate-500 text-sm">Sin viajes Ciudad a Ciudad en este estado.</div>
+    }
+    @for (r of ccRequests(); track r.id) {
+      <div class="bg-white/[0.03] border border-white/10 rounded-2xl p-4 mb-3" [class.border-amber-500]="r.gps_integrity_flagged" [class.border]="r.gps_integrity_flagged">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <p class="text-white font-bold text-sm">{{ r.origin_city }} → {{ r.dest_city }}</p>
+          <div class="flex items-center gap-1.5">
+            @if (r.gps_integrity_flagged) {
+              <span class="px-2 py-0.5 rounded-full bg-amber-600/20 text-amber-400 text-[10px] font-bold uppercase" title="Separación GPS sospechosa entre conductor y pasajero">⚠️ GPS</span>
+            }
+            <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 text-[10px] font-bold uppercase">{{ r.status }}</span>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400">Pasajero: {{ r.passenger_name ?? r.user_id?.slice(0,8) }} · Conductor: {{ r.driver_name ?? (r.driver_id ? r.driver_id.slice(0,8) : '—') }}</p>
+        <p class="text-[11px] text-slate-500">📅 {{ r.scheduled_dt | date:'short' }} · {{ r.distance_km }} km · {{ r.vehicle_cat }}</p>
+        <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+          <p class="text-[11px] text-amber-400 font-bold">{{ formatCOP(r.accepted_price ?? r.suggested_price) }}</p>
+          @if (r.commission_amount > 0) {
+            <p class="text-[11px] text-emerald-400">Comisión: {{ formatCOP(r.commission_amount) }} ({{ r.commission_pct }}%)</p>
+          }
+          @if (r.cancel_reason) {
+            <p class="text-[11px] text-rose-400">Cancelado: {{ r.cancel_reason }} ({{ r.cancelled_by }})</p>
+          }
+        </div>
+      </div>
+    }
+  }
+
 </div>
   `,
 })
@@ -783,6 +829,12 @@ export class AndaGanaAdminComponent implements OnInit {
   sosActiveCount = signal(0);
   activeTrips    = signal<any[]>([]);
 
+  // Ciudad a Ciudad (migración 226/227 -- antes el admin no tenía forma de ver
+  // estos viajes en absoluto, ver informe de comparación con InDrive)
+  ccRequests      = signal<any[]>([]);
+  ccStatusFilter  = signal('');
+  ccFlaggedCount  = signal(0);
+
   // Analytics
   analyticsPeriod = signal(30);
   analyticsData   = signal<any | null>(null);
@@ -813,7 +865,7 @@ export class AndaGanaAdminComponent implements OnInit {
 
   async ngOnInit() {
     await this.load();
-    await Promise.all([this.loadCommission(), this.loadDistanceFilter(), this.loadSos(), this.loadPendingWithdrawalsCount()]);
+    await Promise.all([this.loadCommission(), this.loadDistanceFilter(), this.loadSos(), this.loadPendingWithdrawalsCount(), this.loadCcFlaggedCount()]);
   }
 
   async loadPendingWithdrawalsCount(): Promise<void> {
@@ -923,6 +975,19 @@ export class AndaGanaAdminComponent implements OnInit {
   async loadActiveTrips(): Promise<void> {
     const { data } = await this.agService['supabase'].from('ag_trip_requests').select('*').in('status', ['in_progress', 'accepted', 'pickup', 'on_route', 'arrived']).order('created_at', { ascending: false }).limit(50);
     this.activeTrips.set(data ?? []);
+  }
+
+  async loadCcRequests(): Promise<void> {
+    let q = this.agService['supabase'].from('cc_admin_requests_v').select('*').limit(50);
+    const status = this.ccStatusFilter();
+    if (status) q = q.eq('status', status);
+    const { data } = await q;
+    this.ccRequests.set(data ?? []);
+  }
+
+  async loadCcFlaggedCount(): Promise<void> {
+    const { count } = await this.agService['supabase'].from('cc_requests').select('id', { count: 'exact', head: true }).eq('gps_integrity_flagged', true);
+    this.ccFlaggedCount.set(count ?? 0);
   }
 
   async loadAnalytics(): Promise<void> {

@@ -1450,6 +1450,45 @@ export class AndaGanaService {
     return { ok: out.ok, sosId: out.sos_id, contactsNotified: out.contacts_notified, mapsLink: out.maps_link };
   }
 
+  /** Igual que triggerSos pero para un viaje Ciudad a Ciudad -- mismo edge
+   * function (ag-sos-trigger, migración 226 le agregó soporte a cc_request_id),
+   * mismas notificaciones reales por SMS + admin. Antes esto solo abría un link
+   * de WhatsApp desde el cliente sin registrar nada ni avisar a nadie de verdad. */
+  async triggerCcSos(payload: { ccRequestId?: string | null; lat?: number; lng?: number; accuracy?: number; message?: string }): Promise<{ ok: boolean; sosId?: string; contactsNotified?: number; mapsLink?: string }> {
+    const { data: sess } = await this.supabase.auth.getSession();
+    const accessToken = sess?.session?.access_token;
+    if (!accessToken) throw new Error('Sesión no iniciada');
+    const r = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-sos-trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey, Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        cc_request_id: payload.ccRequestId ?? null,
+        lat: payload.lat ?? null, lng: payload.lng ?? null,
+        accuracy_m: payload.accuracy ?? null, message: payload.message ?? null,
+      }),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      let msg = `Error ${r.status}`;
+      try { msg = JSON.parse(text).error ?? msg; } catch {}
+      throw new Error(msg);
+    }
+    const out = JSON.parse(text);
+    return { ok: out.ok, sosId: out.sos_id, contactsNotified: out.contacts_notified, mapsLink: out.maps_link };
+  }
+
+  /** Registra un punto del recorrido (conductor o pasajero) durante un viaje
+   * Ciudad a Ciudad activo -- mismo propósito que logTripLocation, pero contra
+   * cc_log_trip_location/cc_trip_locations (migración 226), tabla propia que
+   * no toca el recorrido de viajes urbanos. Ping de fondo, no interrumpe el flujo. */
+  async logCcTripLocation(requestId: string, role: 'driver' | 'passenger', lat: number, lng: number): Promise<void> {
+    try {
+      await this.supabase.rpc('cc_log_trip_location', {
+        p_request_id: requestId, p_role: role, p_lat: lat, p_lng: lng,
+      });
+    } catch { /* ping de fondo, no debe interrumpir el flujo */ }
+  }
+
   async listEmergencyContacts(userId: string): Promise<any[]> {
     const { data } = await this.supabase.from('ag_emergency_contacts').select('*').eq('user_id', userId).order('created_at').limit(10);
     return data ?? [];

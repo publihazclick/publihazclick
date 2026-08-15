@@ -75,13 +75,16 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: 'Sesión inválida' }, 401);
 
     const body = await req.json();
-    const { trip_id, lat, lng, accuracy_m, message } = body;
+    // cc_request_id: viaje Ciudad a Ciudad (opcional, aditivo -- ver migración
+    // 226). Nunca se manda junto con trip_id (son dos tipos de viaje distintos),
+    // pero ambos quedan null-safe si no vienen.
+    const { trip_id, cc_request_id, lat, lng, accuracy_m, message } = body;
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // 1. Crear evento SOS
     const { data: sos, error: sosErr } = await supabase.from('ag_sos_events').insert({
-      user_id: userId, trip_id: trip_id ?? null,
+      user_id: userId, trip_id: trip_id ?? null, cc_request_id: cc_request_id ?? null,
       lat: lat ?? null, lng: lng ?? null, accuracy_m: accuracy_m ?? null,
       message: message ?? null,
     }).select('id').single();

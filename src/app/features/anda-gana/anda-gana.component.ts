@@ -3174,6 +3174,12 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                           <div class="flex-1">
                             <p class="font-black text-slate-800">{{ ccActiveReq().driver_name || 'Tu conductor' }}</p>
                             <p class="text-xs text-slate-500 mt-0.5">⭐ {{ ccActiveReq().driver_rating || '–' }} · {{ ccActiveReq().driver_trips || 0 }} viajes</p>
+                            @if (ccDriverLiveLoc()) {
+                              <p class="text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
+                                <span class="material-symbols-outlined" style="font-size:13px">near_me</span>
+                                @if (ccDriverLiveLoc()!.km != null) { A {{ ccDriverLiveLoc()!.km }} km de ti · } En vivo
+                              </p>
+                            }
                           </div>
                         </div>
 
@@ -3266,6 +3272,16 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                             <p class="text-white/70 text-[10px]">tiempo est.</p>
                           </div>
                         </div>
+
+                        @if (ccDriverLiveLoc()) {
+                          <div class="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                            <span class="material-symbols-outlined animate-pulse" style="font-size:16px">satellite_alt</span>
+                            <span class="font-bold">
+                              Ubicación del conductor en vivo
+                              @if (ccDriverLiveLoc()!.km != null) { · a {{ ccDriverLiveLoc()!.km }} km de ti }
+                            </span>
+                          </div>
+                        }
 
                         <!-- KPIs ruta -->
                         <div class="grid grid-cols-3 gap-2">
@@ -10679,6 +10695,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Solicitud activa (matching/assigned/active)
   ccActiveReqId   = signal<string|null>(null);
   ccActiveReq     = signal<any|null>(null);
+  // Ubicación en vivo del conductor asignado (migración 227) -- antes esto no
+  // existía para Ciudad a Ciudad, solo para viajes urbanos.
+  ccDriverLiveLoc = signal<{ lat: number; lng: number; updatedAt: string; km: number | null } | null>(null);
+  private _ccDriverLocPoll: any = null;
   ccCallingDriver = signal(false);
   ccOffers        = signal<any[]>([]);
   ccOffersLoading = signal(false);
@@ -10775,10 +10795,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   readonly ccChatEmojis = ['👍','🙏','✅','⏰','🚗','😊','🙌','💯'];
 
+  // Los 3 son formas de pagarle DIRECTO al conductor al final del viaje (igual
+  // que InDrive -- Movi no procesa el cobro, solo deja constancia de cómo
+  // quedaron de acuerdo). Antes "Wallet Movi"/"Tarjeta" sonaban a cobro
+  // automático de la app cuando en realidad ninguno lo era.
   readonly ccPaymentMethods = [
-    { value: 'efectivo', icon: '💵', label: 'Efectivo',   desc: 'Pago al conductor' },
-    { value: 'wallet',   icon: '👛', label: 'Wallet Movi', desc: 'Tu saldo disponible' },
-    { value: 'tarjeta',  icon: '💳', label: 'Tarjeta',    desc: 'Débito o crédito' },
+    { value: 'efectivo', icon: '💵', label: 'Efectivo',   desc: 'Le pagas en efectivo al conductor' },
+    { value: 'wallet',   icon: '👛', label: 'Wallet Movi', desc: 'Le muestras tu saldo, acuerdan cómo' },
+    { value: 'tarjeta',  icon: '💳', label: 'Tarjeta',    desc: 'Acuerdan el cobro con el conductor' },
   ];
 
   readonly ccQuickMessages = [
@@ -11684,6 +11708,19 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const tripId = this.currentTripRequestId();
         if (tripId && this.tripAccepted()) {
           this.agService.logTripLocation(tripId, 'passenger', lat, lng);
+        }
+
+        // Mismo registro de recorrido pero para un viaje Ciudad a Ciudad activo
+        // (migración 226 -- antes no existía ningún historial GPS para este
+        // tipo de viaje). ccActiveReqId/ccActiveReq se reusan para ambos roles
+        // (pasajero o conductor) -- por eso el rol real se calcula comparando
+        // contra user_id/driver_id del viaje en vez de asumir 'passenger' como
+        // hace el bloque de arriba (ese sí es siempre el pasajero urbano).
+        const ccReq = this.ccActiveReq();
+        const myAuthIdCc = this.agProfile()?.auth_user_id;
+        if (ccReq && this.ccActiveReqId() && myAuthIdCc && (ccReq.status === 'accepted' || ccReq.status === 'in_progress')) {
+          const ccRole = ccReq.driver_id === myAuthIdCc ? 'driver' : ccReq.user_id === myAuthIdCc ? 'passenger' : null;
+          if (ccRole) this.agService.logCcTripLocation(this.ccActiveReqId()!, ccRole, lat, lng);
         }
 
       },
@@ -13452,9 +13489,42 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const dLat = (d.lat - o.lat) * Math.PI / 180;
     const dLng = (d.lng - o.lng) * Math.PI / 180;
     const a = Math.sin(dLat/2)**2 + Math.cos(o.lat*Math.PI/180)*Math.cos(d.lat*Math.PI/180)*Math.sin(dLng/2)**2;
-    const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    this.ccDistKm.set(Math.round(km));
+    const straightKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    // Estimado inmediato: línea recta × 1.35 -- corrección aproximada para
+    // carretera colombiana (curvas de montaña, sin autopista directa entre la
+    // mayoría de pares de ciudades). Antes esto se quedaba en la línea recta
+    // pura, subestimando la tarifa real en trayectos con mucha montaña de por
+    // medio (ej. Bogotá-Medellín: ~240km en línea recta, ~400km reales).
+    this.ccDistKm.set(Math.round(straightKm * 1.35));
     this.ccCalcPrice();
+
+    // Se intenta refinar con la ruta real de carretera (Google Directions,
+    // mismo SDK/key que ya usa el buscador de direcciones) -- si falla por
+    // cualquier motivo (API no habilitada, sin red, fuera de cobertura) se
+    // deja el estimado de arriba tal cual, nunca se rompe el flujo.
+    this._loadGoogleMapsSDK().then(ok => {
+      if (!ok || !(window as any).google?.maps?.DirectionsService) return;
+      const gmaps = (window as any).google.maps;
+      const svc = new gmaps.DirectionsService();
+      svc.route({
+        origin: { lat: o.lat, lng: o.lng },
+        destination: { lat: d.lat, lng: d.lng },
+        travelMode: gmaps.TravelMode.DRIVING,
+      }, (result: any, status: string) => {
+        // El origen/destino pudo cambiar mientras la llamada estaba en vuelo
+        // (usuario escribiendo rápido) -- si ya no coincide, descartar la
+        // respuesta en vez de aplicar una distancia que ya no corresponde.
+        if (this.ccOriginCity() !== o || this.ccDestCity() !== d) return;
+        if (status !== 'OK' || !result?.routes?.[0]?.legs?.[0]) return;
+        const meters = result.routes[0].legs.reduce((sum: number, leg: any) => sum + (leg.distance?.value || 0), 0);
+        if (meters > 0) {
+          this.ccDistKm.set(Math.round(meters / 1000));
+          this.ccCalcPrice();
+          this.cdr.markForCheck();
+        }
+      });
+    }).catch(() => { /* se queda con el estimado de línea recta × 1.35 */ });
   }
 
   ccSetVehicle(val: string): void {
@@ -13542,7 +13612,40 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const sb = getMoviClient();
       const { data } = await sb.from('cc_request_detail_v').select('*').eq('id', id).single();
       this.ccActiveReq.set(data || null);
+      // El conductor de un viaje ya asignado/en curso ya reporta su posición en
+      // ag_driver_locations sin importar si el viaje es urbano o intercity
+      // (updateDriverLocation() corre igual para cualquier conductor en línea) --
+      // solo faltaba que el pasajero de Ciudad a Ciudad la consultara.
+      if (data && (data.status === 'accepted' || data.status === 'in_progress') && data.driver_ag_id) {
+        this._ccStartDriverLocPoll(data.driver_ag_id);
+      } else {
+        this._ccStopDriverLocPoll();
+      }
     } catch {} finally { this.cdr.markForCheck(); }
+  }
+
+  private _ccStartDriverLocPoll(driverAgId: string): void {
+    if (this._ccDriverLocPoll) return; // ya corriendo
+    const poll = async () => {
+      try {
+        const sb = getMoviClient();
+        const { data } = await sb.from('ag_driver_locations').select('lat,lng,updated_at').eq('driver_id', driverAgId).maybeSingle();
+        if (data) {
+          const km = (this._currentLat && this._currentLng)
+            ? Math.round((this._distMeters(this._currentLat, this._currentLng, data.lat, data.lng) / 1000) * 10) / 10
+            : null;
+          this.ccDriverLiveLoc.set({ lat: data.lat, lng: data.lng, updatedAt: data.updated_at, km });
+          this.cdr.markForCheck();
+        }
+      } catch { /* se reintenta en el próximo tick */ }
+    };
+    poll();
+    this._ccDriverLocPoll = setInterval(poll, 10000);
+  }
+
+  private _ccStopDriverLocPoll(): void {
+    if (this._ccDriverLocPoll) { clearInterval(this._ccDriverLocPoll); this._ccDriverLocPoll = null; }
+    this.ccDriverLiveLoc.set(null);
   }
 
   private async _ccLoadOffers(reqId: string): Promise<void> {
@@ -13601,7 +13704,29 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const reqId = this.ccActiveReqId();
       if (reqId) await this._ccLoadActiveReq(reqId);
       this.ccView.set('assigned');
-    } catch { alert('Error al aceptar la oferta'); }
+    } catch (err: any) {
+      // El conductor paga la comisión de su billetera al aceptar (migración 226,
+      // mismo mecanismo que viajes urbanos) -- si no le alcanza, cc_accept_offer
+      // devuelve 'SALDO_INSUFICIENTE ...'. Traducido, nunca en inglés/crudo.
+      const raw = String(err?.message || '');
+      if (raw.includes('SALDO_INSUFICIENTE')) {
+        // Quien acepta es el PASAJERO, pero el saldo que falta es el del
+        // CONDUCTOR (a él se le cobra la comisión al aceptar) -- el mensaje
+        // tiene que dejar claro de quién es el problema, no confundir al
+        // pasajero pensando que es su propia billetera. Mismo patrón de
+        // extraer los montos exactos que ya usa acceptOffer() (viaje urbano)
+        // en anda-gana.service.ts.
+        const match = raw.match(/Necesita \$(\d+) pero tiene \$(\d+)/);
+        const detail = match ? ` (le faltan $${(Number(match[1]) - Number(match[2])).toLocaleString('es-CO')})` : '';
+        alert(`Ese conductor no puede tomar este viaje ahora mismo (no tiene saldo suficiente en su billetera${detail}). Elige otra oferta o espera a que aparezca otra.`);
+      } else if (raw.includes('ya no está disponible')) {
+        alert('Esta oferta ya no está disponible (el pasajero ya eligió otro conductor o la retiraste).');
+      } else if (raw.includes('ya tiene otro conductor')) {
+        alert('Este viaje ya quedó asignado a otro conductor.');
+      } else {
+        alert('Error al aceptar la oferta. Intenta de nuevo.');
+      }
+    }
   }
 
   async ccUpdatePrice(): Promise<void> {
@@ -13677,10 +13802,37 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   }
 
   ccEmergency(): void {
+    // Antes esto SOLO abría un link de WhatsApp -- nadie quedaba notificado si
+    // la persona no alcanzaba a enviarlo, no se avisaba al admin, no quedaba
+    // ningún registro. Ahora dispara el MISMO sistema real de SOS que usa el
+    // viaje urbano (SMS a contactos de emergencia + notificación admin +
+    // evento guardado, vía ag-sos-trigger/ag_sos_events, migración 226 le
+    // agregó el enlace a cc_request_id) -- y el link de WhatsApp se deja
+    // como respaldo adicional, no como reemplazo, por si el SOS real falla
+    // (sin señal a Supabase, por ejemplo).
+    const reqId = this.ccActiveReqId();
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
-        const url = `https://wa.me/573134453649?text=${encodeURIComponent(`🚨 EMERGENCIA MOVI - Estoy en: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`)}`;
+        const { latitude, longitude, accuracy } = pos.coords;
+        this.agService.triggerCcSos({
+          ccRequestId: reqId, lat: latitude, lng: longitude, accuracy,
+          message: 'Botón de emergencia activado durante viaje Ciudad a Ciudad',
+        }).then(res => {
+          if (res.ok) {
+            alert(`🚨 Alerta enviada. Se notificó a ${res.contactsNotified ?? 0} contacto(s) de emergencia y al equipo de Movi.`);
+          }
+        }).catch(() => { /* si falla el SOS real, igual sigue el respaldo de WhatsApp de abajo */ });
+
+        const url = `https://wa.me/573134453649?text=${encodeURIComponent(`🚨 EMERGENCIA MOVI - Estoy en: https://maps.google.com/?q=${latitude},${longitude}`)}`;
         window.open(url, '_blank');
+      }, () => {
+        // Sin GPS disponible: igual dispara el SOS real sin coordenadas (el
+        // backend ya maneja lat/lng nulos) en vez de no hacer nada.
+        this.agService.triggerCcSos({
+          ccRequestId: reqId,
+          message: 'Botón de emergencia activado durante viaje Ciudad a Ciudad (sin GPS disponible)',
+        }).catch(() => {});
+        window.open(`https://wa.me/573134453649?text=${encodeURIComponent('🚨 EMERGENCIA MOVI - No se pudo obtener mi ubicación')}`, '_blank');
       });
     }
   }
@@ -13790,6 +13942,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   ccGoNew(): void {
     this._ccStopMatchTimer();
+    this._ccStopDriverLocPoll();
     this.ccView.set('new');
     this.ccStep.set(1);
     this.ccActiveReqId.set(null);
@@ -15185,6 +15338,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   private _gpsWatchId: number | null = null;
   private _lastDriverTripLocLogAt = 0;
+  private _lastDriverCcTripLocLogAt = 0;
 
   async toggleOnline() {
     const driver = this.driverData();
@@ -16446,6 +16600,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
           if (nowTs - this._lastDriverTripLocLogAt >= 15000) {
             this._lastDriverTripLocLogAt = nowTs;
             this.agService.logTripLocation(activeTripId, 'driver', pos.coords.latitude, pos.coords.longitude);
+          }
+        }
+
+        // Mismo registro pero para un viaje Ciudad a Ciudad activo del conductor
+        // (migración 226). Throttle propio, independiente del de arriba.
+        const ccActive = this.ccActiveReq();
+        const myAuthIdCcDrv = this.agProfile()?.auth_user_id;
+        if (ccActive && this.ccActiveReqId() && myAuthIdCcDrv && ccActive.driver_id === myAuthIdCcDrv
+            && (ccActive.status === 'accepted' || ccActive.status === 'in_progress')) {
+          const nowTsCc = Date.now();
+          if (nowTsCc - this._lastDriverCcTripLocLogAt >= 15000) {
+            this._lastDriverCcTripLocLogAt = nowTsCc;
+            this.agService.logCcTripLocation(this.ccActiveReqId()!, 'driver', pos.coords.latitude, pos.coords.longitude);
           }
         }
       },
