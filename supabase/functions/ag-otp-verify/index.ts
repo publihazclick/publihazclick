@@ -73,7 +73,11 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { phone, code, name, role, referred_by } = body;
-    if (!phone || !code) return json({ error: 'phone y code requeridos' }, 400);
+    // BUG REAL encontrado 2026-08-20: un status HTTP no-2xx hace que supabase-js descarte el
+    // body entero y solo exponga "Edge Function returned a non-2xx status code" (genérico, en
+    // inglés) como error.message -- ver el mismo bug corregido en ag-otp-send/index.ts. Este era
+    // el único caso de esta función que todavía devolvía un status distinto de 200.
+    if (!phone || !code) return json({ ok: false, error: 'phone y code requeridos' });
 
     const normalized = toE164(phone);
     const hash = await sha256(String(code).trim());

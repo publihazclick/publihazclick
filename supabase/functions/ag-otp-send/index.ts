@@ -79,7 +79,12 @@ async function sendViaTelnyx(phone: string, code: string): Promise<boolean> {
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) { const err = await res.text(); console.error('Telnyx error:', err); throw new Error('Telnyx:' + err.substring(0,200)); }
+  // BUG REAL encontrado 2026-08-20: esto lanzaba una excepción en vez de devolver false, así que
+  // cualquier falla de Telnyx (saldo, rate limit, error transitorio) saltaba DIRECTO al catch
+  // general de Deno.serve (abajo) sin pasar nunca por el fallback a Twilio de la línea 174 --
+  // ese fallback era código muerto, nunca se ejecutaba. Ahora sendViaTelnyx falla igual que
+  // sendViaWhatsApp/sendViaTwilio (devuelve false), así que el fallback real sí corre.
+  if (!res.ok) { const err = await res.text(); console.error('Telnyx error:', err); return false; }
   return true;
 }
 
@@ -107,12 +112,22 @@ async function sendViaTwilio(phone: string, code: string): Promise<boolean> {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  // BUG REAL encontrado 2026-08-20 (pedido explicito del usuario, "Edge function returned a
+  // non-2xx status code" aparecia en la pantalla de conductores reales): el cliente supabase-js
+  // (functions.invoke) descarta el body JSON por completo cuando el status HTTP no es 2xx --
+  // deja data en null y solo expone ese mensaje generico en ingles como error.message, sin
+  // importar que tan claro fuera el mensaje en español que mandaba esta funcion. Antes CADA
+  // caso de error de aca (telefono invalido, demasiados intentos, fallo de envio, etc.) devolvia
+  // 400/429/500, asi que NINGUNO de esos mensajes en español llegaba nunca al usuario -- siempre
+  // veian el generico en ingles. Ahora todos los casos de error devuelven 200 (igual que ya hacia
+  // ag-otp-verify correctamente), con { error: '...' } en el body -- asi el cliente SI recibe el
+  // mensaje real.
   try {
     const { phone } = await req.json();
-    if (!phone) return json({ error: 'phone requerido' }, 400);
+    if (!phone) return json({ error: 'phone requerido' });
 
     const normalized = toE164(phone);
-    if (normalized.length < 10) return json({ error: 'Número de teléfono inválido' }, 400);
+    if (normalized.length < 10) return json({ error: 'Número de teléfono inválido' });
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -127,7 +142,7 @@ Deno.serve(async (req) => {
       .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
 
     if ((count ?? 0) >= 3) {
-      return json({ error: 'Demasiados intentos. Espera unos minutos.' }, 429);
+      return json({ error: 'Demasiados intentos. Espera unos minutos.' });
     }
 
     // TEST_PHONE_NUMBERS (2026-07-30, pedido explicito del usuario): el numero de pruebas real
@@ -157,7 +172,7 @@ Deno.serve(async (req) => {
     });
     if (insertError) {
       console.error('Insert error:', insertError);
-      return json({ error: 'Error interno' }, 500);
+      return json({ error: 'Error interno' });
     }
 
     if (isTestPhone) return json({ ok: true });
@@ -174,12 +189,12 @@ Deno.serve(async (req) => {
     if (!sent) sent = await sendViaTwilio(normalized, code);
 
     if (!sent) {
-      return json({ error: 'No se pudo enviar el código. Intenta de nuevo.' }, 500);
+      return json({ error: 'No se pudo enviar el código. Intenta de nuevo.' });
     }
 
     return json({ ok: true });
   } catch (e) {
     console.error(e);
-    return json({ error: 'Error interno' }, 500);
+    return json({ error: 'Error interno' });
   }
 });
