@@ -7049,6 +7049,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <p class="text-slate-600 text-xs leading-relaxed">
                 Mantén tus documentos al día. Si se vencen, tu cuenta quedará suspendida hasta renovarlos. Sube imagen clara, legible y sin recortes.
               </p>
+              <p class="text-slate-500 text-xs leading-relaxed">
+                ¿No tienes el documento físico? Si solo puedes consultarlo en línea (RUNT, tu aseguradora, etc.), toma una captura de pantalla de esa consulta o sube el PDF que te enviaron — ambos son válidos.
+              </p>
 
               @for (dt of docTypes; track dt.key) {
                 <div class="rounded-2xl p-4 flex flex-col gap-3"
@@ -9256,6 +9259,9 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
                 <h3 style="color:#BFD3FA;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Documentos del Vehículo</h3>
               </div>
+              <p style="color:rgba(191,211,250,0.6);font-size:11px;line-height:1.5;margin:-8px 0 0">
+                ¿No tienes el documento físico? Si solo puedes consultarlo en línea (RUNT, tu aseguradora, etc.), toma una captura de pantalla de esa consulta o sube el PDF que te enviaron — ambos son válidos.
+              </p>
               @for (f of vehicleDocFields; track f.key) {
                 <div class="flex flex-col gap-2">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
