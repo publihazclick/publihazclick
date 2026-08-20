@@ -91,14 +91,25 @@ class MoviPermissionsPlugin : Plugin() {
      */
     @PluginMethod
     fun openNotificationSettings(call: PluginCall) {
-        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        // ACTION_APP_NOTIFICATION_SETTINGS existe desde API 26; minSdk de la app es 24. En la
+        // practica este boton solo se muestra cuando POST_NOTIFICATIONS ya fue evaluado como
+        // permiso en tiempo de ejecucion, algo que solo pasa en API 33+ (muy por encima de 26),
+        // asi que no deberia ser alcanzable en un dispositivo tan viejo -- pero por si algun ROM
+        // de fabricante no resuelve el intent, se envuelve en try/catch para que jamas tumbe la
+        // app nativa (peor caso: el boton no hace nada, en vez de crashear).
+        try {
+            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            }
+            // activity.startActivity(), no context.startActivity(): el context del plugin puede
+            // ser el de la Application (no una Activity), y lanzar un intent normal desde ahi
+            // exige el flag FLAG_ACTIVITY_NEW_TASK o revienta con "calling startActivity()
+            // requires...". La Activity de Capacitor (esta misma MainActivity) no necesita ese
+            // flag.
+            activity.startActivity(intent)
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("No se pudo abrir Ajustes de notificaciones: " + e.message)
         }
-        // activity.startActivity(), no context.startActivity(): el context del plugin puede ser
-        // el de la Application (no una Activity), y lanzar un intent normal desde ahi exige el
-        // flag FLAG_ACTIVITY_NEW_TASK o revienta con "calling startActivity() requires...". La
-        // Activity de Capacitor (esta misma MainActivity) no necesita ese flag.
-        activity.startActivity(intent)
-        call.resolve()
     }
 }
