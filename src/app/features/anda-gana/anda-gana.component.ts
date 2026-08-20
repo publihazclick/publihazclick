@@ -19301,7 +19301,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     soatPhoto: '', soatExpiry: '',
     propertyCardFront: '', propertyCardBack: '',
     tecnoPhoto: '', tecnoExpiry: '',
-    civilLiability: '', civilLiabilityExpiry: '',
     terms: false,
   };
   private _dfFiles: Record<string, File> = {};
@@ -19318,12 +19317,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     { key: 'vehicleSidePhoto', label: 'Foto lateral del vehículo' },
   ];
 
+  // Pedido explícito del usuario 2026-08-20: ya no se pide el seguro de responsabilidad civil
+  // en el registro -- no es obligatorio en Colombia como el SOAT, y estaba siendo una barrera de
+  // entrada real para conductores sin ese papel. civil_liability_url en ag_drivers queda nulo
+  // para cualquier registro nuevo (la columna sigue existiendo por si algún conductor ya lo tenía
+  // subido de antes, pero nada la exige).
   vehicleDocFields = [
     { key: 'soatPhoto',         label: 'SOAT (seguro obligatorio)', expiry: 'soatExpiry' },
     { key: 'propertyCardFront', label: 'Tarjeta de propiedad — frontal', expiry: null },
     { key: 'propertyCardBack',  label: 'Tarjeta de propiedad — trasera', expiry: null },
     { key: 'tecnoPhoto',        label: 'Revisión tecnomecánica', expiry: 'tecnoExpiry' },
-    { key: 'civilLiability',    label: 'Seguro de responsabilidad civil', expiry: 'civilLiabilityExpiry' },
   ];
 
   get dfr(): Record<string, unknown> { return this.df as Record<string, unknown>; }

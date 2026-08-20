@@ -3238,7 +3238,7 @@ Usa SOLO la información real de abajo -- si algo no está aquí y no lo puedes 
 - Se hace desde la app Movi (no desde WhatsApp): entrar a "Quiero ser conductor" y completar 4 pasos -- Datos personales, Documentos de identidad, Licencia, Vehículo. Llenar el formulario toma unos 5 minutos.
 - Datos personales pedidos: nombre completo, fecha de nacimiento, país, departamento, ciudad, número de cédula. Debe escribirse exactamente como aparece en los documentos oficiales.
 - Documentos del CONDUCTOR: cédula (documento colombiano -- es obligatorio ser colombiano para conducir en Movi), foto de la cédula, licencia de conducción vigente, y una selfie de rostro SIN la cédula (para que el pasajero lo reconozca al llegar).
-- Documentos del VEHÍCULO: SOAT vigente, tarjeta de propiedad (foto frontal y trasera), revisión tecnomecánica vigente, seguro de responsabilidad civil, fotos del vehículo.
+- Documentos del VEHÍCULO: SOAT vigente, tarjeta de propiedad (foto frontal y trasera), revisión tecnomecánica vigente, fotos del vehículo. El seguro de responsabilidad civil ya NO se pide (no es obligatorio en Colombia como el SOAT).
 - *¿Qué carros y motos se aceptan?* Se aceptan carros Y motos matriculados en Colombia O en Venezuela (placa colombiana o venezolana, ambas están bien -- no hay restricción de formato de placa por país). Lo único que debe ser colombiano es la cédula del CONDUCTOR (la persona), no el vehículo.
 - *¿Desde qué año se aceptan?* Carros: modelo ${new Date().getFullYear() - 23} en adelante (máximo 23 años de antigüedad). Motos: modelo ${new Date().getFullYear() - 17} en adelante (máximo 17 años de antigüedad). Si el vehículo es más viejo que eso no se puede registrar (ni seguir conectado si ya lo tenía registrado y se le venció el límite mientras estaba activo). SIEMPRE que pregunten por año/antigüedad de carro o moto, responde con el año mínimo exacto de arriba, no solo "el máximo son X años" -- muchos conductores no van a restar el año ellos mismos.
 - Un conductor puede tener carro Y moto guardados a la vez y elegir cuál es su vehículo "actual" desde "Mis vehículos" en la app -- el historial de viajes, la billetera, las calificaciones y los bonos no se pierden al cambiar. Al cambiar de vehículo actual, los documentos/vencimientos que se revisan pasan a ser los del vehículo recién elegido.
@@ -3269,7 +3269,7 @@ Un mismo conductor puede recibir solicitudes de varios de estos servicios según
 - Bonos en efectivo por hitos de viajes completados de por vida (no se resetean cada mes): al llegar a 10 viajes, $2.000; a 25 viajes, $3.500; a 50 viajes, $6.000; de ahí en adelante, $24.000 adicionales cada 100 viajes más.
 
 ═══ DOCUMENTOS VENCIDOS ═══
-- Licencia, SOAT, tecnomecánica y seguro de responsabilidad civil tienen fecha de vencimiento.
+- Licencia, SOAT y tecnomecánica tienen fecha de vencimiento (el seguro de responsabilidad civil ya no se pide).
 - Si algo vence en 5 días o menos aparece un aviso en la app; si ya venció, la cuenta queda bloqueada para conectarse (no puede recibir viajes) hasta que se renueve.
 - Renovar (subir el documento con la fecha nueva) desbloquea la cuenta al instante, no hay que esperar revisión.
 - El bloqueo solo mira los documentos del vehículo que está marcado como "actual" en ese momento.
