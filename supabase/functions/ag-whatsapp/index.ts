@@ -236,6 +236,22 @@ async function sendButtons(to: string, bodyText: string, buttons: { id: string; 
   return sendGraph({ to, type: 'interactive', interactive });
 }
 
+// ─── Botón nativo "Enviar ubicación" -- 1 toque comparte el GPS actual ───────
+// Tipo especial de Meta (location_request_message, no un botón normal): abre
+// el picker nativo de ubicación de WhatsApp con un solo toque, en vez de que
+// el pasajero tenga que saber ir al clip 📎 → Ubicación. No reemplaza el
+// camino de escribir la dirección a mano -- el body sigue mencionándolo como
+// respaldo, por si el cliente de WhatsApp del pasajero no soporta este tipo
+// de mensaje o simplemente prefiere escribir.
+async function sendLocationRequest(to: string, bodyText: string): Promise<WaResult> {
+  const interactive: Record<string, unknown> = {
+    type: 'location_request_message',
+    body: { text: bodyText },
+    action: { name: 'send_location' },
+  };
+  return sendGraph({ to, type: 'interactive', interactive });
+}
+
 // ─── Foto real (conductor, comprobantes) como imagen del chat ────────────────
 async function sendImage(to: string, imageUrl: string, caption?: string): Promise<WaResult> {
   return sendGraph({ to, type: 'image', image: { link: imageUrl, caption } });
@@ -1720,11 +1736,9 @@ async function handleConversation(
       );
     } else if (resolution === 'self') {
       await upsertSession(phone, { state: 'awaiting_origin' });
-      await sendText(phone,
+      await sendLocationRequest(phone,
         `📍 *¿Dónde estás?*\n\n` +
-        `Envía tu ubicación:\n` +
-        `• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
-        `O escribe tu dirección completa (calle, barrio y ciudad).`
+        `Toca el botón para compartir tu ubicación actual, o escribe tu dirección completa (calle, barrio y ciudad).`
       );
     } else {
       await sendButtons(phone, interpForWhom?.reply_text || `¿Es para ti o para otra persona?`, [
@@ -1859,11 +1873,9 @@ async function handleConversation(
     }
     if (sameLocDecision === 'yes') {
       await upsertSession(phone, { state: 'awaiting_origin' });
-      await sendText(phone,
+      await sendLocationRequest(phone,
         `📍 *¿Dónde estás?*\n\n` +
-        `Envía tu ubicación:\n` +
-        `• Toca el clip 📎 → Ubicación → Tu ubicación actual\n\n` +
-        `O escribe tu dirección completa (calle, barrio y ciudad).`
+        `Toca el botón para compartir tu ubicación actual, o escribe tu dirección completa (calle, barrio y ciudad).`
       );
     } else if (sameLocDecision === 'no') {
       await upsertSession(phone, { state: 'awaiting_origin' });
@@ -2130,12 +2142,20 @@ async function handleConversation(
     if (decision === 'yes') {
       const suggested = session.offered_price as number ?? MIN_PRICE;
       const delivery = isDeliveryService(session.service_type as string);
+      // Piso recomendado (no obligatorio -- el único mínimo que de verdad bloquea
+      // sigue siendo MIN_PRICE en awaiting_price, esto es solo lo que se muestra):
+      // 75.23% del precio sugerido, pedido explícito del usuario 2026-08-19 para
+      // desincentivar ofertas muy bajas por conciencia con los conductores.
+      // Redondeado hacia ARRIBA al múltiplo de 500 más cercano -- nunca puede
+      // quedar por debajo del 75.23% exacto, solo igual o por encima.
+      const recommendedMin = Math.max(MIN_PRICE, Math.ceil(suggested * 0.7523 / 500) * 500);
       await upsertSession(phone, { state: 'awaiting_price' });
       await sendText(phone,
         `Destino confirmado ✅\n\n` +
         (delivery ? `💰 *¿Cuánto ofreces por este envío?*\n\n` : `💰 *¿Cuánto ofreces por este viaje?*\n\n`) +
         `Precio sugerido: *$${suggested.toLocaleString('es-CO')}*\n\n` +
-        `• Escribe un monto (ej: *12000*)\n` +
+        `_Te recomendamos, por conciencia y solidaridad con nuestros conductores que están dispuestos a prestarte el mejor servicio, no ofrecer menos de $${recommendedMin.toLocaleString('es-CO')} -- son conductores que día a día buscan, después de una larga jornada, llevar el sustento a sus hogares. Gracias por tu comprensión 🙏_\n\n` +
+        `• Escribe un monto (ej: *${recommendedMin.toLocaleString('es-CO')}*)\n` +
         `• O escribe *ok* para usar el precio sugerido`
       );
     } else if (decision === 'no') {
@@ -2150,11 +2170,18 @@ async function handleConversation(
   // ── AWAITING_PRICE ──────────────────────────────────────────────────────────
   if (state === 'awaiting_price') {
     const suggested = session.offered_price as number ?? MIN_PRICE;
+    // Mismo cálculo que en awaiting_dest_confirm (75.23% del precio sugerido,
+    // redondeado hacia ARRIBA al múltiplo de 500) -- pedido explícito del
+    // usuario 2026-08-19: pasó de ser solo una recomendación en el texto a ser
+    // el mínimo real que se exige aquí, en vez de MIN_PRICE (que sigue siendo
+    // el piso absoluto de la plataforma, pero recommendedMin siempre es igual
+    // o mayor).
+    const recommendedMin = Math.max(MIN_PRICE, Math.ceil(suggested * 0.7523 / 500) * 500);
     let price = suggested;
 
     if (!isYes(text)) {
       const parsed = parseInt(text.replace(/\D/g, ''), 10);
-      if (isNaN(parsed) || parsed < MIN_PRICE) {
+      if (isNaN(parsed) || parsed < recommendedMin) {
         // Bug real encontrado 2026-08-14: números en palabras ("diez mil") no
         // se entendían (quitar todo lo que no es dígito deja vacío), y
         // formatos mixtos ("10 mil pesos") se leían MAL como $10 en vez de
@@ -2165,18 +2192,22 @@ async function handleConversation(
         const interpPrice = await interpretFallback({
           state,
           question: `¿Cuánto ofreces por este ${delivery ? 'envío' : 'viaje'}? (precio sugerido: $${suggested.toLocaleString('es-CO')})`,
-          answerFormat: `un monto en pesos colombianos como número entero sin puntos ni decimales (ej: si dice "diez mil" o "10 mil pesos", matched_value debe ser "10000"). Debe ser al menos ${MIN_PRICE}. Si el mensaje no es un monto (es una pregunta o comentario), es "distraction" o "unclear", nunca "matched".`,
+          answerFormat: `un monto en pesos colombianos como número entero sin puntos ni decimales (ej: si dice "diez mil" o "10 mil pesos", matched_value debe ser "10000"). Debe ser al menos ${recommendedMin}. Si el mensaje no es un monto (es una pregunta o comentario), es "distraction" o "unclear", nunca "matched".`,
           userText: text,
         });
         await logFallbackInterpretation(phone, state, text, interpPrice);
         const aiParsed = interpPrice?.outcome === 'matched' && interpPrice.matched_value
           ? parseInt(interpPrice.matched_value.replace(/\D/g, ''), 10) : NaN;
-        if (!isNaN(aiParsed) && aiParsed >= MIN_PRICE) {
+        if (!isNaN(aiParsed) && aiParsed >= recommendedMin) {
           price = aiParsed;
         } else {
+          // Si la IA reconoció la intención (ej. una pregunta genuina sobre el
+          // precio) se prioriza su respuesta contextual; si no, el mensaje fijo
+          // explica el nuevo mínimo obligatorio.
           await sendText(phone, interpPrice?.reply_text ||
-            `El monto mínimo es $${MIN_PRICE.toLocaleString('es-CO')} 🚫\n\n` +
-            `Escribe un monto válido o *ok* para usar $${suggested.toLocaleString('es-CO')}.`
+            `El monto mínimo que aceptamos es $${recommendedMin.toLocaleString('es-CO')} 🚫\n\n` +
+            `Así cuidamos que la ganancia sea justa para el conductor.\n\n` +
+            `Escribe un monto de al menos $${recommendedMin.toLocaleString('es-CO')}, o *ok* para usar el precio sugerido ($${suggested.toLocaleString('es-CO')}).`
           );
           return;
         }
@@ -3656,25 +3687,6 @@ serve(async (req) => {
         const msg         = messages[0] as Record<string, unknown>;
         const msgId       = msg.id as string | undefined;
 
-        // Meta entrega los webhooks "al menos una vez", no "exactamente una
-        // vez" -- si tardamos en responder o hay cualquier hipo de red, Meta
-        // reintenta el MISMO mensaje. Sin esto, handleConversation() corría
-        // dos veces y el saludo/menú de Movi le llegaba duplicado al usuario
-        // (bug real 2026-08-09). Se registra el id del mensaje antes de
-        // procesarlo; si el insert choca con la clave primaria, ya se procesó.
-        if (msgId) {
-          const { error: dupError } = await db()
-            .from('ag_wa_processed_messages')
-            .insert({ message_id: msgId });
-          if (dupError) {
-            // 23505 = unique_violation -- mensaje repetido, no reprocesar.
-            if ((dupError as { code?: string }).code === '23505') {
-              return new Response('ok', { status: 200 });
-            }
-            console.error('[WA] dedupe insert error:', dupError);
-          }
-        }
-
         // Si el pasajero activó "username" (oculta su número), Meta ya no manda
         // "from" -- solo "from_user_id" con su BSUID (ver nota de isBsuid() más
         // arriba). Se usa ese como identificador de todos modos: la sesión
@@ -3687,31 +3699,55 @@ serve(async (req) => {
           return new Response('ok', { status: 200 });
         }
 
-        // markReadWithTyping (Meta), el reverse-geocode de una ubicación
-        // compartida (Mapbox) y la carga de la sesión (DB) van a hosts/servicios
-        // distintos e independientes entre sí -- no hay riesgo de repetir la
-        // condición de carrera de 2026-08-09 (esa era específica de 2 fetch()
-        // concurrentes al MISMO host de Meta en arranque en frío) corriéndolos
-        // en paralelo aquí. Antes iban en serie (markReadWithTyping, luego
-        // getSession y reverseGeocode más abajo en handleConversation), sumando
-        // 2 round-trips completos al tiempo total de respuesta -- causa real de
-        // que "la carga de la ubicación" se sintiera lenta (bug real reportado
-        // 2026-08-11, segunda vez). Los resultados se pasan precalculados a
-        // handleConversation para que no vuelva a pedirlos.
         // A cuál de los dos números (viajes o soporte a conductores) llegó
         // este mensaje -- ver SUPPORT_PHONE_NUMBER_ID más arriba. Meta manda
         // este campo en todo webhook entrante independientemente del número.
         const incomingPhoneNumberId = (value?.metadata as Record<string, unknown> | undefined)?.phone_number_id as string | undefined;
         const isSupportNumber = !!SUPPORT_PHONE_NUMBER_ID && incomingPhoneNumberId === SUPPORT_PHONE_NUMBER_ID;
 
+        // markReadWithTyping es puramente cosmético (el "escribiendo..." se
+        // autolimpia solo al mandar la respuesta real, o a los 25s) -- nada más
+        // abajo depende de que termine, así que se dispara sin esperar. Antes se
+        // esperaba en el mismo Promise.all que reverseGeocode/getSession, así que
+        // el tiempo total de respuesta quedaba atado a lo que tardara ESTE fetch a
+        // Meta (un endpoint distinto al de enviar mensajes, sin garantía de ser
+        // rápido) aunque el geocode y la sesión ya estuvieran listos hace rato --
+        // causa real reportada 2026-08-18 de que compartir la ubicación (con el
+        // botón nuevo) se sentía lento otra vez.
+        if (msgId) {
+          markReadWithTyping(msgId, isSupportNumber ? SUPPORT_PHONE_NUMBER_ID : PHONE_NUMBER_ID)
+            .catch(e => console.error('[WA] markReadWithTyping (fire-and-forget) error:', e));
+        }
+
+        // El registro anti-duplicado (Meta entrega los webhooks "al menos una
+        // vez", no "exactamente una vez" -- si tardamos en responder o hay
+        // cualquier hipo de red, reintenta el MISMO mensaje; sin este insert
+        // handleConversation() corría dos veces y el saludo/menú de Movi le
+        // llegaba duplicado al usuario, bug real 2026-08-09), el reverse-geocode
+        // de una ubicación compartida (Mapbox) y la carga de la sesión (DB) van a
+        // 2 tablas distintas + 1 host externo, totalmente independientes entre sí
+        // -- no hay razón para que el insert de dedupe bloquee a los otros dos
+        // antes de arrancar. Medido con instrumentación real 2026-08-18: corrían
+        // en serie y el insert de dedupe por sí solo agregaba ~150-215ms al
+        // tiempo de respuesta de CUALQUIER mensaje, incluida una ubicación
+        // compartida. Ahora van los 3 en paralelo y se revisa el resultado del
+        // dedupe después -- si resulta ser un duplicado, el geocode/sesión ya
+        // calculados de más se descartan sin problema (sin efectos secundarios).
         const rawLoc = msg.type === 'location' ? (msg.location as Record<string, unknown>) : null;
         const rawLat = rawLoc?.latitude as number | undefined;
         const rawLng = rawLoc?.longitude as number | undefined;
-        const [, precomputedAddr, precomputedSession] = await Promise.all([
-          msgId ? markReadWithTyping(msgId, isSupportNumber ? SUPPORT_PHONE_NUMBER_ID : PHONE_NUMBER_ID) : Promise.resolve(),
+        const [dedupeResult, precomputedAddr, precomputedSession] = await Promise.all([
+          msgId ? db().from('ag_wa_processed_messages').insert({ message_id: msgId }) : Promise.resolve({ error: null }),
           (!isSupportNumber && rawLat != null && rawLng != null) ? reverseGeocode(rawLat, rawLng) : Promise.resolve(undefined),
           isSupportNumber ? Promise.resolve(undefined) : getSession(fromPhone),
         ]);
+        if (dedupeResult?.error) {
+          // 23505 = unique_violation -- mensaje repetido, no reprocesar.
+          if ((dedupeResult.error as { code?: string }).code === '23505') {
+            return new Response('ok', { status: 200 });
+          }
+          console.error('[WA] dedupe insert error:', dedupeResult.error);
+        }
 
         let   msgType     = msg.type as string;
         const contactName = ((value?.contacts as unknown[])?.[0] as Record<string, unknown>)?.profile as Record<string, unknown>;
