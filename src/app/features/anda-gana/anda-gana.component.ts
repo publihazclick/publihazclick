@@ -17462,29 +17462,61 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
   }
 
+  private _showPriceFloorToast(): void {
+    this.priceUpdateToast.set('Por solidaridad con los conductores, no puedes bajar más de este monto');
+    if (this._priceToastTimer) clearTimeout(this._priceToastTimer);
+    this._priceToastTimer = setTimeout(() => { this.priceUpdateToast.set(null); this.cdr.markForCheck(); }, 2500);
+    this.cdr.markForCheck();
+  }
+
+  // BUG REAL encontrado 2026-08-19 (a pedido explícito del usuario "asegúrate que la lógica de un
+  // viaje pedido desde la app funcione igual a como funciona en WhatsApp"): el mismo día se agregó
+  // en ag-whatsapp/index.ts un piso real de 75.23% del precio sugerido (redondeado hacia arriba al
+  // múltiplo de $500) que bloquea ofertas más bajas -- pero acá en la app, adjustTripPrice/
+  // adjustTripPriceSmart/setTripPricePreset seguían floreando en un $2.000 fijo, sin ninguna
+  // relación con el precio sugerido. Un pasajero pidiendo por la app podía bajar el precio mucho
+  // más de lo que un pasajero de WhatsApp podía -- dos reglas de negocio distintas para el mismo
+  // viaje según el canal. Este helper replica EXACTO el mismo cálculo (MIN_PRICE=5000 y fórmula
+  // 0.7523 deben coincidir con MIN_PRICE/recommendedMin en ag-whatsapp/index.ts) para que el piso
+  // sea el mismo sin importar por dónde se pida el viaje.
+  private _recommendedMinPrice(): number {
+    const suggested = this.tripService() === 'domicilio'
+      ? this.domEstPrice()
+      : this._calcPrice(this.tripDistKm(), this.tripVehicle());
+    return Math.max(5000, Math.ceil(suggested * 0.7523 / 500) * 500);
+  }
+
   adjustTripPrice(delta: number) {
-    const newPrice = Math.max(2000, this.tripPrice() + delta);
+    const floor = this._recommendedMinPrice();
+    const uncapped = this.tripPrice() + delta;
+    const newPrice = Math.max(floor, uncapped);
     this.tripPrice.set(newPrice);
     // Persistir en BD para que los conductores vean el precio actualizado
     const tripId = this.currentTripRequestId();
     if (tripId) {
       this.agService.updateTripOfferedPrice(tripId, newPrice).catch(() => {});
-      this._showPriceUpdateToast(delta > 0);
+      if (delta < 0 && uncapped < floor) this._showPriceFloorToast();
+      else this._showPriceUpdateToast(delta > 0);
     }
   }
 
   adjustTripPriceSmart(dir: 1 | -1) {
     const p = this.tripPrice();
     const step = p < 8000 ? 500 : p < 20000 ? 1000 : 2000;
-    const newPrice = Math.max(2000, p + dir * step);
+    const floor = this._recommendedMinPrice();
+    const uncapped = p + dir * step;
+    const newPrice = Math.max(floor, uncapped);
     this.tripPrice.set(newPrice);
     const tripId = this.currentTripRequestId();
-    if (tripId) this.agService.updateTripOfferedPrice(tripId, newPrice).catch(() => {});
+    if (tripId) {
+      this.agService.updateTripOfferedPrice(tripId, newPrice).catch(() => {});
+      if (dir < 0 && uncapped < floor) this._showPriceFloorToast();
+    }
   }
 
   setTripPricePreset(pct: number) {
     const base = this._calcPrice(this.tripDistKm(), this.tripVehicle());
-    this.tripPrice.set(Math.max(2000, Math.round(base * (1 + pct) / 500) * 500));
+    this.tripPrice.set(Math.max(this._recommendedMinPrice(), Math.round(base * (1 + pct) / 500) * 500));
   }
 
   readonly tripSliderMax = computed(() =>
