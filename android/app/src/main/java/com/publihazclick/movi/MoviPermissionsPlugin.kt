@@ -80,4 +80,25 @@ class MoviPermissionsPlugin : Plugin() {
         result.put("alreadyIgnoring", pm.isIgnoringBatteryOptimizations(context.packageName))
         call.resolve(result)
     }
+
+    /**
+     * Atajo de un solo toque a la pantalla de notificaciones de Movi dentro de Ajustes del
+     * sistema -- pedido explicito del usuario 2026-08-19: cuando el permiso ya quedo bloqueado de
+     * verdad (2 negaciones reales, Android ya no vuelve a mostrar el cuadro pedido en codigo, ver
+     * requestCombined arriba), la unica salida es que el usuario lo active a mano en Ajustes. Sin
+     * esto tenia que navegar el mismo Ajustes -> Apps -> Movi -> Notificaciones; con
+     * ACTION_APP_NOTIFICATION_SETTINGS Android lo lleva DIRECTO a esa pantalla exacta.
+     */
+    @PluginMethod
+    fun openNotificationSettings(call: PluginCall) {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+        // activity.startActivity(), no context.startActivity(): el context del plugin puede ser
+        // el de la Application (no una Activity), y lanzar un intent normal desde ahi exige el
+        // flag FLAG_ACTIVITY_NEW_TASK o revienta con "calling startActivity() requires...". La
+        // Activity de Capacitor (esta misma MainActivity) no necesita ese flag.
+        activity.startActivity(intent)
+        call.resolve()
+    }
 }

@@ -5295,6 +5295,11 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 [style.color]="pushDiagStatus() === 'ok' ? '#34d399' : '#f87171'">
                 {{ pushDiagLabel() }}
               </p>
+              @if (pushDiagStatus() === 'denied') {
+                <button (click)="openNotificationSettings()"
+                  class="flex-shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black"
+                  style="background:#f87171;color:#fff">Activar</button>
+              }
             </div>
           }
 
@@ -7329,6 +7334,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
           @if (!loadingSection() && driverSection() === 'notifications') {
             <div class="flex flex-col gap-3">
               <p class="text-slate-600 text-xs">Controla qué notificaciones recibes.</p>
+
+              @if (pushDiagStatus() === 'denied') {
+                <div class="rounded-2xl p-4 flex items-center justify-between gap-3"
+                  style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25)">
+                  <div>
+                    <p class="font-bold text-sm" style="color:#dc2626">Notificaciones bloqueadas</p>
+                    <p class="text-slate-500 text-xs">No recibirás avisos de solicitudes hasta que las actives</p>
+                  </div>
+                  <button (click)="openNotificationSettings()"
+                    class="flex-shrink-0 px-3 py-2 rounded-xl text-white font-black text-xs"
+                    style="background:#dc2626">Activar</button>
+                </div>
+              }
 
               <div class="rounded-2xl p-4 flex items-center justify-between"
                 style="background:#F9FAFB;border:1px solid #E2E8F0">
@@ -16482,6 +16500,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     MP.requestIgnoreBatteryOptimizations().catch(() => {});
   }
 
+  /** Atajo de un toque a Ajustes → Notificaciones de Movi -- para cuando el permiso ya quedo
+   * bloqueado de verdad (2 negaciones reales) y Android ya no muestra el cuadro pedido en codigo
+   * (ver el bug corregido 2026-08-19 en _registerNativePush). Evita que el usuario tenga que
+   * navegar a mano Ajustes → Apps → Movi → Notificaciones. */
+  openNotificationSettings(): void {
+    const cap = (window as any)?.Capacitor;
+    const MP = cap?.Plugins?.MoviPermissions;
+    if (!cap?.isNativePlatform?.() || !MP) return;
+    MP.openNotificationSettings().catch(() => {});
+  }
+
   /** Ubicación (foreground) + push nativo del lado pasajero -- para avisarle cuando un
    * conductor le hace/contra-oferta una oferta y cuando llega a recogerlo (pedido 2026-07-31;
    * el codigo que MANDA esos 2 push ya existia, ver submitDriverOffer() y advanceStage(), pero
@@ -16699,17 +16728,21 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
     try {
       const perm = await PP.checkPermissions();
-      if (perm.receive === 'denied') {
-        this.pushDiagStatus.set('denied');
-        this.pushDiagLabel.set('Permiso denegado — ve a Ajustes del celular → Apps → Movi → Notificaciones y actívalas');
-        this.cdr.markForCheck();
-        return;
-      }
+      // BUG REAL encontrado 2026-08-19: si checkPermissions() devolvia 'denied' (que Capacitor ya
+      // marca asi despues de UN solo "No permitir", no solo tras un bloqueo permanente real de
+      // Android) este codigo se rendia sin volver a llamar requestPermissions() -- Android SI
+      // vuelve a mostrar el cuadro del sistema tras una sola negacion (solo deja de mostrarlo
+      // despues de la SEGUNDA negacion real). Resultado: un usuario que tocaba "No permitir" por
+      // error en el primer cuadro combinado (ubicacion+notificaciones) quedaba atrapado para
+      // siempre en "ve a Ajustes", aunque el sistema operativo si hubiera cooperado si se le
+      // volvia a preguntar. Ahora siempre se intenta requestPermissions() cuando no esta
+      // concedido; si el bloqueo es de verdad permanente, Android devuelve 'denied' sin mostrar
+      // ningun dialogo (inofensivo), pero si todavia se puede preguntar, esto lo recupera solo.
       if (perm.receive !== 'granted') {
         const req = await PP.requestPermissions();
         if (req.receive !== 'granted') {
-          this.pushDiagStatus.set('error');
-          this.pushDiagLabel.set('Debes aceptar los permisos de notificación');
+          this.pushDiagStatus.set('denied');
+          this.pushDiagLabel.set('Permiso denegado — ve a Ajustes del celular → Apps → Movi → Notificaciones y actívalas');
           this.cdr.markForCheck();
           return;
         }
