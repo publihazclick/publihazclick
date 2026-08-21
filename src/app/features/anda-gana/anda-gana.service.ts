@@ -461,6 +461,13 @@ export class AndaGanaService {
       if (driverRow?.id) {
         this.triggerDriverVerification(driverRow.id).catch(() => {});
         this.triggerBackgroundCheck(driverRow.id).catch(() => {});
+        // Pedido explícito del usuario 2026-08-21: muchos conductores no tienen SOAT/tecnomecánica
+        // ni en físico ni en digital a mano -- se intenta verificar automático contra el RUNT justo
+        // después de crear el conductor (el trigger trg_ag_sync_current_vehicle ya sincronizó
+        // ag_driver_vehicles con la placa recién insertada, así que la función puede resolver el
+        // vehículo actual solo con el driver_id). Si sale vigente, el conductor nunca tiene que
+        // subir foto de esos 2 documentos. Fire-and-forget, nunca bloquea el registro.
+        this.verifyVehicleRunt({ driverId: driverRow.id }).catch(() => {});
       }
       return { success: true };
     } catch (e: any) {
@@ -531,6 +538,7 @@ export class AndaGanaService {
 
     this.triggerDriverVerification(driverId).catch(() => {});
     this.triggerBackgroundCheck(driverId).catch(() => {});
+    this.verifyVehicleRunt({ driverId }).catch(() => {});
     return { success: true };
   }
 
@@ -2196,6 +2204,45 @@ export class AndaGanaService {
   async refreshDocumentUrl(filePath: string): Promise<string | null> {
     const { data } = await this.supabase.storage.from('movi-driver-docs').createSignedUrl(filePath, 60 * 60 * 24);
     return data?.signedUrl ?? null;
+  }
+
+  /** Verifica SOAT + tecnomecánica directo contra el RUNT (vía Verifik) por placa + cédula del
+   * dueño del vehículo -- pedido explícito del usuario 2026-08-21 para conductores que no tienen
+   * el documento físico ni una copia digital a mano, solo saben que está vigente. Si se pasa
+   * vehicleId (vehículo ya existe en BD, ej. "Mis documentos"), el resultado se guarda solo del
+   * lado del servidor. Si NO se pasa vehicleId (durante el registro inicial, antes de crear el
+   * vehículo), el resultado solo se devuelve -- quien llama debe guardarlo en el formulario y
+   * persistirlo después junto con registerDriver(). ownerDocumentNumber solo hace falta si el
+   * vehículo NO está a nombre del propio conductor. */
+  async verifyVehicleRunt(params: {
+    driverId: string; vehicleId?: string; plate?: string;
+    ownerDocumentType?: string; ownerDocumentNumber?: string;
+  }): Promise<{
+    ok: boolean; skipped?: boolean; found?: boolean; reason?: string;
+    soat?: { valid: boolean; expires_at: string | null; number: string | null };
+    techReview?: { valid: boolean; expires_at: string | null; number: string | null };
+    error?: string;
+  }> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      const token = session?.access_token ?? environment.moviSupabase.anonKey;
+      const res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-verify-vehicle-runt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: environment.moviSupabase.anonKey, Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          driver_id: params.driverId,
+          vehicle_id: params.vehicleId ?? null,
+          plate: params.plate ?? null,
+          owner_document_type: params.ownerDocumentType ?? null,
+          owner_document_number: params.ownerDocumentNumber ?? null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data?.error ?? `Error ${res.status}` };
+      return data;
+    } catch (e: any) {
+      return { ok: false, error: e?.message ?? 'Error de red' };
+    }
   }
 
   // ═══════════════════════════════════════════════════

@@ -7053,6 +7053,39 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 ¿No tienes el documento físico? Si solo puedes consultarlo en línea (RUNT, tu aseguradora, etc.), toma una captura de pantalla de esa consulta o sube el PDF que te enviaron — ambos son válidos.
               </p>
 
+              <!-- Verificación automática SOAT/tecnomecánica contra el RUNT -- pedido explícito
+              del usuario 2026-08-21: si el vehículo sale vigente, ni siquiera hace falta subir
+              foto de esos 2 documentos. -->
+              <div class="rounded-2xl p-4 flex flex-col gap-3" style="background:#EFF6FF;border:1px solid #BFDBFE">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-blue-600" style="font-size:20px">verified</span>
+                  <p class="font-black text-sm" style="color:#1e3a8a">Verificar SOAT y tecnomecánica automático</p>
+                </div>
+                <p class="text-slate-600 text-xs leading-relaxed">
+                  Consultamos directo con el RUNT si tu SOAT y tecnomecánica están vigentes -- si salen bien, no necesitas subir ninguna foto de esos dos.
+                </p>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" [ngModel]="runtOwnerNotSelf()" (ngModelChange)="runtOwnerNotSelf.set($event)" name="runtOwnerNotSelf" class="accent-blue-600"/>
+                  <span class="text-slate-600 text-xs">El vehículo no está a mi nombre</span>
+                </label>
+                @if (runtOwnerNotSelf()) {
+                  <input type="text" placeholder="Cédula del dueño del vehículo" [(ngModel)]="runtOwnerDocNumber" name="runtOwnerDocNumber"
+                    class="w-full px-3 py-2 rounded-lg text-slate-900 text-xs focus:outline-none" style="background:#FFFFFF;border:1px solid #BFDBFE"/>
+                }
+                <button type="button" (click)="verifyDocsWithRunt()" [disabled]="runtVerifying() || (runtOwnerNotSelf() && !runtOwnerDocNumber.trim())"
+                  class="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                  style="background:linear-gradient(135deg,#2563eb,#1d4ed8)">
+                  @if (runtVerifying()) {
+                    <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Consultando RUNT...
+                  } @else {
+                    <span class="material-symbols-outlined" style="font-size:14px">search</span> Verificar con RUNT
+                  }
+                </button>
+                @if (runtResultMsg()) {
+                  <p class="text-xs leading-relaxed" [style.color]="runtResultOk() ? '#15803d' : '#92400e'">{{ runtResultMsg() }}</p>
+                }
+              </div>
+
               @for (dt of docTypes; track dt.key) {
                 <div class="rounded-2xl p-4 flex flex-col gap-3"
                   style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
@@ -10315,6 +10348,57 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   uploadingDoc       = signal<string | null>(null);
   docExpiryInput: Record<string, string> = {};
   docNumberInput: Record<string, string> = {};
+
+  // ── Verificación automática SOAT/tecnomecánica contra el RUNT (Verifik) ──────────────
+  // Pedido explícito del usuario 2026-08-21: muchos conductores no tienen estos documentos ni
+  // en físico ni en digital a mano, solo saben que están vigentes -- esto consulta el RUNT
+  // directo por placa y evita que tengan que subir ninguna foto si sale vigente.
+  runtVerifying         = signal(false);
+  runtOwnerNotSelf       = signal(false);
+  runtOwnerDocNumber      = '';
+  runtResultMsg          = signal<string | null>(null);
+  runtResultOk            = signal(false);
+
+  async verifyDocsWithRunt(): Promise<void> {
+    const d = this.driverData();
+    if (!d) return;
+    this.runtVerifying.set(true);
+    this.runtResultMsg.set(null);
+    const res = await this.agService.verifyVehicleRunt({
+      driverId: d.id,
+      ownerDocumentNumber: this.runtOwnerNotSelf() ? this.runtOwnerDocNumber.trim() : undefined,
+    });
+    this.runtVerifying.set(false);
+
+    if (res.skipped) {
+      this.runtResultOk.set(false);
+      this.runtResultMsg.set('La verificación automática no está disponible todavía. Sube el documento manualmente abajo.');
+    } else if (!res.ok) {
+      this.runtResultOk.set(false);
+      this.runtResultMsg.set('No se pudo verificar en este momento: ' + (res.error ?? 'error desconocido') + '. Sube el documento manualmente.');
+    } else if (!res.found) {
+      this.runtResultOk.set(false);
+      this.runtResultMsg.set(res.reason ?? 'No encontramos tu vehículo en el RUNT con esos datos. Sube el documento manualmente.');
+    } else {
+      const soatOk = !!res.soat?.valid;
+      const tecnoOk = !!res.techReview?.valid;
+      this.runtResultOk.set(soatOk || tecnoOk);
+      if (soatOk && tecnoOk) {
+        this.runtResultMsg.set('✓ SOAT y tecnomecánica verificados directo con el RUNT -- no necesitas subir foto de ninguno de los dos.');
+      } else if (soatOk) {
+        this.runtResultMsg.set('✓ SOAT verificado con el RUNT. La tecnomecánica no salió vigente -- súbela manualmente abajo.');
+      } else if (tecnoOk) {
+        this.runtResultMsg.set('✓ Tecnomecánica verificada con el RUNT. El SOAT no salió vigente -- súbelo manualmente abajo.');
+      } else {
+        this.runtResultMsg.set('Encontramos tu vehículo pero ni el SOAT ni la tecnomecánica salieron vigentes en el RUNT. Súbelos manualmente abajo.');
+      }
+      // Refrescar la lista para que los documentos recién aprobados por RUNT aparezcan de una.
+      await this.loadDriverDocs();
+      this.driverDocAlerts.set(await this.agService.getDriverDocumentAlerts(d.id));
+      this.cdr.markForCheck();
+    }
+    this.cdr.markForCheck();
+  }
 
   // ── Métricas performance ─────────────────────────────
   driverMetrics      = signal<{
