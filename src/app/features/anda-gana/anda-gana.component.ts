@@ -9039,24 +9039,33 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               @for (f of idPhotoFields; track f.key) {
                 <div class="flex flex-col gap-1">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
-                  <button type="button" (click)="openDocCamera(f.key, true)"
-                    class="w-full flex items-center gap-3 rounded-xl px-4 py-3 active:scale-95 transition-transform"
+                  <!-- BUG REAL encontrado 2026-08-21 (pedido explicito del usuario -- "no me deja
+                  subir archivos, necesito galeria y camara"): esto era un boton que abria una
+                  camara hecha a mano dentro de la app (openDocCamera/getUserMedia) -- SOLO tomaba
+                  foto en vivo, nunca dejaba elegir una foto ya guardada en la galeria. Si la
+                  camara fallaba, caia a un <input capture="environment">, que en el celular TAMPOCO
+                  muestra la opcion de galeria (el atributo capture fuerza la camara nativa). Ahora
+                  es un <label> normal envolviendo un <input type=file> SIN capture -- el celular
+                  muestra su propio selector con Camara Y Galeria, la opcion nativa mas simple y
+                  la que ya conoce cualquier usuario de cualquier otra app. -->
+                  <label
+                    class="w-full flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-95 transition-transform"
                     style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25)">
                     @if (dfr[f.key]) {
                       <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">check_circle</span>
                       <div class="text-left min-w-0">
                         <p class="text-emerald-400 text-xs font-black">Foto cargada</p>
-                        <p class="text-slate-500 text-[10px] truncate">{{ dfr[f.key] }}</p>
+                        <p class="text-slate-500 text-[10px] truncate">Toca para cambiarla</p>
                       </div>
                     } @else {
-                      <span class="material-symbols-outlined text-cyan-400 flex-shrink-0" style="font-size:26px">photo_camera</span>
+                      <span class="material-symbols-outlined text-cyan-400 flex-shrink-0" style="font-size:26px">add_a_photo</span>
                       <div class="text-left">
-                        <p class="text-white text-xs font-bold">Tomar foto</p>
-                        <p class="text-slate-500 text-[10px]">Buena iluminación · texto legible</p>
+                        <p class="text-white text-xs font-bold">Toca aquí</p>
+                        <p class="text-slate-500 text-[10px]">Tomar foto o elegir de la galería</p>
                       </div>
                     }
-                  </button>
-                  <input [id]="'doc-file-d-' + f.key" type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                  </label>
                 </div>
               }
             </div>
@@ -9074,24 +9083,24 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               </p>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Selfie de rostro *</label>
-                <button type="button" (click)="openDocCamera('selfie', true)"
-                  class="w-full flex items-center gap-3 rounded-xl px-4 py-3 active:scale-95 transition-transform"
+                <label
+                  class="w-full flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-95 transition-transform"
                   style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25)">
                   @if (df.selfie) {
                     <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">check_circle</span>
                     <div class="text-left min-w-0">
                       <p class="text-emerald-400 text-xs font-black">Foto cargada</p>
-                      <p class="text-slate-500 text-[10px] truncate">{{ df.selfie }}</p>
+                      <p class="text-slate-500 text-[10px] truncate">Toca para cambiarla</p>
                     </div>
                   } @else {
-                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">photo_camera</span>
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">add_a_photo</span>
                     <div class="text-left">
-                      <p class="text-white text-xs font-bold">Tomar selfie</p>
-                      <p class="text-slate-500 text-[10px]">Rostro descubierto · buena iluminación</p>
+                      <p class="text-white text-xs font-bold">Toca aquí</p>
+                      <p class="text-slate-500 text-[10px]">Tomar selfie o elegir de la galería</p>
                     </div>
                   }
-                </button>
-                <input id="doc-file-d-selfie" type="file" accept="image/*" capture="user" class="hidden" (change)="onDriverFileChange($event, 'selfie')"/>
+                  <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'selfie')"/>
+                </label>
               </div>
             </div>
 
@@ -9106,7 +9115,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Certificado de antecedentes judiciales *</label>
                 <label class="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.04);border:1.5px dashed rgba(255,255,255,0.15)">
                   <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:rgba(255,255,255,0.3)">upload_file</span>
-                  <span class="text-xs flex-1 truncate" style="color:rgba(255,255,255,0.4)">{{ df.criminalRecord || 'Toca para subir documento' }}</span>
+                  <span class="text-xs flex-1 truncate" style="color:rgba(255,255,255,0.4)">{{ df.criminalRecord || 'Toca aquí: foto, PDF o galería' }}</span>
                   @if (df.criminalRecord) { <span class="material-symbols-outlined" style="font-size:18px;color:#34d399">check_circle</span> }
                   <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, 'criminalRecord')"/>
                 </label>
@@ -9160,7 +9169,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Foto frontal de la licencia *</label>
                 <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
                   <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                  <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licensePhoto || 'Toca para subir foto' }}</span>
+                  <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licensePhoto || 'Toca aquí: cámara o galería' }}</span>
                   @if (df.licensePhoto) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
                   <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licensePhoto')"/>
                 </label>
@@ -9169,7 +9178,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Foto trasera de la licencia *</label>
                 <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
                   <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                  <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licenseBack || 'Toca para subir foto' }}</span>
+                  <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licenseBack || 'Toca aquí: cámara o galería' }}</span>
                   @if (df.licenseBack) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
                   <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licenseBack')"/>
                 </label>
@@ -9244,7 +9253,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
                   <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-4 py-3 cursor-pointer hover:border-cyan-500/40 transition-colors">
                     <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
-                    <span class="text-slate-500 text-xs flex-1">{{ dfr[f.key] || 'Toca para subir foto' }}</span>
+                    <span class="text-slate-500 text-xs flex-1">{{ dfr[f.key] || 'Toca aquí: cámara o galería' }}</span>
                     @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
                     <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                   </label>
@@ -9271,7 +9280,7 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   }
                   <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
                     <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                    <span class="text-slate-500 text-xs flex-1 truncate">{{ dfr[f.key] || 'Subir foto / documento' }}</span>
+                    <span class="text-slate-500 text-xs flex-1 truncate">{{ dfr[f.key] || 'Toca aquí: foto, PDF o galería' }}</span>
                     @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
                     <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
                   </label>
