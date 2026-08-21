@@ -36,13 +36,28 @@ const DOC_LABELS: Record<string, string> = {
 async function extractExpiry(fileUrl: string, docType: string): Promise<{ expiry_date: string | null; confidence: 'high' | 'medium' | 'low'; readable: boolean }> {
   const label = DOC_LABELS[docType] ?? 'documento';
   const today = new Date().toISOString().split('T')[0];
-  const prompt = `Eres un lector de documentos oficiales de Colombia. La imagen adjunta debería ser un(a) ${label}. Hoy es ${today}.
+  // BUG REAL encontrado 2026-08-21 (pedido explicito del usuario -- "la lectura confunde fecha de
+  // expedicion con fecha de vencimiento, asegurate"): el prompt viejo solo pedia "la fecha de
+  // vencimiento/vigencia" sin aclarar que estos documentos colombianos SIEMPRE traen tambien una
+  // fecha de expedicion/tramite, y sin darle a la IA ninguna pista de cual es cual -- facil de
+  // confundir, mas aun en fotos donde ambas fechas quedan cerca una de otra. Ahora se le pide
+  // explicitamente las DOS fechas por separado (para que tenga que razonar cual es cual en vez de
+  // adivinar una sola), con una advertencia directa de no confundirlas, y el codigo de abajo
+  // valida que vencimiento sea posterior a expedicion antes de confiar en el resultado.
+  const prompt = `Eres un lector experto de documentos oficiales de Colombia. La imagen adjunta debería ser un(a) ${label}. Hoy es ${today}.
+
+IMPORTANTE -- este tipo de documento casi siempre muestra DOS fechas distintas, y es un error común confundirlas:
+1. Fecha de EXPEDICIÓN (también aparece como "fecha de trámite", "fecha inicio vigencia", "expedido el"): cuándo se emitió el documento -- normalmente es la fecha MÁS ANTIGUA de las dos.
+2. Fecha de VENCIMIENTO (también aparece como "vigente hasta", "fecha fin vigencia", "vence el", "válido hasta"): cuándo el documento DEJA de ser válido -- normalmente es la fecha MÁS RECIENTE/FUTURA de las dos. Esta es la ÚNICA fecha que debes devolver en expiry_date.
+
+NUNCA devuelvas la fecha de expedición como si fuera la de vencimiento -- son cosas distintas aunque estén una junto a la otra en el documento.
 
 Devuelve SOLO un JSON con esta estructura exacta, sin texto adicional:
 {
   "readable": true/false - si la imagen es legible y corresponde al tipo de documento esperado,
-  "expiry_date": "YYYY-MM-DD"|null - fecha de vencimiento/vigencia del documento tal como aparece en la imagen,
-  "confidence": "high"|"medium"|"low" - qué tan seguro estás de la fecha extraída
+  "issued_date": "YYYY-MM-DD"|null - fecha de EXPEDICIÓN del documento, si aparece,
+  "expiry_date": "YYYY-MM-DD"|null - fecha de VENCIMIENTO/VIGENCIA del documento (cuándo deja de ser válido) tal como aparece en la imagen,
+  "confidence": "high"|"medium"|"low" - qué tan seguro estás de que expiry_date es la fecha de vencimiento y no la de expedición
 }
 
 Si la imagen está borrosa, no corresponde al documento esperado, o no tiene fecha de vencimiento visible, responde readable=false y expiry_date=null.`;
@@ -73,11 +88,24 @@ Si la imagen está borrosa, no corresponde al documento esperado, o no tiene fec
   const raw = data.choices?.[0]?.message?.content ?? '{}';
   const parsed = JSON.parse(raw);
 
-  const dateOk = typeof parsed.expiry_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.expiry_date);
+  const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const expiryOk = isDate(parsed.expiry_date);
+  const issuedOk = isDate(parsed.issued_date);
+  let confidence: 'high' | 'medium' | 'low' = ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'low';
+
+  // Red de seguridad contra el swap expedicion<->vencimiento: si tenemos ambas fechas y la de
+  // "vencimiento" no es posterior a la de "expedicion", lo mas probable es que la IA las haya
+  // invertido -- no confiar en el resultado (fail-open: se conserva lo que el conductor escribio
+  // a mano, no se bloquea la subida).
+  if (expiryOk && issuedOk && parsed.expiry_date <= parsed.issued_date) {
+    console.error('[ag-extract-doc-date] posible swap expedicion/vencimiento, descartando:', parsed);
+    return { readable: false, expiry_date: null, confidence: 'low' };
+  }
+
   return {
     readable: !!parsed.readable,
-    expiry_date: dateOk ? parsed.expiry_date : null,
-    confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'low',
+    expiry_date: expiryOk ? parsed.expiry_date : null,
+    confidence,
   };
 }
 
