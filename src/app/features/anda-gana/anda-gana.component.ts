@@ -5526,14 +5526,19 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
         </div>
       }
       @if (driverStatus() === 'pending') {
-        <div class="rounded-2xl p-5 text-center flex flex-col items-center gap-2"
-          style="background:#FFFBEB;border:1px solid rgba(251,191,36,0.4)">
-          <span class="material-symbols-outlined text-amber-500" style="font-size:36px">hourglass_top</span>
-          <p class="font-bold text-sm" style="color:#0f172a">Tu solicitud está siendo revisada</p>
-          <p class="text-slate-600 text-xs leading-relaxed">Nuestro equipo verificará tus documentos en las próximas 24–48 horas.</p>
+        <!-- Pedido explícito del usuario 2026-08-22: mientras no haya créditos de Verifik para
+        verificar automático, no dejar al conductor esperando 24-48h sin poder trabajar -- con
+        documentación completa ya puede aceptar viajes mientras se revisa manualmente. -->
+        <div class="rounded-2xl p-4 flex items-start gap-3"
+          style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3)">
+          <span class="material-symbols-outlined flex-shrink-0" style="font-size:28px;color:#059669">check_circle</span>
+          <div>
+            <p class="font-black text-sm" style="color:#0f172a">✓ Tus documentos están en revisión</p>
+            <p class="text-slate-600 text-xs leading-relaxed mt-0.5">Ya puedes tomar servicios de viaje mientras nuestro equipo termina de verificar tu documentación.</p>
+          </div>
         </div>
       }
-      @if (driverStatus() === 'approved') {
+      @if (driverStatus() === 'approved' || driverStatus() === 'pending') {
         <!-- Viajes activos del conductor -->
         @if (driverActiveTrips().length > 0 && !driverTripAlert() && !driverMapFullscreen()) {
           <div class="flex flex-col gap-2">
@@ -18879,14 +18884,16 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       alert('Debes completar tu registro antes de aceptar más viajes.');
       return;
     }
-    if (status === 'pending') {
-      alert('Tu solicitud está siendo revisada. En 24–48 horas recibirás respuesta.');
-      return;
-    }
+    // Pedido explícito del usuario 2026-08-22: mientras Verifik no tenga créditos para la
+    // verificación automática, un conductor con documentación completa ('pending', esperando
+    // revisión manual) puede tomar viajes de inmediato en vez de quedar bloqueado 24-48h --
+    // sigue las mismas reglas de saldo/comisión que uno 'approved' (ver banner de estado en el
+    // home, ~línea 5528, y ag_notify_drivers_on_trip_request/ag_find_nearest_drivers en la BD,
+    // que también se actualizaron para notificar y emparejar a conductores 'pending').
     // Validar saldo para conductores aprobados (first trip es gratis para 'quick')
     const completedTrips = (driver as any)?.metric_trips_completed ?? 0;
     const commission = this.requiredCommission(this.driverOfferPrice());
-    if (status === 'approved') {
+    if (status === 'approved' || status === 'pending') {
       if (this.driverWalletBalance() < 20000) {
         alert('Necesitas mínimo $20.000 en tu billetera para aceptar viajes.');
         return;
