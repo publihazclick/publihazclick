@@ -1209,7 +1209,7 @@ async function maybeOfferReferralProgram(phone: string, agUserId: string | null)
       .eq('source', 'whatsapp')
       .eq('status', 'completed');
     if (count === 1) {
-      const link = `${APP_URL || 'https://www.publihazclick.com'}/movi?ref=${agUserId}`;
+      const link = await buildReferralLink(agUserId);
       // El texto explica QUÉ hace único al link (ligado a su cuenta, la misma
       // de este número de WhatsApp) para que entienda cómo el sistema sabe
       // que un invitado es suyo, sin tener que avisar nada a mano -- pedido
@@ -3157,6 +3157,17 @@ async function lookupDriverProfile(phone: string): Promise<DriverProfile | null>
 // misma persona invitó al pasajero Y al conductor de un mismo viaje, solo se
 // paga una vez. Confirmado leyendo ag_complete_trip() directo en la base real
 // el 2026-08-13 (pedido explícito del usuario de comunicar esto a conductores).
+/** Link corto y personalizado (?r=<código>, ej. "carlos4821") en vez del UUID crudo -- pedido
+ * explícito del usuario 2026-08-22 (ver migración 231_ag_referral_ref_code). Cae al UUID si el
+ * usuario todavía no tiene ref_code por alguna razón (no debería pasar, el trigger lo asigna
+ * al crear la fila, pero el link nunca debe salir roto por esto). */
+async function buildReferralLink(agUserId: string): Promise<string> {
+  const supabase = db();
+  const { data } = await supabase.from('ag_users').select('ref_code').eq('id', agUserId).maybeSingle();
+  const code = data?.ref_code || agUserId;
+  return `${APP_URL || 'https://www.publihazclick.com'}/movi?r=${code}`;
+}
+
 async function getReferralInfo(agUserId: string): Promise<{ balance: number; totalEarned: number; referredCount: number }> {
   try {
     const supabase = db();
@@ -3193,7 +3204,7 @@ async function buildReferralMessage(agUserId: string | null, fullName: string | 
     return `${intro}\n\nTodavía no encuentro una cuenta de Movi con este número. Regístrate en la app (como pasajero o conductor) y ahí mismo consigues tu link personal para empezar a invitar.`;
   }
   const ref = await getReferralInfo(agUserId);
-  const link = `${APP_URL || 'https://www.publihazclick.com'}/movi?ref=${agUserId}`;
+  const link = await buildReferralLink(agUserId);
   return `${intro}\n\n` +
     `Invitados hasta ahora: *${ref.referredCount}*\n` +
     `Ganado en total: *${fmtCOP(ref.totalEarned)}*\n` +

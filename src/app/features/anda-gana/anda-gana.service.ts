@@ -48,6 +48,7 @@ export interface AgUser {
   passenger_verified?: boolean;
   id_front_url?: string;
   id_back_url?: string;
+  ref_code?: string;
 }
 
 export interface AgDriver {
@@ -189,6 +190,16 @@ export class AndaGanaService {
       .order('created_at', { ascending: false });
     if (!data || data.length === 0) return null;
     return (data as any[]).find((u: any) => u.role === 'driver') ?? data[0];
+  }
+
+  /** Resuelve el código corto del link de invitación (?r=carlos4821) al UUID real de
+   * ag_users.id -- ver migración 231_ag_referral_ref_code. RLS en ag_users permite SELECT
+   * abierto, así que no hace falta sesión para esto (el link se abre antes de registrarse). */
+  async resolveRefCode(code: string): Promise<string | null> {
+    try {
+      const { data } = await this.supabase.from('ag_users').select('id').eq('ref_code', code).maybeSingle();
+      return data?.id ?? null;
+    } catch { return null; }
   }
 
   // ── Driver profile for current user ───────────────────────────

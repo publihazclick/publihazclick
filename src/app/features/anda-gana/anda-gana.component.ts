@@ -11401,7 +11401,17 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       };
     }
 
-    this.referredBy = this.route.snapshot.queryParamMap.get('ref');
+    // Link corto y personalizado (?r=<código>, ej. "carlos4821") desde 2026-08-22 -- pedido
+    // explícito del usuario, el UUID crudo (?ref=<uuid>) se veía demasiado largo/feo. Se sigue
+    // aceptando el formato viejo para no romper campañas ya compartidas (ver
+    // movi_cucuta_enfoque_grupo_whatsapp) -- referred_by en la base sigue siendo el UUID real,
+    // el código corto solo se resuelve acá antes de guardarlo.
+    const _refParam = this.route.snapshot.queryParamMap.get('r') ?? this.route.snapshot.queryParamMap.get('ref');
+    if (_refParam && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(_refParam)) {
+      this.referredBy = _refParam;
+    } else if (_refParam) {
+      this.agService.resolveRefCode(_refParam).then(id => { this.referredBy = id; });
+    }
     // Lanzada desde la notificación nativa de pantalla completa (app estaba cerrada) -- ver
     // MoviFirebaseMessagingService.kt, que abre MainActivity con esta URL. Se usa mas abajo,
     // despues de que el conductor termine de cargar.
@@ -11446,7 +11456,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
         const { p, d } = JSON.parse(_raw);
         if (p?.role) {
           this.agProfile.set(p);
-          this.agReferralLink.set(`${window.location.origin}/movi?ref=${p.id}`);
+          this.agReferralLink.set(`${window.location.origin}/movi?r=${p.ref_code || p.id}`);
           _cachedRole   = p.role;
           _cachedDriver = d ?? null;
           if (d && p.role !== 'passenger') {
@@ -11492,7 +11502,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     const [profile] = await Promise.all([_profilePromise, _splashTimer]);
 
     this.agProfile.set(profile);
-    if (profile) this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
+    if (profile) this.agReferralLink.set(`${window.location.origin}/movi?r=${profile.ref_code || profile.id}`);
     if (!profile) { this.screen.set('home'); return; }
 
     // Operaciones no críticas diferidas
@@ -21187,7 +21197,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     const profile = data.profile;
     const driverRow = data.driver;
     this.agProfile.set(profile);
-    this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
+    this.agReferralLink.set(`${window.location.origin}/movi?r=${profile.ref_code || profile.id}`);
     const mine = driverRow ? { ...driverRow, status: driverRow.status ?? 'quick' } : null;
     this.driverData.set(mine);
     this.driverStatus.set(mine?.status ?? 'quick');
@@ -21313,7 +21323,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     }
 
     this.agProfile.set(profile);
-    this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
+    this.agReferralLink.set(`${window.location.origin}/movi?r=${profile.ref_code || profile.id}`);
     this.loadReferralData();
     this.screen.set('passenger-home');
     this._subscribeToDriverLocations();
@@ -21707,7 +21717,7 @@ ${d.tip_amount > 0 ? `<div class="row"><span>Propina</span><span>+$${d.tip_amoun
     this._subscribeToDriverLocations();
     setTimeout(() => this.initGpsAndMap('ag-map-user'), 150);
     if (isPlatformBrowser(this.platformId)) {
-      this.agReferralLink.set(`${window.location.origin}/movi?ref=${profile.id}`);
+      this.agReferralLink.set(`${window.location.origin}/movi?r=${profile.ref_code || profile.id}`);
     }
     this.cdr.markForCheck();
   }
