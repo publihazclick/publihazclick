@@ -25,6 +25,15 @@ export interface DriverFormData {
   referredBy?: string;
 }
 
+/** Datos del Paso 1 del registro de conductor -- ver createDriverStep1(). */
+export interface DriverStep1Data {
+  fullName: string; birthDate: string; city: string; idNumber: string;
+  phone: string; email: string;
+  emergencyName: string; emergencyPhone: string;
+  country?: string; department?: string;
+  referredBy?: string;
+}
+
 export interface AgUser {
   id: string; auth_user_id: string; role: 'passenger' | 'driver';
   full_name: string; birth_date: string; city: string;
@@ -364,6 +373,77 @@ export class AndaGanaService {
     if (msg.includes('DOCUMENTOS_VENCIDOS:')) return msg.split('DOCUMENTOS_VENCIDOS:')[1].trim();
     if (msg.includes('VEHICULO_DEBE_ACTUALIZARSE:')) return msg.split('VEHICULO_DEBE_ACTUALIZARSE:')[1].trim();
     return 'No se pudo guardar los documentos. Intenta de nuevo.';
+  }
+
+  /**
+   * Crea el conductor apenas termina el Paso 1 (datos personales) y confirma el OTP -- ya no se
+   * espera a que llene los 4 pasos para tener sesión + fila en ag_drivers. Pedido explícito del
+   * usuario 2026-08-21 ("consultemos el RUNT apenas ponga la placa"): para eso hace falta un
+   * driver_id real antes de llegar al Paso 4, así el chequeo en vivo con Verifik
+   * (verifyVehicleRunt) puede correr mientras el conductor todavía está llenando el formulario.
+   * Deja el conductor en status='quick' (mismo estado que ya usa el alta rápida por WhatsApp/QR,
+   * ver registerQuickDriver más arriba) -- registerDriver() en el Paso 4 ya sabe completar esa
+   * fila via _completeDriverRegistration() en vez de insertar una nueva.
+   */
+  async createDriverStep1(form: DriverStep1Data): Promise<{ success: boolean; driverId?: string; error?: string }> {
+    try {
+      const uid = await this.currentUserId();
+      if (!uid) return { success: false, error: 'Sesión no encontrada. Vuelve a verificar tu número.' };
+
+      let existing = await this.getMyAgProfile();
+      let agUserId: string | undefined = existing?.id;
+
+      if (!agUserId) {
+        // Red de seguridad: ag-otp-verify ya debería haber creado esta fila (se le pasa
+        // role:'driver' al confirmar el OTP), pero por si acaso no existiera todavía.
+        const { data: agUser, error: userError } = await this.supabase.from('ag_users').insert({
+          auth_user_id: uid, role: 'driver', full_name: form.fullName, birth_date: form.birthDate,
+          country: form.country ?? 'Colombia', department: form.department ?? '', city: form.city,
+          id_number: form.idNumber, phone: form.phone, email: form.email,
+          emergency_contact_name: form.emergencyName, emergency_contact_phone: form.emergencyPhone,
+          ...(form.referredBy ? { referred_by: form.referredBy } : {}),
+        }).select('id').single();
+        if (userError) {
+          console.error('[createDriverStep1] ag_users insert:', userError);
+          return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
+        }
+        agUserId = agUser.id;
+      } else {
+        if (existing!.role !== 'driver') {
+          return { success: false, error: 'Ya tienes un perfil en Anda y Gana con este número.' };
+        }
+        // El placeholder que crea ag-otp-verify solo trae teléfono + nombre genérico -- completar
+        // con los datos reales que el conductor acaba de escribir en el Paso 1.
+        await this.supabase.from('ag_users').update({
+          full_name: form.fullName, birth_date: form.birthDate, country: form.country ?? 'Colombia',
+          department: form.department ?? '', city: form.city, id_number: form.idNumber, email: form.email,
+          emergency_contact_name: form.emergencyName, emergency_contact_phone: form.emergencyPhone,
+        }).eq('id', agUserId);
+      }
+
+      const { data: existingDriver } = await this.supabase
+        .from('ag_drivers').select('id, status').eq('ag_user_id', agUserId).maybeSingle();
+      if (existingDriver) {
+        if (!['quick', 'pending_docs', 'rejected'].includes(existingDriver.status)) {
+          return { success: false, error: 'Ya tienes un perfil de conductor activo.' };
+        }
+        return { success: true, driverId: existingDriver.id };
+      }
+
+      const { data: driverRow, error: driverError } = await this.supabase.from('ag_drivers').insert({
+        ag_user_id: agUserId, id_number: form.idNumber,
+        plate: 'PENDIENTE', vehicle_plate: 'PENDIENTE',
+        status: 'quick', is_online: false, wallet_balance: 0,
+      }).select('id').single();
+      if (driverError) {
+        console.error('[createDriverStep1] ag_drivers insert:', driverError);
+        return { success: false, error: this._friendlyDriverError(driverError) };
+      }
+      return { success: true, driverId: driverRow.id };
+    } catch (e: any) {
+      console.error('[createDriverStep1] catch:', e);
+      return { success: false, error: 'Error al registrarse. Intenta de nuevo.' };
+    }
   }
 
   async registerDriver(form: DriverFormData): Promise<AgRegistrationResult> {

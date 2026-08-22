@@ -9044,9 +9044,13 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             @if (driverError()) {
               <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-300 text-xs">{{ driverError() }}</div>
             }
-            <button (click)="nextDriverStep(1)"
-              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform" style="background:linear-gradient(135deg,#245bdb,#4C7DF0);color:#fff;letter-spacing:0.05em">
-              Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
+            <button (click)="submitDriverStep1()" [disabled]="driverLoading()"
+              class="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-50" style="background:linear-gradient(135deg,#245bdb,#4C7DF0);color:#fff;letter-spacing:0.05em">
+              @if (driverLoading()) {
+                <span class="material-symbols-outlined animate-spin" style="font-size:18px">autorenew</span> Enviando código...
+              } @else {
+                Continuar <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
+              }
             </button>
           </div>
         }
@@ -9294,6 +9298,40 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               }
             </div>
 
+            <!-- Verificación automática SOAT/tecnomecánica contra el RUNT -- pedido explícito del
+            usuario 2026-08-21: consultar apenas se escribe la placa, para no obligar a subir foto
+            de esos 2 documentos si el vehículo ya sale vigente en el RUNT. -->
+            <div class="rounded-2xl flex flex-col gap-3 px-4 py-4" style="background:rgba(36,91,219,0.06);border:1px solid rgba(36,91,219,0.2)">
+              <div class="flex items-center gap-2.5">
+                <span class="material-symbols-outlined" style="font-size:20px;color:#4C7DF0">verified</span>
+                <h3 style="color:#BFD3FA;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Verificar SOAT y tecnomecánica automático</h3>
+              </div>
+              <p class="text-slate-300 text-[11px] leading-relaxed" style="margin:0">
+                Consultamos directo con el RUNT si tu SOAT y tecnomecánica están vigentes -- si salen bien, no necesitas subir ninguna foto de esos dos.
+              </p>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" [ngModel]="runtOwnerNotSelf()" (ngModelChange)="runtOwnerNotSelf.set($event)" name="d_runtOwnerNotSelf" class="accent-blue-600"/>
+                <span class="text-slate-300 text-xs">El vehículo no está a mi nombre</span>
+              </label>
+              @if (runtOwnerNotSelf()) {
+                <input type="text" placeholder="Cédula del dueño del vehículo" [(ngModel)]="runtOwnerDocNumber" name="d_runtOwnerDocNumber"
+                  class="w-full rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1)"/>
+              }
+              <button type="button" (click)="checkVehicleRuntStep4()"
+                [disabled]="runtVerifying() || !df.plate || (runtOwnerNotSelf() && !runtOwnerDocNumber.trim())"
+                class="w-full py-3 rounded-xl text-white font-black text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                style="background:linear-gradient(135deg,#245bdb,#4C7DF0)">
+                @if (runtVerifying()) {
+                  <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Consultando RUNT...
+                } @else {
+                  <span class="material-symbols-outlined" style="font-size:16px">search</span> Verificar con RUNT
+                }
+              </button>
+              @if (runtResultMsg()) {
+                <p class="text-xs leading-relaxed" [style.color]="runtResultOk() ? '#6ee7b7' : '#fde68a'">{{ runtResultMsg() }}</p>
+              }
+            </div>
+
             <div class="rounded-2xl flex flex-col gap-4 px-4 py-4" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
               <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(36,91,219,0.15);border:1px solid rgba(36,91,219,0.3)">
@@ -9305,19 +9343,29 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 ¿No tienes el documento físico? Si solo puedes consultarlo en línea (RUNT, tu aseguradora, etc.), toma una captura de pantalla de esa consulta o sube el PDF que te enviaron — ambos son válidos.
               </p>
               @for (f of vehicleDocFields; track f.key) {
-                <div class="flex flex-col gap-2">
-                  <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
-                  @if (f.expiry) {
-                    <input [(ngModel)]="dfr[f.expiry]" [name]="'d_' + f.expiry" type="date"
-                      class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:13px;color-scheme:dark"/>
-                  }
-                  <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
-                    <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                    <span class="text-slate-500 text-xs flex-1 truncate">{{ dfr[f.key] || 'Toca aquí: foto, PDF o galería' }}</span>
-                    @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
-                    <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
-                  </label>
-                </div>
+                @if ((f.key === 'soatPhoto' && runtSoatOk()) || (f.key === 'tecnoPhoto' && runtTecnoOk())) {
+                  <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3)">
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:22px">check_circle</span>
+                    <div class="text-left min-w-0">
+                      <p class="text-emerald-400 text-xs font-black">{{ f.label }} — verificado automático con el RUNT</p>
+                      <p class="text-slate-400 text-[10px]">No necesitas subir foto de este documento.</p>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="flex flex-col gap-2">
+                    <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
+                    @if (f.expiry) {
+                      <input [(ngModel)]="dfr[f.expiry]" [name]="'d_' + f.expiry" type="date"
+                        class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:13px;color-scheme:dark"/>
+                    }
+                    <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
+                      <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
+                      <span class="text-slate-500 text-xs flex-1 truncate">{{ dfr[f.key] || 'Toca aquí: foto, PDF o galería' }}</span>
+                      @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
+                      <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                    </label>
+                  </div>
+                }
               }
             </div>
 
@@ -10054,6 +10102,10 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   screen     = signal<AgScreen>('splash');
   splashSize = signal(10);
   driverStep = signal<number>(1);
+  // id del ag_drivers creado apenas se confirma el OTP del Paso 1 (status='quick') -- pedido
+  // explícito del usuario 2026-08-21 para poder consultar el RUNT en vivo al llegar al Paso 4,
+  // sin esperar a que termine todo el formulario. Ver createDriverStep1() en el servicio.
+  private _driverStep1Id = signal<string | null>(null);
 
   // Pedido explicito del usuario 2026-08-12: le avisa al splash estatico persistente de
   // index.html (fuera de <app-root>, nunca se destruye/reinicia) que ya hay una pantalla real
@@ -10358,6 +10410,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   runtOwnerDocNumber      = '';
   runtResultMsg          = signal<string | null>(null);
   runtResultOk            = signal(false);
+  // Estado fino por documento -- para poder ocultar/relajar cada campo de subida por separado
+  // (compartido entre "Mis documentos" y el Paso 4 del registro).
+  runtSoatOk              = signal(false);
+  runtTecnoOk             = signal(false);
+  runtChecked             = signal(false);
 
   async verifyDocsWithRunt(): Promise<void> {
     const d = this.driverData();
@@ -10369,6 +10426,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       ownerDocumentNumber: this.runtOwnerNotSelf() ? this.runtOwnerDocNumber.trim() : undefined,
     });
     this.runtVerifying.set(false);
+    this.runtChecked.set(true);
 
     if (res.skipped) {
       this.runtResultOk.set(false);
@@ -10383,6 +10441,8 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       const soatOk = !!res.soat?.valid;
       const tecnoOk = !!res.techReview?.valid;
       this.runtResultOk.set(soatOk || tecnoOk);
+      this.runtSoatOk.set(soatOk);
+      this.runtTecnoOk.set(tecnoOk);
       if (soatOk && tecnoOk) {
         this.runtResultMsg.set('✓ SOAT y tecnomecánica verificados directo con el RUNT -- no necesitas subir foto de ninguno de los dos.');
       } else if (soatOk) {
@@ -10396,6 +10456,57 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
       await this.loadDriverDocs();
       this.driverDocAlerts.set(await this.agService.getDriverDocumentAlerts(d.id));
       this.cdr.markForCheck();
+    }
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Misma verificación que verifyDocsWithRunt(), pero para el Paso 4 del registro -- ahí todavía
+   * no existe fila en ag_driver_vehicles (se crea recién al completar el registro), así que hay
+   * que mandar la placa explícita en vez de dejar que la función la resuelva sola por driver_id.
+   * Esta llamada NO persiste nada en la base (modo "solo consulta" de ag-verify-vehicle-runt) --
+   * la persistencia real ocurre después, automática, cuando registerDriver() completa el conductor
+   * 'quick' y dispara de nuevo verifyVehicleRunt() (esa sí en modo auto-resuelto). Ver
+   * createDriverStep1() en el servicio.
+   */
+  async checkVehicleRuntStep4(): Promise<void> {
+    const driverId = this._driverStep1Id();
+    const plate = (this.df.plate || '').trim().toUpperCase();
+    if (!driverId || !plate || this._plateFormatError(plate)) return;
+    this.runtVerifying.set(true);
+    this.runtResultMsg.set(null);
+    const res = await this.agService.verifyVehicleRunt({
+      driverId,
+      plate,
+      ownerDocumentNumber: this.runtOwnerNotSelf() ? this.runtOwnerDocNumber.trim() : undefined,
+    });
+    this.runtVerifying.set(false);
+    this.runtChecked.set(true);
+
+    if (res.skipped) {
+      this.runtResultOk.set(false);
+      this.runtResultMsg.set('La verificación automática no está disponible todavía. Sube el documento manualmente abajo.');
+    } else if (!res.ok) {
+      this.runtResultOk.set(false);
+      this.runtResultMsg.set('No se pudo verificar en este momento: ' + (res.error ?? 'error desconocido') + '. Sube el documento manualmente.');
+    } else if (!res.found) {
+      this.runtResultOk.set(false);
+      this.runtResultMsg.set(res.reason ?? 'No encontramos tu vehículo en el RUNT con esos datos. Sube el documento manualmente.');
+    } else {
+      const soatOk = !!res.soat?.valid;
+      const tecnoOk = !!res.techReview?.valid;
+      this.runtResultOk.set(soatOk || tecnoOk);
+      this.runtSoatOk.set(soatOk);
+      this.runtTecnoOk.set(tecnoOk);
+      if (soatOk && tecnoOk) {
+        this.runtResultMsg.set('✓ SOAT y tecnomecánica verificados directo con el RUNT -- no necesitas subir foto de ninguno de los dos.');
+      } else if (soatOk) {
+        this.runtResultMsg.set('✓ SOAT verificado con el RUNT. La tecnomecánica no salió vigente -- súbela manualmente abajo.');
+      } else if (tecnoOk) {
+        this.runtResultMsg.set('✓ Tecnomecánica verificada con el RUNT. El SOAT no salió vigente -- súbelo manualmente abajo.');
+      } else {
+        this.runtResultMsg.set('Encontramos tu vehículo pero ni el SOAT ni la tecnomecánica salieron vigentes en el RUNT. Súbelos manualmente abajo.');
+      }
     }
     this.cdr.markForCheck();
   }
@@ -19442,14 +19553,6 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
 
   nextDriverStep(current: number) {
     this.driverError.set('');
-    if (current === 1) {
-      if (!this.df.fullName || !this.df.birthDate || !this.df.country || !this.df.department || !this.df.city ||
-          !this.df.idNumber || !this.df.phone || !this.df.email || !this.df.password ||
-          !this.df.emergencyName || !this.df.emergencyPhone) {
-        this.driverError.set('Por favor completa todos los campos obligatorios, incluyendo país, departamento y ciudad.');
-        return;
-      }
-    }
     if (current === 2) {
       if (!this.df.idFront || !this.df.idBack || !this.df.selfieWithId || !this.df.selfie || !this.df.criminalRecord) {
         this.driverError.set('Debes subir todos los documentos de identidad requeridos.');
@@ -19464,6 +19567,26 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     }
     this.driverStep.set(current + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /**
+   * Pedido explícito del usuario 2026-08-21: en vez de esperar a los 4 pasos, el OTP se dispara
+   * apenas termina el Paso 1 -- así hay sesión + driver_id reales antes de llegar al Paso 4, y se
+   * puede consultar el RUNT en vivo apenas escriba la placa (ver checkVehicleRuntStep4()).
+   */
+  async submitDriverStep1() {
+    this.driverError.set('');
+    if (!this.df.fullName || !this.df.birthDate || !this.df.country || !this.df.department || !this.df.city ||
+        !this.df.idNumber || !this.df.phone || !this.df.email || !this.df.password ||
+        !this.df.emergencyName || !this.df.emergencyPhone) {
+      this.driverError.set('Por favor completa todos los campos obligatorios, incluyendo país, departamento y ciudad.');
+      return;
+    }
+    if (!this._isColombianCedula(this.df.idNumber)) {
+      this.driverError.set('El número de cédula debe ser un documento colombiano válido (solo números, entre 6 y 10 dígitos).');
+      return;
+    }
+    await this._triggerOtp('driver', this.df.phone);
   }
 
   // ── OTP helpers ────────────────────────────────────────────────
@@ -19509,7 +19632,17 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (code.length !== 6) { this.otpError.set('El código debe tener 6 dígitos.'); return; }
     this.otpStep.set('verifying');
     this.cdr.markForCheck();
-    const res = await this.phoneAuth.verifyOTP(code);
+    // Pasar nombre+rol al confirmar el OTP para que ag-otp-verify cree la fila ag_users con el
+    // rol correcto de una vez -- antes solo se pasaba en el flujo rápido por WhatsApp/QR, y aquí
+    // se confirmaba sin opts, dejando el rol por defecto en 'passenger' incluso para un conductor
+    // nuevo (bug real, nunca se había notado porque hasta ahora el OTP del conductor se disparaba
+    // al final del Paso 4, y casi todos los conductores ya llegaban con fila 'quick' desde WhatsApp).
+    const isDriver = this.otpContext() === 'driver';
+    const res = await this.phoneAuth.verifyOTP(code, {
+      name: isDriver ? this.df.fullName : this.pf.fullName,
+      role: isDriver ? 'driver' : 'passenger',
+      referredBy: this.referredBy ?? undefined,
+    });
     if (!res.ok) {
       this.otpStep.set('sent');
       this.otpError.set(res.message ?? 'Código incorrecto');
@@ -19522,8 +19655,44 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     if (this.otpContext() === 'passenger') {
       await this._doRegisterPassenger();
     } else {
-      await this._doRegisterDriver();
+      await this._createDriverAfterStep1();
     }
+  }
+
+  /** Se ejecuta apenas se confirma el OTP del Paso 1 -- crea (o recupera) el conductor 'quick'
+   * y avanza al Paso 2. Ver createDriverStep1() en el servicio. */
+  async _createDriverAfterStep1() {
+    this.driverLoading.set(true);
+    this.cdr.markForCheck();
+    const result = await this.agService.createDriverStep1({
+      fullName: this.df.fullName,
+      birthDate: this.df.birthDate,
+      country: this.df.country,
+      department: this.df.department,
+      city: this.df.city,
+      idNumber: this.df.idNumber,
+      phone: this.df.phone,
+      email: this.df.email,
+      emergencyName: this.df.emergencyName,
+      emergencyPhone: this.df.emergencyPhone,
+      referredBy: this.referredBy ?? undefined,
+    });
+    this.driverLoading.set(false);
+    if (result.success && result.driverId) {
+      this._driverStep1Id.set(result.driverId);
+      // Limpiar cualquier resultado de RUNT que haya quedado de una sesión anterior en esta
+      // misma pestaña (ej. si antes vio "Mis documentos" con otro vehículo).
+      this.runtResultMsg.set(null);
+      this.runtResultOk.set(false);
+      this.runtSoatOk.set(false);
+      this.runtTecnoOk.set(false);
+      this.runtChecked.set(false);
+      this.driverStep.set(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      this.driverError.set(result.error ?? 'Error al registrarse. Intenta de nuevo.');
+    }
+    this.cdr.markForCheck();
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -19628,8 +19797,9 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.driverError.set('Debes aceptar los términos y condiciones.');
       return;
     }
-    // Disparar verificación OTP antes de registrar
-    await this._triggerOtp('driver', this.df.phone);
+    // La sesión y el driver_id ya existen desde el Paso 1 (ver submitDriverStep1() /
+    // _createDriverAfterStep1()) -- ya no hace falta volver a pedir OTP acá.
+    await this._doRegisterDriver();
   }
 
   async _doRegisterDriver() {
