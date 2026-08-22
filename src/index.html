@@ -116,8 +116,10 @@
     ]
   }
   </script>
-  <!-- Fondo inmediato para Movi (evita pantalla blanca/negra antes del splash) -->
-  <script>if(location.pathname.startsWith('/anda-gana')){document.documentElement.classList.add('movi-app');document.documentElement.style.cssText='background:#245BDB;margin:0'}</script>
+  <!-- Fondo inmediato para Movi (evita pantalla blanca/negra antes del splash).
+       "/movi" es alias de "/anda-gana" (link de invitación con marca real) -- debe
+       activar el mismo fondo/splash de Movi, si no el invitado ve un flash en blanco. -->
+  <script>if(location.pathname.startsWith('/anda-gana')||location.pathname==='/movi'||location.pathname.startsWith('/movi/')){document.documentElement.classList.add('movi-app');document.documentElement.style.cssText='background:#245BDB;margin:0'}</script>
   <style>
     /* Pedido explicito del usuario 2026-08-12: que el splash NUNCA desaparezca/reaparezca --
        antes vivía DENTRO de <app-root>, y Angular lo reemplazaba por su propia versión al
@@ -156,7 +158,7 @@
 <body>
   <script>
     (function () {
-      if (!location.pathname.startsWith('/anda-gana')) return;
+      if (!location.pathname.startsWith('/anda-gana') && location.pathname !== '/movi' && !location.pathname.startsWith('/movi/')) return;
       // No ocultar la splash nativa apenas el puente de Capacitor exista -- eso pasa demasiado
       // rapido (antes de que la pagina real haya pintado algo), dejando ver un hueco negro/blanco.
       // Se espera un tiempo fijo para darle margen de sobra al navegador. El techo de 5s de

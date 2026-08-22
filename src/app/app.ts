@@ -41,7 +41,9 @@ export class App {
   readonly isAuthRoute = signal(false);
   readonly isAdminOrDashboardRoute = signal(false);
   readonly isLandingRoute = signal(this.initialUrl === '/' || this.initialUrl === '');
-  readonly isAndaGanaRoute = signal(this.initialUrl.includes('/anda-gana'));
+  readonly isAndaGanaRoute = signal(
+    this.initialUrl.includes('/anda-gana') || this.initialUrl === '/movi' || this.initialUrl.startsWith('/movi/')
+  );
   readonly isXzoomRoute = signal(this.initialUrl === '/xzoom' || this.initialUrl.startsWith('/xzoom/'));
 
   constructor() {
@@ -63,11 +65,17 @@ export class App {
       url.includes('/admin') || url.includes('/dashboard') || url.includes('/advertiser') || url.includes('/social') || url.includes('/ai')
     );
     this.isLandingRoute.set(url === '/' || url === '');
-    this.isAndaGanaRoute.set(url.includes('/anda-gana'));
+    const path = url.split('?')[0].split('#')[0];
+    // "/movi" es alias de "/anda-gana" (link de invitación con marca real, ver
+    // movi_referral_link_branding_and_wa_message) -- debe ocultar el header/footer de
+    // Publihazclick igual que "/anda-gana", si no el invitado ve el logo equivocado.
+    // Se usa path (sin query) en vez de url para no atrapar "/movi-admin" por accidente.
+    this.isAndaGanaRoute.set(
+      url.includes('/anda-gana') || path === '/movi' || path.startsWith('/movi/')
+    );
     // XZOOM EN VIVO: oculta header y footer globales para que sólo se vea el
     // contenido de la plataforma. Matches /xzoom, /xzoom/auth, /xzoom/h/:slug,
     // /xzoom/panel, /xzoom/invite/p/:code, etc.
-    const path = url.split('?')[0].split('#')[0];
     this.isXzoomRoute.set(path === '/xzoom' || path.startsWith('/xzoom/'));
   }
 }
