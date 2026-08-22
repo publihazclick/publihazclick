@@ -9073,36 +9073,41 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   Solo Movi tiene acceso a tus documentos. <span class="text-white">Solo si una autoridad competente lo requiere mediante proceso legal,</span> en el marco de una investigación por un delito cometido en contra de un pasajero, estaríamos obligados a compartirlos.
                 </p>
               </div>
+              <!-- Estado de cada documento MUY visible (caja grande verde vs. caja gris de "falta
+              subir") + botones separados de Cámara y Galería -- pedido explícito del usuario
+              2026-08-22: no era claro si un documento ya estaba subido, y el selector nativo del
+              celular no siempre ofrecía la cámara como opción directa (dependía del Android). Con
+              botones propios, la cámara SIEMPRE está disponible sin depender del selector del
+              sistema (ver [[movi_driver_doc_upload_ux_fix]] para el historial de este campo). -->
               @for (f of idPhotoFields; track f.key) {
-                <div class="flex flex-col gap-1">
+                <div class="flex flex-col gap-2">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
-                  <!-- BUG REAL encontrado 2026-08-21 (pedido explicito del usuario -- "no me deja
-                  subir archivos, necesito galeria y camara"): esto era un boton que abria una
-                  camara hecha a mano dentro de la app (openDocCamera/getUserMedia) -- SOLO tomaba
-                  foto en vivo, nunca dejaba elegir una foto ya guardada en la galeria. Si la
-                  camara fallaba, caia a un <input capture="environment">, que en el celular TAMPOCO
-                  muestra la opcion de galeria (el atributo capture fuerza la camara nativa). Ahora
-                  es un <label> normal envolviendo un <input type=file> SIN capture -- el celular
-                  muestra su propio selector con Camara Y Galeria, la opcion nativa mas simple y
-                  la que ya conoce cualquier usuario de cualquier otra app. -->
-                  <label
-                    class="w-full flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-95 transition-transform"
-                    style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25)">
-                    @if (dfr[f.key]) {
-                      <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">check_circle</span>
-                      <div class="text-left min-w-0">
-                        <p class="text-emerald-400 text-xs font-black">Foto cargada</p>
-                        <p class="text-slate-500 text-[10px] truncate">Toca para cambiarla</p>
+                  @if (dfr[f.key]) {
+                    <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.45)">
+                      <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                      <div class="text-left min-w-0 flex-1">
+                        <p class="text-emerald-400 text-sm font-black">✓ Foto cargada</p>
+                        <p class="text-emerald-300 text-[10px] truncate" style="opacity:0.7">{{ dfr[f.key] }}</p>
                       </div>
-                    } @else {
-                      <span class="material-symbols-outlined text-cyan-400 flex-shrink-0" style="font-size:26px">add_a_photo</span>
-                      <div class="text-left">
-                        <p class="text-white text-xs font-bold">Toca aquí</p>
-                        <p class="text-slate-500 text-[10px]">Tomar foto o elegir de la galería</p>
-                      </div>
-                    }
-                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
-                  </label>
+                    </div>
+                  } @else {
+                    <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.03);border:1.5px dashed rgba(255,255,255,0.18)">
+                      <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:rgba(255,255,255,0.25)">image_not_supported</span>
+                      <p class="text-xs font-bold" style="color:rgba(255,255,255,0.4)">Todavía no has subido esta foto</p>
+                    </div>
+                  }
+                  <div class="flex gap-2">
+                    <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3)">
+                      <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">photo_camera</span>
+                      <span class="text-cyan-400 text-xs font-bold">Tomar foto</span>
+                      <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                    </label>
+                    <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15)">
+                      <span class="material-symbols-outlined text-slate-300" style="font-size:18px">photo_library</span>
+                      <span class="text-slate-300 text-xs font-bold">Galería</span>
+                      <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                    </label>
+                  </div>
                 </div>
               }
             </div>
@@ -9118,26 +9123,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               <p class="text-slate-300 text-[11px] leading-relaxed" style="margin:0">
                 Tómate una selfie de tu rostro, <span class="text-white font-bold">sin la cédula</span>, para que los pasajeros te reconozcan cuando llegues por ellos. Esta foto es distinta a la selfie con cédula del paso anterior.
               </p>
-              <div class="flex flex-col gap-1">
+              <div class="flex flex-col gap-2">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Selfie de rostro *</label>
-                <label
-                  class="w-full flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-95 transition-transform"
-                  style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25)">
-                  @if (df.selfie) {
-                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">check_circle</span>
-                    <div class="text-left min-w-0">
-                      <p class="text-emerald-400 text-xs font-black">Foto cargada</p>
-                      <p class="text-slate-500 text-[10px] truncate">Toca para cambiarla</p>
+                @if (df.selfie) {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.45)">
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                    <div class="text-left min-w-0 flex-1">
+                      <p class="text-emerald-400 text-sm font-black">✓ Foto cargada</p>
+                      <p class="text-emerald-300 text-[10px] truncate" style="opacity:0.7">{{ df.selfie }}</p>
                     </div>
-                  } @else {
-                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:26px">add_a_photo</span>
-                    <div class="text-left">
-                      <p class="text-white text-xs font-bold">Toca aquí</p>
-                      <p class="text-slate-500 text-[10px]">Tomar selfie o elegir de la galería</p>
-                    </div>
-                  }
-                  <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'selfie')"/>
-                </label>
+                  </div>
+                } @else {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.03);border:1.5px dashed rgba(255,255,255,0.18)">
+                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:rgba(255,255,255,0.25)">image_not_supported</span>
+                    <p class="text-xs font-bold" style="color:rgba(255,255,255,0.4)">Todavía no has subido esta selfie</p>
+                  </div>
+                }
+                <div class="flex gap-2">
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3)">
+                    <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">photo_camera</span>
+                    <span class="text-emerald-400 text-xs font-bold">Tomar selfie</span>
+                    <input type="file" accept="image/*" capture="user" class="hidden" (change)="onDriverFileChange($event, 'selfie')"/>
+                  </label>
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15)">
+                    <span class="material-symbols-outlined text-slate-300" style="font-size:18px">photo_library</span>
+                    <span class="text-slate-300 text-xs font-bold">Galería</span>
+                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'selfie')"/>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -9148,14 +9161,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
                 <h3 style="color:#fde68a;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;margin:0">Antecedentes Judiciales</h3>
               </div>
-              <div class="flex flex-col gap-1.5">
+              <div class="flex flex-col gap-2">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Certificado de antecedentes judiciales *</label>
-                <label class="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.04);border:1.5px dashed rgba(255,255,255,0.15)">
-                  <span class="material-symbols-outlined flex-shrink-0" style="font-size:22px;color:rgba(255,255,255,0.3)">upload_file</span>
-                  <span class="text-xs flex-1 truncate" style="color:rgba(255,255,255,0.4)">{{ df.criminalRecord || 'Toca aquí: foto, PDF o galería' }}</span>
-                  @if (df.criminalRecord) { <span class="material-symbols-outlined" style="font-size:18px;color:#34d399">check_circle</span> }
-                  <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, 'criminalRecord')"/>
-                </label>
+                @if (df.criminalRecord) {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.45)">
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                    <div class="text-left min-w-0 flex-1">
+                      <p class="text-emerald-400 text-sm font-black">✓ Documento cargado</p>
+                      <p class="text-emerald-300 text-[10px] truncate" style="opacity:0.7">{{ df.criminalRecord }}</p>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.03);border:1.5px dashed rgba(255,255,255,0.18)">
+                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:rgba(255,255,255,0.25)">image_not_supported</span>
+                    <p class="text-xs font-bold" style="color:rgba(255,255,255,0.4)">Todavía no has subido este documento</p>
+                  </div>
+                }
+                <div class="flex gap-2">
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3)">
+                    <span class="material-symbols-outlined text-amber-400" style="font-size:18px">photo_camera</span>
+                    <span class="text-amber-400 text-xs font-bold">Tomar foto</span>
+                    <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, 'criminalRecord')"/>
+                  </label>
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15)">
+                    <span class="material-symbols-outlined text-slate-300" style="font-size:18px">photo_library</span>
+                    <span class="text-slate-300 text-xs font-bold">Galería o PDF</span>
+                    <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, 'criminalRecord')"/>
+                  </label>
+                </div>
                 <p style="color:rgba(255,255,255,0.25);font-size:10px">Emitido en los últimos 30 días</p>
               </div>
             </div>
@@ -9198,27 +9231,68 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </select>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Fecha de vencimiento *</label>
+                <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Fecha de VENCIMIENTO de la licencia *</label>
                 <input [(ngModel)]="df.licenseExpiry" name="d_licenseExpiry" type="date"
                   class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:14px;color-scheme:dark"/>
+                <p style="color:rgba(255,255,255,0.3);font-size:10px">Es la fecha en que se vence, no la fecha en que la tramitaste</p>
               </div>
-              <div class="flex flex-col gap-1">
+              <div class="flex flex-col gap-2">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Foto frontal de la licencia *</label>
-                <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
-                  <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                  <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licensePhoto || 'Toca aquí: cámara o galería' }}</span>
-                  @if (df.licensePhoto) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
-                  <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licensePhoto')"/>
-                </label>
+                @if (df.licensePhoto) {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.45)">
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                    <div class="text-left min-w-0 flex-1">
+                      <p class="text-emerald-400 text-sm font-black">✓ Foto cargada</p>
+                      <p class="text-emerald-300 text-[10px] truncate" style="opacity:0.7">{{ df.licensePhoto }}</p>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.03);border:1.5px dashed rgba(255,255,255,0.18)">
+                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:rgba(255,255,255,0.25)">image_not_supported</span>
+                    <p class="text-xs font-bold" style="color:rgba(255,255,255,0.4)">Todavía no has subido esta foto</p>
+                  </div>
+                }
+                <div class="flex gap-2">
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3)">
+                    <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">photo_camera</span>
+                    <span class="text-cyan-400 text-xs font-bold">Tomar foto</span>
+                    <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, 'licensePhoto')"/>
+                  </label>
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15)">
+                    <span class="material-symbols-outlined text-slate-300" style="font-size:18px">photo_library</span>
+                    <span class="text-slate-300 text-xs font-bold">Galería</span>
+                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licensePhoto')"/>
+                  </label>
+                </div>
               </div>
-              <div class="flex flex-col gap-1">
+              <div class="flex flex-col gap-2">
                 <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">Foto trasera de la licencia *</label>
-                <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
-                  <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                  <span class="text-slate-500 text-xs flex-1 truncate">{{ df.licenseBack || 'Toca aquí: cámara o galería' }}</span>
-                  @if (df.licenseBack) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
-                  <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licenseBack')"/>
-                </label>
+                @if (df.licenseBack) {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.45)">
+                    <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                    <div class="text-left min-w-0 flex-1">
+                      <p class="text-emerald-400 text-sm font-black">✓ Foto cargada</p>
+                      <p class="text-emerald-300 text-[10px] truncate" style="opacity:0.7">{{ df.licenseBack }}</p>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.03);border:1.5px dashed rgba(255,255,255,0.18)">
+                    <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:rgba(255,255,255,0.25)">image_not_supported</span>
+                    <p class="text-xs font-bold" style="color:rgba(255,255,255,0.4)">Todavía no has subido esta foto</p>
+                  </div>
+                }
+                <div class="flex gap-2">
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3)">
+                    <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">photo_camera</span>
+                    <span class="text-cyan-400 text-xs font-bold">Tomar foto</span>
+                    <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, 'licenseBack')"/>
+                  </label>
+                  <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15)">
+                    <span class="material-symbols-outlined text-slate-300" style="font-size:18px">photo_library</span>
+                    <span class="text-slate-300 text-xs font-bold">Galería</span>
+                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, 'licenseBack')"/>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -9286,14 +9360,34 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 </div>
               </div>
               @for (f of vehiclePhotoFields; track f.key) {
-                <div class="flex flex-col gap-1">
+                <div class="flex flex-col gap-2">
                   <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
-                  <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-4 py-3 cursor-pointer hover:border-cyan-500/40 transition-colors">
-                    <span class="material-symbols-outlined text-slate-500" style="font-size:22px">upload</span>
-                    <span class="text-slate-500 text-xs flex-1">{{ dfr[f.key] || 'Toca aquí: cámara o galería' }}</span>
-                    @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:18px">check_circle</span> }
-                    <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
-                  </label>
+                  @if (dfr[f.key]) {
+                    <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.45)">
+                      <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                      <div class="text-left min-w-0 flex-1">
+                        <p class="text-emerald-400 text-sm font-black">✓ Foto cargada</p>
+                        <p class="text-emerald-300 text-[10px] truncate" style="opacity:0.7">{{ dfr[f.key] }}</p>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.03);border:1.5px dashed rgba(255,255,255,0.18)">
+                      <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:rgba(255,255,255,0.25)">image_not_supported</span>
+                      <p class="text-xs font-bold" style="color:rgba(255,255,255,0.4)">Todavía no has subido esta foto</p>
+                    </div>
+                  }
+                  <div class="flex gap-2">
+                    <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3)">
+                      <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">photo_camera</span>
+                      <span class="text-cyan-400 text-xs font-bold">Tomar foto</span>
+                      <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                    </label>
+                    <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15)">
+                      <span class="material-symbols-outlined text-slate-300" style="font-size:18px">photo_library</span>
+                      <span class="text-slate-300 text-xs font-bold">Galería</span>
+                      <input type="file" accept="image/*" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                    </label>
+                  </div>
                 </div>
               }
             </div>
@@ -9355,15 +9449,39 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                   <div class="flex flex-col gap-2">
                     <label class="text-xs font-bold" style="color:rgba(255,255,255,0.45);letter-spacing:0.03em">{{ f.label }} *</label>
                     @if (f.expiry) {
-                      <input [(ngModel)]="dfr[f.expiry]" [name]="'d_' + f.expiry" type="date"
-                        class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:13px;color-scheme:dark"/>
+                      <div class="flex flex-col gap-1">
+                        <label class="text-[11px] font-bold" style="color:#fde68a;letter-spacing:0.02em">{{ f.expiryLabel }}</label>
+                        <input [(ngModel)]="dfr[f.expiry]" [name]="'d_' + f.expiry" type="date"
+                          class="w-full rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-all" style="background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);color:#fff;font-size:13px;color-scheme:dark"/>
+                        <p style="color:rgba(255,255,255,0.3);font-size:10px">Es la fecha en que se vence, no la fecha en que lo tramitaste</p>
+                      </div>
                     }
-                    <label class="flex items-center gap-3 border border-dashed border-white/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-cyan-500/40 active:border-cyan-500/40 transition-colors">
-                      <span class="material-symbols-outlined text-slate-500" style="font-size:20px">upload</span>
-                      <span class="text-slate-500 text-xs flex-1 truncate">{{ dfr[f.key] || 'Toca aquí: foto, PDF o galería' }}</span>
-                      @if (dfr[f.key]) { <span class="material-symbols-outlined text-emerald-400" style="font-size:16px">check_circle</span> }
-                      <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
-                    </label>
+                    @if (dfr[f.key]) {
+                      <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.45)">
+                        <span class="material-symbols-outlined text-emerald-400 flex-shrink-0" style="font-size:28px">check_circle</span>
+                        <div class="text-left min-w-0 flex-1">
+                          <p class="text-emerald-400 text-sm font-black">✓ Documento cargado</p>
+                          <p class="text-emerald-300 text-[10px] truncate" style="opacity:0.7">{{ dfr[f.key] }}</p>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(255,255,255,0.03);border:1.5px dashed rgba(255,255,255,0.18)">
+                        <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:rgba(255,255,255,0.25)">image_not_supported</span>
+                        <p class="text-xs font-bold" style="color:rgba(255,255,255,0.4)">Todavía no has subido este documento</p>
+                      </div>
+                    }
+                    <div class="flex gap-2">
+                      <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3)">
+                        <span class="material-symbols-outlined text-cyan-400" style="font-size:18px">photo_camera</span>
+                        <span class="text-cyan-400 text-xs font-bold">Tomar foto</span>
+                        <input type="file" accept="image/*" capture="environment" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                      </label>
+                      <label class="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 cursor-pointer active:scale-95 transition-transform" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15)">
+                        <span class="material-symbols-outlined text-slate-300" style="font-size:18px">photo_library</span>
+                        <span class="text-slate-300 text-xs font-bold">Galería o PDF</span>
+                        <input type="file" accept="image/*,application/pdf" class="hidden" (change)="onDriverFileChange($event, f.key)"/>
+                      </label>
+                    </div>
                   </div>
                 }
               }
@@ -19537,10 +19655,10 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
   // para cualquier registro nuevo (la columna sigue existiendo por si algún conductor ya lo tenía
   // subido de antes, pero nada la exige).
   vehicleDocFields = [
-    { key: 'soatPhoto',         label: 'SOAT (seguro obligatorio)', expiry: 'soatExpiry' },
-    { key: 'propertyCardFront', label: 'Tarjeta de propiedad — frontal', expiry: null },
-    { key: 'propertyCardBack',  label: 'Tarjeta de propiedad — trasera', expiry: null },
-    { key: 'tecnoPhoto',        label: 'Revisión tecnomecánica', expiry: 'tecnoExpiry' },
+    { key: 'soatPhoto',         label: 'SOAT (seguro obligatorio)', expiry: 'soatExpiry', expiryLabel: 'Fecha de VENCIMIENTO del SOAT *' },
+    { key: 'propertyCardFront', label: 'Tarjeta de propiedad — frontal', expiry: null, expiryLabel: null },
+    { key: 'propertyCardBack',  label: 'Tarjeta de propiedad — trasera', expiry: null, expiryLabel: null },
+    { key: 'tecnoPhoto',        label: 'Revisión tecnomecánica', expiry: 'tecnoExpiry', expiryLabel: 'Fecha de VENCIMIENTO de la tecnomecánica *' },
   ];
 
   get dfr(): Record<string, unknown> { return this.df as Record<string, unknown>; }
