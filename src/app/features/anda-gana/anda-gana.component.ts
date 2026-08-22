@@ -11698,10 +11698,13 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
           }
         }
       }
-      if (mine && mine.status === 'pending') {
-        await getMoviClient().from('ag_drivers').update({ status: 'quick' }).eq('id', mine.id);
-        mine = { ...mine, status: 'quick' };
-      }
+      // BUG REAL encontrado 2026-08-22: acá había código heredado (de la reparación puntual de
+      // datos de la migración 146_fix_pending_to_quick) que revertía a 'quick' CUALQUIER
+      // conductor que cargara con status='pending', en cada apertura de la app -- sin excepción.
+      // Eso anulaba en silencio la posibilidad de que un conductor con documentación completa se
+      // quedara en 'pending' esperando revisión (ver banner "Tus documentos están en revisión" y
+      // migración 232_ag_pending_drivers_can_drive): apenas volvía a abrir Movi, quedaba
+      // downgradeado a 'quick' otra vez. Eliminado.
       localStorage.setItem(_CACHE_KEY, JSON.stringify({ p: profile, d: mine }));
       this.driverData.set(mine);
       this.driverStatus.set(mine?.status ?? 'quick');
