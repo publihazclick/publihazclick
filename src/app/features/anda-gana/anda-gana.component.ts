@@ -7086,22 +7086,44 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                 }
               </div>
 
+              <!-- Estado MUY visible por documento + botón de cámara real + fecha de vencimiento
+              con etiqueta explícita -- mismo pedido y mismo patrón que el registro de conductor
+              (Pasos 2-4), aplicado acá también 2026-08-22 porque esta pantalla ("Mis documentos",
+              para renovar documentos vencidos) tenía los mismos 3 problemas. -->
               @for (dt of docTypes; track dt.key) {
                 <div class="rounded-2xl p-4 flex flex-col gap-3"
                   style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-cyan-600" style="font-size:20px">{{ dt.icon }}</span>
-                      <span class="font-black text-sm" style="color:#0f172a">{{ dt.label }}</span>
-                    </div>
-                    @if (getDocByType(dt.key); as doc) {
-                      <span class="text-xs font-bold" [class]="docStatusColor(doc.status)">{{ docStatusLabel(doc.status) }}</span>
-                    } @else {
-                      <span class="text-xs font-bold text-slate-500">Sin subir</span>
-                    }
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-cyan-600" style="font-size:20px">{{ dt.icon }}</span>
+                    <span class="font-black text-sm" style="color:#0f172a">{{ dt.label }}</span>
                   </div>
 
                   @if (getDocByType(dt.key); as doc) {
+                    @if (doc.status === 'approved') {
+                      <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:#F0FDF4;border:1.5px solid rgba(16,185,129,0.4)">
+                        <span class="material-symbols-outlined text-emerald-600 flex-shrink-0" style="font-size:28px">check_circle</span>
+                        <div class="text-left min-w-0 flex-1">
+                          <p class="font-black text-sm" style="color:#059669">✓ Aprobado</p>
+                          <p class="text-slate-500 text-[10px]">Este documento ya fue verificado</p>
+                        </div>
+                      </div>
+                    } @else if (doc.status === 'rejected' || doc.status === 'expired') {
+                      <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:#FEF2F2;border:1.5px solid rgba(239,68,68,0.4)">
+                        <span class="material-symbols-outlined text-red-500 flex-shrink-0" style="font-size:28px">error</span>
+                        <div class="text-left min-w-0 flex-1">
+                          <p class="font-black text-sm" style="color:#dc2626">{{ doc.status === 'expired' ? '⚠ Vencido' : '⚠ Rechazado' }}</p>
+                          <p class="text-slate-500 text-[10px]">{{ (doc.status === 'rejected' && doc.rejection_reason) ? doc.rejection_reason : 'Debes subirlo de nuevo abajo' }}</p>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:#FEFCE8;border:1.5px solid rgba(234,179,8,0.4)">
+                        <span class="material-symbols-outlined text-yellow-500 flex-shrink-0" style="font-size:28px">hourglass_top</span>
+                        <div class="text-left min-w-0 flex-1">
+                          <p class="font-black text-sm" style="color:#a16207">✓ Subido — en revisión</p>
+                          <p class="text-slate-500 text-[10px]">Movi lo va a revisar pronto</p>
+                        </div>
+                      </div>
+                    }
                     <div class="flex items-center gap-3">
                       <a [href]="doc.file_url" target="_blank" rel="noopener"
                         class="w-16 h-16 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
@@ -7113,23 +7135,29 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                         @if (doc.expires_at) {
                           <p>
                             <span class="text-slate-500">Vence:</span>
-                            <span [class.text-yellow-400]="docIsExpiringSoon(doc)" [class.font-bold]="docIsExpiringSoon(doc)">
+                            <span [class.text-yellow-600]="docIsExpiringSoon(doc)" [class.font-bold]="docIsExpiringSoon(doc)">
                               {{ doc.expires_at }}
                             </span>
                           </p>
                         }
-                        @if (doc.status === 'rejected' && doc.rejection_reason) {
-                          <p class="text-red-400">⚠ {{ doc.rejection_reason }}</p>
-                        }
                       </div>
+                    </div>
+                  } @else {
+                    <div class="w-full flex items-center gap-3 rounded-xl px-4 py-3" style="background:#F9FAFB;border:1.5px dashed #D1D5DB">
+                      <span class="material-symbols-outlined flex-shrink-0" style="font-size:24px;color:#9CA3AF">image_not_supported</span>
+                      <p class="text-xs font-bold" style="color:#6B7280">Todavía no has subido este documento</p>
                     </div>
                   }
 
                   @if (dt.requiresExpiry) {
-                    <input type="date" [value]="docExpiryInput[dt.key] || (getDocByType(dt.key)?.expires_at || '')"
-                      (change)="onDocExpiryChange(dt.key, $any($event.target).value)"
-                      class="w-full px-3 py-2 rounded-lg text-slate-900 text-xs focus:outline-none"
-                      style="background:#FFFFFF;border:1px solid #D1D5DB" />
+                    <div class="flex flex-col gap-1">
+                      <label class="text-[11px] font-bold" style="color:#B45309">{{ dt.expiryLabel }}</label>
+                      <input type="date" [value]="docExpiryInput[dt.key] || (getDocByType(dt.key)?.expires_at || '')"
+                        (change)="onDocExpiryChange(dt.key, $any($event.target).value)"
+                        class="w-full px-3 py-2 rounded-lg text-slate-900 text-xs focus:outline-none"
+                        style="background:#FFFFFF;border:1px solid #D1D5DB" />
+                      <p class="text-[10px]" style="color:#94A3B8">Es la fecha en que se vence, no la fecha en que lo tramitaste</p>
+                    </div>
                   }
                   <input type="text" placeholder="Número (opcional)"
                     [value]="docNumberInput[dt.key] || (getDocByType(dt.key)?.number || '')"
@@ -7137,20 +7165,29 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
                     class="w-full px-3 py-2 rounded-lg text-slate-900 text-xs focus:outline-none"
                     style="background:#FFFFFF;border:1px solid #D1D5DB" />
 
-                  <label class="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
-                    style="background:linear-gradient(135deg,#0891b2,#0e7490)"
-                    [class.opacity-50]="uploadingDoc() === dt.key">
-                    @if (uploadingDoc() === dt.key) {
-                      <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span>
-                      Subiendo...
-                    } @else {
-                      <span class="material-symbols-outlined" style="font-size:14px">upload</span>
-                      {{ getDocByType(dt.key) ? 'Reemplazar' : 'Subir archivo' }}
-                    }
-                    <input type="file" accept="image/*,application/pdf" class="hidden"
-                      [disabled]="uploadingDoc() !== null"
-                      (change)="onUploadDoc(dt.key, $event)" />
-                  </label>
+                  <div class="flex gap-2">
+                    <label class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs cursor-pointer"
+                      style="background:#ECFEFF;border:1px solid #A5F3FC;color:#0891b2"
+                      [class.opacity-50]="uploadingDoc() === dt.key">
+                      @if (uploadingDoc() === dt.key) {
+                        <span class="material-symbols-outlined animate-spin" style="font-size:14px">autorenew</span> Subiendo...
+                      } @else {
+                        <span class="material-symbols-outlined" style="font-size:16px">photo_camera</span> Tomar foto
+                      }
+                      <input type="file" accept="image/*" capture="environment" class="hidden"
+                        [disabled]="uploadingDoc() !== null"
+                        (change)="onUploadDoc(dt.key, $event)" />
+                    </label>
+                    <label class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs cursor-pointer"
+                      style="background:#F9FAFB;border:1px solid #E2E8F0;color:#475569"
+                      [class.opacity-50]="uploadingDoc() === dt.key">
+                      <span class="material-symbols-outlined" style="font-size:16px">photo_library</span>
+                      {{ getDocByType(dt.key) ? 'Reemplazar (galería o PDF)' : 'Galería o PDF' }}
+                      <input type="file" accept="image/*,application/pdf" class="hidden"
+                        [disabled]="uploadingDoc() !== null"
+                        (change)="onUploadDoc(dt.key, $event)" />
+                    </label>
+                  </div>
                 </div>
               }
             </div>
@@ -10506,14 +10543,14 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Documentos del conductor ─────────────────────────
   driverDocs         = signal<any[]>([]);
-  readonly docTypes: Array<{ key: string; label: string; requiresExpiry: boolean; icon: string }> = [
-    { key: 'license',        label: 'Licencia de conducción', requiresExpiry: true,  icon: 'badge' },
-    { key: 'soat',           label: 'SOAT',                   requiresExpiry: true,  icon: 'health_and_safety' },
-    { key: 'tecnomecanica',  label: 'Tecnomecánica',          requiresExpiry: true,  icon: 'build' },
+  readonly docTypes: Array<{ key: string; label: string; requiresExpiry: boolean; icon: string; expiryLabel?: string }> = [
+    { key: 'license',        label: 'Licencia de conducción', requiresExpiry: true,  icon: 'badge',            expiryLabel: 'Fecha de VENCIMIENTO de la licencia' },
+    { key: 'soat',           label: 'SOAT',                   requiresExpiry: true,  icon: 'health_and_safety', expiryLabel: 'Fecha de VENCIMIENTO del SOAT' },
+    { key: 'tecnomecanica',  label: 'Tecnomecánica',          requiresExpiry: true,  icon: 'build',            expiryLabel: 'Fecha de VENCIMIENTO de la tecnomecánica' },
     { key: 'cedula',         label: 'Cédula',                 requiresExpiry: false, icon: 'fingerprint' },
     { key: 'vehicle_front',  label: 'Vehículo — frente',      requiresExpiry: false, icon: 'directions_car' },
     { key: 'vehicle_back',   label: 'Vehículo — atrás',       requiresExpiry: false, icon: 'directions_car' },
-    { key: 'insurance',      label: 'Seguro (opcional)',      requiresExpiry: true,  icon: 'verified_user' },
+    { key: 'insurance',      label: 'Seguro (opcional)',      requiresExpiry: true,  icon: 'verified_user',    expiryLabel: 'Fecha de VENCIMIENTO del seguro' },
   ];
   uploadingDoc       = signal<string | null>(null);
   docExpiryInput: Record<string, string> = {};
@@ -15369,23 +15406,11 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     return this.docTypes.find(d => d.key === type)?.label ?? type;
   }
 
+  // BUG REAL encontrado 2026-08-22 (de paso, arreglando la subida de documentos): esta función se
+  // llamaba a sí misma sin caso base -- "Maximum call stack size exceeded" garantizado cada vez
+  // que el banner de documentos por vencer/vencidos se renderizaba (línea ~5218).
   docAlertsHaveExpired(): boolean {
-    return this.docAlertsHaveExpired();
-  }
-
-  docStatusLabel(status: string): string {
-    const map: Record<string, string> = {
-      pending: 'En revisión', approved: 'Aprobado', rejected: 'Rechazado', expired: 'Vencido',
-    };
-    return map[status] ?? status;
-  }
-
-  docStatusColor(status: string): string {
-    const map: Record<string, string> = {
-      pending: 'text-yellow-400', approved: 'text-green-400',
-      rejected: 'text-red-400', expired: 'text-red-400',
-    };
-    return map[status] ?? 'text-gray-400';
+    return this.driverDocAlerts().some(a => a.is_expired);
   }
 
   docIsExpiringSoon(doc: any): boolean {
