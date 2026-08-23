@@ -8080,8 +8080,15 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
   @if (screen() === 'home') {
     <div class="flex flex-col items-center w-full" style="max-width:390px;font-family:'Inter',sans-serif;background:#fff">
 
-      <!-- Logo -->
-      <div class="flex items-center justify-center" style="margin-top:60px;margin-bottom:8px">
+      <!-- Logo -- pedido explícito del usuario 2026-08-22: logo en blanco y negro (NUNCA azul ni
+      morado) para que combine con el fondo blanco de esta pantalla en particular. Es el mismo
+      ícono de pin que se usa en el splash/app icon (ver movi-logo.svg), recoloreado a negro puro. -->
+      <div class="flex items-center justify-center" style="gap:8px;margin-top:60px;margin-bottom:8px">
+        <svg width="30" height="30" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 4C20 4 12 13 12 24c0 16 20 36 20 36s20-20 20-36C52 13 44 4 32 4z" fill="#000"/>
+          <circle cx="32" cy="24" r="10" fill="#fff"/>
+          <circle cx="32" cy="24" r="4" fill="#000"/>
+        </svg>
         <span style="font-size:28px;font-weight:700;color:#000;letter-spacing:-0.5px;font-family:'Inter',sans-serif">MOVI</span>
       </div>
 
