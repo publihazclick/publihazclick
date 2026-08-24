@@ -540,7 +540,14 @@ export class AndaGanaService {
         civil_liability_url:     documents['civilLiability']     ?? null,
         criminal_record_url:     documents['criminalRecord']     ?? null,
         documents,
-        status: 'pending',
+        // Pedido explícito del usuario 2026-08-23: mientras no haya presupuesto para pagar
+        // verificación automática (GPT-4o Vision) ni revisión manual, todo conductor que suba
+        // todos los documentos requeridos queda aprobado de inmediato -- ver
+        // [[movi_driver_autoapproval_no_ai_reject]]. El formulario (nextDriverStep) ya exige
+        // cédula/selfie/antecedentes y licencia completa antes de dejar avanzar, así que llegar
+        // aquí significa que los documentos obligatorios están completos.
+        status: 'approved',
+        approved_at: new Date().toISOString(),
       }).select('id').single();
 
       if (driverError) {
@@ -548,16 +555,15 @@ export class AndaGanaService {
         return { success: false, error: this._friendlyDriverError(driverError) };
       }
 
-      // Disparar verificación automática con GPT-4o Vision (no bloquea el registro)
       if (driverRow?.id) {
-        this.triggerDriverVerification(driverRow.id).catch(() => {});
-        this.triggerBackgroundCheck(driverRow.id).catch(() => {});
-        // Pedido explícito del usuario 2026-08-21: muchos conductores no tienen SOAT/tecnomecánica
-        // ni en físico ni en digital a mano -- se intenta verificar automático contra el RUNT justo
-        // después de crear el conductor (el trigger trg_ag_sync_current_vehicle ya sincronizó
-        // ag_driver_vehicles con la placa recién insertada, así que la función puede resolver el
-        // vehículo actual solo con el driver_id). Si sale vigente, el conductor nunca tiene que
-        // subir foto de esos 2 documentos. Fire-and-forget, nunca bloquea el registro.
+        // Pedido explícito del usuario 2026-08-23: NO disparar más triggerDriverVerification()
+        // (GPT-4o Vision) ni triggerBackgroundCheck() (Verifik antecedentes/RUNT) en el registro --
+        // ambas podían mover el status de 'pending' a 'rejected' de forma automática y sin
+        // revisión humana (una de ellas rechazaba conductores reales solo por tener licencia
+        // particular en vez de categoría de servicio público, que no aplica a un modelo
+        // peer-to-peer como Movi). Además cuestan dinero por conductor y el usuario no quiere
+        // gastar en esto por ahora. El código de ambas funciones queda intacto por si se
+        // reactivan más adelante (ver ag-verify-driver-docs / ag-verify-driver-background).
         this.verifyVehicleRunt({ driverId: driverRow.id }).catch(() => {});
       }
       return { success: true };
@@ -623,12 +629,14 @@ export class AndaGanaService {
       civil_liability_url:     documents['civilLiability']     ?? null,
       criminal_record_url:     documents['criminalRecord']     ?? null,
       documents,
-      status: 'pending',
+      // Ver nota igual en registerDriver(): aprobación inmediata sin IA/revisión manual,
+      // pedido explícito del usuario 2026-08-23.
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      rejection_reason: null,
     }).eq('id', driverId);
     if (driverError) return { success: false, error: this._friendlyDriverError(driverError) };
 
-    this.triggerDriverVerification(driverId).catch(() => {});
-    this.triggerBackgroundCheck(driverId).catch(() => {});
     this.verifyVehicleRunt({ driverId }).catch(() => {});
     return { success: true };
   }
