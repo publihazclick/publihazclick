@@ -15449,6 +15449,23 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     if (!file) return;
     const d = this.driverData();
     if (!d) return;
+    // Bug real 2026-08-21: un conductor guardó como "vencimiento" la fecha de EXPEDICIÓN de su
+    // licencia (única fecha visible en esa foto) y quedó bloqueado por "documentos vencidos" sin
+    // estarlo -- la lectura IA ya tiene su propia red de seguridad para esta confusión (ver
+    // ag-extract-doc-date), pero la fecha escrita a mano no tenía ninguna. Si el conductor escribe
+    // una fecha de vencimiento que ya pasó o es hoy, se le avisa explícitamente antes de subir en
+    // vez de bloquearlo en silencio con un dato que probablemente está mal.
+    const dt = this.docTypes.find(x => x.key === type);
+    const expiryValue = this.docExpiryInput[type];
+    if (dt?.requiresExpiry && expiryValue) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (expiryValue <= today) {
+        const proceed = confirm(
+          `La fecha que pusiste (${expiryValue}) ya venció o es hoy. Ojo: casi todos estos documentos muestran DOS fechas -- la de EXPEDICIÓN (trámite) y la de VENCIMIENTO (vigencia) -- y es fácil confundirlas. Revisa que sea la de VENCIMIENTO antes de continuar.\n\nPresiona Aceptar solo si estás seguro de que el documento realmente está vencido. Presiona Cancelar para corregir la fecha.`
+        );
+        if (!proceed) { input.value = ''; return; }
+      }
+    }
     this.uploadingDoc.set(type);
     const meta: any = { number: this.docNumberInput[type] };
     if (this.docExpiryInput[type]) meta.expires_at = this.docExpiryInput[type];
@@ -19742,6 +19759,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
         this.driverError.set('Completa todos los datos y fotos de tu licencia de conducción.');
         return;
       }
+      if (!this._confirmExpiryNotPast(this.df.licenseExpiry, 'tu licencia de conducción')) return;
     }
     this.driverStep.set(current + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -19956,6 +19974,19 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     return null;
   }
 
+  // Mismo bug real de 2026-08-21 que motiva la advertencia en onUploadDoc(): un conductor puede
+  // escribir en el campo de VENCIMIENTO la fecha de EXPEDICIÓN que ve impresa en su documento (son
+  // dos fechas distintas y suele ser la única visible en la foto). Si eso pasa en el registro, el
+  // conductor queda bloqueado por "documentos vencidos" desde el primer día sin saber por qué.
+  private _confirmExpiryNotPast(dateStr: string, label: string): boolean {
+    if (!dateStr) return true;
+    const today = new Date().toISOString().slice(0, 10);
+    if (dateStr > today) return true;
+    return confirm(
+      `La fecha de vencimiento de ${label} que escribiste (${dateStr}) ya pasó o es hoy. Ojo: casi todos estos documentos muestran DOS fechas -- la de EXPEDICIÓN (trámite) y la de VENCIMIENTO (vigencia) -- y es fácil confundirlas. Revisa que sea la de VENCIMIENTO antes de continuar.\n\nPresiona Aceptar solo si estás seguro de que el documento realmente está vencido. Presiona Cancelar para corregir la fecha.`
+    );
+  }
+
   async submitDriver() {
     this.driverError.set('');
     if (!this.df.plate || !this.df.vehicleType || !this.df.vehicleBrand ||
@@ -19975,6 +20006,8 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
       this.driverError.set('Debes aceptar los términos y condiciones.');
       return;
     }
+    if (this.df.soatExpiry && !this._confirmExpiryNotPast(this.df.soatExpiry, 'el SOAT')) return;
+    if (this.df.tecnoExpiry && !this._confirmExpiryNotPast(this.df.tecnoExpiry, 'la tecnomecánica')) return;
     // La sesión y el driver_id ya existen desde el Paso 1 (ver submitDriverStep1() /
     // _createDriverAfterStep1()) -- ya no hace falta volver a pedir OTP acá.
     await this._doRegisterDriver();
