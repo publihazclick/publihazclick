@@ -10562,7 +10562,6 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
     { key: 'cedula',         label: 'Cédula',                 requiresExpiry: false, icon: 'fingerprint' },
     { key: 'vehicle_front',  label: 'Vehículo — frente',      requiresExpiry: false, icon: 'directions_car' },
     { key: 'vehicle_back',   label: 'Vehículo — atrás',       requiresExpiry: false, icon: 'directions_car' },
-    { key: 'insurance',      label: 'Seguro (opcional)',      requiresExpiry: true,  icon: 'verified_user',    expiryLabel: 'Fecha de VENCIMIENTO del seguro' },
   ];
   uploadingDoc       = signal<string | null>(null);
   docExpiryInput: Record<string, string> = {};
