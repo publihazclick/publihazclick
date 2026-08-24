@@ -10555,11 +10555,20 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
 
   // ── Documentos del conductor ─────────────────────────
   driverDocs         = signal<any[]>([]);
+  // Pedido explícito del usuario 2026-08-23: cédula y licencia tienen dos caras y esta pantalla
+  // ("Mis documentos", para renovar/resubir después del registro) solo pedía una -- se perdía el
+  // reverso que sí se exige en el registro inicial (idBack/licenseBack). Se agregan 'cedula_back'
+  // y 'license_back' como tarjetas separadas, justo debajo de su frente, mismo patrón visual que
+  // 'vehicle_front'/'vehicle_back' (ya existía y sí dejaba claro que se piden ambos lados). Las
+  // claves 'cedula' y 'license' NO se renombran (quedan como el "frente") para no romper los
+  // documentos que los conductores ya tenían subidos con esos doc_type.
   readonly docTypes: Array<{ key: string; label: string; requiresExpiry: boolean; icon: string; expiryLabel?: string }> = [
-    { key: 'license',        label: 'Licencia de conducción', requiresExpiry: true,  icon: 'badge',            expiryLabel: 'Fecha de VENCIMIENTO de la licencia' },
+    { key: 'cedula',         label: 'Cédula — frente',        requiresExpiry: false, icon: 'fingerprint' },
+    { key: 'cedula_back',    label: 'Cédula — atrás',         requiresExpiry: false, icon: 'fingerprint' },
+    { key: 'license',        label: 'Licencia de conducción — frente', requiresExpiry: true, icon: 'badge', expiryLabel: 'Fecha de VENCIMIENTO de la licencia' },
+    { key: 'license_back',   label: 'Licencia de conducción — atrás',  requiresExpiry: false, icon: 'badge' },
     { key: 'soat',           label: 'SOAT',                   requiresExpiry: true,  icon: 'health_and_safety', expiryLabel: 'Fecha de VENCIMIENTO del SOAT' },
     { key: 'tecnomecanica',  label: 'Tecnomecánica',          requiresExpiry: true,  icon: 'build',            expiryLabel: 'Fecha de VENCIMIENTO de la tecnomecánica' },
-    { key: 'cedula',         label: 'Cédula',                 requiresExpiry: false, icon: 'fingerprint' },
     { key: 'vehicle_front',  label: 'Vehículo — frente',      requiresExpiry: false, icon: 'directions_car' },
     { key: 'vehicle_back',   label: 'Vehículo — atrás',       requiresExpiry: false, icon: 'directions_car' },
   ];

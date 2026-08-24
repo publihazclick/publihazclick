@@ -2224,8 +2224,8 @@ export class AndaGanaService {
   // license/cedula/selfie/etc. son del conductor como persona; soat/tecnomecanica/insurance/
   // vehicle_front/vehicle_back son del vehículo -- un conductor con carro y moto guardados puede
   // tener un SOAT distinto para cada uno (migración 195, pedido explícito del usuario 2026-08-05).
-  private static readonly VEHICLE_SCOPED_DOC_TYPES = new Set(['soat', 'tecnomecanica', 'insurance', 'vehicle_front', 'vehicle_back']);
-  private static readonly DOC_TYPES_WITH_EXPIRY = new Set(['license', 'soat', 'tecnomecanica', 'insurance']);
+  private static readonly VEHICLE_SCOPED_DOC_TYPES = new Set(['soat', 'tecnomecanica', 'vehicle_front', 'vehicle_back']);
+  private static readonly DOC_TYPES_WITH_EXPIRY = new Set(['license', 'soat', 'tecnomecanica']);
 
   private async _getCurrentVehicleId(driverId: string): Promise<string | null> {
     const { data } = await this.supabase.from('ag_driver_vehicles')
@@ -2248,7 +2248,7 @@ export class AndaGanaService {
 
   async uploadDriverDocument(
     driverId: string,
-    docType: 'license' | 'soat' | 'tecnomecanica' | 'cedula' | 'vehicle_front' | 'vehicle_back' | 'insurance',
+    docType: 'license' | 'license_back' | 'soat' | 'tecnomecanica' | 'cedula' | 'cedula_back' | 'vehicle_front' | 'vehicle_back',
     file: File,
     meta: { number?: string; expires_at?: string | null } = {},
   ): Promise<{ success: boolean; error?: string; extractedExpiry?: string | null; extractionFailed?: boolean }> {
