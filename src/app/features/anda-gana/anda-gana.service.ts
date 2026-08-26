@@ -758,32 +758,11 @@ export class AndaGanaService {
     return data ?? [];
   }
 
-  async getDrivers(statusFilter?: string): Promise<AgDriver[]> {
-    let query = this.supabase
-      .from('ag_drivers')
-      .select('*, ag_users(*)')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    if (statusFilter) query = query.eq('status', statusFilter);
-    const { data } = await query;
-    return data ?? [];
-  }
-
-  async approveDriver(driverId: string): Promise<boolean> {
-    const { error } = await this.supabase
-      .from('ag_drivers')
-      .update({ status: 'approved', approved_at: new Date().toISOString() })
-      .eq('id', driverId);
-    return !error;
-  }
-
-  async rejectDriver(driverId: string, reason: string): Promise<boolean> {
-    const { error } = await this.supabase
-      .from('ag_drivers')
-      .update({ status: 'rejected', rejection_reason: reason })
-      .eq('id', driverId);
-    return !error;
-  }
+  // getDrivers/approveDriver/rejectDriver: eliminados 2026-08-25 (bug real de
+  // seguridad -- hacían UPDATE/SELECT directo con la clave anon de Movi contra
+  // una política RLS wide-open, sin ninguna verificación real de admin).
+  // Reemplazados por adminListDrivers / adminApproveDriver / adminRejectDriver,
+  // que pasan por la Edge Function ag-admin-action.
 
   // ── Trip requests ─────────────────────────────────────────────
   async requestTrip(data: {
@@ -1216,12 +1195,11 @@ export class AndaGanaService {
     return data as any;
   }
 
-  async setCommissionPct(pct: number): Promise<boolean> {
-    const { error } = await this.supabase
-      .from('platform_settings')
-      .upsert({ key: 'ag_commission_pct', value: String(Math.max(0, Math.min(15, pct))) },
-               { onConflict: 'key' });
-    return !error;
+  async setCommissionPct(pct: number, publihazclickToken: string): Promise<boolean> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'set_commission_pct', pct });
+      return true;
+    } catch { return false; }
   }
 
   // ── Cambio de número de celular + baja de cuenta (menú Seguridad) ────────
@@ -1256,12 +1234,11 @@ export class AndaGanaService {
     return parseInt(data?.value ?? '50', 10);
   }
 
-  async setDistanceFilter(meters: number): Promise<boolean> {
-    const { error } = await this.supabase
-      .from('platform_settings')
-      .upsert({ key: 'ag_distance_filter', value: String(Math.max(5, Math.min(500, meters))) },
-               { onConflict: 'key' });
-    return !error;
+  async setDistanceFilter(meters: number, publihazclickToken: string): Promise<boolean> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'set_distance_filter', meters });
+      return true;
+    } catch { return false; }
   }
 
   // ── Billetera conductor ───────────────────────────────────────
@@ -1790,26 +1767,10 @@ export class AndaGanaService {
     await this.supabase.rpc('ag_apply_coupon', { p_user_id: userId, p_coupon_id: couponId, p_trip_request_id: tripRequestId, p_discount: discount });
   }
 
-  // Admin: gestión cupones
-  async listCoupons(): Promise<any[]> {
-    const { data } = await this.supabase.from('ag_coupons').select('*').order('created_at', { ascending: false }).limit(200);
-    return data ?? [];
-  }
-
-  async createCoupon(payload: { code: string; title: string; description?: string; discountType: 'percent' | 'fixed' | 'first_trip'; discountValue: number; maxDiscountCop?: number; minTripCop?: number; maxUses?: number; maxUsesPerUser?: number; validUntil?: string }): Promise<void> {
-    const { error } = await this.supabase.from('ag_coupons').insert({
-      code: payload.code.toUpperCase(), title: payload.title, description: payload.description ?? null,
-      discount_type: payload.discountType, discount_value: payload.discountValue,
-      max_discount_cop: payload.maxDiscountCop ?? null, min_trip_cop: payload.minTripCop ?? 5000,
-      max_uses: payload.maxUses ?? null, max_uses_per_user: payload.maxUsesPerUser ?? 1,
-      valid_until: payload.validUntil ?? null,
-    });
-    if (error) throw error;
-  }
-
-  async toggleCoupon(id: string, active: boolean): Promise<void> {
-    await this.supabase.from('ag_coupons').update({ is_active: active }).eq('id', id);
-  }
+  // listCoupons/createCoupon/toggleCoupon: eliminados 2026-08-25 (mismo bug de
+  // seguridad que getDrivers/approveDriver -- sin verificación real de admin).
+  // Reemplazados por adminListCoupons / adminCreateCoupon / adminToggleCoupon,
+  // que pasan por la Edge Function ag-admin-action.
 
   // ═══════════════════════════════════════════════════
   // DRIVER: online sessions (tracking horas)
@@ -1879,16 +1840,80 @@ export class AndaGanaService {
     return data ?? [];
   }
 
-  async adminApproveWithdrawal(id: string): Promise<void> {
-    await this.supabase.from('ag_withdrawals').update({ status: 'completed', processed_at: new Date().toISOString() }).eq('id', id);
+  /**
+   * Llama a la Edge Function ag-admin-action, que valida (con el token real de
+   * publihazclick del admin, no de Movi) que quien pide la acción es admin/dev
+   * antes de tocar la base de datos de Movi con service_role.
+   * BUG REAL DE SEGURIDAD (2026-08-25): antes estas acciones hacían UPDATE
+   * directo con la clave anon de Movi, protegidas solo por una política RLS
+   * con qual:true -- cualquiera con la clave anon podía aprobar/rechazar
+   * cualquier retiro o resolver cualquier alerta SOS. Ver memoria
+   * movi_rls_wide_open_admin_policies_fix.
+   */
+  private async callAdminAction(publihazclickToken: string, body: Record<string, unknown>): Promise<any> {
+    const res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-admin-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: environment.moviSupabase.anonKey,
+        Authorization: `Bearer ${publihazclickToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(out?.error || `ag-admin-action failed (${res.status})`);
+    }
+    return out;
   }
 
-  async adminRejectWithdrawal(id: string, reason: string): Promise<void> {
-    await this.supabase.from('ag_withdrawals').update({
-      status: 'rejected', rejection_reason: reason, processed_at: new Date().toISOString(),
-    }).eq('id', id);
-    // Devuelve el saldo al conductor via función DB
-    await this.supabase.rpc('ag_admin_refund_withdrawal', { p_withdrawal_id: id });
+  async adminListSosEvents(publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_sos_events' });
+    return out.data ?? [];
+  }
+
+  async adminApproveDriver(driverId: string, publihazclickToken: string): Promise<boolean> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'approve_driver', driver_id: driverId });
+      return true;
+    } catch { return false; }
+  }
+
+  async adminRejectDriver(driverId: string, reason: string, publihazclickToken: string): Promise<boolean> {
+    try {
+      await this.callAdminAction(publihazclickToken, { action: 'reject_driver', driver_id: driverId, reason });
+      return true;
+    } catch { return false; }
+  }
+
+  async adminListDrivers(publihazclickToken: string, statusFilter?: string): Promise<AgDriver[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_drivers', status: statusFilter });
+    return out.data ?? [];
+  }
+
+  async adminCreateCoupon(payload: { code: string; title: string; description?: string; discountType: 'percent' | 'fixed' | 'first_trip'; discountValue: number; maxDiscountCop?: number; minTripCop?: number; maxUses?: number; maxUsesPerUser?: number; validUntil?: string }, publihazclickToken: string): Promise<void> {
+    await this.callAdminAction(publihazclickToken, { action: 'create_coupon', payload });
+  }
+
+  async adminToggleCoupon(id: string, active: boolean, publihazclickToken: string): Promise<void> {
+    await this.callAdminAction(publihazclickToken, { action: 'toggle_coupon', coupon_id: id, active });
+  }
+
+  async adminListCoupons(publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_coupons' });
+    return out.data ?? [];
+  }
+
+  async adminApproveWithdrawal(id: string, publihazclickToken: string): Promise<void> {
+    await this.callAdminAction(publihazclickToken, { action: 'approve_withdrawal', withdrawal_id: id });
+  }
+
+  async adminRejectWithdrawal(id: string, reason: string, publihazclickToken: string): Promise<void> {
+    await this.callAdminAction(publihazclickToken, { action: 'reject_withdrawal', withdrawal_id: id, reason });
+  }
+
+  async adminResolveSos(id: string, status: 'resolved' | 'false_alarm', publihazclickToken: string): Promise<void> {
+    await this.callAdminAction(publihazclickToken, { action: 'resolve_sos', sos_id: id, status });
   }
 
   // ═══════════════════════════════════════════════════

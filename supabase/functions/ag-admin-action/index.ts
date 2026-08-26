@@ -1,0 +1,204 @@
+// Edge Function: ag-admin-action
+//
+// BUG REAL DE SEGURIDAD encontrado 2026-08-25 (auditoría de vulnerabilidades):
+// el panel admin de Movi (anda-gana-admin.component.ts / movi-admin.component.ts)
+// llamaba directo a la tabla ag_withdrawals/ag_sos_events con la clave anon de
+// Movi, sin ninguna sesión real de Supabase Auth de Movi (el admin nunca inicia
+// sesión en el proyecto de Movi, solo en publihazclick) -- por eso las políticas
+// RLS que dejaban pasar esas acciones tenían qual:true para el rol public: sin
+// eso, el panel admin no podía funcionar porque auth.uid() siempre era null ahí.
+// Esta función reemplaza esos UPDATE directos: valida que quien llama es
+// realmente un admin/dev de publihazclick (usando su JWT real de publihazclick,
+// no de Movi) y solo entonces aplica el cambio en Movi con la service_role key
+// (que sí puede saltarse RLS, pero de forma controlada por este código server-side).
+//
+// Body esperado: { action: 'approve_withdrawal'|'reject_withdrawal'|'resolve_sos'|
+//   'list_sos_events'|'approve_driver'|'reject_driver'|'list_drivers'|
+//   'create_coupon'|'toggle_coupon'|'list_coupons', ... }
+// Header: Authorization: Bearer <JWT de sesión real de publihazclick del admin>
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const MOVI_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const MOVI_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+const PUBLIHAZCLICK_URL = 'https://btkdmdhzouzvzgyuzgbh.supabase.co';
+const PUBLIHAZCLICK_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0a2RtZGh6b3V6dnpneXV6Z2JoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyOTM3NjcsImV4cCI6MjA4Njg2OTc2N30._vXkGfjlK_lql_KcE9nfBGP8VvkCJXQctNpuZDnYFz8';
+
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+function json(d: unknown, s = 200) {
+  return new Response(JSON.stringify(d), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
+}
+
+/** Confirma que el Bearer token es una sesión real de publihazclick con rol admin/dev. */
+async function requireAdmin(authHeader: string | null): Promise<{ ok: true; userId: string } | { ok: false; status: number; error: string }> {
+  if (!authHeader) return { ok: false, status: 401, error: 'missing_authorization' };
+
+  const userRes = await fetch(`${PUBLIHAZCLICK_URL}/auth/v1/user`, {
+    headers: { apikey: PUBLIHAZCLICK_ANON_KEY, Authorization: authHeader },
+  });
+  if (!userRes.ok) return { ok: false, status: 401, error: 'invalid_publihazclick_session' };
+  const user = await userRes.json();
+  if (!user?.id) return { ok: false, status: 401, error: 'invalid_publihazclick_session' };
+
+  const profileRes = await fetch(
+    `${PUBLIHAZCLICK_URL}/rest/v1/profiles?id=eq.${user.id}&select=role`,
+    { headers: { apikey: PUBLIHAZCLICK_ANON_KEY, Authorization: authHeader } }
+  );
+  if (!profileRes.ok) return { ok: false, status: 403, error: 'profile_lookup_failed' };
+  const rows = await profileRes.json();
+  const role = rows?.[0]?.role;
+  if (role !== 'admin' && role !== 'dev') return { ok: false, status: 403, error: 'not_admin' };
+
+  return { ok: true, userId: user.id };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+
+  const admin = await requireAdmin(req.headers.get('Authorization'));
+  if (!admin.ok) return json({ error: admin.error }, admin.status);
+
+  const body = await req.json().catch(() => null);
+  if (!body?.action) return json({ error: 'missing_action' }, 400);
+
+  const movi = createClient(MOVI_URL, MOVI_SERVICE_KEY);
+
+  try {
+    switch (body.action) {
+      case 'approve_withdrawal': {
+        if (!body.withdrawal_id) return json({ error: 'missing_withdrawal_id' }, 400);
+        const { error } = await movi
+          .from('ag_withdrawals')
+          .update({ status: 'completed', processed_at: new Date().toISOString() })
+          .eq('id', body.withdrawal_id);
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'reject_withdrawal': {
+        if (!body.withdrawal_id) return json({ error: 'missing_withdrawal_id' }, 400);
+        const { error } = await movi
+          .from('ag_withdrawals')
+          .update({
+            status: 'rejected',
+            rejection_reason: body.reason ?? null,
+            processed_at: new Date().toISOString(),
+          })
+          .eq('id', body.withdrawal_id);
+        if (error) throw error;
+        const { error: refundError } = await movi.rpc('ag_admin_refund_withdrawal', {
+          p_withdrawal_id: body.withdrawal_id,
+        });
+        if (refundError) throw refundError;
+        return json({ ok: true });
+      }
+      case 'resolve_sos': {
+        if (!body.sos_id) return json({ error: 'missing_sos_id' }, 400);
+        // resolved_by es un uuid de ag_users (Movi), no del admin de publihazclick
+        // (proyectos distintos) -- se deja sin asignar, la trazabilidad real del
+        // admin queda en los logs de esta función.
+        const { error } = await movi
+          .from('ag_sos_events')
+          .update({ status: body.status ?? 'resolved', resolved_at: new Date().toISOString() })
+          .eq('id', body.sos_id);
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'list_sos_events': {
+        const { data, error } = await movi
+          .from('ag_sos_events').select('*')
+          .order('created_at', { ascending: false }).limit(100);
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      case 'approve_driver': {
+        if (!body.driver_id) return json({ error: 'missing_driver_id' }, 400);
+        const { error } = await movi
+          .from('ag_drivers')
+          .update({ status: 'approved', approved_at: new Date().toISOString() })
+          .eq('id', body.driver_id);
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'reject_driver': {
+        if (!body.driver_id) return json({ error: 'missing_driver_id' }, 400);
+        const { error } = await movi
+          .from('ag_drivers')
+          .update({ status: 'rejected', rejection_reason: body.reason ?? null })
+          .eq('id', body.driver_id);
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'list_drivers': {
+        let q = movi.from('ag_drivers').select('*, ag_users(*)').order('created_at', { ascending: false }).limit(500);
+        if (body.status) q = q.eq('status', body.status);
+        const { data, error } = await q;
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      case 'create_coupon': {
+        const p = body.payload ?? {};
+        if (!p.code || !p.title || !p.discountType || p.discountValue == null) {
+          return json({ error: 'missing_coupon_fields' }, 400);
+        }
+        const { error } = await movi.from('ag_coupons').insert({
+          code: String(p.code).toUpperCase(),
+          title: p.title,
+          description: p.description ?? null,
+          discount_type: p.discountType,
+          discount_value: p.discountValue,
+          max_discount_cop: p.maxDiscountCop ?? null,
+          min_trip_cop: p.minTripCop ?? 5000,
+          max_uses: p.maxUses ?? null,
+          max_uses_per_user: p.maxUsesPerUser ?? 1,
+          valid_until: p.validUntil ?? null,
+        });
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'toggle_coupon': {
+        if (!body.coupon_id) return json({ error: 'missing_coupon_id' }, 400);
+        const { error } = await movi
+          .from('ag_coupons')
+          .update({ is_active: !!body.active })
+          .eq('id', body.coupon_id);
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'list_coupons': {
+        const { data, error } = await movi
+          .from('ag_coupons').select('*').order('created_at', { ascending: false }).limit(200);
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      case 'set_commission_pct': {
+        if (body.pct == null) return json({ error: 'missing_pct' }, 400);
+        const pct = Math.max(0, Math.min(15, Number(body.pct)));
+        const { error } = await movi
+          .from('platform_settings')
+          .upsert({ key: 'ag_commission_pct', value: String(pct) }, { onConflict: 'key' });
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      case 'set_distance_filter': {
+        if (body.meters == null) return json({ error: 'missing_meters' }, 400);
+        const meters = Math.max(5, Math.min(500, Number(body.meters)));
+        const { error } = await movi
+          .from('platform_settings')
+          .upsert({ key: 'ag_distance_filter', value: String(meters) }, { onConflict: 'key' });
+        if (error) throw error;
+        return json({ ok: true });
+      }
+      default:
+        return json({ error: 'unknown_action' }, 400);
+    }
+  } catch (e) {
+    console.error('[ag-admin-action]', e);
+    return json({ error: 'internal_error', detail: String(e) }, 500);
+  }
+});

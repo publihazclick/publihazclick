@@ -1086,10 +1086,11 @@ export class MoviAdminComponent implements OnInit {
 
   async load(): Promise<void> {
     this.loading.set(true);
+    const token = this.authService.getAccessToken() ?? '';
     const [statsData, pending, all, pass] = await Promise.all([
       this.agService.getStats(),
-      this.agService.getDrivers('pending'),
-      this.agService.getDrivers(),
+      this.agService.adminListDrivers(token, 'pending'),
+      this.agService.adminListDrivers(token),
       this.agService.getPassengers(),
     ]);
     this.stats.set(statsData);
@@ -1149,22 +1150,25 @@ export class MoviAdminComponent implements OnInit {
   }
 
   async saveCommission(): Promise<void> {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.savingCommission.set(true);
-    await this.agService.setCommissionPct(this.commissionPct());
+    await this.agService.setCommissionPct(this.commissionPct(), token);
     this.savingCommission.set(false);
   }
 
   async loadSos(): Promise<void> {
-    const { data } = await this.agService['supabase']
-      .from('ag_sos_events').select('*')
-      .order('created_at', { ascending: false }).limit(50);
-    this.sosEvents.set(data ?? []);
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    const data = await this.agService.adminListSosEvents(token);
+    this.sosEvents.set((data ?? []).slice(0, 50));
     this.sosActiveCount.set((data ?? []).filter((s: any) => s.status === 'active').length);
   }
 
   async resolveSos(id: string, status: 'resolved' | 'false_alarm'): Promise<void> {
-    await this.agService['supabase'].from('ag_sos_events')
-      .update({ status, resolved_at: new Date().toISOString() }).eq('id', id);
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    await this.agService.adminResolveSos(id, status, token);
     await this.loadSos();
   }
 
@@ -1210,16 +1214,20 @@ export class MoviAdminComponent implements OnInit {
   // ── Driver actions ────────────────────────────────────────
 
   async approve(driverId: string): Promise<void> {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(driverId);
-    await this.agService.approveDriver(driverId);
+    await this.agService.adminApproveDriver(driverId, token);
     this.actionLoading.set(null);
     await this.load();
   }
 
   async confirmReject(driverId: string): Promise<void> {
     if (!this.rejectReason.trim()) return;
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(driverId);
-    await this.agService.rejectDriver(driverId, this.rejectReason.trim());
+    await this.agService.adminRejectDriver(driverId, this.rejectReason.trim(), token);
     this.rejectingId.set(null);
     this.rejectReason = '';
     this.actionLoading.set(null);
@@ -1237,8 +1245,10 @@ export class MoviAdminComponent implements OnInit {
   // ── Withdrawal actions ────────────────────────────────────
 
   async approveWithdrawal(id: string): Promise<void> {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(id);
-    await this.agService.adminApproveWithdrawal(id);
+    await this.agService.adminApproveWithdrawal(id, token);
     this.actionLoading.set(null);
     await this.loadWithdrawals();
     await this.loadPendingWithdrawalsCount();
@@ -1246,8 +1256,10 @@ export class MoviAdminComponent implements OnInit {
 
   async confirmWithdrawalReject(id: string): Promise<void> {
     if (!this.withdrawalRejectReason.trim()) return;
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(id);
-    await this.agService.adminRejectWithdrawal(id, this.withdrawalRejectReason.trim());
+    await this.agService.adminRejectWithdrawal(id, this.withdrawalRejectReason.trim(), token);
     this.rejectingWithdrawalId.set(null);
     this.withdrawalRejectReason = '';
     this.actionLoading.set(null);
@@ -1258,20 +1270,24 @@ export class MoviAdminComponent implements OnInit {
   // ── Coupons ───────────────────────────────────────────────
 
   async loadCoupons(): Promise<void> {
-    this.coupons.set(await this.agService.listCoupons());
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    this.coupons.set(await this.agService.adminListCoupons(token));
   }
 
   async saveCoupon(): Promise<void> {
     if (!this.couponCode.trim() || !this.couponTitle.trim()) return;
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.savingCoupon.set(true);
     try {
-      await this.agService.createCoupon({
+      await this.agService.adminCreateCoupon({
         code: this.couponCode.trim(), title: this.couponTitle.trim(),
         description: this.couponDescription.trim() || undefined,
         discountType: this.couponType, discountValue: Number(this.couponValue) || 0,
         maxUses: this.couponMaxUses ? Number(this.couponMaxUses) : undefined,
         validUntil: this.couponValidUntil ? new Date(this.couponValidUntil).toISOString() : undefined,
-      });
+      }, token);
       this.couponCode = ''; this.couponTitle = ''; this.couponDescription = '';
       await this.loadCoupons();
     } catch (e: any) { alert('Error: ' + (e?.message ?? 'No se pudo crear el cupón')); }
@@ -1279,7 +1295,9 @@ export class MoviAdminComponent implements OnInit {
   }
 
   async toggleCoupon(c: any): Promise<void> {
-    await this.agService.toggleCoupon(c.id, !c.is_active);
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    await this.agService.adminToggleCoupon(c.id, !c.is_active, token);
     await this.loadCoupons();
   }
 

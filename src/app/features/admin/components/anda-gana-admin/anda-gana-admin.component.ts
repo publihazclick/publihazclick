@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } 
 import { FormsModule } from '@angular/forms';
 import { SlicePipe, DatePipe } from '@angular/common';
 import { AndaGanaService, AgUser, AgDriver } from '../../../../features/anda-gana/anda-gana.service';
+import { AuthService } from '../../../../core/services/auth.service';
 
 type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasajeros' | 'configuracion' | 'sos' | 'viajes' | 'ciudad-a-ciudad' | 'cupones' | 'retiros';
 
@@ -804,6 +805,7 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
 export class AndaGanaAdminComponent implements OnInit {
 
   private readonly agService = inject(AndaGanaService);
+  private readonly authService = inject(AuthService);
 
   tab           = signal<AdminTab>('conductores-pendientes');
   loading       = signal(true);
@@ -875,10 +877,11 @@ export class AndaGanaAdminComponent implements OnInit {
 
   async load() {
     this.loading.set(true);
+    const token = this.authService.getAccessToken() ?? '';
     const [statsData, pending, all, pass] = await Promise.all([
       this.agService.getStats(),
-      this.agService.getDrivers('pending'),
-      this.agService.getDrivers(),
+      this.agService.adminListDrivers(token, 'pending'),
+      this.agService.adminListDrivers(token),
       this.agService.getPassengers(),
     ]);
     this.stats.set(statsData);
@@ -889,16 +892,20 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async approve(driverId: string) {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(driverId);
-    await this.agService.approveDriver(driverId);
+    await this.agService.adminApproveDriver(driverId, token);
     this.actionLoading.set(null);
     await this.load();
   }
 
   async confirmReject(driverId: string) {
     if (!this.rejectReason.trim()) return;
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(driverId);
-    await this.agService.rejectDriver(driverId, this.rejectReason.trim());
+    await this.agService.adminRejectDriver(driverId, this.rejectReason.trim(), token);
     this.rejectingId.set(null);
     this.rejectReason = '';
     this.actionLoading.set(null);
@@ -940,8 +947,10 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async saveCommission() {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.savingCommission.set(true);
-    await this.agService.setCommissionPct(this.commissionPct());
+    await this.agService.setCommissionPct(this.commissionPct(), token);
     this.savingCommission.set(false);
   }
 
@@ -951,8 +960,10 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async saveDistanceFilter() {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.savingDistance.set(true);
-    await this.agService.setDistanceFilter(this.distanceFilter());
+    await this.agService.setDistanceFilter(this.distanceFilter(), token);
     this.savingDistance.set(false);
   }
 
@@ -962,13 +973,18 @@ export class AndaGanaAdminComponent implements OnInit {
 
   // SOS
   async loadSos(): Promise<void> {
-    const { data } = await this.agService['supabase'].from('ag_sos_events').select('*').in('status', ['active', 'resolved', 'false_alarm']).order('created_at', { ascending: false }).limit(100);
-    this.sosEvents.set(data ?? []);
-    this.sosActiveCount.set((data ?? []).filter((s: any) => s.status === 'active').length);
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    const data = await this.agService.adminListSosEvents(token);
+    const filtered = (data ?? []).filter((s: any) => ['active', 'resolved', 'false_alarm'].includes(s.status));
+    this.sosEvents.set(filtered);
+    this.sosActiveCount.set(filtered.filter((s: any) => s.status === 'active').length);
   }
 
   async resolveSos(id: string, status: 'resolved' | 'false_alarm'): Promise<void> {
-    await this.agService['supabase'].from('ag_sos_events').update({ status, resolved_at: new Date().toISOString() }).eq('id', id);
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    await this.agService.adminResolveSos(id, status, token);
     await this.loadSos();
   }
 
@@ -1033,8 +1049,10 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async approveWithdrawal(id: string): Promise<void> {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(id);
-    await this.agService.adminApproveWithdrawal(id);
+    await this.agService.adminApproveWithdrawal(id, token);
     this.actionLoading.set(null);
     await this.loadWithdrawals();
     await this.loadPendingWithdrawalsCount();
@@ -1042,8 +1060,10 @@ export class AndaGanaAdminComponent implements OnInit {
 
   async confirmWithdrawalReject(id: string): Promise<void> {
     if (!this.withdrawalRejectReason.trim()) return;
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.actionLoading.set(id);
-    await this.agService.adminRejectWithdrawal(id, this.withdrawalRejectReason.trim());
+    await this.agService.adminRejectWithdrawal(id, this.withdrawalRejectReason.trim(), token);
     this.rejectingWithdrawalId.set(null);
     this.withdrawalRejectReason = '';
     this.actionLoading.set(null);
@@ -1052,14 +1072,18 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async loadCoupons(): Promise<void> {
-    this.coupons.set(await this.agService.listCoupons());
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    this.coupons.set(await this.agService.adminListCoupons(token));
   }
 
   async saveCoupon(): Promise<void> {
     if (!this.couponCode.trim() || !this.couponTitle.trim()) return;
+    const token = this.authService.getAccessToken();
+    if (!token) return;
     this.savingCoupon.set(true);
     try {
-      await this.agService.createCoupon({
+      await this.agService.adminCreateCoupon({
         code: this.couponCode.trim(),
         title: this.couponTitle.trim(),
         description: this.couponDescription.trim() || undefined,
@@ -1068,7 +1092,7 @@ export class AndaGanaAdminComponent implements OnInit {
         maxDiscountCop: this.couponMaxDiscount ? Number(this.couponMaxDiscount) : undefined,
         maxUses: this.couponMaxUses ? Number(this.couponMaxUses) : undefined,
         validUntil: this.couponValidUntil ? new Date(this.couponValidUntil).toISOString() : undefined,
-      });
+      }, token);
       this.couponCode = ''; this.couponTitle = ''; this.couponDescription = '';
       await this.loadCoupons();
     } catch (e: any) { alert('Error: ' + (e?.message ?? 'No se pudo')); }
@@ -1076,7 +1100,9 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async toggleCoupon(c: any): Promise<void> {
-    await this.agService.toggleCoupon(c.id, !c.is_active);
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    await this.agService.adminToggleCoupon(c.id, !c.is_active, token);
     await this.loadCoupons();
   }
 }
