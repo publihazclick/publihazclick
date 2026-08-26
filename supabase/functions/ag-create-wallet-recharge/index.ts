@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
       extra1:         payment.id,      // ag_wallet_payments UUID
       extra2:         driver.id,       // driver UUID
       extra3:         'ag_wallet',     // flag para webhook
-      confirmation:   `${SUPABASE_URL}/functions/v1/epayco-webhook`,
+      confirmation:   `${SUPABASE_URL}/functions/v1/ag-epayco-webhook`,
       response:       `${APP_URL}/anda-gana?wallet=result`,
     });
 
