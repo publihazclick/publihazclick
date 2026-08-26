@@ -5448,6 +5448,49 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
               class="flex-1 bg-transparent text-slate-900 text-sm outline-none placeholder-slate-400"/>
             <span class="text-slate-500 text-xs">COP</span>
           </div>
+
+          @if (rechargeAmount() >= 10000) {
+            @if (rechargeMethod() === 'pse') {
+              <!-- Solo es cierto con PSE: la comisión tiene un fijo que pesa menos en montos grandes -->
+              <p class="text-[10px] text-center" style="color:#0891b2">
+                💡 A mayor monto de recarga, menor costo de transacción — te conviene recargar montos más grandes.
+              </p>
+            }
+
+            <!-- Selector de método de pago -->
+            <div class="grid grid-cols-2 gap-2">
+              <button (click)="rechargeMethod.set('pse')"
+                class="py-2 rounded-xl text-xs font-black transition-all active:scale-95"
+                [style]="rechargeMethod() === 'pse'
+                  ? 'background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff'
+                  : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
+                PSE / Nequi
+              </button>
+              <button (click)="rechargeMethod.set('card')"
+                class="py-2 rounded-xl text-xs font-black transition-all active:scale-95"
+                [style]="rechargeMethod() === 'card'
+                  ? 'background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff'
+                  : 'background:#F3F4F6;border:1px solid #E5E7EB;color:#374151'">
+                Tarjeta
+              </button>
+            </div>
+
+            <!-- Desglose: cuánto paga vs. cuánto le llega a la billetera -->
+            <div class="rounded-xl p-3 flex flex-col gap-1" style="background:#F0F9FF;border:1px solid #BAE6FD">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-600 text-xs">Vas a pagar</span>
+                <span class="text-slate-900 text-sm font-black">{{ formatCOP(rechargeTotalCop(rechargeAmount(), rechargeMethod())) }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-600 text-xs">A tu billetera llega</span>
+                <span class="font-black text-sm" style="color:#0891b2">{{ formatCOP(rechargeAmount()) }}</span>
+              </div>
+              <p class="text-slate-500 text-[10px] mt-1 leading-snug">
+                La diferencia ({{ formatCOP(rechargeFeeCop(rechargeAmount(), rechargeMethod())) }}) es comisión de la pasarela de pago e intermediarios bancarios, no de Movi.
+              </p>
+            </div>
+          }
+
           @if (rechargeError()) {
             <div class="w-full rounded-2xl p-4 flex flex-col gap-2"
               style="background:linear-gradient(135deg,#450a0a,#7f1d1d);border:2px solid #ef4444">
@@ -5464,17 +5507,17 @@ type GpsStatus = 'idle' | 'requesting' | 'granted' | 'denied';
             </div>
           }
           <button (click)="startWalletRecharge()"
-            [disabled]="rechargeAmount() < 5000 || rechargeLoading()"
+            [disabled]="rechargeAmount() < 10000 || rechargeLoading()"
             class="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.98]"
             style="background:linear-gradient(135deg,#0f6fde,#1d4ed8);color:#fff">
             @if (rechargeLoading()) {
               <span class="material-symbols-outlined animate-spin" style="font-size:16px">autorenew</span> Abriendo pago...
             } @else {
               <span class="material-symbols-outlined" style="font-size:16px">credit_card</span>
-              Pagar {{ rechargeAmount() >= 5000 ? formatCOP(rechargeAmount()) : '' }}
+              Pagar {{ rechargeAmount() >= 10000 ? formatCOP(rechargeTotalCop(rechargeAmount(), rechargeMethod())) : '' }}
             }
           </button>
-          <p class="text-slate-400 text-[10px] text-center">Mínimo {{ formatCOP(5000) }} · Pago seguro con ePayco</p>
+          <p class="text-slate-400 text-[10px] text-center">Mínimo {{ formatCOP(10000) }} · Pago seguro con ePayco</p>
         </div>
       }
 
@@ -10413,6 +10456,7 @@ export class AndaGanaComponent implements OnInit, OnDestroy {
   // Wallet recharge via ePayco
   rechargeAmount     = signal(0);
   rechargeCustom     = '';
+  rechargeMethod     = signal<'pse' | 'card'>('pse');
   rechargeLoading    = signal(false);
   rechargeError      = signal<string | null>(null);
   walletPaymentResult = signal<'processing' | 'ok' | null>(null);
@@ -20061,11 +20105,30 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     });
   }
 
+  // Costo estimado de la pasarela de pago, trasladado al conductor (debe
+  // coincidir con la fórmula real de supabase/functions/ag-create-wallet-recharge).
+  // Es solo para mostrarle el desglose ANTES de pagar — el cobro real lo calcula
+  // el backend de forma autoritativa al crear el pago.
+  private readonly PSE_FIXED_COP  = 2120;
+  private readonly PSE_PCT        = 0.0260;
+  private readonly CARD_PCT       = 0.050;
+
+  rechargeFeeCop(amount: number, method: 'pse' | 'card'): number {
+    if (!amount) return 0;
+    const raw = method === 'pse' ? this.PSE_FIXED_COP + amount * this.PSE_PCT : amount * this.CARD_PCT;
+    return Math.ceil(raw / 10) * 10;
+  }
+
+  rechargeTotalCop(amount: number, method: 'pse' | 'card'): number {
+    return amount + this.rechargeFeeCop(amount, method);
+  }
+
   async startWalletRecharge(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
 
     const amount = this.rechargeAmount();
-    if (amount < 5000) { this.rechargeError.set('El monto mínimo es $5.000 COP'); return; }
+    const method = this.rechargeMethod();
+    if (amount < 10000) { this.rechargeError.set('El monto mínimo es $10.000 COP'); return; }
     if (amount > 500000) { this.rechargeError.set('El monto máximo es $500.000 COP'); return; }
 
     this.rechargeError.set(null);
@@ -20073,7 +20136,7 @@ ${d.surge_multiplier > 1 ? `<div class="row"><span>Alta demanda x${d.surge_multi
     this.cdr.markForCheck();
 
     try {
-      const params = await this.agService.createWalletRecharge(amount);
+      const params = await this.agService.createWalletRecharge(amount, method);
       await this.loadEpaycoScript();
 
       const epayco = (window as any)['ePayco'] as any;

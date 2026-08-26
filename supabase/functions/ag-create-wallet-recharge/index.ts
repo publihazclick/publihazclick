@@ -30,6 +30,27 @@ function decodeJwtPayload(token: string): { sub: string; email?: string } {
   return JSON.parse(atob(b64));
 }
 
+// ── Costo de la pasarela de pago, trasladado al conductor ───────────────────
+// El conductor paga monto + comisión; a la billetera solo entra "amount" (lo
+// que pidió). Fórmula PSE derivada empíricamente de 2 transacciones reales
+// aprobadas en la cuenta ePayco de producción (2026-08-26): $10.000 → comisión
+// $2.380 y $98.000 → comisión $4.669,80. Resolviendo el sistema fijo+% da
+// ~$2.120 fijo + 2,60% variable. Tarjeta solo tiene 1 dato real ($102.727 →
+// comisión $4.854,86 ≈ 4,73%); se usa como % plano sin fijo por ser el patrón
+// típico de comisión de franquicia de tarjeta, con un margen de seguridad.
+const PSE_FIXED_COP  = 2120;
+const PSE_PCT        = 0.0260;
+const CARD_PCT       = 0.050; // 4.73% real + margen de seguridad (menor confianza, 1 solo dato)
+
+type PaymentMethod = 'pse' | 'card';
+
+function gatewayFeeCop(method: PaymentMethod, walletAmount: number): number {
+  const raw = method === 'pse'
+    ? PSE_FIXED_COP + walletAmount * PSE_PCT
+    : walletAmount * CARD_PCT;
+  return Math.ceil(raw / 10) * 10; // redondeo a la decena más cercana hacia arriba
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -50,9 +71,13 @@ Deno.serve(async (req) => {
     // ── 2. Parsear body ──────────────────────────────────────────────────────
     const body = await req.json().catch(() => null);
     const amount = Number(body?.amount ?? 0);
+    const method: PaymentMethod = body?.method === 'card' ? 'card' : 'pse';
 
-    if (!amount || amount < 5000) return json({ error: 'Monto mínimo: $5.000 COP' }, 400);
-    if (amount > 1000000)         return json({ error: 'Monto máximo: $1.000.000 COP' }, 400);
+    if (!amount || amount < 10000) return json({ error: 'Monto mínimo: $10.000 COP' }, 400);
+    if (amount > 1000000)          return json({ error: 'Monto máximo: $1.000.000 COP' }, 400);
+
+    const fee   = gatewayFeeCop(method, amount);
+    const total = amount + fee;
 
     // ── 3. Obtener ag_user y driver ─────────────────────────────────────────
     const { data: agUser } = await supabase
@@ -91,6 +116,9 @@ Deno.serve(async (req) => {
     }
 
     // ── 5. Devolver parámetros para ePayco checkout.js ───────────────────────
+    // Nota: se le cobra al conductor "total" (amount + fee), pero el registro
+    // en ag_wallet_payments.amount (arriba) quedó en "amount" (lo que pidió) —
+    // así que a la billetera solo se acredita eso, sin importar el fee.
     return json({
       publicKey:      EPAYCO_PUBLIC_KEY,
       test:           EPAYCO_TEST === 'true',
@@ -98,7 +126,7 @@ Deno.serve(async (req) => {
       description:    `Recarga de $${amount.toLocaleString('es-CO')} COP`,
       invoice,
       currency:       'cop',
-      amount:         String(amount),
+      amount:         String(total),
       tax_base:       '0',
       tax:            '0',
       country:        'CO',
@@ -110,6 +138,11 @@ Deno.serve(async (req) => {
       extra3:         'ag_wallet',     // flag para webhook
       confirmation:   `${SUPABASE_URL}/functions/v1/ag-epayco-webhook`,
       response:       `${APP_URL}/anda-gana?wallet=result`,
+      // Desglose para mostrarle al conductor en la app (no es parte del checkout de ePayco)
+      walletCredit:   amount,
+      gatewayFee:      fee,
+      totalToPay:     total,
+      method,
     });
 
   } catch (err) {

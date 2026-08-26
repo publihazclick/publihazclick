@@ -1375,7 +1375,7 @@ export class AndaGanaService {
     await this.supabase.from('ag_drivers').update({ ...prefs, updated_at: new Date().toISOString() }).eq('id', driverId);
   }
 
-  async createWalletRecharge(amount: number): Promise<Record<string, unknown>> {
+  async createWalletRecharge(amount: number, method: 'pse' | 'card' = 'pse'): Promise<Record<string, unknown>> {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) throw new Error('Sin sesión activa');
     const res = await fetch(`${environment.andaGana.functionsBaseUrl}/ag-create-wallet-recharge`, {
@@ -1384,7 +1384,7 @@ export class AndaGanaService {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, method }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? 'Error al iniciar el pago');
