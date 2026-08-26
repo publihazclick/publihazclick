@@ -104,7 +104,7 @@ export class UserReferralsComponent implements OnInit {
       'id, username, full_name, level, total_referrals_count, has_active_package, avatar_url, created_at, referred_by';
 
     const { data: nivel1 } = await this.supabase
-      .from('profiles')
+      .from('safe_profiles')
       .select(selectCols)
       .eq('referred_by', userId)
       .order('created_at', { ascending: false });
@@ -119,7 +119,7 @@ export class UserReferralsComponent implements OnInit {
     nivel1.forEach(n => usernameById.set(n.id, n.username));
 
     const { data: nivel2 } = await this.supabase
-      .from('profiles')
+      .from('safe_profiles')
       .select(selectCols)
       .in('referred_by', nivel1Ids)
       .order('created_at', { ascending: false });

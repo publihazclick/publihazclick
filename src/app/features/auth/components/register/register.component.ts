@@ -107,7 +107,7 @@ export class RegisterComponent implements OnInit {
       return;
     }
 
-    const result = await this.profileService.validateReferralCode(this.referralCode);
+    const result = await this.profileService.validateReferralCodeWithDB(this.referralCode);
     
     if (result.valid) {
       this.referralValid.set(true);

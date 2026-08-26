@@ -38,9 +38,10 @@ export class SocialService {
   async getDirectory(search = '', page = 0, limit = 20): Promise<AdvertiserCard[]> {
     const userId = await this.getUserId();
 
-    // Obtener TODOS los perfiles registrados (excepto el usuario actual)
+    // Obtener TODOS los perfiles registrados (excepto el usuario actual) -- via safe_profiles
+    // (columnas seguras, no expone email/telefono/balance de otros usuarios, ver migracion 233)
     let query = this.supabase
-      .from('profiles')
+      .from('safe_profiles')
       .select(`
         id, username, full_name, avatar_url, total_referrals_count, role,
         social_business_profiles (business_name, description, category, location)
@@ -106,7 +107,7 @@ export class SocialService {
     const currentUserId = await this.getUserId();
 
     const { data: profile, error } = await this.supabase
-      .from('profiles')
+      .from('safe_profiles')
       .select(`
         id, username, full_name, avatar_url, total_referrals_count, role,
         social_business_profiles (business_name, description, category, location)
@@ -158,7 +159,7 @@ export class SocialService {
 
   async getUserProfileByUsername(username: string): Promise<AdvertiserCard | null> {
     const { data: profile, error } = await this.supabase
-      .from('profiles')
+      .from('safe_profiles')
       .select('id')
       .eq('username', username)
       .eq('is_active', true)
@@ -455,7 +456,7 @@ export class SocialService {
       if (safe) {
         // Search matching sellers by username or full_name
         const { data: matchedProfiles } = await this.supabase
-          .from('profiles')
+          .from('safe_profiles')
           .select('id')
           .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`);
 

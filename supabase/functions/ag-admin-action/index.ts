@@ -14,7 +14,7 @@
 //
 // Body esperado: { action: 'approve_withdrawal'|'reject_withdrawal'|'resolve_sos'|
 //   'list_sos_events'|'approve_driver'|'reject_driver'|'list_drivers'|
-//   'create_coupon'|'toggle_coupon'|'list_coupons', ... }
+//   'create_coupon'|'toggle_coupon'|'list_coupons'|'list_passengers', ... }
 // Header: Authorization: Bearer <JWT de sesión real de publihazclick del admin>
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -173,6 +173,12 @@ Deno.serve(async (req) => {
       case 'list_coupons': {
         const { data, error } = await movi
           .from('ag_coupons').select('*').order('created_at', { ascending: false }).limit(200);
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      case 'list_passengers': {
+        const { data, error } = await movi
+          .from('ag_users').select('*').eq('role', 'passenger').order('created_at', { ascending: false }).limit(500);
         if (error) throw error;
         return json({ ok: true, data });
       }

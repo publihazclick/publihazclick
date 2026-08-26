@@ -1091,7 +1091,7 @@ export class MoviAdminComponent implements OnInit {
       this.agService.getStats(),
       this.agService.adminListDrivers(token, 'pending'),
       this.agService.adminListDrivers(token),
-      this.agService.getPassengers(),
+      this.agService.adminListPassengers(token),
     ]);
     this.stats.set(statsData);
     this.pendingDrivers.set(pending);

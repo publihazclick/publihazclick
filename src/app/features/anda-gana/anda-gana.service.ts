@@ -193,12 +193,15 @@ export class AndaGanaService {
   }
 
   /** Resuelve el código corto del link de invitación (?r=carlos4821) al UUID real de
-   * ag_users.id -- ver migración 231_ag_referral_ref_code. RLS en ag_users permite SELECT
-   * abierto, así que no hace falta sesión para esto (el link se abre antes de registrarse). */
+   * ag_users.id -- ver migración 231_ag_referral_ref_code. Resuelve vía RPC SECURITY DEFINER
+   * (ag_resolve_ref_code, migración 233) en vez de leer la tabla directo: ag_users ya no tiene
+   * SELECT público (ver hallazgo "ag_users_select_by_phone/ag_users_admin_read" de la auditoría
+   * 2026-08-25), así que igual no hace falta sesión para esto (el link se abre antes de
+   * registrarse), pero ahora sin exponer el resto de la tabla. */
   async resolveRefCode(code: string): Promise<string | null> {
     try {
-      const { data } = await this.supabase.from('ag_users').select('id').eq('ref_code', code).maybeSingle();
-      return data?.id ?? null;
+      const { data } = await this.supabase.rpc('ag_resolve_ref_code', { p_code: code });
+      return data ?? null;
     } catch { return null; }
   }
 
@@ -231,7 +234,7 @@ export class AndaGanaService {
       let { data: { user } } = await this.supabase.auth.getUser();
       if (!user) {
         const { data: byPhone } = await this.supabase
-          .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+          .rpc('ag_get_user_by_phone', { p_phone: phone }).maybeSingle();
         if (byPhone) return { success: true, profile: byPhone as AgUser };
         return { success: false, error: 'Sesión expirada. Vuelve a verificar tu número.' };
       }
@@ -244,7 +247,7 @@ export class AndaGanaService {
       });
       if (error) {
         const { data: byPhone } = await this.supabase
-          .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+          .rpc('ag_get_user_by_phone', { p_phone: phone }).maybeSingle();
         if (byPhone) return { success: true, profile: byPhone as AgUser };
         return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
       }
@@ -270,7 +273,7 @@ export class AndaGanaService {
           // No session — fall back to phone lookup via edge function pattern: fetch profile by phone
           // (signInAnonymously is disabled, so we skip it)
           const { data: byPhone } = await this.supabase
-            .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+            .rpc('ag_get_user_by_phone', { p_phone: phone }).maybeSingle();
           if (byPhone) {
             profile = byPhone as AgUser;
           } else {
@@ -288,7 +291,7 @@ export class AndaGanaService {
           if (upsertError) {
             // RPC failed — try direct phone lookup as last resort
             const { data: byPhone } = await this.supabase
-              .from('ag_users').select('*').eq('phone', phone).maybeSingle();
+              .rpc('ag_get_user_by_phone', { p_phone: phone }).maybeSingle();
             if (byPhone) { profile = byPhone as AgUser; }
             else return { success: false, error: 'No se pudo crear tu perfil. Intenta de nuevo.' };
           } else {
@@ -748,15 +751,6 @@ export class AndaGanaService {
   }
 
   // ── Admin ─────────────────────────────────────────────────────
-  async getPassengers(): Promise<AgUser[]> {
-    const { data } = await this.supabase
-      .from('ag_users')
-      .select('*')
-      .eq('role', 'passenger')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    return data ?? [];
-  }
 
   // getDrivers/approveDriver/rejectDriver: eliminados 2026-08-25 (bug real de
   // seguridad -- hacían UPDATE/SELECT directo con la clave anon de Movi contra
@@ -1888,6 +1882,11 @@ export class AndaGanaService {
 
   async adminListDrivers(publihazclickToken: string, statusFilter?: string): Promise<AgDriver[]> {
     const out = await this.callAdminAction(publihazclickToken, { action: 'list_drivers', status: statusFilter });
+    return out.data ?? [];
+  }
+
+  async adminListPassengers(publihazclickToken: string): Promise<AgUser[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_passengers' });
     return out.data ?? [];
   }
 

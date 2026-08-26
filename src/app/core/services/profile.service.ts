@@ -9,7 +9,6 @@ import {
 } from '../models/profile.model';
 import type { UserLevel } from '../models/admin.model';
 import { getSupabaseClient } from '../supabase.client';
-import { sanitizePostgrestFilter } from '../utils/sanitize';
 
 /**
  * Servicio para gestionar perfiles de usuario
@@ -155,103 +154,6 @@ export class ProfileService {
       return null;
     } finally {
       this._loading.set(false);
-    }
-  }
-
-  /**
-   * Validar código de referido
-   */
-  async validateReferralCode(code: string): Promise<ReferralValidationResult> {
-    try {
-      // El código puede estar en cualquier formato - hacer búsqueda case-insensitive
-      let normalizedCode = code.trim().toLowerCase();
-      
-      // Primero verificar si es el código por defecto del admin
-      if (normalizedCode === 'adm00001') {
-        // Buscar el admin por email - usar ilike para mayor compatibilidad
-        const { data: adminData, error: adminError } = await this.supabase
-          .from('profiles')
-          .select('id, username, is_active, email')
-          .ilike('email', '%publihazclick.com@gmail.com%')
-          .maybeSingle();
-        
-        if (!adminError && adminData) {
-          if (!adminData.is_active) {
-            return { valid: false, error: 'El usuario referidor no está activo' };
-          }
-          return {
-            valid: true,
-            referrer_id: adminData.id,
-            referrer_username: adminData.username
-          };
-        }
-        
-        // Si no se encuentra por email, intentar buscar por username 'admin'
-        if (!adminData) {
-          const { data: adminByUser } = await this.supabase
-            .from('profiles')
-            .select('id, username, is_active, email')
-            .eq('username', 'admin')
-            .maybeSingle();
-            
-          if (adminByUser && adminByUser.is_active) {
-            return {
-              valid: true,
-              referrer_id: adminByUser.id,
-              referrer_username: adminByUser.username
-            };
-          }
-        }
-      }
-      
-      // Verificar si es un URL completo y extraer el código
-      // El formato puede ser: https://publihazclick.com/register/CODIGO o /register/CODIGO
-      const urlMatch = normalizedCode.match(/register[\/:]([a-zA-Z0-9\-]+)/);
-      if (urlMatch && urlMatch[1]) {
-        normalizedCode = urlMatch[1];
-      }
-      
-      // Buscar en referral_code usando ilike para búsqueda case-insensitive
-      const { data, error } = await this.supabase
-        .from('profiles')
-        .select('id, username, is_active')
-        .ilike('referral_code', normalizedCode)
-        .maybeSingle();
-
-      if (error || !data) {
-        // Si no se encuentra en referral_code, buscar en referral_link
-        const { data: linkData, error: linkError } = await this.supabase
-          .from('profiles')
-          .select('id, username, is_active')
-          .ilike('referral_link', `%${sanitizePostgrestFilter(normalizedCode)}%`)
-          .maybeSingle();
-        
-        if (linkError || !linkData) {
-          return { valid: false, error: 'Código de referido inválido' };
-        }
-        
-        if (!linkData.is_active) {
-          return { valid: false, error: 'El usuario referidor no está activo' };
-        }
-        
-        return {
-          valid: true,
-          referrer_id: linkData.id,
-          referrer_username: linkData.username
-        };
-      }
-
-      if (!data.is_active) {
-        return { valid: false, error: 'El usuario referidor no está activo' };
-      }
-
-      return {
-        valid: true,
-        referrer_id: data.id,
-        referrer_username: data.username
-      };
-    } catch (error: any) {
-      return { valid: false, error: error.message };
     }
   }
 

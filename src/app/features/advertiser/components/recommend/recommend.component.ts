@@ -47,7 +47,7 @@ export class AdvertiserRecommendComponent implements OnInit {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) return;
     const { data } = await this.supabase
-      .from('profiles')
+      .from('safe_profiles')
       .select('id, username, has_active_package, created_at')
       .eq('referred_by', user.id)
       .order('created_at', { ascending: false });
