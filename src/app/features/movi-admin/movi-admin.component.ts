@@ -12,7 +12,7 @@ import { UserRole } from '../../core/models/profile.model';
 type AdminTab =
   | 'inicio' | 'analytics' | 'finanzas'
   | 'pendientes' | 'conductores' | 'pasajeros'
-  | 'viajes' | 'sos' | 'retiros' | 'cupones' | 'configuracion';
+  | 'viajes' | 'sos' | 'retiros' | 'cupones' | 'configuracion' | 'soporte';
 
 interface TabDef { id: AdminTab; label: string; sym: string; color: string; border: string; roles: UserRole[]; }
 
@@ -23,6 +23,7 @@ const TABS: TabDef[] = [
   { id: 'pasajeros',     label: 'Pasajeros',      sym: 'person_pin_circle',  color: 'text-sky-400',     border: 'border-sky-400',     roles: ['super_admin','movi_admin'] },
   { id: 'viajes',        label: 'Viajes',         sym: 'route',              color: 'text-green-400',   border: 'border-green-400',   roles: ['super_admin','movi_admin'] },
   { id: 'sos',           label: 'SOS',            sym: 'emergency',          color: 'text-red-400',     border: 'border-red-400',     roles: ['super_admin','movi_admin'] },
+  { id: 'soporte',       label: 'Soporte WA',     sym: 'chat',               color: 'text-lime-400',    border: 'border-lime-400',    roles: ['super_admin','movi_admin'] },
   { id: 'cupones',       label: 'Cupones',        sym: 'confirmation_number', color: 'text-pink-400',   border: 'border-pink-400',    roles: ['super_admin','movi_admin'] },
   { id: 'finanzas',      label: 'Finanzas',       sym: 'account_balance',    color: 'text-emerald-400', border: 'border-emerald-400', roles: ['contable'] },
   { id: 'retiros',       label: 'Retiros',        sym: 'payments',           color: 'text-teal-400',    border: 'border-teal-400',    roles: ['super_admin','contable'] },
@@ -725,6 +726,94 @@ const TABS: TabDef[] = [
       }
     }
 
+    <!-- ══ SOPORTE WHATSAPP ══ -->
+    @if (tab() === 'soporte') {
+      @if (!waSelectedPhone()) {
+        <div class="flex gap-2">
+          <button (click)="switchWaRole('conductor')"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase transition-all"
+            [class]="waRole() === 'conductor' ? 'text-lime-950' : 'text-slate-500'"
+            [style]="waRole() === 'conductor' ? 'background:#a3e635' : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)'">
+            <span class="material-symbols-outlined" style="font-size:15px">directions_car</span>
+            Conductores
+          </button>
+          <button (click)="switchWaRole('pasajero')"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase transition-all"
+            [class]="waRole() === 'pasajero' ? 'text-lime-950' : 'text-slate-500'"
+            [style]="waRole() === 'pasajero' ? 'background:#a3e635' : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)'">
+            <span class="material-symbols-outlined" style="font-size:15px">person_pin_circle</span>
+            Pasajeros
+          </button>
+          <button (click)="loadWaConversations()" class="ml-auto flex items-center gap-1 px-3 py-2 rounded-xl text-[11px] text-slate-400" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+            <span class="material-symbols-outlined" style="font-size:15px">refresh</span>
+          </button>
+        </div>
+
+        @if (waLoadingConvos()) {
+          <div class="text-center py-16 text-slate-600 text-sm">Cargando conversaciones…</div>
+        } @else if (waConversations().length === 0) {
+          <div class="flex flex-col items-center gap-3 py-20">
+            <span class="material-symbols-outlined text-slate-600" style="font-size:48px;font-variation-settings:'FILL' 1">chat</span>
+            <p class="text-slate-500 text-sm">Sin conversaciones {{ waRole() === 'conductor' ? 'de conductores' : 'de pasajeros' }} todavía.</p>
+          </div>
+        }
+        @for (c of waConversations(); track c.wa_phone) {
+          <button (click)="openWaConversation(c.wa_phone)" class="w-full text-left rounded-2xl p-4 flex items-center gap-3"
+            style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06)">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+              style="background:rgba(163,230,53,0.1);border:1px solid rgba(163,230,53,0.2)">
+              <span class="material-symbols-outlined text-lime-400" style="font-size:20px">{{ waRole() === 'conductor' ? 'directions_car' : 'person_pin_circle' }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-white font-bold text-sm truncate">{{ c.contact_name || c.wa_phone }}</p>
+                @if (c.escalated) {
+                  <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase flex-shrink-0" style="background:rgba(220,38,38,0.2);color:#f87171">Escalado</span>
+                }
+              </div>
+              <p class="text-slate-500 text-xs truncate">{{ c.last_dir === 'out' ? '↩ ' : '' }}{{ c.last_body }}</p>
+            </div>
+            <div class="flex flex-col items-end gap-1 flex-shrink-0">
+              <span class="text-[10px] text-slate-600">{{ c.last_at | date:'dd/MM HH:mm' }}</span>
+              <span class="text-[10px] text-slate-600">{{ c.msg_count }} msj</span>
+            </div>
+          </button>
+        }
+      } @else {
+        <div class="flex items-center gap-3 mb-1">
+          <button (click)="waSelectedPhone.set(null)" class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(255,255,255,0.06)">
+            <span class="material-symbols-outlined text-slate-300" style="font-size:18px">arrow_back</span>
+          </button>
+          <div class="min-w-0">
+            <p class="text-white font-bold text-sm truncate">{{ waSelectedPhone() }}</p>
+            <p class="text-slate-500 text-[11px]">{{ waRole() === 'conductor' ? 'Soporte a conductores' : 'Pedidos por WhatsApp' }}</p>
+          </div>
+          <button (click)="openWaConversation(waSelectedPhone()!)" class="ml-auto w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(255,255,255,0.06)">
+            <span class="material-symbols-outlined text-slate-300" style="font-size:16px">refresh</span>
+          </button>
+        </div>
+
+        @if (waLoadingMessages()) {
+          <div class="text-center py-16 text-slate-600 text-sm">Cargando mensajes…</div>
+        } @else {
+          <div class="flex flex-col gap-2 rounded-2xl p-3" style="background:rgba(0,0,0,0.2)">
+            @for (m of waMessages(); track $index) {
+              <div class="flex" [class]="m.direction === 'out' ? 'justify-end' : 'justify-start'">
+                <div class="max-w-[80%] rounded-2xl px-3 py-2"
+                  [style]="m.direction === 'out' ? 'background:#256b3a' : 'background:rgba(255,255,255,0.08)'">
+                  <p class="text-slate-100 text-sm whitespace-pre-line">{{ m.body }}</p>
+                  <p class="text-[10px] text-slate-400 mt-1 text-right">{{ m.created_at | date:'dd/MM HH:mm' }}</p>
+                </div>
+              </div>
+            }
+            @if (waMessages().length === 0) {
+              <p class="text-center text-slate-600 text-sm py-10">Sin mensajes registrados para este número.</p>
+            }
+          </div>
+        }
+      }
+    }
+
     <!-- ══ RETIROS ══ -->
     @if (tab() === 'retiros') {
       <div class="flex gap-2 flex-wrap">
@@ -990,6 +1079,14 @@ export class MoviAdminComponent implements OnInit {
   sosEvents      = signal<any[]>([]);
   sosActiveCount = signal(0);
 
+  // Soporte WhatsApp
+  waRole            = signal<'conductor' | 'pasajero'>('conductor');
+  waConversations   = signal<any[]>([]);
+  waLoadingConvos   = signal(false);
+  waSelectedPhone   = signal<string | null>(null);
+  waMessages        = signal<any[]>([]);
+  waLoadingMessages = signal(false);
+
   // Withdrawals
   withdrawals             = signal<any[]>([]);
   withdrawalFilter        = signal('pending');
@@ -1071,6 +1168,34 @@ export class MoviAdminComponent implements OnInit {
     else if (id === 'retiros')  this.loadWithdrawals();
     else if (id === 'finanzas') this.loadFinancialSummary();
     else if (id === 'inicio')   this.loadInicio();
+    else if (id === 'soporte')  this.loadWaConversations();
+  }
+
+  // ── Soporte WhatsApp ──────────────────────────────────────
+  switchWaRole(role: 'conductor' | 'pasajero'): void {
+    this.waRole.set(role);
+    this.waSelectedPhone.set(null);
+    this.waMessages.set([]);
+    this.loadWaConversations();
+  }
+
+  async loadWaConversations(): Promise<void> {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    this.waLoadingConvos.set(true);
+    const data = await this.agService.adminListWaConversations(this.waRole(), token);
+    this.waConversations.set(data ?? []);
+    this.waLoadingConvos.set(false);
+  }
+
+  async openWaConversation(phone: string): Promise<void> {
+    const token = this.authService.getAccessToken();
+    if (!token) return;
+    this.waSelectedPhone.set(phone);
+    this.waLoadingMessages.set(true);
+    const data = await this.agService.adminListWaMessages(phone, token);
+    this.waMessages.set(data ?? []);
+    this.waLoadingMessages.set(false);
   }
 
   async refreshInicio(): Promise<void> {

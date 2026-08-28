@@ -1866,6 +1866,16 @@ export class AndaGanaService {
     return out.data ?? [];
   }
 
+  async adminListWaConversations(role: 'conductor' | 'pasajero', publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_wa_conversations', role });
+    return out.data ?? [];
+  }
+
+  async adminListWaMessages(phone: string, publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_wa_messages', phone });
+    return out.data ?? [];
+  }
+
   async adminApproveDriver(driverId: string, publihazclickToken: string): Promise<boolean> {
     try {
       await this.callAdminAction(publihazclickToken, { action: 'approve_driver', driver_id: driverId });

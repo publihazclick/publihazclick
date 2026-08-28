@@ -191,6 +191,56 @@ Deno.serve(async (req) => {
         if (error) throw error;
         return json({ ok: true });
       }
+      case 'list_wa_conversations': {
+        const role = body.role === 'conductor' ? 'conductor' : 'pasajero';
+        const { data, error } = await movi.rpc('ag_wa_conversations_summary', { p_role: role });
+        if (error) throw error;
+        const rows = (data ?? []) as Array<Record<string, unknown>>;
+
+        // Nombre real del contacto -- se cruza por los últimos 10 dígitos del
+        // teléfono porque ag_users.phone está guardado con formatos mixtos
+        // (con o sin +57, ver ag_wa_message_log). Solo pasajeros/conductores
+        // reales tienen fila en ag_users -- invitados de WhatsApp sin cuenta
+        // simplemente no aparecen con nombre.
+        const phones = rows.map(r => String(r.wa_phone));
+        const last10 = (p: string) => p.replace(/\D/g, '').slice(-10);
+        let nameByLast10: Record<string, string> = {};
+        if (phones.length) {
+          const { data: users } = await movi.from('ag_users').select('full_name, phone').not('phone', 'is', null);
+          for (const u of (users ?? []) as Array<Record<string, unknown>>) {
+            const p = u.phone as string | null;
+            if (p) nameByLast10[last10(p)] = (u.full_name as string) ?? '';
+          }
+        }
+
+        // Escalado (solo aplica al canal de soporte a conductores)
+        let escalatedSet = new Set<string>();
+        if (role === 'conductor' && phones.length) {
+          const { data: sessions } = await movi
+            .from('ag_wa_support_sessions').select('wa_phone, escalated').eq('escalated', true);
+          for (const s of (sessions ?? []) as Array<Record<string, unknown>>) {
+            escalatedSet.add(s.wa_phone as string);
+          }
+        }
+
+        const out = rows.map(r => ({
+          ...r,
+          contact_name: nameByLast10[last10(String(r.wa_phone))] || null,
+          escalated: escalatedSet.has(String(r.wa_phone)),
+        }));
+        return json({ ok: true, data: out });
+      }
+      case 'list_wa_messages': {
+        if (!body.phone) return json({ error: 'missing_phone' }, 400);
+        const { data, error } = await movi
+          .from('ag_wa_message_log')
+          .select('direction, msg_type, body, created_at')
+          .eq('wa_phone', body.phone)
+          .order('created_at', { ascending: true })
+          .limit(500);
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
       case 'set_distance_filter': {
         if (body.meters == null) return json({ error: 'missing_meters' }, 400);
         const meters = Math.max(5, Math.min(500, Number(body.meters)));

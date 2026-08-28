@@ -109,6 +109,28 @@ function db() {
   });
 }
 
+// ─── Registro de mensajes para el panel de soporte (ver migración 237) ───────
+// Guarda cada mensaje entrante/saliente de ambos números (viajes=pasajero,
+// soporte=conductor) para poder verlos como conversación en el admin. No
+// bloquea el flujo real -- si falla, solo queda sin loguear ese mensaje.
+function logWaMessage(
+  phone: string,
+  role: 'conductor' | 'pasajero',
+  direction: 'in' | 'out',
+  body: string,
+  msgType = 'text',
+): void {
+  db().from('ag_wa_message_log').insert({
+    wa_phone: phone,
+    role,
+    direction,
+    body: (body ?? '').slice(0, 4000),
+    msg_type: msgType,
+  }).then(({ error }) => {
+    if (error) console.error('[WA] logWaMessage error:', error);
+  });
+}
+
 // ─── BSUID vs número real ──────────────────────────────────────────────────────
 // Desde abril 2026 Meta permite a los usuarios de WhatsApp ocultar su número
 // real detrás de un "username" -- para esos usuarios el webhook YA NO manda
@@ -147,6 +169,7 @@ async function sendText(to: string, text: string): Promise<{ ok: boolean; status
     // (sin lanzar excepcion) hacia parecer que el mensaje se habia enviado cuando en
     // realidad Meta lo rechazo. Se loguea siempre para poder diagnosticar sin adivinar.
     if (!res.ok) console.error('[WA] sendText Meta API error:', res.status, bodyText);
+    logWaMessage(to, 'pasajero', 'out', text, 'text');
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendText fetch error:', e);
@@ -175,6 +198,7 @@ async function sendTemplate(to: string, templateName: string, langCode: string, 
     });
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA] sendTemplate Meta API error:', res.status, bodyText);
+    logWaMessage(to, 'pasajero', 'out', `[plantilla ${templateName}] ${bodyParams.join(' | ')}`, 'template');
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendTemplate fetch error:', e);
@@ -205,6 +229,25 @@ async function markReadWithTyping(messageId: string, phoneNumberId: string = PHO
   } catch (e) { console.error('[WA] markReadWithTyping error:', e); }
 }
 
+// ─── Resumen legible de un payload interactivo/media para el log de mensajes ──
+function summarizeOutboundPayload(payload: Record<string, unknown>): { text: string; type: string } {
+  const type = (payload.type as string) ?? 'text';
+  if (type === 'text') return { text: ((payload.text as Record<string, unknown>)?.body as string) ?? '', type };
+  if (type === 'interactive') {
+    const interactive = payload.interactive as Record<string, unknown>;
+    const bodyText = ((interactive?.body as Record<string, unknown>)?.text as string) ?? '';
+    const buttons = (interactive?.action as Record<string, unknown>)?.buttons as Array<Record<string, unknown>> | undefined;
+    const btnTitles = buttons?.map(b => (b.reply as Record<string, unknown>)?.title).filter(Boolean).join(' / ');
+    return { text: btnTitles ? `${bodyText}\n[botones: ${btnTitles}]` : bodyText, type: (interactive?.type as string) ?? type };
+  }
+  if (type === 'image') return { text: ((payload.image as Record<string, unknown>)?.caption as string) ?? '[imagen]', type };
+  if (type === 'location') {
+    const loc = payload.location as Record<string, unknown>;
+    return { text: `[ubicación] ${(loc?.name as string) ?? ''} ${(loc?.address as string) ?? ''}`.trim(), type };
+  }
+  return { text: `[${type}]`, type };
+}
+
 async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
   try {
     const { to, ...rest } = payload;
@@ -216,6 +259,10 @@ async function sendGraph(payload: Record<string, unknown>): Promise<WaResult> {
     });
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
+    if (to) {
+      const summary = summarizeOutboundPayload(payload);
+      logWaMessage(to as string, 'pasajero', 'out', summary.text, summary.type);
+    }
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA] sendGraph fetch error:', e);
@@ -3083,6 +3130,10 @@ async function sendSupportGraph(payload: Record<string, unknown>): Promise<WaRes
     });
     const bodyText = await res.text();
     if (!res.ok) console.error('[WA-Support] sendGraph Meta API error:', res.status, bodyText, 'sent:', JSON.stringify(fullBody));
+    if (to) {
+      const summary = summarizeOutboundPayload(payload);
+      logWaMessage(to as string, 'conductor', 'out', summary.text, summary.type);
+    }
     return { ok: res.ok, status: res.status, body: bodyText };
   } catch (e) {
     console.error('[WA-Support] sendGraph fetch error:', e);
@@ -3796,6 +3847,8 @@ serve(async (req) => {
             return new Response('ok', { status: 200 });
           }
         }
+
+        logWaMessage(fromPhone, isSupportNumber ? 'conductor' : 'pasajero', 'in', msgText, msgType);
 
         if (isSupportNumber) {
           await handleSupportConversation(fromPhone, name, msgText);
