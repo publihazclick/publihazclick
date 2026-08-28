@@ -368,6 +368,37 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 4000):
   }
 }
 
+// ─── Deletrear el tipo de vía completo ("Av" -> "Avenida") ───────────────────
+// Mapbox a veces abrevia el tipo de vía al inicio de la dirección ("Av 7
+// 7-115", "Cra 4 10-20", "Cl 12 3-45") -- entendible para alguien acostumbrado
+// a leer direcciones, pero no para "que sea todo en un lenguaje muy humano...
+// gente de barrios sin estudios" (pedido explícito 2026-08-28). Se expande
+// siempre a la palabra completa, solo cuando aparece como la PRIMERA palabra
+// de la dirección (que es donde Mapbox pone el tipo de vía) para no tocar por
+// error una palabra parecida en medio de un nombre de barrio o lugar.
+const STREET_TYPE_EXPANSIONS: Record<string, string> = {
+  'av':     'Avenida',
+  'avda':   'Avenida',
+  'cl':     'Calle',
+  'cll':    'Calle',
+  'cra':    'Carrera',
+  'cr':     'Carrera',
+  'kr':     'Carrera',
+  'kra':    'Carrera',
+  'dg':     'Diagonal',
+  'diag':   'Diagonal',
+  'tv':     'Transversal',
+  'trans':  'Transversal',
+  'trv':    'Transversal',
+  'circ':   'Circunvalar',
+};
+function expandStreetType(segment: string): string {
+  return segment.replace(/^([A-Za-zÁÉÍÓÚáéíóú]+)\.?\s+/, (full, word) => {
+    const expanded = STREET_TYPE_EXPANSIONS[word.toLowerCase()];
+    return expanded ? `${expanded} ` : full;
+  });
+}
+
 // ─── Geocoding inverso (solo Mapbox) ───────────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
   // Mapbox como única fuente -- el mismo token publico que ya usa el mapa de
@@ -435,6 +466,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
           .split(',')
           .map(s => s.replace(/^\s*\d{4,6}\s+/, '').trim())
           .filter(s => s.length > 0 && s.toLowerCase() !== 'colombia');
+        // El tipo de vía abreviado ("Av", "Cra", "Cl") solo puede venir en el
+        // primer segmento (la calle) -- los demás son ciudad/barrio, no hace
+        // falta tocarlos.
+        if (segments[0]) segments[0] = expandStreetType(segments[0]);
         return segments.slice(0, 2).join(', ');
       }
     } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
