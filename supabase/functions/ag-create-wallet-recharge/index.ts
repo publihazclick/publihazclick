@@ -86,6 +86,9 @@ Deno.serve(async (req) => {
       .eq('auth_user_id', authUserId)
       .maybeSingle();
 
+    // ePayco espera el celular a 10 dígitos, sin el +57
+    const phoneBilling = (agUser?.phone ?? '').replace(/^\+?57/, '').replace(/\D/g, '');
+
     if (!agUser) return json({ error: 'Perfil de conductor no encontrado' }, 404);
 
     const { data: driver } = await supabase
@@ -133,6 +136,7 @@ Deno.serve(async (req) => {
       lang:           'es',
       email_billing:  userEmail,
       name_billing:   agUser.full_name ?? 'Conductor',
+      mobilephone_billing: phoneBilling,
       extra1:         payment.id,      // ag_wallet_payments UUID
       extra2:         driver.id,       // driver UUID
       extra3:         'ag_wallet',     // flag para webhook
