@@ -418,10 +418,24 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         if (!best || dist < best.dist) best = { name: f.place_name, dist };
       }
       if (best && best.dist <= 0.15) {
-        // "Calle 1B 2 15, 540001 San José de Cúcuta, Norte de Santander,
-        // Colombia" -> se recorta a los primeros 2-3 segmentos (calle +
-        // ciudad) para no mandar el pais/codigo postal en cada mensaje.
-        return best.name.split(',').slice(0, 3).join(',').trim();
+        // Limpieza para que la dirección la entienda cualquier persona, sin
+        // importar su nivel educativo (pedido explícito 2026-08-28: "que sea
+        // todo en un lenguaje muy humano... gente de barrios sin estudios").
+        // Mapbox devuelve el código postal PEGADO al nombre de la ciudad en
+        // el mismo segmento ("540001 San José de Cúcuta") y agrega el
+        // departamento como segmento aparte -- antes esto se mandaba tal
+        // cual (recortando solo a 3 segmentos), así que el pasajero veía
+        // "Calle 1B 2 15, 540001 San José de Cúcuta, Norte de Santander": un
+        // número sin explicación que nadie identifica como código postal, y
+        // un departamento que no ayuda a reconocer la propia dirección.
+        // Ahora se quita el código postal (siempre 4-6 dígitos al inicio de
+        // un segmento) y se deja solo calle + ciudad -- nunca departamento
+        // ni "Colombia".
+        const segments = best.name
+          .split(',')
+          .map(s => s.replace(/^\s*\d{4,6}\s+/, '').trim())
+          .filter(s => s.length > 0 && s.toLowerCase() !== 'colombia');
+        return segments.slice(0, 2).join(', ');
       }
     } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
   }
