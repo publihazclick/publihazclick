@@ -399,6 +399,13 @@ function expandStreetType(segment: string): string {
   });
 }
 
+// Antepone "barrio" al nombre, salvo que el nombre YA empiece con esa
+// palabra (nombres reales como "Barrio Latino" existen -- sin este chequeo
+// quedaría "barrio Barrio Latino", duplicado y confuso).
+function labelBarrio(name: string): string {
+  return /^barrio\b/i.test(name.trim()) ? name.trim() : `barrio ${name.trim()}`;
+}
+
 // ─── Barrio (best-effort, en paralelo, nunca bloquea la respuesta) ───────────
 // Pedido explícito del usuario 2026-08-28: "no podemos devolver también el
 // barrio". Se confirmó consultando varios puntos reales de Cúcuta que Mapbox
@@ -511,7 +518,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         // quede de su propio timeout de 900ms.
         const barrio = await neighborhoodPromise;
         return barrio
-          ? [street, `barrio ${barrio}`, city].filter(Boolean).join(', ')
+          ? [street, labelBarrio(barrio), city].filter(Boolean).join(', ')
           : segments.slice(0, 2).join(', ');
       }
     } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
@@ -755,6 +762,7 @@ async function resetSession(phone: string) {
     driver_name: null, driver_price: null, driver_phone: null,
     driver_vehicle: null, driver_plate: null,
     matching_started_at: null, pending_dest_text: null,
+    origin_barrio_hint: null, pending_location_kind: null,
     last_message_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
   }, { onConflict: 'wa_phone' });
@@ -1158,6 +1166,60 @@ async function logFallbackInterpretation(
       confidence: result?.confidence ?? null,
     });
   } catch (e) { console.error('[AI] logFallbackInterpretation error:', e); }
+}
+
+// ─── Preguntar el barrio/sector ANTES del GPS (solo origen) ──────────────────
+// Pedido explícito del usuario 2026-08-28: zonas grandes tipo "Ciudadela Juan
+// Atalaya" agrupan decenas de barrios reales (ej. "Comuneros") que ni Mapbox
+// ni OpenStreetMap tienen mapeados como subdivisión propia -- confirmado con
+// datos reales (ver reverseGeocode). Solo aplica al punto de RECOGIDA, nunca
+// al destino (pedido explícito) -- ahí sí importa que el conductor llegue al
+// barrio exacto; para el destino basta con las coordenadas.
+// `kind` decide qué mensaje mandar DESPUÉS de que el pasajero responda el
+// barrio (ver el bloque `state === 'awaiting_barrio'`), porque cada camino
+// que llega hasta acá necesitaba antes un mensaje ligeramente distinto:
+// - 'self': quien escribe es quien viaja -- botón nativo de compartir GPS.
+// - 'traveler_relay': el viaje es para alguien más que no tiene el teléfono
+//   en la mano -- se le pide reenviar la ubicación de esa persona, no hay
+//   botón nativo porque ese botón comparte el GPS de QUIEN LO TOCA.
+// - 'package': domicilio/flete, después de ya haber anotado qué se envía.
+type OriginPromptKind = 'self' | 'traveler_relay' | 'package';
+async function askOriginBarrio(
+  phone: string,
+  kind: OriginPromptKind,
+  travelerName?: string | null,
+  packageDesc?: string | null,
+): Promise<void> {
+  await upsertSession(phone, { state: 'awaiting_barrio', pending_location_kind: kind });
+  const who = kind === 'traveler_relay' ? `está ${travelerName ?? 'esa persona'}` : 'estás';
+  const prefix = packageDesc ? `Anotado: _"${packageDesc}"_\n\n` : '';
+  await sendText(phone,
+    `${prefix}📍 *¿En qué barrio o sector ${who}?*\n\n` +
+    `_(ej: "Comuneros", "El Bosque", "Centro") -- así el conductor ubica mejor la zona._`
+  );
+}
+
+// ─── Combinar el barrio que escribió el pasajero con lo que detecta el GPS ───
+// NUNCA reemplaza lo que ya venía (calle, zona/barrio automático, ciudad) --
+// pedido explícito del usuario: "no le quites la zona grande... sino que lo
+// complementamos". Si el barrio escrito ya aparece dentro de la dirección
+// (ej. el GPS sí lo detectó solo esta vez), no se duplica.
+function combineWithBarrioHint(addr: string, hint?: string | null): string {
+  const h = hint?.trim();
+  if (!h) return addr;
+  if (addr.toLowerCase().includes(h.toLowerCase())) return addr;
+  const parts = addr.split(', ');
+  if (parts.length >= 2) {
+    // Justo después de la calle (parts[0]), antes de la zona/barrio
+    // automático y la ciudad -- "calle, barrio [del pasajero], zona grande
+    // automática, ciudad".
+    parts.splice(1, 0, labelBarrio(h));
+    return parts.join(', ');
+  }
+  // Sin suficientes segmentos para insertar con sentido (ej. coordenadas
+  // crudas de respaldo cuando Mapbox no dio resultado) -- se agrega al
+  // final, sigue siendo información útil aunque no quede en el orden ideal.
+  return `${addr}, ${labelBarrio(h)}`;
 }
 
 // ─── Confirmar origen (reusado por el flujo clásico y el flujo inteligente) ───
@@ -1595,8 +1657,19 @@ async function handleConversation(
     }
   }
 
-  const state = session.state ?? 'idle';
+  let state = (session.state as string | null | undefined) ?? 'idle';
   const text  = msgText.trim();
+
+  // Si el pasajero está en el paso de "¿en qué barrio?" (ver askOriginBarrio)
+  // pero de una vez comparte su ubicación GPS -- por costumbre, porque no
+  // leyó el mensaje, o porque prefiere hacerlo así -- no tiene sentido
+  // bloquearlo pidiéndole que primero escriba el barrio: se acepta la
+  // ubicación directamente, igual que si ya hubiera estado en awaiting_origin.
+  // Sin barrio agregado esta vez (queda null), simplemente no hay nada que
+  // combinar en presentOriginConfirm.
+  if (state === 'awaiting_barrio' && msgType === 'location' && msgLat != null && msgLng != null) {
+    state = 'awaiting_origin';
+  }
 
   // SOS reconocible en cualquier estado de la conversación, sin depender de
   // tener la app abierta ni de haber navegado ningún menú.
@@ -1879,11 +1952,7 @@ async function handleConversation(
         ]
       );
     } else if (resolution === 'self') {
-      await upsertSession(phone, { state: 'awaiting_origin' });
-      await sendLocationRequest(phone,
-        `📍 *¿Dónde estás?*\n\n` +
-        `Toca el botón para compartir tu ubicación actual, o escribe tu dirección completa (calle, barrio y ciudad).`
-      );
+      await askOriginBarrio(phone, 'self');
     } else {
       await sendButtons(phone, interpForWhom?.reply_text || `¿Es para ti o para otra persona?`, [
         { id: 'for_self', title: 'Para mí' },
@@ -2016,17 +2085,9 @@ async function handleConversation(
       }
     }
     if (sameLocDecision === 'yes') {
-      await upsertSession(phone, { state: 'awaiting_origin' });
-      await sendLocationRequest(phone,
-        `📍 *¿Dónde estás?*\n\n` +
-        `Toca el botón para compartir tu ubicación actual, o escribe tu dirección completa (calle, barrio y ciudad).`
-      );
+      await askOriginBarrio(phone, 'self');
     } else if (sameLocDecision === 'no') {
-      await upsertSession(phone, { state: 'awaiting_origin' });
-      await sendText(phone,
-        `📍 *¿Dónde está ${travelerName}?* (punto de recogida)\n\n` +
-        `Envía su ubicación (pídele que te la comparta y reenvíala aquí) o escribe la dirección completa (calle, barrio y ciudad).`
-      );
+      await askOriginBarrio(phone, 'traveler_relay', travelerName);
     } else {
       await sendButtons(phone, interpSameLoc?.reply_text || `¿${travelerName} está contigo ahora mismo?`, [
         { id: 'same_loc_yes', title: 'Sí, está conmigo' },
@@ -2059,12 +2120,38 @@ async function handleConversation(
     } else {
       packageDescValue = text;
     }
-    await upsertSession(phone, { state: 'awaiting_origin', package_desc: packageDescValue });
-    await sendText(phone,
-      `Anotado: _"${packageDescValue}"_\n\n` +
-      `📍 *¿Dónde estás?* (punto de recogida)\n\n` +
-      `Envía tu ubicación o escribe la dirección completa (calle, barrio y ciudad).`
-    );
+    await upsertSession(phone, { package_desc: packageDescValue });
+    await askOriginBarrio(phone, 'package', undefined, packageDescValue);
+    return;
+  }
+
+  // ── AWAITING_BARRIO ──────────────────────────────────────────────────────────
+  // Ver askOriginBarrio() -- pregunta previa al GPS, solo para el origen.
+  if (state === 'awaiting_barrio') {
+    const barrioText = text.trim();
+    if (barrioText.length < 2) {
+      await sendText(phone, `Escríbeme el nombre del barrio o sector (ej: "Comuneros", "El Bosque").`);
+      return;
+    }
+    const kind = (session.pending_location_kind as OriginPromptKind | null) ?? 'self';
+    await upsertSession(phone, { state: 'awaiting_origin', origin_barrio_hint: barrioText, pending_location_kind: null });
+    if (kind === 'traveler_relay') {
+      const travelerName = (session.traveler_name as string) ?? 'esa persona';
+      await sendText(phone,
+        `📍 *¿Dónde está ${travelerName}?* (punto de recogida)\n\n` +
+        `Envía su ubicación (pídele que te la comparta y reenvíala aquí) o escribe la dirección completa (calle y ciudad).`
+      );
+    } else if (kind === 'package') {
+      await sendText(phone,
+        `📍 *¿Dónde estás?* (punto de recogida)\n\n` +
+        `Envía tu ubicación o escribe la dirección completa (calle y ciudad).`
+      );
+    } else {
+      await sendLocationRequest(phone,
+        `📍 *¿Dónde estás?*\n\n` +
+        `Toca el botón para compartir tu ubicación actual, o escribe tu dirección completa (calle y ciudad).`
+      );
+    }
     return;
   }
 
@@ -2109,6 +2196,9 @@ async function handleConversation(
       return;
     }
 
+    // Complementa (nunca reemplaza) con el barrio que el pasajero ya escribió
+    // a mano en awaiting_barrio -- ver combineWithBarrioHint().
+    addr = combineWithBarrioHint(addr, session.origin_barrio_hint as string | undefined);
     await presentOriginConfirm(phone, addr, lat, lng, session);
     return;
   }
