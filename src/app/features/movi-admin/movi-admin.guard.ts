@@ -5,7 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { awaitAuthLoaded } from '../../core/guards/auth-wait.util';
 
-const MOVI_ROLES = ['super_admin', 'movi_admin', 'contable'];
+const MOVI_ROLES = ['super_admin', 'movi_admin', 'contable', 'admin', 'dev'];
 
 export const moviAdminGuard: CanActivateFn = async (route, state) => {
   const router = inject(Router);

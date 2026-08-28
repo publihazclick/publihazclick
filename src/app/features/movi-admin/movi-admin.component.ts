@@ -17,18 +17,18 @@ type AdminTab =
 interface TabDef { id: AdminTab; label: string; sym: string; color: string; border: string; roles: UserRole[]; }
 
 const TABS: TabDef[] = [
-  { id: 'inicio',        label: 'Inicio',        sym: 'dashboard',          color: 'text-orange-400',  border: 'border-orange-400',  roles: ['super_admin'] },
-  { id: 'pendientes',    label: 'Pendientes',     sym: 'pending_actions',    color: 'text-amber-400',   border: 'border-amber-400',   roles: ['super_admin','movi_admin'] },
-  { id: 'conductores',   label: 'Conductores',    sym: 'directions_car',     color: 'text-cyan-400',    border: 'border-cyan-400',    roles: ['super_admin','movi_admin'] },
-  { id: 'pasajeros',     label: 'Pasajeros',      sym: 'person_pin_circle',  color: 'text-sky-400',     border: 'border-sky-400',     roles: ['super_admin','movi_admin'] },
-  { id: 'viajes',        label: 'Viajes',         sym: 'route',              color: 'text-green-400',   border: 'border-green-400',   roles: ['super_admin','movi_admin'] },
-  { id: 'sos',           label: 'SOS',            sym: 'emergency',          color: 'text-red-400',     border: 'border-red-400',     roles: ['super_admin','movi_admin'] },
-  { id: 'soporte',       label: 'Soporte WA',     sym: 'chat',               color: 'text-lime-400',    border: 'border-lime-400',    roles: ['super_admin','movi_admin'] },
-  { id: 'cupones',       label: 'Cupones',        sym: 'confirmation_number', color: 'text-pink-400',   border: 'border-pink-400',    roles: ['super_admin','movi_admin'] },
-  { id: 'finanzas',      label: 'Finanzas',       sym: 'account_balance',    color: 'text-emerald-400', border: 'border-emerald-400', roles: ['contable'] },
-  { id: 'retiros',       label: 'Retiros',        sym: 'payments',           color: 'text-teal-400',    border: 'border-teal-400',    roles: ['super_admin','contable'] },
-  { id: 'analytics',     label: 'Analytics',      sym: 'bar_chart',          color: 'text-blue-400',    border: 'border-blue-400',    roles: ['super_admin','contable'] },
-  { id: 'configuracion', label: 'Configuración',  sym: 'tune',               color: 'text-blue-400',  border: 'border-blue-400',  roles: ['super_admin'] },
+  { id: 'inicio',        label: 'Inicio',        sym: 'dashboard',          color: 'text-orange-400',  border: 'border-orange-400',  roles: ['super_admin','admin','dev'] },
+  { id: 'pendientes',    label: 'Pendientes',     sym: 'pending_actions',    color: 'text-amber-400',   border: 'border-amber-400',   roles: ['super_admin','movi_admin','admin','dev'] },
+  { id: 'conductores',   label: 'Conductores',    sym: 'directions_car',     color: 'text-cyan-400',    border: 'border-cyan-400',    roles: ['super_admin','movi_admin','admin','dev'] },
+  { id: 'pasajeros',     label: 'Pasajeros',      sym: 'person_pin_circle',  color: 'text-sky-400',     border: 'border-sky-400',     roles: ['super_admin','movi_admin','admin','dev'] },
+  { id: 'viajes',        label: 'Viajes',         sym: 'route',              color: 'text-green-400',   border: 'border-green-400',   roles: ['super_admin','movi_admin','admin','dev'] },
+  { id: 'sos',           label: 'SOS',            sym: 'emergency',          color: 'text-red-400',     border: 'border-red-400',     roles: ['super_admin','movi_admin','admin','dev'] },
+  { id: 'soporte',       label: 'Soporte WA',     sym: 'chat',               color: 'text-lime-400',    border: 'border-lime-400',    roles: ['super_admin','movi_admin','admin','dev'] },
+  { id: 'cupones',       label: 'Cupones',        sym: 'confirmation_number', color: 'text-pink-400',   border: 'border-pink-400',    roles: ['super_admin','movi_admin','admin','dev'] },
+  { id: 'finanzas',      label: 'Finanzas',       sym: 'account_balance',    color: 'text-emerald-400', border: 'border-emerald-400', roles: ['contable','admin','dev'] },
+  { id: 'retiros',       label: 'Retiros',        sym: 'payments',           color: 'text-teal-400',    border: 'border-teal-400',    roles: ['super_admin','contable','admin','dev'] },
+  { id: 'analytics',     label: 'Analytics',      sym: 'bar_chart',          color: 'text-blue-400',    border: 'border-blue-400',    roles: ['super_admin','contable','admin','dev'] },
+  { id: 'configuracion', label: 'Configuración',  sym: 'tune',               color: 'text-blue-400',  border: 'border-blue-400',  roles: ['super_admin','admin','dev'] },
 ];
 
 @Component({
