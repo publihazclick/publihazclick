@@ -115,6 +115,14 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
     </div>
   }
 
+  @if (!loading() && loadError()) {
+    <div class="flex flex-col items-center gap-3 py-16 bg-rose-500/5 border border-rose-500/15 rounded-2xl">
+      <span class="material-symbols-outlined text-rose-400" style="font-size:36px">wifi_off</span>
+      <p class="text-rose-300 text-sm text-center px-6">{{ loadError() }}</p>
+      <button (click)="load()" class="px-4 py-2 rounded-xl bg-rose-500/15 text-rose-300 text-xs font-black uppercase">Reintentar</button>
+    </div>
+  }
+
   <!-- ═══ CONDUCTORES PENDIENTES ═══ -->
   @if (!loading() && tab() === 'conductores-pendientes') {
     @if (pendingDrivers().length === 0) {
@@ -899,6 +907,7 @@ export class AndaGanaAdminComponent implements OnInit {
 
   tab           = signal<AdminTab>('conductores-pendientes');
   loading       = signal(true);
+  loadError     = signal<string | null>(null);
   actionLoading = signal<string | null>(null);
   rejectingId   = signal<string | null>(null);
   rejectReason  = '';
@@ -975,18 +984,29 @@ export class AndaGanaAdminComponent implements OnInit {
 
   async load() {
     this.loading.set(true);
+    this.loadError.set(null);
     const token = this.authService.getAccessToken() ?? '';
-    const [statsData, pending, all, pass] = await Promise.all([
-      this.agService.getStats(),
-      this.agService.adminListDrivers(token, 'pending'),
-      this.agService.adminListDrivers(token),
-      this.agService.adminListPassengers(token),
-    ]);
-    this.stats.set(statsData);
-    this.pendingDrivers.set(pending);
-    this.allDrivers.set(all);
-    this.passengers.set(pass);
-    this.loading.set(false);
+    try {
+      const [statsData, pending, all, pass] = await Promise.all([
+        this.agService.getStats(),
+        this.agService.adminListDrivers(token, 'pending'),
+        this.agService.adminListDrivers(token),
+        this.agService.adminListPassengers(token),
+      ]);
+      this.stats.set(statsData);
+      this.pendingDrivers.set(pending);
+      this.allDrivers.set(all);
+      this.passengers.set(pass);
+    } catch (e) {
+      // Antes, si cualquiera de estas 4 llamadas fallaba o se colgaba (ej. un
+      // problema de red pasajero), el spinner se quedaba pegado para siempre
+      // porque loading.set(false) nunca se ejecutaba -- reportado por el
+      // usuario 2026-08-28 como "círculo cargando y nunca muestra información".
+      console.error('[anda-gana-admin] Error cargando datos:', e);
+      this.loadError.set('No se pudo cargar la información. Puede ser un problema de conexión momentáneo.');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async approve(driverId: string) {

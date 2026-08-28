@@ -1845,15 +1845,31 @@ export class AndaGanaService {
    * movi_rls_wide_open_admin_policies_fix.
    */
   private async callAdminAction(publihazclickToken: string, body: Record<string, unknown>): Promise<any> {
-    const res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-admin-action`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: environment.moviSupabase.anonKey,
-        Authorization: `Bearer ${publihazclickToken}`,
-      },
-      body: JSON.stringify(body),
-    });
+    // Timeout explícito: sin esto, un problema de red pasajero deja el fetch
+    // colgado indefinidamente y el panel admin (anda-gana-admin) se queda con
+    // el spinner de carga pegado para siempre, sin ningún error visible.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    let res: Response;
+    try {
+      res = await fetch(`${environment.moviSupabase.url}/functions/v1/ag-admin-action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: environment.moviSupabase.anonKey,
+          Authorization: `Bearer ${publihazclickToken}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      if ((e as { name?: string })?.name === 'AbortError') {
+        throw new Error('La conexión tardó demasiado. Intenta de nuevo.');
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+    }
     const out = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(out?.error || `ag-admin-action failed (${res.status})`);
