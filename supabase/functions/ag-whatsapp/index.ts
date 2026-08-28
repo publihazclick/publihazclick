@@ -389,9 +389,15 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN');
   if (mapboxToken) {
     try {
+      // Timeout bajado de 3000ms a 1500ms (2026-08-28): medido en producción que
+      // Mapbox responde en ~10-50ms en el caso normal -- el timeout de 3s solo
+      // importa cuando Mapbox está degradado/caído, y en ese caso peor es hacer
+      // esperar al pasajero 3 segundos completos antes de caer a coordenadas
+      // crudas (ya de por sí un resultado válido, ver comentario abajo) que
+      // cortar a la mitad y mostrar algo rápido.
       const r = await fetchWithTimeout(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&language=es&types=address,poi`,
-        {}, 3000
+        {}, 1500
       );
       const j = await r.json();
       // Se piden dos "types" (address,poi) -- Mapbox devuelve el mejor match
@@ -3746,6 +3752,13 @@ serve(async (req) => {
       const messages = value?.messages as unknown[];
 
       if (messages?.length) {
+        // t0 para medir cuánto tarda de verdad procesar una ubicación de
+        // pasajero (ver ag_wa_location_latency, migración 239) -- alimenta la
+        // señal 4 de ag_health_check(): si algún envío de ubicación real tarda
+        // más de 3s, avisa solo, sin depender de que alguien vuelva a
+        // reportarlo. Pedido explícito del usuario 2026-08-28 ("necesito que
+        // si ya estas seguro eso no se vuelva a dañar").
+        const t0           = Date.now();
         const msg         = messages[0] as Record<string, unknown>;
         const msgId       = msg.id as string | undefined;
 
@@ -3854,6 +3867,13 @@ serve(async (req) => {
           await handleSupportConversation(fromPhone, name, msgText);
         } else {
           await handleConversation(fromPhone, name, msgType, msgText, msgLat, msgLng, precomputedAddr as string | undefined, precomputedSession);
+        }
+
+        // Fire-and-forget: no debe agregar latencia a la respuesta real que
+        // ya se le mandó al pasajero.
+        if (rawLat != null && rawLng != null) {
+          db().from('ag_wa_location_latency').insert({ wa_phone: fromPhone, ms: Date.now() - t0 })
+            .then(({ error }) => { if (error) console.error('[WA] location latency log error:', error); });
         }
       }
     } catch (e) {
