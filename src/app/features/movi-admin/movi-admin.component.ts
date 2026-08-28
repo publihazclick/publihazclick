@@ -1213,7 +1213,7 @@ export class MoviAdminComponent implements OnInit {
     this.loading.set(true);
     const token = this.authService.getAccessToken() ?? '';
     const [statsData, pending, all, pass] = await Promise.all([
-      this.agService.getStats(),
+      this.agService.getStats(token),
       this.agService.adminListDrivers(token, 'pending'),
       this.agService.adminListDrivers(token),
       this.agService.adminListPassengers(token),
@@ -1226,31 +1226,27 @@ export class MoviAdminComponent implements OnInit {
   }
 
   async loadInicio(): Promise<void> {
-    const sb = this.agService['supabase'];
-    const [onlineRes, tripsRes, pending] = await Promise.all([
-      sb.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('is_online', true).eq('status', 'approved'),
-      sb.from('ag_trip_requests').select('id', { count: 'exact', head: true }).in('status', ['in_progress', 'accepted', 'pickup', 'arrived', 'on_route']),
-      this.agService.adminListWithdrawals('pending'),
-    ]);
+    const token = this.authService.getAccessToken() ?? '';
+    const stats = await this.agService.adminGetInicioStats(token);
     this.inicioStats.set({
-      driversOnline: onlineRes.count ?? 0,
-      activeTrips: tripsRes.count ?? 0,
+      driversOnline: stats.driversOnline,
+      activeTrips: stats.activeTrips,
       activeSOS: this.sosActiveCount(),
-      pendingWithdrawalsCount: pending.length,
-      pendingWithdrawalsTotal: pending.reduce((s: number, w: any) => s + (w.amount || 0), 0),
+      pendingWithdrawalsCount: stats.pendingWithdrawalsCount,
+      pendingWithdrawalsTotal: stats.pendingWithdrawalsTotal,
     });
   }
 
   async loadFinancialSummary(): Promise<void> {
+    const token = this.authService.getAccessToken() ?? '';
     const sb = this.agService['supabase'];
-    const [analyticsRes, pending, completed, walletRes] = await Promise.all([
+    const [analyticsRes, pending, completed, totalWallets] = await Promise.all([
       sb.rpc('ag_admin_stats', { p_days: this.analyticsPeriod() }),
-      this.agService.adminListWithdrawals('pending'),
-      this.agService.adminListWithdrawals('completed'),
-      sb.from('ag_drivers').select('wallet_balance').eq('status', 'approved'),
+      this.agService.adminListWithdrawals(token, 'pending'),
+      this.agService.adminListWithdrawals(token, 'completed'),
+      this.agService.adminGetTotalWalletBalance(token),
     ]);
     const a = analyticsRes.data;
-    const totalWallets = (walletRes.data ?? []).reduce((s: number, d: any) => s + (d.wallet_balance || 0), 0);
     const gmv = a?.gmv_cop ?? 0;
     const pct = this.commissionPct();
     this.financialData.set({
@@ -1265,7 +1261,8 @@ export class MoviAdminComponent implements OnInit {
   }
 
   async loadPendingWithdrawalsCount(): Promise<void> {
-    const list = await this.agService.adminListWithdrawals('pending');
+    const token = this.authService.getAccessToken() ?? '';
+    const list = await this.agService.adminListWithdrawals(token, 'pending');
     this.pendingWithdrawalsCount.set(list.length);
   }
 
@@ -1298,18 +1295,14 @@ export class MoviAdminComponent implements OnInit {
   }
 
   async loadActiveTrips(): Promise<void> {
-    const { data } = await this.agService['supabase']
-      .from('ag_trip_requests').select('*')
-      .in('status', ['in_progress', 'accepted', 'pickup', 'on_route', 'arrived'])
-      .order('created_at', { ascending: false }).limit(50);
+    const token = this.authService.getAccessToken() ?? '';
+    const data = await this.agService.adminListActiveTrips(token);
     this.activeTrips.set(data ?? []);
   }
 
   async loadTripHistory(): Promise<void> {
-    const { data } = await this.agService['supabase']
-      .from('ag_trip_requests').select('*')
-      .in('status', ['completed', 'cancelled'])
-      .order('created_at', { ascending: false }).limit(100);
+    const token = this.authService.getAccessToken() ?? '';
+    const data = await this.agService.adminListTripHistory(token);
     this.tripHistory.set(data ?? []);
   }
 
@@ -1330,7 +1323,8 @@ export class MoviAdminComponent implements OnInit {
 
   async loadWithdrawals(): Promise<void> {
     const filter = this.withdrawalFilter();
-    this.withdrawals.set(await this.agService.adminListWithdrawals(filter || undefined));
+    const token = this.authService.getAccessToken() ?? '';
+    this.withdrawals.set(await this.agService.adminListWithdrawals(token, filter || undefined));
     if (!filter) {
       this.pendingWithdrawalsCount.set(this.withdrawals().filter((w: any) => w.status === 'pending').length);
     }

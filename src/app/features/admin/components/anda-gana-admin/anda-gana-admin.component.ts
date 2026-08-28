@@ -990,7 +990,8 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async loadPendingWithdrawalsCount(): Promise<void> {
-    const list = await this.agService.adminListWithdrawals('pending');
+    const token = this.authService.getAccessToken() ?? '';
+    const list = await this.agService.adminListWithdrawals(token, 'pending');
     this.pendingWithdrawalsCount.set(list.length);
   }
 
@@ -1000,7 +1001,7 @@ export class AndaGanaAdminComponent implements OnInit {
     const token = this.authService.getAccessToken() ?? '';
     try {
       const [statsData, pending, all, pass] = await Promise.all([
-        this.agService.getStats(),
+        this.agService.getStats(token),
         this.agService.adminListDrivers(token, 'pending'),
         this.agService.adminListDrivers(token),
         this.agService.adminListPassengers(token),
@@ -1146,20 +1147,25 @@ export class AndaGanaAdminComponent implements OnInit {
   }
 
   async loadActiveTrips(): Promise<void> {
-    const { data } = await this.agService['supabase'].from('ag_trip_requests').select('*').in('status', ['in_progress', 'accepted', 'pickup', 'on_route', 'arrived']).order('created_at', { ascending: false }).limit(50);
+    // Antes leía ag_trip_requests directo con la clave anon -- su RLS solo
+    // deja ver el propio viaje (pasajero) o el asignado (conductor); el
+    // admin sin sesión real siempre veía la lista vacía sin importar
+    // cuántos viajes activos reales hubiera.
+    const token = this.authService.getAccessToken() ?? '';
+    const data = await this.agService.adminListActiveTrips(token);
     this.activeTrips.set(data ?? []);
   }
 
   async loadCcRequests(): Promise<void> {
-    let q = this.agService['supabase'].from('cc_admin_requests_v').select('*').limit(50);
+    const token = this.authService.getAccessToken() ?? '';
     const status = this.ccStatusFilter();
-    if (status) q = q.eq('status', status);
-    const { data } = await q;
+    const data = await this.agService.adminListCcRequests(token, status || undefined);
     this.ccRequests.set(data ?? []);
   }
 
   async loadCcFlaggedCount(): Promise<void> {
-    const { count } = await this.agService['supabase'].from('cc_requests').select('id', { count: 'exact', head: true }).eq('gps_integrity_flagged', true);
+    const token = this.authService.getAccessToken() ?? '';
+    const count = await this.agService.adminGetCcFlaggedCount(token);
     this.ccFlaggedCount.set(count ?? 0);
   }
 
@@ -1199,7 +1205,8 @@ export class AndaGanaAdminComponent implements OnInit {
 
   async loadWithdrawals(): Promise<void> {
     const filter = this.withdrawalFilter();
-    this.withdrawals.set(await this.agService.adminListWithdrawals(filter || undefined));
+    const token = this.authService.getAccessToken() ?? '';
+    this.withdrawals.set(await this.agService.adminListWithdrawals(token, filter || undefined));
     if (!filter) {
       this.pendingWithdrawalsCount.set(this.withdrawals().filter((w: any) => w.status === 'pending').length);
     }

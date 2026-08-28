@@ -1487,19 +1487,19 @@ export class AndaGanaService {
     return count ?? 0;
   }
 
-  async getStats(): Promise<{ passengers: number; pending: number; approved: number; rejected: number }> {
-    const [p, pend, appr, rej] = await Promise.all([
-      this.supabase.from('ag_users').select('id', { count: 'exact', head: true }).eq('role', 'passenger'),
-      this.supabase.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      this.supabase.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
-      this.supabase.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
-    ]);
-    return {
-      passengers: p.count ?? 0,
-      pending: pend.count ?? 0,
-      approved: appr.count ?? 0,
-      rejected: rej.count ?? 0,
-    };
+  /**
+   * Estadísticas globales para el panel admin (pasajeros/pendientes/
+   * aprobados/rechazados). Antes esto consultaba las tablas directo con la
+   * clave anon -- las políticas RLS de ag_users/ag_drivers solo dejan ver
+   * los propios registros (auth.uid()), y el admin nunca tiene sesión real
+   * en el proyecto de Movi, así que SIEMPRE devolvía 0/0/0/0 sin importar
+   * cuántos datos reales hubiera (confirmado 2026-08-28: 46 pasajeros y 3
+   * conductores aprobados reales, mostraba 0 en ambos). Ahora pasa por
+   * ag-admin-action con service_role, igual que el resto de acciones admin.
+   */
+  async getStats(publihazclickToken: string): Promise<{ passengers: number; pending: number; approved: number; rejected: number }> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'get_stats' });
+    return out.data ?? { passengers: 0, pending: 0, approved: 0, rejected: 0 };
   }
 
   // ═══════════════════════════════════════════════════
@@ -1825,13 +1825,52 @@ export class AndaGanaService {
     return data ?? [];
   }
 
-  async adminListWithdrawals(status?: string): Promise<any[]> {
-    let q = this.supabase.from('ag_withdrawals')
-      .select('*, ag_drivers(plate, vehicle_brand, ag_users(full_name, phone))')
-      .order('created_at', { ascending: false }).limit(200);
-    if (status) q = q.eq('status', status);
-    const { data } = await q;
-    return data ?? [];
+  /**
+   * Lista de retiros para el panel admin. Antes leía ag_withdrawals directo
+   * con la clave anon -- su única política RLS de SELECT es
+   * "driver_id = ag_current_driver_id()" (solo el propio conductor ve sus
+   * retiros), así que el admin (sin sesión real de conductor) siempre veía
+   * la lista vacía sin importar cuántos retiros reales hubiera pendientes.
+   */
+  async adminListWithdrawals(publihazclickToken: string, status?: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_withdrawals', status });
+    return out.data ?? [];
+  }
+
+  /** Viajes activos para el panel admin -- mismo motivo que adminListWithdrawals. */
+  async adminListActiveTrips(publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_active_trips' });
+    return out.data ?? [];
+  }
+
+  /** Solicitudes Ciudad a Ciudad para el panel admin. */
+  async adminListCcRequests(publihazclickToken: string, status?: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_cc_requests', status });
+    return out.data ?? [];
+  }
+
+  /** Conteo de viajes Ciudad a Ciudad con integridad GPS marcada, para el panel admin. */
+  async adminGetCcFlaggedCount(publihazclickToken: string): Promise<number> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'get_cc_flagged_count' });
+    return out.data ?? 0;
+  }
+
+  /** Resumen de la pestaña Inicio del panel admin (conductores en línea, viajes activos, retiros pendientes). */
+  async adminGetInicioStats(publihazclickToken: string): Promise<{ driversOnline: number; activeTrips: number; pendingWithdrawalsCount: number; pendingWithdrawalsTotal: number }> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'get_inicio_stats' });
+    return out.data ?? { driversOnline: 0, activeTrips: 0, pendingWithdrawalsCount: 0, pendingWithdrawalsTotal: 0 };
+  }
+
+  /** Suma del saldo de billetera de todos los conductores aprobados, para el panel admin. */
+  async adminGetTotalWalletBalance(publihazclickToken: string): Promise<number> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'get_total_wallet_balance' });
+    return out.data ?? 0;
+  }
+
+  /** Historial de viajes completados/cancelados, para el panel admin. */
+  async adminListTripHistory(publihazclickToken: string): Promise<any[]> {
+    const out = await this.callAdminAction(publihazclickToken, { action: 'list_trip_history' });
+    return out.data ?? [];
   }
 
   /**

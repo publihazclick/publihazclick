@@ -230,6 +230,92 @@ Deno.serve(async (req) => {
         }));
         return json({ ok: true, data: out });
       }
+      case 'get_stats': {
+        // Antes el panel admin sacaba estos conteos con la clave anon
+        // directo contra las tablas -- las políticas RLS de ag_users/
+        // ag_drivers solo dejan ver los propios registros (auth.uid()), y el
+        // admin nunca tiene sesión real en el proyecto de Movi, así que
+        // SIEMPRE mostraba 0/0/0/0 sin importar cuántos datos reales
+        // hubiera. Confirmado 2026-08-28: 46 pasajeros y 3 conductores
+        // aprobados reales, el panel mostraba 0 en ambos.
+        const [p, pend, appr, rej] = await Promise.all([
+          movi.from('ag_users').select('id', { count: 'exact', head: true }).eq('role', 'passenger'),
+          movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+          movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+          movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+        ]);
+        return json({
+          ok: true,
+          data: {
+            passengers: p.count ?? 0,
+            pending: pend.count ?? 0,
+            approved: appr.count ?? 0,
+            rejected: rej.count ?? 0,
+          },
+        });
+      }
+      case 'list_withdrawals': {
+        let q = movi.from('ag_withdrawals')
+          .select('*, ag_drivers(plate, vehicle_brand, ag_users(full_name, phone))')
+          .order('created_at', { ascending: false }).limit(200);
+        if (body.status) q = q.eq('status', body.status);
+        const { data, error } = await q;
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      case 'list_active_trips': {
+        const { data, error } = await movi
+          .from('ag_trip_requests').select('*')
+          .in('status', ['in_progress', 'accepted', 'pickup', 'on_route', 'arrived'])
+          .order('created_at', { ascending: false }).limit(50);
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      case 'list_cc_requests': {
+        let q = movi.from('cc_admin_requests_v').select('*').limit(50);
+        if (body.status) q = q.eq('status', body.status);
+        const { data, error } = await q;
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
+      case 'get_cc_flagged_count': {
+        const { count, error } = await movi
+          .from('cc_requests').select('id', { count: 'exact', head: true })
+          .eq('gps_integrity_flagged', true);
+        if (error) throw error;
+        return json({ ok: true, data: count ?? 0 });
+      }
+      case 'get_inicio_stats': {
+        const [onlineRes, tripsRes, pendingWd] = await Promise.all([
+          movi.from('ag_drivers').select('id', { count: 'exact', head: true }).eq('is_online', true).eq('status', 'approved'),
+          movi.from('ag_trip_requests').select('id', { count: 'exact', head: true }).in('status', ['in_progress', 'accepted', 'pickup', 'arrived', 'on_route']),
+          movi.from('ag_withdrawals').select('amount').eq('status', 'pending'),
+        ]);
+        const pendingRows = (pendingWd.data ?? []) as Array<{ amount: number }>;
+        return json({
+          ok: true,
+          data: {
+            driversOnline: onlineRes.count ?? 0,
+            activeTrips: tripsRes.count ?? 0,
+            pendingWithdrawalsCount: pendingRows.length,
+            pendingWithdrawalsTotal: pendingRows.reduce((s, w) => s + (w.amount || 0), 0),
+          },
+        });
+      }
+      case 'get_total_wallet_balance': {
+        const { data, error } = await movi.from('ag_drivers').select('wallet_balance').eq('status', 'approved');
+        if (error) throw error;
+        const total = (data ?? []).reduce((s: number, d: { wallet_balance: number }) => s + (d.wallet_balance || 0), 0);
+        return json({ ok: true, data: total });
+      }
+      case 'list_trip_history': {
+        const { data, error } = await movi
+          .from('ag_trip_requests').select('*')
+          .in('status', ['completed', 'cancelled'])
+          .order('created_at', { ascending: false }).limit(100);
+        if (error) throw error;
+        return json({ ok: true, data });
+      }
       case 'list_wa_messages': {
         if (!body.phone) return json({ error: 'missing_phone' }, 400);
         const { data, error } = await movi
