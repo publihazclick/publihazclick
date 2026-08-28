@@ -20,9 +20,21 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       <h1 class="text-white font-black text-2xl">Anda y Gana</h1>
       <p class="text-slate-500 text-sm">Panel de administración</p>
     </div>
-    <button (click)="load()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-      <span class="material-symbols-outlined text-slate-400" style="font-size:18px">refresh</span>
-    </button>
+    <div class="flex items-center gap-2">
+      <!-- Botón fijo fuera de la fila de pestañas con scroll -- en pantallas
+           angostas (celular) la fila de pestañas no cabe completa y esta
+           quedaba escondida al final, requiriendo deslizar mucho para
+           encontrarla (reportado por el usuario 2026-08-28, dos veces). -->
+      <button (click)="tab.set('soporte'); loadWaConversations()"
+        class="flex items-center gap-1.5 px-3 h-9 rounded-xl border transition-colors"
+        [class]="tab() === 'soporte' ? 'bg-lime-500/15 border-lime-500/30 text-lime-400' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'">
+        <span class="material-symbols-outlined" style="font-size:18px">chat</span>
+        <span class="text-xs font-black uppercase hidden sm:inline">Soporte WA</span>
+      </button>
+      <button (click)="load()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+        <span class="material-symbols-outlined text-slate-400" style="font-size:18px">refresh</span>
+      </button>
+    </div>
   </div>
 
   <!-- Stats -->
