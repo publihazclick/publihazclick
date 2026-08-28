@@ -370,9 +370,18 @@ export class UserWalletComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    await this.profileService.getCurrentProfile().catch(() => {});
-    await Promise.all([this.loadSavedMethods(), this.loadWithdrawals(), this.checkActiveAffiliate()]);
-    this.loading.set(false);
+    try {
+      await this.profileService.getCurrentProfile().catch(() => {});
+      await Promise.all([this.loadSavedMethods(), this.loadWithdrawals(), this.checkActiveAffiliate()]);
+    } catch (e) {
+      // Antes, si cualquiera de las 3 llamadas fallaba, loading.set(false)
+      // nunca corría -- círculo de carga pegado para siempre en la página que
+      // los usuarios revisan más seguido (su saldo). Mismo bug que se
+      // encontró y corrigió en el panel admin de Movi, ver auditoría 2026-08-28.
+      console.error('[wallet] Error cargando datos:', e);
+    } finally {
+      this.loading.set(false);
+    }
 
     // Escuchar ?action=retiro (funciona al navegar y al recargar)
     this.route.queryParamMap.subscribe(params => {

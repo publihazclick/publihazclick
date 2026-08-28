@@ -64,6 +64,11 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       [class]="tab() === 'conductores' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-500 hover:text-slate-300'">
       Conductores
     </button>
+    <button (click)="tab.set('soporte'); loadWaConversations()"
+      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1.5"
+      [class]="tab() === 'soporte' ? 'text-lime-400 border-b-2 border-lime-400' : 'text-slate-500 hover:text-slate-300'">
+      <span class="material-symbols-outlined" style="font-size:14px">chat</span>Soporte WA
+    </button>
     <button (click)="tab.set('pasajeros')"
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'pasajeros' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-slate-500 hover:text-slate-300'">
@@ -101,11 +106,6 @@ type AdminTab = 'analytics' | 'conductores-pendientes' | 'conductores' | 'pasaje
       class="px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors rounded-t-lg flex-shrink-0"
       [class]="tab() === 'configuracion' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'">
       Configuración
-    </button>
-    <button (click)="tab.set('soporte'); loadWaConversations()"
-      class="px-4 py-2 text-xs font-black uppercase whitespace-nowrap transition flex items-center gap-1.5"
-      [class]="tab() === 'soporte' ? 'text-lime-400 border-b-2 border-lime-400' : 'text-slate-500 hover:text-slate-300'">
-      <span class="material-symbols-outlined" style="font-size:14px">chat</span>Soporte WA
     </button>
   </div>
 

@@ -32,6 +32,18 @@ export class ProfileService {
   // Canal de Supabase Realtime para escuchar cambios de perfil en tiempo real
   private _profileChannel: RealtimeChannel | null = null;
 
+  // Caché corta + deduplicación de getCurrentProfile(). Encontrado 2026-08-28
+  // en auditoría de lentitud: se llama ~35 veces en 24 archivos distintos sin
+  // caché -- cada guard de ruta, cada layout y cada componente de página la
+  // llaman por separado, y CADA llamada hace 2 round-trips de red
+  // (auth.getUser() + SELECT profiles). En una sola carga de página
+  // autenticada esto se acumulaba en 8-10 idas y vueltas seriales antes de
+  // mostrar cualquier dato -- la causa real de que el refresh se sintiera
+  // lento en TODAS las secciones, no solo Movi.
+  private _profileFetchedAt = 0;
+  private _profileInFlight: Promise<Profile | null> | null = null;
+  private static readonly PROFILE_CACHE_TTL_MS = 20_000;
+
   readonly profile = this._profile.asReadonly();
   readonly referrals = this._referrals.asReadonly();
   readonly loading = this._loading.asReadonly();
@@ -53,9 +65,33 @@ export class ProfileService {
   }
 
   /**
-   * Obtener perfil del usuario actual
+   * Obtener perfil del usuario actual.
+   *
+   * Cachea el resultado por PROFILE_CACHE_TTL_MS y deduplica llamadas
+   * concurrentes: si ya hay un fetch en curso, todas las llamadas simultáneas
+   * comparten esa misma promesa en vez de disparar N requests idénticos.
+   * Pasar forceRefresh:true (después de editar el perfil, por ejemplo) para
+   * saltarse la caché a propósito.
    */
-  async getCurrentProfile(): Promise<Profile | null> {
+  async getCurrentProfile(forceRefresh = false): Promise<Profile | null> {
+    const isFresh = this._profile() !== null && (Date.now() - this._profileFetchedAt) < ProfileService.PROFILE_CACHE_TTL_MS;
+    if (!forceRefresh && isFresh) {
+      return this._profile();
+    }
+    if (!forceRefresh && this._profileInFlight) {
+      return this._profileInFlight;
+    }
+
+    const fetchPromise = this._fetchCurrentProfile();
+    this._profileInFlight = fetchPromise;
+    try {
+      return await fetchPromise;
+    } finally {
+      this._profileInFlight = null;
+    }
+  }
+
+  private async _fetchCurrentProfile(): Promise<Profile | null> {
     this._loading.set(true);
     this._error.set(null);
 
@@ -80,6 +116,7 @@ export class ProfileService {
       if (error) throw error;
 
       this._profile.set(data as Profile);
+      this._profileFetchedAt = Date.now();
       return data as Profile;
     } catch (error: any) {
       this._error.set(error.message);
