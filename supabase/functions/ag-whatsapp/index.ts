@@ -399,12 +399,6 @@ function expandStreetType(segment: string): string {
   });
 }
 
-// Antepone "barrio" al nombre, salvo que el nombre YA empiece con esa
-// palabra (nombres reales como "Barrio Latino" existen -- sin este chequeo
-// quedaría "barrio Barrio Latino", duplicado y confuso).
-function labelBarrio(name: string): string {
-  return /^barrio\b/i.test(name.trim()) ? name.trim() : `barrio ${name.trim()}`;
-}
 
 // ─── Barrio (best-effort, en paralelo, nunca bloquea la respuesta) ───────────
 // Pedido explícito del usuario 2026-08-28: "no podemos devolver también el
@@ -517,8 +511,13 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
         // y este await es instantáneo; si no, espera como mucho lo que le
         // quede de su propio timeout de 900ms.
         const barrio = await neighborhoodPromise;
+        // Sin la palabra "barrio" repetida -- se lee como cualquier persona
+        // diría su propia dirección: "calle, zona, ciudad", sin etiquetas
+        // (pedido explícito del usuario 2026-08-28: se veía raro repetir
+        // "barrio" dos veces cuando también se agrega el barrio que escribió
+        // el pasajero, ver combineWithBarrioHint).
         return barrio
-          ? [street, labelBarrio(barrio), city].filter(Boolean).join(', ')
+          ? [street, barrio.trim(), city].filter(Boolean).join(', ')
           : segments.slice(0, 2).join(', ');
       }
     } catch (e) { console.error('[Geo] Mapbox reverseGeocode error:', e); }
@@ -1211,15 +1210,16 @@ function combineWithBarrioHint(addr: string, hint?: string | null): string {
   const parts = addr.split(', ');
   if (parts.length >= 2) {
     // Justo después de la calle (parts[0]), antes de la zona/barrio
-    // automático y la ciudad -- "calle, barrio [del pasajero], zona grande
-    // automática, ciudad".
-    parts.splice(1, 0, labelBarrio(h));
+    // automático y la ciudad -- "calle, [barrio del pasajero], zona grande
+    // automática, ciudad", sin repetir la palabra "barrio" (se veía raro
+    // repetida cuando también hay zona automática -- pedido explícito).
+    parts.splice(1, 0, h);
     return parts.join(', ');
   }
   // Sin suficientes segmentos para insertar con sentido (ej. coordenadas
   // crudas de respaldo cuando Mapbox no dio resultado) -- se agrega al
   // final, sigue siendo información útil aunque no quede en el orden ideal.
-  return `${addr}, ${labelBarrio(h)}`;
+  return `${addr}, ${h}`;
 }
 
 // ─── Confirmar origen (reusado por el flujo clásico y el flujo inteligente) ───
@@ -2128,7 +2128,11 @@ async function handleConversation(
   // ── AWAITING_BARRIO ──────────────────────────────────────────────────────────
   // Ver askOriginBarrio() -- pregunta previa al GPS, solo para el origen.
   if (state === 'awaiting_barrio') {
-    const barrioText = text.trim();
+    // Si el pasajero escribe "barrio Comuneros" en vez de solo "Comuneros",
+    // se le quita la palabra "barrio" acá -- se guarda siempre el nombre
+    // limpio, así después nunca queda repetida al combinarlo (ver
+    // combineWithBarrioHint).
+    const barrioText = text.trim().replace(/^barrio\s+/i, '').trim();
     if (barrioText.length < 2) {
       await sendText(phone, `Escríbeme el nombre del barrio o sector (ej: "Comuneros", "El Bosque").`);
       return;
